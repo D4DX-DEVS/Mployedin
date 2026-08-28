@@ -1298,16 +1298,21 @@ body {
    Four steps, defined once — .heading-page / -section / -subsection / -label.
    Deliberately small headings (uppercase eyebrows at text-[11px], hero/empty
    states at text-3xl) are left off the scale on purpose. Measured 2026-08-25. */
+/* Steps are >=4px apart at both widths. The previous ramp put desktop h2 at
+   18px against 16px body and mobile h2 at 16px against 14-16px body, so a
+   section header carried the same visual weight as the copy under it and the
+   page read as one flat block. 24/20/16 mobile, 30/24/18 desktop.
+   Measured 2026-08-28. */
 :root {
-  --text-page-title: 1.25rem;
-  --text-section: 1rem;
-  --text-subsection: 0.875rem;
+  --text-page-title: 1.5rem;
+  --text-section: 1.25rem;
+  --text-subsection: 1rem;
 }
 @media (min-width: 768px) {
   :root {
-    --text-page-title: 1.625rem;
-    --text-section: 1.125rem;
-    --text-subsection: 1rem;
+    --text-page-title: 1.875rem;
+    --text-section: 1.5rem;
+    --text-subsection: 1.125rem;
   }
 }
 
@@ -1457,7 +1462,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--page-gap);
-  overflow-wrap: anywhere;
+  /* `anywhere` (not `break-word`) also lets the browser compute min-content
+     width as if every word could break, so a 4-up stat grid happily sized its
+     columns to 48px and rendered "Total Applicatio / ns" on the agent,
+     super-agent and admin dashboards. `break-word` still rescues genuinely
+     unbreakable strings (URLs, ids) from overflowing, but keeps a word's width
+     as its minimum, so tiles get the room the label actually needs.
+     Measured 2026-08-28 at 390px. */
+  overflow-wrap: break-word;
 }
 
 .page-container > * {
@@ -1530,8 +1542,12 @@ body {
      icons can remain compact inside the control without shrinking its hit box.
      Switches opt out: a Radix switch is a <button>, so this stretched its 20px
      track to 44px and the pill radius rendered it as an oval. It gets the same
-     hit area from the centred overlay below instead. */
-  :where(button:not([role="switch"]), [role="button"]),
+     hit area from the centred overlay below instead.
+     Checkboxes and radios opt out for the same reason: Radix renders them as
+     <button role="checkbox">, so a `h-4 w-4` box was painted as a 44x44 slab —
+     21 of them on the candidates list, each reading as an empty card. They take
+     the centred overlay too, keeping the 44px target with a 16px control. */
+  :where(button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]), [role="button"]),
   :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,
@@ -1540,11 +1556,11 @@ body {
     min-height: 44px;
   }
 
-  [role="switch"] {
+  :where([role="switch"], [role="checkbox"], [role="radio"]) {
     position: relative;
   }
 
-  [role="switch"]::after {
+  :where([role="switch"], [role="checkbox"], [role="radio"])::after {
     content: "";
     position: absolute;
     top: 50%;
@@ -1586,7 +1602,7 @@ body {
   /* Mobile workspace controls follow the platform touch-target baseline.
      Explicit visual heights may remain compact, but the hit area never drops
      below 44px. Native checkboxes/radios stay inside their larger label rows. */
-  .dashboard-shell :where(button:not([role="switch"]), [role="button"]),
+  .dashboard-shell :where(button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]), [role="button"]),
   .dashboard-main :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,
@@ -1596,8 +1612,12 @@ body {
   }
 
 
+  /* Icon-only controls need a 44px-wide target. Checkboxes and radios are
+     excluded: Radix gives them an aria-label and renders a <button>, so this
+     stretched a 16px box into a 44px-wide slab. They get the same target from
+     the centred ::after overlay above. */
   .dashboard-shell :where(
-    button[aria-label],
+    button[aria-label]:not([role="checkbox"]):not([role="radio"]),
     [role="button"][aria-label]
   ) {
     min-width: 44px;
@@ -2107,7 +2127,7 @@ table.workspace-list-table tbody tr:focus-visible {
   /* ── Control heights ──────────────────────────────────────────────────────
      Admin is also used on touch devices. Visual controls may stay compact,
      but their standalone hit area keeps the shared 44px floor. */
-  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]), [role="button"], input, select, textarea):is(
+  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]), [role="button"], input, select, textarea):is(
       [class~="h-3"], [class~="h-3.5"], [class~="h-4"], [class~="h-5"], [class~="h-6"],
       [class~="h-7"], [class~="h-8"], [class~="h-9"], [class~="h-10"], [class~="h-11"], [class~="h-12"], [class~="h-14"]
     ) {
@@ -2115,14 +2135,14 @@ table.workspace-list-table tbody tr:focus-visible {
   }
 
   /* Padding utilities affect the visual treatment, not the touch target. */
-  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]), [role="button"]):is(
+  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]), [role="button"]):is(
       [class~="py-0"], [class~="py-0.5"], [class~="py-1"], [class~="py-1.5"]
     ) {
     min-height: 44px;
   }
 
   /* Everything else uses the same touch-safe floor as the other roles. */
-  .dashboard-shell-admin .dashboard-main :where(button:not([role="switch"]), [role="button"]),
+  .dashboard-shell-admin .dashboard-main :where(button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]), [role="button"]),
   .dashboard-shell-admin .dashboard-main :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,
@@ -2451,11 +2471,19 @@ table.workspace-list-table tbody tr:focus-visible {
     white-space: nowrap;
   }
 
-  /* 3. Stat grids. Pages author these as two-up for phones and four-up for
-        wide screens, so a phone spends its whole first screen on four tiles
-        and pushes the actual list below the fold. Four fit once the type and
-        icons scale to the tile. Grids holding form controls are excluded —
-        four-up inputs would be unusable. */
+}
+
+/* 3. Stat grids. Pages author these as two-up for phones and four-up for
+      wide screens, so a phone spends its whole first screen on four tiles
+      and pushes the actual list below the fold. Four fit once the type and
+      icons scale to the tile. Grids holding form controls are excluded —
+      four-up inputs would be unusable.
+
+      Now floored at 480px. Below that, four tiles across a 320px screen left
+      each label 46px of room at 9px type — under any readable size, and it
+      rendered "Total Applications" as "Total Applicatio / ns". Under 480 the
+      component's own two-up stands. Measured 2026-08-28. */
+@media (min-width: 480px) and (max-width: 639px) {
   .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.3125rem;
@@ -2472,8 +2500,8 @@ table.workspace-list-table tbody tr:focus-visible {
   }
 
   .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) :is([class*="text-sm"], [class*="text-xs"], [class*="text-["]) {
-    font-size: 0.5625rem;
-    line-height: 0.75rem;
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
   }
 
   .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) svg {
@@ -2491,8 +2519,11 @@ table.workspace-list-table tbody tr:focus-visible {
 
 /* Stat grids that target three or six columns get the same treatment as the
    four-column ones above; six-up is unreadable on a phone, so they land on
-   three. Grids holding form controls or a table are left alone. */
-@media (max-width: 639px) {
+   three. Grids holding form controls or a table are left alone.
+   Floored at 480px for the same reason as the four-up block: below that, the
+   authored two-up stands rather than squeezing three tiles onto a 320px
+   screen. */
+@media (min-width: 480px) and (max-width: 639px) {
   .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.3125rem;
@@ -2509,8 +2540,8 @@ table.workspace-list-table tbody tr:focus-visible {
   }
 
   .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) :is([class*="text-sm"], [class*="text-xs"], [class*="text-["]) {
-    font-size: 0.5625rem;
-    line-height: 0.75rem;
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
   }
 
   .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) svg {
@@ -2880,3 +2911,31 @@ table.workspace-list-table tbody tr:focus-visible {
 
 
 
+
+/* touch: force Turbopack CSS rebuild 2026-08-28 */
+
+/* rebuild marker */
+
+/* ── Compact page header (opt-in, phones only) ────────────────────────────
+   `<DashboardPageHeader compact>` shares one row between the title and the
+   actions. The page-title rules above size every dashboard h1 from
+   --text-page-title (24px), and they outrank a Tailwind `text-base` on the
+   heading itself — so at 390px "Candidate Matching" rendered 24px in a 153px
+   column and broke into "Candidate / Matching". Step it down here, where the
+   specificity actually lands. No effect from 640px up. */
+/* Must live in the same @layer as the page-title rules it overrides. Those set
+   `font-size: var(--text-page-title) !important` from inside `components`, and
+   for !important declarations the layer cascade is INVERTED — a layered
+   important beats an unlayered one. Unlayered, this rule lost and the heading
+   stayed 24px, breaking "Candidate Matching" across two lines in a 153px
+   column. Same layer, later in source, so it wins. */
+@layer components {
+  @media (max-width: 639px) {
+    .dashboard-main [data-dashboard-page-header="component"][data-compact="true"] :is(h1, h2) {
+      font-size: 1rem !important;
+      line-height: 1.35 !important;
+    }
+  }
+}
+
+/* rebuild r2 */

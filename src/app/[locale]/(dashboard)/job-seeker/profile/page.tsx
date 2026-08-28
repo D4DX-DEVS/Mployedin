@@ -712,7 +712,7 @@ export default function JobSeekerProfilePage() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-px">
                 <span className={cn("text-base font-bold leading-none", completenessColor)}>{completeness}%</span>
-                <span className="text-[9px] text-muted-foreground leading-none">complete</span>
+                <span className="text-[11px] text-muted-foreground leading-none">complete</span>
               </div>
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -770,7 +770,7 @@ export default function JobSeekerProfilePage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-sm font-semibold">{t("profile.aiCareerInsight")}</span>
-                <span className="inline-flex items-center rounded-full bg-violet-600 px-1.5 py-px text-[10px] font-bold text-white tracking-wide">
+                <span className="inline-flex items-center rounded-full bg-violet-600 px-1.5 py-px text-[11px] font-bold text-white tracking-wide">
                   {t("profile.smartBadge")}
                 </span>
               </div>
@@ -933,7 +933,7 @@ export default function JobSeekerProfilePage() {
                     <span className="text-xs font-semibold text-foreground">
                       Add these to reach 100%
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground">
                       (+{missingFields.reduce((a, f) => a + f.points, 0)}% remaining)
                     </span>
                   </div>
@@ -1074,7 +1074,7 @@ export default function JobSeekerProfilePage() {
                           {proj.techStack?.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {proj.techStack.map((t, j) => (
-                                <Badge key={j} variant="outline" className="text-[10px] px-1.5 py-0">{t}</Badge>
+                                <Badge key={j} variant="outline" className="text-[11px] px-1.5 py-0">{t}</Badge>
                               ))}
                             </div>
                           )}
@@ -1438,7 +1438,7 @@ export default function JobSeekerProfilePage() {
               )}
             >
               {editVisibility === "visible" && (
-                <span className="inline-block text-[10px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full mb-2">Recommended</span>
+                <span className="inline-block text-[11px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full mb-2">Recommended</span>
               )}
               <div className="flex items-start gap-3">
                 <Eye className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />

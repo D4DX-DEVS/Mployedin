@@ -165,10 +165,16 @@ export function DashboardSignalStrip({
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 text-xs font-medium leading-4 text-muted-foreground sm:text-sm">
+                {/* 11px (the readable floor, not below it) so the longest label
+                    word still fits a 2-up tile at 320px without breaking. */}
+                <span className="min-w-0 text-[11px] font-medium leading-4 text-muted-foreground sm:text-sm">
                   {signal.label}
                 </span>
-                <Icon className={cn("h-4 w-4 shrink-0", signal.iconClassName)} aria-hidden="true" />
+                {/* Decorative only. In a 2-up grid on a phone the tile is 84px,
+                    so the icon's 16px + 8px gap left the label 48px and
+                    "Total Applications" rendered as "Total Applicatio / ns" on
+                    the agent, super-agent and admin dashboards. */}
+                <Icon className={cn("hidden h-4 w-4 shrink-0 sm:block", signal.iconClassName)} aria-hidden="true" />
               </div>
               <div className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
                 {signal.value}

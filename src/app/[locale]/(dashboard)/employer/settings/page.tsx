@@ -677,7 +677,7 @@ function CompanySettingsPage() {
                           value={form.taxId}
                           onChange={(e) => setField("taxId", e.target.value)}
                         />
-                        <p className="mt-1 text-[10px] text-muted-foreground">{t("taxIdHint")}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">{t("taxIdHint")}</p>
                       </div>
                     </div>
 

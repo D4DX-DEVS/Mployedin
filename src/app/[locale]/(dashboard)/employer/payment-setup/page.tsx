@@ -155,7 +155,7 @@ export default function EmployerPaymentSetupPage() {
                 value={secretKey}
                 onChange={(e) => setSecretKey(e.target.value)}
               />
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 <Shield className="mr-1 inline h-3 w-3" />
                 {t("secretKeyNote")}
               </p>

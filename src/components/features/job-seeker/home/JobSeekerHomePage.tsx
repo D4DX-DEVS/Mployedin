@@ -760,7 +760,7 @@ export function JobSeekerHomePage({
                               stacked bordered score box is kept from sm up. */}
                           <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 sm:gap-4 sm:pt-4 lg:min-w-[156px] lg:flex-col lg:items-stretch lg:border-s lg:border-t-0 lg:ps-5 lg:pt-0">
                             <div className="flex items-baseline gap-2 rounded-xl border-border/60 bg-muted/20 px-2.5 py-1.5 text-start sm:block sm:rounded-2xl sm:border sm:px-4 sm:py-3" aria-label={t("recommendedJobs.matchScoreAria", { score: formatNumber(job.matchScore) })}>
-                              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px]">{t("recommendedJobs.matchScore")}</div>
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px]">{t("recommendedJobs.matchScore")}</div>
                               <div className="text-base font-semibold tracking-tight text-foreground sm:mt-1 sm:text-2xl">{formatNumber(job.matchScore)}%</div>
                             </div>
                             <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-all group-hover:gap-2 lg:justify-end">
@@ -842,7 +842,7 @@ export function JobSeekerHomePage({
                               <p className="truncate text-xs text-muted-foreground">{app.companyName}</p>
                             )}
                           </div>
-                          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold sm:px-2.5 sm:text-[11px] ${statusClass}`}>
+                          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold sm:px-2.5 sm:text-[11px] ${statusClass}`}>
                             {statusLabel}
                           </span>
                         </Link>
@@ -884,7 +884,7 @@ export function JobSeekerHomePage({
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <div className="text-[15px] font-semibold text-foreground">{item.title}</div>
-                            <Badge className="rounded-full border border-border/60 bg-muted/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:bg-muted/20">
+                            <Badge className="rounded-full border border-border/60 bg-muted/20 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:bg-muted/20">
                               {t("priorityActions.highImpact")}
                             </Badge>
                           </div>

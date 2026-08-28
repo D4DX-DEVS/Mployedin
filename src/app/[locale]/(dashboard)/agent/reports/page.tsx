@@ -209,7 +209,7 @@ export default function AgentReportsPage() {
                 { label: t("commissionPaid"), data: analytics.commissions.paid, color: "text-status-selected" },
               ].map((c) => (
                 <div key={c.label} className="min-w-0 workspace-glass-panel card-pad rounded-2xl text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
                   <p className={`mt-2 text-xl sm:text-2xl font-semibold ${c.color}`}>{c.data?.count ?? 0}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{formatCount((c.data?.total ?? 0))} AED</p>
                 </div>

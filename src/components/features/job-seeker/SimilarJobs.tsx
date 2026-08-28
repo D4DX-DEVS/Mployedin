@@ -85,13 +85,13 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
                 {job.requirements.skills.slice(0, 4).map((s) => (
                   <span
                     key={s}
-                    className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
+                    className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary"
                   >
                     {s}
                   </span>
                 ))}
                 {job.requirements.skills.length > 4 && (
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[11px] text-muted-foreground">
                     +{job.requirements.skills.length - 4}
                   </span>
                 )}

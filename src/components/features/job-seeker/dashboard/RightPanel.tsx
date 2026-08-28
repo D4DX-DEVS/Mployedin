@@ -261,7 +261,7 @@ function ActivityFeed({ events, t }: { events?: ActivityEvent[]; t: ReturnType<t
               <p className="text-xs text-foreground leading-snug">{ev.message}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[11px] text-muted-foreground">
                   {formatRelativeTime(ev.createdAt)}
                 </span>
               </div>

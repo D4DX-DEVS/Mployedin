@@ -495,7 +495,7 @@ export default function SuperAgentEmployersPage() {
                     <span className="block font-medium text-foreground">{em.companyName ?? em.name}</span>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {em.isAgentVerified && (
-                        <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
+                        <span className="text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
                       )}
                       <StatusBadge status={em.isActive ? "active" : "inactive"} />
                     </div>

@@ -643,7 +643,7 @@ export function Sidebar({
                   {dualTierLabel}
                 </span>
                 {item.title === "Messages" && unreadMessageCount > 0 && (
-                  <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
                     {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                   </span>
                 )}
@@ -715,7 +715,7 @@ export function Sidebar({
                 {locale === "ar" ? item.titleAr : item.title}
               </span>
               {item.title === "Messages" && unreadMessageCount > 0 && (
-                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
                   {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                 </span>
               )}

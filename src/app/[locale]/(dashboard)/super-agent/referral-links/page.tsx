@@ -475,7 +475,7 @@ export default function SuperAgentReferralLinksPage() {
                       <TableCell className="font-mono text-sm font-medium">{link.code}</TableCell>
                       <TableCell className="text-sm">{creatorName(link)}</TableCell>
                       <TableCell>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                           {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
                       </TableCell>
@@ -483,7 +483,7 @@ export default function SuperAgentReferralLinksPage() {
                       <TableCell className="text-sm">{link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           status === "active" ? "bg-emerald-100 text-emerald-700" :
                           status === "expired" ? "bg-amber-100 text-amber-700" :
                           status === "maxed" ? "bg-orange-100 text-orange-700" :

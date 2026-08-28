@@ -158,7 +158,7 @@ export function TableToolbar({
                   <SlidersHorizontal className="h-3.5 w-3.5" />
                   {resolvedFilterLabel}
                   {hasActiveFilters && (
-                    <span className="ms-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+                    <span className="ms-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-primary-foreground">
                       !
                     </span>
                   )}

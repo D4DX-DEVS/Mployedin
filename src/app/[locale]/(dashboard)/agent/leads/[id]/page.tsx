@@ -362,7 +362,7 @@ export default function LeadDetailPage() {
                           <span className="text-xs font-semibold capitalize text-foreground">
                             {activity.action.replace(/_/g, " ")}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{timeAgo}</span>
+                          <span className="text-[11px] text-muted-foreground">{timeAgo}</span>
                         </div>
                         {activity.note && (
                           <p className="mt-1 text-sm text-muted-foreground">{activity.note}</p>

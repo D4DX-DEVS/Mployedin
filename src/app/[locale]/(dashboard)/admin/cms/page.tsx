@@ -133,7 +133,7 @@ export default function CmsOverviewPage() {
             <Filter className="h-4 w-4 text-muted-foreground" />
             {showFilters ? t("hideFiltersButton") : t("showFiltersButton")}
             {hasActiveFilters && (
-              <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+              <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
                 {t("activeFiltersBadge")}
               </Badge>
             )}

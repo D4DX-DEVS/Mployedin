@@ -259,7 +259,7 @@ export default function AgentReferralLinksPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-mono text-sm font-semibold text-foreground">{link.code}</p>
-                        {link.label && <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"><Tag className="h-2.5 w-2.5" />{link.label}</span>}
+                        {link.label && <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"><Tag className="h-2.5 w-2.5" />{link.label}</span>}
                       </div>
                       <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("labelCreated")} {formatDate(link.createdAt)}</span>

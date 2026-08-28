@@ -108,7 +108,7 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
                     {a.performedByName && <span>· {t("by", { name: a.performedByName })}</span>}
                   </div>
                 </div>
-                <span className="shrink-0 text-[10px] font-medium rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
+                <span className="shrink-0 text-[11px] font-medium rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
                   {a.userEmail?.includes("employer") ? t("employer") : t("jobSeeker")}
                 </span>
               </div>

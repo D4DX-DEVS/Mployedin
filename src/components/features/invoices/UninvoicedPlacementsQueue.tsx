@@ -402,7 +402,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                       <TableCell>
                         <div>
                           <p className="text-sm font-medium text-foreground">{p.jobTitle}</p>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-[11px] text-muted-foreground">
                             {t("placedDate")} {formatDate(new Date(p.placedAt))}
                           </p>
                         </div>
@@ -411,7 +411,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         <div>
                           <p className="text-sm font-medium">{p.employerName}</p>
                           {p.employerCountry && (
-                            <p className="text-[10px] text-muted-foreground">{p.employerCountry}</p>
+                            <p className="text-[11px] text-muted-foreground">{p.employerCountry}</p>
                           )}
                         </div>
                       </TableCell>
@@ -430,7 +430,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         <div>
                           <p className="text-sm font-semibold">{fmt(p.salary, p.currency)}</p>
                           {taxInfo && taxInfo.defaultRate > 0 && (
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-[11px] text-muted-foreground">
                               +{taxInfo.label}
                             </p>
                           )}
@@ -438,7 +438,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                       </TableCell>
                       <TableCell>
                         {taxInfo ? (
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
                             taxInfo.taxType === "vat" ? "border border-sky-200 bg-sky-50 text-sky-700" :
                             taxInfo.taxType === "gst" ? "border border-violet-200 bg-violet-50 text-violet-700" :
                             taxInfo.taxType === "reverse_charge" ? "border border-amber-200 bg-amber-50 text-amber-700" :
@@ -473,7 +473,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                             size="sm"
                             onClick={() => handleQuickGenerate(p)}
                             disabled={quickGenerating === p._id}
-                            className="h-7 gap-1 px-2 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50"
+                            className="h-7 gap-1 px-2 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50"
                           >
                             {quickGenerating === p._id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
@@ -497,7 +497,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         <TableCell colSpan={10}>
                           <div className="grid grid-cols-1 gap-2 sm:gap-4 py-2 sm:grid-cols-3">
                             <div className="rounded-lg border border-border/70 bg-card chip-pad">
-                              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("invoicePreview")}
                               </p>
                               <div className="space-y-1 text-xs">
@@ -519,7 +519,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                               </div>
                             </div>
                             <div className="rounded-lg border border-border/70 bg-card chip-pad">
-                              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("commissionSplit")}
                               </p>
                               <div className="space-y-1 text-xs">
@@ -543,7 +543,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                               </div>
                             </div>
                             <div className="rounded-lg border border-border/70 bg-card chip-pad">
-                              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("employerBilling")}
                               </p>
                               <div className="space-y-1 text-xs">
@@ -596,15 +596,15 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{selected.size}</p>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("invoices")}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("invoices")}</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-primary">{fmt(selectedTotal)}</p>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("estSubtotal")}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("estSubtotal")}</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-emerald-600">{selectedCountries.length}</p>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("countries")}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("countries")}</p>
                   </div>
                 </div>
               </div>
@@ -720,15 +720,15 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-emerald-600">{bulkResults.summary.created}</p>
-                  <p className="text-[10px] font-medium uppercase text-emerald-700">{t("created")}</p>
+                  <p className="text-[11px] font-medium uppercase text-emerald-700">{t("created")}</p>
                 </div>
                 <div className="rounded-xl border border-amber-200 bg-amber-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-amber-600">{bulkResults.summary.skipped}</p>
-                  <p className="text-[10px] font-medium uppercase text-amber-700">{t("skipped")}</p>
+                  <p className="text-[11px] font-medium uppercase text-amber-700">{t("skipped")}</p>
                 </div>
                 <div className="rounded-xl border border-rose-200 bg-rose-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-rose-600">{bulkResults.summary.errors}</p>
-                  <p className="text-[10px] font-medium uppercase text-rose-700">{t("errors")}</p>
+                  <p className="text-[11px] font-medium uppercase text-rose-700">{t("errors")}</p>
                 </div>
               </div>
 
@@ -747,7 +747,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                     {bulkResults.results.map((r, i) => (
                       <tr key={i} className="border-b border-border/50">
                         <td className="px-3 py-1.5">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
                             r.status === "created" ? "bg-emerald-100 text-emerald-700" :
                             r.status === "skipped" ? "bg-amber-100 text-amber-700" :
                             "bg-rose-100 text-rose-700"

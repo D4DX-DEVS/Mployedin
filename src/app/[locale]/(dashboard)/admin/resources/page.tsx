@@ -343,7 +343,7 @@ export default function AdminResourcesPage() {
               <DialogTitle className="text-xl">{detailItem.title}</DialogTitle>
               <DialogDescription className="flex items-center gap-2 pt-2">
                 <Badge variant="outline" className="text-xs">{categoryLabels[detailItem.category as keyof typeof categoryLabels] ?? detailItem.category}</Badge>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${ACCESS_COLORS[detailItem.accessLevel]}`}>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${ACCESS_COLORS[detailItem.accessLevel]}`}>
                   <Shield className="h-2.5 w-2.5" />{detailItem.accessLevel}
                 </span>
                 <span className="text-xs text-muted-foreground">v{detailItem.version}</span>

@@ -248,7 +248,7 @@ export default function EmployerOffersPage() {
                       <p className="truncate text-xs font-semibold text-foreground">{candidateName(offer)}</p>
                       <p className="truncate text-[11px] text-muted-foreground">{offer.jobId?.title || t("untitledRole")}</p>
                     </div>
-                    <Badge variant="outline" className={`${getStatusColor(offer.status)} shrink-0 px-1.5 py-0 text-[10px]`}>
+                    <Badge variant="outline" className={`${getStatusColor(offer.status)} shrink-0 px-1.5 py-0 text-[11px]`}>
                       {isExpired(offer) ? t("expired") : t(offer.status)}
                     </Badge>
                     <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />

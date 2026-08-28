@@ -365,7 +365,7 @@ export default function AgentJobsPage() {
                         <button
                           key={key}
                           onClick={() => { setAiQuery(suggestion); handleAiSearch(suggestion); }}
-                          className="max-w-full truncate rounded-lg border border-border bg-secondary/40 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-2.5 sm:py-1 sm:text-xs"
+                          className="max-w-full truncate rounded-lg border border-border bg-secondary/40 px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-2.5 sm:py-1 sm:text-xs"
                         >
                           {suggestion}
                         </button>

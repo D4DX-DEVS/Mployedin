@@ -294,7 +294,7 @@ export default function AdminPlacementsPage() {
             >
               <Filter className="h-4 w-4 text-muted-foreground" />
               {showFilters ? t("hideFilters") : t("showFilters")}
-              {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
+              {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
               {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </button>
             <div className="flex items-center gap-2">

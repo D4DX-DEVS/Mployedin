@@ -243,10 +243,10 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                           {job.title}
                         </h2>
                         {(employer?.domainVerified || employer?.isAgentVerified) && (
-                          <span className="shrink-0 text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ {t("verified")}</span>
+                          <span className="shrink-0 text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ {t("verified")}</span>
                         )}
                         {daysLeft !== null && daysLeft <= 14 && (
-                          <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full font-medium ${
                             daysLeft <= 7
                               ? "bg-orange-500/10 text-orange-600"
                               : "bg-yellow-500/10 text-yellow-600"

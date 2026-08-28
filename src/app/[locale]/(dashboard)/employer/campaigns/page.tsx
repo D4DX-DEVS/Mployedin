@@ -416,8 +416,8 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 />
                 <p className="text-[11px] text-muted-foreground">
                   {t("bodyHint")}{" "}
-                  <code className="rounded bg-muted px-1 py-0.5 text-[10px]">{"{{name}}"}</code>{" "}
-                  <code className="rounded bg-muted px-1 py-0.5 text-[10px]">{"{{firstName}}"}</code>
+                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{"{{name}}"}</code>{" "}
+                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{"{{firstName}}"}</code>
                 </p>
                 <div className="flex items-center gap-3">
                   <Label htmlFor={`step-delay-${i}`} className="text-xs text-muted-foreground">

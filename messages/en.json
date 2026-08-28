@@ -3936,6 +3936,7 @@
     "statHighMatch": "High Match",
     "statAvailable": "Available",
     "runAiMatch": "Run AI Match",
+    "runAiMatchShort": "AI Match",
     "scoringProgress": "Scoring",
     "screenWithAi": "Screen with AI",
     "screeningInProgress": "Screening...",

@@ -304,7 +304,7 @@ export function InterviewBookingModal({
                   : t("confirmBooking")}
             </h3>
             {selectedCandidates.length > 1 && step === "candidate" && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
                 {t("selectedCount", { count: selectedCandidates.length })}
               </span>
             )}
@@ -480,7 +480,7 @@ export function InterviewBookingModal({
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             {c.matchScore != null ? (
-                              <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${scoreLabel(c.matchScore)}`}>
+                              <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${scoreLabel(c.matchScore)}`}>
                                 {c.matchScore}%
                               </span>
                             ) : (
@@ -488,7 +488,7 @@ export function InterviewBookingModal({
                             )}
                           </td>
                           <td className="px-3 py-2.5 hidden sm:table-cell">
-                            <span className="inline-block rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                            <span className="inline-block rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
                               {c.status.replace(/_/g, " ")}
                             </span>
                           </td>
@@ -537,7 +537,7 @@ export function InterviewBookingModal({
                   {fetchCandidates && !prefilledCandidate && (
                     <button
                       onClick={() => setStep("candidate")}
-                      className="text-[10px] font-medium text-primary hover:underline"
+                      className="text-[11px] font-medium text-primary hover:underline"
                     >
                       {t("change")}
                     </button>
@@ -547,7 +547,7 @@ export function InterviewBookingModal({
                   {selectedCandidates.slice(0, 6).map((c) => (
                     <span
                       key={c.applicationId}
-                      className="inline-flex items-center gap-1 rounded-full bg-background border px-2 py-0.5 text-[10px] font-medium text-foreground"
+                      className="inline-flex items-center gap-1 rounded-full bg-background border px-2 py-0.5 text-[11px] font-medium text-foreground"
                     >
                       <User className="h-2.5 w-2.5 text-primary" />
                       {c.candidateName}
@@ -560,7 +560,7 @@ export function InterviewBookingModal({
                     </span>
                   ))}
                   {selectedCandidates.length > 6 && (
-                    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
                       +{selectedCandidates.length - 6} more
                     </span>
                   )}
@@ -687,7 +687,7 @@ export function InterviewBookingModal({
                 {selectedTimeLabel} â€“ {endTimeLabel} Â· {t("min", { count: duration })} each Â· {type === "video" ? t("videoCall") : type === "offline" ? t("inPerson") : t("hybrid")}
               </p>
               {selectedCandidates.length > 1 && (
-                <p className="mt-1 text-[10px] text-muted-foreground">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   Interviews scheduled back-to-back: {duration}min per candidate
                 </p>
               )}
@@ -699,7 +699,7 @@ export function InterviewBookingModal({
                 <AlertCircle className="h-4 w-4 flex-shrink-0 text-destructive mt-0.5" />
                 <div>
                   <p className="text-xs font-medium text-destructive">{t("conflictTitle")}</p>
-                  <p className="mt-0.5 text-[10px] text-destructive/70">
+                  <p className="mt-0.5 text-[11px] text-destructive/70">
                     {t("conflictDesc", { titles: conflicts.map((c) => c.title).join(", ") })}
                   </p>
                 </div>
@@ -752,13 +752,13 @@ export function InterviewBookingModal({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium text-foreground truncate">{c.candidateName}</p>
-                        <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                        <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
                           <Briefcase className="h-2.5 w-2.5" /> {c.jobTitle}
                         </p>
                       </div>
                       <div className="text-end shrink-0">
-                        <p className="text-[10px] font-medium text-foreground">{slotLabel}</p>
-                        <p className="text-[9px] text-muted-foreground">{t("min", { count: duration })}</p>
+                        <p className="text-[11px] font-medium text-foreground">{slotLabel}</p>
+                        <p className="text-[11px] text-muted-foreground">{t("min", { count: duration })}</p>
                       </div>
                     </div>
                   );
@@ -813,10 +813,10 @@ export function InterviewBookingModal({
             {bookingProgress && (
               <div className="rounded-xl bg-primary/5 border border-primary/20 chip-pad">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-medium text-primary">
+                  <span className="text-[11px] font-medium text-primary">
                     Booking interviews...
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[11px] text-muted-foreground">
                     {bookingProgress.done}/{bookingProgress.total}
                   </span>
                 </div>

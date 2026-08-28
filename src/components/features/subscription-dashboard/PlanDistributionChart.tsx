@@ -77,7 +77,7 @@ export function PlanDistributionChart({ data, totalMrr }: PlanDistributionChartP
             {/* Center label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-lg font-bold">{formatCurrency(totalMrr)}</span>
-              <span className="text-[10px] text-muted-foreground font-medium">{t("aedMrr")}</span>
+              <span className="text-[11px] text-muted-foreground font-medium">{t("aedMrr")}</span>
             </div>
           </div>
 

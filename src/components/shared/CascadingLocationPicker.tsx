@@ -126,7 +126,7 @@ function InlineSearchSelect({
                     <Check className={`h-3.5 w-3.5 shrink-0 ${isActive ? "opacity-100 text-primary" : "opacity-0"}`} />
                     <span className="truncate">{opt.name}</span>
                     {opt.code && (
-                      <span className="ml-auto text-[10px] text-muted-foreground/60 font-mono">{opt.code}</span>
+                      <span className="ml-auto text-[11px] text-muted-foreground/60 font-mono">{opt.code}</span>
                     )}
                   </button>
                 );
@@ -395,7 +395,7 @@ export function CascadingLocationPicker({
                   <MapPin className="h-3.5 w-3.5 text-primary" />
                   {tc("cities")}
                   {!loadingCities && cities.length > 0 && (
-                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                    <Badge variant="secondary" className="text-[11px] h-4 px-1.5">
                       {selectedCitiesInState.length}/{cities.length}
                     </Badge>
                   )}
@@ -408,7 +408,7 @@ export function CascadingLocationPicker({
                     type="button"
                     variant={isEntireStateSelected ? "default" : "ghost"}
                     size="sm"
-                    className="h-6 px-2 text-[10px] rounded-md"
+                    className="h-6 px-2 text-[11px] rounded-md"
                     onClick={() => {
                       const st = states.find((s) => s._id === selectedState);
                       if (st) toggleState(st._id, st.name);
@@ -427,7 +427,7 @@ export function CascadingLocationPicker({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[10px] rounded-md"
+                        className="h-6 px-2 text-[11px] rounded-md"
                         onClick={selectAllFilteredCities}
                       >
                         <CheckSquare className="h-3 w-3" /> All
@@ -437,7 +437,7 @@ export function CascadingLocationPicker({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-6 px-2 text-[10px] rounded-md text-destructive hover:text-destructive"
+                          className="h-6 px-2 text-[11px] rounded-md text-destructive hover:text-destructive"
                           onClick={deselectAllFilteredCities}
                         >
                           <Square className="h-3 w-3" /> Clear
@@ -520,12 +520,12 @@ export function CascadingLocationPicker({
 
                   {/* Footer summary */}
                   {selectedCitiesInState.length > 0 && !allCitiesInStateSelected && (
-                    <div className="border-t border-border/20 bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground">
+                    <div className="border-t border-border/20 bg-muted/10 px-3 py-1.5 text-[11px] text-muted-foreground">
                       {selectedCitiesInState.length} of {cities.length} cities selected
                     </div>
                   )}
                   {allCitiesInStateSelected && (
-                    <div className="border-t border-border/20 bg-primary/5 px-3 py-1.5 text-[10px] text-primary font-medium">
+                    <div className="border-t border-border/20 bg-primary/5 px-3 py-1.5 text-[11px] text-primary font-medium">
                       All {cities.length} cities selected
                     </div>
                   )}

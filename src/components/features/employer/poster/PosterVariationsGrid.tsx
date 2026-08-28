@@ -93,7 +93,7 @@ export function PosterVariationsGrid({
       </button>
 
       {/* Note */}
-      <p className="text-[10px] text-center text-muted-foreground">
+      <p className="text-[11px] text-center text-muted-foreground">
         AI generates background designs. All text and branding are added by Mployedin.
       </p>
     </div>

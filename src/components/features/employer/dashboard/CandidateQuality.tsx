@@ -53,7 +53,7 @@ export function CandidateQuality({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className={cn("text-xl font-bold", config.color)}>{percentage}%</span>
-            <span className="text-[10px] text-muted-foreground">{t("avgMatch")}</span>
+            <span className="text-[11px] text-muted-foreground">{t("avgMatch")}</span>
           </div>
         </div>
 

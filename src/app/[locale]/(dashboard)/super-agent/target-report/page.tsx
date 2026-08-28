@@ -432,7 +432,7 @@ export default function SuperAgentTargetReportPage() {
               { label: "Avg Progress", curr: data.yearOverYear.currentYear.avgProgress, prev: data.yearOverYear.previousYear.avgProgress, growth: data.yearOverYear.growth.avgProgress, isPercent: true },
             ] as const).map((item) => (
               <div key={item.label} className="rounded-xl border border-border/50 text-center card-pad">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
                 <p className="mt-1 text-xl font-bold tabular-nums">
                   {"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr, currency) : "isPercent" in item && item.isPercent ? `${item.curr}%` : formatCount(item.curr)}
                 </p>
@@ -481,7 +481,7 @@ export default function SuperAgentTargetReportPage() {
                       <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[10px]">{row.riskScore}</Badge>
+                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[11px]">{row.riskScore}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}

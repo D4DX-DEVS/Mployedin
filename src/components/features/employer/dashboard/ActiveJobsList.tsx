@@ -59,7 +59,7 @@ export function ActiveJobsList({ jobs, locale }: ActiveJobsListProps) {
                   <span className="text-sm font-semibold text-foreground truncate">
                     {job.title}
                   </span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                  <Badge variant="outline" className="text-[11px] px-1.5 py-0 shrink-0">
                     {job.status}
                   </Badge>
                 </div>

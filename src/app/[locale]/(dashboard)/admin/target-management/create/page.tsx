@@ -343,7 +343,7 @@ export default function CreateTargetProfilePage() {
             <Filter className="h-4 w-4" />
             {t("filtersLabel")}
             {hasActiveFilters && (
-              <Badge variant="info" className="text-[10px] px-1.5 py-0">
+              <Badge variant="info" className="text-[11px] px-1.5 py-0">
                 {[filterName, filterRegion, filterTeamSize !== "all" ? filterTeamSize : ""].filter(Boolean).length}
               </Badge>
             )}
@@ -567,7 +567,7 @@ function SupervisorTargetRow({
             <p className="font-medium text-foreground">{supervisor.name}</p>
             <p className="text-[11px] text-muted-foreground">{supervisor.email}</p>
             {supervisor.territory && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">{supervisor.territory}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{supervisor.territory}</p>
             )}
           </div>
         </td>
@@ -607,7 +607,7 @@ function SupervisorTargetRow({
               placeholder="0"
               className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums pr-12"
             />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
               {currency}
             </span>
           </div>
@@ -690,7 +690,7 @@ function MonthlyDistributionTable({
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-muted-foreground">{t("monthlyDistributionLabel")}</p>
         {!isValid && (
-          <Badge variant="destructive" className="text-[10px]">
+          <Badge variant="destructive" className="text-[11px]">
             {t("sumMismatchError")}
           </Badge>
         )}

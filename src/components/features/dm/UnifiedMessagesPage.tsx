@@ -340,7 +340,7 @@ export function UnifiedMessagesPage({
                 <MessageSquare className="h-3.5 w-3.5" />
                 {t("messagesTab")}
                 {dmUnreadTotal > 0 && (
-                  <Badge variant="destructive" className="h-4 px-1 text-[10px]">
+                  <Badge variant="destructive" className="h-4 px-1 text-[11px]">
                     {dmUnreadTotal > 99 ? "99+" : dmUnreadTotal}
                   </Badge>
                 )}
@@ -357,7 +357,7 @@ export function UnifiedMessagesPage({
                 <Headset className="h-3.5 w-3.5" />
                 {t("supportTab")}
                 {ccUnreadTotal > 0 && (
-                  <Badge variant="destructive" className="h-4 px-1 text-[10px]">
+                  <Badge variant="destructive" className="h-4 px-1 text-[11px]">
                     {ccUnreadTotal > 99 ? "99+" : ccUnreadTotal}
                   </Badge>
                 )}
@@ -442,21 +442,21 @@ export function UnifiedMessagesPage({
                           )}
                         </div>
                         {unread > 0 && (
-                          <span className="shrink-0 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                          <span className="shrink-0 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center">
                             {unread > 9 ? "9+" : unread}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5">
                         {other?.role && (
-                          <span className="text-[10px] text-muted-foreground/60 capitalize">
+                          <span className="text-[11px] text-muted-foreground/60 capitalize">
                             {hasKey(ROLE_LABEL_KEYS, other.role) ? t(`roles.${other.role}`) : other.role.replace("_", " ")}
                           </span>
                         )}
                         {subtitle && (
                           <>
-                            <span className="text-[10px] text-muted-foreground/30">·</span>
-                            <span className="text-[10px] text-muted-foreground/60 truncate">
+                            <span className="text-[11px] text-muted-foreground/30">·</span>
+                            <span className="text-[11px] text-muted-foreground/60 truncate">
                               {subtitle}
                             </span>
                           </>
@@ -493,7 +493,7 @@ export function UnifiedMessagesPage({
                         {conv.lastMessage ?? t("startConversation")}
                       </p>
                       {conv.lastMessageAt && (
-                        <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                        <p className="text-[11px] text-muted-foreground/50 mt-0.5">
                           {new Date(conv.lastMessageAt).toLocaleDateString(locale)}
                         </p>
                       )}

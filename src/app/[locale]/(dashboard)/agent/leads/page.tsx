@@ -263,7 +263,7 @@ function LeadCard({
           </div>
         </div>
         {lead.score != null && (
-          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
             <Gauge className="h-2.5 w-2.5" />
             {lead.score}
           </span>
@@ -292,7 +292,7 @@ function LeadCard({
       {/* Bottom row */}
       <div className="mt-3 flex items-center gap-2">
         {lead.followUpAt && (
-          <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium ${
+          <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${
             isOverdue
               ? "bg-status-rejected-bg text-rose-700"
               : "bg-muted text-muted-foreground"
@@ -303,12 +303,12 @@ function LeadCard({
           </span>
         )}
         {exhibition && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
             {exhibition.eventName}
           </span>
         )}
         {lead.expectedRevenue != null && lead.expectedRevenue > 0 && (
-          <span className="ml-auto text-[10px] font-semibold text-status-selected">
+          <span className="ml-auto text-[11px] font-semibold text-status-selected">
             {lead.expectedRevenueCurrency ?? "AED"} {formatCount(lead.expectedRevenue)}
           </span>
         )}
@@ -339,7 +339,7 @@ function LeadCard({
         {nextStage && (
           <button
             onClick={() => onStatusChange(lead._id, nextStage)}
-            className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary transition hover:bg-primary/20"
+            className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/20"
             title={t("moveToStage", { stage: stageConfig[nextStage].label })}
           >
             {t("moveTo")} {stageConfig[nextStage].label}
@@ -394,12 +394,12 @@ function DroppableKanbanColumn({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className={`text-sm font-semibold ${config.color}`}>{config.label}</h3>
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${config.bgColor} ${config.color} border ${config.borderColor}`}>
+            <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${config.bgColor} ${config.color} border ${config.borderColor}`}>
               {leads.length}
             </span>
           </div>
           {totalRevenue > 0 && (
-            <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
+            <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
               AED {formatCount(totalRevenue)} pipeline
             </p>
           )}
@@ -790,7 +790,7 @@ export default function AgentLeadsPage() {
               <button
                 key={s}
                 onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
-                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold transition [&_svg]:h-3 [&_svg]:w-3 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5 ${
+                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold transition [&_svg]:h-3 [&_svg]:w-3 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5 ${
                   statusFilter === s
                     ? `${config.bgColor} ${config.borderColor} ${config.color}`
                     : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
@@ -798,7 +798,7 @@ export default function AgentLeadsPage() {
               >
                 {config.icon}
                 <span>{config.label}</span>
-                <span className={`rounded-full px-1 py-0 text-[9px] sm:px-1.5 sm:py-0.5 sm:text-[10px] ${statusFilter === s ? "bg-background/50" : "bg-muted"}`}>
+                <span className={`rounded-full px-1 py-0 text-[9px] sm:px-1.5 sm:py-0.5 sm:text-[11px] ${statusFilter === s ? "bg-background/50" : "bg-muted"}`}>
                   {stageCounts[s]}
                 </span>
               </button>
@@ -906,7 +906,7 @@ export default function AgentLeadsPage() {
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-semibold text-foreground">{lead.companyName}</p>
                                 {lead.industry && (
-                                  <span className="mt-0.5 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                  <span className="mt-0.5 inline-block rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                                     {lead.industry}
                                   </span>
                                 )}
@@ -953,7 +953,7 @@ export default function AgentLeadsPage() {
                           {/* Score */}
                           <TableCell>
                             {lead.score != null ? (
-                              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
+                              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
                                 <Gauge className="h-3 w-3" />{lead.score}
                               </span>
                             ) : (
@@ -1212,7 +1212,7 @@ export default function AgentLeadsPage() {
                   <li key={d._id}>
                     <span className="font-medium">{d.companyName}</span>
                     {d.contactEmail && <span className="text-status-shortlisted"> &middot; {d.contactEmail}</span>}
-                    <span className="ml-1 rounded bg-status-shortlisted-bg px-1 py-0.5 text-[10px] font-semibold uppercase">
+                    <span className="ml-1 rounded bg-status-shortlisted-bg px-1 py-0.5 text-[11px] font-semibold uppercase">
                       {d.matchType} match &middot; {d.confidence}
                     </span>
                     <span className="ml-1 text-amber-500">({d.status})</span>

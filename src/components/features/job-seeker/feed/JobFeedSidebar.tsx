@@ -132,7 +132,7 @@ function FilterGroup({
         </span>
         <span className="flex items-center gap-1.5">
           {activeCount > 0 && (
-            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary tabular-nums">
+            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary tabular-nums">
               {activeCount}
             </span>
           )}

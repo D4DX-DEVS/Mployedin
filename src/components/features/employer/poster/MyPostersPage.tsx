@@ -206,13 +206,13 @@ export function MyPostersPage() {
                     <p className="text-sm font-medium truncate">
                       {poster.jobId?.title || t("untitledJob")}
                     </p>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="capitalize">{poster.type.replace("-", " ")}</span>
                       <span>•</span>
                       <span className="capitalize">{poster.style}</span>
                     </div>
                     {/* Analytics */}
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1 border-t">
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-1 border-t">
                       <span className="flex items-center gap-0.5">
                         <Eye className="w-3 h-3" /> {poster.analytics.views}
                       </span>

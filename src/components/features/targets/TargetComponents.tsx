@@ -56,18 +56,18 @@ export function RiskBadge({ risk }: { risk: "high" | "medium" | "low" }) {
   const t = useTranslations("targetComponents");
   if (risk === "high")
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-600">
         <AlertTriangle className="h-3 w-3" /> {t("high")}
       </span>
     );
   if (risk === "medium")
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-600">
         <Clock className="h-3 w-3" /> {t("medium")}
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-600">
       <CheckCircle2 className="h-3 w-3" /> {t("low")}
     </span>
   );
@@ -89,7 +89,7 @@ export function CompletionBadge({ stage }: { stage: CompletionStage }) {
   const t = useTranslations("targetComponents");
   if (stage === "completed") {
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-600">
         <CheckCircle2 className="h-3 w-3" /> {t("completed")}
       </span>
     );
@@ -97,14 +97,14 @@ export function CompletionBadge({ stage }: { stage: CompletionStage }) {
 
   if (stage === "in_progress") {
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-sky-600">
         <Clock className="h-3 w-3" /> {t("inProgress")}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
       <Target className="h-3 w-3" /> {t("notStarted")}
     </span>
   );
@@ -126,7 +126,7 @@ export function IncentiveTierBadge({ tier }: { tier: IncentiveTier }) {
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneMap[tier]}`}>
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${toneMap[tier]}`}>
       {/* The raw enum used to render here, so an Arabic admin saw "PLATINUM". */}
       <Award className="h-3 w-3 shrink-0" /> {t(`tier_${tier}`)}
     </span>
@@ -280,19 +280,19 @@ export function TargetSummaryCard({
             </div>
             <div className="grid grid-cols-3 gap-2 text-sm mb-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("assigned")}
                 </p>
                 <p className="font-semibold tabular-nums">{fmt(tgt)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("achieved")}
                 </p>
                 <p className="font-semibold tabular-nums text-primary">{fmt(achieved)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("balance")}
                 </p>
                 <p className="font-semibold tabular-nums text-amber-600">
@@ -372,7 +372,7 @@ export function ProgressRing({
         <span className="text-xs font-semibold text-foreground">{label}</span>
       )}
       {sublabel && (
-        <span className="text-[10px] text-muted-foreground">{sublabel}</span>
+        <span className="text-[11px] text-muted-foreground">{sublabel}</span>
       )}
     </div>
   );
@@ -449,7 +449,7 @@ export function MonthlyDistributionGrid({
             </div>
             <div className="mt-2 flex items-center gap-2">
               <Progress value={Math.min(m.overallProgress, 100)} className="h-1.5 flex-1" />
-              <span className={`text-[10px] font-bold tabular-nums ${
+              <span className={`text-[11px] font-bold tabular-nums ${
                 m.overallProgress >= 75 ? "text-emerald-600" :
                 m.overallProgress >= 40 ? "text-amber-600" :
                 "text-muted-foreground"

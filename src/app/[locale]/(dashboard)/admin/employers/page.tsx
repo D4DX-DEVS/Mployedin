@@ -316,7 +316,7 @@ export default function AdminEmployersPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{emp.companyName || emp.name}</span>
                       {emp.domainVerified && (
-                        <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">{t("verifiedBadge")}</Badge>
+                        <Badge className="text-[11px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">{t("verifiedBadge")}</Badge>
                       )}
                     </div>
                     <StatusBadge status={emp.status ?? (emp.isActive !== false ? "active" : "inactive")} />

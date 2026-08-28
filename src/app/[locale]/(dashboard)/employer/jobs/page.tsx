@@ -389,7 +389,7 @@ export default function EmployerJobsPage() {
       {ConfirmDialogNode}
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary sm:text-[11px]">{t("heroBadge")}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary sm:text-[11px]">{t("heroBadge")}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{t("heroTitle")}</h1>
           <p className="mt-1 hidden max-w-2xl text-sm text-muted-foreground md:block">{t("heroSubtitle")}</p>
         </div>
@@ -676,11 +676,11 @@ export default function EmployerJobsPage() {
                       >
                         {job.title}
                       </Link>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} shrink-0 border px-1.5 py-0 text-[10px] font-medium`}>
+                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} shrink-0 border px-1.5 py-0 text-[11px] font-medium`}>
                         {statusLabel}
                       </Badge>
                       {job.clonedFrom ? (
-                        <Badge variant="outline" className="inline-flex shrink-0 border-status-applied/20 bg-status-applied-bg px-1.5 py-0 text-[10px] font-medium text-status-applied">
+                        <Badge variant="outline" className="inline-flex shrink-0 border-status-applied/20 bg-status-applied-bg px-1.5 py-0 text-[11px] font-medium text-status-applied">
                           <Copy className="me-1 h-2.5 w-2.5" />{t("clonedBadge")}
                         </Badge>
                       ) : null}
@@ -706,7 +706,7 @@ export default function EmployerJobsPage() {
                   ].map((metric) => (
                     <div key={metric.label} className="min-w-0 px-2 text-center">
                       <dd className="text-sm font-semibold tabular-nums text-foreground">{metric.value}</dd>
-                      <dt className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{metric.label}</dt>
+                      <dt className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{metric.label}</dt>
                     </div>
                   ))}
                 </dl>

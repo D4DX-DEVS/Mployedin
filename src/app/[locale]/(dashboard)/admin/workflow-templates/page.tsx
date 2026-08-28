@@ -376,11 +376,11 @@ export default function AdminWorkflowTemplatesPage() {
                       <GitBranch className="h-4 w-4 text-sky-600" />
                       <h4 className="text-sm font-semibold text-foreground">{t.name}</h4>
                       {t.isDefault && (
-                        <Badge variant="secondary" className="gap-1 text-[10px]">
+                        <Badge variant="secondary" className="gap-1 text-[11px]">
                           <Shield className="h-3 w-3" /> {tr("defaultBadge")}
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-[10px]">{tr("systemBadge")}</Badge>
+                      <Badge variant="outline" className="text-[11px]">{tr("systemBadge")}</Badge>
                     </div>
                     {t.description && (
                       <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
@@ -388,7 +388,7 @@ export default function AdminWorkflowTemplatesPage() {
                     {t.tags && t.tags.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {t.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-[10px]">
+                          <Badge key={tag} variant="secondary" className="text-[11px]">
                             {tag}
                           </Badge>
                         ))}

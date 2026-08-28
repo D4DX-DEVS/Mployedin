@@ -117,8 +117,8 @@ export default function SuperAgentTerritoryPage() {
             ].map((l) => (
               <div key={l.label} className="flex shrink-0 items-center gap-1 sm:gap-2">
                 <div className={`h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5 ${l.color}`} />
-                <span className="whitespace-nowrap text-[10px] text-muted-foreground sm:text-xs">{l.label}</span>
-                <span className="whitespace-nowrap rounded-md bg-muted px-1 py-0.5 text-[9px] font-semibold text-muted-foreground sm:px-1.5 sm:text-[10px]">{l.count}</span>
+                <span className="whitespace-nowrap text-[11px] text-muted-foreground sm:text-xs">{l.label}</span>
+                <span className="whitespace-nowrap rounded-md bg-muted px-1 py-0.5 text-[9px] font-semibold text-muted-foreground sm:px-1.5 sm:text-[11px]">{l.count}</span>
               </div>
             ))}
           </div>
@@ -170,7 +170,7 @@ export default function SuperAgentTerritoryPage() {
                       <p className="text-xs capitalize text-muted-foreground">{region.type}</p>
                     </div>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${getHeatBadge(region.agentCount)}`}>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getHeatBadge(region.agentCount)}`}>
                     {getHeatLabel(region.agentCount)}
                   </span>
                 </div>
@@ -184,28 +184,28 @@ export default function SuperAgentTerritoryPage() {
                     <UserCheck className="h-4 w-4 text-emerald-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.agentCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardAgents")}</p>
+                      <p className="text-[11px] font-medium text-muted-foreground">{t("cardAgents")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Building2 className="h-4 w-4 text-sky-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.employerCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardEmployers")}</p>
+                      <p className="text-[11px] font-medium text-muted-foreground">{t("cardEmployers")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Briefcase className="h-4 w-4 text-violet-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.jobCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardJobs")}</p>
+                      <p className="text-[11px] font-medium text-muted-foreground">{t("cardJobs")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <TrendingUp className="h-4 w-4 text-amber-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.seekerCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardCandidates")}</p>
+                      <p className="text-[11px] font-medium text-muted-foreground">{t("cardCandidates")}</p>
                     </div>
                   </div>
                 </div>

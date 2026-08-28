@@ -856,7 +856,7 @@ export default function SuperAgentTargetProfilesPage() {
                           <p className="font-medium">{agent.assigneeName}</p>
                           <p className="text-xs text-muted-foreground">{agent.assigneeEmail}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <Badge variant="info" className="px-2 py-0.5 text-[10px]">{getDistributionStatus(agent)}</Badge>
+                            <Badge variant="info" className="px-2 py-0.5 text-[11px]">{getDistributionStatus(agent)}</Badge>
                             <span className="text-[11px] text-muted-foreground">{getDeadlineAlert(agent)}</span>
                           </div>
                         </div>
@@ -1000,7 +1000,7 @@ export default function SuperAgentTargetProfilesPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <p className="mt-1 text-center text-[10px] text-muted-foreground">Revenue values shown in thousands (K)</p>
+              <p className="mt-1 text-center text-[11px] text-muted-foreground">Revenue values shown in thousands (K)</p>
             </div>
 
             {/* Risk Distribution */}
@@ -1097,7 +1097,7 @@ export default function SuperAgentTargetProfilesPage() {
                   <div className="space-y-2">
                     {topPerformers.map((agent, index) => (
                       <div key={agent._id} className="flex items-center gap-2.5">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">{index + 1}</span>
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-[11px] font-bold text-emerald-600">{index + 1}</span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
                           <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted/60">
@@ -1168,7 +1168,7 @@ export default function SuperAgentTargetProfilesPage() {
                         <TimerReset className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
-                          <p className="text-[10px] text-muted-foreground">{getDeadlineAlert(agent)}</p>
+                          <p className="text-[11px] text-muted-foreground">{getDeadlineAlert(agent)}</p>
                         </div>
                       </div>
                     ))}

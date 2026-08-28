@@ -766,7 +766,7 @@ export default function EmployerAIJobCreatePage() {
                     <button
                       onClick={() => setShowLangPicker((v) => !v)}
                       disabled={isRecording || isVoiceProcessing}
-                      className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-40"
+                      className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-40"
                       title={t("voiceLanguage")}
                     >
                       <Globe className="h-3 w-3" />
@@ -939,7 +939,7 @@ export default function EmployerAIJobCreatePage() {
                     {extractSkills(job.requirements).length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {extractSkills(job.requirements).slice(0, 5).map((s, si) => (
-                          <span key={si} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{s}</span>
+                          <span key={si} className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{s}</span>
                         ))}
                       </div>
                     )}

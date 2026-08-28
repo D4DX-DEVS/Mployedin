@@ -342,15 +342,15 @@ export default function AgentTargetManagementPage() {
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{dailyGoals.employer}</p>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employers</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employers</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{dailyGoals.employee}</p>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(dailyGoals.finance)}</p>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
                       </div>
                     </div>
                   </div>
@@ -362,15 +362,15 @@ export default function AgentTargetManagementPage() {
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{weeklyGoals.employer}</p>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employers</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employers</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{weeklyGoals.employee}</p>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(weeklyGoals.finance)}</p>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
                       </div>
                     </div>
                   </div>

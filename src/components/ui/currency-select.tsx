@@ -151,7 +151,7 @@ export function CurrencySelect({
 function CurrencyBadge({ currency }: { currency: CurrencyInfo }) {
   return (
     <span className="flex items-center gap-2 min-w-0">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[10px] font-bold text-primary">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] font-bold text-primary">
         {currency.symbol.length <= 3 ? currency.symbol : currency.code.slice(0, 2)}
       </span>
       <span className="font-medium">{currency.code}</span>

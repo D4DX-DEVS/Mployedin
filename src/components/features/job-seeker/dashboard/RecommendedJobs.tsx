@@ -257,7 +257,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                   </span>
                   <Badge
                     variant="secondary"
-                    className={`shrink-0 text-[10px] px-1.5 py-0 ${
+                    className={`shrink-0 text-[11px] px-1.5 py-0 ${
                       job.matchScore >= 70
                         ? "bg-green-100 text-green-700"
                         : job.matchScore >= 50
@@ -268,7 +268,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                     {job.matchScore}% match
                   </Badge>
                   {job.location.isRemote && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{t("remote")}</Badge>
+                    <Badge variant="outline" className="text-[11px] px-1.5 py-0">{t("remote")}</Badge>
                   )}
                 </div>
 

@@ -226,21 +226,21 @@ export function AIInterviewQuestionsPanel({
             <div className="px-3 sm:px-4 py-3 flex gap-2">
               <Target className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px] mb-1">{t("tests")}</p>
+                <p className="font-semibold text-muted-foreground uppercase tracking-wide text-[11px] mb-1">{t("tests")}</p>
                 <p className="text-foreground/80">{q.tests}</p>
               </div>
             </div>
             <div className="px-3 sm:px-4 py-3 flex gap-2">
               <Lightbulb className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-emerald-700 uppercase tracking-wide text-[10px] mb-1">{t("strongAnswer")}</p>
+                <p className="font-semibold text-emerald-700 uppercase tracking-wide text-[11px] mb-1">{t("strongAnswer")}</p>
                 <p className="text-foreground/80">{q.strongAnswer}</p>
               </div>
             </div>
             <div className="px-3 sm:px-4 py-3 flex gap-2">
               <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-red-600 uppercase tracking-wide text-[10px] mb-1">{t("redFlag")}</p>
+                <p className="font-semibold text-red-600 uppercase tracking-wide text-[11px] mb-1">{t("redFlag")}</p>
                 <p className="text-foreground/80">{q.redFlag}</p>
               </div>
             </div>
@@ -271,10 +271,10 @@ export function AIInterviewQuestionsPanel({
             {skills.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {skills.slice(0, 6).map((s) => (
-                  <Badge key={s} variant="secondary" className="text-[10px] h-4 px-1.5">{s}</Badge>
+                  <Badge key={s} variant="secondary" className="text-[11px] h-4 px-1.5">{s}</Badge>
                 ))}
                 {skills.length > 6 && (
-                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">+{skills.length - 6}</Badge>
+                  <Badge variant="outline" className="text-[11px] h-4 px-1.5">+{skills.length - 6}</Badge>
                 )}
               </div>
             )}

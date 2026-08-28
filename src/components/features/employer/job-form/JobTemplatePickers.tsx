@@ -83,7 +83,7 @@ export function JobTemplatePickers({
                   >
                     <div className="flex items-center gap-2">
                       <span>{template.name}</span>
-                      <Badge variant={template.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                      <Badge variant={template.scope === "system" ? "outline" : "secondary"} className="text-[11px]">
                         {template.scope === "system" ? t("system") : t("custom")}
                       </Badge>
                     </div>
@@ -151,7 +151,7 @@ export function JobTemplatePickers({
                     >
                       <div className="flex items-center gap-2">
                         <span>{template.name}</span>
-                        <Badge variant={template.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                        <Badge variant={template.scope === "system" ? "outline" : "secondary"} className="text-[11px]">
                           {template.scope === "system" ? t("system") : t("custom")}
                         </Badge>
                       </div>

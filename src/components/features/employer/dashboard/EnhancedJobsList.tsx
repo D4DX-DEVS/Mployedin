@@ -80,11 +80,11 @@ export function EnhancedJobsList({ jobs, locale }: EnhancedJobsListProps) {
                 >
                   {job.title}
                 </Link>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                <Badge variant="outline" className="text-[11px] px-1.5 py-0 shrink-0">
                   {job.status}
                 </Badge>
                 {daysAgo !== null && (
-                  <span className="text-[10px] text-muted-foreground/60 shrink-0 hidden sm:inline-flex items-center gap-0.5">
+                  <span className="text-[11px] text-muted-foreground/60 shrink-0 hidden sm:inline-flex items-center gap-0.5">
                     <Clock className="h-2.5 w-2.5" />
                     {daysAgo === 0 ? t("today") : t("daysAgo", { count: daysAgo })}
                   </span>

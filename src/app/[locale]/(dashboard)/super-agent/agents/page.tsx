@@ -22,7 +22,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
+import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -554,7 +554,7 @@ export default function SuperAgentAgentsPage() {
                       <span className="text-xs text-muted-foreground">{a.email}</span>
                       <div className="flex flex-wrap items-center gap-1">
                         {badges.map((b) => (
-                          <span key={b.label} className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
+                          <span key={b.label} className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
                             {b.label}
                           </span>
                         ))}
@@ -660,7 +660,7 @@ export default function SuperAgentAgentsPage() {
                   placeholder="0"
                   onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))}
                 />
-                <p className="text-[10px] text-muted-foreground">{t("formHintCommissionRate")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("formHintCommissionRate")}</p>
               </div>
             </div>
 

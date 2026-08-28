@@ -390,10 +390,10 @@ export default function UnifiedCandidatePage() {
                     <div key={i} className="relative pl-4 border-l-2 border-border">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-sm">{exp.jobTitle}</p>
-                        {exp.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Current</Badge>}
+                        {exp.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-[11px]">Current</Badge>}
                       </div>
                       <p className="text-xs text-muted-foreground">{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
                         {exp.startDate ? formatDate(exp.startDate) : "?"} – {exp.isCurrent ? "Present" : (exp.endDate ? formatDate(exp.endDate) : "?")}
                       </p>
                       {exp.description && (
@@ -416,7 +416,7 @@ export default function UnifiedCandidatePage() {
                     <div key={i} className="pl-4 border-l-2 border-border">
                       <p className="font-medium text-sm">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
                       <p className="text-xs text-muted-foreground">{edu.institution}</p>
-                      <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
+                      <div className="flex gap-3 text-[11px] text-muted-foreground mt-0.5">
                         {edu.graduationDate && <span>{formatDate(edu.graduationDate)}</span>}
                         {edu.grade && <span>Grade: {edu.grade}</span>}
                       </div>
@@ -436,7 +436,7 @@ export default function UnifiedCandidatePage() {
                   {candidate.languages.map((lang: { language: string; proficiency: string }, i: number) => (
                     <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 rounded-lg">
                       <span className="text-sm font-medium">{lang.language}</span>
-                      <Badge variant="secondary" className="text-[10px] capitalize">{lang.proficiency}</Badge>
+                      <Badge variant="secondary" className="text-[11px] capitalize">{lang.proficiency}</Badge>
                     </div>
                   ))}
                 </div>
@@ -517,10 +517,10 @@ export default function UnifiedCandidatePage() {
                       <p className="text-xs font-medium text-emerald-700 mb-1">{t("strengths")}</p>
                       <div className="flex flex-wrap gap-1">
                         {candidateSkills.slice(0, 8).map((s: string) => (
-                          <Badge key={s} className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{s}</Badge>
+                          <Badge key={s} className="text-[11px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{s}</Badge>
                         ))}
                         {candidateSkills.length > 8 && (
-                          <span className="text-[10px] text-muted-foreground">+{candidateSkills.length - 8} more</span>
+                          <span className="text-[11px] text-muted-foreground">+{candidateSkills.length - 8} more</span>
                         )}
                       </div>
                     </div>
@@ -533,7 +533,7 @@ export default function UnifiedCandidatePage() {
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {missingSkills.map((s: string) => (
-                          <Badge key={s} variant="outline" className="text-[10px] border-amber-300 text-amber-700">{s}</Badge>
+                          <Badge key={s} variant="outline" className="text-[11px] border-amber-300 text-amber-700">{s}</Badge>
                         ))}
                       </div>
                     </div>
@@ -637,10 +637,10 @@ export default function UnifiedCandidatePage() {
                             <div key={iv._id} className="flex items-center gap-3 text-xs py-1">
                               <Clock className="h-3 w-3 text-muted-foreground" />
                               <span>{formatDateTime(iv.scheduledAt)}</span>
-                              <Badge variant="outline" className="text-[10px]">{iv.type}</Badge>
-                              <Badge variant="secondary" className="text-[10px]">{iv.status}</Badge>
+                              <Badge variant="outline" className="text-[11px]">{iv.type}</Badge>
+                              <Badge variant="secondary" className="text-[11px]">{iv.status}</Badge>
                               {iv.outcome && (
-                                <Badge className={`text-[10px] ${iv.outcome === "passed" ? "bg-emerald-100 text-emerald-700" : iv.outcome === "failed" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                                <Badge className={`text-[11px] ${iv.outcome === "passed" ? "bg-emerald-100 text-emerald-700" : iv.outcome === "failed" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
                                   {iv.outcome}
                                 </Badge>
                               )}
@@ -672,7 +672,7 @@ export default function UnifiedCandidatePage() {
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" /> {iv.duration} min
                     </span>
-                    <Badge variant="outline" className="text-[10px]">{iv.type}</Badge>
+                    <Badge variant="outline" className="text-[11px]">{iv.type}</Badge>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -703,7 +703,7 @@ export default function UnifiedCandidatePage() {
                   <div className={`absolute -left-[18px] top-1 w-3 h-3 rounded-full border-2 border-white ${statusColor[entry.status]?.split(" ")[0] ?? "bg-slate-300"}`} />
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className={`text-[10px] ${statusColor[entry.status] ?? "bg-slate-100 text-slate-800"}`}>
+                      <Badge className={`text-[11px] ${statusColor[entry.status] ?? "bg-slate-100 text-slate-800"}`}>
                         {entry.status.replace("_", " ")}
                       </Badge>
                       <span className="text-xs text-muted-foreground">{entry.jobTitle}</span>

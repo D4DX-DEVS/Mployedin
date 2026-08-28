@@ -254,7 +254,7 @@ export default function ApplicationsPage() {
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 {t("filters")}
                 {hasActiveFilters && (
-                  <span aria-hidden="true" className="ms-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  <span aria-hidden="true" className="ms-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
                     {formatNumber([searchTerm, dateFrom, dateTo].filter(Boolean).length)}
                   </span>
                 )}

@@ -397,7 +397,7 @@ export default function AdminUsersPage() {
                       <div>
                         <p className="font-medium">{user.name || t("unnamed")}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
-                        <Badge className={`mt-1 text-[10px] ${user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}`}>
+                        <Badge className={`mt-1 text-[11px] ${user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}`}>
                           {user.isActive ? t("active") : t("inactive")}
                         </Badge>
                       </div>
@@ -423,7 +423,7 @@ export default function AdminUsersPage() {
                               onClick={() => updateUser(user._id, { role: r })}
                               className="capitalize text-xs gap-2"
                             >
-                              <Badge className={`${ROLE_COLORS[r] ?? ""} border text-[10px] px-1.5 py-0`}>
+                              <Badge className={`${ROLE_COLORS[r] ?? ""} border text-[11px] px-1.5 py-0`}>
                                 {r.replace("_", " ")}
                               </Badge>
                               {r === user.role && <Check className="h-3 w-3 ml-auto text-primary" />}
@@ -432,7 +432,7 @@ export default function AdminUsersPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       {user.permissionMode === "custom" && (
-                        <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">Custom</Badge>
+                        <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">Custom</Badge>
                       )}
                     </div>
                   </TableCell>

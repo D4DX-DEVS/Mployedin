@@ -812,7 +812,10 @@ export default function EmployerApplicationsPage() {
       <PageHeader
         title={selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
         actions={canUpdate ? (
-          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
+          // Wraps rather than scrolls: the three labelled buttons need 261px at
+          // 320px wide, so the old nowrap scroller hid the third one with no
+          // scroll affordance. Wrapping keeps every action reachable at any width.
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -934,7 +937,7 @@ export default function EmployerApplicationsPage() {
                 <Filter className="mr-2 h-3.5 w-3.5" />
                 {t("filters")}
                 {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0) && (
-                  <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[10px]">Active</Badge>
+                  <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[11px]">Active</Badge>
                 )}
               </Button>
               <Button
@@ -1243,13 +1246,13 @@ export default function EmployerApplicationsPage() {
                       key={app._id}
                       className={`flex items-center gap-2 rounded-xl border text-xs transition-opacity ${ included ? "border-emerald-200/60 bg-background/80" : "border-border/40 bg-muted/30 opacity-50" } chip-pad`}
                     >
-                      <span className="w-4 text-center text-[10px] font-bold text-status-selected">
+                      <span className="w-4 text-center text-[11px] font-bold text-status-selected">
                         {idx + 1}
                       </span>
                       <span className="font-medium text-foreground">{getCandidateName(app)}</span>
                       {app.aiMatchScore != null && (
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                             app.aiMatchScore >= 80
                               ? "bg-status-selected-bg text-emerald-700"
                               : app.aiMatchScore >= 60
@@ -1649,7 +1652,7 @@ function TableView({
                     {isNew ? (
                       <span
                         data-testid={`new-badge-${app._id}`}
-                        className="shrink-0 rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-600"
+                        className="shrink-0 rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-sky-600"
                       >
                         {t("newBadge")}
                       </span>
@@ -1676,7 +1679,7 @@ function TableView({
                 {matchScore != null ? (
                   <div className="text-center">
                     <p className={`text-lg font-bold leading-tight ${matchColor}`}>{matchScore}%</p>
-                    <p className={`text-[10px] font-semibold ${matchColor}`}>{matchText}</p>
+                    <p className={`text-[11px] font-semibold ${matchColor}`}>{matchText}</p>
                   </div>
                 ) : (
                   <p className="text-center text-xs text-muted-foreground">{t("aiPending")}</p>
@@ -1769,11 +1772,11 @@ function StageStepper({ currentStatus, appliedDate }: { currentStatus: string; a
             <div key={step.key} className={i < lastIndex ? "flex flex-1 items-start" : "flex items-start"}>
               <div className="flex flex-col items-center gap-1">
                 <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition ${reached ? "bg-sky-500 text-white" : "bg-muted text-muted-foreground"} ${isCurrent ? "ring-2 ring-sky-300 ring-offset-2 ring-offset-background" : ""}`}
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition ${reached ? "bg-sky-500 text-white" : "bg-muted text-muted-foreground"} ${isCurrent ? "ring-2 ring-sky-300 ring-offset-2 ring-offset-background" : ""}`}
                 >
                   {reached ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </span>
-                <span className={`whitespace-nowrap text-[10px] font-medium ${isCurrent ? "text-status-applied" : "text-muted-foreground"}`}>
+                <span className={`whitespace-nowrap text-[11px] font-medium ${isCurrent ? "text-status-applied" : "text-muted-foreground"}`}>
                   {step.label}
                 </span>
               </div>
@@ -2219,7 +2222,7 @@ function ApplicationDetailsPanel({
                     {app.jobSeekerId.experience.map((exp, i) => (
                       <div key={i} className="space-y-0.5">
                         <p className="text-xs font-semibold text-foreground">{exp.jobTitle}{exp.isCurrent ? ` (${t("current")})` : ""}</p>
-                        <p className="text-[10px] text-muted-foreground">{exp.company}</p>
+                        <p className="text-[11px] text-muted-foreground">{exp.company}</p>
                       </div>
                     ))}
                   </div>
@@ -2774,7 +2777,7 @@ function BulkInterviewScheduleModal({
                     {item.kind === "day" ? (
                       <div className="flex items-center gap-2 py-1.5 mt-1 first:mt-0">
                         <div className="flex-1 border-t border-sky-300/40" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-status-applied">{item.date}</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-status-applied">{item.date}</span>
                         <div className="flex-1 border-t border-sky-300/40" />
                       </div>
                     ) : item.kind === "break" ? (
@@ -2896,7 +2899,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
         <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-240px)] overflow-y-auto">
           <div className="rounded-xl border border-border/60 bg-status-applied-bg/30 px-4 py-3">
             <p className="text-xs text-muted-foreground mb-1">
-              Available placeholders: <code className="text-[10px]">{`{{candidateName}}`}</code> <code className="text-[10px]">{`{{jobTitle}}`}</code> <code className="text-[10px]">{`{{companyName}}`}</code> <code className="text-[10px]">{`{{status}}`}</code>
+              Available placeholders: <code className="text-[11px]">{`{{candidateName}}`}</code> <code className="text-[11px]">{`{{jobTitle}}`}</code> <code className="text-[11px]">{`{{companyName}}`}</code> <code className="text-[11px]">{`{{status}}`}</code>
             </p>
           </div>
           <div>
@@ -3161,7 +3164,7 @@ function OfferCreateModal({
             <div>
               <label className="block text-xs font-medium mb-1">Expires On</label>
               <DateTimePicker mode="date" value={expiresAt} onChange={setExpiresAt} />
-              <p className="text-[10px] text-muted-foreground mt-0.5">Default: 7 days</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Default: 7 days</p>
             </div>
           </div>
           <div>

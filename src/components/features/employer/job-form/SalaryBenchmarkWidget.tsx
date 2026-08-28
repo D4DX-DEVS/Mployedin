@@ -205,7 +205,7 @@ export function SalaryBenchmarkWidget({
         <div className="px-3.5 pb-3 space-y-3">
           {/* Percentile bar */}
           <div className="relative">
-            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+            <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
               <span>{t("p25", { amount: fmt(data.p25, data.currency, numberLocale) })}</span>
               <span className="font-medium text-foreground">{t("median", { amount: fmt(data.median, data.currency, numberLocale) })}</span>
               <span>{t("p75", { amount: fmt(data.p75, data.currency, numberLocale) })}</span>
@@ -228,7 +228,7 @@ export function SalaryBenchmarkWidget({
               )}
             </div>
             {markerPct !== null && (
-              <p className="text-[10px] text-muted-foreground mt-1.5">
+              <p className="text-[11px] text-muted-foreground mt-1.5">
                 {t("midpoint")}{" "}
                 <span className={`font-semibold ${cfg?.color ?? ""}`}>
                   {fmt(employerMid!, data.currency, numberLocale)}

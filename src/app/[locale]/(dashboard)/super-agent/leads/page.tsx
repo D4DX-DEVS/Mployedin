@@ -611,7 +611,7 @@ export default function SuperAgentLeadsPage() {
                           <span>{lead.country ?? "—"}</span>
                         </div>
                         {lead.autoRouted && (
-                          <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700">{t("badgeRouted")}</span>
+                          <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[11px] font-semibold text-emerald-700">{t("badgeRouted")}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -623,12 +623,12 @@ export default function SuperAgentLeadsPage() {
                         {lead.followUpAt ? (
                           <span className={isOverdue ? "font-medium text-red-600" : "text-muted-foreground"}>
                             {formatDate(new Date(lead.followUpAt))}
-                            {isOverdue && <span className="ml-1 text-[10px]">{t("labelOverdue")}</span>}
+                            {isOverdue && <span className="ml-1 text-[11px]">{t("labelOverdue")}</span>}
                           </span>
                         ) : (
                           <span className="text-muted-foreground/50">—</span>
                         )}
-                        <span className="mt-1 block text-[10px] text-muted-foreground">{formatDate(new Date(lead.createdAt))}</span>
+                        <span className="mt-1 block text-[11px] text-muted-foreground">{formatDate(new Date(lead.createdAt))}</span>
                       </TableCell>
                     </TableRow>
                   );

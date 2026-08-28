@@ -109,7 +109,7 @@ export function HiringPipeline({
                     <Icon className="h-4 w-4" />
                   </div>
                   <span className="text-lg font-bold text-foreground">{stage.value}</span>
-                  <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight truncate w-full">
+                  <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight truncate w-full">
                     {t(stage.labelKey)}
                   </span>
                 </Link>

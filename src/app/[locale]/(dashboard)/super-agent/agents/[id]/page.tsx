@@ -544,7 +544,7 @@ export default function AgentDetailPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))}
                   placeholder="0"
                 />
-                <p className="text-[10px] text-muted-foreground">{t("formHintCommissionRate")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("formHintCommissionRate")}</p>
               </div>
               <div className="space-y-2">
                 <Label>{tc("status")}</Label>

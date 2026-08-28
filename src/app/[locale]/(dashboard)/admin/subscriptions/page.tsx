@@ -624,7 +624,7 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
             <tab.icon className="h-3.5 w-3.5" />
             {tab.label}
             {tab.count !== undefined && tab.count > 0 && (
-              <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${
+              <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[11px] ${
                 activeSection === tab.key ? "bg-white/20" : "bg-sky-500/10 text-sky-500"
               }`}>
                 {tab.count}
@@ -721,7 +721,7 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
                           <td className="px-3 py-2 text-xs">{inv.planName ?? "—"}</td>
                           <td className="px-3 py-2 text-xs font-medium">{inv.amount} {inv.currency}</td>
                           <td className="px-3 py-2">
-                            <Badge className={`${invStatus} border text-[10px]`}>{inv.status}</Badge>
+                            <Badge className={`${invStatus} border text-[11px]`}>{inv.status}</Badge>
                           </td>
                           <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.issuedAt)}</td>
                           <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.paidAt)}</td>
@@ -1434,7 +1434,7 @@ function BulkAssignSection() {
                       {r.status === "skipped" && <AlertTriangle className="h-3 w-3 text-amber-500" />}
                       {r.status === "error" && <XCircle className="h-3 w-3 text-red-500" />}
                       <span className="font-mono">{r.userId.slice(0, 12)}...</span>
-                      <Badge variant="outline" className="text-[10px]">{statusLabel}</Badge>
+                      <Badge variant="outline" className="text-[11px]">{statusLabel}</Badge>
                       {r.reason && <span className="text-muted-foreground">{r.reason}</span>}
                     </div>
                   );

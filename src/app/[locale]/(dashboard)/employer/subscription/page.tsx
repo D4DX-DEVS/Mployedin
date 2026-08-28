@@ -372,7 +372,7 @@ function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: Invoic
                 <td className="py-3 pr-4">{inv.planName}</td>
                 <td className="py-3 pr-4 font-medium">
                   {convertAndFormat(inv.amount, inv.currency ?? "AED", displayCurrency, rates)}
-                  {displayCurrency !== (inv.currency ?? "AED") && <span className="block text-[10px] text-muted-foreground/50">{inv.amount} {inv.currency}</span>}
+                  {displayCurrency !== (inv.currency ?? "AED") && <span className="block text-[11px] text-muted-foreground/50">{inv.amount} {inv.currency}</span>}
                 </td>
                 <td className="py-3">
                   <Badge variant="outline" className={`text-xs ${inv.status === "paid" ? "text-emerald-500 border-emerald-500/30" : inv.status === "void" ? "text-red-500 border-red-500/30" : "text-amber-500 border-amber-500/30"}`}>{inv.status}</Badge>

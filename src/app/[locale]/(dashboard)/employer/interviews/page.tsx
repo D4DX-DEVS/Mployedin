@@ -411,7 +411,7 @@ export default function EmployerInterviewsPage() {
             >
               <Icon className={`hidden h-4 w-4 shrink-0 sm:block ${s.tone}`} />
               <span className="text-base font-semibold leading-none text-foreground">{formatNumber(s.value, locale)}</span>
-              <span className="text-[10px] leading-tight text-muted-foreground sm:text-xs">{s.label}</span>
+              <span className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{s.label}</span>
             </button>
           );
         })}
@@ -1099,7 +1099,7 @@ export default function EmployerInterviewsPage() {
                           style={{ flex: mins }}
                         >
                           <span className="text-lg font-semibold text-status-interview">{mins}m</span>
-                          <span className="text-[10px] capitalize text-muted-foreground">{key}</span>
+                          <span className="text-[11px] capitalize text-muted-foreground">{key}</span>
                         </div>
                       ))}
                     </div>

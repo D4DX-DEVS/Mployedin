@@ -20,7 +20,7 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Award className="h-4 w-4" /> {t("topSellingAgents")}
-          <span className="text-[10px] text-muted-foreground font-normal normal-case tracking-normal">
+          <span className="text-[11px] text-muted-foreground font-normal normal-case tracking-normal">
             {t("thisMonth")}
           </span>
         </h4>
@@ -49,11 +49,11 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
               </div>
               <div className="text-center shrink-0">
                 <p className="text-sm font-semibold">{a.subscriptionsSold}</p>
-                <p className="text-[10px] text-muted-foreground">{t("sold")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("sold")}</p>
               </div>
               <div className="text-right shrink-0 ml-2">
                 <p className="text-sm font-semibold">{formatCurrency(a.revenue)} AED</p>
-                <p className="text-[10px] text-muted-foreground">{t("revenue")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("revenue")}</p>
               </div>
             </div>
           ))}

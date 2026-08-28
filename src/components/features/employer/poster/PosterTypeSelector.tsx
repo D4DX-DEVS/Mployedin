@@ -41,14 +41,14 @@ export function PosterTypeSelector({ selected, onSelect }: PosterTypeSelectorPro
               </div>
             )}
             {!isAvailable && (
-              <span className="absolute top-1 right-1 text-[10px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
+              <span className="absolute top-1 right-1 text-[11px] font-medium bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
                 Soon
               </span>
             )}
             {Icon && <Icon className="h-6 w-6 text-muted-foreground" />}
             <div>
               <p className="text-xs font-semibold">{type.label}</p>
-              <p className="text-[10px] text-muted-foreground">{type.description}</p>
+              <p className="text-[11px] text-muted-foreground">{type.description}</p>
             </div>
           </button>
         );

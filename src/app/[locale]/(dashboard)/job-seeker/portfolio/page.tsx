@@ -183,14 +183,14 @@ export default function PortfolioPage() {
                   {project.technologies.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {project.technologies.map((t) => (
-                        <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{t}</span>
+                        <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{t}</span>
                       ))}
                     </div>
                   )}
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     {(project.startDate || project.endDate) && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         {project.startDate ? new Date(project.startDate).toLocaleDateString(numberLocale) : ""}
                         {project.startDate && project.endDate ? " — " : ""}
                         {project.endDate ? new Date(project.endDate).toLocaleDateString(numberLocale) : t("present")}

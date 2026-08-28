@@ -62,11 +62,11 @@ function SplitBar({ employer, jobSeeker, t }: { employer: number; jobSeeker: num
         <div className="h-full bg-indigo-400 rounded-r-full" style={{ width: `${100 - empPct}%` }} />
       </div>
       <div className="flex items-center justify-between mt-1.5">
-        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-full bg-primary" />
           {t("employers")}: {employer}
         </span>
-        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-full bg-indigo-400" />
           {t("jobSeekers")}: {jobSeeker}
         </span>

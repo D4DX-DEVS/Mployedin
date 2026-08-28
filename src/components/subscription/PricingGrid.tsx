@@ -182,14 +182,14 @@ export function PricingGrid({
             >
               {isMostPopular && !isActive && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-sky-600 text-white text-[10px] px-2.5 py-0.5 shadow-sm font-semibold">
+                  <Badge className="bg-sky-600 text-white text-[11px] px-2.5 py-0.5 shadow-sm font-semibold">
                     {t("popular")}
                   </Badge>
                 </div>
               )}
               {isActive && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-sky-500 text-white text-[10px] px-2.5 py-0.5 shadow-sm font-semibold">
+                  <Badge className="bg-sky-500 text-white text-[11px] px-2.5 py-0.5 shadow-sm font-semibold">
                     {t("currentPlan")}
                   </Badge>
                 </div>

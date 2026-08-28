@@ -618,7 +618,7 @@ export default function AdminWebhooksPage() {
                   <TableCell className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {wh.events.map((ev) => (
-                        <Badge key={ev} variant="secondary" className="text-[10px]">
+                        <Badge key={ev} variant="secondary" className="text-[11px]">
                           {ev}
                         </Badge>
                       ))}
@@ -786,7 +786,7 @@ export default function AdminWebhooksPage() {
                               <XCircle className="h-3.5 w-3.5 text-red-500" />
                             </span>
                           )}
-                          <Badge variant="secondary" className="text-[10px] font-medium">{entry.event}</Badge>
+                          <Badge variant="secondary" className="text-[11px] font-medium">{entry.event}</Badge>
                         </div>
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {formatDateTime(new Date(entry.deliveredAt))}

@@ -266,17 +266,17 @@ export const JobFeedCard = memo(function JobFeedCard({
           {(urgent || remote || fresh) && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {urgent && (
-                <Badge variant="destructive" dot className="text-[10px] py-0">
+                <Badge variant="destructive" dot className="text-[11px] py-0">
                   {t("urgent")}
                 </Badge>
               )}
               {remote && (
-                <Badge variant="success" dot className="text-[10px] py-0">
+                <Badge variant="success" dot className="text-[11px] py-0">
                   {t("remote")}
                 </Badge>
               )}
               {fresh && (
-                <Badge variant="info" dot className="text-[10px] py-0">
+                <Badge variant="info" dot className="text-[11px] py-0">
                   {t("new")}
                 </Badge>
               )}

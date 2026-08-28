@@ -360,7 +360,7 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
                   )}
                 >
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                  <p className={cn("text-[10px] mt-1 opacity-60", isMine ? "text-right" : "")}>
+                  <p className={cn("text-[11px] mt-1 opacity-60", isMine ? "text-right" : "")}>
                     {new Date(msg.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                     {isMine && msg.readAt && " ✓✓"}
                   </p>

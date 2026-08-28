@@ -933,7 +933,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       <div className="space-y-4">
         {/* Invoice Summary */}
         <div className="rounded-xl border border-border/70 bg-card card-pad">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("invoiceSummary")}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("invoiceSummary")}</p>
           <div className="mt-3 space-y-2 text-xs">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("subtotal")}</span>
@@ -959,7 +959,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
         {/* Payment Terms */}
         <div className="rounded-xl border border-border/70 bg-card card-pad">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentTerms")}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentTerms")}</p>
           <div className="mt-2 text-xs">
             <p className="font-medium">{allPaymentTerms.find(t => t.value === paymentTerms)?.label ?? paymentTerms}</p>
             {dueDate && <p className="mt-1 text-muted-foreground">{t("dueOn")} {dueDate}</p>}
@@ -969,7 +969,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         {/* Commission Preview (Internal) */}
         <div className={`rounded-xl border ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"} card-pad`}>
           <div className="flex items-center justify-between">
-            <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>{t("commissionSplit")}</p>
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>{t("commissionSplit")}</p>
             {role === "admin" && (selectedAgent || selectedSuperAgent) && (
               <button
                 type="button"
@@ -1035,7 +1035,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
             )}
             {combinedRateExceeds && (
               <div className="mt-1 rounded-md bg-rose-100 px-2 py-1.5">
-                <p className="text-[10px] font-semibold text-rose-700">
+                <p className="text-[11px] font-semibold text-rose-700">
                   ⚠ {t("combinedRateExceedsWarning", { rate: combinedRate.toFixed(1) })}
                 </p>
               </div>
@@ -1052,7 +1052,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
         {/* Notes to Customer */}
         <div className="rounded-xl border border-border/70 bg-card card-pad">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("notesForCustomer")}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("notesForCustomer")}</p>
           <p className="mt-2 text-xs text-muted-foreground whitespace-pre-line">
             {notes || t("defaultCustomerNotes")}
           </p>
@@ -1060,17 +1060,17 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
         {/* Payment Gateway */}
         <div className="rounded-xl border border-border/70 bg-card card-pad">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentGateway")}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentGateway")}</p>
           <div className="mt-2 flex items-center gap-3">
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <div className="h-4 w-4 rounded bg-sky-100" />
               <span>Razorpay</span>
             </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <div className="h-4 w-4 rounded bg-violet-100" />
               <span>Stripe</span>
             </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <div className="h-4 w-4 rounded bg-emerald-100" />
               <span>Bank Transfer</span>
             </div>
@@ -1101,16 +1101,16 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         <p className="text-xs font-semibold uppercase tracking-wider text-sky-700">
                           {role === "admin" ? t("filterByTeam") : t("filterByAgent")}
                         </p>
-                        <span className="text-[10px] text-muted-foreground">({t("optional")})</span>
+                        <span className="text-[11px] text-muted-foreground">({t("optional")})</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {(selectedSuperAgentFilter || selectedAgentFilter || selectedEmployerFilter) && (
-                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
                             {t("filtered")}
                           </span>
                         )}
                         {role === "admin" && !loadingFilters && (
-                          <span className="text-[10px] text-muted-foreground">{regionFilteredSuperAgents.length} {t("sa")} · {filteredAgents.length} {t("agents")}</span>
+                          <span className="text-[11px] text-muted-foreground">{regionFilteredSuperAgents.length} {t("sa")} · {filteredAgents.length} {t("agents")}</span>
                         )}
                         <ChevronDown className="h-4 w-4 text-sky-500 transition-transform [[open]>&]:rotate-180" />
                       </div>
@@ -1136,7 +1136,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         {showAdvancedFilters && (
                           <div className="mt-2 flex items-end gap-2">
                             <div className="flex-1">
-                              <Label className="text-[10px] text-muted-foreground">{t("regionState")}</Label>
+                              <Label className="text-[11px] text-muted-foreground">{t("regionState")}</Label>
                               <SearchableSelect
                                 id="inv-region-filter"
                                 className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
@@ -1242,7 +1242,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                             modal
                           />
                           {selectedAgentFilter && cascadeEmployers.length === 0 && !loadingCascadeEmployers && (
-                            <p className="mt-1 text-[10px] text-muted-foreground">{t("noEmployersForAgent")}</p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">{t("noEmployersForAgent")}</p>
                           )}
                         </div>
                       )}
@@ -1255,16 +1255,16 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10">
-                        <span className="text-[10px] font-bold text-primary">1</span>
+                        <span className="text-[11px] font-bold text-primary">1</span>
                       </div>
                       <Label className="text-xs font-semibold uppercase tracking-wider text-foreground">{t("selectJob")}</Label>
                     </div>
                     {loadingCount ? (
-                      <span className="text-[10px] text-muted-foreground">{t("loading")}</span>
+                      <span className="text-[11px] text-muted-foreground">{t("loading")}</span>
                     ) : totalJobCount > 0 ? (
-                      <span className="text-[10px] text-muted-foreground">{formatCount(totalJobCount)} {t("jobsTotal")}</span>
+                      <span className="text-[11px] text-muted-foreground">{formatCount(totalJobCount)} {t("jobsTotal")}</span>
                     ) : totalJobCount === 0 ? (
-                      <span className="text-[10px] text-amber-600">{t("noJobsFound")}</span>
+                      <span className="text-[11px] text-amber-600">{t("noJobsFound")}</span>
                     ) : null}
                   </div>
   
@@ -1311,23 +1311,23 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   {selectedJobId && selectedJob && role === "admin" && (
                     <div className="mb-2 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg border border-border/50 bg-muted/20 px-4 py-3 text-xs sm:grid-cols-5">
                       <div>
-                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">{t("jobId")}</p>
+                        <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("jobId")}</p>
                         <p className="mt-0.5 font-mono font-medium text-foreground">{selectedJob._id.slice(-8).toUpperCase()}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">{t("employer")}</p>
+                        <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("employer")}</p>
                         <p className="mt-0.5 font-medium text-foreground">{isPopulatedJobEmployer(selectedJob.employerId) ? selectedJob.employerId.companyName : "—"}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">{t("position")}</p>
+                        <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("position")}</p>
                         <p className="mt-0.5 font-medium text-foreground">{selectedJob.title}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">{t("location")}</p>
+                        <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("location")}</p>
                         <p className="mt-0.5 font-medium text-foreground">{selectedJob.location?.city ?? "—"}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">{t("type")}</p>
+                        <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("type")}</p>
                         <p className="mt-0.5 font-medium capitalize text-foreground">{selectedJob.employmentType?.replace(/_/g, " ") ?? t("permanent")}</p>
                       </div>
                     </div>
@@ -1388,12 +1388,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                           <span className="text-[11px] font-medium text-emerald-600">{salaryText}</span>
                                         )}
                                         {typeLabel && (
-                                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{typeLabel}</span>
+                                          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] capitalize text-muted-foreground">{typeLabel}</span>
                                         )}
                                       </div>
                                     </div>
                                     {job.status && (
-                                      <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                      <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
                                         job.status === "active" ? "bg-emerald-100 text-emerald-700" :
                                         job.status === "closed" ? "bg-rose-100 text-rose-700" :
                                         "bg-amber-100 text-amber-700"
@@ -1403,7 +1403,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                 );
                               })}
                               {totalJobCount > filteredJobs.length && (
-                                <p className="px-3 py-2 text-center text-[10px] text-muted-foreground">
+                                <p className="px-3 py-2 text-center text-[11px] text-muted-foreground">
                                   {t("showingResults", { showing: filteredJobs.length, total: formatCount(totalJobCount) })}
                                 </p>
                               )}
@@ -1454,12 +1454,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         </span>
                         <div className="ml-auto flex items-center gap-1.5">
                           {currency && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                               {currency}
                             </span>
                           )}
                           {billingCountry && findTaxPreset(billingCountry) && (
-                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
                               {findTaxPreset(billingCountry)!.label}
                             </span>
                           )}
@@ -1468,7 +1468,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       </summary>
                       <div className="grid gap-3 border-t border-emerald-200/50 px-3 py-3 sm:grid-cols-3">
                         <div>
-                          <Label className="text-[10px] text-muted-foreground">{t("currency")}</Label>
+                          <Label className="text-[11px] text-muted-foreground">{t("currency")}</Label>
                           <SearchableSelect
                             id="inv-currency-override"
                             className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
@@ -1481,7 +1481,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-muted-foreground">{t("taxType")}</Label>
+                          <Label className="text-[11px] text-muted-foreground">{t("taxType")}</Label>
                           <SearchableSelect
                             id="inv-tax-override"
                             className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
@@ -1508,7 +1508,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                           />
                         </div>
                         <div>
-                          <Label className="text-[10px] text-muted-foreground">{t("taxPercent")}</Label>
+                          <Label className="text-[11px] text-muted-foreground">{t("taxPercent")}</Label>
                           <Input
                             type="number" min={0} max={100} step={0.5}
                             className="mt-1 h-8 rounded-lg text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -1533,7 +1533,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         <div className="flex items-center justify-between">
                           <Label className="text-xs font-medium text-muted-foreground">{t("invoiceCategory")}</Label>
                           {!showAddType && (
-                            <button type="button" onClick={() => setShowAddType(true)} className="text-[10px] font-medium text-primary hover:underline">{t("addCustom")}</button>
+                            <button type="button" onClick={() => setShowAddType(true)} className="text-[11px] font-medium text-primary hover:underline">{t("addCustom")}</button>
                           )}
                         </div>
                         {showAddType ? (
@@ -1579,7 +1579,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         <div className="flex items-center justify-between">
                           <Label className="text-xs font-medium text-muted-foreground">{t("terms")}</Label>
                           {!showAddPaymentTerm && (
-                            <button type="button" onClick={() => setShowAddPaymentTerm(true)} className="text-[10px] font-medium text-primary hover:underline">{t("addCustom")}</button>
+                            <button type="button" onClick={() => setShowAddPaymentTerm(true)} className="text-[11px] font-medium text-primary hover:underline">{t("addCustom")}</button>
                           )}
                         </div>
                         {showAddPaymentTerm ? (
@@ -1624,7 +1624,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     <div className="rounded-lg border border-border/60 bg-card">
                       <div className="flex items-center justify-between border-b border-border/50 panel-head">
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("itemTable")}</p>
-                        <Button variant="outline" size="sm" onClick={addLineItem} className="h-7 gap-1 rounded-lg text-[10px]">
+                        <Button variant="outline" size="sm" onClick={addLineItem} className="h-7 gap-1 rounded-lg text-[11px]">
                           <Plus className="h-3 w-3" /> {t("addNewRow")}
                         </Button>
                       </div>
@@ -1632,12 +1632,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="border-b border-border/50 bg-muted/30">
-                              <th className="w-[36px] px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">#</th>
-                              <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("description")}</th>
-                              <th className="w-[70px] px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("qty")}</th>
-                              <th className="w-[110px] px-2 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("unitRate")} ({currency})</th>
-                              <th className="w-[80px] px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("tax")}</th>
-                              <th className="w-[110px] px-2 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("amount")} ({currency})</th>
+                              <th className="w-[36px] px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">#</th>
+                              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("description")}</th>
+                              <th className="w-[70px] px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("qty")}</th>
+                              <th className="w-[110px] px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("unitRate")} ({currency})</th>
+                              <th className="w-[80px] px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("tax")}</th>
+                              <th className="w-[110px] px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("amount")} ({currency})</th>
                               <th className="w-[36px] px-2 py-2.5"></th>
                             </tr>
                           </thead>
@@ -1658,7 +1658,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                   <Input type="number" min={0} step="0.01" className="h-9 rounded border-border/50 text-right text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={li.unitPrice || ""} onChange={e => updateLineItem(i, "unitPrice", parseFloat(e.target.value) || 0)} placeholder="0.00" />
                                 </td>
                                 <td className="px-2 py-2 text-center">
-                                  <span className="inline-block rounded bg-muted/60 px-2 py-1 text-[10px] font-medium">
+                                  <span className="inline-block rounded bg-muted/60 px-2 py-1 text-[11px] font-medium">
                                     {taxType !== "none" ? `${taxPercent}%` : "—"}
                                   </span>
                                 </td>
@@ -1698,7 +1698,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     <div>
                       <Label className="text-xs font-medium text-muted-foreground">{t("customerNotes")}</Label>
                       <Textarea className="mt-1.5 rounded-lg border-border/60 text-sm" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t("defaultCustomerNotesPlaceholder")} />
-                      <p className="mt-1 text-[10px] text-muted-foreground">{t("displayedOnInvoice")}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{t("displayedOnInvoice")}</p>
                     </div>
 
                     {/* Internal Notes — hidden from customer */}
@@ -1730,26 +1730,26 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       <p className="text-sm font-medium">{billingCompanyName || "—"}</p>
                       <p className="text-xs text-muted-foreground">{billingEmail}</p>
                       {billingCountry && <p className="text-xs text-muted-foreground">{billingCountry}</p>}
-                      {billingTaxId && <p className="text-[10px] text-muted-foreground">Tax ID: {billingTaxId}</p>}
+                      {billingTaxId && <p className="text-[11px] text-muted-foreground">Tax ID: {billingTaxId}</p>}
                     </div>
                   </div>
   
                   {/* Invoice Meta */}
                   <div className="mt-3 grid grid-cols-2 gap-4 rounded-lg bg-muted/30 px-4 py-3 text-xs sm:grid-cols-4">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("invoiceDate")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("invoiceDate")}</p>
                       <p className="mt-0.5 font-medium">{formatDate(new Date())}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("terms")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("terms")}</p>
                       <p className="mt-0.5 font-medium">{allPaymentTerms.find(t => t.value === paymentTerms)?.label ?? paymentTerms}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("dueDate")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("dueDate")}</p>
                       <p className="mt-0.5 font-medium">{dueDate || t("perTerms")}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("currency")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("currency")}</p>
                       <p className="mt-0.5 font-medium">{currency}</p>
                     </div>
                   </div>
@@ -1759,10 +1759,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-muted/50">
-                          <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("itemDetails")}</th>
-                          <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("quantity")}</th>
-                          <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("rate")}</th>
-                          <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("amount")}</th>
+                          <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("itemDetails")}</th>
+                          <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("quantity")}</th>
+                          <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("rate")}</th>
+                          <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("amount")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1793,7 +1793,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   {/* Payment & Billing Details */}
                   <div className="mt-4 grid gap-4 border-t border-border/50 pt-4 sm:grid-cols-2">
                     <div className="text-xs">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("billingTo")}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("billingTo")}</p>
                       <p className="mt-1.5 font-medium">{billingCompanyName}</p>
                       {billingContactPerson && <p className="text-muted-foreground">{billingContactPerson}</p>}
                       {billingEmail && <p className="text-muted-foreground">{billingEmail}</p>}
@@ -1801,7 +1801,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       {billingAddress && <p className="text-muted-foreground">{billingAddress}</p>}
                     </div>
                     <div className="text-xs">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("jobReference")}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("jobReference")}</p>
                       <p className="mt-1.5 font-medium">{selectedJob?.title ?? "—"}</p>
                       {selectedJob && isPopulatedJobEmployer(selectedJob.employerId) && (
                         <p className="text-muted-foreground">{selectedJob.employerId.companyName}</p>
@@ -1812,7 +1812,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   
                   {notes && (
                     <div className="mt-4 border-t border-border/50 pt-3 text-xs">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("customerNotes")}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("customerNotes")}</p>
                       <p className="mt-1 text-muted-foreground">{notes}</p>
                     </div>
                   )}
@@ -1855,7 +1855,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   // ── Commission summary for dialog mode (agent view) ──────────────────────
   const dialogCommissionSummary = (selectedAgent || selectedSuperAgent || agentRate > 0 || superAgentRate > 0) && totalAmount > 0 && (
     <div className={`mt-4 rounded-xl border ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"} card-pad`}>
-      <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>
         {role === "agent" ? t("yourCommission") : t("commissionSplit")}
       </p>
       <div className="mt-2 space-y-1.5 text-xs">
@@ -1882,7 +1882,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
           </div>
         </div>
         {combinedRateExceeds && (
-          <p className="mt-1 text-[10px] font-semibold text-rose-600">{t("combinedRateExceedsFull", { rate: combinedRate.toFixed(1) })}</p>
+          <p className="mt-1 text-[11px] font-semibold text-rose-600">{t("combinedRateExceedsFull", { rate: combinedRate.toFixed(1) })}</p>
         )}
         <p className="mt-1 text-[9px] italic text-amber-600/80">{t("internalNotice")}</p>
       </div>

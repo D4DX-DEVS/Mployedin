@@ -386,12 +386,12 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[13px] font-semibold leading-tight text-foreground">{insight.title}</span>
-                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", sev.badge)}>
+                    <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded-full", sev.badge)}>
                       {sev.badgeText}
                     </span>
                   </div>
                   {insight.confidence && (
-                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/80">
+                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
                       <span className={cn("h-1.5 w-1.5 rounded-full", confidenceStyles[insight.confidence].dot)} />
                       {confidenceStyles[insight.confidence].label} confidence
                     </span>
@@ -414,14 +414,14 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
               <div className="flex items-center justify-between mt-2 pl-[38px]">
                 {insight.action && insight.actionType ? (
                   isActionComplete ? (
-                    <span className="text-[10px] font-medium text-emerald-600 flex items-center gap-1">
+                    <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
                       ✓ {t("done")}
                     </span>
                   ) : (
                     <button
                       onClick={() => handleAction(insight)}
                       disabled={isActionBusy}
-                      className="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 disabled:opacity-50"
+                      className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 disabled:opacity-50"
                     >
                       {isActionBusy ? (
                         <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -453,7 +453,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
                     </button>
                   </div>
                 ) : (
-                  <span className="text-[10px] text-muted-foreground/50">{t("thanks")}</span>
+                  <span className="text-[11px] text-muted-foreground/50">{t("thanks")}</span>
                 )}
               </div>
             </div>
@@ -532,7 +532,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
       <div className={cn("flex-nowrap items-center justify-between gap-2 mb-2.5 sm:mb-3", mobileOpen ? "flex" : "hidden")}>
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary sm:h-4 sm:w-4" />
-          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+          <p className="truncate text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
             {t("aiInsights")}
           </p>
         </div>
@@ -540,7 +540,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
           {dismissedCount > 0 && (
             <button
               onClick={() => showDismissed ? restoreAll() : setShowDismissed(true)}
-              className="whitespace-nowrap text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
+              className="whitespace-nowrap text-[11px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
             >
               <Eye className="h-3 w-3" />
               {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
@@ -570,7 +570,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             {visibleInsights.length} {t("aiInsights")}
           </span>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">
             {(["critical", "warning", "info"] as InsightSeverity[])
               .map((sv) => [sv, visibleInsights.filter((i) => i.severity === sv).length] as const)
               .filter(([, n]) => n > 0)

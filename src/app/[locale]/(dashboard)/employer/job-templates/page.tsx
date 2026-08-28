@@ -179,16 +179,16 @@ export default function EmployerJobTemplatesPage() {
                 {tmpl.requirements?.skills && tmpl.requirements.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {tmpl.requirements.skills.slice(0, 4).map((s) => (
-                      <span key={s} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{s}</span>
+                      <span key={s} className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{s}</span>
                     ))}
                     {tmpl.requirements.skills.length > 4 && (
-                      <span className="text-[10px] text-muted-foreground">+{tmpl.requirements.skills.length - 4}</span>
+                      <span className="text-[11px] text-muted-foreground">+{tmpl.requirements.skills.length - 4}</span>
                     )}
                   </div>
                 )}
 
                 <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[11px] text-muted-foreground">
                     <RelativeDate date={tmpl.updatedAt} prefix={t("savedAgoPrefix")} />
                   </span>
                   <div className="flex items-center gap-0.5">

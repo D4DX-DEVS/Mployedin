@@ -341,7 +341,7 @@ export default function AdminJobsPage() {
             >
               <Filter className="h-4 w-4 text-muted-foreground" />
               {showFilters ? t("hideFilters") : t("showFilters")}
-              {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilterBadge")}</Badge>}
+              {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{t("activeFilterBadge")}</Badge>}
               {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </button>
             <div className="flex items-center gap-2">

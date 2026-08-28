@@ -168,9 +168,9 @@ export function CandidateQualityChart({
               key={stat.label}
               className={`overflow-hidden rounded-2xl border text-center ${stat.borderClass} ${stat.surfaceClass} chip-pad`}
             >
-              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:tracking-[0.18em]">{stat.label}</p>
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:tracking-[0.18em]">{stat.label}</p>
               <p className={`mt-1.5 text-lg font-semibold tracking-tight sm:text-xl ${stat.valueClass}`}>{stat.value}</p>
-              <p className="text-[10px] text-muted-foreground">{stat.detail}</p>
+              <p className="text-[11px] text-muted-foreground">{stat.detail}</p>
             </div>
           ))}
         </div>

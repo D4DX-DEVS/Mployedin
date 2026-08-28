@@ -569,7 +569,7 @@ export default function SuperAgentJobsPage() {
                 >
                   <Icon className="h-3 w-3" />
                   {t(labelKey)}
-                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                  <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${
                     jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
                   }`}>{count}</span>
                 </button>
@@ -578,7 +578,7 @@ export default function SuperAgentJobsPage() {
                 <Button variant="ghost" size="dense" onClick={clearFilters} className="text-xs text-muted-foreground">
                   <X className="h-3.5 w-3.5 mr-1" /> {t("clearAllFilters")}
                   {activeFilterCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">{activeFilterCount}</Badge>
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[11px]">{activeFilterCount}</Badge>
                   )}
                 </Button>
               )}
@@ -877,17 +877,17 @@ export default function SuperAgentJobsPage() {
                         <p className="font-medium text-foreground">{job.title}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <StatusBadge status={job.status ?? "draft"} />
-                          <span className="text-[10px] text-muted-foreground">{formatDate(new Date(job.createdAt))}</span>
+                          <span className="text-[11px] text-muted-foreground">{formatDate(new Date(job.createdAt))}</span>
                         </div>
                         {job.tags && job.tags.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
                             {job.tags.slice(0, 3).map((tag) => (
-                              <span key={tag} className="inline-block rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              <span key={tag} className="inline-block rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
                                 {tag}
                               </span>
                             ))}
                             {job.tags.length > 3 && (
-                              <span className="text-[10px] text-muted-foreground">+{job.tags.length - 3}</span>
+                              <span className="text-[11px] text-muted-foreground">+{job.tags.length - 3}</span>
                             )}
                           </div>
                         )}

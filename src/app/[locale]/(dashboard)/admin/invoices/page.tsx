@@ -359,7 +359,7 @@ export default function AdminInvoicesPage() {
                         <TableCell><p className="font-mono text-sm font-medium text-foreground">{inv.invoiceNumber}</p></TableCell>
                         <TableCell><p className="max-w-[140px] truncate font-medium text-foreground">{inv.employerId?.companyName ?? "—"}</p></TableCell>
                         <TableCell><p className="max-w-[130px] truncate text-sm text-muted-foreground">{inv.jobId?.title ?? "—"}</p></TableCell>
-                        <TableCell><span className="inline-flex rounded-full border border-border/70 bg-secondary/70 px-2 py-0.5 text-[10px] font-medium capitalize">{inv.category?.replace(/_/g, " ")}</span></TableCell>
+                        <TableCell><span className="inline-flex rounded-full border border-border/70 bg-secondary/70 px-2 py-0.5 text-[11px] font-medium capitalize">{inv.category?.replace(/_/g, " ")}</span></TableCell>
                         <TableCell className="text-right font-semibold">{inv.currency} {formatCount((inv.totalAmount ?? 0))}</TableCell>
                         <TableCell className="text-right text-sm text-emerald-600">{inv.currency} {formatCount((inv.paidAmount ?? 0))}</TableCell>
                         <TableCell className="text-right text-sm text-amber-600">{inv.currency} {formatCount((inv.balanceDue ?? 0))}</TableCell>
@@ -393,16 +393,16 @@ export default function AdminInvoicesPage() {
                               }}><Download className="h-3.5 w-3.5" /></Button>
                             )}
                             {can("subscriptions", "update") && inv.status === "draft" && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[10px] text-sky-600 hover:bg-sky-50">{t("issue")}</Button>
+                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[11px] text-sky-600 hover:bg-sky-50">{t("issue")}</Button>
                             )}
                             {can("subscriptions", "update") && ["issued", "sent"].includes(inv.status) && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "paid")} className="h-7 px-2 text-[10px] text-emerald-600 hover:bg-emerald-50">{t("markAsPaid")}</Button>
+                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "paid")} className="h-7 px-2 text-[11px] text-emerald-600 hover:bg-emerald-50">{t("markAsPaid")}</Button>
                             )}
                             {can("subscriptions", "update") && !["void", "cancelled", "refunded", "paid", "credit_note"].includes(inv.status) && (
                               <Button variant="ghost" size="sm" onClick={async () => {
                                 const ok = await confirmDialog(t("confirmVoidMessage"));
                                 if (ok) updateStatus(inv._id, "void");
-                              }} className="h-7 px-2 text-[10px] text-rose-600 hover:bg-rose-50">{t("void")}</Button>
+                              }} className="h-7 px-2 text-[11px] text-rose-600 hover:bg-rose-50">{t("void")}</Button>
                             )}
                           </div>
                         </TableCell>

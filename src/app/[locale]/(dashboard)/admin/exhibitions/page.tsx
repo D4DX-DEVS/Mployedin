@@ -651,7 +651,7 @@ export default function AdminExhibitionsPage() {
                   <BudgetIcon className={`h-3.5 w-3.5 ${iconClassName}`} aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
                   <p className="whitespace-nowrap text-sm font-semibold leading-tight text-foreground">{value}</p>
                 </div>
               </div>
@@ -1531,7 +1531,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
                       {timestamp ? formatDateTime(timestamp, locale) : t("pendingAction")} · {history?.changedBy?.name ?? step.owner}
                     </p>
                   </div>
-                  <Badge className={`${isRejected ? "border-red-200 bg-red-50 text-red-700" : isCurrent ? "border-blue-200 bg-blue-50 text-blue-700" : isDone ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-600"} rounded-md px-2 py-0.5 text-[10px]`}>
+                  <Badge className={`${isRejected ? "border-red-200 bg-red-50 text-red-700" : isCurrent ? "border-blue-200 bg-blue-50 text-blue-700" : isDone ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-600"} rounded-md px-2 py-0.5 text-[11px]`}>
                     {statusLabel}
                   </Badge>
                 </div>
@@ -1552,7 +1552,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
                   <p className="text-sm font-semibold text-foreground">{step.label}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{history?.changedBy?.name ?? step.owner}</p>
                 </div>
-                <Badge className={`${isRejected ? "border-red-200 bg-red-50 text-red-700" : isCurrent ? "border-blue-200 bg-blue-50 text-blue-700" : isDone ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-600"} rounded-md px-2 py-0.5 text-[10px]`}>
+                <Badge className={`${isRejected ? "border-red-200 bg-red-50 text-red-700" : isCurrent ? "border-blue-200 bg-blue-50 text-blue-700" : isDone ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-600"} rounded-md px-2 py-0.5 text-[11px]`}>
                   {statusLabel}
                 </Badge>
               </div>
@@ -1589,7 +1589,7 @@ function ThreadedComment({ role, name, time, text }: { role: string; name: strin
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{name}</p>
-          <Badge variant="outline" className="rounded-md px-2 py-0.5 text-[10px]">
+          <Badge variant="outline" className="rounded-md px-2 py-0.5 text-[11px]">
             {role}
           </Badge>
           <span className="text-xs text-muted-foreground">{time}</span>
