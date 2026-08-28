@@ -638,7 +638,7 @@ export function Copilot({ className }: CopilotProps) {
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="mt-1.5 text-center text-[10px] text-muted-foreground">{t("disclaimer")}</p>
+        <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </div>
   ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, suggestions, sendMessage, showHistory, savedChats]);

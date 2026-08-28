@@ -252,7 +252,7 @@ export function JobWorkflowTab({ jobId }: Props) {
                       <div className="flex items-center gap-2">
                         <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
                         <span className="truncate text-sm font-semibold text-foreground">{stage.label}</span>
-                        <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {stage.enabled ? "On" : "Off"}
                         </span>
                       </div>
@@ -326,7 +326,7 @@ export function JobWorkflowTab({ jobId }: Props) {
                   onChange={(e) => { setAutoRejectBelow(parseInt(e.target.value)); markDirty(); }}
                   className="mt-3 w-full cursor-pointer accent-sky-600"
                 />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
+                <div className="flex justify-between text-[11px] text-muted-foreground">
                   <span>{t("percentOff")}</span>
                   <span>{t("percentDefault")}</span>
                   <span>{t("percentStrict")}</span>

@@ -237,7 +237,7 @@ export default function AgentJobSeekersPage() {
             <Filter className="h-3.5 w-3.5" />
             {tc("filter")}
             {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[10px]">{activeFilterCount}</Badge>
+              <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[11px]">{activeFilterCount}</Badge>
             )}
             {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </Button>
@@ -268,7 +268,7 @@ export default function AgentJobSeekersPage() {
                 </SelectContent>
               </Select>
               {availability && (
-                <button className="text-[10px] text-muted-foreground underline" onClick={() => setAvailability("")}>{tc("close")}</button>
+                <button className="text-[11px] text-muted-foreground underline" onClick={() => setAvailability("")}>{tc("close")}</button>
               )}
             </div>
 
@@ -286,7 +286,7 @@ export default function AgentJobSeekersPage() {
                 </SelectContent>
               </Select>
               {jobType && (
-                <button className="text-[10px] text-muted-foreground underline" onClick={() => setJobType("")}>{tc("close")}</button>
+                <button className="text-[11px] text-muted-foreground underline" onClick={() => setJobType("")}>{tc("close")}</button>
               )}
             </div>
 
@@ -313,7 +313,7 @@ export default function AgentJobSeekersPage() {
                 onChange={(e) => setSkillsFilter(e.target.value)}
                 className="h-9 rounded-xl text-sm"
               />
-              <p className="text-[10px] text-muted-foreground">{t("filterSkillsHint")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("filterSkillsHint")}</p>
             </div>
 
             {/* Profile completeness range */}

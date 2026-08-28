@@ -354,7 +354,7 @@ export default function SuperAgentExhibitionsPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           <Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{STATUS_LABELS[item.status] ?? item.status}</Badge>
-                          {item.reviewedBy && <p className="mt-0.5 text-[10px] text-muted-foreground">by {item.reviewedBy.name}</p>}
+                          {item.reviewedBy && <p className="mt-0.5 text-[11px] text-muted-foreground">by {item.reviewedBy.name}</p>}
                         </td>
                         <td className="hidden px-4 py-3.5 md:table-cell"><Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge></td>
                         <td className="hidden px-4 py-3.5 xl:table-cell"><span className="text-xs text-muted-foreground">{item.requiredResources?.length ?? 0} items</span></td>

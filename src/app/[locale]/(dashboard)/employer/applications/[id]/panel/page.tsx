@@ -248,7 +248,7 @@ export default function HiringPanelPage() {
             {(Object.entries(consensus.averageScores) as [string, number][]).map(([key, val]) => (
               <div key={key} className="rounded-lg border text-center chip-pad">
                 <div className="text-sm font-semibold">{val}</div>
-                <div className="text-[10px] text-muted-foreground capitalize">
+                <div className="text-[11px] text-muted-foreground capitalize">
                   {key.replace(/([A-Z])/g, " $1").trim()}
                 </div>
               </div>
@@ -291,7 +291,7 @@ export default function HiringPanelPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm">{OUTCOME_LABELS[d.outcome] ?? OUTCOME_LABELS.no_decision}</span>
                       {d.overriddenConsensus && (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[10px]">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[11px]">
                           {t("overrodeConsensus")}
                         </Badge>
                       )}
@@ -411,7 +411,7 @@ function EvaluatorCard({ scorecard: sc }: { scorecard: EvaluatorScorecard }) {
         {(Object.entries(sc.scores) as [string, number][]).map(([key, val]) => (
           <div key={key} className="rounded-lg bg-muted/30 p-1.5 text-center">
             <div className="text-sm font-semibold">{val}{t("outOf5")}</div>
-            <div className="text-[9px] text-muted-foreground capitalize leading-tight">
+            <div className="text-[11px] text-muted-foreground capitalize leading-tight">
               {key.replace(/([A-Z])/g, " $1").trim()}
             </div>
           </div>
@@ -428,7 +428,7 @@ function EvaluatorCard({ scorecard: sc }: { scorecard: EvaluatorScorecard }) {
         <div className="grid grid-cols-2 gap-2">
           {sc.strengths && (
             <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 chip-pad">
-              <div className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 mb-1">
+              <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 mb-1">
                 <ThumbsUp className="h-3 w-3" /> {t("strengthsLabel")}
               </div>
               <p className="text-[11px] text-muted-foreground line-clamp-3">{sc.strengths}</p>
@@ -436,7 +436,7 @@ function EvaluatorCard({ scorecard: sc }: { scorecard: EvaluatorScorecard }) {
           )}
           {sc.concerns && (
             <div className="rounded-lg border border-red-100 bg-red-50/50 chip-pad">
-              <div className="flex items-center gap-1 text-[10px] font-medium text-red-700 mb-1">
+              <div className="flex items-center gap-1 text-[11px] font-medium text-red-700 mb-1">
                 <ThumbsDown className="h-3 w-3" /> {t("concerns")}
               </div>
               <p className="text-[11px] text-muted-foreground line-clamp-3">{sc.concerns}</p>

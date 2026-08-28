@@ -219,7 +219,7 @@ function OverviewTab({ stats, loading }: { stats: NotifStats | null; loading: bo
             {Object.entries(stats.bySource7d).sort(([, a], [, b]) => b - a).map(([src, cnt]) => (
               <div key={src} className="inline-flex items-center gap-2 rounded-lg bg-muted/40 border border-border/30 chip-pad">
                 <span className="text-xs font-medium">{src}</span>
-                <Badge variant="secondary" className="text-[10px] px-1.5">{cnt}</Badge>
+                <Badge variant="secondary" className="text-[11px] px-1.5">{cnt}</Badge>
               </div>
             ))}
           </div>
@@ -286,16 +286,16 @@ function CronJobsTab({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-medium">{meta.label}</p>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">{meta.schedule}</Badge>
+                    <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-mono">{meta.schedule}</Badge>
                     {state?.lastRunStatus && (
-                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${state.lastRunStatus === "success" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"}`}>
+                      <Badge variant="outline" className={`text-[11px] px-1.5 py-0 ${state.lastRunStatus === "success" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"}`}>
                         {t("lastRunStatus", { status: state.lastRunStatus })}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{meta.desc}</p>
                   {state?.lastRunAt && (
-                    <p className="text-[10px] text-muted-foreground/70 mt-1">
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">
                       {t("lastRunTime", { time: formatDateTime(new Date(state.lastRunAt)), message: state.lastRunMessage ? ` — ${state.lastRunMessage}` : "" })}
                     </p>
                   )}
@@ -352,7 +352,7 @@ function EmailLogsTab() {
         {(["sent", "delivered", "failed", "bounced"] as const).map((s) => (
           <div key={s} className={`text-center py-2 rounded-lg border ${s === "failed" || s === "bounced" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}>
             <div className={`text-lg font-bold ${s === "failed" || s === "bounced" ? "text-red-600" : "text-green-600"}`}>{stats24h[s] ?? 0}</div>
-            <div className="text-[10px] text-muted-foreground uppercase">{s} (24h)</div>
+            <div className="text-[11px] text-muted-foreground uppercase">{s} (24h)</div>
           </div>
         ))}
       </div>
@@ -411,9 +411,9 @@ function EmailLogsTab() {
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatDateTime(new Date(log.sentAt))}</td>
                   <td className="px-3 py-2 max-w-[180px] truncate">{log.to}</td>
                   <td className="px-3 py-2 max-w-[200px] truncate">{log.subject}</td>
-                  <td className="px-3 py-2"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{log.source}</Badge></td>
+                  <td className="px-3 py-2"><Badge variant="outline" className="text-[11px] px-1.5 py-0">{log.source}</Badge></td>
                   <td className="px-3 py-2">
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${log.status === "sent" || log.status === "delivered" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"}`}>
+                    <Badge variant="outline" className={`text-[11px] px-1.5 py-0 ${log.status === "sent" || log.status === "delivered" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"}`}>
                       {log.status}
                     </Badge>
                     {log.errorMessage && <span className="ml-1 text-red-500" title={log.errorMessage}>⚠</span>}
@@ -513,7 +513,7 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
                     <div className="flex items-center gap-2">
                       <m.icon className={`w-3.5 h-3.5 ${m.color}`} />
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{o.userId}</code>
-                      <Badge variant="outline" className={`text-[10px] ${m.color}`}>{m.label}</Badge>
+                      <Badge variant="outline" className={`text-[11px] ${m.color}`}>{m.label}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">{o.reason}</p>
                   </div>

@@ -254,10 +254,10 @@ export default function SuperAgentJobSeekersPage() {
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {(s.skills ?? []).slice(0, 3).map((sk) => (
-                        <span key={sk} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{sk}</span>
+                        <span key={sk} className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{sk}</span>
                       ))}
                       {(s.skills?.length ?? 0) > 3 && (
-                        <span className="text-[10px] text-muted-foreground">+{(s.skills?.length ?? 0) - 3}</span>
+                        <span className="text-[11px] text-muted-foreground">+{(s.skills?.length ?? 0) - 3}</span>
                       )}
                     </div>
                   </TableCell>

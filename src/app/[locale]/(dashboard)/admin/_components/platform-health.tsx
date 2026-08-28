@@ -50,7 +50,7 @@ export async function QuickActionHealthBadge() {
   const t = await getTranslations("adminDashboard");
   return (
     <span
-      className={`inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+      className={`inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
         jobsWithoutApplications > 0
           ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
           : "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200"
@@ -166,7 +166,7 @@ export async function PlatformInsightsSection({
           </p>
         </div>
         <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 text-sky-700 shadow-sm sm:text-right chip-pad">
-          <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("sections.platformInsights.engine")}</p>
+          <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("sections.platformInsights.engine")}</p>
           <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.platformInsights.engineDetail")}</p>
         </div>
       </div>
@@ -179,7 +179,7 @@ export async function PlatformInsightsSection({
             data-surface="light-card"
             data-tone={insight.tone}
           >
-            <div className={`inline-flex self-start whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em] ${badgeClasses[insight.tone]}`}>
+            <div className={`inline-flex self-start whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em] ${badgeClasses[insight.tone]}`}>
               {insight.tone === "critical" ? t("tones.critical") : insight.tone === "warning" ? t("tones.attention") : t("tones.stable")}
             </div>
             <h3 className={`mt-3 text-base font-semibold tracking-tight sm:mt-4 sm:text-lg ${titleClasses[insight.tone]}`}>{insight.title}</h3>

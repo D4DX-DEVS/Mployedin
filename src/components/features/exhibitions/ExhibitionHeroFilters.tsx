@@ -61,7 +61,7 @@ export function ExhibitionFilterTrigger({ open, onToggle, hasActiveFilters }: Ex
       <Filter className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
       {open ? t("hideFilters") : t("showFilters")}
       {hasActiveFilters && (
-        <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+        <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
           {t("active")}
         </Badge>
       )}

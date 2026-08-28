@@ -188,7 +188,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         <div className="panel-head justify-between">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</h2>
           <div className="flex shrink-0 items-baseline gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("funnel.placementRate")}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("funnel.placementRate")}</span>
             <span className="text-base font-semibold text-primary">
               {placementRate === null ? "—" : `${placementRate}%`}
             </span>

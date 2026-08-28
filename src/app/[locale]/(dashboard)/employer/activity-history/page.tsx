@@ -278,7 +278,7 @@ export default function ActivityHistoryPage() {
                     <Badge variant="outline" className="text-[11px] font-medium rounded-lg px-2 py-0.5">
                       {roleLabel}
                     </Badge>
-                    <Badge variant="outline" className={cn("text-[10px] font-medium rounded-lg px-2 py-0.5", actionMeta.color)}>
+                    <Badge variant="outline" className={cn("text-[11px] font-medium rounded-lg px-2 py-0.5", actionMeta.color)}>
                       {actionLabel}
                     </Badge>
                   </div>

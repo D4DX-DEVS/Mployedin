@@ -99,11 +99,11 @@ export async function UpcomingInterviews({
                         minute: "2-digit",
                       })}
                     </span>
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
                       <TypeIcon className="mr-1 h-2.5 w-2.5" />
                       {typeLabels[interview.type]}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground">
                       {interview.duration} min
                     </span>
                   </div>

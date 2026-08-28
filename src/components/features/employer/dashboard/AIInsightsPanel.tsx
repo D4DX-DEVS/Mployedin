@@ -133,7 +133,7 @@ export function AIInsightsPanel({
         <h2 className="heading-label font-semibold text-muted-foreground uppercase tracking-wide">
           {t("title")}
         </h2>
-        <span className="ml-auto text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">
+        <span className="ml-auto text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">
           {t("poweredByAI")}
         </span>
       </div>

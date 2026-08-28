@@ -312,19 +312,19 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {/* KPI Row */}
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("total")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("total")}</p>
                       <p className="mt-1 text-lg font-bold text-primary">{fmt(invoice.totalAmount)}</p>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("paid")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("paid")}</p>
                       <p className="mt-1 text-lg font-bold text-emerald-600">{fmt(invoice.paidAmount)}</p>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("balanceDue")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("balanceDue")}</p>
                       <p className="mt-1 text-lg font-bold text-amber-600">{fmt(invoice.balanceDue)}</p>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("platformRevenue")}</p>
+                      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("platformRevenue")}</p>
                       <p className="mt-1 text-lg font-bold">{fmt(invoice.platformRevenue)}</p>
                     </div>
                   </div>
@@ -378,19 +378,19 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-4">
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Send className="h-3.5 w-3.5" /> {t("sent")}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground"><Send className="h-3.5 w-3.5" /> {t("sent")}</div>
                         <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.sentAt)}</p>
                       </div>
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Eye className="h-3.5 w-3.5" /> {t("viewed")}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground"><Eye className="h-3.5 w-3.5" /> {t("viewed")}</div>
                         <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.viewedAt)}</p>
                       </div>
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Download className="h-3.5 w-3.5" /> {t("downloaded")}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground"><Download className="h-3.5 w-3.5" /> {t("downloaded")}</div>
                         <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.downloadedAt)}</p>
                       </div>
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><BellRing className="h-3.5 w-3.5" /> {t("reminders")}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase text-muted-foreground"><BellRing className="h-3.5 w-3.5" /> {t("reminders")}</div>
                         <p className="mt-1 text-xs font-medium">{invoice.reminderCount ?? 0}{invoice.lastReminderAt ? ` · ${fmtDateTime(invoice.lastReminderAt)}` : ""}</p>
                       </div>
                     </div>

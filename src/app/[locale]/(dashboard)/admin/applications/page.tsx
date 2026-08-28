@@ -407,7 +407,7 @@ export default function AdminApplicationsPage() {
             >
               <Filter className="h-4 w-4 text-muted-foreground" />
               {showFilters ? t("hideFilters") : t("showFilters")}
-              {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} {t("active")}</Badge>}
+              {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{activeFilters} {t("active")}</Badge>}
               {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </button>
             <div className="flex items-center gap-2">
@@ -463,7 +463,7 @@ export default function AdminApplicationsPage() {
                       }`}>
                         {aiInsights.healthScore}
                       </div>
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("health")}</span>
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("health")}</span>
                     </div>
                   )}
                   <p className="flex-1 text-sm leading-relaxed text-muted-foreground">{aiInsights.summary}</p>
@@ -506,7 +506,7 @@ export default function AdminApplicationsPage() {
                               <span className="text-xs text-muted-foreground">{j.company}</span>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
-                              <Badge variant="secondary" className="text-[10px]">{j.applications} {t("apps")}</Badge>
+                              <Badge variant="secondary" className="text-[11px]">{j.applications} {t("apps")}</Badge>
                               <ScoreBadge score={j.avgScore || undefined} />
                             </div>
                           </div>
@@ -589,7 +589,7 @@ export default function AdminApplicationsPage() {
                 {showAdvancedFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
               {activeFilters > 0 && (
-                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} {t("active")}</Badge>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{activeFilters} {t("active")}</Badge>
               )}
             </div>
 
@@ -770,22 +770,22 @@ export default function AdminApplicationsPage() {
                         line on phones — they were three stacked rows before. */}
                     <div className="mt-1 flex flex-wrap items-center gap-1 sm:mt-1.5 sm:gap-1.5">
                       {aiScoreLabel && (
-                        <Badge className={`${aiScoreColor} rounded-full px-2 py-0 text-[10px] font-semibold sm:px-2.5 sm:py-0.5 sm:text-[11px]`}>
+                        <Badge className={`${aiScoreColor} rounded-full px-2 py-0 text-[11px] font-semibold sm:px-2.5 sm:py-0.5 sm:text-[11px]`}>
                           {aiScoreLabel}
                         </Badge>
                       )}
                       {topSkills.map((skill, i) => (
                         <span
                           key={skill}
-                          className={`rounded-full border border-border bg-background/70 px-2 py-0 text-[10px] text-muted-foreground sm:px-2.5 sm:py-0.5 sm:text-xs ${i >= 2 ? "hidden sm:inline-block" : ""}`}
+                          className={`rounded-full border border-border bg-background/70 px-2 py-0 text-[11px] text-muted-foreground sm:px-2.5 sm:py-0.5 sm:text-xs ${i >= 2 ? "hidden sm:inline-block" : ""}`}
                         >
                           {skill}
                         </span>
                       ))}
                       {topSkills.length === 0 && !aiScoreLabel && (
-                        <span className="text-[10px] text-muted-foreground sm:text-xs">{t("noSkillsListed")}</span>
+                        <span className="text-[11px] text-muted-foreground sm:text-xs">{t("noSkillsListed")}</span>
                       )}
-                      <span className="text-[10px] text-muted-foreground sm:hidden">
+                      <span className="text-[11px] text-muted-foreground sm:hidden">
                         {t("applied")} {appliedDate}
                       </span>
                     </div>

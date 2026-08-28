@@ -362,7 +362,13 @@ export default function EmployerAnalyticsPage() {
           note: metric.description,
           icon: metric.icon,
         }))}
-        footer={<span className="text-xs text-muted-foreground">{t("lastRefresh")}: {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+        // Carries the date, not just the clock time: a bare "12:33" read the
+        // next morning gives no way to tell yesterday's refresh from today's.
+        footer={
+          <span className="text-xs text-muted-foreground" suppressHydrationWarning title={lastRefresh.toLocaleString()}>
+            {t("lastRefresh")}: {lastRefresh.toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+          </span>
+        }
       />
 
       <AnalyticsPanel className="p-2 sm:p-4">
@@ -376,7 +382,7 @@ export default function EmployerAnalyticsPage() {
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold transition sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm",
+                    "inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold transition sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm",
                     activeTab === tab.key
                       ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
                       : "bg-secondary/75 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
@@ -586,7 +592,10 @@ function PipelineTab({
       )}
 
       <section>
-        <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
+        {/* 5-across only from lg. At 390px five columns were 64px wide, which
+            truncated every label and every conversion value on the page's
+            primary metric. Max two columns below 480px. */}
+        <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-4 lg:grid-cols-5">
           <ConversionCard label={t("applied")} count={data.conversion.applied} subtitle={`100% ${t("ofTotal")}`} color="blue" />
           <ConversionCard label={t("shortlisted")} count={data.conversion.shortlisted} subtitle={`${conversionRates.appliedToShortlisted}% ${t("fromApplied")}`} color="indigo" />
           <ConversionCard label={t("interview")} count={data.conversion.interview} subtitle={`${conversionRates.shortlistedToInterview}% ${t("fromShortlisted")}`} color="purple" />
@@ -766,7 +775,7 @@ function PipelineTab({
                       {FUNNEL_STAGES.map((stage) => {
                         const stageCount = job.stages.find((s) => s.status === (STATUS_BY_STAGE[stage] ?? stage))?.count ?? 0;
                         return (
-                          <span key={stage} className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] text-foreground/85">
+                          <span key={stage} className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[11px] text-foreground/85">
                             {t(stage)}
                             <span
                               className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
@@ -777,13 +786,13 @@ function PipelineTab({
                           </span>
                         );
                       })}
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] text-foreground/85">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[11px] text-foreground/85">
                         {t("rejected")}
                         <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">{rejectedCount}</span>
                       </span>
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
-                        className="mt-1 block w-full text-[10px] font-semibold text-status-applied hover:underline"
+                        className="mt-1 block w-full text-[11px] font-semibold text-status-applied hover:underline"
                       >
                         {t("viewApplications", { title: job.title })}
                       </Link>
@@ -796,7 +805,7 @@ function PipelineTab({
 
           {perJobMeta.totalPages > 1 && (
             <div className="flex flex-col gap-2 border-t border-border/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-4">
-              <p className="text-[10px] text-muted-foreground sm:text-xs">
+              <p className="text-[11px] text-muted-foreground sm:text-xs">
                 {t("perJobShowing", {
                   from: (perJobMeta.page - 1) * perJobMeta.pageSize + 1,
                   to: Math.min(perJobMeta.page * perJobMeta.pageSize, perJobMeta.total),
@@ -807,18 +816,18 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.max(1, perJobPage - 1))}
                   disabled={perJobMeta.page <= 1}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[11px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
                 >
                   <ChevronLeft className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
                   <span className="hidden sm:inline">{t("previousPage")}</span>
                 </button>
-                <span className="text-[10px] font-medium text-muted-foreground sm:text-xs">
+                <span className="text-[11px] font-medium text-muted-foreground sm:text-xs">
                   {t("pageOf", { page: perJobMeta.page, totalPages: perJobMeta.totalPages })}
                 </span>
                 <button
                   onClick={() => setPerJobPage(Math.min(perJobMeta.totalPages, perJobPage + 1))}
                   disabled={perJobMeta.page >= perJobMeta.totalPages}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[11px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
                 >
                   <span className="hidden sm:inline">{t("nextPage")}</span>
                   <ChevronRight className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
@@ -1783,7 +1792,7 @@ function AnalyticsSectionHeader({
       </div>
       <div className="min-w-0">
         {eyebrow && (
-          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
             {eyebrow}
           </p>
         )}
@@ -1859,17 +1868,20 @@ function ConversionCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("workspace-panel-surface rounded-xl border p-1.5 transition-all hover:-translate-y-0.5 sm:rounded-3xl sm:p-4", colors.border)}>
+    // A KPI label or value must never be truncated, so these wrap instead of
+    // clipping. `[overflow-wrap:normal]` opts out of the `anywhere` the page
+    // container sets, which would otherwise break "Shortlisted" mid-word.
+    <div className={cn("workspace-panel-surface rounded-xl border p-3 transition-all hover:-translate-y-0.5 sm:rounded-3xl sm:p-4", colors.border)}>
       <div className="flex items-start justify-between gap-1 sm:gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold uppercase tracking-tight text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
-          <p className={`mt-1 text-sm font-semibold tracking-tight sm:mt-3 sm:text-3xl ${colors.text}`}>{count}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground [overflow-wrap:normal] sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+          <p className={`mt-1 text-lg font-semibold tracking-tight sm:mt-3 sm:text-3xl ${colors.text}`}>{count}</p>
         </div>
         <div className={cn("hidden rounded-2xl p-2.5 sm:block", colors.surface, colors.icon)}>
           <TrendingUp className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-1 truncate text-[11px] text-muted-foreground sm:mt-3 sm:text-xs">{subtitle}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground [overflow-wrap:normal] sm:mt-3 sm:text-xs">{subtitle}</p>
     </div>
   );
 }
@@ -1885,7 +1897,7 @@ function RateBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
         highlight
           ? "border border-status-selected/20 bg-status-selected-bg font-semibold text-status-selected"
           : "border border-border bg-background/80 text-foreground/85"

@@ -90,7 +90,7 @@ export default function JobSeekerSubscriptionPage() {
           <span>{t("displayCurrency")}</span>
           <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
           {rateSource === "live" && (
-            <span className="text-[10px] text-emerald-500" title={t("liveRates")}>● {t("live")}</span>
+            <span className="text-[11px] text-emerald-500" title={t("liveRates")}>● {t("live")}</span>
           )}
         </div>
       </div>
@@ -357,7 +357,7 @@ function InvoiceSection({ invoices, displayCurrency, rates, locale }: { invoices
                 <td className="py-3 pr-4 text-muted-foreground">{formatDate(inv.issuedAt, locale)}</td>
                 <td className="py-3 pr-4 font-medium">
                   {convertAndFormat(inv.amount, inv.currency ?? "AED", displayCurrency, rates)}
-                  {displayCurrency !== (inv.currency ?? "AED") && <span className="block text-[10px] text-muted-foreground/50">{inv.amount} {inv.currency}</span>}
+                  {displayCurrency !== (inv.currency ?? "AED") && <span className="block text-[11px] text-muted-foreground/50">{inv.amount} {inv.currency}</span>}
                 </td>
                 <td className="py-3 pr-4">
                   <Badge variant="outline" className={`text-xs ${inv.status === "paid" ? "text-emerald-500 border-emerald-500/30" : inv.status === "void" ? "text-red-500 border-red-500/30" : "text-amber-500 border-amber-500/30"}`}>{inv.status}</Badge>

@@ -204,7 +204,7 @@ export default function EmployerPlacementsPage() {
                     </dl>
                     <p className="mt-1 truncate text-muted-foreground">{placement.candidateEmail ?? t("noEmail")}</p>
                     {placement.type ? (
-                      <span className="mt-1.5 inline-flex rounded-full bg-secondary/75 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                      <span className="mt-1.5 inline-flex rounded-full bg-secondary/75 px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
                         {placement.type}
                       </span>
                     ) : null}

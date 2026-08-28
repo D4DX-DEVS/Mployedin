@@ -335,7 +335,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
           <div id={listboxId} role="listbox" aria-multiselectable="true" aria-labelledby={label ? labelId : undefined} className="max-h-48 overflow-y-auto">
             {filteredPopular.length > 0 && (
               <>
-                <div role="presentation" className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{t("popular")}</div>
+                <div role="presentation" className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{t("popular")}</div>
                 {filteredPopular.map((o, index) => (
                   <button
                     ref={(element) => { optionRefs.current[index] = element; }}
@@ -360,7 +360,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
                     {value.includes(o.value) && <span aria-hidden="true" className="text-primary text-xs">✓</span>}
                   </button>
                 ))}
-                <div role="presentation" className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{groupLabel ?? t("all")}</div>
+                <div role="presentation" className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{groupLabel ?? t("all")}</div>
               </>
             )}
             {visibleOptions.length === 0 ? (

@@ -498,7 +498,7 @@ export default function AdminTargetReportPage() {
             { id: "finAchieved", label: t("yoyFinanceAchieved"), curr: data.yearOverYear.currentYear.financeAchieved, prev: data.yearOverYear.previousYear.financeAchieved, growth: data.yearOverYear.growth.financeAchieved, isCurrency: true },
           ] as const).map((item) => (
             <div key={item.id} className="rounded-xl border border-border/50 text-center chip-pad">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
               <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr) : formatCount(item.curr)}</p>
               <p className="text-xs text-muted-foreground">was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : formatCount(item.prev)}</p>
               <GrowthIndicator value={item.growth} />
@@ -576,7 +576,7 @@ export default function AdminTargetReportPage() {
                       <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[10px]">{row.riskScore}</Badge>
+                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[11px]">{row.riskScore}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -624,7 +624,7 @@ export default function AdminTargetReportPage() {
                       <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[10px]">{row.riskScore}</Badge>
+                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[11px]">{row.riskScore}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}

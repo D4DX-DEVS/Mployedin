@@ -137,9 +137,9 @@ export default function ResourceDownloadsPage() {
                   {item.tags?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {item.tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"><Tag className="h-2.5 w-2.5" />{tag}</span>
+                        <span key={tag} className="inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"><Tag className="h-2.5 w-2.5" />{tag}</span>
                       ))}
-                      {item.tags.length > 3 && <span className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">+{item.tags.length - 3}</span>}
+                      {item.tags.length > 3 && <span className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">+{item.tags.length - 3}</span>}
                     </div>
                   )}
 

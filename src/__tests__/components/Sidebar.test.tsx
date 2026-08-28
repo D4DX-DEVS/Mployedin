@@ -152,7 +152,7 @@ describe.skip("Sidebar", () => {
     expect(hiringLabel.className).toContain("whitespace-normal");
     expect(hiringLabel.className).toContain("text-[11px]");
     expect(jobsLabel.className).toContain("whitespace-normal");
-    expect(jobsLabel.className).toContain("text-[10px]");
+    expect(jobsLabel.className).toContain("text-[11px]");
   });
 
   it("expands tools children inside the primary sidebar for agent workspace", async () => {

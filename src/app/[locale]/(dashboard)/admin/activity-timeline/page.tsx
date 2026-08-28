@@ -363,7 +363,7 @@ export default function AdminActivityTimelinePage() {
                           <div className="flex items-center gap-2">
                             <User className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="text-sm font-medium text-foreground">{event.userName}</span>
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium uppercase text-muted-foreground">
                               {getRoleLabel(event.userRole, t)}
                             </span>
                           </div>

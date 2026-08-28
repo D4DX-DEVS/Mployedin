@@ -656,7 +656,7 @@ export default function AIJobExtractPage() {
 
                   {/* Status badge */}
                   {status === "posted" && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                    <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
                       <Check className="h-3 w-3" />
                       {t("posted")}
                     </div>
@@ -667,7 +667,7 @@ export default function AIJobExtractPage() {
                     </div>
                   )}
                   {status === "error" && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                    <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
                       <AlertCircle className="h-3 w-3" />
                       {t("failed")}
                     </div>
@@ -680,7 +680,7 @@ export default function AIJobExtractPage() {
                         {job.title}
                       </h3>
                       {job.category && (
-                        <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                        <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
                           {job.category}
                         </span>
                       )}
@@ -726,13 +726,13 @@ export default function AIJobExtractPage() {
                         {job.requirements.skills.slice(0, 5).map((skill) => (
                           <span
                             key={skill}
-                            className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                            className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
                           >
                             {skill}
                           </span>
                         ))}
                         {job.requirements.skills.length > 5 && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-[11px] text-muted-foreground">
                             +{job.requirements.skills.length - 5}
                           </span>
                         )}

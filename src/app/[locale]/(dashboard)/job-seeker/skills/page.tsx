@@ -176,7 +176,7 @@ function SkillBar({
         <div className="flex items-center gap-1.5 truncate">
           <span className="truncate font-medium">{label}</span>
           {demandInfo && (
-            <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
               {demandInfo}
             </span>
           )}
@@ -596,10 +596,10 @@ export default function JobSeekerSkillsPage() {
                 {t("currentSkills")}
               </label>
               {saveStatus === "saving" && (
-                <span className="ml-auto text-[10px] text-muted-foreground animate-pulse">{t("savingSkills")}</span>
+                <span className="ml-auto text-[11px] text-muted-foreground animate-pulse">{t("savingSkills")}</span>
               )}
               {saveStatus === "saved" && (
-                <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-emerald-600">
+                <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-emerald-600">
                   <CheckCircle2 className="h-3 w-3" />{t("skillsSaved")}
                 </span>
               )}
@@ -823,7 +823,7 @@ export default function JobSeekerSkillsPage() {
                                 {action.skill}
                               </span>
                               <span
-                                className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${priorityColor(action.priority)}`}
+                                className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${priorityColor(action.priority)}`}
                               >
                                 {action.priority}
                               </span>
@@ -992,7 +992,7 @@ export default function JobSeekerSkillsPage() {
                         />
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                            <span className="text-[11px] font-bold uppercase text-muted-foreground">
                               {t("week")} {idx + 1}
                             </span>
                             <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
@@ -1021,7 +1021,7 @@ export default function JobSeekerSkillsPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="rounded-xl bg-muted/30 p-3 text-center">
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                         {t("skillsAdded")}
                       </p>
                       <p className="mt-1 text-xl font-bold">
@@ -1029,7 +1029,7 @@ export default function JobSeekerSkillsPage() {
                       </p>
                     </div>
                     <div className="rounded-xl bg-muted/30 p-3 text-center">
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                         {t("scoreChange")}
                       </p>
                       <p
@@ -1040,7 +1040,7 @@ export default function JobSeekerSkillsPage() {
                       </p>
                     </div>
                     <div className="rounded-xl bg-muted/30 p-3 text-center">
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                         {t("analyses")}
                       </p>
                       <p className="mt-1 text-xl font-bold">

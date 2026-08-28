@@ -352,32 +352,45 @@ function CandidateMatchCard({
         </Avatar>
 
         <div className="min-w-0 space-y-1">
-          <div className="flex min-w-0 items-center gap-2">
+          {/* Wraps so the name owns the first line. The availability badge is
+              shrink-0, so on a phone it left the name ~70px and every candidate
+              rendered as "AHEMM…" — unusable for identifying anyone. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <h2 className="heading-label truncate font-semibold text-foreground">{candidateDisplayName}</h2>
             {rank ? (
-              <span className="hidden items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground lg:inline-flex">
+              <span className="hidden items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground lg:inline-flex">
                 <Trophy className="h-3 w-3 text-amber-500" />
                 #{rank}
               </span>
             ) : null}
             {isInReviewList ? (
-              <span className="hidden rounded-full border border-border bg-status-applied-bg px-2 py-0.5 text-[10px] font-semibold text-status-applied lg:inline-flex">
+              <span className="hidden rounded-full border border-border bg-status-applied-bg px-2 py-0.5 text-[11px] font-semibold text-status-applied lg:inline-flex">
                 {t("savedLabel")}
               </span>
             ) : null}
-            <span className={`ms-auto inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${availabilityTone(candidate.availabilityStatus)}`}>
+          </div>
+          {/* Availability rides the role line rather than owning a row of its
+              own: that saved ~24px per card. It cannot sit beside the name —
+              as a shrink-0 sibling there it squeezed the name to ~70px. */}
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <p className="min-w-0 shrink truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
+            {/* Pill chrome only from sm. On a phone the border + padding cost
+                ~24px the role needs, so here it reads as a plain coloured
+                suffix — same information, one truncatable line. */}
+            <span className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-semibold sm:rounded-full sm:border sm:px-2 sm:py-0.5 ${availabilityTone(candidate.availabilityStatus)} bg-transparent sm:bg-[unset]`}>
               {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
               {availabilityLabel}
             </span>
           </div>
-          <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
           <p className="truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
-          <div className="flex min-w-0 flex-nowrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+          {/* Wraps below sm: nowrap left each chip 14-34px, so skills rendered
+              as "T…", "G…" and carried no information. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground sm:flex-nowrap">
             {/* The trailing "+N more" / skill-gap chips keep shrink-0 individually.
                 A blanket [&>*]:shrink-0 here outranked the skills span's own
                 `shrink` (arbitrary-variant specificity), so long skill names
                 pushed the row past the card and were clipped on phones. */}
-            <span className="flex min-w-0 shrink items-center gap-1.5 overflow-hidden">
+            <span className="flex min-w-0 shrink flex-wrap items-center gap-1.5 sm:flex-nowrap sm:overflow-hidden">
             {/* 3rd tag hides on phones and folds into the mobile "+more" count —
                 showing all 3 there wrapped the last tag onto its own orphan line. */}
             {visibleSkills.map((skill, skillIndex) => {
@@ -405,6 +418,9 @@ function CandidateMatchCard({
           </div>
         </div>
 
+        {/* Stacked, not side by side: laying the two actions out horizontally
+            took 32px from the text column (name fell to "AHEMMED RAM…") and
+            bought no height back, because the card is sized by the text column. */}
         <div className="flex shrink-0 flex-col items-end gap-1.5" onClick={stopRowClick} onKeyDown={stopRowClick}>
           {hasAnyScore ? (
             <ScoreRing
@@ -805,13 +821,13 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-semibold">{candidate.name}</span>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${scoreBadgeClass(candidate.score)}`}>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${scoreBadgeClass(candidate.score)}`}>
                       {candidate.score}%
                     </span>
                   </div>
                   <p className="mt-0.5 truncate text-xs opacity-80">{candidate.summary}</p>
                 </div>
-                <span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                <span className="shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider">
                   {candidate.recommendation}
                 </span>
                 <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
@@ -1127,7 +1143,7 @@ export default function EmployerCandidatesPage() {
   useEffect(() => {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedSearch, selectedJob]);
 
   useEffect(() => {
@@ -1442,10 +1458,14 @@ export default function EmployerCandidatesPage() {
                 });
               }}
               aria-expanded={filtersExpanded}
-              className="h-9 rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
+              aria-label={t("filters")}
+              className="h-9 rounded-xl border-border bg-background/80 px-3 text-sm font-semibold sm:px-4"
             >
-              <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
-              {t("filters")}
+              {/* Icon-only on phones. The label costs ~45px, and the header row
+                  it shares with the title and the primary action only has ~165px
+                  to give before the title starts breaking mid-word. */}
+              <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-2" />
+              <span className="hidden sm:inline">{t("filters")}</span>
               {activeFilterChips.length > 0 ? (
                 <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
                   {activeFilterChips.length}
@@ -1455,10 +1475,19 @@ export default function EmployerCandidatesPage() {
             <Button size="sm"
               onClick={runAIMatch}
               disabled={!selectedJob || !!matchProgress || structuredCandidates.length === 0}
-              className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="whitespace-nowrap rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
             >
               {matchProgress ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-              {matchProgress ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}` : t("runAiMatch")}
+              {matchProgress
+                ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}`
+                : (
+                  // "Run" is dropped on phones. Those ~30px are what let the
+                  // page title stay on one line beside the actions.
+                  <>
+                    <span className="hidden sm:inline">{t("runAiMatch")}</span>
+                    <span className="sm:hidden">{t("runAiMatchShort")}</span>
+                  </>
+                )}
             </Button>
             {/* Screening only means something once candidates carry a score, so
                 the button stays out of the header until there is something to screen. */}
@@ -1481,11 +1510,8 @@ export default function EmployerCandidatesPage() {
           { label: t("statHighMatch"), value: visibleHighMatchCount, icon: Trophy },
           { label: t("statAvailable"), value: readyNowCount, icon: CheckCircle2 },
         ]}
+        compact
       />
-
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
 
       {screeningResults && (
         <AIScreeningResultsPanel
@@ -1789,20 +1815,26 @@ export default function EmployerCandidatesPage() {
       <TableToolbar
         className="flex-wrap rounded-2xl border border-border bg-card px-3 py-1.5 sm:px-4 sm:py-2.5"
         left={
-          !loading && filteredCandidates.length > 0 ? (
-            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-              <Checkbox
-                checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
-                onCheckedChange={toggleSelectAllVisible}
-                aria-label={tp("selectAllOnPage")}
-              />
-              {reviewCount > 0 ? (
-                <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
-              ) : (
-                <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
-              )}
-            </label>
-          ) : null
+          // The privacy notice rides in this toolbar rather than sitting on its
+          // own line: as a standalone row the compact icon was a lone glyph in
+          // an otherwise empty 40px band.
+          <div className="flex min-w-0 items-center gap-2">
+            <CandidateDataNotice variant="candidateList" compact />
+            {!loading && filteredCandidates.length > 0 ? (
+              <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox
+                  checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleSelectAllVisible}
+                  aria-label={tp("selectAllOnPage")}
+                />
+                {reviewCount > 0 ? (
+                  <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
+                ) : (
+                  <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
+                )}
+              </label>
+            ) : null}
+          </div>
         }
         right={
           reviewCount > 0 ? (

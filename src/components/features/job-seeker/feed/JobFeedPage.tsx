@@ -384,7 +384,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 the actual job list a full screen down. Hints hide below sm. */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.liveMatches")}
                 </div>
                 <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
@@ -395,7 +395,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </p>
               </div>
               <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.strongMatches")}
                 </div>
                 <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
@@ -406,7 +406,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </p>
               </div>
               <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.newThisWeek")}
                 </div>
                 <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">

@@ -93,7 +93,7 @@ export function PosterCustomizer({
       {/* Template — controls composition/layout */}
       <div>
         <label className="text-xs font-medium text-foreground">Template</label>
-        <p className="text-[10px] text-muted-foreground mb-1.5">Controls the poster composition & layout.</p>
+        <p className="text-[11px] text-muted-foreground mb-1.5">Controls the poster composition & layout.</p>
         <div className="grid grid-cols-2 gap-1.5">
           {TEMPLATES.map((tpl) => (
             <button
@@ -103,7 +103,7 @@ export function PosterCustomizer({
               className={`text-left rounded-lg border transition-all ${ template === tpl.id ? "bg-primary/10 border-primary text-foreground" : "border-border hover:border-primary/40" } chip-pad`}
             >
               <span className="block text-[11px] font-semibold">{tpl.label}</span>
-              <span className="block text-[9px] text-muted-foreground leading-tight mt-0.5">{tpl.description}</span>
+              <span className="block text-[11px] text-muted-foreground leading-tight mt-0.5">{tpl.description}</span>
             </button>
           ))}
         </div>
@@ -112,7 +112,7 @@ export function PosterCustomizer({
       {/* Design Description (optional art direction for the AI background) */}
       <div>
         <label htmlFor="poster-style-description" className="text-xs font-medium text-foreground">{t("styleLabel")}</label>
-        <p id="poster-style-help" className="text-[10px] text-muted-foreground mb-1">{t("styleHelpText")}</p>
+        <p id="poster-style-help" className="text-[11px] text-muted-foreground mb-1">{t("styleHelpText")}</p>
         <textarea
           id="poster-style-description"
           aria-describedby="poster-style-help"
@@ -123,7 +123,7 @@ export function PosterCustomizer({
           rows={3}
           className="w-full rounded-lg border border-input bg-background text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 chip-pad"
         />
-        <p className="text-[10px] text-muted-foreground text-right">{description.length} / 300</p>
+        <p className="text-[11px] text-muted-foreground text-right">{description.length} / 300</p>
       </div>
 
       {/* Design Style pills */}
@@ -182,7 +182,7 @@ export function PosterCustomizer({
                 key={f}
                 type="button"
                 onClick={() => toggleFormat(f)}
-                className={`px-2 py-1 rounded-md border text-[10px] transition-all ${
+                className={`px-2 py-1 rounded-md border text-[11px] transition-all ${
                   formats.includes(f) ? "bg-primary/10 border-primary/50" : "border-border"
                 }`}
               >
@@ -200,7 +200,7 @@ export function PosterCustomizer({
         <p className="text-[11px] font-medium text-primary flex items-center gap-1">
           <CheckCircle2 className="h-3.5 w-3.5" /> {t("tipsTitle")}
         </p>
-        <ul className="text-[10px] text-muted-foreground space-y-0.5 pl-5 list-disc">
+        <ul className="text-[11px] text-muted-foreground space-y-0.5 pl-5 list-disc">
           <li>{t("tip1")}</li>
           <li>{t("tip2")}</li>
           <li>{t("tip3")}</li>
@@ -218,7 +218,7 @@ export function PosterCustomizer({
         <Sparkles className="h-4 w-4" />
         {isGenerating ? t("generating") : t("generatePosters", { credits: CREDITS_PER_GENERATION })}
       </button>
-      <p className="text-[10px] text-center text-muted-foreground">
+      <p className="text-[11px] text-center text-muted-foreground">
         {t("variationsText")}
       </p>
     </div>

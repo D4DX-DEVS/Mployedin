@@ -784,7 +784,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                         {action.label}
                       </p>
                       {action.badgeNode ?? (
-                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
+                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
                           {action.badge}
                         </span>
                       )}
@@ -830,7 +830,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                       <p className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
                         {activity.title}
                       </p>
-                      <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
+                      <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
                         {activity.timestampLabel}
                       </span>
                     </div>
@@ -864,7 +864,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               </p>
             </div>
             <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 text-emerald-700 shadow-sm chip-pad">
-              <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
+              <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
               <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.hiringFunnel.closed", { count: stats.totalPlacements })}</p>
             </div>
           </div>
@@ -952,7 +952,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                       stroke="rgba(71,85,105,0.28)"
                       strokeDasharray="4 6"
                     />
-                    <text x={4} y={y + 4} fill="currentColor" className="fill-current text-[10px]">
+                    <text x={4} y={y + 4} fill="currentColor" className="fill-current text-[11px]">
                       {Math.round(chartMaxValue * tick)}
                     </text>
                   </g>
@@ -965,7 +965,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               {jobsLinePoints.map((point, index) => (
                 <g key={`jobs-${stats.monthlyTrend[index]?.key ?? index}`}>
                   <circle cx={point.x} cy={point.y} r="4.5" fill="#3b82f6" />
-                  <text x={point.x} y={chartHeight - 4} textAnchor="middle" fill="currentColor" className="fill-current text-[10px]">
+                  <text x={point.x} y={chartHeight - 4} textAnchor="middle" fill="currentColor" className="fill-current text-[11px]">
                     {stats.monthlyTrend[index]?.label}
                   </text>
                 </g>
@@ -979,17 +979,17 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
           <div className="mt-4 grid shrink-0 grid-cols-3 gap-2 sm:gap-4">
             <div className={`${adminCardClassName} px-2.5 py-3 sm:px-4 sm:py-4`} data-surface="light-card">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.jobsOpened")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.jobsOpened")}</p>
               <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">{stats.jobsCreatedThisMonth}</p>
               <p className="mt-1 hidden text-sm leading-6 text-muted-foreground sm:block">{t("sections.trends.jobsOpenedDesc")}</p>
             </div>
             <div className={`${adminCardClassName} px-2.5 py-3 sm:px-4 sm:py-4`} data-surface="light-card">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.applicationFlow")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.applicationFlow")}</p>
               <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">{stats.applicationsThisMonth}</p>
               <p className="mt-1 hidden text-sm leading-6 text-muted-foreground sm:block">{t("sections.trends.applicationFlowDesc")}</p>
             </div>
             <div className={`${adminCardClassName} px-2.5 py-3 sm:px-4 sm:py-4`} data-surface="light-card">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.demandRatio")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.demandRatio")}</p>
               <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">{applicationsPerActiveJob.toFixed(1)}</p>
               <p className="mt-1 hidden text-sm leading-6 text-muted-foreground sm:block">{t("sections.trends.demandRatioDesc")}</p>
             </div>
@@ -1006,7 +1006,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </div>
             {dominantRole ? (
               <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 text-sky-700 shadow-sm sm:text-right chip-pad">
-                <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
+                <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
                 <p className="mt-1 text-xs font-semibold text-sky-700 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
               </div>
             ) : null}
@@ -1037,7 +1037,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 </div>
                 <div className="shrink-0 text-end">
                   <p className="text-[13px] font-semibold tabular-nums text-foreground">{role.percentage}%</p>
-                  <p className="text-[10px] tabular-nums text-muted-foreground">
+                  <p className="text-[11px] tabular-nums text-muted-foreground">
                     {t("sections.usersByRole.userCount", { count: role.count })}
                   </p>
                 </div>

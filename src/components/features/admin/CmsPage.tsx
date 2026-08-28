@@ -293,7 +293,7 @@ export default function CmsPage({
                       <div className="workspace-muted-pill mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-3xl sm:h-16 sm:w-16 sm:rounded-3xl">
                         <Inbox className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
                       </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                         {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
                       </p>
                       <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">

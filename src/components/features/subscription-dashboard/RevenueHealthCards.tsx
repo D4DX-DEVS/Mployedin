@@ -34,7 +34,7 @@ export function RevenueHealthCards({ data }: Props) {
             key={card.label}
             className={`rounded-xl text-center transition-all ${ card.neutral ? "border border-border/40 bg-muted/30" : card.positive ? "bg-emerald-50 border border-emerald-200/50" : "bg-rose-50 border border-rose-200/50" } card-pad`}
           >
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
               {card.label}
             </span>
             <p className={`text-lg font-bold ${
@@ -46,7 +46,7 @@ export function RevenueHealthCards({ data }: Props) {
             }`}>
               {card.value} <span className="text-xs font-medium text-muted-foreground">{card.unit}</span>
             </p>
-            <p className="text-[10px] text-muted-foreground mt-1">{card.sub}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">{card.sub}</p>
           </div>
         ))}
       </div>

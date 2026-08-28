@@ -130,7 +130,7 @@ export default function CmsHeroFilters({
           <Filter className="h-4 w-4 text-muted-foreground" />
           {showFilters ? t("hideFilters") : t("showFilters")}
           {hasActiveFilters && (
-            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
               Active
             </Badge>
           )}

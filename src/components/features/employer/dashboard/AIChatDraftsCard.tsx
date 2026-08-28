@@ -153,7 +153,7 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
                 <p className="truncate text-xs font-medium text-foreground sm:text-sm">{d.title}</p>
                 <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
                   {d.hasExtractedJob && (
-                    <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 sm:inline-flex">
+                    <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 sm:inline-flex">
                       {t("draftReady")}
                     </span>
                   )}

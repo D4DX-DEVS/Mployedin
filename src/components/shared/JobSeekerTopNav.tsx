@@ -322,7 +322,7 @@ export function JobSeekerBottomNav({ locale }: JobSeekerTopNavProps) {
                     <Sparkles className="absolute -right-1.5 -top-1 h-2.5 w-2.5 text-primary" />
                   )}
                 </span>
-                <span className="max-w-full truncate text-[10px] font-medium leading-none">{t(item.labelKey)}</span>
+                <span className="max-w-full truncate text-[11px] font-medium leading-none">{t(item.labelKey)}</span>
               </Link>
             );
           })}
@@ -332,7 +332,7 @@ export function JobSeekerBottomNav({ locale }: JobSeekerTopNavProps) {
             aria-expanded={moreOpen}
             aria-controls="job-seeker-more-menu"
             className={cn(
-              "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium",
+              "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium",
               moreActive || moreOpen ? "text-primary" : "text-muted-foreground"
             )}
           >

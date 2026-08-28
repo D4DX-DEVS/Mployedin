@@ -267,13 +267,13 @@ export default function EmployerWorkflowPage() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
-                    <Badge variant={tpl.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                    <Badge variant={tpl.scope === "system" ? "outline" : "secondary"} className="text-[11px]">
                       {tpl.scope === "system" ? t("systemTemplate") : t("customTemplate")}
                     </Badge>
-                    {tpl.isDefault && <Badge variant="secondary" className="text-[10px]">{t("defaultTemplate")}</Badge>}
+                    {tpl.isDefault && <Badge variant="secondary" className="text-[11px]">{t("defaultTemplate")}</Badge>}
                   </div>
                   {tpl.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{tpl.description}</p>}
-                  <p className="mt-1 text-[10px] text-muted-foreground">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {t("templateStageSummary", {
                       count: tpl.stages.filter((s) => s.enabled).length,
                       state: tpl.settings.aiAutoScreen ? t("aiOn") : t("aiOff"),
@@ -445,7 +445,7 @@ export default function EmployerWorkflowPage() {
                       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
                         <span className="min-w-0 text-sm font-semibold text-foreground">{getStageLabel(stage)}</span>
-                        <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                        <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-background/60 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                           {stage.enabled ? t("enabled") : t("paused")}
                         </span>
                       </div>
@@ -629,7 +629,7 @@ export default function EmployerWorkflowPage() {
                 className="w-full cursor-pointer accent-sky-600"
                 aria-label={t("autoRejectThreshold")}
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>{t("thresholdOff")}</span>
                 <span>{t("thresholdDefault")}</span>
                 <span>{t("thresholdStrict")}</span>

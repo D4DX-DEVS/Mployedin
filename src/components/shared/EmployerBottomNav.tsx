@@ -62,7 +62,7 @@ export function EmployerBottomNav({ locale, onMore }: EmployerBottomNavProps) {
               aria-current={active ? "page" : undefined}
               prefetch={false}
               className={cn(
-                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium",
+                "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >
@@ -75,7 +75,7 @@ export function EmployerBottomNav({ locale, onMore }: EmployerBottomNavProps) {
         <button
           type="button"
           onClick={onMore}
-          className="relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium text-muted-foreground"
+          className="relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium text-muted-foreground"
           aria-label={t("openMoreMenu")}
         >
           <Menu className="h-5 w-5" />

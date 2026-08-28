@@ -409,7 +409,7 @@ export function PosterOverlay({
             </button>
           )}
           <button type="button" onClick={() => onPatch(selectedId, { fontScale: Math.max(0.5, Math.round(((selOv?.fontScale ?? 1) - 0.1) * 100) / 100) })} className="h-6 w-6 rounded text-neutral-200 hover:bg-neutral-700 text-[14px]">−</button>
-          <span className="text-[10px] text-neutral-300 w-8 text-center">{Math.round((selOv?.fontScale ?? 1) * 100)}%</span>
+          <span className="text-[11px] text-neutral-300 w-8 text-center">{Math.round((selOv?.fontScale ?? 1) * 100)}%</span>
           <button type="button" onClick={() => onPatch(selectedId, { fontScale: Math.min(2.5, Math.round(((selOv?.fontScale ?? 1) + 0.1) * 100) / 100) })} className="h-6 w-6 rounded text-neutral-200 hover:bg-neutral-700 text-[14px]">+</button>
         </div>
       )}

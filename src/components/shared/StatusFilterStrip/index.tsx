@@ -44,7 +44,7 @@ export function StatusFilterStrip({ label, items, selectedId, onSelect, classNam
             )}
           >
             <span className="text-lg font-semibold leading-none tabular-nums text-foreground">{formatNumber(item.value, locale)}</span>
-            <span className="mt-1 w-full text-[10px] font-semibold uppercase leading-3 tracking-[0.08em] [overflow-wrap:anywhere] sm:text-[11px]">{item.label}</span>
+            <span className="mt-1 w-full text-[11px] font-semibold uppercase leading-3 tracking-[0.08em] [overflow-wrap:anywhere] sm:text-[11px]">{item.label}</span>
           </button>
         );
       })}

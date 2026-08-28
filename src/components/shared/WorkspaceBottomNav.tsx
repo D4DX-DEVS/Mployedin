@@ -61,7 +61,7 @@ export function WorkspaceBottomNav({ locale, tabs, onOpenMenu, menuLabel, ariaLa
             >
               {active && <span className="absolute top-0 inset-x-[20%] h-0.5 rounded-b-full bg-primary" aria-hidden />}
               <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-150", active && "scale-110")} />
-              <span className="text-[10px] font-medium leading-none truncate">{tab.label}</span>
+              <span className="text-[11px] font-medium leading-none truncate">{tab.label}</span>
             </Link>
           );
         })}
@@ -71,7 +71,7 @@ export function WorkspaceBottomNav({ locale, tabs, onOpenMenu, menuLabel, ariaLa
           className="relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-w-0 text-muted-foreground transition-colors duration-150"
         >
           <Menu className="h-5 w-5 shrink-0" />
-          <span className="text-[10px] font-medium leading-none truncate">{menuLabel}</span>
+          <span className="text-[11px] font-medium leading-none truncate">{menuLabel}</span>
         </button>
       </div>
     </nav>

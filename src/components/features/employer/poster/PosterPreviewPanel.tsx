@@ -200,10 +200,10 @@ export function PosterPreviewPanel({
       {/* Undo / redo (Ctrl+Z / Ctrl+Shift+Z). */}
       {(canUndo || canRedo) && (
         <div className="flex items-center gap-1.5">
-          <button type="button" onClick={undo} disabled={!canUndo} className="flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] disabled:opacity-40 hover:bg-muted/50">
+          <button type="button" onClick={undo} disabled={!canUndo} className="flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] disabled:opacity-40 hover:bg-muted/50">
             <Undo2 className="h-3 w-3" /> Undo
           </button>
-          <button type="button" onClick={redo} disabled={!canRedo} className="flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] disabled:opacity-40 hover:bg-muted/50">
+          <button type="button" onClick={redo} disabled={!canRedo} className="flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] disabled:opacity-40 hover:bg-muted/50">
             <Redo2 className="h-3 w-3" /> Redo
           </button>
         </div>
@@ -216,16 +216,16 @@ export function PosterPreviewPanel({
             <p className="text-xs font-semibold text-foreground">
               {POSTER_ELEMENTS.find((e) => e.id === selectedId)?.label}
             </p>
-            <button type="button" onClick={() => setSelectedId(null)} className="text-[10px] text-muted-foreground underline">
+            <button type="button" onClick={() => setSelectedId(null)} className="text-[11px] text-muted-foreground underline">
               ← Poster settings
             </button>
           </div>
 
-          <p className="text-[10px] text-muted-foreground -mt-1">Drag it on the poster to reposition.</p>
+          <p className="text-[11px] text-muted-foreground -mt-1">Drag it on the poster to reposition.</p>
 
           {selMeta?.editableText && (
             <div>
-              <p className="text-[10px] text-muted-foreground mb-1">Text</p>
+              <p className="text-[11px] text-muted-foreground mb-1">Text</p>
               <input
                 type="text"
                 value={el?.text ?? ""}
@@ -247,7 +247,7 @@ export function PosterPreviewPanel({
               onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) patchEl(selectedId, { fontScale: clamp(v / 100, 0.5, 2.5) }); }}
               className="w-14 rounded-md border px-1.5 py-0.5 text-[11px] bg-background text-center"
             />
-            <span className="text-[10px] text-muted-foreground self-center">%</span>
+            <span className="text-[11px] text-muted-foreground self-center">%</span>
             <Chip active={false} onClick={() => patchEl(selectedId, { fontScale: clamp((el?.fontScale ?? 1) + 0.1, 0.5, 2.5) })}>+</Chip>
           </EditorRow>
 
@@ -262,7 +262,7 @@ export function PosterPreviewPanel({
               </EditorRow>
 
               <div>
-                <p className="text-[10px] text-muted-foreground mb-1">Color</p>
+                <p className="text-[11px] text-muted-foreground mb-1">Color</p>
                 <div className="flex items-center gap-2 mb-1.5">
                   <input
                     type="color"
@@ -280,7 +280,7 @@ export function PosterPreviewPanel({
                 </div>
                 {recentColors.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-1.5">
-                    <span className="text-[9px] text-muted-foreground self-center mr-0.5">Recent</span>
+                    <span className="text-[11px] text-muted-foreground self-center mr-0.5">Recent</span>
                     {recentColors.map((c) => (
                       <button key={`r-${c}`} type="button" onClick={() => applyColor(selectedId, c)} className="h-5 w-5 rounded-full border" style={{ backgroundColor: c }} aria-label={c} />
                     ))}
@@ -304,18 +304,18 @@ export function PosterPreviewPanel({
 
           <div className="flex items-center gap-3">
             {selectedId !== "platformLogo" && (
-              <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <input type="checkbox" checked={el?.hidden ?? false} onChange={(e) => patchEl(selectedId, { hidden: e.target.checked || undefined })} />
                 Hide element
               </label>
             )}
             {(el?.x != null || el?.y != null) && (
-              <button type="button" onClick={() => patchEl(selectedId, { x: undefined, y: undefined })} className="text-[10px] text-muted-foreground underline">
+              <button type="button" onClick={() => patchEl(selectedId, { x: undefined, y: undefined })} className="text-[11px] text-muted-foreground underline">
                 Reset position
               </button>
             )}
             {el && Object.keys(el).length > 0 && (
-              <button type="button" onClick={() => resetEl(selectedId)} className="text-[10px] text-muted-foreground underline">
+              <button type="button" onClick={() => resetEl(selectedId)} className="text-[11px] text-muted-foreground underline">
                 Reset element
               </button>
             )}
@@ -324,7 +324,7 @@ export function PosterPreviewPanel({
       ) : (
         <div className="rounded-lg border space-y-3 chip-pad">
           <p className="text-xs font-semibold text-foreground">Customize look</p>
-          <p className="text-[10px] text-muted-foreground -mt-1">Tip: click any text on the poster to edit it (size, weight, color, text).</p>
+          <p className="text-[11px] text-muted-foreground -mt-1">Tip: click any text on the poster to edit it (size, weight, color, text).</p>
 
           <EditorRow label="Template">
             {TEMPLATES.map((tpl) => (
@@ -363,7 +363,7 @@ export function PosterPreviewPanel({
               onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) setLook((s) => ({ ...s, textScale: clamp(v / 100, 0.5, 2) })); }}
               className="w-14 rounded-md border px-1.5 py-0.5 text-[11px] bg-background text-center"
             />
-            <span className="text-[10px] text-muted-foreground self-center">%</span>
+            <span className="text-[11px] text-muted-foreground self-center">%</span>
             <Chip active={false} onClick={() => setLook((s) => ({ ...s, textScale: clamp((s.textScale ?? 1) + 0.1, 0.5, 2) }))}>+</Chip>
           </EditorRow>
 
@@ -387,7 +387,7 @@ export function PosterPreviewPanel({
             <button
               type="button"
               onClick={() => set({ look: {}, layout: null })}
-              className="text-[10px] text-muted-foreground underline"
+              className="text-[11px] text-muted-foreground underline"
             >
               Reset all
             </button>
@@ -398,7 +398,7 @@ export function PosterPreviewPanel({
       {/* Download per format */}
       <div>
         <p className="text-xs font-medium text-foreground mb-2">{t("downloadShareTitle")}</p>
-        <p className="text-[10px] text-muted-foreground mb-2">{t("downloadShareDesc")}</p>
+        <p className="text-[11px] text-muted-foreground mb-2">{t("downloadShareDesc")}</p>
         <div className="space-y-1.5">
           {formats.map((f) => (
             <button
@@ -418,20 +418,20 @@ export function PosterPreviewPanel({
             </button>
           ))}
         </div>
-        {exportError && <p className="text-[10px] text-destructive mt-2">{exportError}</p>}
+        {exportError && <p className="text-[11px] text-destructive mt-2">{exportError}</p>}
       </div>
 
       {/* Share Link */}
       {shareSlug && (
         <div>
           <p className="text-xs font-medium text-foreground mb-1">Share Poster</p>
-          <p className="text-[10px] text-muted-foreground mb-2">Anyone with this link can view this poster</p>
+          <p className="text-[11px] text-muted-foreground mb-2">Anyone with this link can view this poster</p>
           <div className="flex items-center gap-2">
             <input
               type="text"
               readOnly
               value={shareUrl}
-              className="flex-1 rounded-md border px-2 py-1.5 text-[10px] bg-muted"
+              className="flex-1 rounded-md border px-2 py-1.5 text-[11px] bg-muted"
             />
             <button
               type="button"
@@ -498,7 +498,7 @@ function useHistory(initial: EditState) {
 function EditorRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] text-muted-foreground mb-1">{label}</p>
+      <p className="text-[11px] text-muted-foreground mb-1">{label}</p>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
@@ -509,7 +509,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
     <button
       type="button"
       onClick={onClick}
-      className={`px-2.5 py-1 rounded-full text-[10px] border transition-all ${
+      className={`px-2.5 py-1 rounded-full text-[11px] border transition-all ${
         active ? "bg-primary/10 border-primary text-foreground" : "border-border hover:border-primary/40 text-muted-foreground"
       }`}
     >

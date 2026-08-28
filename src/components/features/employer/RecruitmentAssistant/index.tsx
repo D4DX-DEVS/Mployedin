@@ -1099,13 +1099,13 @@ function BulkJobPreviewCard({
                 {job.requirements.skills.slice(0, 5).map((s) => (
                   <span
                     key={s}
-                    className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium"
+                    className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-medium"
                   >
                     {s}
                   </span>
                 ))}
                 {job.requirements.skills.length > 5 && (
-                  <span className="text-[10px] text-muted-foreground">+{job.requirements.skills.length - 5}</span>
+                  <span className="text-[11px] text-muted-foreground">+{job.requirements.skills.length - 5}</span>
                 )}
               </div>
             ) : null}

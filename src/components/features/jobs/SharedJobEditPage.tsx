@@ -1061,7 +1061,7 @@ export function SharedJobEditPage({
                     </div>
                     {NEEDS_OPTIONS.has(q.type) && (
                       <div className="space-y-1.5 pl-1">
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t("options")}</p>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t("options")}</p>
                         {q.options.map((opt, optIdx) => (
                           <div key={optIdx} className="flex items-center gap-1.5">
                             <Input
@@ -1208,7 +1208,7 @@ export function SharedJobEditPage({
                   <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
                     <MapPin className="w-3 h-3 flex-shrink-0" />
                     {[form.location.city, form.location.country].filter(Boolean).join(", ") || t("locationNotSet")}
-                    {form.workMode && <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium",
+                    {form.workMode && <span className={cn("px-1.5 py-0.5 rounded text-[11px] font-medium",
                       form.workMode === "remote" ? "bg-emerald-100 text-emerald-700"
                         : form.workMode === "hybrid" ? "bg-amber-100 text-amber-700"
                         : "bg-muted text-muted-foreground"
@@ -1235,7 +1235,7 @@ export function SharedJobEditPage({
                 </div>
                 {form.requirements.skills.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{t("skillsPreview")}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{t("skillsPreview")}</p>
                     <div className="flex flex-wrap gap-1">
                       {form.requirements.skills.slice(0, 8).map((s) => (
                         <span key={s} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">{s}</span>
@@ -1246,7 +1246,7 @@ export function SharedJobEditPage({
                 )}
                 {form.requirements.preferredSkills.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{t("niceToHave")}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{t("niceToHave")}</p>
                     <div className="flex flex-wrap gap-1">
                       {form.requirements.preferredSkills.slice(0, 6).map((s) => (
                         <span key={s} className="text-xs bg-secondary/50 text-secondary-foreground/70 px-2 py-0.5 rounded-full border border-dashed border-border">{s}</span>
@@ -1260,7 +1260,7 @@ export function SharedJobEditPage({
                 )}
                 {form.description && (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">About the Role</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">About the Role</p>
                     <p className="text-xs text-muted-foreground leading-relaxed line-clamp-5">{form.description.replace(/#+\s/g, "").replace(/\*\*/g, "")}</p>
                   </div>
                 )}

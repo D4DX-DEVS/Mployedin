@@ -69,7 +69,7 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
             className={`rounded-xl ${c.bg} text-center transition-all hover:shadow-md hover:-translate-y-0.5 card-pad`}
           >
             <p className={`text-2xl font-bold ${c.textColor}`}>{c.value}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">{c.label}</p>
+            <p className="text-[11px] text-muted-foreground mt-1">{c.label}</p>
           </Link>
         ))}
       </div>

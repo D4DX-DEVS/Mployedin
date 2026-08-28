@@ -386,7 +386,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
                         <Link href={`/${locale}/agent/jobs/${row.jobId}`} className="font-semibold text-foreground transition-colors hover:text-primary">
                           {row.title}
                         </Link>
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${getJobStatusClasses(row.status)}`}>
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${getJobStatusClasses(row.status)}`}>
                           {getJobStatusLabel(row.status)}
                         </span>
                       </div>

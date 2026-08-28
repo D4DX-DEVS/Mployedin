@@ -278,14 +278,14 @@ export default function AgentTasksPage() {
                         <p className="mt-0.5 text-xs text-muted-foreground">{task.description}</p>
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
                           {t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
                         </span>
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
                           {t(`categoryLabel${task.category.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`)}
                         </span>
                         {task.dueDate && (
-                          <span className={`inline-flex items-center gap-1 text-[10px] ${
+                          <span className={`inline-flex items-center gap-1 text-[11px] ${
                             new Date(task.dueDate) < new Date() && task.status !== "completed"
                               ? "text-red-500 font-semibold"
                               : "text-muted-foreground"

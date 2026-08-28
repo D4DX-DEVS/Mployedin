@@ -82,7 +82,7 @@ export function SetupGuide() {
     >
       <div className="bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.35),_transparent_42%),linear-gradient(135deg,_rgba(14,165,233,0.96),_rgba(37,99,235,0.94))] px-5 py-4 flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90">
             <Sparkles className="h-3 w-3" />
             {t("setupGuide")}
           </div>
@@ -153,7 +153,7 @@ export function SetupGuide() {
                       ) : (
                         <div
                           className={cn(
-                            "h-5 w-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold",
+                            "h-5 w-5 rounded-full border-2 flex items-center justify-center text-[11px] font-bold",
                             isCurrent
                               ? "border-sky-600 text-sky-600"
                               : "border-slate-300 text-slate-500"

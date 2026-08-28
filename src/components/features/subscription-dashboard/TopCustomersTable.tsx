@@ -60,12 +60,12 @@ export function TopCustomersTable({ data }: TopCustomersTableProps) {
                   <p className="text-sm font-medium truncate">{c.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{c.email}</p>
                 </div>
-                <Badge className={`text-[10px] shrink-0 ${b.className}`}>
+                <Badge className={`text-[11px] shrink-0 ${b.className}`}>
                   {c.planName || b.label}
                 </Badge>
                 <div className="text-right shrink-0 ml-2">
                   <p className="text-sm font-semibold">{formatCurrency(c.mrr)} AED</p>
-                  <p className="text-[10px] text-muted-foreground">{formatDate(c.since)}</p>
+                  <p className="text-[11px] text-muted-foreground">{formatDate(c.since)}</p>
                 </div>
               </div>
             );

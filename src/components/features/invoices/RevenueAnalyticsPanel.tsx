@@ -36,7 +36,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
                     <div className="flex-1">
                       <div className="h-6 w-full overflow-hidden rounded-full bg-muted/40">
                         <div
-                          className="flex h-full items-center rounded-full bg-gradient-to-r from-sky-500 to-sky-600 px-2 text-[10px] font-medium text-white transition-all"
+                          className="flex h-full items-center rounded-full bg-gradient-to-r from-sky-500 to-sky-600 px-2 text-[11px] font-medium text-white transition-all"
                           style={{ width: `${Math.max(pct, 5)}%` }}
                         >
                           {pct > 15 && fmt(m.revenue)}
@@ -44,7 +44,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
                       </div>
                     </div>
                     <span className="w-24 shrink-0 text-right text-xs font-medium">{fmt(m.revenue)}</span>
-                    <span className="w-12 shrink-0 text-right text-[10px] text-muted-foreground">{m.count}</span>
+                    <span className="w-12 shrink-0 text-right text-[11px] text-muted-foreground">{m.count}</span>
                   </div>
                 );
               })}
@@ -134,7 +134,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
                 const colors: Record<string, string> = { "0": "border-emerald-200 bg-emerald-50", "30": "border-amber-200 bg-amber-50", "60": "border-orange-200 bg-orange-50", "90": "border-rose-200 bg-rose-50", "120": "border-red-200 bg-red-50" };
                 return (
                   <div key={String(bucket._id)} className={`rounded-xl border ${colors[String(bucket._id)] ?? "border-border bg-muted/30"} chip-pad`}>
-                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">{labels[String(bucket._id)] ?? `${bucket._id}+ days`}</p>
+                    <p className="text-[11px] font-semibold uppercase text-muted-foreground">{labels[String(bucket._id)] ?? `${bucket._id}+ days`}</p>
                     <p className="mt-1 text-base sm:text-lg font-bold">{fmt(bucket.totalBalance)}</p>
                     <p className="text-xs text-muted-foreground">{bucket.count} invoice{bucket.count !== 1 ? "s" : ""}</p>
                   </div>

@@ -187,12 +187,12 @@ export default function EmployerMatchingWeightsPage() {
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
-                      <Badge variant={tpl.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                      <Badge variant={tpl.scope === "system" ? "outline" : "secondary"} className="text-[11px]">
                         {tpl.scope === "system" ? "System" : "Custom"}
                       </Badge>
                     </div>
                     {tpl.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{tpl.description}</p>}
-                    <p className="mt-1 text-[10px] text-muted-foreground">
+                    <p className="mt-1 text-[11px] text-muted-foreground">
                       Top: {t(WEIGHT_LABEL_KEYS[topKey])} ({tpl.weights[topKey]}%)
                     </p>
                   </button>

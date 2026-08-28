@@ -167,17 +167,17 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
           <div className="mx-6 mt-5 grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{advancedLinks.length}</p>
-              <p className="text-[10px] text-muted-foreground">{t("activeLinks")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("activeLinks")}</p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{totalRegistrations}</p>
-              <p className="text-[10px] text-muted-foreground">{t("registrations")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("registrations")}</p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-emerald-600">
                 {totalRegistrations > 0 ? "100%" : "—"}
               </p>
-              <p className="text-[10px] text-muted-foreground">{t("verifiedRate")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("verifiedRate")}</p>
             </div>
           </div>
 
@@ -282,27 +282,27 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                         <div className="flex items-center gap-2">
                           <code className="text-xs font-semibold text-foreground">{link.code}</code>
                           {link.label && (
-                            <span className="truncate rounded-full bg-sky-100/60 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                            <span className="truncate rounded-full bg-sky-100/60 px-2 py-0.5 text-[11px] font-medium text-sky-700">
                               {link.label}
                             </span>
                           )}
                           {!link.isActive && (
-                            <span className="rounded-full bg-red-100/60 px-2 py-0.5 text-[10px] font-medium text-red-600">
+                            <span className="rounded-full bg-red-100/60 px-2 py-0.5 text-[11px] font-medium text-red-600">
                               {t("disabled")}
                             </span>
                           )}
                           {isExpired && (
-                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[11px] font-medium text-amber-600">
                               {t("expired")}
                             </span>
                           )}
                           {isMaxed && (
-                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[11px] font-medium text-amber-600">
                               {t("maxReached")}
                             </span>
                           )}
                         </div>
-                        <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
+                        <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
                             {link.usedCount} {link.usedCount !== 1 ? t("signups") : t("signup")}

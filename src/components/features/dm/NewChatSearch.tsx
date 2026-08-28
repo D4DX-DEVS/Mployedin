@@ -225,7 +225,7 @@ export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewCha
                           <Badge
                             variant="outline"
                             className={cn(
-                              "text-[10px] px-1.5 py-0 h-4 shrink-0",
+                              "text-[11px] px-1.5 py-0 h-4 shrink-0",
                               roleBadgeColor(user.role)
                             )}
                           >

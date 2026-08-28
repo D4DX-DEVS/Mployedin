@@ -95,7 +95,7 @@ function candidateLabel(ref: PooledCandidateRef | null): string {
 }
 
 function CandidateAvatar({ ref, size = "sm" }: { ref: PooledCandidateRef | null; size?: "sm" | "xs" }) {
-  const dims = size === "xs" ? "h-6 w-6 text-[10px]" : "h-8 w-8 text-xs";
+  const dims = size === "xs" ? "h-6 w-6 text-[11px]" : "h-8 w-8 text-xs";
   const avatar = ref?.userId?.avatar;
   const label = candidateLabel(ref);
   const initials = label !== "—" ? label.slice(0, 2).toUpperCase() : "?";
@@ -757,7 +757,7 @@ function PoolDetailDialog({
                                     {ref.skills.slice(0, 5).map((skill) => (
                                       <span
                                         key={skill}
-                                        className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                                        className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
                                       >
                                         {skill}
                                       </span>
@@ -765,7 +765,7 @@ function PoolDetailDialog({
                                   </div>
                                 ) : null}
                                 <div className="mt-1.5 flex items-center gap-2">
-                                  <Badge variant="outline" className={`text-[10px] ${SOURCE_BADGE_CLASS[candidate.source]}`}>
+                                  <Badge variant="outline" className={`text-[11px] ${SOURCE_BADGE_CLASS[candidate.source]}`}>
                                     {t(`sources.${candidate.source}`)}
                                   </Badge>
                                   <span className="text-[11px] text-muted-foreground">

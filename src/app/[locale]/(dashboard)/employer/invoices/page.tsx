@@ -244,7 +244,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   </span>
                 )}
                 {isOverdue && (
-                  <Badge variant="outline" className="gap-1 border-status-rejected/20 bg-status-rejected-bg text-rose-700 text-[10px]">
+                  <Badge variant="outline" className="gap-1 border-status-rejected/20 bg-status-rejected-bg text-rose-700 text-[11px]">
                     <AlertTriangle className="h-2.5 w-2.5" /> {t("overdueStatus")}
                   </Badge>
                 )}

@@ -207,7 +207,7 @@ export function CommandMenuTrigger({ compact = false }: { locale?: string; compa
           <span className="flex-1 truncate text-left">
             {t("searchShort")}
           </span>
-          <kbd className="pointer-events-none hidden h-5 shrink-0 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium sm:inline-flex">
+          <kbd className="pointer-events-none hidden h-5 shrink-0 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[11px] font-medium sm:inline-flex">
             <span className="text-xs">⌘</span>K
           </kbd>
         </>

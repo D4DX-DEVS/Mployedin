@@ -145,14 +145,14 @@ export default function JobSeekerReferralPage() {
                   <p className="text-xs text-muted-foreground">{r.email}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${
                     r.status === "active" ? "bg-emerald-50 text-emerald-600" :
                     r.status === "registered" ? "bg-sky-50 text-sky-600" :
                     "bg-amber-50 text-amber-600"
                   }`}>
                     {r.status}
                   </span>
-                  <p className="mt-1 text-[10px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString(numberLocale)}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString(numberLocale)}</p>
                 </div>
               </div>
             ))}

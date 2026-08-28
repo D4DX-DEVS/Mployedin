@@ -3936,6 +3936,7 @@
     "statHighMatch": "تطابق عالي",
     "statAvailable": "متاحون",
     "runAiMatch": "تشغيل مطابقة الذكاء الاصطناعي",
+    "runAiMatchShort": "مطابقة الذكاء",
     "scoringProgress": "جارٍ التقييم",
     "screenWithAi": "فحص بالذكاء الاصطناعي",
     "screeningInProgress": "جارٍ الفحص...",

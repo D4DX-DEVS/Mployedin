@@ -82,7 +82,7 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
       header: t("category"),
       headerClassName: hiddenLg,
       cellClassName: hiddenLg,
-      cell: (inv) => <span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span>,
+      cell: (inv) => <span className="text-[11px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span>,
     },
     {
       key: "total",

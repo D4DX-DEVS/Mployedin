@@ -41,7 +41,7 @@ export function AlertsCenter({ data }: Props) {
             >
               <Icon className={`h-5 w-5 ${item.color} mx-auto mb-2`} />
               <p className="text-2xl font-bold">{item.count}</p>
-              <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">{item.label}</p>
+              <p className="text-[11px] text-muted-foreground mt-1 uppercase tracking-wider">{item.label}</p>
             </div>
           );
         })}

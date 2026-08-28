@@ -121,7 +121,7 @@ export function ApprovalTimeline({ entries }: ApprovalTimelineProps) {
                 </Badge>
                 {entry.approverRole && (
                   <span
-                    className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${ROLE_COLORS[role] ?? ROLE_COLORS.system}`}
+                    className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${ROLE_COLORS[role] ?? ROLE_COLORS.system}`}
                   >
                     {ROLE_LABELS[role] ?? role}
                   </span>

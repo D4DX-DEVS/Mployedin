@@ -801,7 +801,7 @@ function AgentTargetRow({
               className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums pr-11"
               disabled={disabled}
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
               {currency}
             </span>
           </div>
@@ -886,7 +886,7 @@ function MonthlyDistributionTable({
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-muted-foreground">{t("monthlyDistribution")}</p>
         {!isValid && (
-          <Badge variant="destructive" className="text-[10px]">
+          <Badge variant="destructive" className="text-[11px]">
             {t("sumMismatch")}
           </Badge>
         )}

@@ -326,7 +326,7 @@ function MiniCalendar({
           <div
             key={i}
             role="columnheader"
-            className="flex h-7 w-7 items-center justify-center text-[10px] font-semibold text-muted-foreground/70"
+            className="flex h-7 w-7 items-center justify-center text-[11px] font-semibold text-muted-foreground/70"
           >
             {t(`weekdaysMini.${key}`)}
           </div>
@@ -520,7 +520,7 @@ function MonthView({
           <div
             key={key}
             role="columnheader"
-            className="py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:py-2.5 sm:text-[11px]"
+            className="py-1.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:py-2.5 sm:text-[11px]"
           >
             {t(`weekdaysShort.${key}`)}
           </div>
@@ -593,7 +593,7 @@ function MonthView({
                       ev.stopPropagation();
                       onSelectEvent(e);
                     }}
-                    className={`flex cursor-pointer items-center gap-1 rounded-lg border-s-2 text-[10px] font-medium leading-tight transition-all duration-150 hover:opacity-90 hover:shadow-sm hover:translate-x-0.5 ${ isPast ? "opacity-50" : "" } ${EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"} chip-pad`}
+                    className={`flex cursor-pointer items-center gap-1 rounded-lg border-s-2 text-[11px] font-medium leading-tight transition-all duration-150 hover:opacity-90 hover:shadow-sm hover:translate-x-0.5 ${ isPast ? "opacity-50" : "" } ${EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"} chip-pad`}
                   >
                     <span className="truncate">
                       {formatTime(new Date(e.scheduledAt), locale).replace(/\s?(AM|PM|Øµ|Ù…)/, "").trim()}{" "}
@@ -602,7 +602,7 @@ function MonthView({
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
-                  <p className="px-1 text-[10px] font-medium text-muted-foreground">
+                  <p className="px-1 text-[11px] font-medium text-muted-foreground">
                     {t("more", { count: dayEvents.length - 3 })}
                   </p>
                 )}
@@ -680,7 +680,7 @@ function TimeGridView({
                     isSelected ? "bg-primary/5" : ""
                   }`}
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {t(`weekdaysShort.${WEEKDAY_SHORT_KEYS[d.getDay()]}`)}
                   </span>
                   <span
@@ -720,7 +720,7 @@ function TimeGridView({
                 className="relative flex items-start justify-end pe-2"
                 style={{ height: "60px" }}
               >
-                <span className="text-[10px] font-medium text-muted-foreground -mt-1.5">
+                <span className="text-[11px] font-medium text-muted-foreground -mt-1.5">
                   {h === 0 ? "" : formatHour(h, locale)}
                 </span>
               </div>
@@ -785,7 +785,7 @@ function TimeGridView({
                           {evt.title}
                         </p>
                         {heightMin >= 40 && (
-                          <p className="truncate text-[10px] opacity-75 leading-tight mt-0.5">
+                          <p className="truncate text-[11px] opacity-75 leading-tight mt-0.5">
                             {formatTime(evtDate, locale)}
                             {evt.subtitle ? ` Â· ${evt.subtitle}` : ""}
                           </p>
@@ -869,13 +869,13 @@ function UpcomingList({
                   {typeIcon(e.type)}
                   <span className="text-xs font-semibold">{e.title}</span>
                 </div>
-                <p className="mt-1 flex items-center gap-1 text-[10px] opacity-70">
+                <p className="mt-1 flex items-center gap-1 text-[11px] opacity-70">
                   <Clock className="h-2.5 w-2.5" />
                   {formatTime(new Date(e.scheduledAt), locale)}
                   {e.duration ? ` Â· ${t("min", { count: e.duration })}` : ""}
                 </p>
                 {e.subtitle && (
-                  <p className="mt-0.5 truncate text-[10px] opacity-60">
+                  <p className="mt-0.5 truncate text-[11px] opacity-60">
                     {e.subtitle}
                   </p>
                 )}
@@ -909,7 +909,7 @@ function UpcomingList({
                     <p className="truncate text-xs font-medium text-foreground">
                       {e.title}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {formatDateLocale(dt, locale, {
                         month: "short",
                         day: "numeric",
@@ -1139,8 +1139,11 @@ export default function MployedinCalendar({
 
         {/* Sidebar */}
         <div className="space-y-4">
-          {/* Mini calendar */}
-          <div className="workspace-panel-surface rounded-3xl panel-body">
+          {/* Mini calendar — only while the sidebar is an actual sidebar. The
+              layout stacks below xl, where this rendered a second full month
+              grid directly under the main one: same month, same dates, twice
+              the scrolling. */}
+          <div className="hidden workspace-panel-surface rounded-3xl panel-body xl:block">
             <MiniCalendar
               currentDate={currentDate}
               selectedDate={selectedDate}

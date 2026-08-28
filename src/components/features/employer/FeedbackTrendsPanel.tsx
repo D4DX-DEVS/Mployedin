@@ -223,7 +223,7 @@ export function FeedbackTrendsPanel() {
                     className="w-full rounded-t-md bg-primary/80 transition-all"
                     style={{ height: `${heightPct}%` }}
                   />
-                  <span className="text-[10px] text-muted-foreground">{b.range}</span>
+                  <span className="text-[11px] text-muted-foreground">{b.range}</span>
                 </div>
               );
             })}
