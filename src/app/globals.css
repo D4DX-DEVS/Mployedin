@@ -2923,13 +2923,18 @@ table.workspace-list-table tbody tr:focus-visible {
    heading itself — so at 390px "Candidate Matching" rendered 24px in a 153px
    column and broke into "Candidate / Matching". Step it down here, where the
    specificity actually lands. No effect from 640px up. */
-@media (max-width: 639px) {
-  .dashboard-main [data-dashboard-page-header="component"][data-compact="true"] :is(h1, h2) {
-    /* !important because the page-title rules this competes with are themselves
-       emitted from a layer that wins on order; without it the heading held 24px
-       and "Candidate Matching" broke across two lines in a 153px column. */
-    font-size: 1rem !important;
-    line-height: 1.35 !important;
+/* Must live in the same @layer as the page-title rules it overrides. Those set
+   `font-size: var(--text-page-title) !important` from inside `components`, and
+   for !important declarations the layer cascade is INVERTED — a layered
+   important beats an unlayered one. Unlayered, this rule lost and the heading
+   stayed 24px, breaking "Candidate Matching" across two lines in a 153px
+   column. Same layer, later in source, so it wins. */
+@layer components {
+  @media (max-width: 639px) {
+    .dashboard-main [data-dashboard-page-header="component"][data-compact="true"] :is(h1, h2) {
+      font-size: 1rem !important;
+      line-height: 1.35 !important;
+    }
   }
 }
 
