@@ -92,7 +92,10 @@ export function DashboardPageHeader({
             // Sharing the row with the actions leaves ~165px on a 390px screen,
             // so the title steps down to 16px there — at 20px "Candidate
             // Matching" broke into "Can / dida / te". Full size from sm.
-            compact && "text-base leading-snug sm:text-[1.625rem]"
+            // `!` is deliberate: the dashboard page-title rules in globals.css
+            // set this h1 from --text-page-title and outrank a plain utility,
+            // so without it the heading stayed 24px and wrapped.
+            compact && "!text-base !leading-snug sm:!text-[1.625rem]"
           )}>
             {title}
           </Heading>
