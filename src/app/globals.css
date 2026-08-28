@@ -2925,8 +2925,11 @@ table.workspace-list-table tbody tr:focus-visible {
    specificity actually lands. No effect from 640px up. */
 @media (max-width: 639px) {
   .dashboard-main [data-dashboard-page-header="component"][data-compact="true"] :is(h1, h2) {
-    font-size: 1rem;
-    line-height: 1.35;
+    /* !important because the page-title rules this competes with are themselves
+       emitted from a layer that wins on order; without it the heading held 24px
+       and "Candidate Matching" broke across two lines in a 153px column. */
+    font-size: 1rem !important;
+    line-height: 1.35 !important;
   }
 }
 
