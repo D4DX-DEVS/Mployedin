@@ -153,6 +153,7 @@ export default function AdminMatchingWeightTemplatesPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={

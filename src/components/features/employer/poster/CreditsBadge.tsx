@@ -10,9 +10,9 @@ export function CreditsBadge({ credits }: CreditsBadgeProps) {
   if (!credits) return null;
 
   return (
-    <div className="flex items-center gap-2 rounded-full border bg-card px-4 py-2 shadow-sm">
+    <div className="flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1.5 shadow-sm sm:gap-2 sm:px-4 sm:py-2">
       <Zap className="h-4 w-4 text-primary" />
-      <span className="text-sm font-semibold text-foreground">
+      <span className="text-xs font-semibold text-foreground sm:text-sm">
         Credits: {credits.remaining} / {credits.limit}
       </span>
     </div>

@@ -294,6 +294,7 @@ export default function AdminCommissionsPage() {
       {ConfirmDialogNode}
 
       <DashboardPageHeader
+        compact
         compactOnMobile
         title={t("commissionsTitle")}
         description={t("commissionsDescription")}

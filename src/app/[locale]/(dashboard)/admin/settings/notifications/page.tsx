@@ -139,6 +139,8 @@ export default function AdminNotificationsPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         icon={Bell}
         title={t("notificationControlCenter")}
         description={t("notificationControlCenterDescription")}
@@ -161,12 +163,15 @@ export default function AdminNotificationsPage() {
 
       {/* ── Tab Navigation ── */}
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        <div className="flex gap-1 overflow-x-auto px-4 py-2">
+        {/* shrink-0 on the tabs: without it flex squeezed five tabs into the
+            row width and their nowrap labels overlapped each other. The row
+            scrolls instead, like the employer filter-chip rows. */}
+        <div className="scrollbar-none flex flex-nowrap gap-1 overflow-x-auto px-4 py-2">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                 tab === t.key
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-card hover:text-foreground"

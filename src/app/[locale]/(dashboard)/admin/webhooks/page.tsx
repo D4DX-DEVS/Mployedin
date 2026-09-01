@@ -316,6 +316,7 @@ export default function AdminWebhooksPage() {
     <div className="page-container">
 
       <DashboardPageHeader
+        compact
         compactOnMobile
         icon={WebhookIcon}
         title={t("title")}

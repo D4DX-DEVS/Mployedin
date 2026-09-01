@@ -282,6 +282,7 @@ export default function AdminInterviewOversightPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
+        compact
         title={t("interviewOversight")}
         description={t("monitorAllInterviews")}
         actions={(

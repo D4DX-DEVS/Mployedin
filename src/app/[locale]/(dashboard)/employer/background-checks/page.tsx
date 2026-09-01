@@ -226,6 +226,7 @@ export default function BackgroundChecksPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
         icon={ShieldCheck}
         title={t("title")}
         description={t("description")}

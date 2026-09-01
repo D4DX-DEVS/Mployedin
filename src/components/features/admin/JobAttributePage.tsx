@@ -18,8 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, ListTree } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface AttributeItem {
   _id: string;
@@ -146,49 +147,56 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
     <div className="page-container">
       {ConfirmDialogNode}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        {/* Compact header row: mobile stacked, desktop row */}
-        <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-[1.625rem]">{displayTitle}</h1>
-            {displayDescription && (
-              <p className="hidden text-xs text-muted-foreground sm:mt-0.5 sm:block">{displayDescription}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id={`${category}-search`}
-                placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-48"
-              />
-            </div>
-            <div className="flex gap-2">
+      {/* Same shape as the employer listing pages: compact hero, then one
+          panel holding search, table and pagination. These ten lookup routes
+          used to render a bare <h1> inside the panel, which read as a different
+          product from every other admin page. */}
+      <DashboardPageHeader
+        compact
+        compactOnMobile
+        icon={ListTree}
+        title={displayTitle}
+        description={displayDescription}
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters((v) => !v)}
+              aria-label={t("filter")}
+              className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium shrink-0 ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("filter")}</span>
+              {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">!</span>}
+            </Button>
+            {can("job_attributes", "create") && (
               <Button
-                type="button"
-                variant="outline"
+                onClick={() => setShowAdd(true)}
                 size="sm"
-                onClick={() => setShowFilters((v) => !v)}
-                className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium shrink-0 ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
+                aria-label={t("addNew")}
+                className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("filter")}</span>
-                {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">!</span>}
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("addNew")}</span>
               </Button>
-              {can("job_attributes", "create") && (
-                <Button
-                  onClick={() => setShowAdd(true)}
-                  size="sm"
-                  className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("addNew")}</span>
-                </Button>
-              )}
-            </div>
+            )}
+          </>
+        }
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+        <div className="border-b border-border/80 panel-head">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id={`${category}-search`}
+              placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+              className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none"
+            />
           </div>
         </div>
 

@@ -373,6 +373,7 @@ export default function AdminSuperAgentsPage() {
 
       {/* Page Header */}
       <DashboardPageHeader
+        compact
         title={t("pageTitle")}
         description={t("pageSubtitle")}
         compactOnMobile
@@ -380,8 +381,11 @@ export default function AdminSuperAgentsPage() {
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
+          {/* data-table-toolbar + toolbar-search-field opt this hand-rolled
+              header into the shared mobile toolbar rules — three rows on a
+              phone before. */}
+          <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2">
+            <div className="relative toolbar-search-field">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}

@@ -255,6 +255,7 @@ export default function AdminExhibitionAnalyticsPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
         compactOnMobile
         eyebrow={t("yearBadge", { year: data.year })}
         title={t("pageTitle")}

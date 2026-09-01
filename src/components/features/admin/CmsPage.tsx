@@ -29,7 +29,6 @@ import CmsHeroFilters, {
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { formatCount } from "@/lib/ui/intlFormat";
 
 export interface CmsColumn {
   key: string;
@@ -227,7 +226,10 @@ export default function CmsPage({
         eyebrow={t("cmsWorkspace")}
         title={title}
         description={description}
-        summary={{ label: t("totalRecords"), value: formatCount(total), note: t("acrossPages", { count: totalPages }) }}
+        // No `summary`: "Total records" printed the same number as the
+        // "Total items" metric directly beneath it.
+        compact
+        compactOnMobile
         actions={allowCreate && can(resource as "cms", "create") ? (
           <Button
             onClick={() =>
@@ -239,10 +241,11 @@ export default function CmsPage({
             {t("addNew")}
           </Button>
         ) : null}
+        // "Per page" was never a metric — it is the rows-per-page control the
+        // pagination footer already owns.
         metrics={[
           { label: t("totalItems"), value: total, note: t("allRecords"), icon: Icon ?? Sparkles, iconClassName: iconColor },
           { label: t("activeThisPage"), value: activeOnPage, note: t("visibleOnSite"), icon: Sparkles },
-          { label: t("perPage"), value: limit, note: t("itemsShownPerPage"), icon: Sparkles },
         ]}
       >
         <CmsHeroFilters
@@ -293,7 +296,8 @@ export default function CmsPage({
                       <div className="workspace-muted-pill mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-3xl sm:h-16 sm:w-16 sm:rounded-3xl">
                         <Inbox className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
                       </div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+                      {/* Eyebrow duplicates the heading below it — desktop only. */}
+                      <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:block sm:text-[11px] sm:tracking-[0.18em]">
                         {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
                       </p>
                       <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">

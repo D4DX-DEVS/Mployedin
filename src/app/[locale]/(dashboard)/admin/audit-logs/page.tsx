@@ -122,6 +122,8 @@ export default function AuditLogsPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         title={t("auditLogs")}
         description={`${formatCount(total)} ${t("logEntriesDescription")}`}
       />

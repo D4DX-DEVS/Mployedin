@@ -47,6 +47,11 @@ describe("AdminReportsPage", () => {
             level: "critical",
             values: { count: 4 },
           },
+          {
+            id: "demand-softening",
+            level: "warning",
+            values: { delta: -90.5 },
+          },
         ],
         recentJobs: [
           {
@@ -56,6 +61,30 @@ describe("AdminReportsPage", () => {
             createdAt: "2026-04-14T00:00:00.000Z",
             employerName: "Northstar Foods",
             applicationCount: 4,
+          },
+          {
+            id: "job-2",
+            title: "Sous Chef",
+            status: "Draft",
+            createdAt: "2026-04-13T00:00:00.000Z",
+            employerName: "Northstar Foods",
+            applicationCount: 0,
+          },
+          {
+            id: "job-3",
+            title: "Line Cook",
+            status: "Active",
+            createdAt: "2026-04-12T00:00:00.000Z",
+            employerName: "Northstar Foods",
+            applicationCount: 1,
+          },
+          {
+            id: "job-4",
+            title: "Dishwasher",
+            status: "Active",
+            createdAt: "2026-04-11T00:00:00.000Z",
+            employerName: "Northstar Foods",
+            applicationCount: 0,
           },
         ],
         recentApplications: [
@@ -91,47 +120,59 @@ describe("AdminReportsPage", () => {
     global.fetch = originalFetch;
   });
 
-  it("renders reports as an insight-driven admin dashboard instead of a flat scorecard", async () => {
+  it("renders the compact analytical report instead of the old alert wall", async () => {
     const view = render(<AdminReportsPage />);
 
-    await screen.findByRole("heading", { name: /platform alerts/i });
+    await screen.findByRole("heading", { name: /key findings/i });
 
-    const heroSection = screen.getByRole("heading", { name: /reports & analytics/i }).closest("section");
-    const alertsSection = screen.getByRole("heading", { name: /platform alerts/i }).closest("section");
-    const trendSection = screen.getByRole("heading", { name: /jobs vs applications/i }).closest("section");
-    const funnelSection = screen.getByRole("heading", { name: /conversion funnel/i }).closest("section");
+    // Section skeleton: findings, demand trend, status, funnel, agents, recents.
+    expect(screen.getByRole("heading", { name: /hiring demand/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /application status/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /hiring funnel/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /top agents/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /recent jobs/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /recent applications/i })).toBeInTheDocument();
 
-    expect(heroSection).toBeInTheDocument();
-    expect(alertsSection).toBeInTheDocument();
-    expect(trendSection).toBeInTheDocument();
-    expect(funnelSection).toBeInTheDocument();
-    const criticalAlertCard = alertsSection?.querySelector('[data-alert-level="critical"]');
+    // The merged sections are gone.
+    expect(screen.queryByText(/platform alerts/i)).toBeNull();
+    expect(screen.queryByText(/operational highlights/i)).toBeNull();
+    expect(screen.queryByText(/jobs vs applications/i)).toBeNull();
+    expect(screen.queryByText(/conversion funnel/i)).toBeNull();
 
-    expect(criticalAlertCard).not.toBeNull();
-    // Theme-aware surface tokens, not the light-only `bg-white` literal this
-    // assertion used to pin — the card has to stay readable in dark mode. The
-    // severity now reads from the border accent rather than the background.
-    expect(criticalAlertCard?.className).toContain("bg-card");
-    expect(criticalAlertCard?.className).toContain("border-status-rejected/25");
-    expect(criticalAlertCard?.className).toContain("border-l-status-rejected");
-    const criticalAlertTitle = within(criticalAlertCard as HTMLElement).getByText("Jobs without demand");
-    const criticalAlertDescription = within(criticalAlertCard as HTMLElement).getByText(/need stronger sourcing or distribution/i);
-    const criticalAlertMetric = within(criticalAlertCard as HTMLElement).getByText("4 roles");
+    // Findings are compact, numbered rows that link to where the admin acts.
+    // The jest next-intl mock does plain placeholder substitution, not ICU
+    // plurals, so match the phrase rather than the fully formatted sentence.
+    const criticalFinding = screen.getByText(/jobs have no applications/).closest("a");
+    expect(criticalFinding).not.toBeNull();
+    expect(criticalFinding?.getAttribute("href")).toContain("/admin/jobs");
+    expect(criticalFinding?.getAttribute("data-alert-level")).toBe("critical");
 
-    expect(criticalAlertTitle.className).toContain("text-foreground");
-    expect(criticalAlertDescription.className).toContain("text-muted-foreground");
-    expect(criticalAlertMetric.className).toContain("bg-status-rejected");
+    // The softening delta renders unsigned — the copy already says "down".
+    expect(screen.getByText("Applications down 90.5%")).toBeInTheDocument();
+
+    // Demand trend is one shared-baseline SVG chart, not per-month cards.
+    const demandSection = screen.getByRole("heading", { name: /hiring demand/i }).closest("section");
+    expect(demandSection?.querySelector("svg")).not.toBeNull();
+
+    // Status breakdown is a compact row list with counts and percentages.
+    const statusSection = screen.getByRole("heading", { name: /application status/i }).closest("section");
+    expect(within(statusSection as HTMLElement).getByText("Pending")).toBeInTheDocument();
+    expect(within(statusSection as HTMLElement).getByText("33.3%")).toBeInTheDocument();
+    expect(statusSection?.querySelector(".bg-blue-500")).not.toBeNull();
+
+    // Recent jobs cap at three rows plus a view-all link.
+    const jobsSection = screen.getByRole("heading", { name: /recent jobs/i }).closest("section");
+    expect(within(jobsSection as HTMLElement).getByText("Line Cook")).toBeInTheDocument();
+    expect(within(jobsSection as HTMLElement).queryByText("Dishwasher")).toBeNull();
+    expect(within(jobsSection as HTMLElement).getByText(/view all jobs/i).closest("a")?.getAttribute("href")).toContain("/admin/jobs");
+
+    // Agents collapse into ranked one-line rows.
+    const agentsSection = screen.getByRole("heading", { name: /top agents/i }).closest("section");
+    expect(within(agentsSection as HTMLElement).getByText("Sarah Ahmed")).toBeInTheDocument();
+    expect(within(agentsSection as HTMLElement).getByText("3 jobs · 8 applications · 2 placements")).toBeInTheDocument();
+
     expect(screen.getAllByText("11").some((element) => element.className.includes("text-foreground"))).toBe(true);
     expect(screen.getAllByText("18").some((element) => element.className.includes("text-foreground"))).toBe(true);
-    expect(screen.getAllByText("Jobs without demand").length).toBeGreaterThan(0);
-    expect(screen.getByText("Recent Jobs")).toBeInTheDocument();
-    expect(screen.getByText("Recent Applications")).toBeInTheDocument();
-    expect(screen.getByText("Top Agents")).toBeInTheDocument();
-    expect(screen.getByText("Sarah Ahmed")).toBeInTheDocument();
-    expect(screen.getAllByText("Operations Manager").length).toBeGreaterThan(0);
-    expect(screen.getByText("Pending")).toBeInTheDocument();
-    expect(trendSection?.querySelector(".bg-blue-500")).not.toBeNull();
-    expect(trendSection?.querySelector(".bg-violet-500")).not.toBeNull();
 
     expect(view.container.innerHTML).not.toContain("card-base");
     expect(view.container.innerHTML).not.toContain("bg-card rounded-xl shadow-sm border p-5");

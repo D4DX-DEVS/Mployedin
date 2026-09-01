@@ -189,7 +189,9 @@ export default function TeamManagementPage() {
   });
 
   const stats = [
-    { label: t("activeMembers", { count: activeCount }), value: activeCount, icon: CheckCircle2, color: "text-status-selected", bg: "bg-background border-border/60" },
+    // Plain "Active" label — "{count} active members" printed the count twice
+    // next to the card's own value.
+    { label: t("active"), value: activeCount, icon: CheckCircle2, color: "text-status-selected", bg: "bg-background border-border/60" },
     { label: t("pendingInvites"), value: pendingCount, icon: Clock, color: "text-status-shortlisted", bg: "bg-background border-border/60" },
     { label: t("teamMembers"), value: totalCount, icon: Users, color: "text-primary", bg: "bg-background border-border/60" },
   ];
@@ -198,39 +200,41 @@ export default function TeamManagementPage() {
     <div className="page-container">
       {ConfirmDialogNode}
       {/* Header */}
+      {/* compactOnMobile: the description ("N active members") repeats the
+          Active stat card right below the hero. */}
       <PageHero
         icon={Users}
         title={t("title")}
         description={pendingCount > 0 ? t("descriptionWithPending", { activeCount, pendingCount }) : t("descriptionActiveOnly", { activeCount })}
+        compactOnMobile
         actions={
           <div className="flex items-center gap-2">
             <Link href={`/${locale}/employer/team/activity-logs`}>
               <Button variant="outline" size="sm">
                 <Activity className="h-4 w-4 me-2" />
-                <span className="hidden sm:inline">{t("activityLogs")}</span>
-                <span className="sm:hidden">{t("activityLogs")}</span>
+                {t("activityLogs")}
               </Button>
             </Link>
             <Button onClick={() => setShowInviteModal(true)}>
               <Plus className="h-4 w-4 me-2" />
-              <span className="hidden sm:inline">{t("inviteMember")}</span>
-              <span className="sm:hidden">{t("inviteMember")}</span>
+              {t("inviteMember")}
             </Button>
           </div>
         }
       />
 
-      {/* Stats Row */}
+      {/* Stats Row — phones: three cards across one row (value over label,
+          icon hidden) instead of three full-width stacked rows. */}
       {!loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {stats.map((s) => (
-              <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-2.5">
-              <div className="shrink-0 rounded-xl border border-border bg-background/80 chip-pad">
+              <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-2 sm:p-2.5">
+              <div className="hidden shrink-0 rounded-xl border border-border bg-background/80 chip-pad sm:block">
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
-              <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1 flex-1 min-w-0">
-                <p className="text-sm font-medium text-muted-foreground truncate">{s.label}</p>
-                <p className={`text-2xl font-bold ${s.color} leading-none tabular-nums shrink-0`}>{s.value}</p>
+              <div className="flex flex-col-reverse items-center gap-1 flex-1 min-w-0 sm:flex-col sm:items-start">
+                <p className="text-[11px] font-medium text-muted-foreground truncate sm:text-sm">{s.label}</p>
+                <p className={`text-lg sm:text-2xl font-bold ${s.color} leading-none tabular-nums shrink-0`}>{s.value}</p>
               </div>
             </div>
           ))}

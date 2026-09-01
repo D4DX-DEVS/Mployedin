@@ -141,6 +141,7 @@ export default function AdminUserImpersonatePage() {
 
       {/* Page Header */}
       <DashboardPageHeader
+        compact
         title={t("title")}
         description={t("description")}
         compactOnMobile

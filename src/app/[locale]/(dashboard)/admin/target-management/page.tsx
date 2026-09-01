@@ -338,6 +338,7 @@ export default function AdminTargetManagementPage() {
           KPI card rows that used to sit between the toolbar and the table repeated
           these same six numbers and rendered 3-4 per row on a phone. */}
       <DashboardPageHeader
+        compact
         compactOnMobile
         icon={Crosshair}
         title={t("title")}

@@ -104,7 +104,9 @@ export function MyPostersPage() {
             <CreditsBadge credits={credits} />
             <Link
               href={`/${locale}/employer/jobs`}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 transition-colors shrink-0"
+              /* Sized down on phones so the credits pill + CTA fit one row
+                 inside the hero (~326px inner at 390px) instead of stacking. */
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90 transition-colors shrink-0 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
             >
               <Plus className="h-4 w-4" />
               {t("createCta")}

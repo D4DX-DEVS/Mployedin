@@ -8,8 +8,11 @@ import User from "@/models/User";
 import {
   Activity,
   ArrowRight,
+  BadgeCheck,
   Briefcase,
+  CalendarClock,
   FileText,
+  Settings,
   TrendingUp,
   UserPlus,
   Users,
@@ -65,6 +68,18 @@ interface RecentApplicationRow {
   createdAt: Date | string;
 }
 
+interface RecentInterviewRow {
+  _id: string;
+  status?: string;
+  createdAt: Date | string;
+}
+
+interface RecentPlacementRow {
+  _id: string;
+  status?: string;
+  createdAt: Date | string;
+}
+
 interface MonthlyTrendPoint {
   key: string;
   label: string;
@@ -90,6 +105,8 @@ interface AdminStats {
   recentUsers: RecentUserRow[];
   recentJobs: RecentJobRow[];
   recentApplications: RecentApplicationRow[];
+  recentInterviews: RecentInterviewRow[];
+  recentPlacements: RecentPlacementRow[];
 }
 
 type TrendDirection = "up" | "down" | "flat";
@@ -140,9 +157,6 @@ const adminPanelClassName =
 
 const adminCardClassName =
   "workspace-glass-panel rounded-xl";
-
-const adminInteractiveCardClassName =
-  "workspace-subtle-surface rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]";
 
 function buildMonthBuckets(now: Date, totalMonths: number, locale: string) {
   return Array.from({ length: totalMonths }, (_, index) => {
@@ -296,18 +310,6 @@ function formatDateLabel(value: Date | string | undefined, locale: string, t: Da
   });
 }
 
-function getRoleInsight(percentage: number, isDominant: boolean, t: DashboardTranslator) {
-  if (isDominant) {
-    return t("roleInsights.dominant");
-  }
-
-  if (percentage < 15) {
-    return t("roleInsights.underrepresented");
-  }
-
-  return t("roleInsights.healthy");
-}
-
 function buildLinePoints(values: number[], width: number, height: number, padding: number, maxValue: number) {
   const safeValues = values.length > 0 ? values : [0];
   const normalizedMaxValue = Math.max(1, maxValue);
@@ -354,6 +356,8 @@ async function getFastStats(locale: string): Promise<AdminStats> {
     monthlyApplicationsRows,
     recentApplications,
     recentUsers,
+    recentInterviews,
+    recentPlacements,
   ] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
@@ -443,6 +447,16 @@ async function getFastStats(locale: string): Promise<AdminStats> {
         },
       },
     ]),
+    Interview.aggregate<RecentInterviewRow>([
+      { $sort: { createdAt: -1 } },
+      { $limit: 3 },
+      { $project: { status: 1, createdAt: 1 } },
+    ]),
+    Placement.aggregate<RecentPlacementRow>([
+      { $sort: { createdAt: -1 } },
+      { $limit: 3 },
+      { $project: { status: 1, createdAt: 1 } },
+    ]),
   ]);
 
   const jobCountsByMonth = mapMonthlyCounts(monthlyJobsRows);
@@ -472,6 +486,8 @@ async function getFastStats(locale: string): Promise<AdminStats> {
     recentUsers,
     recentJobs,
     recentApplications,
+    recentInterviews,
+    recentPlacements,
   };
 }
 
@@ -489,24 +505,30 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const dominantRole = stats.usersByRole[0];
   const applicationsPerActiveJob = stats.activeJobs > 0 ? stats.totalApplications / stats.activeJobs : 0;
 
+  const hour = new Date().getHours();
+  const adminName = session.user?.name ?? t("hero.fallbackName");
+  const greeting = hour < 12
+    ? t("hero.greetingMorning", { name: adminName })
+    : hour < 17
+      ? t("hero.greetingAfternoon", { name: adminName })
+      : t("hero.greetingEvening", { name: adminName });
+
   const KNOWN_ROLES = new Set(["admin", "super_agent", "agent", "employer", "job_seeker"]);
   const knownRoles = stats.usersByRole.filter((role) => KNOWN_ROLES.has(String(role._id)));
   const otherCount = stats.usersByRole
     .filter((role) => !KNOWN_ROLES.has(String(role._id)))
     .reduce((sum, role) => sum + role.count, 0);
-  const mergedRoles = otherCount > 0 ? [...knownRoles, { _id: null, count: otherCount }] : knownRoles;
 
-  const roleDistribution = mergedRoles.map((role, index) => {
-    const percentage = stats.totalUsers > 0 ? Math.round((role.count / stats.totalUsers) * 100) : 0;
-
-    return {
-      ...role,
-      percentage,
-      label: formatRoleLabel(role._id, t),
-      insight: getRoleInsight(percentage, index === 0, t),
-      isDominant: index === 0,
-    };
-  });
+  // Top 3 roles + one "Other" bucket — six near-identical rows told the admin
+  // nothing extra on the summary page; the full split lives on /admin/users.
+  const remainderCount = knownRoles.slice(3).reduce((sum, role) => sum + role.count, 0) + otherCount;
+  const roleDistribution = [
+    ...knownRoles.slice(0, 3).map((role) => ({ label: formatRoleLabel(role._id, t), count: role.count })),
+    ...(remainderCount > 0 ? [{ label: t("sections.usersByRole.other"), count: remainderCount }] : []),
+  ].map((role) => ({
+    ...role,
+    percentage: stats.totalUsers > 0 ? Math.round((role.count / stats.totalUsers) * 100) : 0,
+  }));
 
   const trendSuffix = t("trend.vsLastMonth");
   const usersTrend = getTrendSummary(stats.newUsersThisMonth, stats.newUsersPreviousMonth, trendSuffix, t);
@@ -568,29 +590,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
     },
   ];
 
+  // One jobs shortcut only — "Jobs Overview" and "Jobs Management" both went
+  // to /admin/jobs; the health badge moved onto the surviving card.
   const quickActions: QuickAction[] = [
     {
       label: t("quickActions.jobsOverview.label"),
       href: `/${locale}/admin/jobs`,
       desc: t("quickActions.jobsOverview.desc"),
-      badge: t("quickActions.jobsOverview.badge", { count: stats.activeJobs }),
-      icon: Briefcase,
-      iconClassName: "bg-emerald-50 text-emerald-600",
-      badgeClassName: "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200",
-    },
-    {
-      label: t("quickActions.userManagement.label"),
-      href: `/${locale}/admin/users`,
-      desc: t("quickActions.userManagement.desc"),
-      badge: t("quickActions.userManagement.badge", { count: stats.inactiveEmployers }),
-      icon: Users,
-      iconClassName: "bg-sky-50 text-sky-600",
-      badgeClassName: "bg-sky-100 text-sky-900 ring-1 ring-sky-200",
-    },
-    {
-      label: t("quickActions.jobsManagement.label"),
-      href: `/${locale}/admin/jobs`,
-      desc: t("quickActions.jobsManagement.desc"),
       badge: "",
       badgeNode: (
         <Suspense fallback={<BadgeSkeleton />}>
@@ -600,6 +606,15 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       icon: Briefcase,
       iconClassName: "bg-emerald-50 text-emerald-600",
       badgeClassName: "",
+    },
+    {
+      label: t("quickActions.userManagement.label"),
+      href: `/${locale}/admin/users`,
+      desc: t("quickActions.userManagement.desc"),
+      badge: t("quickActions.userManagement.badge", { count: stats.inactiveEmployers }),
+      icon: Users,
+      iconClassName: "bg-sky-50 text-sky-600",
+      badgeClassName: "bg-sky-100 text-sky-900 ring-1 ring-sky-200",
     },
     {
       label: t("quickActions.auditLogs.label"),
@@ -619,7 +634,15 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       iconClassName: "bg-violet-50 text-violet-600",
       badgeClassName: "bg-violet-100 text-violet-900 ring-1 ring-violet-200",
     },
-
+    {
+      label: t("quickActions.systemSettings.label"),
+      href: `/${locale}/admin/settings`,
+      desc: t("quickActions.systemSettings.desc"),
+      badge: t("quickActions.systemSettings.badge"),
+      icon: Settings,
+      iconClassName: "bg-indigo-50 text-indigo-600",
+      badgeClassName: "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200",
+    },
   ];
 
   const recentActivity: RecentActivityItem[] = [
@@ -655,6 +678,26 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       icon: FileText,
       toneClassName: "bg-violet-50 text-violet-600",
     })),
+    ...stats.recentInterviews.map((interview) => ({
+      id: `interview-${interview._id}`,
+      title: t("recent.interviewScheduled"),
+      detail: t("recent.interviewDetail"),
+      href: `/${locale}/admin/interviews`,
+      timestamp: new Date(interview.createdAt),
+      timestampLabel: formatDateLabel(interview.createdAt, locale, t),
+      icon: CalendarClock,
+      toneClassName: "bg-amber-50 text-amber-600",
+    })),
+    ...stats.recentPlacements.map((placement) => ({
+      id: `placement-${placement._id}`,
+      title: t("recent.placementClosed"),
+      detail: t("recent.placementDetail"),
+      href: `/${locale}/admin/placements`,
+      timestamp: new Date(placement.createdAt),
+      timestampLabel: formatDateLabel(placement.createdAt, locale, t),
+      icon: BadgeCheck,
+      toneClassName: "bg-emerald-50 text-emerald-600",
+    })),
   ]
     .filter((activity) => !Number.isNaN(activity.timestamp.getTime()))
     .sort((left, right) => right.timestamp.getTime() - left.timestamp.getTime())
@@ -689,6 +732,9 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
     { label: t("funnel.placements"), count: stats.totalPlacements, toneClassName: "from-emerald-600 to-green-500" },
   ];
   const funnelMax = Math.max(1, ...funnelStages.map((stage) => stage.count));
+  const conversionRate = stats.totalApplications > 0
+    ? Math.round((stats.totalPlacements / stats.totalApplications) * 100)
+    : 0;
 
   const nextAction = stats.inactiveEmployers > 0
     ? {
@@ -714,6 +760,10 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           badge: t("taskFirst.review"),
         };
 
+  // The recommended-next card already shows this action — listing it again in
+  // Quick Actions was pure duplication.
+  const visibleQuickActions = quickActions.filter((action) => action.label !== nextAction.title);
+
   const signals = kpis.map((kpi) => ({
     label: kpi.label,
     value: kpi.value,
@@ -727,9 +777,8 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           DashboardSignalStrip renders directly below. */}
       <DashboardPageHeader
         icon={Activity}
-        title={t("hero.title")}
-        description={t("hero.description")}
-        compactOnMobile
+        title={greeting}
+        description={t("hero.greetingDescription")}
       />
 
       <DashboardNextAction
@@ -757,17 +806,19 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </p>
           </div>
 
-          {/* auto-rows-fr = every card same height; the trailing odd card spans
-              both columns instead of leaving a dead half-row gap. */}
-          <div className="admin-quick-actions-grid mt-3 grid min-w-0 flex-1 auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 sm:[&>a:last-child:nth-child(odd)]:col-span-2">
-            {quickActions.map((action, idx) => {
+          {/* Divider list, not a card grid: with 3-4 shortcuts next to six
+              activity rows, equal-height cards ballooned into mostly-empty
+              280px boxes on desktop. flex-1 rows share the stretched panel
+              height evenly instead (same pattern as the Users-by-Role panel). */}
+          <div className="admin-quick-actions-grid workspace-subtle-surface mt-3 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl">
+            {visibleQuickActions.map((action, idx) => {
               const Icon = action.icon;
 
               return (
                 <Link
                   key={`${action.href}-${idx}`}
                   href={action.href}
-                  className={`${adminInteractiveCardClassName} group flex w-full min-w-0 max-w-full items-start gap-2.5 overflow-hidden p-3`}
+                  className="group flex w-full min-w-0 max-w-full flex-1 items-center gap-2.5 border-b border-border/50 transition-colors last:border-b-0 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary panel-head"
                   data-surface="light-card"
                 >
                   <div className={`shrink-0 rounded-lg p-2 ${action.iconClassName}`}>
@@ -794,7 +845,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                     </p>
                   </div>
 
-                  <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
                 </Link>
               );
             })}
@@ -811,15 +862,17 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </p>
           </div>
 
+          {/* Phones see only the latest 3 rows; the View-all link reaches the
+              full activity timeline either way. */}
           <div className="workspace-subtle-surface mt-3 overflow-hidden rounded-xl">
-            {recentActivity.map((activity) => {
+            {recentActivity.map((activity, index) => {
               const Icon = activity.icon;
 
               return (
                 <Link
                   key={activity.id}
                   href={activity.href}
-                  className="group flex items-start gap-2.5 border-b border-border/50 transition-colors last:border-b-0 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary panel-head"
+                  className={`group flex items-start gap-2.5 border-b border-border/50 transition-colors last:border-b-0 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary panel-head ${index >= 3 ? "max-sm:hidden" : ""}`}
                   data-surface="light-card"
                 >
                   <div className={`shrink-0 rounded-lg p-2 ring-1 ring-inset ${activity.toneClassName}`}>
@@ -842,6 +895,14 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               );
             })}
           </div>
+
+          <Link
+            href={`/${locale}/admin/activity-timeline`}
+            className="mt-2.5 inline-flex min-h-9 items-center gap-1.5 self-start text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            {t("sections.recentActivity.viewAll")}
+            <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+          </Link>
         </section>
       </div>
 
@@ -856,54 +917,48 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         </Suspense>
 
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.hiringFunnel.title")}</h2>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-                {t("sections.hiringFunnel.description")}
-              </p>
-            </div>
-            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 text-emerald-700 shadow-sm chip-pad">
-              <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
-              <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.hiringFunnel.closed", { count: stats.totalPlacements })}</p>
-            </div>
+          {/* No standalone "PLACEMENTS n closed" chip — the placements stage
+              card below already carries that number. */}
+          <div>
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.hiringFunnel.title")}</h2>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+              {t("sections.hiringFunnel.description")}
+            </p>
           </div>
 
-          <div className="mt-4 grid flex-1 auto-rows-fr grid-cols-2 gap-2.5">
-            {funnelStages.map((stage, index) => {
-              const nextStage = funnelStages[index + 1];
-              const stageWidth = stage.count === 0 ? 0 : Math.max(6, Math.round((stage.count / funnelMax) * 100));
-              const conversion = nextStage && stage.count > 0
-                ? Math.round((nextStage.count / stage.count) * 100)
-                : null;
+          {/* One bar per stage, one conversion line — the four stage cards with
+              per-stage percentages read like a report, not a summary. */}
+          <div className="workspace-subtle-surface mt-4 flex flex-1 flex-col justify-center gap-3.5 rounded-xl card-pad">
+            {funnelStages.map((stage) => {
+              const stageWidth = stage.count === 0 ? 0 : Math.max(4, Math.round((stage.count / funnelMax) * 100));
 
               return (
-                <div
-                  key={stage.label}
-                  aria-label={t("sections.hiringFunnel.stageAria", { label: stage.label, count: stage.count })}
-                  className="workspace-glass-panel card-pad flex flex-col rounded-xl"
-                >
-                  <div className="flex items-start justify-between gap-3">
+                <div key={stage.label} aria-label={t("sections.hiringFunnel.stageAria", { label: stage.label, count: stage.count })}>
+                  <div className="flex items-baseline justify-between gap-3">
                     <span className="text-xs font-semibold text-muted-foreground">{stage.label}</span>
-                    <span className="text-xl font-semibold tracking-tight text-foreground">{formatCount(stage.count)}</span>
+                    <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">{formatCount(stage.count)}</span>
                   </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
                     <div
                       className={`h-full rounded-full bg-gradient-to-r ${stage.toneClassName}`}
                       style={{ width: `${stageWidth}%` }}
                     />
                   </div>
-                  {conversion !== null ? (
-                    <p className="mt-auto pt-2 text-[11px] text-muted-foreground">{t("sections.hiringFunnel.nextStage", { value: conversion })}</p>
-                  ) : (
-                    <p className="mt-auto pt-2 text-[11px] text-muted-foreground">
-                      {stage.count === 0 ? t("sections.hiringFunnel.noData", { label: stage.label }) : t("sections.hiringFunnel.closed", { count: stage.count })}
-                    </p>
-                  )}
                 </div>
               );
             })}
+            <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+              {t("sections.hiringFunnel.conversionRate", { value: conversionRate })}
+            </p>
           </div>
+
+          <Link
+            href={`/${locale}/admin/analytics`}
+            className="mt-2.5 inline-flex min-h-9 items-center gap-1.5 self-start text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            {t("sections.hiringFunnel.viewDetails")}
+            <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+          </Link>
         </section>
       </div>
 
@@ -977,7 +1032,9 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </svg>
           </div>
 
-          <div className="mt-4 grid shrink-0 grid-cols-3 gap-2 sm:gap-4">
+          {/* Phones: chart only — the three stat tiles repeat numbers already
+              shown above and doubled this panel's height. */}
+          <div className="mt-4 grid shrink-0 grid-cols-3 gap-2 max-sm:hidden sm:gap-4">
             <div className={`${adminCardClassName} px-2.5 py-3 sm:px-4 sm:py-4`} data-surface="light-card">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.jobsOpened")}</p>
               <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">{stats.jobsCreatedThisMonth}</p>
@@ -994,44 +1051,37 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               <p className="mt-1 hidden text-sm leading-6 text-muted-foreground sm:block">{t("sections.trends.demandRatioDesc")}</p>
             </div>
           </div>
+
+          <Link
+            href={`/${locale}/admin/analytics`}
+            className="mt-2.5 inline-flex min-h-9 items-center gap-1.5 self-start text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            {t("sections.trends.viewAnalytics")}
+            <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+          </Link>
         </section>
 
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.usersByRole.title")}</h2>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-                {t("sections.usersByRole.description")}
-              </p>
-            </div>
-            {dominantRole ? (
-              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 text-sky-700 shadow-sm sm:text-right chip-pad">
-                <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
-                <p className="mt-1 text-xs font-semibold text-sky-700 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
-              </div>
-            ) : null}
+          <div>
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.usersByRole.title")}</h2>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+              {t("sections.usersByRole.description")}
+            </p>
           </div>
 
-          {/* One compact row per role instead of six stacked cards — six card
-              blocks made this panel ~2x taller than the chart beside it. */}
-          {/* Rows share the leftover height instead of leaving a gap under the
-              list when the chart beside it is taller. Text size never changes. */}
           <div className="workspace-subtle-surface mt-4 flex flex-1 flex-col overflow-hidden rounded-xl">
-            {roleDistribution.map((role, index) => (
+            {roleDistribution.map((role) => (
               <div
-                key={`${role._id ?? "unknown"}-${index}`}
+                key={role.label}
                 className="flex flex-1 items-center gap-3 border-b border-border/50 last:border-b-0 panel-head"
                 data-surface="light-card"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-baseline gap-2">
-                    <p className="shrink-0 text-[13px] font-semibold text-foreground">{role.label}</p>
-                    <p className="min-w-0 truncate text-[11px] leading-4 text-muted-foreground">{role.insight}</p>
-                  </div>
+                  <p className="text-[13px] font-semibold text-foreground">{role.label}</p>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/95 ring-1 ring-inset ring-border/60">
                     <div
                       className="h-full rounded-full bg-[linear-gradient(135deg,_rgba(14,165,233,0.92),_rgba(37,99,235,0.92))] transition-all duration-1000 ease-out"
-                      style={{ width: `${Math.max(6, role.percentage)}%` }}
+                      style={{ width: `${Math.max(4, role.percentage)}%` }}
                     />
                   </div>
                 </div>
@@ -1044,6 +1094,14 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               </div>
             ))}
           </div>
+
+          <Link
+            href={`/${locale}/admin/users`}
+            className="mt-2.5 inline-flex min-h-9 items-center gap-1.5 self-start text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            {t("sections.usersByRole.viewUsers")}
+            <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+          </Link>
         </section>
       </div>
     </div>

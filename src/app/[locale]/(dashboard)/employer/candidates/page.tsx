@@ -296,7 +296,11 @@ function CandidateMatchCard({
           ? t("notAvailable")
           : t("availabilityUnknown");
 
-  const primaryMeta = [candidate.currentLocation, candidate.totalExperienceYears != null ? t("yrsExperience", { years: candidate.totalExperienceYears }) : null]
+  // Experience leads, location follows. This line truncates on a phone once the
+  // availability chip takes its share of the row, and "Malappuram, India • 0+
+  // yrs" lost the years — the more decision-relevant half. Reversed, the city
+  // is what gives way. Desktop has room for both, so the order only matters here.
+  const primaryMeta = [candidate.totalExperienceYears != null ? t("yrsExperience", { years: candidate.totalExperienceYears }) : null, candidate.currentLocation]
     .filter(Boolean)
     .join(" • ");
 
@@ -369,20 +373,23 @@ function CandidateMatchCard({
               </span>
             ) : null}
           </div>
-          {/* Availability rides the role line rather than owning a row of its
-              own: that saved ~24px per card. It cannot sit beside the name —
-              as a shrink-0 sibling there it squeezed the name to ~70px. */}
+          {/* The role owns its line. Sharing it with the availability chip left
+              the role 90px of the 183px text column at 390px, so "MERN Stack
+              Developer" and every longer title rendered ellipsised. */}
+          <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
+          {/* Availability rides the meta line instead of owning a row: same
+              per-card height, and when the column is tight it is the location
+              that gives way rather than the role. */}
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            <p className="min-w-0 shrink truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
+            <p className="min-w-0 truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
             {/* Pill chrome only from sm. On a phone the border + padding cost
-                ~24px the role needs, so here it reads as a plain coloured
-                suffix — same information, one truncatable line. */}
+                ~24px the row needs, so here it reads as a plain coloured
+                suffix — same information, no extra line. */}
             <span className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] font-semibold sm:rounded-full sm:border sm:px-2 sm:py-0.5 ${availabilityTone(candidate.availabilityStatus)} bg-transparent sm:bg-[unset]`}>
               {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
               {availabilityLabel}
             </span>
           </div>
-          <p className="truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
           {/* Wraps below sm: nowrap left each chip 14-34px, so skills rendered
               as "T…", "G…" and carried no information. */}
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground sm:flex-nowrap">

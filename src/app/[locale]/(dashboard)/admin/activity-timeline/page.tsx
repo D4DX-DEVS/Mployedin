@@ -286,6 +286,8 @@ export default function AdminActivityTimelinePage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         icon={Activity}
         title={t("title")}
         description={t("description")}

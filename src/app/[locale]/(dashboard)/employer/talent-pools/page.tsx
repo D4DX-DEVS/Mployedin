@@ -167,7 +167,7 @@ export default function EmployerTalentPoolsPage() {
     <div className="page-container">
       {ConfirmDialogNode}
       <DashboardPageHeader
-        inlineActions
+        compact
         icon={Layers}
         title={t("title")}
         description={t("subtitle")}

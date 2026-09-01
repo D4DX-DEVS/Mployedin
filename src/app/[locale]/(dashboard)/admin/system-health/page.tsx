@@ -100,6 +100,8 @@ export default function AdminSystemHealthPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
+        compactOnMobile
         icon={Activity}
         title={t("pageTitle")}
         description={t("pageDescription")}

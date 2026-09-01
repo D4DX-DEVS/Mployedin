@@ -11,21 +11,16 @@ import {
   ArrowUpRight,
   Briefcase,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   FileText,
   Minus,
+  Target,
+  TrendingDown,
   TrendingUp,
   UserCheck,
   Wallet,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
@@ -65,33 +60,52 @@ interface AlertItem {
 /* `/api/admin/analytics` has no locale, so it sends an alert id plus the numbers
    behind it rather than a finished sentence. The mapping lives here, spelled out
    per id so the keys stay statically greppable. An id this map doesn't know is
-   skipped rather than rendered — next-intl throws on an unknown key. */
-const ALERT_COPY: Record<string, { titleKey: string; descriptionKey: string; metricKey: string }> = {
+   skipped rather than rendered — next-intl throws on an unknown key.
+   `href` is where the admin acts on the finding; null renders a plain row. */
+const ALERT_META: Record<string, {
+  titleKey: string;
+  descriptionKey: string;
+  Icon: typeof AlertTriangle;
+  href: string | null;
+}> = {
   "jobs-without-applications": {
     titleKey: "alertJobsWithoutDemandTitle",
     descriptionKey: "alertJobsWithoutDemandDescription",
-    metricKey: "alertJobsWithoutDemandMetric",
+    Icon: Briefcase,
+    href: "/admin/jobs",
   },
   "stale-open-applications": {
     titleKey: "alertStaleApplicationsTitle",
     descriptionKey: "alertStaleApplicationsDescription",
-    metricKey: "alertStaleApplicationsMetric",
+    Icon: Clock3,
+    href: "/admin/applications",
   },
   "zero-placement-momentum": {
     titleKey: "alertNoPlacementMomentumTitle",
     descriptionKey: "alertNoPlacementMomentumDescription",
-    metricKey: "alertNoPlacementMomentumMetric",
+    Icon: Target,
+    href: "/admin/placements",
   },
   "demand-softening": {
     titleKey: "alertDemandSofteningTitle",
     descriptionKey: "alertDemandSofteningDescription",
-    metricKey: "alertDemandSofteningMetric",
+    Icon: TrendingDown,
+    href: "/admin/applications",
   },
   "platform-stable": {
     titleKey: "alertPlatformStableTitle",
     descriptionKey: "alertPlatformStableDescription",
-    metricKey: "alertPlatformStableMetric",
+    Icon: CheckCircle2,
+    href: null,
   },
+};
+
+/* Palette utilities on purpose: the semantic `bg-status-*` classes are not
+   registered in the Tailwind v4 @theme block yet, so they compile to nothing. */
+const LEVEL_CHIP: Record<AlertItem["level"], string> = {
+  critical: "bg-rose-50 text-rose-600",
+  warning: "bg-amber-50 text-amber-600",
+  positive: "bg-emerald-50 text-emerald-600",
 };
 
 interface RecentJob {
@@ -155,47 +169,13 @@ const STATUS_TONES: Record<string, string> = {
   slate: "bg-slate-400",
 };
 
-const ALERT_STYLES: Record<AlertItem["level"], {
-  Icon: typeof AlertTriangle;
-  card: string;
-  iconWrap: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  metric: string;
-  labelKey: string;
-}> = {
-  critical: {
-    Icon: AlertTriangle,
-    card: "border border-status-rejected/25 border-l-4 border-l-status-rejected bg-card shadow-sm",
-    iconWrap: "bg-status-rejected-bg text-status-rejected",
-    eyebrow: "text-status-rejected",
-    title: "text-foreground",
-    description: "text-muted-foreground",
-    metric: "bg-status-rejected text-white shadow-sm",
-    labelKey: "alertLevelCritical",
-  },
-  warning: {
-    Icon: Clock3,
-    card: "border border-status-shortlisted/25 border-l-4 border-l-status-shortlisted bg-card shadow-sm",
-    iconWrap: "bg-status-shortlisted-bg text-status-shortlisted",
-    eyebrow: "text-status-shortlisted",
-    title: "text-foreground",
-    description: "text-muted-foreground",
-    metric: "bg-status-shortlisted text-white shadow-sm",
-    labelKey: "alertLevelWarning",
-  },
-  positive: {
-    Icon: CheckCircle2,
-    card: "border border-status-selected/25 border-l-4 border-l-status-selected bg-card shadow-sm",
-    iconWrap: "bg-status-selected-bg text-status-selected",
-    eyebrow: "text-status-selected",
-    title: "text-foreground",
-    description: "text-muted-foreground",
-    metric: "bg-status-selected text-white shadow-sm",
-    labelKey: "alertLevelPositive",
-  },
-};
+/* The chart is drawn in a fixed viewBox and scaled by the container. 360 wide
+   keeps the axis and month labels legible on a 390px phone (≈0.9 scale) instead
+   of shrinking a desktop-sized drawing to two thirds. */
+const CHART_W = 360;
+const CHART_H = 190;
+const CHART_PAD_X = 30;
+const CHART_PAD_Y = 26;
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -220,9 +200,9 @@ function TrendBadge({ trend }: { trend: TrendData }) {
       ? ArrowDownRight
       : Minus;
   const className = trend.direction === "up"
-    ? "border-status-selected/25 bg-status-selected-bg text-status-selected"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
     : trend.direction === "down"
-      ? "border-status-rejected/25 bg-status-rejected-bg text-status-rejected"
+      ? "border-rose-200 bg-rose-50 text-rose-700"
       : "border-border bg-secondary/80 text-muted-foreground";
 
   return (
@@ -231,6 +211,17 @@ function TrendBadge({ trend }: { trend: TrendData }) {
       {formatDelta(trend.delta)}
     </div>
   );
+}
+
+/* The softening alert carries a signed delta (e.g. -90.5); the sentence already
+   says "down", so the number itself renders unsigned. */
+function findingValues(alert: AlertItem): Record<string, number> {
+  const values = alert.values ?? {};
+  if (alert.id === "demand-softening") {
+    return { ...values, delta: Math.abs(values.delta ?? 0) };
+  }
+
+  return values;
 }
 
 export default function AdminReportsPage() {
@@ -288,6 +279,18 @@ export default function AdminReportsPage() {
   const applicationRate = stats?.summary.applicationRate ?? 0;
   const placementRate = stats?.summary.placementRate ?? 0;
 
+  const chartInnerW = CHART_W - CHART_PAD_X * 2;
+  const chartInnerH = CHART_H - CHART_PAD_Y * 2;
+  const xFor = (index: number) => activitySeries.length > 1
+    ? CHART_PAD_X + (index * chartInnerW) / (activitySeries.length - 1)
+    : CHART_W / 2;
+  const yFor = (value: number) => CHART_H - CHART_PAD_Y - (value / maxActivityValue) * chartInnerH;
+  const demandPath = (key: "jobs" | "applications") => activitySeries
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yFor(point[key]).toFixed(1)}`)
+    .join(" ");
+
+  const viewAllLinkClassName = "mt-3 inline-flex min-h-9 items-center gap-1.5 self-start text-xs font-semibold text-primary transition-colors hover:text-primary/80";
+
   const kpis = [
     {
       label: t("totalJobs"),
@@ -344,31 +347,37 @@ export default function AdminReportsPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         title={t("reportsAndAnalytics")}
         description={t("platformDemandDescription")}
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Phones get a four-across strip like the employer headers: value over
+            label, no icon chip, and the "vs prev 30d" caption and insight
+            sentence held back for wider screens. As four 210px tiles these
+            four figures filled the whole first screen. */}
+        <div className="grid grid-cols-4 gap-1.5 p-2 sm:grid-cols-2 sm:gap-3 sm:p-5 xl:grid-cols-4">
           {kpis.map((kpi) => (
-            <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md card-pad">
+            <Link key={kpi.label} href={kpi.href} className="rounded-xl border border-border/60 bg-card p-2 text-center transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md sm:rounded-2xl sm:text-start sm:card-pad">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${kpi.indicatorClassName}`} />
-                    <p className="text-xs font-semibold text-muted-foreground">{kpi.label}</p>
-                  </div>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{loading ? <span className="inline-block h-7 w-16 animate-pulse rounded bg-muted" /> : kpi.value}</p>
+                <div className="flex min-w-0 flex-1 flex-col items-center sm:block">
+                  <p className="order-2 line-clamp-2 text-[10px] font-semibold leading-tight text-muted-foreground sm:text-xs">
+                    <span className={`me-1.5 hidden h-2 w-2 rounded-full align-middle sm:inline-block ${kpi.indicatorClassName}`} />
+                    {kpi.label}
+                  </p>
+                  <p className="order-1 text-base font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">{loading ? <span className="inline-block h-7 w-16 animate-pulse rounded bg-muted" /> : kpi.value}</p>
                 </div>
-                <div className={`rounded-xl p-2 ${kpi.toneClassName}`}>
+                <div className={`hidden rounded-xl p-2 sm:block ${kpi.toneClassName}`}>
                   <kpi.icon className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-1 hidden items-center gap-2 sm:mt-3 sm:flex">
                 {kpi.trend ? <TrendBadge trend={kpi.trend} /> : null}
                 <span className="text-xs text-muted-foreground">{t("vsPrev30d")}</span>
               </div>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{kpi.insight}</p>
+              <p className="mt-2 hidden text-xs leading-5 text-muted-foreground sm:block">{kpi.insight}</p>
             </Link>
           ))}
         </div>
@@ -388,98 +397,118 @@ export default function AdminReportsPage() {
       ) : (
         <>
           <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yPlatformAlerts")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yKeyFindings")}>
+              {/* Chip beside the short title, description below: a global admin
+                  rule force-wraps bare flex rows on phones, so a chip next to a
+                  long description dropped to its own line. */}
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("platformAlerts")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("platformAlertsDescription")}</p>
-                </div>
-                <div className="workspace-tone-amber rounded-2xl p-2.5">
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("keyFindings")}</h2>
+                <div className="workspace-tone-amber shrink-0 rounded-2xl p-2.5">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
               </div>
+              <p className="mt-1 text-sm text-muted-foreground">{t("keyFindingsDescription")}</p>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-4 divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/70 bg-card">
                 {alerts.map((alert) => {
-                  const alertStyle = ALERT_STYLES[alert.level];
-                  const AlertIcon = alertStyle.Icon;
-                  const copy = ALERT_COPY[alert.id];
-                  if (!copy) return null;
-                  const values = alert.values ?? {};
+                  const meta = ALERT_META[alert.id];
+                  if (!meta) return null;
+                  const values = findingValues(alert);
+                  const FindingIcon = meta.Icon;
+                  const inner = (
+                    <>
+                      <span className={`shrink-0 rounded-xl p-2 ${LEVEL_CHIP[alert.level]}`}>
+                        <FindingIcon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-foreground">{t(meta.titleKey, values)}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{t(meta.descriptionKey, values)}</span>
+                      </span>
+                    </>
+                  );
 
-                  return (
-                  <div
-                    key={alert.id}
-                    data-alert-level={alert.level}
-                    className={`rounded-xl px-5 py-5 ${alertStyle.card}`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`rounded-2xl p-2.5 ${alertStyle.iconWrap}`}>
-                        <AlertIcon className="h-4.5 w-4.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${alertStyle.eyebrow}`}>{t(alertStyle.labelKey)}</p>
-                        <p className={`mt-2 text-base font-semibold ${alertStyle.title}`}>{t(copy.titleKey)}</p>
-                        <p className={`mt-1 text-sm leading-6 ${alertStyle.description}`}>{t(copy.descriptionKey, values)}</p>
-                      </div>
-                      <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${alertStyle.metric}`}>{t(copy.metricKey, values)}</span>
+                  return meta.href ? (
+                    <Link
+                      key={alert.id}
+                      href={`/${locale}${meta.href}`}
+                      data-alert-level={alert.level}
+                      className="flex min-h-11 items-center gap-3 px-3.5 py-3 transition-colors hover:bg-muted/40"
+                    >
+                      {inner}
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" />
+                    </Link>
+                  ) : (
+                    <div
+                      key={alert.id}
+                      data-alert-level={alert.level}
+                      className="flex min-h-11 items-center gap-3 px-3.5 py-3"
+                    >
+                      {inner}
                     </div>
-                  </div>
                   );
                 })}
               </div>
             </section>
 
-            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yJobsVsApplications")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yHiringDemand")}>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("jobsVsApplications")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("jobsVsApplicationsDescription")}</p>
-                </div>
-                <div className="workspace-tone-sky rounded-2xl p-2.5">
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("hiringDemand")}</h2>
+                <div className="workspace-tone-sky shrink-0 rounded-2xl p-2.5">
                   <TrendingUp className="h-5 w-5" />
                 </div>
               </div>
+              <p className="mt-1 text-sm text-muted-foreground">{t("hiringDemandDescription")}</p>
 
-              <div className="mt-6 flex items-center gap-4 text-xs font-medium text-muted-foreground">
+              <div className="mt-4 flex items-center gap-4 text-xs font-medium text-muted-foreground">
                 <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> {t("jobs")}</div>
                 <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" /> {t("applicationsChartLabel")}</div>
               </div>
 
-              {/* Capped at 3 columns: this panel is half-width, so six columns left each
-                  count label ~22px and "Jobs" broke to "Job"/"s". */}
               {activitySeries.length ? (
-                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                  {activitySeries.map((point) => (
-                    <div key={point.label} className="rounded-3xl border border-border bg-secondary/40 px-3 py-4">
-                      <div className="flex h-32 items-end justify-center gap-2" aria-label={t("jobsDemandChart", { label: point.label })}>
-                        {/* No title= tooltips: both values are printed as labelled text
-                            directly below, and a native title is invisible on touch. */}
-                        <div
-                          className="w-4 rounded-t-full bg-blue-500"
-                          style={{ height: `${Math.max(10, (point.jobs / maxActivityValue) * 100)}%` }}
-                        />
-                        <div
-                          className="w-4 rounded-t-full bg-violet-500"
-                          style={{ height: `${Math.max(10, (point.applications / maxActivityValue) * 100)}%` }}
-                        />
-                      </div>
-                      <p className="mt-4 text-center text-sm font-semibold text-foreground">{point.label}</p>
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs text-muted-foreground">
-                        <div>
-                          <p className="font-semibold text-foreground">{point.jobs}</p>
-                          <p>{t("jobsCount")}</p>
-                        </div>
-                        <div>
-                          <p className="font-semibold text-foreground">{point.applications}</p>
-                          <p>{t("appsCount")}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="mt-4 rounded-2xl border border-border/70 bg-secondary/30 p-3">
+                  <svg
+                    viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+                    role="img"
+                    aria-label={t("hiringDemandChartAria")}
+                    className="w-full text-muted-foreground"
+                    preserveAspectRatio="xMidYMid meet"
+                  >
+                    {[0.25, 0.5, 0.75, 1].map((tick) => {
+                      const y = CHART_H - CHART_PAD_Y - chartInnerH * tick;
+
+                      return (
+                        <g key={tick}>
+                          <line
+                            x1={CHART_PAD_X}
+                            y1={y}
+                            x2={CHART_W - CHART_PAD_X}
+                            y2={y}
+                            stroke="rgba(71,85,105,0.28)"
+                            strokeDasharray="4 6"
+                          />
+                          <text x={2} y={y + 3.5} fill="currentColor" className="fill-current text-[10px]">
+                            {Math.round(maxActivityValue * tick)}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    <path d={demandPath("jobs")} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d={demandPath("applications")} fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" />
+
+                    {activitySeries.map((point, index) => (
+                      <g key={point.label}>
+                        <circle cx={xFor(index)} cy={yFor(point.jobs)} r="3.5" fill="#3b82f6" />
+                        <circle cx={xFor(index)} cy={yFor(point.applications)} r="3.5" fill="#8b5cf6" />
+                        <text x={xFor(index)} y={CHART_H - 6} textAnchor="middle" fill="currentColor" className="fill-current text-[10px]">
+                          {point.label}
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
                 </div>
               ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
                   {t("noDemandData")}
                 </div>
               )}
@@ -489,18 +518,16 @@ export default function AdminReportsPage() {
           <div className="grid gap-6 xl:grid-cols-2">
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yApplicationsByStatus")}>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("applicationsByStatus")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("applicationsByStatusDescription")}</p>
-                </div>
-                <div className="workspace-tone-violet rounded-2xl p-2.5">
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("applicationsByStatus")}</h2>
+                <div className="workspace-tone-violet shrink-0 rounded-2xl p-2.5">
                   <FileText className="h-5 w-5" />
                 </div>
               </div>
+              <p className="mt-1 text-sm text-muted-foreground">{t("applicationsByStatusDescription")}</p>
 
               {statusRows.length ? (
                 <>
-                  <div className="mt-6 flex h-4 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={t("applicationStatusDistribution")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={100}>
+                  <div className="mt-4 flex h-4 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={t("applicationStatusDistribution")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={100}>
                     {statusRows.map((row) => (
                       <div
                         key={row.key}
@@ -511,57 +538,51 @@ export default function AdminReportsPage() {
                     ))}
                   </div>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-3 divide-y divide-border/60">
                     {statusRows.map((row) => (
-                      <div key={row.key} className="workspace-subtle-surface rounded-3xl px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className={`h-2.5 w-2.5 rounded-full ${STATUS_TONES[row.toneKey] ?? "bg-slate-400"}`} />
-                          <span className="text-sm font-semibold text-foreground">{row.label}</span>
-                        </div>
-                        <div className="mt-3 flex items-end justify-between gap-3">
-                          <p className="text-2xl font-semibold tracking-tight text-foreground">{row.count}</p>
-                          <p className="text-sm font-medium text-muted-foreground">{row.percent}%</p>
-                        </div>
+                      <div key={row.key} className="flex min-h-11 items-center gap-2.5 py-2">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_TONES[row.toneKey] ?? "bg-slate-400"}`} />
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{row.label}</span>
+                        <span className="text-sm font-semibold text-foreground">{row.count}</span>
+                        <span className="w-14 text-end text-xs font-medium text-muted-foreground">{row.percent}%</span>
                       </div>
                     ))}
                   </div>
+
+                  <Link href={`/${locale}/admin/applications`} className={viewAllLinkClassName}>
+                    {t("viewAllApplications")}
+                    <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                  </Link>
                 </>
               ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
                   {t("noApplicationStatusData")}
                 </div>
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yConversionFunnel")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yHiringFunnel")}>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("conversionFunnel")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("conversionFunnelDescription")}</p>
-                </div>
-                <div className="workspace-tone-emerald rounded-2xl p-2.5">
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("hiringFunnel")}</h2>
+                <div className="workspace-tone-emerald shrink-0 rounded-2xl p-2.5">
                   <UserCheck className="h-5 w-5" />
                 </div>
               </div>
+              <p className="mt-1 text-sm text-muted-foreground">{t("hiringFunnelDescription")}</p>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-4 space-y-4">
                 {funnel.map((stage, index) => {
                   const previousCount = index === 0 ? stage.count : funnel[index - 1]?.count ?? stage.count;
                   const conversion = previousCount > 0 ? Math.round((stage.count / previousCount) * 100) : 0;
 
                   return (
-                    <div key={stage.key} className="workspace-subtle-surface rounded-3xl card-pad">
-                      <div className="flex items-center justify-between gap-4 text-sm">
-                        <div>
-                          <p className="font-semibold text-foreground">{stage.label}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {index === 0 ? t("baseFunnelVolume") : t("retainedFromPrevious", { conversion, previous: funnel[index - 1]?.label.toLowerCase() })}
-                          </p>
-                        </div>
-                        <p className="text-2xl font-semibold tracking-tight text-foreground">{formatCount(stage.count)}</p>
+                    <div key={stage.key}>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="text-sm font-medium text-foreground">{stage.label}</p>
+                        <p className="text-base font-semibold tracking-tight text-foreground">{formatCount(stage.count)}</p>
                       </div>
                       <div
-                        className="mt-3 h-2 overflow-hidden rounded-full bg-secondary"
+                        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary"
                         role="progressbar"
                         aria-label={t("funnelStage", { label: stage.label })}
                         aria-valuemin={0}
@@ -573,6 +594,11 @@ export default function AdminReportsPage() {
                           style={{ width: `${Math.min(100, (stage.count / maxFunnelValue) * 100)}%` }}
                         />
                       </div>
+                      {index > 0 ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {t("retainedFromPrevious", { conversion, previous: funnel[index - 1]?.label.toLowerCase() })}
+                        </p>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -581,47 +607,78 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-3">
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yTopAgents")}>
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("topAgents")}</h2>
+                <div className="workspace-tone-emerald shrink-0 rounded-2xl p-2.5">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+              </div>
+
+              {stats?.topAgents.length ? (
+                <>
+                  <div className="mt-4 divide-y divide-border/60">
+                    {stats.topAgents.slice(0, 3).map((agent, index) => (
+                      <Link key={agent.id} href={`/${locale}/admin/agents`} className="flex min-h-11 items-center gap-3 py-2.5 transition-colors hover:bg-muted/40">
+                        <span className="w-7 shrink-0 text-xs font-semibold text-muted-foreground">#{index + 1}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-foreground">{agent.name}</span>
+                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                            {t("agentRowSummary", { jobs: agent.jobs, applications: agent.applications, placements: agent.placements })}
+                          </span>
+                        </span>
+                        {agent.revenue > 0 ? (
+                          <span className="shrink-0 text-sm font-semibold text-foreground">${formatCount(agent.revenue)}</span>
+                        ) : null}
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" />
+                      </Link>
+                    ))}
+                  </div>
+
+                  <Link href={`/${locale}/admin/agents`} className={viewAllLinkClassName}>
+                    {t("viewAllAgents")}
+                    <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                  </Link>
+                </>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                  {t("noAgentPerformanceData")}
+                </div>
+              )}
+            </section>
+
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yRecentJobs")}>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("recentJobs")}</h2>
-                </div>
-                <div className="workspace-tone-sky rounded-2xl p-2.5">
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("recentJobs")}</h2>
+                <div className="workspace-tone-sky shrink-0 rounded-2xl p-2.5">
                   <Briefcase className="h-5 w-5" />
                 </div>
               </div>
 
               {stats?.recentJobs.length ? (
-                <div className="mt-6 overflow-hidden rounded-3xl border border-border/70 bg-background/60">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("jobTableHeaderRole")}</TableHead>
-                        <TableHead>{t("jobTableHeaderApps")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stats.recentJobs.map((job) => (
-                        <TableRow key={job.id} className="cursor-pointer hover:bg-muted/40 transition-colors">
-                          <TableCell>
-                            <Link href={`/${locale}/admin/jobs`} className="block">
-                              <p className="font-medium text-foreground">{job.title}</p>
-                              <p className="text-xs text-muted-foreground">{job.employerName} · {job.status}</p>
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-right">
-                              <p className="font-semibold text-foreground">{job.applicationCount}</p>
-                              <p className="text-xs text-muted-foreground">{formatDate(job.createdAt)}</p>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <>
+                  <div className="mt-4 divide-y divide-border/60">
+                    {stats.recentJobs.slice(0, 3).map((job) => (
+                      <Link key={job.id} href={`/${locale}/admin/jobs`} className="flex min-h-11 items-center gap-3 py-2.5 transition-colors hover:bg-muted/40">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-foreground">{job.title}</span>
+                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{job.employerName}</span>
+                        </span>
+                        <span className="shrink-0 text-end">
+                          <span className="block text-xs font-medium text-foreground">{job.status}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{formatDate(job.createdAt)}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+
+                  <Link href={`/${locale}/admin/jobs`} className={viewAllLinkClassName}>
+                    {t("viewAllJobs")}
+                    <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                  </Link>
+                </>
               ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
                   {t("noRecentJobsAvailable")}
                 </div>
               )}
@@ -629,135 +686,41 @@ export default function AdminReportsPage() {
 
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yRecentApplications")}>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("recentApplications")}</h2>
-                </div>
-                <div className="workspace-tone-violet rounded-2xl p-2.5">
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("recentApplications")}</h2>
+                <div className="workspace-tone-violet shrink-0 rounded-2xl p-2.5">
                   <FileText className="h-5 w-5" />
                 </div>
               </div>
 
               {stats?.recentApplications.length ? (
-                <div className="mt-6 overflow-hidden rounded-3xl border border-border/70 bg-background/60">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("applicationTableHeaderRole")}</TableHead>
-                        <TableHead>{t("applicationTableHeaderStatus")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stats.recentApplications.map((application) => (
-                        <TableRow key={application.id} className="cursor-pointer hover:bg-muted/40 transition-colors">
-                          <TableCell>
-                            <Link href={`/${locale}/admin/applications`} className="block">
-                              <p className="font-medium text-foreground">{application.jobTitle}</p>
-                              <p className="text-xs text-muted-foreground">{application.employerName}</p>
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-right">
-                              <p className="font-semibold text-foreground">{application.status}</p>
-                              <p className="text-xs text-muted-foreground">{formatDate(application.appliedAt)}</p>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <>
+                  <div className="mt-4 divide-y divide-border/60">
+                    {stats.recentApplications.slice(0, 3).map((application) => (
+                      <Link key={application.id} href={`/${locale}/admin/applications`} className="flex min-h-11 items-center gap-3 py-2.5 transition-colors hover:bg-muted/40">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium text-foreground">{application.jobTitle}</span>
+                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{application.employerName}</span>
+                        </span>
+                        <span className="shrink-0 text-end">
+                          <span className="block text-xs font-medium text-foreground">{application.status}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{formatDate(application.appliedAt)}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+
+                  <Link href={`/${locale}/admin/applications`} className={viewAllLinkClassName}>
+                    {t("viewAllApplications")}
+                    <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                  </Link>
+                </>
               ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
                   {t("noRecentApplicationsAvailable")}
                 </div>
               )}
             </section>
-
-            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yTopAgents")}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("topAgents")}</h2>
-                </div>
-                <div className="workspace-tone-emerald rounded-2xl p-2.5">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
-              </div>
-
-              {stats?.topAgents.length ? (
-                <div className="mt-6 space-y-3">
-                  {stats.topAgents.map((agent, index) => (
-                    <div key={agent.id} className="workspace-subtle-surface rounded-3xl card-pad">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("rankPrefix", { index: index + 1 })}</p>
-                          <p className="mt-2 text-base font-semibold text-foreground">{agent.name}</p>
-                        </div>
-                        <ArrowRight className="mt-1 h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm xl:grid-cols-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground">{t("topAgentJobsMetric")}</p>
-                          <p className="font-semibold text-foreground">{agent.jobs}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">{t("topAgentAppsMetric")}</p>
-                          <p className="font-semibold text-foreground">{agent.applications}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">{t("topAgentPlacementsMetric")}</p>
-                          <p className="font-semibold text-foreground">{agent.placements}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">{t("topAgentPaidMetric")}</p>
-                          <p className="font-semibold text-foreground">${formatCount(agent.revenue)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  {t("noAgentPerformanceData")}
-                </div>
-              )}
-            </section>
           </div>
-
-          <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yOperationalHighlights")}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("operationalHighlights")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{t("operationalHighlightsDescription")}</p>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="workspace-subtle-surface card-pad rounded-3xl">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock3 className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("agingQueue")}</p>
-                </div>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("agingQueueDescription")}</p>
-              </div>
-              <div className="workspace-subtle-surface card-pad rounded-3xl">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <TrendingUp className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("demandEfficiency")}</p>
-                </div>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("demandEfficiencyDescription")}</p>
-              </div>
-              <div className="workspace-subtle-surface card-pad rounded-3xl">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Wallet className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("commercialYield")}</p>
-                </div>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{Math.round(placementRate * 100)}%</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("commercialYieldDescription")}</p>
-              </div>
-            </div>
-          </section>
         </>
       )}
     </div>

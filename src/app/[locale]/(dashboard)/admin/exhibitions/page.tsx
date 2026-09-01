@@ -606,6 +606,7 @@ export default function AdminExhibitionsPage() {
   return (
     <div className="page-container pb-20 lg:pb-16">
       <DashboardPageHeader
+        compact
         icon={CalendarDays}
         eyebrow={t("adminOperations")}
         title={t("exhibitionOperationsCenter")}
@@ -624,7 +625,10 @@ export default function AdminExhibitionsPage() {
             </a>
         )}
         compactOnMobile
-        metricsClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 [&_p]:min-h-[30px]"
+        // Three-across on phones (was 2x3): six figures cost three rows before
+        // the request queue started. The min-height on labels is desktop-only —
+        // it reserved a second label line in every compact cell.
+        metricsClassName="grid-cols-3 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 sm:[&_p]:min-h-[30px]"
         metrics={[
           // No `note` on any metric. The notes ("All time", "Needs first action",
           // "Final approvers") repeated what the label already said, and the header
@@ -640,19 +644,22 @@ export default function AdminExhibitionsPage() {
           { label: t("rejected"), value: summary.rejected, icon: XCircle, iconClassName: "text-red-600", iconSurfaceClassName: "bg-red-50" },
         ]}
         footer={
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+          /* Three budget figures across one row on phones — they were three
+             stacked rows, each with an icon chip, below an already tall hero.
+             The chips are desktop-only for the same reason. */
+          <div className="grid w-full min-w-0 grid-cols-3 items-start gap-x-2 gap-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6">
             {[
               { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), icon: Wallet, iconClassName: "text-blue-600", surface: "bg-blue-50" },
               { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), icon: Target, iconClassName: "text-emerald-600", surface: "bg-emerald-50" },
               { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), icon: Percent, iconClassName: "text-purple-600", surface: "bg-purple-50" },
             ].map(({ label, value, icon: BudgetIcon, iconClassName, surface }) => (
               <div key={label} className="flex min-w-0 items-center gap-2">
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${surface}`}>
+                <span className={`hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:flex ${surface}`}>
                   <BudgetIcon className={`h-3.5 w-3.5 ${iconClassName}`} aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-                  <p className="whitespace-nowrap text-sm font-semibold leading-tight text-foreground">{value}</p>
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-normal text-muted-foreground sm:text-[11px] sm:tracking-[0.14em]">{label}</p>
+                  <p className="whitespace-nowrap text-xs font-semibold leading-tight text-foreground sm:text-sm">{value}</p>
                 </div>
               </div>
             ))}

@@ -129,6 +129,8 @@ export default function AdminSubscriptionsPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         icon={Crown}
         title={t("subscriptionManagementTitle")}
         description={t("subscriptionManagementDesc")}
@@ -527,7 +529,9 @@ function ExpandableRow({
         className="border-b border-border/20 hover:bg-sky-500/5 transition-colors cursor-pointer"
         onClick={onToggle}
       >
-        <td className="px-4 py-3">
+        {/* data-mobile-hidden: the phone card draws its own expand chevron, so
+            this column would be a second chevron in an empty labelled row. */}
+        <td className="px-4 py-3" data-mobile-hidden>
           {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </td>
         <td className="px-4 py-3">

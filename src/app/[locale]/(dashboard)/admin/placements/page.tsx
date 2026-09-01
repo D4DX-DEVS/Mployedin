@@ -266,6 +266,7 @@ export default function AdminPlacementsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
+        compact
         title={t("placementTracking")}
         description={t("placementTrackingDescription")}
         actions={(

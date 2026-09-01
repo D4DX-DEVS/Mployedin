@@ -362,6 +362,8 @@ export default function AdminAgentsPage() {
       {ConfirmDialogNode}
 
       <PageHero
+        compact
+        compactOnMobile
         title={tr("agents")}
         description={tr("heroDescription")}
       />

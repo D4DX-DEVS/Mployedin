@@ -239,6 +239,7 @@ export default function AdminInvoicesPage() {
 
       {/* Page Header */}
       <DashboardPageHeader
+        compact
         title={t("title")}
         description={t("description")}
         compactOnMobile

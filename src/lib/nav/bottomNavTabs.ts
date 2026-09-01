@@ -29,7 +29,7 @@ export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabCon
     { key: "dashboard", href: "/admin", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },
     { key: "jobs", href: "/admin/jobs", icon: "Briefcase", labelKey: "jobs" },
     { key: "users", href: "/admin/users", icon: "Users", labelKey: "users" },
-    { key: "reports", href: "/admin/reports", icon: "BarChart2", labelKey: "reports" },
+    { key: "applications", href: "/admin/applications", icon: "FileText", labelKey: "applications" },
   ],
   agent: [
     { key: "dashboard", href: "/agent", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },

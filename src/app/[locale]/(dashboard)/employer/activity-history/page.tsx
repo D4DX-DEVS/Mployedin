@@ -171,17 +171,24 @@ export default function ActivityHistoryPage() {
         icon={History}
         title={t("title")}
         description={t("description")}
+        compact
+        compactOnMobile
+        // Phones: the lone "Total Entries" strip cost a full row for a number
+        // the pagination footer already reports.
+        metricsClassName="max-sm:hidden"
         metrics={[
           { label: t("totalEntries"), value: pagination.total, icon: History },
         ]}
       >
-          <div className="mt-2 flex flex-wrap items-end gap-3 border-t border-border/50 pt-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {/* Phones: both selects + Refresh share one row (labels hidden, the
+              select values already say All Actions / All Roles). */}
+          <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-border/50 pt-3 sm:gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
+              <label className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">
                 {t("actionType")}
               </label>
               <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger className="w-[150px] rounded-xl h-9 text-sm">
+                <SelectTrigger className="w-full sm:w-[150px] rounded-xl h-9 text-sm" aria-label={t("actionType")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -195,12 +202,12 @@ export default function ActivityHistoryPage() {
               </Select>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
+              <label className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">
                 {t("role")}
               </label>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-[150px] rounded-xl h-9 text-sm">
+                <SelectTrigger className="w-full sm:w-[150px] rounded-xl h-9 text-sm" aria-label={t("role")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -215,12 +222,13 @@ export default function ActivityHistoryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl ml-auto"
+              className="rounded-xl ml-auto h-9 shrink-0"
               onClick={handleRefresh}
               disabled={refreshing}
+              aria-label={t("refresh")}
             >
-              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} />
-              {t("refresh")}
+              <RefreshCw className={cn("h-3.5 w-3.5 sm:mr-1.5", refreshing && "animate-spin")} />
+              <span className="hidden sm:inline">{t("refresh")}</span>
             </Button>
           </div>
       </DashboardPageHeader>

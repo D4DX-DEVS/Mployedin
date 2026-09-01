@@ -15,6 +15,10 @@ interface PageHeroProps {
   icon?: LucideIcon;
   /** Right-aligned content (buttons, filters, stat pills). */
   actions?: ReactNode;
+  /** Phones only: title and actions share one row (see DashboardPageHeader). */
+  compact?: boolean;
+  /** Phones: drop the explanatory description (see DashboardPageHeader). */
+  compactOnMobile?: boolean;
   className?: string;
 }
 
@@ -29,6 +33,8 @@ export function PageHero({
   eyebrow,
   icon: Icon = Sparkles,
   actions,
+  compact = false,
+  compactOnMobile = false,
   className,
 }: PageHeroProps) {
   return (
@@ -38,6 +44,8 @@ export function PageHero({
       description={description}
       icon={Icon}
       actions={actions}
+      compact={compact}
+      compactOnMobile={compactOnMobile}
       className={className}
     />
   );

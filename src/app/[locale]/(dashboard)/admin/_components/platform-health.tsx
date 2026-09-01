@@ -158,24 +158,21 @@ export async function PlatformInsightsSection({
 
   return (
     <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <div>
-          <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.platformInsights.title")}</h2>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-            {t("sections.platformInsights.description")}
-          </p>
-        </div>
-        <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 text-sky-700 shadow-sm sm:text-right chip-pad">
-          <p className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("sections.platformInsights.engine")}</p>
-          <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.platformInsights.engineDetail")}</p>
-        </div>
+      {/* No "Insight engine" chip: internal product language, zero admin value. */}
+      <div>
+        <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.platformInsights.title")}</h2>
+        <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+          {t("sections.platformInsights.description")}
+        </p>
       </div>
 
-      <div className="mt-4 grid flex-1 auto-rows-fr gap-3 sm:gap-4 md:grid-cols-3">
+      {/* Phones: one swipeable snap row instead of three stacked full-height
+          cards — the stack pushed the rest of the dashboard ~2 screens down. */}
+      <div className="scrollbar-none mt-4 flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto md:grid md:auto-rows-fr md:grid-cols-3 md:gap-4 md:overflow-visible">
         {insights.map((insight) => (
           <article
             key={insight.id}
-            className={`flex flex-col p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_-44px_rgba(15,23,42,0.16)] sm:p-5 ${toneClasses[insight.tone]}`}
+            className={`flex w-[82%] shrink-0 snap-start flex-col p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_-44px_rgba(15,23,42,0.16)] sm:p-5 md:w-auto md:shrink ${toneClasses[insight.tone]}`}
             data-surface="light-card"
             data-tone={insight.tone}
           >
@@ -208,9 +205,9 @@ export function PlatformInsightsSkeleton() {
         </div>
         <div className="h-14 w-28 rounded-2xl skeleton-shimmer" />
       </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <div className="scrollbar-none mt-6 flex gap-4 overflow-x-auto md:grid md:grid-cols-3 md:overflow-visible">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="rounded-3xl border border-border/50 space-y-4 panel-body">
+          <div key={i} className="w-[82%] shrink-0 rounded-3xl border border-border/50 space-y-4 panel-body md:w-auto md:shrink">
             <div className="h-5 w-16 rounded-full skeleton-shimmer" />
             <div className="h-6 w-40 rounded skeleton-shimmer" />
             <div className="space-y-1.5">

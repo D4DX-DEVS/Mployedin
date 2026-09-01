@@ -260,13 +260,15 @@ export default function ApplicationsPage() {
                 )}
               </Button>
 
-              {/* fade mask hints there's more to scroll on phones, where all 8
-                  tabs never fit and the cut-off edge previously read as broken. */}
+              {/* Phones: no enclosing pill — the closed border made the cut-off
+                  last tab read as a broken control. Free-standing chips that run
+                  past the edge read as a scrollable carousel instead. The pill
+                  frame + fade mask return at sm+, where most tabs fit. */}
               <div className="relative w-full min-w-0 lg:w-auto lg:flex-1">
                 <div
                   role="tablist"
                   aria-label={t("statusFiltersLabel")}
-                  className="scrollbar-none flex snap-x snap-proximity items-center gap-1 overflow-x-auto rounded-full border border-border/70 bg-muted/20 p-1 [mask-image:linear-gradient(to_right,black_92%,transparent)] lg:[mask-image:none]"
+                  className="scrollbar-none flex snap-x snap-proximity items-center gap-1.5 overflow-x-auto sm:gap-1 sm:rounded-full sm:border sm:border-border/70 sm:bg-muted/20 sm:p-1 sm:[mask-image:linear-gradient(to_right,black_92%,transparent)] sm:rtl:[mask-image:linear-gradient(to_left,black_92%,transparent)] lg:[mask-image:none] lg:rtl:[mask-image:none]"
                 >
                   {STATUS_TABS.map((tab) => {
                     const isActive = tab === activeTab;
@@ -281,10 +283,10 @@ export default function ApplicationsPage() {
                         aria-controls={`applications-panel-${tab}`}
                         onClick={() => handleTabChange(tab)}
                         className={cn(
-                          "relative shrink-0 snap-start rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-colors duration-200 sm:px-3.5 sm:text-sm",
+                          "relative shrink-0 snap-start rounded-full border px-3 py-2 text-xs font-medium transition-colors duration-200 sm:border-0 sm:px-3.5 sm:py-1.5 sm:text-sm sm:shadow-none",
                           isActive
-                            ? "text-primary-foreground"
-                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                            ? "border-transparent text-primary-foreground"
+                            : "border-border/60 bg-background text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground sm:bg-transparent"
                         )}
                       >
                         {isActive && (
