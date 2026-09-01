@@ -10,6 +10,7 @@ import connectDB from "@/lib/db/mongoose";
 import Subscription from "@/models/Subscription";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
 import { Employer } from "@/models/Employer";
+import { requireSubscriptionTargetAccess } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 import { z } from "zod";
 
@@ -27,11 +28,11 @@ async function getHandler(
     return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
   }
 
-  // IDOR: non-admin can only view own
-  if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
-    if (sub.userId.toString() !== ctx.userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  // Own subscription always; anyone else's only if the caller actually manages
+  // that subscriber. Being *an* agent is not enough.
+  if (sub.userId.toString() !== ctx.userId) {
+    const denied = await requireSubscriptionTargetAccess(ctx, sub.userId.toString());
+    if (denied) return denied;
   }
 
   return NextResponse.json({ subscription: sub });
@@ -59,10 +60,10 @@ async function patchHandler(
       return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
     }
 
-    // Owner or admin can toggle
-    const isAdmin = ["admin", "super_agent", "agent"].includes(ctx.role);
-    if (!isAdmin && sub.userId.toString() !== ctx.userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Owner, or a caller who actually manages this subscriber.
+    if (sub.userId.toString() !== ctx.userId) {
+      const denied = await requireSubscriptionTargetAccess(ctx, sub.userId.toString());
+      if (denied) return denied;
     }
     if (sub.status !== "active") {
       return NextResponse.json(
@@ -102,6 +103,9 @@ async function patchHandler(
   if (!sub) {
     return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
   }
+  // A super-agent may only cancel for subscribers inside their own portfolio.
+  const cancelDenied = await requireSubscriptionTargetAccess(ctx, sub.userId.toString());
+  if (cancelDenied) return cancelDenied;
   if (sub.status !== "active") {
     return NextResponse.json(
       { error: `Cannot cancel a subscription with status "${sub.status}"` },

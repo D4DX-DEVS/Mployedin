@@ -119,8 +119,8 @@ function SaveFeedback({ saving, saved, hasChanges, onSave, label }: {
 }) {
   const t = useTranslations("agentSettings");
   return (
-    <div className="flex items-center gap-3">
-      <Button type="button" onClick={onSave} disabled={saving || !hasChanges} size="sm" className="gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <Button type="button" onClick={onSave} disabled={saving || !hasChanges} size="sm" className="gap-2 w-full sm:w-auto">
         <Save className="w-4 h-4" />
         {saving ? t("save.saving") : label ?? t("save.default")}
       </Button>
@@ -185,7 +185,7 @@ function ProfileTab() {
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const profileHasChanges = profileSnap ? JSON.stringify({ name, phone }) !== profileSnap : false;
@@ -309,9 +309,9 @@ function ProfileTab() {
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-4 h-4" />
             </button>
             <input
               ref={inputRef}
@@ -693,7 +693,7 @@ function NotificationsTab() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const handleSave = async () => {
@@ -1430,7 +1430,7 @@ export default function AgentSettingsPage() {
       <PageHero
         icon={Settings}
         title={t("hero.title")}
-        description={t("hero.description")}
+        description=""
       />
 
       {/* Sidebar + Content Layout */}

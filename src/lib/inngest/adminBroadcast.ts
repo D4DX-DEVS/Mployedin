@@ -43,7 +43,7 @@ export const adminBroadcastSender = inngest.createFunction(
   async ({ event, step }: { event: AdminBroadcastEvent; step: any }) => {
     const { title, message, targetRoles, targetAll, channels } = event.data;
 
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     const baseQuery: Record<string, unknown> = { isActive: true };
     if (!targetAll && targetRoles && targetRoles.length > 0) {

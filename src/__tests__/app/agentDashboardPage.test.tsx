@@ -102,7 +102,9 @@ describe("AgentDashboard", () => {
     expect(connectDBMock).toHaveBeenCalledTimes(1);
 
     expect(screen.getByRole("heading", { name: "Agent Dashboard" }).closest("section")).toHaveClass("workspace-hero-surface");
-    expect(screen.getByText("2 active accounts").closest("div")).toHaveClass("workspace-glass-panel");
+    // The summary value is itself a div now, so closest("div") stops at the
+    // value wrapper — reach for the panel by class instead.
+    expect(screen.getByText("2 active accounts").closest(".workspace-glass-panel")).not.toBeNull();
     expect(screen.getByRole("heading", { name: /track which parts of the desk need attention/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(screen.getByRole("heading", { name: /jump into the work most agents do every day/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();

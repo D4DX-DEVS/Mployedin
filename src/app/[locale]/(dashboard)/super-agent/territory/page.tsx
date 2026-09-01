@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection, SuperAgentEmptyState,
+  SuperAgentPageIntro, SuperAgentSection, SuperAgentEmptyState,
 } from "@/components/features/super-agent/WorkspacePage";
 import { MapPin, Users, Globe, Building2, Briefcase, TrendingUp, UserCheck } from "lucide-react";
 
@@ -58,13 +58,6 @@ export default function SuperAgentTerritoryPage() {
 
   useEffect(() => { fetchTerritory(); }, [fetchTerritory]);
 
-  const metricsItems = [
-    { label: t("metricsRegions"), value: stats.totalRegions, helper: t("metricsRegionsHelper"), icon: <Globe className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: t("metricsAgents"), value: stats.totalAgents, helper: t("metricsAgentsHelper"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: t("metricsEmployers"), value: stats.totalEmployers, helper: t("metricsEmployersHelper"), icon: <Building2 className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
-    { label: t("metricsActiveJobs"), value: stats.totalJobs, helper: t("metricsJobsHelper"), icon: <Briefcase className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-  ];
-
   /* Color scale based on agent density */
   const getHeatColor = (count: number) => {
     if (count >= 5) return "border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50";
@@ -95,47 +88,45 @@ export default function SuperAgentTerritoryPage() {
     none: regions.filter((r) => r.agentCount === 0).length,
   };
 
+  const headerMetrics = [
+    { label: t("metricsRegions"), value: stats.totalRegions, icon: Globe },
+    { label: t("metricsAgents"), value: stats.totalAgents, icon: Users },
+    { label: t("metricsEmployers"), value: stats.totalEmployers, icon: Building2 },
+    { label: t("metricsActiveJobs"), value: stats.totalJobs, icon: Briefcase },
+  ];
+
   return (
     <div className="page-container">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={headerMetrics}
+        compact
       />
 
-      <SuperAgentMetricsGrid items={metricsItems} />
-
-      {/* Coverage Legend — inline bar style */}
-      <div className="workspace-glass-panel rounded-2xl panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("coverageDistribution")}</p>
-          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:gap-4 sm:overflow-visible">
-            {[
-              { color: "bg-emerald-500", label: t("legendHigh"), count: coverageSummary.high },
-              { color: "bg-sky-500", label: t("legendGood"), count: coverageSummary.good },
-              { color: "bg-amber-500", label: t("legendLow"), count: coverageSummary.low },
-              { color: "bg-red-400", label: t("legendNone"), count: coverageSummary.none },
-            ].map((l) => (
-              <div key={l.label} className="flex shrink-0 items-center gap-1 sm:gap-2">
-                <div className={`h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5 ${l.color}`} />
-                <span className="whitespace-nowrap text-[11px] text-muted-foreground sm:text-xs">{l.label}</span>
-                <span className="whitespace-nowrap rounded-md bg-muted px-1 py-0.5 text-[9px] font-semibold text-muted-foreground sm:px-1.5 sm:text-[11px]">{l.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Visual bar */}
-        {regions.length > 0 && (
-          <div className="mt-3 flex h-2 w-full overflow-hidden rounded-full">
-            {coverageSummary.high > 0 && <div className="bg-emerald-500 transition-all" style={{ width: `${(coverageSummary.high / regions.length) * 100}%` }} />}
-            {coverageSummary.good > 0 && <div className="bg-sky-500 transition-all" style={{ width: `${(coverageSummary.good / regions.length) * 100}%` }} />}
-            {coverageSummary.low > 0 && <div className="bg-amber-500 transition-all" style={{ width: `${(coverageSummary.low / regions.length) * 100}%` }} />}
-            {coverageSummary.none > 0 && <div className="bg-red-400 transition-all" style={{ width: `${(coverageSummary.none / regions.length) * 100}%` }} />}
-          </div>
-        )}
-      </div>
-
       {/* Territory Grid */}
-      <SuperAgentSection title={t("sectionTitle")} description={t("sectionDescription", { count: regions.length })}>
+      <SuperAgentSection
+        title={t("sectionTitle")}
+        description={t("sectionDescription", { count: regions.length })}
+        actions={
+          regions.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { color: "bg-emerald-500", label: t("legendHigh"), count: coverageSummary.high },
+                { color: "bg-sky-500", label: t("legendGood"), count: coverageSummary.good },
+                { color: "bg-amber-500", label: t("legendLow"), count: coverageSummary.low },
+                { color: "bg-red-400", label: t("legendNone"), count: coverageSummary.none },
+              ].map((l) => (
+                <div key={l.label} className="flex items-center gap-1">
+                  <div className={`h-2 w-2 rounded-full ${l.color}`} />
+                  <span className="text-[11px] text-muted-foreground">{l.label}</span>
+                  <span className="rounded-md bg-muted px-1 py-0.5 text-[9px] font-semibold text-muted-foreground">{l.count}</span>
+                </div>
+              ))}
+            </div>
+          ) : null
+        }
+      >
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (

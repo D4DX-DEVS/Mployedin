@@ -62,6 +62,12 @@ JSON:`;
 }
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
+  // The route guard is `jobs:read`, which EVERY role holds — without this the
+  // endpoint is reachable by employers and job seekers.
+  if (ctx.role !== "super_agent" && ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
 
   // Dual-scoping: team agents + region-based agents
@@ -116,6 +122,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     ];
   } else if (employerIds.length > 0) {
     query.employerId = { $in: employerIds };
+  } else if (ctx.role === "super_agent") {
+    // Default-deny: an unscoped super-agent sees nothing, not everything.
+    query._id = { $in: [] };
   }
 
   // Status filter
@@ -176,10 +185,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Location
   if (country) {
-    query["location.country"] = { $regex: country, $options: "i" };
+    query["location.country"] = { $regex: escapeRegex(country), $options: "i" };
   }
   if (city) {
-    query["location.city"] = { $regex: city, $options: "i" };
+    query["location.city"] = { $regex: escapeRegex(city), $options: "i" };
   }
 
   // Skills
@@ -190,7 +199,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .filter(Boolean);
     if (skillList.length > 0) {
       query["requirements.skills"] = {
-        $all: skillList.map((s) => new RegExp(s, "i")),
+        $all: skillList.map((s) => new RegExp(escapeRegex(s), "i")),
       };
     }
   }
@@ -247,13 +256,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       !country
     ) {
       query["location.country"] = {
-        $regex: aiFilters["location.country"] as string,
+        $regex: escapeRegex(aiFilters["location.country"] as string),
         $options: "i",
       };
     }
     if (aiFilters["location.city"] && !city) {
       query["location.city"] = {
-        $regex: aiFilters["location.city"] as string,
+        $regex: escapeRegex(aiFilters["location.city"] as string),
         $options: "i",
       };
     }
@@ -263,14 +272,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     ) {
       query["requirements.skills"] = {
         $all: (aiFilters["requirements.skills"] as string[]).map(
-          (s) => new RegExp(s, "i")
+          (s) => new RegExp(escapeRegex(s), "i")
         ),
       };
     }
     if (aiFilters.titleSearch && !search) {
       query.$and = [
         ...(query.$and ?? []),
-        { title: { $regex: aiFilters.titleSearch as string, $options: "i" } },
+        { title: { $regex: escapeRegex(aiFilters.titleSearch as string), $options: "i" } },
       ];
     }
     if (aiFilters.descriptionSearch && !search) {
@@ -278,7 +287,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         ...(query.$and ?? []),
         {
           description: {
-            $regex: aiFilters.descriptionSearch as string,
+            $regex: escapeRegex(aiFilters.descriptionSearch as string),
             $options: "i",
           },
         },

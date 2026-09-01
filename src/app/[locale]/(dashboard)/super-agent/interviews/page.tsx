@@ -13,7 +13,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection,
+  SuperAgentPageIntro, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
   RotateCcw, Calendar, Video, MapPin, Phone, Clock,
@@ -112,11 +112,11 @@ export default function SuperAgentInterviewsPage() {
     { value: "hybrid", label: t("typeHybrid") },
   ];
 
-  const metricsItems = [
-    { label: t("totalInterviews"), value: stats.total, helper: t("acrossAllAgents"), icon: <Calendar className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: t("scheduled"), value: stats.scheduled, helper: t("upcoming"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-    { label: t("completed"), value: stats.completed, helper: t("successfullyDone"), icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: t("cancelRate"), value: `${stats.cancelRate}%`, helper: t("cancellationRate"), icon: <XCircle className="h-5 w-5" />, toneClassName: "workspace-tone-rose" },
+  const metricsArray = [
+    { label: t("totalInterviews"), value: stats.total, icon: Calendar },
+    { label: t("scheduled"), value: stats.scheduled, icon: Clock },
+    { label: t("completed"), value: stats.completed, icon: CheckCircle2 },
+    { label: t("cancelRate"), value: `${stats.cancelRate}%`, icon: XCircle },
   ];
 
   const typeIcon = (type: string) => {
@@ -133,13 +133,11 @@ export default function SuperAgentInterviewsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={metricsArray}
+        compact
       />
 
-      <SuperAgentMetricsGrid items={metricsItems} />
-
       <TableToolbar
-        title={t("toolbarTitle")}
-        description={t("toolbarDescription")}
         search={filters.search}
         onSearchChange={(v) => updateFilter("search", v)}
         searchPlaceholder={t("searchPlaceholder")}
@@ -149,7 +147,7 @@ export default function SuperAgentInterviewsPage() {
             <button
               type="button"
               onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
-              className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+              className="flex max-sm:min-h-11 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               {tc("cancel")}
@@ -163,14 +161,14 @@ export default function SuperAgentInterviewsPage() {
               value={filters.status}
               onValueChange={(v) => updateFilter("status", v)}
               placeholder={t("allStatuses")}
-              className="h-11 w-[180px] rounded-xl border-border bg-card"
+              className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
             />
             <SearchableSelect
               options={TYPE_OPTIONS}
               value={filters.type}
               onValueChange={(v) => updateFilter("type", v)}
               placeholder={t("allTypes")}
-              className="h-11 w-[180px] rounded-xl border-border bg-card"
+              className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
             />
             <DateTimePicker
               mode="date"
@@ -186,10 +184,8 @@ export default function SuperAgentInterviewsPage() {
         }
       />
 
-      <SuperAgentSection
-        eyebrow={t("sectionEyebrow")}
-        title={t("sectionTitle")}
-      >
+      {/* No section heading: it repeated the page title directly under the header. */}
+      <SuperAgentSection>
         <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
@@ -231,9 +227,11 @@ export default function SuperAgentInterviewsPage() {
                     <StatusBadge status={i.status} />
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm">{i.jobTitle}</p>
-                    {i.companyName && <p className="text-xs text-muted-foreground">{i.companyName}</p>}
-                    {i.agentName && <p className="text-xs text-muted-foreground">{i.agentName}</p>}
+                    <div className="grid w-full min-w-0 gap-0.5">
+                      <p className="text-sm font-medium text-foreground truncate">{i.jobTitle}</p>
+                      {i.companyName && <p className="text-xs text-muted-foreground truncate">{i.companyName}</p>}
+                      {i.agentName && <p className="text-xs text-muted-foreground truncate">{i.agentName}</p>}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center gap-1 text-sm capitalize">

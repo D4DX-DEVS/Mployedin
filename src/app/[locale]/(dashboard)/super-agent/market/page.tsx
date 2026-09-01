@@ -94,7 +94,7 @@ export default function MarketIntelligencePage() {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container max-sm:min-h-0">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
@@ -106,7 +106,9 @@ export default function MarketIntelligencePage() {
         description={t("sectionDescription")}
       >
         <div className="space-y-4">
-          <label htmlFor="market-query" className="text-sm font-medium text-foreground">{t("queryLabel")}</label>
+          {/* sr-only on phones: the section title directly above already says
+              the same thing; screen readers keep the label. */}
+          <label htmlFor="market-query" className="text-sm font-medium text-foreground max-sm:sr-only">{t("queryLabel")}</label>
           <div className="flex flex-col gap-2 lg:flex-row">
             <div className="relative min-w-0 flex-1">
               <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
@@ -130,9 +132,9 @@ export default function MarketIntelligencePage() {
               <button
                 key={i}
                 onClick={() => { setQuery(q); runQuery(q); }}
-                className="rounded-full border border-border/70 bg-background/85 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
+                className="rounded-full border border-border/70 bg-background/85 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground max-sm:whitespace-normal max-sm:h-auto max-sm:text-start max-sm:line-clamp-2"
               >
-                {q.length > 58 ? `${q.slice(0, 58)}...` : q}
+                {q}
               </button>
             ))}
             <button

@@ -4,6 +4,7 @@ import Country from "@/models/Country";
 import State from "@/models/State";
 import City from "@/models/City";
 import logger from "@/lib/logger";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * GET /api/filters/locations
@@ -16,6 +17,20 @@ import logger from "@/lib/logger";
  *   - search=xxx → search cities by name (returns up to 50)
  */
 export async function GET(req: NextRequest) {
+  // Public and DB-backed — throttle per IP like the sibling reference-data routes.
+  const ip =
+    req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const rl = await checkRateLimit(ip, { limit: 60, windowSec: 60, prefix: "filters-locations" });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+      }
+    );
+  }
+
   await connectDB();
 
   const { searchParams } = new URL(req.url);

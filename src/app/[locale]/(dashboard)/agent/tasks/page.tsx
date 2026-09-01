@@ -184,7 +184,7 @@ export default function AgentTasksPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
-          <Button onClick={() => setShowForm(!showForm)}>
+          <Button onClick={() => setShowForm(!showForm)} className="min-h-11">
             <Plus className="mr-1 h-4 w-4" /> {t("newTaskButton")}
           </Button>
         }
@@ -194,6 +194,7 @@ export default function AgentTasksPage() {
           { label: t("statCompleted"), value: stats.completed, icon: CheckCircle2 },
           { label: t("statOverdue"), value: stats.overdue, icon: AlertCircle },
         ]}
+        compactMetrics
       />
 
       {/* New Task Form */}
@@ -225,7 +226,7 @@ export default function AgentTasksPage() {
             <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9" />
           </div>
           <SearchableSelect options={getStatusOptions(t)} value={statusFilter} onValueChange={setStatusFilter} placeholder={tc("status")} className="w-36" />
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
+          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }} className="min-h-11 min-w-11">
             <RotateCcw className="me-1 h-4 w-4" /> {t("resetButton")}
           </Button>
         </div>

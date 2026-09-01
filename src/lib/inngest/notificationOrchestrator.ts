@@ -40,7 +40,7 @@ export const notificationOrchestrator = inngest.createFunction(
   async ({ event, step }: { event: { data: NotificationInstantEvent["data"] }; step: any }) => {
     const { userId, type, title, message, link, sendEmail: wantEmail, sendWhatsApp: wantWhatsApp, metadata } = event.data;
 
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // 0. System-wide maintenance check + user-level admin override
     const systemBlock = await step.run("check-system-config", async () => {

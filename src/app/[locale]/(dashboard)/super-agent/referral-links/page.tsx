@@ -18,7 +18,6 @@ import {
   ReferralSortField,
 } from "@/hooks/useReferralLinks";
 import {
-  SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -236,32 +235,27 @@ export default function SuperAgentReferralLinksPage() {
         eyebrow={t("eyebrow")}
         title={t("pageTitle")}
         description={t("pageDescription")}
-      />
-
-      <SuperAgentMetricsGrid
-        items={[
-          { label: t("metricTotalLinks"), value: stats.totalLinks, icon: <Link2 className="h-5 w-5" />, helper: t("metricTotalLinksHelper") },
-          { label: t("metricActiveLinks"), value: stats.activeLinks, icon: <Check className="h-5 w-5" />, helper: t("metricActiveLinksHelper") },
-          { label: t("metricTotalRegistrations"), value: stats.totalRegistrations, icon: <Users className="h-5 w-5" />, helper: t("metricTotalRegistrationsHelper") },
-          { label: t("metricYourAgentLinks"), value: `${stats.myLinks} / ${stats.agentLinks}`, icon: <User className="h-5 w-5" />, helper: t("metricYourAgentLinksHelper") },
+        metrics={[
+          { label: t("metricTotalLinks"), value: stats.totalLinks, icon: Link2 },
+          { label: t("metricActiveLinks"), value: stats.activeLinks, icon: Check },
+          { label: t("metricTotalRegistrations"), value: stats.totalRegistrations, icon: Users },
+          { label: t("metricYourAgentLinks"), value: `${stats.myLinks} / ${stats.agentLinks}`, icon: User },
         ]}
-      />
-
-      {/* Create section */}
-      <SuperAgentSection
-        title={t("createSectionTitle")}
-        actions={
-          <button
-            onClick={() => setCreateOpen(!createOpen)}
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {createOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            {createOpen ? tc("cancel") : t("newReferralLink")}
-          </button>
-        }
+        compact
       >
-        {createOpen && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <button
+          onClick={() => setCreateOpen(!createOpen)}
+          className="inline-flex h-9 items-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          {createOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+          {createOpen ? tc("cancel") : t("newReferralLink")}
+        </button>
+      </SuperAgentPageIntro>
+
+      {/* Create section - form only, no heading */}
+      {createOpen && (
+        <SuperAgentSection title="" className="mt-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("labelFieldLabel")}</label>
               <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("labelFieldPlaceholder")} className="h-10 rounded-xl" />
@@ -285,11 +279,11 @@ export default function SuperAgentReferralLinksPage() {
               </button>
             </div>
           </div>
-        )}
-      </SuperAgentSection>
+        </SuperAgentSection>
+      )}
 
       {/* AI Search + Filters */}
-      <SuperAgentSection title={t("browseTitle")}>
+      <div className="max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none workspace-panel-surface rounded-3xl p-3 sm:p-4 lg:p-5">
         {/* AI Natural Language Search */}
         <div className="mt-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -300,7 +294,7 @@ export default function SuperAgentReferralLinksPage() {
                 onChange={(e) => setAiQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
                 placeholder={t("aiSearchPlaceholder")}
-                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-24 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
+                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-28 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
               />
               <button
                 onClick={handleAiSearch}
@@ -409,7 +403,7 @@ export default function SuperAgentReferralLinksPage() {
             className="mb-4"
           />
         </div>
-      </SuperAgentSection>
+      </div>
 
       {/* Links table */}
       {isLoading ? (
@@ -499,12 +493,12 @@ export default function SuperAgentReferralLinksPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleCopy(link.code); }}
-                            className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
+                            className="inline-flex max-sm:min-h-11 h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
                             title={t("copyButtonTooltip")}
-                            aria-label={t("copyButtonAriaLabel")}
+                            data-table-action=""
                           >
                             {copyMap[link.code] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                             {copyMap[link.code] ? t("copiedButtonText") : t("copyButtonText")}
@@ -515,16 +509,16 @@ export default function SuperAgentReferralLinksPage() {
                               updateMutation.mutate({ id: link._id, isActive: !link.isActive });
                             }}
                             disabled={updateMutation.isPending}
-                            className={`inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"}`}
+                            className={`inline-flex max-sm:min-h-11 h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"}`}
                             title={link.isActive ? t("toggleDisableTooltip") : t("toggleEnableTooltip")}
-                            aria-label={link.isActive ? t("toggleDisableAriaLabel") : t("toggleEnableAriaLabel")}
+                            data-table-action=""
                           >
                             {link.isActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
                             {link.isActive ? t("disableButton") : t("enableButton")}
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : link._id); }}
-                            className="inline-flex h-7 items-center rounded-md border border-border px-1.5 text-muted-foreground hover:text-foreground"
+                            className="inline-flex max-sm:min-h-11 h-7 items-center rounded-md border border-border px-1.5 text-muted-foreground hover:text-foreground"
                             title={t("expandButtonTooltip")}
                             aria-label={isExpanded ? t("collapseRegistrationsAriaLabel") : t("expandRegistrationsAriaLabel")}
                           >

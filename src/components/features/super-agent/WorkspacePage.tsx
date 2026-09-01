@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { DashboardPageHeader, type DashboardHeaderMetric } from "@/components/shared/DashboardPageHeader";
 
 const LEGACY_TONE_CLASS_MAP: Record<string, string> = {
   "bg-sky-50 text-sky-600": "workspace-tone-sky",
@@ -31,6 +31,22 @@ interface SuperAgentPageIntroProps {
   };
   summaryTitle?: string;
   summaryDescription?: string;
+  /** Inline metric strip rendered inside the header (single source for page
+   *  numbers — pages must not repeat these in a separate card grid below). */
+  metrics?: readonly DashboardHeaderMetric[];
+  /** Single-row metric strip + one-row title/actions on phones. Only for ≤4
+   *  short-labelled metrics AND no/short actions — with wide action buttons the
+   *  one-row title/actions layout crushes the title to a sliver on phones.
+   *  For wide-action pages keep this off and force the single-row strip with
+   *  metricsClassName="grid-cols-N" instead. */
+  compact?: boolean;
+  /** Single-row compact metric strip only, without the one-row title/actions
+   *  layout — safe with wide action buttons. Implied by `compact`. */
+  compactMetrics?: boolean;
+  metricsClassName?: string;
+  /** Title and actions share one row at every width. Only for one or two
+   *  short actions — wide button groups squeeze the title. */
+  inlineActions?: boolean;
   children?: ReactNode;
 }
 
@@ -44,7 +60,10 @@ interface SuperAgentMetricItem {
 
 interface SuperAgentSectionProps {
   eyebrow?: string;
-  title: string;
+  /** Optional: a section directly under the page header often needs no second
+   *  heading — omit it (or pass an empty string) and the header row is skipped
+   *  entirely instead of rendering an empty h2 band. */
+  title?: string;
   description?: string;
   actions?: ReactNode;
   children: ReactNode;
@@ -68,6 +87,11 @@ export function SuperAgentPageIntro({
   summary,
   summaryTitle,
   summaryDescription,
+  metrics,
+  compact,
+  compactMetrics,
+  metricsClassName,
+  inlineActions,
   children,
 }: SuperAgentPageIntroProps) {
   const headerSummary = summary ?? (summaryTitle || summaryDescription ? {
@@ -83,6 +107,11 @@ export function SuperAgentPageIntro({
       description={description}
       summary={headerSummary}
       actions={children}
+      metrics={metrics}
+      compact={compact}
+      compactMetrics={compactMetrics}
+      metricsClassName={metricsClassName}
+      inlineActions={inlineActions}
       compactOnMobile
     />
   );
@@ -131,23 +160,28 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
 }
 
 export function SuperAgentSection({ eyebrow, title, description, actions, children, className }: SuperAgentSectionProps) {
+  const hasHeader = Boolean(title || eyebrow || description || actions);
   return (
     <section className={cn("max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none workspace-panel-surface rounded-3xl p-3 sm:p-4 lg:p-5", className)}>
-      <div className="flex flex-col gap-2 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          {/* The eyebrow is the disposable half, so it is what drops on a phone.
-              This was inverted: the <h2> carried `eyebrow && "hidden sm:block"`,
-              so 24 of 27 sections showed only an uppercase kicker ("REQUESTS",
-              "RANKINGS") on mobile while the real heading was hidden. */}
-          {eyebrow ? (
-            <p className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">{eyebrow}</p>
-          ) : null}
-          <h2 className="text-sm font-semibold tracking-tight text-foreground sm:mt-2 sm:text-xl">{title}</h2>
-          {description ? <p className="mt-1 hidden text-sm text-muted-foreground sm:block">{description}</p> : null}
+      {hasHeader ? (
+        <div className="flex flex-col gap-2 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            {/* The eyebrow is the disposable half, so it is what drops on a phone.
+                This was inverted: the <h2> carried `eyebrow && "hidden sm:block"`,
+                so 24 of 27 sections showed only an uppercase kicker ("REQUESTS",
+                "RANKINGS") on mobile while the real heading was hidden. */}
+            {eyebrow ? (
+              <p className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">{eyebrow}</p>
+            ) : null}
+            {title ? (
+              <h2 className="text-sm font-semibold tracking-tight text-foreground sm:mt-2 sm:text-xl">{title}</h2>
+            ) : null}
+            {description ? <p className="mt-1 hidden text-sm text-muted-foreground sm:block">{description}</p> : null}
+          </div>
+          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-      <div className="mt-3 sm:mt-5">{children}</div>
+      ) : null}
+      <div className={cn(hasHeader && "mt-3 sm:mt-5")}>{children}</div>
     </section>
   );
 }

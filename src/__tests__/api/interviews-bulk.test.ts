@@ -83,6 +83,11 @@ const mockApplication = {
   employerId: "emp_001",
 };
 
+// Employer profile resolved for the acting user. Owns emp_001 by default so
+// the ownership guard lets the fixtures through; a test flips it to model a
+// caller from a different company.
+let employerFindOneResult: unknown = { _id: "emp_001" };
+
 jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: {
@@ -117,9 +122,11 @@ jest.mock("@/models/Employer", () => ({
         lean: jest.fn(async () => ({ agentId: null })),
       })),
     })),
+    // The acting employer owns emp_001, which is the mocked application's
+    // employer — the route now refuses to schedule outside the caller's scope.
     findOne: jest.fn(() => ({
       select: jest.fn(() => ({
-        lean: jest.fn(async () => null),
+        lean: jest.fn(async () => employerFindOneResult),
       })),
     })),
   },
@@ -155,7 +162,28 @@ describe("POST /api/interviews/bulk", () => {
   beforeEach(() => {
     createdInterviews.length = 0;
     interviewFindOneResult = null;
+    employerFindOneResult = { _id: "emp_001" };
     jest.clearAllMocks();
+  });
+
+  it("refuses to schedule against another company's application", async () => {
+    // Caller's employer profile is a different company than the application's.
+    employerFindOneResult = { _id: "emp_999" };
+
+    const req = createBulkRequest({
+      candidates: [{ applicationId: "app_001", jobSeekerId: "seeker_001" }],
+      scheduledAt: "2026-05-05T10:00:00Z",
+      duration: 30,
+      type: "video",
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.created).toBe(0);
+    expect(data.failed).toBe(1);
+    expect(createdInterviews).toHaveLength(0);
   });
 
   it("creates interviews for candidates without active interview", async () => {

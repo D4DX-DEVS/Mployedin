@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, Circle, Hash, Loader2, Send, Users } from "lucide-react";
+import { ChevronLeft, Hash, Loader2, Send, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
@@ -96,7 +96,6 @@ export default function AgentChatPage() {
       <DashboardPageHeader
         icon={Users}
         title={t("teamChannelsHeading")}
-        description={t("teamChannelsDescription")}
         summary={{
           label: t("presenceLabel"),
           value: t("onlineCount", { count: online }),
@@ -104,9 +103,9 @@ export default function AgentChatPage() {
         }}
       />
 
-      <div className="workspace-panel-surface flex min-h-96 flex-1 gap-0 overflow-hidden rounded-3xl">
+      <div className="workspace-panel-surface flex sm:min-h-96 flex-1 gap-0 overflow-hidden rounded-3xl max-sm:flex-none">
         <aside className={`${showChannels ? "flex" : "hidden"} workspace-subtle-surface sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-border`}>
-          <div className="border-b border-border p-4">
+          <div className="max-sm:hidden border-b border-border p-4">
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("channelsLabel")}</p>
           </div>
 
@@ -129,13 +128,6 @@ export default function AgentChatPage() {
               </button>
             ))}
           </nav>
-
-          <div className="border-t border-border p-4">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500" />
-              {t("onlineCount", { count: online })}
-            </div>
-          </div>
         </aside>
 
         <div className={`${!showChannels ? "flex" : "hidden"} sm:flex min-w-0 flex-1 flex-col`}>

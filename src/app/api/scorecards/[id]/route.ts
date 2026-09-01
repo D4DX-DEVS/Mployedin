@@ -6,6 +6,7 @@ import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { scorecardUpdateSchema } from "@/lib/validators/scorecards";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
@@ -20,19 +21,26 @@ async function getHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string
   await connectDB();
   const id = params?.id;
 
+  if (ctx.role === "job_seeker") {
+    // Interviewer notes are internal — a candidate must never read their own.
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const scorecard = await Scorecard.findById(id).lean();
   if (!scorecard) {
     return NextResponse.json({ error: "Scorecard not found" }, { status: 404 });
   }
 
-  if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp || emp._id.toString() !== scorecard.employerId.toString()) {
-      return NextResponse.json(
-        { error: "You do not own this scorecard" },
-        { status: 403 }
-      );
-    }
+  // Everyone but admin is confined to their own employers. `null` is admin.
+  const employerIds = await getScopedEmployerIds(ctx);
+  if (
+    employerIds !== null &&
+    !employerIds.map(String).includes(scorecard.employerId.toString())
+  ) {
+    return NextResponse.json(
+      { error: "You do not own this scorecard" },
+      { status: 403 }
+    );
   }
 
   return NextResponse.json({ scorecard });

@@ -231,20 +231,22 @@ function DashboardMetricCard({
 }: DashboardMetricCardProps) {
   return (
     <div className="workspace-glass-panel card-pad rounded-xl">
+      {/* Phones: label + value + slim progress only — the helper sentence and
+          icon chip made six of these a three-screen wall of cards. */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-          <div className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{helper}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-[0.16em]">{label}</p>
+          <div className="mt-1 text-base font-semibold tracking-tight text-foreground sm:mt-2 sm:text-xl">{value}</div>
+          <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{helper}</p>
         </div>
-        <div className={`${METRIC_TONE_CLASS_MAP[tone]} rounded-xl p-2`}>{icon}</div>
+        <div className={`${METRIC_TONE_CLASS_MAP[tone]} hidden rounded-xl p-2 sm:block`}>{icon}</div>
       </div>
       {typeof progress === "number" ? (
-        <div className="mt-4 flex items-center gap-2">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/60">
+        <div className="mt-2 flex items-center gap-2 sm:mt-4">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/60 sm:h-2">
             <div className={`h-full rounded-full ${getProgressColor(progress)}`} style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
-          <span className={`min-w-10 text-right text-xs font-bold tabular-nums ${getProgressTextColor(progress)}`}>{progress}%</span>
+          <span className={`min-w-10 text-right text-xs font-bold tabular-nums ${getProgressTextColor(progress)} max-sm:hidden`}>{progress}%</span>
         </div>
       ) : null}
     </div>
@@ -461,8 +463,7 @@ export default function SuperAgentTargetProfilesPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border/60 bg-card/95 shadow-sm chip-pad">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -560,61 +561,7 @@ export default function SuperAgentTargetProfilesPage() {
             <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">Distribute</span>
           </Button>
         </div>
-      </div>
 
-      {tab === "team" && (
-        <>
-        <section className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
-          <DashboardMetricCard
-            label={t("teamCompletion")}
-            value={`${filteredTotals.avgPerformance}%`}
-            helper={`${filteredStageCounts.in_progress} active · ${filteredStageCounts.completed} completed`}
-            icon={<TrendingUp className="h-5 w-5" />}
-            progress={filteredTotals.avgPerformance}
-            tone="blue"
-          />
-          <DashboardMetricCard
-            label={t("employerTarget")}
-            value={<>{filteredTotals.employer.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employer.target}</span></>}
-            helper={`${Math.max(0, filteredTotals.employer.target - filteredTotals.employer.achieved)} balance`}
-            icon={<Building2 className="h-5 w-5" />}
-            progress={pct(filteredTotals.employer.achieved, filteredTotals.employer.target)}
-            tone="green"
-          />
-          <DashboardMetricCard
-            label={t("employeeTarget")}
-            value={<>{filteredTotals.employee.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employee.target}</span></>}
-            helper={`${Math.max(0, filteredTotals.employee.target - filteredTotals.employee.achieved)} balance`}
-            icon={<Users className="h-5 w-5" />}
-            progress={pct(filteredTotals.employee.achieved, filteredTotals.employee.target)}
-            tone="violet"
-          />
-          <DashboardMetricCard
-            label={t("revenueTarget")}
-            value={formatCompactCurrency(filteredTotals.finance.achieved, ownProfile?.currency ?? "AED")}
-            helper={`${formatCompactCurrency(filteredTotals.finance.target, ownProfile?.currency ?? "AED")} assigned`}
-            icon={<DollarSign className="h-5 w-5" />}
-            progress={pct(filteredTotals.finance.achieved, filteredTotals.finance.target)}
-            tone="amber"
-          />
-          <DashboardMetricCard
-            label={t("atRisk")}
-            value={filteredTotals.riskHigh}
-            helper={t("atRiskHelper")}
-            icon={<AlertCircle className="h-5 w-5" />}
-            tone="red"
-          />
-          <DashboardMetricCard
-            label={t("pendingActions")}
-            value={pendingActionsCount}
-            helper={t("pendingActionsHelper")}
-            icon={<ClipboardList className="h-5 w-5" />}
-            tone="blue"
-          />
-        </section>
-
-        </>
-      )}
 
       {/* ============ OWN TAB ============ */}
       {tab === "own" && (
@@ -778,26 +725,75 @@ export default function SuperAgentTargetProfilesPage() {
       {/* ============ TEAM TAB ============ */}
       {tab === "team" && (
         <div className="space-y-3">
+          <section className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
+            <DashboardMetricCard
+              label={t("teamCompletion")}
+              value={`${filteredTotals.avgPerformance}%`}
+              helper={`${filteredStageCounts.in_progress} active · ${filteredStageCounts.completed} completed`}
+              icon={<TrendingUp className="h-5 w-5" />}
+              progress={filteredTotals.avgPerformance}
+              tone="blue"
+            />
+            <DashboardMetricCard
+              label={t("employerTarget")}
+              value={<>{filteredTotals.employer.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employer.target}</span></>}
+              helper={`${Math.max(0, filteredTotals.employer.target - filteredTotals.employer.achieved)} balance`}
+              icon={<Building2 className="h-5 w-5" />}
+              progress={pct(filteredTotals.employer.achieved, filteredTotals.employer.target)}
+              tone="green"
+            />
+            <DashboardMetricCard
+              label={t("employeeTarget")}
+              value={<>{filteredTotals.employee.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employee.target}</span></>}
+              helper={`${Math.max(0, filteredTotals.employee.target - filteredTotals.employee.achieved)} balance`}
+              icon={<Users className="h-5 w-5" />}
+              progress={pct(filteredTotals.employee.achieved, filteredTotals.employee.target)}
+              tone="violet"
+            />
+            <DashboardMetricCard
+              label={t("revenueTarget")}
+              value={formatCompactCurrency(filteredTotals.finance.achieved, ownProfile?.currency ?? "AED")}
+              helper={`${formatCompactCurrency(filteredTotals.finance.target, ownProfile?.currency ?? "AED")} assigned`}
+              icon={<DollarSign className="h-5 w-5" />}
+              progress={pct(filteredTotals.finance.achieved, filteredTotals.finance.target)}
+              tone="amber"
+            />
+            <DashboardMetricCard
+              label={t("atRisk")}
+              value={filteredTotals.riskHigh}
+              helper={t("atRiskHelper")}
+              icon={<AlertCircle className="h-5 w-5" />}
+              tone="red"
+            />
+            <DashboardMetricCard
+              label={t("pendingActions")}
+              value={pendingActionsCount}
+              helper={t("pendingActionsHelper")}
+              icon={<ClipboardList className="h-5 w-5" />}
+              tone="blue"
+            />
+          </section>
+
           {/* Agent table */}
           <div className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Agent</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Territory</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Territory</TableHead>
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                     <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> Employer</div>
                   </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                     <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Employee</div>
                   </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                     <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Finance</div>
                   </TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Performance</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Stage</TableHead>
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Stage</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Risk</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Update</TableHead>
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Update</TableHead>
                   <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -861,26 +857,26 @@ export default function SuperAgentTargetProfilesPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                           <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                           {getTerritory(agent)}
                         </div>
                         <p className="mt-1 text-[11px] text-muted-foreground">{agent.regionalCurrency ?? agent.currency}</p>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <CompactProgress achieved={agent.employerAchieved} target={agent.employerTarget} progress={agent.employerProgress} type="employer" />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <CompactProgress achieved={agent.employeeAchieved} target={agent.employeeTarget} progress={agent.employeeProgress} type="employee" />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <CompactProgress achieved={agent.financeAchieved} target={agent.financeTarget} progress={agent.financeProgress} type="finance" currency={agent.currency} />
                       </TableCell>
                       <TableCell>
                         <PerformanceBadge pct={agent.overallProgress} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <CompletionBadge stage={getCompletionStage(agent.overallProgress)} />
                       </TableCell>
                       <TableCell>
@@ -890,7 +886,7 @@ export default function SuperAgentTargetProfilesPage() {
                           <p className="text-[11px] text-muted-foreground">{getRiskReason(agent)}</p>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <p className="text-sm font-medium text-foreground">{formatShortDate(agent.lastActivityAt ?? agent.updatedAt ?? agent.createdAt)}</p>
                         <p className="text-[11px] text-muted-foreground">{getNextAction(agent)}</p>
                       </TableCell>

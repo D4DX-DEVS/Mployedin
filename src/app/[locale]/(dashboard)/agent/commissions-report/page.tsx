@@ -145,85 +145,73 @@ export default function AgentCommissionsReportPage() {
         </div>
       </div>
 
-      {/* ── Hero Total ── */}
-      <div className="rounded-xl border bg-gradient-to-br from-indigo-50 to-white panel-body">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{t("totalEarned", { year: yearFilter })}</p>
-            <p className="mt-1 text-4xl font-bold tracking-tight">
-              {loading ? <span className="h-9 w-40 animate-pulse rounded bg-indigo-100 inline-block" /> : fmt(ytd?.totalAmount ?? 0, ytd?.currency)}
-            </p>
-            <p className="mt-1.5 text-sm text-muted-foreground">{t("commissionsTotal", { count: ytd?.totalCount ?? 0 })}</p>
-          </div>
-          <span className="rounded-full bg-indigo-100 p-3">
-            <CircleDollarSign className="h-6 w-6 text-indigo-600" />
-          </span>
-        </div>
-      </div>
-
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* ── Single-Row Metrics Strip ── */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 rounded-lg border bg-card card-pad">
         {[
+          {
+            label: t("totalEarned", { year: yearFilter }),
+            value: ytd ? fmt(ytd.totalAmount, ytd.currency) : "—",
+            icon: CircleDollarSign,
+            color: "text-indigo-600 bg-indigo-50",
+          },
           {
             label: t("statusPending"),
             value: ytd ? fmt(ytd.pendingAmount, ytd.currency) : "—",
-            sub: t("commissionsCount", { count: ytd?.pendingCount ?? 0 }),
             icon: Clock,
             color: "text-amber-600 bg-amber-50",
           },
           {
             label: t("statusApproved"),
             value: ytd ? fmt(ytd.approvedAmount, ytd.currency) : "—",
-            sub: t("commissionsCount", { count: ytd?.approvedCount ?? 0 }),
             icon: CheckCircle2,
             color: "text-blue-600 bg-blue-50",
           },
           {
             label: t("statusPaidOut"),
             value: ytd ? fmt(ytd.paidAmount, ytd.currency) : "—",
-            sub: t("commissionsCount", { count: ytd?.paidCount ?? 0 }),
             icon: Wallet,
             color: "text-emerald-600 bg-emerald-50",
           },
-          {
-            label: t("estNextPayment"),
-            value: ytd ? fmt(ytd.estimatedNextPayment, ytd.currency) : "—",
-            sub: t("basedOnApproved"),
-            icon: TrendingUp,
-            color: "text-violet-600 bg-violet-50",
-          },
-        ].map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="rounded-lg border bg-card card-pad">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">{label}</p>
-              <span className={`rounded-full p-1.5 ${color}`}>
-                <Icon className="h-3.5 w-3.5" />
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="flex flex-col items-start gap-1">
+            <div className="flex items-center gap-1.5 w-full">
+              <span className={`rounded-full p-1 ${color} flex-shrink-0`}>
+                <Icon className="h-3 w-3" />
               </span>
+              <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
             </div>
-            <p className="mt-2 text-xl font-bold">
+            <p className="text-lg font-bold">
               {loading ? <span className="h-5 w-20 animate-pulse rounded bg-muted inline-block" /> : value}
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Est. Next Payment Caption ── */}
+      <div className="text-xs text-muted-foreground px-1">
+        <span className="font-medium">{t("estNextPayment")}:</span> {ytd ? fmt(ytd.estimatedNextPayment, ytd.currency) : "—"} {t("basedOnApproved")}
       </div>
 
       {/* ── Monthly Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-lg border bg-card card-pad">
           <h2 className="heading-label mb-3 font-semibold">{t("monthlyBreakdown")}</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
-              <ReTooltip formatter={(v) => fmt(v as number)} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Pending" fill="#fbbf24" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Approved" fill="#6366f1" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Paid" fill="#10b981" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartData.length > 0 && chartData.some((m) => m.Pending > 0 || m.Approved > 0 || m.Paid > 0) ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
+                <ReTooltip formatter={(v) => fmt(v as number)} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Pending" fill="#fbbf24" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Approved" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Paid" fill="#10b981" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
+          )}
         </div>
 
         <div className="rounded-lg border bg-card card-pad">

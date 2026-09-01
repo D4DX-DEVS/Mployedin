@@ -334,24 +334,22 @@ function ProfileTab() {
             />
           </div>
 
-          {/* Name + badge */}
+          {/* Role badge + buttons */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h3 className="heading-subsection font-semibold tracking-tight truncate">{name || userName}</h3>
+            <div className="flex items-center gap-2.5 flex-wrap mb-3">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                 <Shield className="w-3 h-3" />
                 {t("superAgentRole")}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground mt-0.5 truncate">{userEmail}</p>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => inputRef.current?.click()}
                 disabled={uploading}
-                className="h-7 text-xs"
+                className="max-sm:min-h-11 sm:h-7 text-xs"
               >
                 {displayUrl ? t("changePhoto") : t("uploadPhoto")}
               </Button>
@@ -362,7 +360,7 @@ function ProfileTab() {
                   variant="ghost"
                   onClick={handleRemove}
                   disabled={uploading}
-                  className="h-7 text-xs text-destructive hover:text-destructive"
+                  className="max-sm:min-h-11 sm:h-7 text-xs text-destructive hover:text-destructive"
                 >
                   <Trash2 className="w-3 h-3 me-1" />
                   {tc("delete")}
@@ -378,7 +376,7 @@ function ProfileTab() {
       {/* Editable Profile Fields */}
       <SectionCard>
         <SectionHeader icon={UserCircle} title={t("basicInformation")} description={t("basicInformationDesc")} />
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-5">
           {profileLoading ? (
             <div className="h-24 animate-pulse rounded-xl bg-muted/30" />
           ) : (
@@ -758,7 +756,7 @@ function NotificationsTab() {
       {/* Email frequency */}
       <SectionCard>
         <SectionHeader icon={Clock} title={t("emailFrequency")} description={t("emailFrequencyDesc")} />
-        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {FREQ_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -777,7 +775,7 @@ function NotificationsTab() {
       {(prefs.emailFrequency === "daily" || prefs.emailFrequency === "weekly") && (
         <SectionCard>
           <SectionHeader icon={Clock} title={t("digestSchedule")} description={t("digestScheduleDesc")} />
-          <div className="p-6 grid gap-6 sm:grid-cols-2">
+          <div className="p-4 sm:p-6 grid gap-6 sm:grid-cols-2">
             <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("digestTime")}</Label>
               <DateTimePicker
@@ -1438,7 +1436,7 @@ export default function SuperAgentSettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
 
         {/* Left Navigation */}
-        <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-1.5 lg:mx-0 lg:sticky lg:top-4 lg:self-start">
+        <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 lg:sticky lg:top-4 lg:self-start">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
@@ -1447,7 +1445,7 @@ export default function SuperAgentSettingsPage() {
                 key={item.key}
                 type="button"
                 onClick={() => setActiveTab(item.key)}
-                className={`flex items-center gap-1.5 rounded-lg text-left transition-all duration-150 whitespace-nowrap lg:whitespace-normal min-w-0 group lg:gap-3 lg:rounded-xl ${isActive ? "bg-primary/[0.08] text-primary shadow-sm border border-primary/15" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent" } chip-pad`}
+                className={`flex items-center gap-1.5 lg:gap-3 rounded-lg lg:rounded-xl text-left transition-all duration-150 shrink-0 whitespace-nowrap lg:whitespace-normal px-3 lg:px-0 min-h-11 lg:min-h-auto group lg:chip-pad ${isActive ? "bg-primary/[0.08] text-primary shadow-sm border border-primary/15" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent" }`}
               >
                 <div className={`
                   flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-colors
@@ -1463,7 +1461,7 @@ export default function SuperAgentSettingsPage() {
                 <span className="hidden lg:block text-xs text-muted-foreground ml-auto">
                   <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isActive ? "text-primary" : ""}`} />
                 </span>
-                <span className="lg:hidden text-[11px] font-medium">{item.label.split(" ")[0]}</span>
+                <span className="lg:hidden text-[11px] font-medium">{item.label}</span>
               </button>
             );
           })}

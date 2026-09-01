@@ -17,7 +17,6 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -271,6 +270,12 @@ export default function SuperAgentEmployersPage() {
           value: `${stats.total} ${t("employerAccounts")}`,
           note: t("summaryDescription"),
         }}
+        metrics={[
+          { label: t("activeAccountsLabel"), value: stats.active, icon: ShieldCheck },
+          { label: t("assignedLabel"), value: stats.assigned, icon: Users },
+          { label: t("revenueLabel"), value: stats.revenue > 0 ? formatCurrency(stats.revenue, currencyCode) : "—", icon: DollarSign },
+        ]}
+        compactMetrics
       >
         <div className="flex gap-2 mt-3">
           <button
@@ -289,39 +294,6 @@ export default function SuperAgentEmployersPage() {
           </button>
         </div>
       </SuperAgentPageIntro>
-
-      <SuperAgentMetricsGrid
-        items={[
-          {
-            label: t("totalEmployersLabel"),
-            value: stats.total,
-            helper: t("totalEmployersHelper"),
-            icon: <Building2 className="h-5 w-5" />,
-            toneClassName: "workspace-tone-sky",
-          },
-          {
-            label: t("activeAccountsLabel"),
-            value: stats.active,
-            helper: t("activeAccountsHelper"),
-            icon: <ShieldCheck className="h-5 w-5" />,
-            toneClassName: "workspace-tone-emerald",
-          },
-          {
-            label: t("assignedLabel"),
-            value: stats.assigned,
-            helper: t("assignedHelper"),
-            icon: <Users className="h-5 w-5" />,
-            toneClassName: "workspace-tone-indigo",
-          },
-          {
-            label: t("revenueLabel"),
-            value: stats.revenue > 0 ? formatCurrency(stats.revenue, currencyCode) : "—",
-            helper: t("revenueHelper"),
-            icon: <DollarSign className="h-5 w-5" />,
-            toneClassName: "workspace-tone-amber",
-          },
-        ]}
-      />
 
       <SuperAgentSection
         eyebrow={t("sectionEyebrow")}
@@ -500,7 +472,9 @@ export default function SuperAgentEmployersPage() {
                       <StatusBadge status={em.isActive ? "active" : "inactive"} />
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{em.email}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    <span className="max-sm:w-full max-sm:text-start max-sm:block break-all min-w-0">{em.email}</span>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     <span className="block">{em.industry ?? "—"}</span>
                     <span className="mt-1 block text-xs">{em.location ?? "—"}</span>

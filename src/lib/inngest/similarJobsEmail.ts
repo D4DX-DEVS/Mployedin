@@ -33,7 +33,7 @@ export const similarJobsAfterApply = inngest.createFunction(
     // Wait 2 hours before sending
     await step.sleep("wait-2h", "2h");
 
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // Check user preferences
     const canSend = await step.run("check-prefs", async () => {

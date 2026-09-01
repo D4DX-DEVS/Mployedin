@@ -25,7 +25,7 @@ export const jobExpiryAlertsCron = inngest.createFunction(
     triggers: [{ cron: "0 8 * * *" }], // 8 AM UTC daily
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // Check if admin has enabled this cron
     const enabled = await step.run("check-enabled", () => isCronEnabled("jobExpiryAlerts"));

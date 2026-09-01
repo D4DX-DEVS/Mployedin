@@ -194,7 +194,7 @@ export function TargetTypeIcon({
 interface KpiCardProps {
   label: string;
   value: React.ReactNode;
-  subtext?: string;
+  subtext?: React.ReactNode;
   icon: React.ReactNode;
   toneClassName?: string;
   trend?: "up" | "down" | "neutral";

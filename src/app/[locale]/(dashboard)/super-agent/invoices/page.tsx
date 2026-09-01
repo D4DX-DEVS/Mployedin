@@ -12,6 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   RotateCcw, ArrowRight,
   BarChart3, FileText, RefreshCw,
+  DollarSign, CheckCircle2, Clock, Percent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -19,9 +20,9 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { InvoiceTable } from "@/components/shared/InvoiceTable";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
-import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
 import {
   SuperAgentPageIntro,
@@ -58,6 +59,7 @@ export default function SuperAgentInvoicesPage() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("superAgentInvoices");
+  const tKpi = useTranslations("revenueKPICards");
   const tc = useTranslations("common");
   const [activeView, setActiveView] = useState<"table" | "analytics">("table");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -148,22 +150,32 @@ export default function SuperAgentInvoicesPage() {
     { value: "consulting", label: t("categoryConsulting") },
   ];
 
+  const fmt = (v: number) => `${displayCurrency} ${formatCount(v, { maximumFractionDigits: 0 })}`;
+
+
   return (
     <div className="page-container">
       {/* ── Hero Section ── */}
       <SuperAgentPageIntro
         title={t("heroTitle")}
         description={t("heroDescription")}
+        metrics={analyticsData ? [
+          { label: tKpi("teamRevenue"), value: fmt(analyticsData.kpi.totalRevenue), icon: DollarSign },
+          { label: tKpi("teamPaid"), value: fmt(analyticsData.kpi.paidRevenue), icon: CheckCircle2 },
+          { label: tKpi("teamPending"), value: fmt(analyticsData.kpi.pendingRevenue), icon: Clock },
+          { label: tKpi("commissionDue"), value: fmt(analyticsData.kpi.agentCommissionPayable), icon: Percent },
+        ] : undefined}
+        compactMetrics
       >
-        <div className="flex items-center gap-2">
-          <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold max-sm:min-h-11">
             <FileText className="h-3.5 w-3.5" /> {t("createInvoice")}
           </Button>
-          <div className="inline-flex rounded-lg border border-border/70 bg-card">
-            <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <div className="inline-flex rounded-lg border border-border/70 bg-card max-sm:w-full">
+            <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 flex-1 max-sm:flex max-sm:items-center max-sm:justify-center ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
               <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("viewInvoices")}
             </button>
-            <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 flex-1 max-sm:flex max-sm:items-center max-sm:justify-center ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
               <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("viewAnalytics")}
             </button>
           </div>
@@ -194,14 +206,11 @@ export default function SuperAgentInvoicesPage() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      {/* KPI Cards */}
-      {analyticsData && <RevenueKPICards kpi={analyticsData.kpi} currency={displayCurrency} variant="super_agent" />}
-
       {/* Analytics View */}
       {activeView === "analytics" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {(["7d", "30d", "90d", "1y"] as const).map(p => (
                 <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("periodOneYear") : p}</button>
               ))}

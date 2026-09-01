@@ -19,6 +19,7 @@ import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 import { checkAdvert } from "@/lib/compliance/inclusiveWording";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
@@ -68,6 +69,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { deletedAt: null };
 
+  // Tracks whether the query is actually confined to jobs this caller
+  // owns or manages. Only then may they filter by a non-public status —
+  // otherwise `myJobs=true&status=draft` would return every unpublished job
+  // on the platform to any signed-in user.
+  let ownershipScoped = false;
+
   // Agent-scoped: only their own jobs + jobs from assigned employers
   if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId })
@@ -79,7 +86,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         conditions.push({ employerId: { $in: agentDoc.assignedEmployerIds } });
       }
       query.$or = conditions;
+      ownershipScoped = true;
     }
+  } else if (ctx.role === "super_agent") {
+    // Portfolio-scoped, default-deny on an empty scope.
+    query.employerId = { $in: await getSuperAgentEmployerIds(ctx.userId) };
+    ownershipScoped = true;
   } else if (myJobs && ctx.role === "employer") {
     // Employer fetching their own jobs — scope to their employerId, no status filter
     const empDoc = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
@@ -105,6 +117,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ) {
       query._id = { $in: teamMember.jobAccess };
     }
+    ownershipScoped = true;
   } else if (myJobs && ctx.role !== "employer") {
     // Non-employers requesting myJobs must see only active jobs
     query.status = "active";
@@ -114,7 +127,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.$or = [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }];
   }
 
-  const canFilterManagedJobs = myJobs || ctx.role === "agent" || ctx.role === "admin" || ctx.role === "super_agent";
+  const canFilterManagedJobs = ownershipScoped || ctx.role === "admin";
 
   if (status && canFilterManagedJobs) query.status = status;
   if (approvalStatus && canFilterManagedJobs) query["poster.approvalStatus"] = approvalStatus;

@@ -218,9 +218,8 @@ export default function AgentEmployersPage() {
     setTimeout(() => setReferralCopied(false), 2000);
   };
 
-  const activeEmployers = employers.filter((employer) => employer.isActive).length;
-  const inactiveEmployers = employers.filter((employer) => !employer.isActive).length;
-  const industriesCount = new Set(employers.map((employer) => employer.industry).filter(Boolean)).size;
+  // Use pagination.total for accurate count (server-computed, not page-scoped)
+  const totalEmployers = pagination.total;
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("exportColumnCompany"), key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
@@ -265,10 +264,9 @@ export default function AgentEmployersPage() {
           </div>
         }
         metrics={[
-          { label: tc("active"), value: activeEmployers, icon: Building2 },
-          { label: tc("inactive"), value: inactiveEmployers, icon: BriefcaseBusiness },
-          { label: t("statsIndustriesLabel"), value: industriesCount, icon: Globe2 },
+          { label: tc("total"), value: totalEmployers, icon: Building2 },
         ]}
+        compactMetrics
         compactOnMobile
       />
 
@@ -402,7 +400,7 @@ export default function AgentEmployersPage() {
                     <TooltipTrigger asChild>
                       <Link
                         href={`/${locale}/agent/jobs?employer=${em._id}`}
-                        className="inline-flex items-center justify-center rounded-xl border border-border text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary chip-pad"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary chip-pad"
                         aria-label={t("cardViewJobsAriaLabel", { company: em.companyName ?? em.name })}
                       >
                         <ArrowRight className="h-3.5 w-3.5" />
@@ -415,7 +413,7 @@ export default function AgentEmployersPage() {
                       <button
                         onClick={() => handleSwitchToEmployerView(em._id)}
                         disabled={switchingEmployerId === em._id || !em.isActive}
-                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50 chip-pad"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50 chip-pad"
                         aria-label={t("cardSwitchWorkspaceAriaLabel", { company: em.companyName ?? em.name })}
                       >
                         {switchingEmployerId === em._id ? (
@@ -432,7 +430,7 @@ export default function AgentEmployersPage() {
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => { setEditEmployer(em); setModalOpen(true); }}
-                          className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border p-2 transition-colors hover:bg-secondary/80"
                           aria-label={t("cardEditAriaLabel", { company: em.companyName ?? em.name })}
                         >
                           <Edit2 className="h-3.5 w-3.5 text-status-applied" />
@@ -446,7 +444,7 @@ export default function AgentEmployersPage() {
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => handleDelete(em._id)}
-                          className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border p-2 transition-colors hover:bg-secondary/80"
                           aria-label={t("cardDeleteAriaLabel", { company: em.companyName ?? em.name })}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-status-rejected" />

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Building2, CalendarClock } from "lucide-react";
+import { ArrowLeft, Building2, CalendarClock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -58,7 +58,7 @@ export default function NewLeadPage() {
         value={form[name as keyof typeof form]}
         onChange={(e) => set(name, e.target.value)}
         required={required}
-        className="input-field w-full h-9"
+        className="input-field w-full h-11"
       />
     </div>
   );
@@ -68,10 +68,9 @@ export default function NewLeadPage() {
       <PageHero
         icon={Building2}
         title={t("pageTitle")}
-        description={t("pageDescription")}
         actions={
           <Link href=".." className="inline-flex items-center gap-2 rounded-xl border border-border/75 bg-card/90 px-4 py-3 text-sm font-semibold text-foreground/85 transition-colors hover:border-border hover:text-status-applied">
-            <ArrowRight className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />
             {t("backToPipeline")}
           </Link>
         }

@@ -331,7 +331,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
               {t("aiInsights")}
             </p>
           </div>
-          <button onClick={fetchInsights} className="text-xs text-primary hover:underline flex items-center gap-1">
+          <button onClick={fetchInsights} className="text-xs text-primary hover:underline flex items-center gap-1 max-sm:min-h-11 max-sm:px-2 max-sm:-my-1" aria-label={t("retry")}>
             <RefreshCw className="h-3 w-3" /> {t("retry")}
           </button>
         </div>
@@ -402,8 +402,9 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
                 {!isDismissed && (
                   <button
                     onClick={() => dismissInsight(insight.id)}
-                    className="shrink-0 -mr-0.5 mt-0.5 rounded-md p-0.5 text-muted-foreground/40 transition-colors hover:bg-muted hover:text-muted-foreground"
+                    className="shrink-0 -mr-0.5 mt-0.5 rounded-md p-0.5 text-muted-foreground/40 transition-colors hover:bg-muted hover:text-muted-foreground max-sm:min-h-11 max-sm:min-w-11 max-sm:flex max-sm:items-center max-sm:justify-center max-sm:-mr-2.5 max-sm:-mt-0.5"
                     title={t("a11yDismiss")}
+                    aria-label={t("a11yDismiss")}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -421,7 +422,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
                     <button
                       onClick={() => handleAction(insight)}
                       disabled={isActionBusy}
-                      className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 disabled:opacity-50"
+                      className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 disabled:opacity-50 max-sm:min-h-11 max-sm:px-2 max-sm:-my-1"
                     >
                       {isActionBusy ? (
                         <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -439,15 +440,17 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleFeedback(insight, true)}
-                      className="text-muted-foreground/50 hover:text-emerald-500 transition-colors"
+                      className="text-muted-foreground/50 hover:text-emerald-500 transition-colors max-sm:min-h-11 max-sm:min-w-11 max-sm:flex max-sm:items-center max-sm:justify-center max-sm:-mr-1 max-sm:-my-1"
                       title={t("helpful")}
+                      aria-label={t("helpful")}
                     >
                       <ThumbsUp className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => handleFeedback(insight, false)}
-                      className="text-muted-foreground/50 hover:text-rose-500 transition-colors"
+                      className="text-muted-foreground/50 hover:text-rose-500 transition-colors max-sm:min-h-11 max-sm:min-w-11 max-sm:flex max-sm:items-center max-sm:justify-center max-sm:-ml-1 max-sm:-my-1"
                       title={t("notHelpful")}
+                      aria-label={t("notHelpful")}
                     >
                       <ThumbsDown className="h-3 w-3" />
                     </button>
@@ -480,7 +483,10 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
               className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary/70"
             >
               <Sparkles className="h-4 w-4 text-primary" />
-              {visibleInsights.length} {t("aiInsights")}
+              {visibleInsights.length}
+              {/* Phones: icon + count only, so the header's title row keeps
+                  room for the page title and the primary action. */}
+              <span className="max-sm:sr-only">{t("aiInsights")}</span>
               {severitySummary && (
                 <span className="hidden text-[11px] font-normal text-muted-foreground sm:inline">
                   {severitySummary}
@@ -502,7 +508,8 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
               {dismissedCount > 0 && (
                 <button
                   onClick={() => showDismissed ? restoreAll() : setShowDismissed(true)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
+                  className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2 max-sm:-my-1"
+                  aria-label={showDismissed ? t("restoreAll") : t("hidden")}
                 >
                   <Eye className="h-3 w-3" />
                   {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
@@ -511,7 +518,8 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
               <button
                 onClick={fetchInsights}
                 title={t("refreshInsights")}
-                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary max-sm:min-h-11 max-sm:min-w-11 max-sm:flex max-sm:items-center max-sm:justify-center max-sm:-m-1"
+                aria-label={t("refreshInsights")}
               >
                 <RefreshCw className="h-3 w-3" />
               </button>
@@ -540,7 +548,8 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
           {dismissedCount > 0 && (
             <button
               onClick={() => showDismissed ? restoreAll() : setShowDismissed(true)}
-              className="whitespace-nowrap text-[11px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
+              className="whitespace-nowrap text-[11px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1 max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2 max-sm:-my-1"
+              aria-label={showDismissed ? t("restoreAll") : t("hidden")}
             >
               <Eye className="h-3 w-3" />
               {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
@@ -548,8 +557,9 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
           )}
           <button
             onClick={fetchInsights}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 max-sm:min-h-11 max-sm:min-w-11 max-sm:flex max-sm:items-center max-sm:justify-center max-sm:-m-1"
             title={t("refreshInsights")}
+            aria-label={t("refreshInsights")}
           >
             <RefreshCw className="h-3 w-3" />
           </button>
@@ -564,7 +574,8 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
         <button
           onClick={() => setMobileOpen(true)}
           aria-expanded={false}
-          className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-background/70 text-left chip-pad"
+          aria-label={t("aiInsights")}
+          className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-background/70 text-left chip-pad max-sm:min-h-11"
         >
           <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
             <Sparkles className="h-3.5 w-3.5 text-primary" />

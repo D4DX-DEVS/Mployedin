@@ -13,6 +13,7 @@ import type { UserRole } from "@/models/User";
 import { generateEmbedding, cosineSimilarity, buildProfileText } from "@/lib/ai/embeddings";
 import { atlasVectorSearch } from "@/lib/ai/atlasVectorSearch";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 
 const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent"];
 const MIN_SIMILARITY = 0.35; // Minimum cosine similarity threshold
@@ -59,6 +60,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
   }
 
+  // Scope: a super-agent may only reach seekers owned by an agent inside their
+  // scope — same rule job-seekers/[id] enforces per record. Empty scope means
+  // nothing, never everything. Admin is unscoped.
+  let scopeFilter: Record<string, unknown> = {};
+  if (ctx.role === "super_agent") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    scopeFilter = { agentId: { $in: scope?.effectiveAgentIds ?? [] } };
+  }
+
   // Generate embedding for the search query
   let queryEmbedding: number[];
   try {
@@ -87,6 +97,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const preEmbedded = await JobSeeker.find({
       status: { $ne: "deleted" },
       "searchEmbedding.0": { $exists: true },
+      ...scopeFilter,
     })
       .select({ _id: 1, searchEmbedding: 1 })
       .limit(SCAN_LIMIT)
@@ -102,12 +113,26 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
+  // The Atlas index is not scope-aware, so drop out-of-scope hits before they
+  // reach paging or the total count.
+  if (Object.keys(scopeFilter).length > 0 && scored.length > 0) {
+    const allowedRows = await JobSeeker.find({
+      _id: { $in: scored.map((s) => s.id) },
+      ...scopeFilter,
+    })
+      .select({ _id: 1 })
+      .lean();
+    const allowed = new Set(allowedRows.map((d) => String(d._id)));
+    scored = scored.filter((s) => allowed.has(String(s.id)));
+  }
+
   // Phase 2 — bounded backfill: generate embeddings for a small batch of
   // candidates that don't have one yet. This converges over repeated searches
   // without ever firing an unbounded number of synchronous embedding calls.
   const missing = await JobSeeker.find({
     status: { $ne: "deleted" },
     "searchEmbedding.0": { $exists: false },
+    ...scopeFilter,
   })
     .select(BACKFILL_FIELDS)
     .limit(MAX_BACKFILL_PER_REQUEST)

@@ -57,6 +57,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
+    // Ownership: the role check above only proves the caller is *an* agent.
+    // Without this, any agent could score another agent's lead and read its
+    // contact PII back out of the prompt result.
+    if (userRole === "agent") {
+      const Agent = (await import("@/models/Agent")).default;
+      const agent = await Agent.findOne({ userId: session.user.id }).select("_id").lean();
+      if (!agent || String(lead.agentId) !== String(agent._id)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else if (userRole === "super_agent") {
+      const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+      const scope = await getSuperAgentScope(session.user.id!);
+      const inScope = Boolean(
+        scope &&
+          (String(lead.superAgentId ?? "") === String(scope.saProfileId) ||
+            scope.effectiveAgentIds.map(String).includes(String(lead.agentId ?? "")))
+      );
+      if (!inScope) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     const typedLead = lead as unknown as {
       companyName: string;
       contactPerson: string;

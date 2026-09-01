@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import mongoose from "mongoose";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -50,6 +51,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       agentScopeFilter = { $or: orConds };
     }
     // else: no explicit assignments — agent sees all job seekers
+  } else if (ctx.role === "super_agent") {
+    // Match the per-record rule in job-seekers/[id]: a super-agent may only see
+    // seekers owned by an agent inside their scope. Empty scope means nothing,
+    // never everything.
+    const scope = await getSuperAgentScope(ctx.userId);
+    agentScopeFilter = { agentId: { $in: scope?.effectiveAgentIds ?? [] } };
   }
 
   // ── Build common filter conditions ────────────────────────

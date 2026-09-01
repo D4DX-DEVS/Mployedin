@@ -210,6 +210,17 @@ export default function AgentExhibitionsPage() {
   const [dialogContainer, setDialogContainer] = useState<HTMLDivElement | null>(null);
   const [agentCurrency, setAgentCurrency] = useState<string>("AED");
   const [agentCountry, setAgentCountry] = useState<string>("");
+  const [summary, setSummary] = useState<{
+    total: number;
+    pendingReview: number;
+    approved: number;
+    rejected: number;
+  }>({
+    total: 0,
+    pendingReview: 0,
+    approved: 0,
+    rejected: 0,
+  });
 
   // Fetch agent's default currency and country on mount
   useEffect(() => {
@@ -249,6 +260,14 @@ export default function AgentExhibitionsPage() {
         const data = await response.json();
         setItems(data.items ?? []);
         updateTotal(data.total ?? 0);
+        if (data.summary) {
+          setSummary({
+            total: data.summary.total ?? 0,
+            pendingReview: data.summary.pendingReview ?? 0,
+            approved: data.summary.approved ?? 0,
+            rejected: data.summary.rejected ?? 0,
+          });
+        }
       }
     } catch {
       toast.error(t("fetchError"));
@@ -464,9 +483,6 @@ export default function AgentExhibitionsPage() {
     setDialogContainer(node);
   }, []);
 
-  const submittedCount = items.filter((item) => item.status === "submitted").length;
-  const approvedCount = items.filter((item) => ["approved", "budget_approved", "resources_assigned"].includes(item.status)).length;
-
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -480,15 +496,12 @@ export default function AgentExhibitionsPage() {
             <Plus className="mr-2 h-4 w-4" /> {t("newRequest")}
           </Button>
         }
-        metrics={!loading && items.length > 0 ? [
-          { label: tc("total"), value: items.length, icon: CalendarDays },
-          { label: t("statusSubmitted"), value: submittedCount, icon: Send },
-          { label: t("approved"), value: approvedCount, icon: Save },
-          { label: tc("active"), value: items.filter((item) => item.status === "active").length, icon: Clock },
-          { label: t("statusCompleted"), value: items.filter((item) => item.status === "completed").length, icon: Eye },
-          { label: t("statusRevision"), value: items.filter((item) => item.status === "revision_requested").length, icon: AlertTriangle },
+        metrics={!loading && total > 0 ? [
+          { label: tc("total"), value: total, icon: CalendarDays },
+          { label: t("statusSubmitted"), value: summary.pendingReview, icon: Send },
+          { label: t("approved"), value: summary.approved, icon: Save },
+          { label: t("statusRevision"), value: summary.rejected, icon: AlertTriangle },
         ] : undefined}
-        metricsClassName="xl:grid-cols-6"
       >
         <ExhibitionHeroFilters
           search={search}

@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
+import { assertPublicHost } from "@/lib/security/ssrf";
 import { smtpTestSchema } from "@/lib/validators/settings";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -29,9 +30,19 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ message: "Please enter the actual app password before testing" }, { status: 400 });
   }
 
+  const host = smtp.smtpHost || "smtp.gmail.com";
+
+  // SECURITY: the host is user-supplied and we dial it directly — refuse
+  // internal addresses so this cannot be used to probe the private network.
+  try {
+    await assertPublicHost(host);
+  } catch {
+    return NextResponse.json({ message: "SMTP host is not reachable" }, { status: 400 });
+  }
+
   try {
     const transporter = nodemailer.createTransport({
-      host: smtp.smtpHost || "smtp.gmail.com",
+      host,
       port: smtp.smtpPort || 587,
       secure: smtp.smtpSecure || false,
       auth: {
@@ -55,7 +66,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
             <p>This is a test email from your custom SMTP configuration on MPLOYEDIN.</p>
             <p>If you're reading this, your email setup is working correctly!</p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 16px;">
-              Host: ${smtp.smtpHost || "smtp.gmail.com"}:${smtp.smtpPort || 587}
+              Host: ${host}:${smtp.smtpPort || 587}
             </p>
           </div>
         </div>

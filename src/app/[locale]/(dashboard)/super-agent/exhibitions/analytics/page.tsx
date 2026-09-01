@@ -133,6 +133,17 @@ export default function SuperAgentExhibitionAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [currencyCode, setCurrencyCode] = useState("AED");
+  // Starts false so the server render and the first client render agree; the
+  // effect corrects it after mount and on resize.
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     fetch("/api/super-agent/profile")
@@ -200,6 +211,9 @@ export default function SuperAgentExhibitionAnalyticsPage() {
   const totalParticipation = participation.reduce((sum, item) => sum + item.count, 0);
   const strongestMonth = [...monthly].sort((left, right) => right.total - left.total)[0];
 
+  // Show last 6 months on mobile, all 12 on desktop
+  const displayedMonthly = isMobile ? monthly.slice(-6) : monthly;
+
   return (
     <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 lg:p-6">
       <DashboardPageHeader
@@ -241,7 +255,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           </div>
           <div className="h-[22rem]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthly} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
+              <BarChart data={displayedMonthly} margin={{ top: 8, right: 40, left: -12, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
                 <XAxis dataKey="month" axisLine={false} tickLine={false} className="text-xs" />
                 <YAxis axisLine={false} tickLine={false} className="text-xs" />
@@ -250,10 +264,10 @@ export default function SuperAgentExhibitionAnalyticsPage() {
                   contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)" }}
                 />
                 <Legend />
-                <Bar dataKey="submitted" fill="#0ea5e9" name={t("submittedBarLabel")} radius={[8, 8, 0, 0]} />
-                <Bar dataKey="approved" fill="#10b981" name={t("approvedBarLabel")} radius={[8, 8, 0, 0]} />
-                <Bar dataKey="completed" fill="#14b8a6" name={t("completedBarLabel")} radius={[8, 8, 0, 0]} />
-                <Bar dataKey="rejected" fill="#f43f5e" name={t("rejectedBarLabel")} radius={[8, 8, 0, 0]} />
+                <Bar dataKey="submitted" fill="#0ea5e9" name={t("submittedBarLabel")} radius={[8, 8, 0, 0]} maxBarSize={14} />
+                <Bar dataKey="approved" fill="#10b981" name={t("approvedBarLabel")} radius={[8, 8, 0, 0]} maxBarSize={14} />
+                <Bar dataKey="completed" fill="#14b8a6" name={t("completedBarLabel")} radius={[8, 8, 0, 0]} maxBarSize={14} />
+                <Bar dataKey="rejected" fill="#f43f5e" name={t("rejectedBarLabel")} radius={[8, 8, 0, 0]} maxBarSize={14} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -287,11 +301,11 @@ export default function SuperAgentExhibitionAnalyticsPage() {
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="heading-section font-semibold tracking-tight">{t("participationMixTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("participationMixDescription")}</p>
             </div>
-            <Target className="h-5 w-5 text-primary" />
+            <Target className="h-5 w-5 shrink-0 text-primary" />
           </div>
           {participation.length > 0 ? (
             <>
@@ -346,11 +360,11 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
         <div className="rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="heading-section font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("topAgentsDescription")}</p>
             </div>
-            <Trophy className="h-5 w-5 text-primary" />
+            <Trophy className="h-5 w-5 shrink-0 text-primary" />
           </div>
           <Table>
             <TableHeader>
@@ -396,7 +410,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
           {/* ROI sits with revenue and cost because it is computed from them.
               In the hero it was an outcome metric stranded among process ones. */}
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid gap-3 grid-cols-2 lg:grid-cols-4">
             <MiniSummaryCard
               label={t("revenueLabel")}
               value={formatCurrency(performance.totalRevenue, currencyCode)}

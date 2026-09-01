@@ -165,7 +165,7 @@ export default function AgentCommissionsPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
         summary={{ label: t("ledgerLabel"), value: `${pagination.total} ${t("commissionRecords")}` }}
-        compactOnMobile
+        compactMetrics
         metrics={summary ? [
           { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), icon: Clock },
           { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), icon: TrendingUp },
@@ -178,9 +178,9 @@ export default function AgentCommissionsPage() {
           pills sit under it. The filter card announced itself with a label and
           heading before showing a single search box. */}
       <section className="workspace-panel-surface rounded-3xl space-y-3 sm:space-y-4 panel-body">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+        <div className="flex flex-wrap items-start sm:items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
-          <div className="relative min-w-0 flex-1 sm:ms-auto sm:w-64 sm:flex-none">
+          <div className="relative min-w-0 w-full sm:ms-auto sm:w-64 sm:flex-none basis-full sm:basis-auto">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t("searchPlaceholder")}
@@ -194,33 +194,35 @@ export default function AgentCommissionsPage() {
               </button>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAdvanced((v) => !v)}
-            aria-expanded={showAdvanced}
-            className={`workspace-muted-pill h-10 shrink-0 rounded-xl px-3 text-xs hover:bg-card ${showAdvanced ? "workspace-tone-sky border-transparent" : ""}`}
-          >
-            <SlidersHorizontal className="me-1.5 h-3.5 w-3.5" />
-            {t("advancedButton")}
-          </Button>
-          {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 sm:gap-3 shrink-0">
             <Button
               variant="outline"
               size="sm"
-              onClick={clearFilters}
-              className="workspace-muted-pill h-10 shrink-0 rounded-xl px-3 text-xs hover:bg-card"
+              onClick={() => setShowAdvanced((v) => !v)}
+              aria-expanded={showAdvanced}
+              className={`workspace-muted-pill min-h-11 sm:h-10 shrink-0 rounded-xl px-3 text-xs hover:bg-card ${showAdvanced ? "workspace-tone-sky border-transparent" : ""}`}
             >
-              <RotateCcw className="me-1.5 h-3.5 w-3.5" />
-              {t("clearFiltersButton")}
+              <SlidersHorizontal className="me-1.5 h-3.5 w-3.5" />
+              {t("advancedButton")}
             </Button>
-          )}
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="shrink-0"
-          />
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="workspace-muted-pill min-h-11 sm:h-10 shrink-0 rounded-xl px-3 text-xs hover:bg-card"
+              >
+                <RotateCcw className="me-1.5 h-3.5 w-3.5" />
+                {t("clearFiltersButton")}
+              </Button>
+            )}
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+              className="shrink-0"
+            />
+          </div>
         </div>
 
         {/* Status pills */}
@@ -235,8 +237,8 @@ export default function AgentCommissionsPage() {
                 aria-pressed={isSelected}
                 variant="outline"
                 className={isSelected
-                  ? "workspace-tone-sky h-10 rounded-xl border-transparent px-4 capitalize hover:opacity-90"
-                  : "workspace-muted-pill h-10 rounded-xl px-4 capitalize hover:bg-card"
+                  ? "workspace-tone-sky min-h-11 sm:h-10 rounded-xl border-transparent px-4 capitalize hover:opacity-90"
+                  : "workspace-muted-pill min-h-11 sm:h-10 rounded-xl px-4 capitalize hover:bg-card"
                 }
               >
                 {t(`statusLabel${status.charAt(0).toUpperCase() + status.slice(1)}`)}

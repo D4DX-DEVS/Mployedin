@@ -46,7 +46,8 @@ describe("SuperAgentDashboard", () => {
   it("renders workspace heading for the super-agent dashboard", async () => {
     render(await SuperAgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
 
-    expect(screen.getByText(/super agent workspace/i)).toBeInTheDocument();
+    // The "Super agent workspace" eyebrow was dropped — it restated the
+    // heading directly below it.
     expect(screen.getByRole("heading", { name: /super agent dashboard/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /region at a glance/i })).toBeInTheDocument();

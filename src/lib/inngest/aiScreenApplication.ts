@@ -42,7 +42,7 @@ export const aiScreenApplication = inngest.createFunction(
   }) => {
     const { applicationId, autoRejectBelow } = event.data;
 
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     return step.run("score-application", async () => {
       const application = await Application.findById(applicationId);

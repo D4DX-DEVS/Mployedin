@@ -306,34 +306,10 @@ export default function SuperAgentAgentsPage() {
   // the rows on the current page, so "Total agents" showed 10 next to a
   // pagination footer reading "1–10 of 57".
   const kpis = [
-    {
-      label: t("totalAgents"),
-      value: totals.agents,
-      helper: t("totalAgentsHelper"),
-      icon: <Users2 className="h-5 w-5" />,
-      toneClassName: "workspace-tone-sky",
-    },
-    {
-      label: t("totalLeads"),
-      value: totals.leads,
-      helper: t("totalLeadsHelper"),
-      icon: <Target className="h-5 w-5" />,
-      toneClassName: "workspace-tone-emerald",
-    },
-    {
-      label: t("conversions"),
-      value: totals.conversions,
-      helper: t("conversionsHelper"),
-      icon: <Activity className="h-5 w-5" />,
-      toneClassName: "workspace-tone-indigo",
-    },
-    {
-      label: t("placements"),
-      value: totals.placements,
-      helper: t("placementsHelper"),
-      icon: <BriefcaseBusiness className="h-5 w-5" />,
-      toneClassName: "workspace-tone-amber",
-    },
+    { label: t("totalAgents"), value: totals.agents, note: t("totalAgentsHelper"), icon: Users2 },
+    { label: t("totalLeads"), value: totals.leads, note: t("totalLeadsHelper"), icon: Target },
+    { label: t("conversions"), value: totals.conversions, note: t("conversionsHelper"), icon: Activity },
+    { label: t("placements"), value: totals.placements, note: t("placementsHelper"), icon: BriefcaseBusiness },
   ];
 
   /* ── Sortable Header Cell ── */
@@ -365,6 +341,8 @@ export default function SuperAgentAgentsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={kpis}
+        compact
       >
         {/* Insights live here as one button that opens a dialog. As four cards
             they sat between the heading and the table on every visit. */}
@@ -377,19 +355,6 @@ export default function SuperAgentAgentsPage() {
           {t("addAgent")}
         </Button>
       </SuperAgentPageIntro>
-
-      {/* One compact line instead of four large tiles. These are context for the
-          table below, not the reason anyone opens this page — as cards they
-          pushed the first agent row off the first screen. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-        {kpis.map((k, i) => (
-          <span key={k.label} className="flex items-center gap-1.5">
-            {i > 0 && <span className="text-border">·</span>}
-            <span className="font-semibold tabular-nums text-foreground">{k.value}</span>
-            {k.label}
-          </span>
-        ))}
-      </div>
 
       <SuperAgentSection title={t("teamReviewTitle")} className="[&>div:first-child]:sr-only">
         {/* ── Search Row + Advanced Toggle ── */}
@@ -549,24 +514,35 @@ export default function SuperAgentAgentsPage() {
                   onClick={() => router.push(`agents/${a.agentId}`)}
                 >
                   <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium text-foreground">{a.name}</span>
-                      <span className="text-xs text-muted-foreground">{a.email}</span>
+                    {/* `grid`, not `flex-col`: the card layout re-flows any
+                        flex-col (and any unclassed div) into one wrapping inline
+                        row, which crammed the email into a fragment beside the
+                        name. A grid container keeps its own layout, so name,
+                        email and badges each hold a full-width line. */}
+                    <div className="grid w-full min-w-0 gap-1 max-sm:pe-12">
+                      <p className="truncate font-medium text-foreground">{a.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{a.email}</p>
                       <div className="flex flex-wrap items-center gap-1">
                         {badges.map((b) => (
                           <span key={b.label} className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
                             {b.label}
                           </span>
                         ))}
-                        {/* Phones: inline with the badges instead of a lone icon on its own card row. */}
-                        <span className="sm:hidden" onClick={(e) => e.stopPropagation()}>
-                          <AIExplainButton
-                            rowData={aiRowData(a)}
-                            entityLabel={t("entityLabelAgentPerformance")}
-                            context={t("aiExplainContext")}
-                          />
-                        </span>
                       </div>
+                      {/* Phones: the AI sparkle is pinned to the card's top end
+                          corner (the row is position:relative in card mode),
+                          clear of the expand chevron, instead of floating
+                          wherever the identity line happens to wrap. */}
+                      <span
+                        className="sm:hidden max-sm:absolute max-sm:end-8 max-sm:top-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <AIExplainButton
+                          rowData={aiRowData(a)}
+                          entityLabel={t("entityLabelAgentPerformance")}
+                          context={t("aiExplainContext")}
+                        />
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>

@@ -31,7 +31,7 @@ export const extractionDraftExpiryCron = inngest.createFunction(
     triggers: [{ cron: "0 4 * * *" }], // 04:00 UTC daily
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);

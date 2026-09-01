@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Scorecard from "@/models/Scorecard";
-import { Employer } from "@/models/Employer";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import type { ScorecardRecommendation } from "@/models/Scorecard";
@@ -59,11 +59,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.interviewId = interviewId;
   }
 
-  // Employer scope check
-  if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp) return NextResponse.json({ scorecards: [], consensus: null });
-    query.employerId = emp._id;
+  // Everyone but admin is confined to their own employers. `null` is admin.
+  const employerIds = await getScopedEmployerIds(ctx);
+  if (employerIds !== null) {
+    if (employerIds.length === 0) {
+      return NextResponse.json({ scorecards: [], consensus: null });
+    }
+    query.employerId = { $in: employerIds };
   }
 
   const scorecards = await Scorecard.find(query)

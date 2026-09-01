@@ -8,6 +8,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { jobUpdateSchema } from "@/lib/validators/jobs";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -22,9 +23,16 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     .lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  // Job seekers may only view active jobs; owners and privileged roles can view any status
-  if (ctx.role === "job_seeker" && job.status !== "active") {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  // An active job is public to any signed-in user. A non-active one (draft,
+  // paused, closed) is only for the owning side — mirrors patchHandler below,
+  // which already scopes writes this way.
+  if (job.status !== "active") {
+    // employerId is populated above, so read the id off the populated doc.
+    const ownerId = (job.employerId as { _id?: unknown } | null)?._id ?? job.employerId;
+    const employerIds = await getScopedEmployerIds(ctx);
+    if (employerIds !== null && !employerIds.map(String).includes(String(ownerId))) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
   }
 
   return NextResponse.json({ job });

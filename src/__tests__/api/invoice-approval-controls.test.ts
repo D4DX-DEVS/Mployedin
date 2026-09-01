@@ -49,6 +49,9 @@ const approvePendingCommissionsForPaidInvoice = jest.fn().mockResolvedValue({
   notificationFailures: 0,
   approvedCommissionIds: ["comm_001"],
   notifications: [{ userId: "agent_user_001", role: "agent", amount: 100, currency: "AED" }],
+  skippedSelfApproval: 0,
+  skippedCommissionIds: [],
+  approver: { agentId: null, superAgentId: null },
 });
 const createCommissionRecordsForInvoice = jest.fn().mockResolvedValue([{ _id: "comm_001" }]);
 const revertApprovedCommissions = jest.fn().mockResolvedValue(1);
@@ -56,6 +59,16 @@ const reverseCommissionsForInvoice = jest.fn().mockResolvedValue({ reversed: 0, 
 const sendCommissionApprovalNotifications = jest.fn().mockResolvedValue(0);
 
 jest.mock("@/lib/invoices/commissionRecords", () => ({
+  // Real predicate — the routes rely on it to skip the approver's own line.
+  isOwnCommissionLine: (
+    line: { agentId?: unknown; superAgentId?: unknown },
+    approver?: { agentId: string | null; superAgentId: string | null },
+  ) => {
+    if (!approver) return false;
+    if (approver.agentId && String(line.agentId ?? "") === approver.agentId) return true;
+    if (approver.superAgentId && String(line.superAgentId ?? "") === approver.superAgentId) return true;
+    return false;
+  },
   approvePendingCommissionsForPaidInvoice: (...args: unknown[]) => approvePendingCommissionsForPaidInvoice(...args),
   createCommissionRecordsForInvoice: (...args: unknown[]) => createCommissionRecordsForInvoice(...args),
   revertApprovedCommissions: (...args: unknown[]) => revertApprovedCommissions(...args),
@@ -146,6 +159,9 @@ describe("Invoice approval and payment controls", () => {
       notificationFailures: 0,
       approvedCommissionIds: ["comm_001"],
       notifications: [{ userId: "agent_user_001", role: "agent", amount: 100, currency: "AED" }],
+      skippedSelfApproval: 0,
+      skippedCommissionIds: [],
+      approver: { agentId: null, superAgentId: null },
     });
     createCommissionRecordsForInvoice.mockResolvedValue([{ _id: "comm_001" }]);
     revertApprovedCommissions.mockResolvedValue(1);

@@ -20,7 +20,6 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  CalendarCheck2,
   CalendarPlus,
   Check,
   ChevronRight,
@@ -285,10 +284,6 @@ export default function AgentCandidatesPage() {
     return "text-[hsl(var(--status-rejected))]";
   };
 
-  const shortlistedCount = applications.filter((app) => ["shortlisted", "interview_scheduled", "selected", "offer", "hired"].includes(app.status)).length;
-  const interviewCount = applications.filter((app) => app.status === "interview_scheduled").length;
-  const highMatchCount = applications.filter((app) => (app.aiMatchScore ?? 0) >= AI_MATCH_HIGH_THRESHOLD).length;
-
   // Derive the filtered job title from the first loaded application
   const filteredJobTitle = jobIdFilter && applications.length > 0
     ? applications[0]?.jobId?.title ?? null
@@ -316,11 +311,6 @@ export default function AgentCandidatesPage() {
         title={t("candidatesPipeline")}
         description={t("pipelineDescription")}
         summary={{ label: t("pipeline"), value: `${pagination.total} ${t("application", { count: pagination.total })}` }}
-        metrics={[
-          { label: t("shortlistedLabel"), value: shortlistedCount, icon: Users },
-          { label: t("interviewsLabel"), value: interviewCount, icon: CalendarCheck2 },
-          { label: t("highMatchLabel"), value: highMatchCount, icon: Star },
-        ]}
         compactOnMobile
       />
 
@@ -427,7 +417,7 @@ export default function AgentCandidatesPage() {
                       <div>
                         <p className="text-sm font-medium text-foreground">{app.jobSeekerId?.userId?.name ?? "Unknown"}</p>
                         {app.jobSeekerId?.totalExperienceYears != null && (
-                          <p className="text-xs text-muted-foreground">{app.jobSeekerId.totalExperienceYears}y exp</p>
+                          <p className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{app.jobSeekerId.totalExperienceYears}y exp</p>
                         )}
                         <StatusBadge status={app.status} />
                       </div>
@@ -454,6 +444,7 @@ export default function AgentCandidatesPage() {
                                 variant="outline"
                                 className="gap-1 rounded-lg px-2.5 text-xs"
                                 title={t(`actionLabel_${app.status}`)}
+                                data-table-action=""
                                 onClick={() => handleStatusUpdate(app._id, NEXT_STAGE_KEYS[app.status])}
                               >
                                 {app.status === "applied" ? <Check className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -478,6 +469,7 @@ export default function AgentCandidatesPage() {
                                 variant="outline"
                                 className="gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
                                 title={t("makeOfferTooltip")}
+                                data-table-action=""
                                 onClick={() => openOffer(app)}
                               >
                                 <Gift className="h-3.5 w-3.5" />

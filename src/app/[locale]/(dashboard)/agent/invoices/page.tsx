@@ -21,7 +21,6 @@ import type { ExportColumn } from "@/lib/export";
 
 import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
-import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -135,9 +134,11 @@ export default function AgentInvoicesPage() {
 
   return (
     <div className="page-container">
+      <div className="mb-4 max-sm:hidden">
+        <p className="text-sm text-muted-foreground">{t("description")}</p>
+      </div>
       <TableToolbar
         title={t("title")}
-        description={t("description")}
         search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
         left={
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -150,10 +151,10 @@ export default function AgentInvoicesPage() {
               <ArrowRight className="h-3.5 w-3.5 text-primary" /> {formatCount(total)} {t("invoicesPill")}
             </div>
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
-              <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonInvoices")}
               </button>
-              <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonAnalytics")}
               </button>
             </div>
@@ -185,8 +186,25 @@ export default function AgentInvoicesPage() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      {/* KPI Cards */}
-      {analyticsData && <RevenueKPICards kpi={analyticsData.kpi} currency={displayCurrency} variant="agent" />}
+      {/* Metrics Strip */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricRevenue")}</p>
+          <p className="mt-3 text-lg sm:text-xl font-semibold text-primary">{displayCurrency} {formatCount(summary.totalAmount, { maximumFractionDigits: 0 })}</p>
+        </div>
+        <div className="workspace-glass-panel card-pad rounded-2xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricPaid")}</p>
+          <p className="mt-3 text-lg sm:text-xl font-semibold text-emerald-600">{displayCurrency} {formatCount(summary.totalPaid, { maximumFractionDigits: 0 })}</p>
+        </div>
+        <div className="workspace-glass-panel card-pad rounded-2xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricPending")}</p>
+          <p className="mt-3 text-lg sm:text-xl font-semibold text-amber-600">{displayCurrency} {formatCount(summary.totalBalance, { maximumFractionDigits: 0 })}</p>
+        </div>
+        <div className="workspace-glass-panel card-pad rounded-2xl max-sm:col-span-2 sm:max-lg:col-span-3 lg:col-span-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricTotalInvoices")}</p>
+          <p className="mt-3 text-lg sm:text-xl font-semibold text-primary">{formatCount(total)}</p>
+        </div>
+      </div>
 
       {/* Analytics View */}
       {activeView === "analytics" && (
@@ -210,10 +228,6 @@ export default function AgentInvoicesPage() {
           {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
 
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
-            <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionLabel")}</p>
-              <h3 className="heading-subsection font-semibold text-foreground">{t("sectionHeading")}</h3>
-            </div>
             <InvoiceTable
               invoices={invoices}
               loading={loading}

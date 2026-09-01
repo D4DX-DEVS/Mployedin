@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import PosterGeneration from "@/models/PosterGeneration";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * POST /api/poster/[slug]/track
@@ -15,6 +16,20 @@ export async function POST(
   const { slug } = await params;
   if (!slug) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
+  }
+
+  // Public write — throttle per IP so the counters can't be scripted upward.
+  const ip =
+    req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const rl = await checkRateLimit(ip, { limit: 30, windowSec: 60, prefix: "poster-track" });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+      }
+    );
   }
 
   const body = await req.json().catch(() => ({}));

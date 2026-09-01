@@ -13,6 +13,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { canAccessInvoice } from "@/lib/invoices/access";
 import {
   approvePendingCommissionsForPaidInvoice,
+  isOwnCommissionLine,
   revertApprovedCommissions,
   sendCommissionApprovalNotifications,
 } from "@/lib/invoices/commissionRecords";
@@ -136,8 +137,13 @@ async function postHandler(
       commissionsApproved = approvedCommissionsResult.approved;
 
       if (commissionsApproved > 0) {
+        // Same self-approval exclusion as the external records above, so the
+        // approver's own embedded line is not silently marked approved.
         for (const commission of invoice.commissions ?? []) {
-          if (commission.status === "pending") {
+          if (
+            commission.status === "pending" &&
+            !isOwnCommissionLine(commission, approvedCommissionsResult.approver)
+          ) {
             commission.status = "approved";
           }
         }

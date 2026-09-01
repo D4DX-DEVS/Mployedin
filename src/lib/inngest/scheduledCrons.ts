@@ -158,12 +158,9 @@ export const agentWeeklyDigestCron = makeScheduledCron({
 });
 
 // ── Additional scheduled crons ──────────────────────────────────────────────
-export const autoApplyCron = makeScheduledCron({
-  id: "scheduled-auto-apply",
-  name: "Auto Apply (hourly)",
-  cron: "0 * * * *",
-  path: "/api/cron/autoapply",
-});
+// NOTE: auto-apply is intentionally NOT scheduled — the feature is disabled
+// (/api/cron/autoapply is POST-only and returns 503). Re-add a scheduled
+// function here when the feature ships; see the TODO in that route.
 
 export const invoiceOverdueCron = makeScheduledCron({
   id: "scheduled-invoice-overdue",
@@ -206,7 +203,6 @@ export const scheduledCronFunctions = [
   invoiceOverdueReminderCron,
   targetRiskCheckCron,
   agentWeeklyDigestCron,
-  autoApplyCron,
   invoiceOverdueCron,
   npsTriggerCron,
   slaAlertsCron,

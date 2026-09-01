@@ -8,11 +8,10 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection,
+  SuperAgentPageIntro, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
   RotateCcw, FileText, TrendingUp,
@@ -105,11 +104,11 @@ export default function SuperAgentApplicationsPage() {
     pagination.resetPage();
   };
 
-  const metricsItems = [
-    { label: t("metrics.totalApplications"), value: stats.total, helper: t("metrics.allTeamApplications"), icon: <FileText className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: t("metrics.shortlisted"), value: stats.shortlisted, helper: t("metrics.currentlyShortlisted"), icon: <Star className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-    { label: t("metrics.hired"), value: stats.hired, helper: t("metrics.successfullyHired"), icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: t("metrics.conversionRate"), value: `${stats.conversionRate}%`, helper: t("metrics.appliedToHired"), icon: <TrendingUp className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+  const metrics = [
+    { label: t("metrics.totalApplications"), value: stats.total, icon: FileText },
+    { label: t("metrics.shortlisted"), value: stats.shortlisted, icon: Star },
+    { label: t("metrics.hired"), value: stats.hired, icon: CheckCircle2 },
+    { label: t("metrics.conversionRate"), value: `${stats.conversionRate}%`, icon: TrendingUp },
   ];
 
   return (
@@ -117,53 +116,49 @@ export default function SuperAgentApplicationsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={metrics}
+        compact
       />
 
-      <SuperAgentMetricsGrid items={metricsItems} />
-
-      <TableToolbar
-        title={t("toolbarTitle")}
-        description={t("toolbarDescription")}
-        search={filters.search}
-        onSearchChange={(v) => updateFilter("search", v)}
-        searchPlaceholder={t("searchPlaceholder")}
-        hasActiveFilters={filters.status !== "all" || filters.agent !== "all"}
-        actions={
-          (filters.search || filters.status !== "all" || filters.agent !== "all") ? (
+      {/* No section heading: it repeated the page title directly under the header. */}
+      <SuperAgentSection>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <input
+            type="text"
+            placeholder={t("searchPlaceholder")}
+            value={filters.search}
+            onChange={(e) => updateFilter("search", e.target.value)}
+            className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-border bg-card text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          {(filters.search || filters.status !== "all" || filters.agent !== "all") && (
             <button
               type="button"
               onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
-              className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+              className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all max-sm:min-h-11"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               {t("resetButton")}
             </button>
-          ) : undefined
-        }
-        filterContent={
-          <div className="flex flex-wrap items-center gap-3">
-            <SearchableSelect
-              options={getStatusOptions(t)}
-              value={filters.status}
-              onValueChange={(v) => updateFilter("status", v)}
-              placeholder={t("statusPlaceholder")}
-              className="h-11 w-[180px] rounded-xl border-border bg-card"
-            />
-            <SearchableSelect
-              options={agentOptions}
-              value={filters.agent}
-              onValueChange={(v) => updateFilter("agent", v)}
-              placeholder={t("allAgentsPlaceholder")}
-              className="h-11 w-[180px] rounded-xl border-border bg-card"
-            />
-          </div>
-        }
-      />
+          )}
+        </div>
 
-      <SuperAgentSection
-        eyebrow={t("sectionEyebrow")}
-        title={t("sectionTitle")}
-      >
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <SearchableSelect
+            options={getStatusOptions(t)}
+            value={filters.status}
+            onValueChange={(v) => updateFilter("status", v)}
+            placeholder={t("statusPlaceholder")}
+            className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
+          />
+          <SearchableSelect
+            options={agentOptions}
+            value={filters.agent}
+            onValueChange={(v) => updateFilter("agent", v)}
+            placeholder={t("allAgentsPlaceholder")}
+            className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
+          />
+        </div>
+
         <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
@@ -206,9 +201,11 @@ export default function SuperAgentApplicationsPage() {
                     <StatusBadge status={a.status} />
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm">{a.jobTitle}</p>
-                    {a.companyName && <p className="text-xs text-muted-foreground">{a.companyName}</p>}
-                    {a.agentName && <p className="text-xs text-muted-foreground">{a.agentName}</p>}
+                    <div className="grid w-full min-w-0 gap-0.5">
+                      <p className="text-sm font-medium text-foreground truncate">{a.jobTitle}</p>
+                      {a.companyName && <p className="text-xs text-muted-foreground truncate">{a.companyName}</p>}
+                      {a.agentName && <p className="text-xs text-muted-foreground truncate">{a.agentName}</p>}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {a.matchScore != null ? (

@@ -60,7 +60,7 @@ export const emailSequenceSenderCron = inngest.createFunction(
     triggers: [{ cron: "0 * * * *" }], // hourly
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     const enabled = await step.run("check-enabled", () => isCronEnabled("emailSequenceSender"));
     if (!enabled) {

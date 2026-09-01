@@ -8,6 +8,7 @@ import { Application } from "@/models/Application";
 import Job from "@/models/Job";
 import { JobSeeker } from "@/models/JobSeeker";
 import { Employer } from "@/models/Employer";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import logger from "@/lib/logger";
 
 const VALID_CONTEXTS = [
@@ -76,6 +77,30 @@ export async function POST(req: NextRequest) {
     }
 
     await connectDB();
+
+    // Ownership first, on a light query — the role check above only proves the
+    // caller is *an* employer/agent, not that this application is theirs, and
+    // the populated read below returns candidate PII.
+    const scopeRow = await Application.findById(applicationId)
+      .select("jobId")
+      .populate({ path: "jobId", select: "employerId" })
+      .lean();
+    if (!scopeRow) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    }
+    const ownerEmployerId = String(
+      (scopeRow as unknown as { jobId?: { employerId?: unknown } }).jobId?.employerId ?? ""
+    );
+    const scopedEmployerIds = await getScopedEmployerIds({
+      userId: session.user.id!,
+      role: userRole,
+    });
+    if (
+      scopedEmployerIds !== null &&
+      !scopedEmployerIds.map(String).includes(ownerEmployerId)
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const application = await Application.findById(applicationId)
       .populate({ path: "jobId", select: "title location requirements employerId", populate: { path: "employerId", select: "companyName" } })

@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
-import connectDB from "@/lib/db/mongoose";
+import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import mongoose from "mongoose";
@@ -151,6 +151,44 @@ export async function getSuperAgentEmployerIds(
     .select("_id")
     .lean();
   return employers.map((e) => e._id as mongoose.Types.ObjectId);
+}
+
+/**
+ * Employer _ids assigned to an agent. Returns [] when the agent has no
+ * assignments — callers MUST treat [] as "see nothing" (default-deny).
+ */
+export async function getAgentEmployerIds(
+  agentUserId: string
+): Promise<mongoose.Types.ObjectId[]> {
+  await connectDB();
+  const agent = await Agent.findOne({ userId: agentUserId })
+    .select("assignedEmployerIds")
+    .lean();
+  return (agent?.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? [];
+}
+
+/**
+ * Employer _ids an actor may read on employer-scoped resources.
+ *
+ * Returns `null` for admin only — meaning "no employer filter". Every other
+ * role gets an explicit id list, and an empty list means "see nothing", so a
+ * caller that forgets to scope cannot silently fall through to a
+ * platform-wide read.
+ */
+export async function getScopedEmployerIds(ctx: {
+  userId: string;
+  role: string;
+}): Promise<mongoose.Types.ObjectId[] | null> {
+  if (ctx.role === "admin") return null;
+  if (ctx.role === "agent") return getAgentEmployerIds(ctx.userId);
+  if (ctx.role === "super_agent") return getSuperAgentEmployerIds(ctx.userId);
+  if (ctx.role === "employer") {
+    await connectDB();
+    const { Employer } = await import("@/models/Employer");
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    return emp ? [emp._id as mongoose.Types.ObjectId] : [];
+  }
+  return [];
 }
 
 /** Deduplicate an array of ObjectIds. */

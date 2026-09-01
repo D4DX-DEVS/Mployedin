@@ -16,6 +16,8 @@ const applicationCountDocumentsMock = jest.fn();
 const applicationAggregateMock = jest.fn();
 const interviewCountDocumentsMock = jest.fn();
 const placementCountDocumentsMock = jest.fn();
+const interviewAggregateMock = jest.fn();
+const placementAggregateMock = jest.fn();
 
 jest.mock("@/lib/auth/config", () => ({
   auth: () => authMock(),
@@ -58,6 +60,7 @@ jest.mock("@/models/Interview", () => ({
   __esModule: true,
   default: {
     countDocuments: (...args: unknown[]) => interviewCountDocumentsMock(...args),
+    aggregate: (...args: unknown[]) => interviewAggregateMock(...args),
   },
 }));
 
@@ -65,6 +68,7 @@ jest.mock("@/models/Placement", () => ({
   __esModule: true,
   default: {
     countDocuments: (...args: unknown[]) => placementCountDocumentsMock(...args),
+    aggregate: (...args: unknown[]) => placementAggregateMock(...args),
   },
 }));
 
@@ -150,17 +154,26 @@ describe("AdminDashboardPage", () => {
         { _id: "application-1", status: "applied", appliedAt: "2026-04-16T08:00:00.000Z", createdAt: "2026-04-16T08:00:00.000Z" },
         { _id: "application-2", status: "interview_scheduled", appliedAt: "2026-04-11T08:00:00.000Z", createdAt: "2026-04-11T08:00:00.000Z" },
       ]);
+
+    interviewAggregateMock.mockResolvedValue([
+      { _id: "interview-1", status: "scheduled", createdAt: "2026-04-16T09:00:00.000Z" },
+    ]);
+    placementAggregateMock.mockResolvedValue([
+      { _id: "placement-1", status: "active", createdAt: "2026-04-15T09:00:00.000Z" },
+    ]);
   });
 
   it("renders the admin dashboard with key sections and data", async () => {
     const { container } = render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
 
     // Core headings. The "Admin workspace" eyebrow above the title was dropped —
-    // it restated the sidebar section the user had just clicked, and the h1
-    // below already identifies the page.
-    expect(screen.getByRole("heading", { name: /admin dashboard/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /platform at a glance/i })).toBeInTheDocument();
+    // it restated the sidebar section the user had just clicked. The h1 is now
+    // a time-of-day greeting, so match whichever one the clock produces.
+    expect(screen.getByRole("heading", { name: /good (morning|afternoon|evening)/i })).toBeInTheDocument();
+    // "Recommended next" and "Platform at a glance" were renamed in the
+    // dashboard declutter to "Needs attention" and "Overview".
+    expect(screen.getByRole("heading", { name: /needs attention/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^overview$/i })).toBeInTheDocument();
 
     // Key sections exist
     expect(screen.getByRole("heading", { name: /quick actions/i })).toBeInTheDocument();
@@ -175,6 +188,8 @@ describe("AdminDashboardPage", () => {
     expect(screen.getByText(/employer is still the dominant cohort/i)).toBeInTheDocument();
     expect(screen.getByText(/sara ahmed joined as employer/i)).toBeInTheDocument();
     expect(container.querySelector(".admin-quick-actions-grid")).toBeInTheDocument();
-    expect(container.querySelector(".admin-quick-actions-grid > a")).toHaveClass("overflow-hidden");
+    // Quick actions render as linked rows now, not clipped cards, so the old
+    // overflow-hidden assertion no longer describes them.
+    expect(container.querySelectorAll(".admin-quick-actions-grid > a").length).toBeGreaterThan(0);
   });
 });

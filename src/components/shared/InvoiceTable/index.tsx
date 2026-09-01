@@ -138,8 +138,8 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
       headerClassName: "text-right",
       cell: (inv) => (
         <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="sm" onClick={() => onSelect(inv._id)} className="h-7 w-7 p-0">
-            <Eye className="h-3.5 w-3.5" />
+          <Button variant="ghost" onClick={() => onSelect(inv._id)} title={tc("view")} className="sm:min-h-10 sm:min-w-10 sm:p-2.5" aria-label={tc("view")}>
+            <Eye className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -148,7 +148,7 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
 
   return (
     <div className="overflow-x-auto">
-      <Table>
+      <Table className="responsive-card-table">
         <TableHeader>
           <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
             {columns.map((col) => (

@@ -12,6 +12,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import {
   approvePendingCommissionsForPaidInvoice,
+  isOwnCommissionLine,
   createCommissionRecordsForInvoice,
 } from "@/lib/invoices/commissionRecords";
 import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
@@ -108,7 +109,28 @@ async function postHandler(
           commissions: invoice.commissions ?? [],
           currency: invoice.currency,
         });
-        await approvePendingCommissionsForPaidInvoice(invoice._id, ctx.userId, { sendNotifications: true });
+        const approvalResult = await approvePendingCommissionsForPaidInvoice(
+          invoice._id,
+          ctx.userId,
+          { sendNotifications: true },
+        );
+
+        // Mirror onto the embedded lines, with the same self-approval
+        // exclusion the other two paid paths apply — otherwise the embedded
+        // copy stays "pending" forever and diverges from the Commission record.
+        if (approvalResult.approved > 0) {
+          let embeddedChanged = false;
+          for (const commission of invoice.commissions ?? []) {
+            if (
+              commission.status === "pending" &&
+              !isOwnCommissionLine(commission, approvalResult.approver)
+            ) {
+              commission.status = "approved";
+              embeddedChanged = true;
+            }
+          }
+          if (embeddedChanged) await invoice.save();
+        }
       } catch (err) {
         logger.error({ err, invoiceId: String(invoice._id) }, "Commission processing after verify-payment failed");
       }
