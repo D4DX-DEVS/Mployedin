@@ -28,7 +28,7 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
       - name: Semgrep OWASP scan
         run: pipx run semgrep==1.171.0 scan --error --config p/owasp-top-ten --config p/secrets .
-      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
