@@ -186,6 +186,8 @@ export default function AdminWorkflowTemplatesPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         icon={GitBranch}
         title={tr("pageTitle")}
         description={tr("pageDescription")}

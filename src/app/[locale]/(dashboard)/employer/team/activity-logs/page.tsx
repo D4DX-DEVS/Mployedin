@@ -219,15 +219,22 @@ export default function TeamActivityLogsPage() {
   return (
     <div className="page-container">
       {/* Header */}
+      {/* compact: "Back to Team" shares the title row on phones — it is the only
+          route to /employer/team, which has no side-menu entry, so it stays.
+          compactOnMobile: the description repeats the Total Activities and Team
+          Members stat cards right below. */}
       <PageHero
+        compact
+        compactOnMobile
         title={t("title")}
         description={t("description", { activities: formatCount(total), members: members.length })}
         icon={Activity}
         actions={
           <Link href={`/${locale}/employer/team`}>
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t("backToTeam")}
+            {/* Icon-only on phones — the labeled button crowded the title row. */}
+            <Button variant="outline" size="sm" aria-label={t("backToTeam")}>
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{t("backToTeam")}</span>
             </Button>
           </Link>
         }
@@ -294,12 +301,14 @@ export default function TeamActivityLogsPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap items-end">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("teamMember")}</label>
+      {/* Filters — phones get a clear hierarchy instead of ad-hoc wrapping:
+          member + resource selects on one row, the search full-width beneath,
+          then dates + Export. Desktop keeps the single flex-wrap row. */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 sm:flex-wrap sm:items-end">
+        <div className="min-w-0 space-y-1">
+          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("teamMember")}</label>
           <SearchableSelect
-            className="w-52"
+            className="w-full sm:w-52"
             options={memberOptions}
             value={selectedMember}
             onValueChange={(v) => {
@@ -310,10 +319,10 @@ export default function TeamActivityLogsPage() {
           />
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("resource")}</label>
+        <div className="min-w-0 space-y-1">
+          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("resource")}</label>
           <SearchableSelect
-            className="w-44"
+            className="w-full sm:w-44"
             options={resourceOptions}
             value={resource}
             onValueChange={(v) => {
@@ -324,25 +333,30 @@ export default function TeamActivityLogsPage() {
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="action-search" className="text-xs font-medium text-muted-foreground">{t("action")}</label>
+        <div className="col-span-2 space-y-1 sm:col-auto">
+          <label htmlFor="action-search" className="hidden text-xs font-medium text-muted-foreground sm:block">{t("action")}</label>
           <div className="relative">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               id="action-search"
               placeholder="e.g. job.create"
+              aria-label={t("action")}
               value={action}
               onChange={(e) => {
                 setAction(e.target.value);
                 resetPage();
               }}
-              className="ps-10 w-48"
+              className="ps-10 w-full sm:w-48"
             />
           </div>
         </div>
 
+        {/* Phones: From, To and Export share one row (Export used to sit alone
+            on its own line); sm:contents dissolves the wrapper so desktop keeps
+            the single flex-wrap row with Export pushed right. */}
+        <div className="col-span-2 flex w-full items-end gap-2 sm:contents">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("from")}</label>
+          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("from")}</label>
           <DateTimePicker
             mode="date"
             value={fromDate}
@@ -355,7 +369,7 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("to")}</label>
+          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("to")}</label>
           <DateTimePicker
             mode="date"
             value={toDate}
@@ -411,6 +425,7 @@ export default function TeamActivityLogsPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
         </div>
       </div>
 
@@ -545,7 +560,11 @@ export default function TeamActivityLogsPage() {
               });
 
               return (
-                <div key={log._id} className="card-base space-y-2 panel-body">
+                /* Card hierarchy: the action is the primary line (semibold,
+                   resource chip pushed right); timestamp and metadata stay
+                   subtle. p-3 instead of panel-body — full panel padding made
+                   each entry twice as tall as its content. */
+                <div key={log._id} className="card-base space-y-1.5 rounded-xl p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {log.actorId && (
@@ -559,23 +578,23 @@ export default function TeamActivityLogsPage() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                       {dateStr}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getActionColor(log.action)}`}
+                      className={`inline-flex min-w-0 items-center gap-1 px-2 py-0.5 rounded-full text-[13px] font-semibold ${getActionColor(log.action)}`}
                     >
                       {getActionIcon(log.action)}
-                      {formatAction(log.action)}
+                      <span className="truncate">{formatAction(log.action)}</span>
                     </span>
-                    <Badge variant="outline" className="text-xs capitalize">
+                    <Badge variant="outline" className="ms-auto shrink-0 text-[11px] capitalize">
                       {log.resource}
                     </Badge>
                   </div>
                   {log.meta && (
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-[11px] text-muted-foreground truncate">
                       {Object.entries(log.meta)
                         .filter(([k]) => !["__v", "password", "token"].includes(k))
                         .slice(0, 2)

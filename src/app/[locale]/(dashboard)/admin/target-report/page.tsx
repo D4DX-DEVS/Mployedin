@@ -272,6 +272,7 @@ export default function AdminTargetReportPage() {
   return (
     <div className="page-container print:space-y-4">
       <DashboardPageHeader
+        compact
         compactOnMobile
         icon={Activity}
         title={t("targetReportTitle")}

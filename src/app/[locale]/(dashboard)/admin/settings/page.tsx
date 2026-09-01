@@ -146,7 +146,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compactOnMobile />
+      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compact compactOnMobile />
 
       <section className="workspace-panel-surface rounded-3xl divide-y">
         {/* General */}

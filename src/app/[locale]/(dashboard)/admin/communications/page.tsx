@@ -306,6 +306,8 @@ export default function AdminCommunicationsPage() {
     <div className="page-container">
       {ConfirmDialogNode}
       <PageHero
+        compact
+        compactOnMobile
         title={tr("communicationsCenterHeading")}
         description={tr("communicationsCenterDesc")}
       />

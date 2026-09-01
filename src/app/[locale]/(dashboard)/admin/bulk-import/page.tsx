@@ -182,6 +182,8 @@ export default function AdminBulkImportPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
+        compactOnMobile
         icon={Upload}
         title={t("title")}
         description={t("subtitle")}

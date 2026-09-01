@@ -252,6 +252,8 @@ export default function AdminUsersPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         icon={Users}
         title={t("userManagement")}
         description={t("userManagementDesc", { total: formatCount(total) })}
@@ -388,13 +390,16 @@ export default function AdminUsersPage() {
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-8 h-8">
+                    {/* items-start: centering floated the avatar beside the
+                        email line on phone cards, visually detached from the
+                        name it belongs to. */}
+                    <div className="flex items-start gap-3">
+                      <Avatar className="mt-0.5 h-8 w-8 shrink-0">
                         <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
                           {initials}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium">{user.name || t("unnamed")}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                         <Badge className={`mt-1 text-[11px] ${user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}`}>

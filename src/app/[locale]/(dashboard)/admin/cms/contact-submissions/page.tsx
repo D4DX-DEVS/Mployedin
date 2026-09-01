@@ -127,6 +127,7 @@ export default function ContactSubmissionsPage() {
       {ConfirmDialogNode}
 
       <DashboardPageHeader
+        compact
         compactOnMobile
         title={t("contactInbox")}
         description={t("heroDescription")}

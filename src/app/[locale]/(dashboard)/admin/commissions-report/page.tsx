@@ -205,6 +205,8 @@ export default function AdminCommissionsReportPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
+        compactOnMobile
         title={t("commissionReportTitle")}
         description={t("reportDescription", { year: yearFilter })}
         actions={(
@@ -232,7 +234,6 @@ export default function AdminCommissionsReportPage() {
           { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
           { label: t("avgRate"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
-        compactOnMobile
       />
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}

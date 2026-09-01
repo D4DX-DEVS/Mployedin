@@ -114,6 +114,7 @@ export default function EmployerPlacementsPage() {
         title={t("workspace")}
         description={t("subtitle")}
         compactOnMobile
+        compact
         metrics={[
           { label: t("totalHired"), value: stats.total, note: t("totalHiredNote"), icon: Users },
           { label: t("currentlyActive"), value: stats.active, note: t("currentlyActiveNote"), icon: Briefcase },

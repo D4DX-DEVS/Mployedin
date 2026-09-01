@@ -448,6 +448,8 @@ export default function AdminJobSeekersPage() {
       {ConfirmDialogNode}
 
       <PageHero
+        compact
+        compactOnMobile
         title={tr("heroTitle")}
         description={tr("heroDescription")}
       />

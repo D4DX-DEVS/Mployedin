@@ -142,29 +142,31 @@ export default function AdminTerritoryPage() {
 
   return (
     <div className="page-container">
+      {/* No `compact`: title + controls on one phone row squeezed the title
+          into three lines. Phones stack search and the button full-width. */}
       <PageHero
         icon={MapPin}
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
-          <>
-            <div className="relative">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-56">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={tr("searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-48 rounded-xl border-border/70 bg-background/90 pl-8 text-sm sm:w-56"
+                className="h-10 w-full rounded-xl border-border/70 bg-background/90 pl-8 text-sm"
               />
             </div>
             <Button
               size="sm"
               onClick={() => setShowForm((v) => !v)}
-              className="h-10 gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="h-10 w-full gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:w-auto"
             >
               {showForm ? <><X className="h-3.5 w-3.5" /> {tr("cancelButtonLabel")}</> : <><Plus className="h-3.5 w-3.5" /> {tr("newTerritoryButtonLabel")}</>}
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -222,10 +224,21 @@ export default function AdminTerritoryPage() {
               ))}
             </div>
           ) : territories.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
               <Inbox className="h-6 w-6 text-muted-foreground/50" />
               <p className="text-sm font-medium text-foreground">{tr("emptyStateTitle")}</p>
-              <p className="text-xs text-muted-foreground">{tr("emptyStateDescription")}</p>
+              <p className="max-w-xs text-xs leading-5 text-muted-foreground">{tr("emptyStateDescription")}</p>
+              {/* Action lives inside the empty state — "use the button above"
+                  sent the user hunting back up the page. */}
+              {!showForm && (
+                <Button
+                  size="sm"
+                  onClick={() => setShowForm(true)}
+                  className="mt-2 h-10 gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  <Plus className="h-3.5 w-3.5" /> {tr("createTerritoryFormHeading")}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

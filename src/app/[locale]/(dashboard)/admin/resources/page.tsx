@@ -223,6 +223,7 @@ export default function AdminResourcesPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
         icon={FolderOpen}
         title={t("title")}
         description={t("adminSubtitle")}

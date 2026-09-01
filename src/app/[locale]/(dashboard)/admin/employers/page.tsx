@@ -240,6 +240,8 @@ export default function AdminEmployersPage() {
       {ConfirmDialogNode}
 
       <PageHero
+        compact
+        compactOnMobile
         title={t("pageTitle")}
         description={t("pageDescription")}
       />

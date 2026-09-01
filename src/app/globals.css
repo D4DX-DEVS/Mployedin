@@ -1570,6 +1570,24 @@ body {
     transform: translate(-50%, -50%);
   }
 
+  /* Text links that are the primary way into a list row. The 44px baseline
+     above covers buttons but not <a>, so a card title rendered as a bare
+     20px-tall link — under the 24px WCAG 2.5.8 floor, and the only target on
+     the card.
+
+     Padding grows the hit box and the negative margin cancels its layout
+     effect, so the row keeps its height. This started as an ::after band
+     instead, which measured 44px in getComputedStyle but caught nothing:
+     with auto z-index the pseudo-element painted below the card's later
+     siblings, and elementFromPoint over the band returned a plain <div>.
+     A real padded box hit-tests normally, and `relative` lifts it above the
+     non-positioned text it now overlaps. */
+  .tap-target-row {
+    position: relative;
+    padding-block: 0.75rem;
+    margin-block: -0.75rem;
+  }
+
   .dashboard-shell-workspace .page-header-title {
     font-size: 1.375rem;
     line-height: 1.2;
@@ -1816,6 +1834,28 @@ table.workspace-list-table tbody tr:focus-visible {
     justify-self: end;
   }
 
+  /* A cell that spans the row is an empty state or a "no results" message, not
+     a label/value pair. The two-column grid squeezed those into the right-hand
+     66% and ran the icon, heading and hint together on one line. */
+  table.responsive-card-table > tbody > tr > td[colspan],
+  table.responsive-card-table > tfoot > tr > td[colspan] {
+    display: block;
+    text-align: center;
+    /* The cell rule above forces 6px of vertical padding for label/value rows;
+       an empty state needs its authored breathing room back. */
+    padding: 1.5rem 1rem !important;
+  }
+
+  table.responsive-card-table > tbody > tr > td[colspan]::before,
+  table.responsive-card-table > tfoot > tr > td[colspan]::before {
+    content: none;
+  }
+
+  table.responsive-card-table > tbody > tr > td[colspan] > *,
+  table.responsive-card-table > tfoot > tr > td[colspan] > * {
+    justify-self: auto;
+  }
+
   table.responsive-card-table > tbody > tr > td[data-mobile-primary] {
     min-height: 2.75rem;
     font-size: 0.875rem;
@@ -1873,6 +1913,39 @@ table.workspace-list-table tbody tr:focus-visible {
     max-width: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+
+  /* ...but a row with five labelled actions (verify / edit / deactivate /
+     delete / switch workspace on admin employers) wrapped onto three lines and
+     made the collapsed card 240px tall — taller than the record it belongs to.
+     Keep the labels, put them on one line, and let the row scroll: the same
+     affordance the employer filter-chip rows use. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] > :where(div, span),
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] > :where(div, span) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* Start-aligned, not end-aligned: an end-aligned scrolling row opens
+       already scrolled past its first actions — admin employers showed
+       "…e permanently" first and hid verify, edit and deactivate entirely. */
+    justify-content: flex-start;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] > :where(div, span)::-webkit-scrollbar,
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] > :where(div, span)::-webkit-scrollbar {
+    display: none;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a),
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a) {
+    flex-shrink: 0;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after,
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after {
+    white-space: nowrap;
+    overflow-wrap: normal;
   }
 
   table.responsive-card-table > tbody > tr[data-mobile-spanning-row],
@@ -2210,8 +2283,11 @@ table.workspace-list-table tbody tr:focus-visible {
    This is the same "put the row's content inline" treatment already applied to
    the expanded detail rows. */
 @media (max-width: 639px) {
-  table.responsive-card-table > tbody > tr > td [class*="flex-col"],
-  table.responsive-card-table > tfoot > tr > td [class*="flex-col"] {
+  /* `:not([colspan])` throughout this block: a cell that spans the row is an
+     empty state, not an identity cell. Flattening it turned its centred icon,
+     heading and hint into one wrapped right-aligned line. */
+  table.responsive-card-table > tbody > tr > td:not([colspan]) [class*="flex-col"],
+  table.responsive-card-table > tfoot > tr > td:not([colspan]) [class*="flex-col"] {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
@@ -2221,7 +2297,7 @@ table.workspace-list-table tbody tr:focus-visible {
 
   /* Avatars are sized for a desktop table row; inside a card they only need to
      read as an identity chip next to the name. */
-  table.responsive-card-table > tbody > tr > td :where(img, span, div):is(
+  table.responsive-card-table > tbody > tr > td:not([colspan]) :where(img, span, div):is(
       [class~="h-8"], [class~="h-9"], [class~="h-10"], [class~="h-11"], [class~="h-12"]
     ):is([class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"]) {
     width: 1.5rem !important;
@@ -2237,8 +2313,8 @@ table.workspace-list-table tbody tr:focus-visible {
    block container as a wrapping inline row. Anything the page explicitly laid
    out as flex or grid keeps its own layout. */
 @media (max-width: 639px) {
-  table.responsive-card-table > tbody > tr > td div:not([class*="flex"]):not([class*="grid"]):not([class*="space-y"]),
-  table.responsive-card-table > tfoot > tr > td div:not([class*="flex"]):not([class*="grid"]):not([class*="space-y"]) {
+  table.responsive-card-table > tbody > tr > td:not([colspan]) div:not([class*="flex"]):not([class*="grid"]):not([class*="space-y"]),
+  table.responsive-card-table > tfoot > tr > td:not([colspan]) div:not([class*="flex"]):not([class*="grid"]):not([class*="space-y"]) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -2409,18 +2485,46 @@ table.workspace-list-table tbody tr:focus-visible {
     gap: 0.375rem;
   }
 
+  /* Same gutter on the toolbar itself. With `gap-2` (8px) the admin agents and
+     users toolbars overflowed their line by two pixels and dropped the last
+     action button onto a second row. */
+  .dashboard-shell-admin [data-table-toolbar] {
+    gap: 0.375rem;
+  }
+
+  /* A filter control usually arrives wrapped in a fixed-width div (`w-[120px]`),
+     which flex will not shrink on its own. */
+  .dashboard-shell-admin [data-table-toolbar] > div:not(.toolbar-search-field) {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
   /* Share the row with the icon buttons (filter/export/AI) instead of always
      claiming a full line on its own — grows to fill remaining space, shrinks
      down to a still-typeable ~112px, and only wraps to its own line via the
      row's flex-wrap when there truly isn't room (many buttons at once). */
+  /* 7rem basis, not 9rem: flex wraps on base sizes before it shrinks anything,
+     so a 9rem basis beside a 120px status select pushed the last action button
+     onto its own line even though everything fits once laid out. The field
+     still grows into whatever space is left. */
   .dashboard-shell-admin [data-table-toolbar] .toolbar-search-field {
-    flex: 1 1 9rem;
+    flex: 1 1 7rem;
     min-width: 7rem;
   }
 
   .dashboard-shell-admin [data-table-toolbar] .toolbar-search-field > input {
     width: 100%;
     min-width: 0;
+  }
+
+  /* A filter select in a toolbar is authored at desktop width (w-40/w-44),
+     which pushed the icon buttons beside it onto a second line. Let it shrink
+     to roughly its label instead. */
+  .dashboard-shell-admin [data-table-toolbar] :is([role="combobox"], select, [data-slot="select-trigger"]) {
+    width: auto;
+    min-width: 0;
+    max-width: 8.5rem;
+    flex: 0 1 auto;
   }
 
   /* A *leading* icon marks an action button ("<Download/> Export"), so its
@@ -2724,7 +2828,11 @@ table.workspace-list-table tbody tr:focus-visible {
    three per line. Only chips in a *wrapping* row are touched — a deliberate
    single-line button group is someone's layout, not a filter bar. */
 @media (max-width: 639px) {
-  .dashboard-shell-admin .dashboard-main [class*="flex-wrap"] > :is(button, a):is(
+  /* `:not([data-table-toolbar])`: a table toolbar is also a wrapping row of
+     buttons, but it has its own rules above that collapse a labelled action to
+     its icon. Without this exclusion the chip sizing re-set the font size and
+     the toolbar kept full labels, wrapping onto a second and third line. */
+  .dashboard-shell-admin .dashboard-main [class*="flex-wrap"]:not([data-table-toolbar]) > :is(button, a):is(
     [class*="rounded-full"], [class*="rounded-xl"], [class*="rounded-lg"]
   ):not([class*="w-full"]) {
     height: auto;
@@ -2736,7 +2844,7 @@ table.workspace-list-table tbody tr:focus-visible {
     white-space: nowrap;
   }
 
-  .dashboard-shell-admin .dashboard-main [class*="flex-wrap"] > :is(button, a) > svg {
+  .dashboard-shell-admin .dashboard-main [class*="flex-wrap"]:not([data-table-toolbar]) > :is(button, a) > svg {
     width: 0.75rem;
     height: 0.75rem;
   }
@@ -2923,15 +3031,20 @@ table.workspace-list-table tbody tr:focus-visible {
    heading itself — so at 390px "Candidate Matching" rendered 24px in a 153px
    column and broke into "Candidate / Matching". Step it down here, where the
    specificity actually lands. No effect from 640px up. */
-/* Must live in the same @layer as the page-title rules it overrides. Those set
-   `font-size: var(--text-page-title) !important` from inside `components`, and
-   for !important declarations the layer cascade is INVERTED — a layered
-   important beats an unlayered one. Unlayered, this rule lost and the heading
-   stayed 24px, breaking "Candidate Matching" across two lines in a 153px
-   column. Same layer, later in source, so it wins. */
+/* Two things are load-bearing here, both learned the hard way:
+   1. Same @layer as the rules it overrides. Those set the size from inside
+      `components`, and for !important declarations the layer cascade is
+      INVERTED — a layered important beats an unlayered one. Unlayered, this
+      rule never applied.
+   2. The doubled attribute selector. The rule it fights is
+      `.dashboard-main .page-container > :nth-child(-n+3) > div > div > h1`
+      = (0,3,3). One attribute pair gave (0,3,1) and lost on specificity, which
+      is settled before source order — so the heading stayed 24px and
+      "Candidate Matching" broke across two lines in a 153px column. Doubling
+      the attribute makes it (0,4,1). */
 @layer components {
   @media (max-width: 639px) {
-    .dashboard-main [data-dashboard-page-header="component"][data-compact="true"] :is(h1, h2) {
+    .dashboard-main [data-dashboard-page-header="component"][data-compact="true"][data-compact="true"] :is(h1, h2) {
       font-size: 1rem !important;
       line-height: 1.35 !important;
     }
@@ -2939,3 +3052,59 @@ table.workspace-list-table tbody tr:focus-visible {
 }
 
 /* rebuild r2 */
+
+/* rebuild r3 */
+
+/* rebuild r4 */
+
+/* rebuild r5 */
+
+
+
+
+
+
+
+
+
+
+/* Opt-out for a table cell that exists only for the desktop layout — a page's
+   own expand chevron, say, which the phone card already supplies through its
+   own affordance and which otherwise renders as an empty labelled row with a
+   second chevron. Declared last, and !important, so it beats the card-table
+   display rules above rather than depending on their ordering. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td[data-mobile-hidden],
+  table.responsive-card-table > tfoot > tr > td[data-mobile-hidden] {
+    display: none !important;
+  }
+}
+
+/* The primary (identity) cell of a phone card is an avatar or icon beside a
+   name and email. Two general admin rules fought that: one wraps any flex row
+   without form controls, the other right-aligns cell content — together they
+   dropped the name onto a second line, right-aligned, away from its icon. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] > :is(div, span) {
+    /* !important: the generic "wrap any control-free flex row" rule carries far
+       more specificity than any selector rooted at the table, and this cell is
+       the one place that heuristic is wrong. */
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    text-align: start;
+  }
+
+  /* The name/email stack inside it is a plain block div, which another rule
+     turns into a right-aligned wrapping row — that is what put the name to the
+     right of its own email. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] :is(div, span) {
+    justify-content: flex-start !important;
+    text-align: start;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] > :is(div, span) > * {
+    min-width: 0;
+  }
+}
+
+

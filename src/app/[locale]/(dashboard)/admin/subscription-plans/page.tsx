@@ -335,6 +335,7 @@ export default function AdminSubscriptionPlansPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={

@@ -672,7 +672,7 @@ export default function EmployerJobsPage() {
                     <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                       <Link
                         href={jobHref}
-                        className="min-w-0 text-base font-semibold leading-5 tracking-tight text-foreground underline-offset-2 group-hover:text-primary group-hover:underline"
+                        className="tap-target-row min-w-0 text-base font-semibold leading-5 tracking-tight text-foreground underline-offset-2 group-hover:text-primary group-hover:underline"
                       >
                         {job.title}
                       </Link>

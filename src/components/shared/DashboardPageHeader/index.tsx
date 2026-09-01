@@ -35,8 +35,8 @@ interface DashboardPageHeaderProps {
   inlineActions?: boolean;
   /** Phones: drop the explanatory description and the nested summary card. */
   compactOnMobile?: boolean;
-  /** Phones only: title and actions share one row and a 4-metric strip runs
-   *  4-across instead of 2x2. Measured on employer/candidates, this takes the
+  /** Phones only: title and actions share one row and a 3- or 4-metric strip
+   *  runs in a single row instead of 2x2. Measured on employer/candidates, this takes the
    *  header from 231px to ~150px — most of a list card back above the fold.
    *  Opt-in per page: a header with long metric labels or several wide actions
    *  should stay on the default two-row layout. No effect from `sm` up. */
@@ -88,14 +88,14 @@ export function DashboardPageHeader({
             </div>
           )}
           <Heading className={cn(
-            "text-xl font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-[1.625rem]",
+            "text-xl font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-[1.625rem]"
             // Sharing the row with the actions leaves ~165px on a 390px screen,
-            // so the title steps down to 16px there — at 20px "Candidate
-            // Matching" broke into "Can / dida / te". Full size from sm.
-            // `!` is deliberate: the dashboard page-title rules in globals.css
-            // set this h1 from --text-page-title and outrank a plain utility,
-            // so without it the heading stayed 24px and wrapped.
-            compact && "!text-base !leading-snug sm:!text-[1.625rem]"
+            // so the compact title steps down to 16px there — at 24px
+            // "Candidate Matching" broke across two lines. That step-down lives
+            // in globals.css (search "Compact page header"), not here: the
+            // dashboard page-title rules set this h1 from --text-page-title
+            // with !important from inside @layer components, which outranks any
+            // utility on the element — even `!text-base`. Full size from sm.
           )}>
             {title}
           </Heading>
@@ -140,9 +140,12 @@ export function DashboardPageHeader({
             "mt-3 grid border-y border-border/60 sm:mt-4",
             metrics.length === 1 && "grid-cols-1",
             metrics.length === 2 && "grid-cols-2",
-            metrics.length === 3 && "grid-cols-2 sm:grid-cols-3",
+            metrics.length === 3 && (compact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"),
             metrics.length === 4 && (compact ? "grid-cols-4" : "grid-cols-2 md:grid-cols-4"),
-            metrics.length >= 5 && "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
+            // 5-6 metrics go three-across on a compact phone rather than 2xN:
+            // the admin exhibitions and target headers spent 3 rows on six
+            // figures before the list started.
+            metrics.length >= 5 && (compact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"),
             metricsClassName
           )}
         >

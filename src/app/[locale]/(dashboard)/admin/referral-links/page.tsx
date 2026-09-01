@@ -119,7 +119,7 @@ export default function AdminReferralLinksPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compactOnMobile />
+      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compact compactOnMobile />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">

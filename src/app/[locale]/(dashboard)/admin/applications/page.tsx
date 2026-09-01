@@ -375,6 +375,7 @@ export default function AdminApplicationsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
+        compact
         title={t("applications")}
         description={t("applicationsDescription")}
         actions={(

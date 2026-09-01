@@ -189,6 +189,7 @@ export default function AdminGdprPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compact
         compactOnMobile
         icon={Shield}
         title={t("pageTitle")}

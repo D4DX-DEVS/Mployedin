@@ -122,6 +122,8 @@ export default function EmployerJobTemplatesPage() {
         title={t("title")}
         description={t("description")}
         summary={{ label: t("totalTemplates"), value: total }}
+        compact
+        compactOnMobile
       />
 
       {/* Search */}
@@ -132,8 +134,10 @@ export default function EmployerJobTemplatesPage() {
         </div>
       </section>
 
-      {/* Template Grid */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+      {/* Template Grid — the items are cards themselves, so on phones the outer
+          panel surface read as a card inside a card with double edges. Panel
+          chrome only from sm up. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none">
         {isError ? (
           <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
             <p className="text-sm font-semibold text-destructive">{t("loadError")}</p>

@@ -18,6 +18,7 @@ import { BarChart3, Download, FileSpreadsheet, FileText, Loader2, Sparkles, Tren
 import { toast } from "sonner";
 import { exportExcelRows } from "@/lib/export";
 import { toUserFacingError } from "@/lib/errors/user-facing";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 type ReportRow = {
   section: string;
@@ -84,13 +85,15 @@ function parseReportRows(content: string, reportTitle: string): ReportRow[] {
 }
 
 const ANALYTICS_QUERIES_KEYS = [
-  { labelKey: "platformGrowthThisMonth", queryKey: "platformGrowthQuery" },
-  { labelKey: "topPerformingAgents", queryKey: "topPerformingAgentsQuery" },
-  { labelKey: "jobCategoryTrends", queryKey: "jobCategoryTrendsQuery" },
-  { labelKey: "revenueCommissionSummary", queryKey: "revenueCommissionSummaryQuery" },
-  { labelKey: "employerActivityReport", queryKey: "employerActivityReportQuery" },
-  { labelKey: "geographicDistribution", queryKey: "geographicDistributionQuery" },
+  { labelKey: "platformGrowthThisMonth", descKey: "platformGrowthDesc", queryKey: "platformGrowthQuery" },
+  { labelKey: "topPerformingAgents", descKey: "topPerformingAgentsDesc", queryKey: "topPerformingAgentsQuery" },
+  { labelKey: "jobCategoryTrends", descKey: "jobCategoryTrendsDesc", queryKey: "jobCategoryTrendsQuery" },
+  { labelKey: "revenueCommissionSummary", descKey: "revenueCommissionSummaryDesc", queryKey: "revenueCommissionSummaryQuery" },
+  { labelKey: "employerActivityReport", descKey: "employerActivityReportDesc", queryKey: "employerActivityReportQuery" },
+  { labelKey: "geographicDistribution", descKey: "geographicDistributionDesc", queryKey: "geographicDistributionQuery" },
 ];
+
+const EXAMPLE_PROMPT_KEYS = ["examplePromptPopularCategories", "examplePromptTopAgents"];
 
 export default function AdminAnalyticsPage() {
   const t = useTranslations("adminAnalytics");
@@ -99,12 +102,19 @@ export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const activeRequestRef = useRef<AbortController | null>(null);
 
   const ANALYTICS_QUERIES = ANALYTICS_QUERIES_KEYS.map((item) => ({
     label: t(item.labelKey),
+    desc: t(item.descKey),
     query: t(item.queryKey),
   }));
+
+  /* Once a report exists the output panel is titled after what was asked, so
+     the page doesn't stack two identical "Analytics Report" headings. */
+  const resolvedReportTitle = ANALYTICS_QUERIES.find((item) => item.query === activeTemplate)?.label
+    ?? t("customQuestionTitle");
 
   useEffect(() => {
     return () => {
@@ -120,6 +130,9 @@ export default function AdminAnalyticsPage() {
     setLoading(true);
     setResult("");
     setActiveTemplate(q);
+    // On phones the output panel sits two sections below the template that was
+    // tapped; without this the generation starts with no visible feedback.
+    document.getElementById("admin-analytics-report")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     try {
       const res = await fetch("/api/ai/report", {
         method: "POST",
@@ -137,12 +150,14 @@ export default function AdminAnalyticsPage() {
           : t("serverError");
         setResult(`⚠️ ${statusMsg}`);
       }
+      setGeneratedAt(new Date());
     } catch (error: unknown) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
 
       setResult(`⚠️ ${toUserFacingError(error, { fallback: t("reportGenerationFailed") }).message}`);
+      setGeneratedAt(new Date());
     } finally {
       if (activeRequestRef.current === controller) {
         activeRequestRef.current = null;
@@ -157,7 +172,7 @@ export default function AdminAnalyticsPage() {
     setExporting("excel");
 
     try {
-      const reportTitle = t("reportOutputTitle");
+      const reportTitle = resolvedReportTitle;
       const rows = parseReportRows(result, reportTitle);
       exportExcelRows([
         ["Report", "Section", "Type", "Content"],
@@ -176,7 +191,7 @@ export default function AdminAnalyticsPage() {
     setExporting("pdf");
 
     try {
-      const reportTitle = t("reportOutputTitle");
+      const reportTitle = resolvedReportTitle;
       const rows = parseReportRows(result, reportTitle);
       const [{ jsPDF }, { default: autoTable }] = await Promise.all([
         import("jspdf"),
@@ -228,6 +243,8 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="page-container">
       <PageHero
+        compact
+        compactOnMobile
         title={t("analyticsTitle")}
         description={t("analyticsDescription")}
       />
@@ -235,8 +252,7 @@ export default function AdminAnalyticsPage() {
       <div className="grid gap-3 sm:gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yAnalyticsTemplates")}>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("promptLibrary")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("promptLibraryTitle")}</h2>
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("promptLibraryTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("promptLibraryDescription")}</p>
           </div>
 
@@ -260,9 +276,12 @@ export default function AdminAnalyticsPage() {
                 <div className="inline-flex shrink-0 rounded-xl bg-sky-100 p-2 text-sky-700 sm:rounded-2xl sm:p-2.5">
                   <BarChart3 className="h-4 w-4" />
                 </div>
-                <div className="min-w-0">
+                {/* flex-1 (basis 0) keeps the text beside the icon: a global
+                    admin rule force-wraps bare flex rows on phones, and without
+                    it the wide text block dropped under the icon chip. */}
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-sky-700 sm:text-[15px]">{item.label}</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground sm:mt-2 sm:text-sm sm:leading-6">{item.query}</p>
+                  <p className="mt-0.5 line-clamp-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{item.desc}</p>
                 </div>
               </button>
             ))}
@@ -270,11 +289,12 @@ export default function AdminAnalyticsPage() {
         </section>
 
         <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yCustomAnalyticsQuery")}>
-          <div className="flex items-center gap-2 text-primary">
-            <Sparkles className="h-4 w-4" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("composeInsight")}</p>
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("customAnalyticsQuery")}</h2>
+            <div className="workspace-tone-sky shrink-0 rounded-2xl p-2.5">
+              <Sparkles className="h-5 w-5" />
+            </div>
           </div>
-          <h2 className="heading-section mt-3 font-semibold tracking-tight text-foreground">{t("customAnalyticsQuery")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("customAnalyticsDescription")}</p>
 
           <div className="mt-6 space-y-4">
@@ -293,22 +313,39 @@ export default function AdminAnalyticsPage() {
               className="min-h-[180px] rounded-3xl border-border bg-card px-4 py-3 text-sm leading-6 shadow-none"
             />
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">{t("customAnalyticsBestFor")}</p>
-              <div className="flex gap-2 self-start sm:self-auto">
-                <Button
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">{t("tryExamplesLabel")}</span>
+              {EXAMPLE_PROMPT_KEYS.map((key) => (
+                <button
+                  key={key}
                   type="button"
-                  variant="outline"
-                  className="rounded-xl border-border/80 bg-card hover:bg-muted"
-                  onClick={() => {
-                    setQuery("");
-                    setResult("");
-                    setActiveTemplate(null);
-                  }}
-                  disabled={loading || (!query && !activeTemplate)}
+                  onClick={() => setQuery(t(key))}
+                  disabled={loading}
+                  className="min-h-9 rounded-full border border-border/80 bg-card px-3.5 text-xs font-medium text-foreground transition-colors hover:border-sky-300 hover:bg-sky-50/70 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {t("clearButton")}
-                </Button>
+                  {t(key)}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <div className="flex gap-2">
+                {(query || result) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl border-border/80 bg-card hover:bg-muted"
+                    onClick={() => {
+                      setQuery("");
+                      setResult("");
+                      setActiveTemplate(null);
+                      setGeneratedAt(null);
+                    }}
+                    disabled={loading}
+                  >
+                    {t("clearButton")}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   className="rounded-xl"
@@ -324,12 +361,17 @@ export default function AdminAnalyticsPage() {
         </section>
       </div>
 
-      <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yAnalyticsReport")}>
+      <section id="admin-analytics-report" className="workspace-panel-surface scroll-mt-4 rounded-3xl panel-body" aria-label={t("a11yAnalyticsReport")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("reportOutput")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("reportOutputTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("reportOutputDescription")}</p>
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">
+              {result ? resolvedReportTitle : t("reportOutputTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {result && generatedAt
+                ? t("generatedDateLabel", { date: formatIntlDate(generatedAt, { hour: "numeric", minute: "2-digit" }) })
+                : t("reportOutputDescription")}
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -368,7 +410,10 @@ export default function AdminAnalyticsPage() {
               <div className="h-4 w-[84%] animate-pulse rounded-full bg-secondary" />
             </div>
           ) : result ? (
-            <div className="max-h-[520px] overflow-y-auto rounded-3xl text-sm leading-7 text-foreground">
+            /* No inner max-height: a scrollbar inside the page scroll is the
+               worst reading surface on a phone — the report grows inline and
+               the page scrolls naturally. */
+            <div className="rounded-3xl text-sm leading-7 text-foreground">
               <MarkdownRenderer content={result} />
             </div>
           ) : (

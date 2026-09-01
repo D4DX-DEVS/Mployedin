@@ -99,7 +99,7 @@ describe("AdminAnalyticsPage", () => {
     expect(querySection).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export/i })).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: /platform growth this month/i }));
+    await user.click(screen.getByRole("button", { name: /platform growth/i }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/ai/report", expect.objectContaining({
@@ -108,7 +108,10 @@ describe("AdminAnalyticsPage", () => {
     });
 
     expect(await screen.findByText("AI generated report content")).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { name: /analytics report/i })).toHaveLength(2);
+    // The output panel is titled after the tapped template; only the markdown
+    // body still carries the generic "Analytics Report" heading.
+    expect(screen.getByRole("heading", { name: /platform growth/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: /analytics report/i })).toHaveLength(1);
     expect(screen.getByText("AI generated report content")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /export/i })).toBeEnabled();
 
@@ -134,7 +137,7 @@ describe("AdminAnalyticsPage", () => {
 
     render(<AdminAnalyticsPage />);
 
-    await user.click(screen.getByRole("button", { name: /platform growth this month/i }));
+    await user.click(screen.getByRole("button", { name: /platform growth/i }));
     await screen.findByText("AI generated report content");
 
     await user.click(screen.getByRole("button", { name: /export/i }));

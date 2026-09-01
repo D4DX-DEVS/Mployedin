@@ -26,8 +26,9 @@ import type { ExportColumn } from "@/lib/export";
 import {
   Search, Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
-  Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp,
+  Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp, X,
 } from "lucide-react";
+import { JobsFilterSheet } from "./_components/JobsFilterSheet";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -156,6 +157,7 @@ export default function AdminJobsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const [employers, setEmployers] = useState<FilterOption[]>([]);
   const [agents, setAgents] = useState<FilterOption[]>([]);
@@ -248,6 +250,22 @@ export default function AdminJobsPage() {
 
   const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter;
 
+  const statusOptionsList = getStatusOptions(t);
+  const workModeOptionsList = getWorkModeOptions(t);
+  const employmentTypeOptionsList = getEmploymentTypeOptions(t);
+
+  const activeFilterChips = [
+    search ? { key: "search", label: search, clear: () => setSearch("") } : null,
+    status !== "all" ? { key: "status", label: statusOptionsList.find((o) => o.value === status)?.label ?? status, clear: () => setStatus("all") } : null,
+    selectedEmployer !== "all" ? { key: "employer", label: employers.find((o) => o.value === selectedEmployer)?.label ?? selectedEmployer, clear: () => setSelectedEmployer("all") } : null,
+    selectedAgent !== "all" ? { key: "agent", label: agents.find((o) => o.value === selectedAgent)?.label ?? selectedAgent, clear: () => setSelectedAgent("all") } : null,
+    workMode !== "all" ? { key: "workMode", label: workModeOptionsList.find((o) => o.value === workMode)?.label ?? workMode, clear: () => setWorkMode("all") } : null,
+    employmentType !== "all" ? { key: "type", label: employmentTypeOptionsList.find((o) => o.value === employmentType)?.label ?? employmentType, clear: () => setEmploymentType("all") } : null,
+    locationFilter ? { key: "location", label: locationFilter, clear: () => setLocationFilter("") } : null,
+    skillsFilter ? { key: "skills", label: skillsFilter, clear: () => setSkillsFilter("") } : null,
+  ].filter((chip): chip is { key: string; label: string; clear: () => void } => chip !== null);
+  const activeFilterCount = activeFilterChips.length;
+
   const exportColumns: ExportColumn<Job>[] = [
     { header: t("jobListings"), key: "title" },
     { header: t("employerLabel"), key: "employerId" as keyof Job, formatter: (_v, r) => (r as unknown as Job).employerId?.companyName ?? "—" },
@@ -315,6 +333,7 @@ export default function AdminJobsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
+        compact
         title={t("jobListings")}
         description={t("jobListingsDescription")}
         actions={(
@@ -334,15 +353,25 @@ export default function AdminJobsPage() {
         compactOnMobile
         footer={(
           <>
+            {/* Desktop keeps the inline expandable panel; phones open a bottom
+                sheet instead, so the filter block never pushes the list down. */}
             <button
               type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50 max-sm:hidden"
             >
               <Filter className="h-4 w-4 text-muted-foreground" />
               {showFilters ? t("hideFilters") : t("showFilters")}
               {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{t("activeFilterBadge")}</Badge>}
               {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterSheetOpen(true)}
+              className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50 sm:hidden"
+            >
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              {activeFilterCount > 0 ? t("filtersButtonWithCount", { count: activeFilterCount }) : t("filtersButton")}
             </button>
             <div className="flex items-center gap-2">
               {(hasActiveFilters || aiSummary || aiQuery) && (
@@ -360,9 +389,28 @@ export default function AdminJobsPage() {
         )}
       >
 
-        {/* ─── Expandable Filters ─────────────────────────────────────── */}
+        {/* Phones: active-filter chips under the header; tap a chip to clear
+            that one filter without opening the sheet. */}
+        {activeFilterChips.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5 sm:hidden">
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => { chip.clear(); resetPage(); }}
+                aria-label={t("removeFilter", { label: chip.label })}
+                className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground"
+              >
+                <span className="truncate">{chip.label}</span>
+                <X className="h-3 w-3 shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ─── Expandable Filters (desktop/tablet only) ───────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad max-sm:hidden">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -488,6 +536,38 @@ export default function AdminJobsPage() {
           </div>
         )}
       </DashboardPageHeader>
+
+      <JobsFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={activeFilterCount}
+        search={search}
+        onSearchChange={(value) => { setSearch(value); resetPage(); }}
+        status={status}
+        onStatusChange={(value) => { setStatus(value); resetPage(); }}
+        statusOptions={statusOptionsList}
+        employerOptions={employers}
+        selectedEmployer={selectedEmployer}
+        onEmployerChange={(value) => { setSelectedEmployer(value); resetPage(); }}
+        agentOptions={agents}
+        selectedAgent={selectedAgent}
+        onAgentChange={(value) => { setSelectedAgent(value); resetPage(); }}
+        workMode={workMode}
+        onWorkModeChange={(value) => { setWorkMode(value); resetPage(); }}
+        workModeOptions={workModeOptionsList}
+        employmentType={employmentType}
+        onEmploymentTypeChange={(value) => { setEmploymentType(value); resetPage(); }}
+        employmentTypeOptions={employmentTypeOptionsList}
+        locationFilter={locationFilter}
+        onLocationChange={(value) => { setLocationFilter(value); resetPage(); }}
+        skillsFilter={skillsFilter}
+        onSkillsChange={(value) => { setSkillsFilter(value); resetPage(); }}
+        aiQuery={aiQuery}
+        onAiQueryChange={setAiQuery}
+        isApplyingAiSearch={isApplyingAiSearch}
+        onApplyAiSearch={() => { void handleApplyAiSearch(); }}
+        onClearAll={resetFilters}
+      />
 
       {/* ─── Error ────────────────────────────────────────────────────── */}
       {errorMessage && (

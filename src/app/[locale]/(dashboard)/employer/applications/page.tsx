@@ -1643,7 +1643,7 @@ function TableView({
                   <div className="flex items-center gap-1.5">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                      className="truncate text-sm font-semibold text-foreground hover:text-status-applied hover:underline"
+                      className="tap-target-row truncate text-sm font-semibold text-foreground hover:text-status-applied hover:underline"
                       onClick={(event) => event.stopPropagation()}
                     >
                       {candidateName}

@@ -328,11 +328,12 @@ export default function EmployerAnalyticsPage() {
         icon={activeTabMeta.icon}
         title={t("title")}
         description={t("description")}
-        summary={{
-          label: t("viewFocus"),
-          value: t(activeTabMeta.key === "response" ? "responseTime" : activeTabMeta.key),
-          note: t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`),
-        }}
+        // No `summary`: the "View focus" card repeated whichever tab is already
+        // highlighted in the selector right below the hero.
+        // compact: refresh/export icons share the title row on phones;
+        // compactOnMobile drops the two-line description there too.
+        compact
+        compactOnMobile
         actions={
           <>
                 <button
@@ -373,7 +374,9 @@ export default function EmployerAnalyticsPage() {
 
       <AnalyticsPanel className="p-2 sm:p-4">
         <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          {/* Phones: one horizontally scrollable row — six tabs wrapped to two
+              rows and pushed the charts down. Wraps again from sm. */}
+          <div className="flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-none sm:flex-wrap sm:gap-2 sm:overflow-visible">
             {ANALYTICS_TABS.map((tab) => {
               const Icon = tab.icon;
 
@@ -382,7 +385,7 @@ export default function EmployerAnalyticsPage() {
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold transition sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm",
+                    "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1 text-[11px] font-semibold transition sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm",
                     activeTab === tab.key
                       ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
                       : "bg-secondary/75 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
@@ -595,7 +598,9 @@ function PipelineTab({
         {/* 5-across only from lg. At 390px five columns were 64px wide, which
             truncated every label and every conversion value on the page's
             primary metric. Max two columns below 480px. */}
-        <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+        {/* Below 480px the fifth card (Hired) was an orphan next to an empty
+            cell — it spans the full row there instead. */}
+        <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-4 lg:grid-cols-5 max-[479px]:[&>*:nth-child(5)]:col-span-2">
           <ConversionCard label={t("applied")} count={data.conversion.applied} subtitle={`100% ${t("ofTotal")}`} color="blue" />
           <ConversionCard label={t("shortlisted")} count={data.conversion.shortlisted} subtitle={`${conversionRates.appliedToShortlisted}% ${t("fromApplied")}`} color="indigo" />
           <ConversionCard label={t("interview")} count={data.conversion.interview} subtitle={`${conversionRates.shortlistedToInterview}% ${t("fromShortlisted")}`} color="purple" />
