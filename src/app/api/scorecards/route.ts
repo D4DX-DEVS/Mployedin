@@ -9,6 +9,7 @@ import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { scorecardCreateSchema } from "@/lib/validators/scorecards";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import { notifyScorecardSubmitted } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
@@ -31,21 +32,24 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
 
-  if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp) {
+  if (ctx.role === "job_seeker") {
+    // Interviewer notes are internal — candidates never list them.
+    return NextResponse.json(
+      { error: "Only employers can list scorecards" },
+      { status: 403 }
+    );
+  }
+
+  // Everyone but admin is confined to their own employers. `null` is admin.
+  const employerIds = await getScopedEmployerIds(ctx);
+  if (employerIds !== null) {
+    if (employerIds.length === 0) {
       return NextResponse.json({
         scorecards: [],
         pagination: { page, limit, total: 0, pages: 0 },
       });
     }
-    query.employerId = emp._id;
-  } else if (ctx.role === "job_seeker") {
-    // Job seekers can only see their own scorecards (if needed)
-    return NextResponse.json(
-      { error: "Only employers can list scorecards" },
-      { status: 403 }
-    );
+    query.employerId = { $in: employerIds };
   }
 
   if (applicationId) query.applicationId = applicationId;

@@ -316,7 +316,7 @@ export function UnifiedMessagesPage({
         }
       />
 
-      <div className="flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm min-h-[600px]">
+      <div className="flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm min-h-[600px] max-sm:min-h-[50vh]">
         {/* Conversation list — responsive sidebar */}
         <div
           className={cn(
@@ -378,7 +378,7 @@ export function UnifiedMessagesPage({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="overflow-y-auto flex-1 max-sm:flex-none">
             {isLoadingConvs ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

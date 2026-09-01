@@ -110,7 +110,7 @@ export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewCha
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <button className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+          <button className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors min-h-11">
             <MessageSquare className="h-3.5 w-3.5" />
             {newChatLabel ?? "New Chat"}
           </button>

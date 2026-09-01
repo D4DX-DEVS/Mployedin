@@ -47,8 +47,12 @@ export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabCon
 
 /**
  * Drops the destinations the phone bottom tab bar already links, so the drawer
- * does not repeat the footer. Only leaf items go — a parent sharing a tab href
- * (agent "Hiring" → /agent/jobs) has to stay for its children.
+ * does not repeat the footer. Applies at every depth: super-agent's "Team" and
+ * "Finance" groups re-listed Agents, Leads and Commissions as children right
+ * above the tab bar that already links them. A leaf whose href a tab covers
+ * goes; a parent survives only while it still has children left (or its own
+ * href is not tab-linked) — a group left empty by the pruning adds nothing the
+ * footer doesn't already provide.
  */
 export function withoutBottomTabItems(
   items: NavItem[],
@@ -59,7 +63,12 @@ export function withoutBottomTabItems(
     (WORKSPACE_BOTTOM_NAV_TABS[role as UserRole] ?? []).map((tab) => tab.href)
   );
   if (!tabHrefs.size) return items;
-  return items.filter(
-    (item) => (item.children?.length ?? 0) > 0 || !tabHrefs.has(item.href.replace(`/${locale}`, ""))
-  );
+  const linkedByTab = (item: NavItem) => tabHrefs.has(item.href.replace(`/${locale}`, ""));
+  const prune = (list: NavItem[]): NavItem[] =>
+    list
+      .map((item) =>
+        item.children?.length ? { ...item, children: prune(item.children) } : item
+      )
+      .filter((item) => (item.children?.length ?? 0) > 0 || !linkedByTab(item));
+  return prune(items);
 }

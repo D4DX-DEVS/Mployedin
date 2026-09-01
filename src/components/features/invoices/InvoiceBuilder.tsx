@@ -474,7 +474,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     setJobs([]);
     setTotalJobCount(-1);
     if (open) void fetchJobCount();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [selectedAgentFilter, selectedEmployerFilter]);
 
   // When super agent filter changes, clear agent + employer
@@ -1420,18 +1420,11 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                           <p className="text-sm text-muted-foreground">
                             {loadingCount
                               ? t("loadingJobs")
-                              : totalJobCount > 0
-                                ? <><span className="font-medium text-foreground">{formatCount(totalJobCount)}</span> {t("jobsAvailable")}</>
-                                : totalJobCount === 0
-                                  ? t("noJobsAvailable")
-                                  : t("loading")
+                              : totalJobCount === 0
+                                ? t("noJobsAvailable")
+                                : t("typeJobTitleToSearch")
                             }
                           </p>
-                          {totalJobCount > 0 && (
-                            <p className="text-[11px] text-muted-foreground/70">
-                              {t("typeJobTitleToSearch")}
-                            </p>
-                          )}
                         </div>
                       )}
   
@@ -1833,7 +1826,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         {/* Body: Main + Sidebar */}
         <div className="flex">
           {/* Main content */}
-          <div className="min-w-0 flex-1 border-r border-border/50 px-6 py-5">
+          <div className="min-w-0 flex-1 max-sm:flex-initial border-r border-border/50 px-6 py-5">
 
             {stepContent}
 

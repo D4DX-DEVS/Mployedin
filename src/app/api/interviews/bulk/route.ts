@@ -10,6 +10,7 @@ import { validateBody } from "@/lib/validators";
 import { interviewBulkSchema } from "@/lib/validators/interviews";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import logger from "@/lib/logger";
 
 /**
@@ -132,6 +133,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
+  // Employers the caller may schedule against. `null` is admin (unrestricted);
+  // every other role gets an explicit set, so a client-supplied applicationId
+  // can never reach another employer's pipeline.
+  const scopedEmployerIds = await getScopedEmployerIds(ctx);
+  const allowedEmployerIds =
+    scopedEmployerIds === null ? null : new Set(scopedEmployerIds.map(String));
+
   let slotCursor = new Date(baseTime);
 
   for (const candidate of candidates) {
@@ -151,6 +159,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         } | null;
 
       if (!application?.jobId || !application.jobSeekerId || !application.employerId) {
+        failed.push(candidate.applicationId);
+        continue;
+      }
+
+      if (allowedEmployerIds && !allowedEmployerIds.has(String(application.employerId))) {
         failed.push(candidate.applicationId);
         continue;
       }

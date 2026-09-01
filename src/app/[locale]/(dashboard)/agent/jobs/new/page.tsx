@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AlertCircle, ArrowRight, Briefcase, Building2, Loader2, MapPin } from "lucide-react";
+import { AlertCircle, ArrowLeft, Briefcase, Building2, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,9 +125,10 @@ export default function AgentJobPosterPage() {
         icon={Briefcase}
         title={t("title")}
         description={t("description")}
+        compactOnMobile
         actions={
-          <Button variant="outline" onClick={() => router.back()} className="rounded-xl border-border/75 bg-card/90 hover:border-border hover:text-status-applied">
-            <ArrowRight className="h-4 w-4" />
+          <Button variant="outline" onClick={() => router.back()} className="h-11 rounded-xl border-border/75 bg-card/90 hover:border-border hover:text-status-applied">
+            <ArrowLeft className="h-4 w-4" />
             {common("back")}
           </Button>
         }

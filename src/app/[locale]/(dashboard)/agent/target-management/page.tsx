@@ -172,17 +172,17 @@ export default function AgentTargetManagementPage() {
           <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-11 w-28 rounded-xl border-border bg-card pl-9 text-sm" />
         </div>
-        <Button variant="outline" size="sm" onClick={() => setYearFilter(currentYear)} className="rounded-lg" disabled={yearFilter === currentYear}>
+        <Button variant="outline" size="sm" onClick={() => setYearFilter(currentYear)} className="rounded-lg max-sm:min-h-11" disabled={yearFilter === currentYear}>
           <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
         </Button>
         <div className="flex rounded-xl border border-border/60 bg-card p-0.5">
-          <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5">
+          <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5 max-sm:min-h-11">
             <Target className="h-3.5 w-3.5" /> Dashboard
           </Button>
-          <Button variant={tab === "analytics" ? "default" : "ghost"} size="sm" onClick={() => setTab("analytics")} className="rounded-lg gap-1.5">
+          <Button variant={tab === "analytics" ? "default" : "ghost"} size="sm" onClick={() => setTab("analytics")} className="rounded-lg gap-1.5 max-sm:min-h-11">
             <TrendingUp className="h-3.5 w-3.5" /> Analytics
           </Button>
-          <Button variant={tab === "leaderboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("leaderboard")} className="rounded-lg gap-1.5">
+          <Button variant={tab === "leaderboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("leaderboard")} className="rounded-lg gap-1.5 max-sm:min-h-11">
             <Trophy className="h-3.5 w-3.5" /> Leaderboard
           </Button>
         </div>
@@ -262,21 +262,21 @@ export default function AgentTargetManagementPage() {
                 <KpiCard
                   label={t("employerTarget")}
                   value={<>{profile.employerAchieved}<span className="text-lg text-muted-foreground">/{profile.employerTarget}</span></>}
-                  subtext={`Assigned ${profile.employerTarget} · Balance ${profile.employerPending}`}
+                  subtext={<>Assigned {profile.employerTarget} · Balance <span className="font-semibold">{profile.employerPending}</span></>}
                   icon={<Building2 className="h-5 w-5" />}
                   toneClassName="workspace-tone-sky"
                 />
                 <KpiCard
                   label={t("employeeTarget")}
                   value={<>{profile.employeeAchieved}<span className="text-lg text-muted-foreground">/{profile.employeeTarget}</span></>}
-                  subtext={`Assigned ${profile.employeeTarget} · Balance ${profile.employeePending}`}
+                  subtext={<>Assigned {profile.employeeTarget} · Balance <span className="font-semibold">{profile.employeePending}</span></>}
                   icon={<Users className="h-5 w-5" />}
                   toneClassName="workspace-tone-emerald"
                 />
                 <KpiCard
                   label={t("financeTarget")}
                   value={<>{profile.currency} {formatCount(profile.financeAchieved)}<span className="text-lg text-muted-foreground">/{formatCount(profile.financeTarget)}</span></>}
-                  subtext={`Assigned ${profile.currency} ${formatCount(profile.financeTarget)} · Balance ${profile.currency} ${formatCount(profile.financePending)}`}
+                  subtext={<>Assigned {profile.currency} {formatCount(profile.financeTarget)} · Balance <span className="font-semibold">{profile.currency} {formatCount(profile.financePending)}</span></>}
                   icon={<DollarSign className="h-5 w-5" />}
                   toneClassName="workspace-tone-amber"
                 />
@@ -287,48 +287,6 @@ export default function AgentTargetManagementPage() {
                   icon={<TrendingUp className="h-5 w-5" />}
                   toneClassName="workspace-tone-violet"
                 />
-              </section>
-
-              <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Link href={`/${locale}/agent/employers`} className="workspace-glass-panel card-pad group rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next employer work</p>
-                      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{profile.employerPending}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Employer balance remaining</p>
-                    </div>
-                    <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
-                  </div>
-                  <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary group-hover:text-primary/80">
-                    Add employers <ArrowRight className="h-3.5 w-3.5" />
-                  </div>
-                </Link>
-                <Link href={`/${locale}/agent/placements`} className="workspace-glass-panel card-pad group rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next employee work</p>
-                      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{profile.employeePending}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Placement balance remaining</p>
-                    </div>
-                    <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-                  </div>
-                  <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary group-hover:text-primary/80">
-                    Close placements <ArrowRight className="h-3.5 w-3.5" />
-                  </div>
-                </Link>
-                <Link href={`/${locale}/agent/commissions`} className="workspace-glass-panel card-pad group rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next finance work</p>
-                      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{profile.currency} {formatCount(profile.financePending)}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Revenue balance remaining</p>
-                    </div>
-                    <div className="workspace-tone-amber rounded-2xl p-2.5"><DollarSign className="h-5 w-5" /></div>
-                  </div>
-                  <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary group-hover:text-primary/80">
-                    Track commissions <ArrowRight className="h-3.5 w-3.5" />
-                  </div>
-                </Link>
               </section>
 
               {/* Daily / Weekly Goals */}

@@ -107,7 +107,8 @@ describe("AdminJobsPage", () => {
     // The "Recruitment Control" eyebrow above the title was dropped — it
     // restated the sidebar section, and the heading below identifies the page.
     expect(screen.getByRole("heading", { name: /job listings/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /filter/i })).toBeInTheDocument();
+    // Name the toggle exactly: /filter/i now also matches "Advanced filters".
+    expect(screen.getByRole("button", { name: /show filters/i })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Senior Recruiter")).toBeInTheDocument();

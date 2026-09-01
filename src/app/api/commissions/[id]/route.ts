@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validators";
 import { commissionUpdateSchema } from "@/lib/validators/commissions";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { canAccess } from "@/lib/permissions/matrix";
+import { isOwnCommissionLine, resolveCommissionApprover } from "@/lib/invoices/commissionRecords";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import { notifyCommissionApproved, notifyCommissionPaid } from "@/lib/notifications/trigger";
 import Agent from "@/models/Agent";
@@ -89,6 +90,23 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (touchesMoney || settles || !canAccess(ctx.role, "commissions", "approve")) {
       return NextResponse.json(
         { error: "Forbidden — approving a commission does not permit editing or settling it" },
+        { status: 403 },
+      );
+    }
+  }
+
+  // Segregation of duties: nobody advances their OWN commission toward payment.
+  // canAccessCommission deliberately grants an agent/super-agent access to the
+  // line they earn (so they can read and dispute it), which makes this route a
+  // direct bypass of the self-approval exclusion applied when an invoice is
+  // marked paid — approve it here and the next payout batch pays it out.
+  // Disputing your own line is still allowed; only advancing it is not.
+  const SELF_ADVANCING_STATUSES = ["approved", "paid"];
+  if (body.status !== undefined && SELF_ADVANCING_STATUSES.includes(body.status)) {
+    const approver = await resolveCommissionApprover(ctx.userId);
+    if (isOwnCommissionLine(commission, approver)) {
+      return NextResponse.json(
+        { error: "You cannot approve or settle your own commission — an admin must review it." },
         { status: 403 },
       );
     }

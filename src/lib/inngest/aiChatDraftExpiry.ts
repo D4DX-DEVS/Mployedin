@@ -28,7 +28,7 @@ export const aiChatDraftExpiryCron = inngest.createFunction(
     triggers: [{ cron: "30 4 * * *" }], // 04:30 UTC daily
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - SEVEN_DAYS_MS);

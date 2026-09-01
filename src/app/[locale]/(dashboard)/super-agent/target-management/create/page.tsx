@@ -468,7 +468,7 @@ export default function SuperAgentCreateTargetPage() {
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
                     {formatCount(totals.finance)}
                   </td>
-                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3 max-sm:hidden" />
                 </tr>
               </tfoot>
             </table>
@@ -519,11 +519,11 @@ function AgentTargetRow({
       <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
         {/* Agent Info */}
         <td className="px-4 py-3">
-          <div>
-            <p className="font-medium text-foreground">{agent.name}</p>
-            <p className="text-[11px] text-muted-foreground">{agent.email}</p>
+          <div className="grid w-full min-w-0 gap-1">
+            <p className="font-medium text-foreground truncate">{agent.name}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{agent.email}</p>
             {agent.territory && (
-              <p className="text-[11px] text-muted-foreground mt-0.5">{agent.territory}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{agent.territory}</p>
             )}
           </div>
         </td>

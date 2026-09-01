@@ -252,11 +252,6 @@ export default function AgentJobsPage() {
         icon={BriefcaseBusiness}
         title={t("title")}
         description={t("description")}
-        summary={{
-          label: t("portfolio.eyebrow"),
-          value: t("portfolio.tracked", { count: pagination.total }),
-          note: t("portfolio.description"),
-        }}
         actions={
             <Link href={`/${locale}/agent/jobs/new`}>
               <Button size="lg" className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">

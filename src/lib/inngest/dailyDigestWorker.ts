@@ -25,7 +25,7 @@ export const dailyDigestWorker = inngest.createFunction(
   async ({ event, step }: { event: { data: NotificationDailyDigestEvent["data"] }; step: any }) => {
     const { userId, userName, email, locale, jobs, profileViews } = event.data;
 
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // Build and send the combined digest email
     await step.run("send-digest-email", async () => {

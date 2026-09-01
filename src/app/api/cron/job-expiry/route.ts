@@ -32,11 +32,13 @@ export async function GET(req: NextRequest) {
     .lean();
   // Next scheduled run will process any remainder.
 
-  // Jobs auto-closed by max applicant limit
+  // Jobs auto-closed by max applicant limit.
+  // $ifNull guards legacy docs missing applicantIds — $size throws on
+  // non-arrays even while the planner is only sampling documents.
   const fullJobs = await Job.find({
     status: "active",
     maxApplicants: { $exists: true, $gt: 0 },
-    $expr: { $gte: [{ $size: "$applicantIds" }, "$maxApplicants"] },
+    $expr: { $gte: [{ $size: { $ifNull: ["$applicantIds", []] } }, "$maxApplicants"] },
   })
     .select("_id title employerId")
     .limit(500)

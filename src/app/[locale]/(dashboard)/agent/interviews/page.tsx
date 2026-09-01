@@ -276,9 +276,32 @@ export default function AgentInterviewsPage() {
           collapses; the table follows. The old filter card announced itself
           with a label and a heading before showing a single search box. */}
       <section className="workspace-panel-surface rounded-3xl panel-body" data-table-toolbar="simple">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>
-          <div className="relative toolbar-search-field min-w-0 flex-1 sm:ms-auto sm:w-60 sm:flex-none">
+        <div className="grid gap-3 border-b border-border pb-3 sm:pb-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>
+            <Button
+              variant={showFilters ? "default" : "outline"}
+              size="sm"
+              className="h-10 shrink-0 gap-1.5 rounded-xl sm:ms-auto"
+              onClick={() => setShowFilters((v) => !v)}
+              aria-expanded={showFilters}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              {tc("filter")}
+            </Button>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10 shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />{t("buttonClearAll")}
+              </Button>
+            )}
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+              className="shrink-0"
+            />
+          </div>
+          <div className="relative toolbar-search-field">
             <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
@@ -288,27 +311,6 @@ export default function AgentInterviewsPage() {
               className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
           </div>
-          <Button
-            variant={showFilters ? "default" : "outline"}
-            size="sm"
-            className="h-10 shrink-0 gap-1.5 rounded-xl"
-            onClick={() => setShowFilters((v) => !v)}
-            aria-expanded={showFilters}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            {tc("filter")}
-          </Button>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10 shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-              <X className="h-3.5 w-3.5" />{t("buttonClearAll")}
-            </Button>
-          )}
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="shrink-0"
-          />
         </div>
 
         {/* Filter row */}
@@ -406,16 +408,16 @@ export default function AgentInterviewsPage() {
                 <button type="button" onClick={() => setStatus("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
-            {employerFilter && (
+            {employerFilter && employerFilter !== "all" && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillEmployer")}: {employers.find(e => e._id === employerFilter)?.companyName}
-                <button type="button" onClick={() => { setEmployerFilter(""); setJobFilter(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+                <Filter className="h-3 w-3" />{t("pillEmployer")}: {employers.find(e => e._id === employerFilter)?.companyName ?? employerFilter}
+                <button type="button" onClick={() => { setEmployerFilter("all"); setJobFilter("all"); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
-            {jobFilter && (
+            {jobFilter && jobFilter !== "all" && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillJob")}: {jobs.find(j => j._id === jobFilter)?.title}
-                <button type="button" onClick={() => setJobFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+                <Filter className="h-3 w-3" />{t("pillJob")}: {jobs.find(j => j._id === jobFilter)?.title ?? jobFilter}
+                <button type="button" onClick={() => setJobFilter("all")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {typeFilter && (
@@ -484,13 +486,13 @@ export default function AgentInterviewsPage() {
               ) : interviews.map((iv) => (
                 <TableRow key={iv._id} className="hover:bg-secondary/50">
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</p>
-                      {iv.jobSeekerId?.email && <p className="text-xs text-muted-foreground">{iv.jobSeekerId.email}</p>}
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        <StatusBadge status={iv.status} />
-                        {iv.outcome && <StatusBadge status={iv.outcome === "no_show" ? "no-show" : iv.outcome} />}
-                      </div>
+                    <div className="grid w-full min-w-0 gap-1">
+                      <p className="truncate font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</p>
+                      {iv.jobSeekerId?.email && <p className="truncate text-xs text-muted-foreground">{iv.jobSeekerId.email}</p>}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <StatusBadge status={iv.status} />
+                      {iv.outcome && <StatusBadge status={iv.outcome === "no_show" ? "no-show" : iv.outcome} />}
                     </div>
                   </TableCell>
                   <TableCell className="text-foreground/80 max-w-[180px]" title={iv.jobId?.title}>
@@ -512,20 +514,22 @@ export default function AgentInterviewsPage() {
                   </TableCell>
                   {can("interviews", "update") && (
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="xs" onClick={() => { setEditInterview(iv); setModalOpen(true); }} title={tc("edit")} aria-label={t("ariaEditInterview", { name: iv.jobSeekerId?.fullName ?? tc("name") })}>
+                      <div>
+                      <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
+                        <Button variant="ghost" size="xs" onClick={() => { setEditInterview(iv); setModalOpen(true); }} title={tc("edit")} aria-label={t("ariaEditInterview", { name: iv.jobSeekerId?.fullName ?? tc("name") })} className="min-h-11">
                           <Edit2 className="h-3.5 w-3.5 text-primary" />
                         </Button>
                         {(iv.status === "scheduled" || iv.status === "confirmed") && (
                           <>
-                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "completed")} title={t("buttonMarkCompleted")} aria-label={t("ariaMarkCompleted")}>
+                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "completed")} title={t("buttonMarkCompleted")} aria-label={t("ariaMarkCompleted")} className="min-h-11">
                               <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
                             </Button>
-                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "cancelled")} title={tc("cancel")} aria-label={t("ariaCancel")}>
+                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "cancelled")} title={tc("cancel")} aria-label={t("ariaCancel")} className="min-h-11">
                               <XCircle className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           </>
                         )}
+                      </div>
                       </div>
                     </TableCell>
                   )}

@@ -11,6 +11,8 @@ import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerCreateSchema } from "@/lib/validators/offers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
@@ -82,6 +84,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp) return offersListResponse({ page, limit });
     query.employerId = emp._id;
+  } else if (ctx.role === "super_agent") {
+    // Same portfolio rule offers/[id] enforces per record. Empty scope means
+    // nothing, never everything.
+    const employerIds = await getSuperAgentEmployerIds(ctx.userId);
+    if (employerIds.length === 0) return offersListResponse({ page, limit });
+    query.employerId = { $in: employerIds };
   }
 
   if (status) query.status = status;
@@ -91,7 +99,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Search by candidate name or job title via populated lookup
   if (search) {
-    const regex = new RegExp(search, "i");
+    const regex = new RegExp(escapeRegex(search), "i");
     const [matchingJobs, matchingSeekers] = await Promise.all([
       Job.find({ title: regex }).select("_id").lean(),
       JobSeeker.find({ fullName: regex }).select("_id").lean(),

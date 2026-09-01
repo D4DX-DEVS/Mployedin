@@ -207,7 +207,7 @@ export default function SuperAgentCommissionsPage() {
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs text-muted-foreground">{t("filterTypeLabel")}</Label>
                 <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
-                  <SelectTrigger className="h-11 w-36 rounded-xl border-border bg-card text-sm shadow-none">
+                  <SelectTrigger className="h-11 w-full sm:w-36 rounded-xl border-border bg-card text-sm shadow-none">
                     <SelectValue placeholder={t("filterTypeAllTypes")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -221,7 +221,7 @@ export default function SuperAgentCommissionsPage() {
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs text-muted-foreground">{t("filterCurrencyLabel")}</Label>
                 <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
-                  <SelectTrigger className="h-11 w-32 rounded-xl border-border bg-card text-sm shadow-none">
+                  <SelectTrigger className="h-11 w-full sm:w-32 rounded-xl border-border bg-card text-sm shadow-none">
                     <SelectValue placeholder={t("filterCurrencyAll")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -257,17 +257,19 @@ export default function SuperAgentCommissionsPage() {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <Settings2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span className="text-muted-foreground">{t("overrideRateLabel")}</span>
-          <span className="font-semibold text-foreground">{overrideRate}%</span>
-          <span className="text-muted-foreground">· {t("setByAdmin")}</span>
-          <button
-            type="button"
-            onClick={() => setShowOverrideInfo((v) => !v)}
-            aria-expanded={showOverrideInfo}
-            aria-label={t("contactAdminMessage")}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Info className="h-3.5 w-3.5" />
-          </button>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span className="font-semibold text-foreground">{overrideRate}%</span>
+            <span className="text-muted-foreground">· {t("setByAdmin")}</span>
+            <button
+              type="button"
+              onClick={() => setShowOverrideInfo((v) => !v)}
+              aria-expanded={showOverrideInfo}
+              aria-label={t("contactAdminMessage")}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </span>
           {showOverrideInfo && (
             <span className="basis-full text-xs text-muted-foreground">{t("contactAdminMessage")}</span>
           )}
@@ -278,11 +280,11 @@ export default function SuperAgentCommissionsPage() {
               <TableHeader>
                 <TableRow className="bg-background/60 hover:bg-background/60">
                   <TableHead>{t("tableHeaderAgent")}</TableHead>
-                  <TableHead>{t("tableHeaderType")}</TableHead>
-                  <TableHead>{t("tableHeaderNotes")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("tableHeaderType")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("tableHeaderNotes")}</TableHead>
                   <TableHead className="text-right">{t("tableHeaderAmount")}</TableHead>
                   <TableHead>{tc("status")}</TableHead>
-                  <TableHead>{tc("date")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{tc("date")}</TableHead>
                   <TableHead>{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -313,11 +315,11 @@ export default function SuperAgentCommissionsPage() {
                         <div className="font-medium text-foreground">{c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—"}</div>
                         <div className="text-xs text-muted-foreground">{c.agentId?.userId?.email ?? ""}</div>
                     </TableCell>
-                      <TableCell className="capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
-                      <TableCell className="max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
+                      <TableCell className="hidden md:table-cell max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
                       <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
                     <TableCell><StatusBadge status={c.status} /></TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(c.createdAt))}</TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{formatDate(new Date(c.createdAt))}</TableCell>
                     <TableCell>
                       {c.status === "pending" && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs text-green-700" onClick={() => updateStatus(c._id, "approved")}>

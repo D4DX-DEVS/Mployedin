@@ -16,14 +16,14 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 import {
-  CircleDollarSign, Clock, CheckCircle2, Wallet,
-  CalendarDays, RotateCcw, Users, Layers,
+  CircleDollarSign, Clock, Wallet,
+  CalendarDays, RotateCcw, Users,
 } from "lucide-react";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import {
-  SuperAgentPageIntro, SuperAgentMetricsGrid,
+  SuperAgentPageIntro,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -149,6 +149,13 @@ export default function SuperAgentCommissionsReportPage() {
         title={t("pageTitle")}
         description={t("pageDescription", { year: yearFilter })}
         eyebrow={t("pageEyebrow")}
+        metrics={s ? [
+          { label: t("kpiGrandTotal"), value: fmt(s.grandTotal, s.currency), icon: CircleDollarSign },
+          { label: t("kpiTeamEarned"), value: fmt(s.teamTotal, s.currency), icon: Users },
+          { label: t("kpiPending"), value: fmt(s.overridePending, s.currency), icon: Clock },
+          { label: t("kpiOverridePaid"), value: fmt(s.overridePaid, s.currency), icon: Wallet },
+        ] : []}
+        compact
       >
         <div className="flex items-center gap-2">
           <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
@@ -168,17 +175,6 @@ export default function SuperAgentCommissionsReportPage() {
         </div>
       </SuperAgentPageIntro>
 
-      {/* ── KPI Cards ── */}
-      <SuperAgentMetricsGrid
-        items={[
-          { label: t("kpiGrandTotal"), value: loading ? "—" : s ? fmt(s.grandTotal, s.currency) : "—", helper: t("kpiGrandTotalHelper"), icon: <CircleDollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
-          { label: t("kpiMyOverride"), value: loading ? "—" : s ? fmt(s.overrideTotal, s.currency) : "—", helper: t("kpiMyOverrideHelper"), icon: <Layers className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
-          { label: t("kpiTeamEarned"), value: loading ? "—" : s ? fmt(s.teamTotal, s.currency) : "—", helper: t("kpiTeamEarnedHelper"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-          { label: t("kpiPending"), value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: t("kpiPendingHelper"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-          { label: t("kpiOverridePaid"), value: loading ? "—" : s ? fmt(s.overridePaid, s.currency) : "—", helper: t("kpiOverridePaidHelper"), icon: <Wallet className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-        ]}
-      />
-
       {/* ── Monthly Trend ── */}
       <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
         <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
@@ -195,43 +191,23 @@ export default function SuperAgentCommissionsReportPage() {
         </ResponsiveContainer>
       </section>
 
-      {/* ── Approved Breakdown ── */}
-      {data && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: t("breakdownOverridePending"), value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50" },
-            { label: t("breakdownOverrideApproved"), value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50" },
-            { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50" },
-            { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50" },
-          ].map(({ label, value, icon: Icon, color, chip }) => (
-            <div key={label} className="workspace-glass-panel card-pad rounded-2xl">
-              <div className="flex items-center gap-2">
-                <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${chip}`}>
-                  <Icon className={`h-4 w-4 ${color}`} />
-                </span>
-                <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-              </div>
-              <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── Agent Breakdown Table ── */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
-        <div className="flex items-center justify-between gap-3 panel-head">
+        <div className="flex max-sm:flex-col items-center max-sm:items-start justify-between max-sm:justify-start gap-3 panel-head">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <h2 className="heading-label font-semibold">{t("teamBreakdownTitle")}</h2>
             {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
           </div>
-          <TableToolbar
-            search={searchQuery}
-            onSearchChange={setSearchQuery}
-            searchPlaceholder={t("searchAgentPlaceholder")}
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-          />
+          <div className="max-sm:w-full">
+            <TableToolbar
+              search={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder={t("searchAgentPlaceholder")}
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+            />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>

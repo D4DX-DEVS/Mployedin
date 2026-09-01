@@ -16,6 +16,7 @@ import {
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
@@ -52,17 +53,25 @@ export default function ResourceDownloadsPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [search, setSearch] = useState("");
   const [previewUrl, setPreviewUrl] = useState<{url: string; type: string} | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ sort: sortBy, limit: "50" });
+      const params = new URLSearchParams({ sort: sortBy, page: String(page), limit: String(pageSize) });
       if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/resources?${params}`);
-      if (res.ok) { const data = await res.json(); setItems(data.items ?? []); }
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items ?? []);
+        setTotal(data.total ?? 0);
+      }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
-  }, [categoryFilter, sortBy, search, t]);
+  }, [categoryFilter, sortBy, search, page, pageSize, t]);
+  useEffect(() => { setPage(1); }, [categoryFilter, sortBy, search]);
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const trackDownload = async (item: Resource, file: ResourceFile) => {
@@ -84,16 +93,22 @@ export default function ResourceDownloadsPage() {
         title={t("downloadsTitle")}
         description={t("downloadsSubtitle")}
         footer={
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2" data-table-toolbar="simple">
-            <div className="relative toolbar-search-field min-w-52 flex-1">
+          <div className="flex w-full flex-col gap-2" data-table-toolbar="simple">
+            <div className="relative toolbar-search-field">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
+              <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full pl-9 text-sm" />
             </div>
-            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
-            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
-            {categoryFilter !== "all" && (
-              <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Clear</button>
-            )}
+            <div className="flex min-w-0 gap-2 sm:items-center">
+              <div className="flex-1 min-w-0">
+                <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
+              </div>
+              {categoryFilter !== "all" && (
+                <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Clear</button>
+              )}
+            </div>
           </div>
         }
       />
@@ -116,58 +131,68 @@ export default function ResourceDownloadsPage() {
           </div>
         </section>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => {
-            const CatIcon = item.files?.[0]?.contentType?.startsWith("video/") ? Video : item.files?.[0]?.contentType?.startsWith("image/") ? Image : FileText;
-            return (
-              <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
-                <div className="p-5 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-2xl ring-1 ring-inset ring-border/60 bg-background/80 shrink-0 chip-pad">
-                      <CatIcon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="heading-subsection font-semibold text-foreground truncate">{item.title}</h3>
-                      <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[item.category] ?? item.category}</p>
-                    </div>
-                  </div>
-
-                  {item.description && <p className="text-sm leading-6 text-muted-foreground line-clamp-2">{item.description}</p>}
-
-                  {item.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"><Tag className="h-2.5 w-2.5" />{tag}</span>
-                      ))}
-                      {item.tags.length > 3 && <span className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">+{item.tags.length - 3}</span>}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Download className="h-3.5 w-3.5" /> {item.downloadCount ?? 0}</span>
-                    <span className="flex items-center gap-1.5"><History className="h-3.5 w-3.5" /> v{item.version ?? 1}</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {item.files.map((file) => (
-                      <div key={file.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 text-xs chip-pad">
-                        <span className="truncate font-medium text-foreground">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
-                        <div className="flex gap-1 shrink-0">
-                          {(file.contentType?.startsWith("image/") || file.contentType === "application/pdf") && (
-                            <button onClick={() => setPreviewUrl({url: file.url, type: file.contentType})} className="p-1.5 rounded-lg hover:bg-card transition-colors"><Eye className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                          )}
-                          <button onClick={() => trackDownload(item, file)} className="p-1.5 rounded-lg hover:bg-card transition-colors text-primary"><Download className="h-3.5 w-3.5" /></button>
-                        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => {
+              const CatIcon = item.files?.[0]?.contentType?.startsWith("video/") ? Video : item.files?.[0]?.contentType?.startsWith("image/") ? Image : FileText;
+              return (
+                <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
+                  <div className="p-5 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-2xl ring-1 ring-inset ring-border/60 bg-background/80 shrink-0 chip-pad">
+                        <CatIcon className="h-4 w-4 text-muted-foreground" />
                       </div>
-                    ))}
-                  </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="heading-subsection font-semibold text-foreground truncate">{item.title}</h3>
+                        <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[item.category] ?? item.category}</p>
+                      </div>
+                    </div>
 
-                  <p className="text-xs text-muted-foreground">{formatDate(new Date(item.createdAt))}</p>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                    {item.description && <p className="text-sm leading-6 text-muted-foreground line-clamp-2">{item.description}</p>}
+
+                    {item.tags?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.tags.slice(0, 3).map((tag) => (
+                          <span key={tag} className="inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground"><Tag className="h-2.5 w-2.5" />{tag}</span>
+                        ))}
+                        {item.tags.length > 3 && <span className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">+{item.tags.length - 3}</span>}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5"><Download className="h-3.5 w-3.5" /> {item.downloadCount ?? 0}</span>
+                      <span className="flex items-center gap-1.5"><History className="h-3.5 w-3.5" /> v{item.version ?? 1}</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {item.files.map((file) => (
+                        <div key={file.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 text-xs chip-pad">
+                          <span className="truncate font-medium text-foreground">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
+                          <div className="flex gap-1 shrink-0">
+                            {(file.contentType?.startsWith("image/") || file.contentType === "application/pdf") && (
+                              <button onClick={() => setPreviewUrl({url: file.url, type: file.contentType})} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-card transition-colors" aria-label="Preview file"><Eye className="h-4 w-4 text-muted-foreground" /></button>
+                            )}
+                            <button onClick={() => trackDownload(item, file)} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-card transition-colors text-primary" aria-label="Download file"><Download className="h-4 w-4" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">{formatDate(new Date(item.createdAt))}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <PaginationControls
+            page={page}
+            totalPages={Math.max(1, Math.ceil(total / pageSize))}
+            total={total}
+            limit={pageSize}
+            onPageChange={setPage}
+            onLimitChange={setPageSize}
+          />
+        </>
       )}
 
       {/* Preview Dialog */}

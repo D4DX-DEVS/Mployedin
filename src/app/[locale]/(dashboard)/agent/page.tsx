@@ -163,7 +163,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     { label: t("funnel.vacanciesPosted"), value: (perf as Record<string, number>).vacanciesPosted ?? 0 },
     { label: t("funnel.interviewRate"), value: `${interviewRate}%` },
     { label: t("funnel.offerRate"), value: `${offerRate}%` },
-    { label: t("kpis.placements"), value: (perf as Record<string, number>).placementsCompleted ?? 0 },
   ];
 
   const actions = [
@@ -184,12 +183,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       href: `/${locale}/agent/jobs`,
       icon: BarChart3,
       tone: "workspace-tone-indigo",
-    },
-    {
-      label: t("actions.candidates.label"),
-      href: `/${locale}/agent/candidates`,
-      icon: Users,
-      tone: "workspace-tone-emerald",
     },
     {
       label: t("actions.jobSeekers.label"),
@@ -271,7 +264,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       <DashboardPageHeader
         icon={Target}
         title={t("hero.title")}
-        description={t("hero.description")}
         summary={{
           label: t("portfolio.eyebrow"),
           value: t("portfolio.activeAccounts", { count: employerCount }),
@@ -279,17 +271,19 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         }}
       />
 
-      <DashboardNextAction
-        headingId="agent-next-action"
-        title={t("taskFirst.recommendedNext")}
-        description={t("taskFirst.nextDescription")}
-        actionTitle={nextAction.title}
-        actionDescription={nextAction.description}
-        actionLabel={t("taskFirst.openAction")}
-        href={nextAction.href}
-        icon={nextAction.icon}
-        badge={nextAction.badge}
-      />
+      <div className="max-sm:hidden">
+        <DashboardNextAction
+          headingId="agent-next-action"
+          title={t("taskFirst.recommendedNext")}
+          description={t("taskFirst.nextDescription")}
+          actionTitle={nextAction.title}
+          actionDescription={nextAction.description}
+          actionLabel={t("taskFirst.openAction")}
+          href={nextAction.href}
+          icon={nextAction.icon}
+          badge={nextAction.badge}
+        />
+      </div>
 
       <DashboardSignalStrip
         headingId="agent-signals"
@@ -299,12 +293,12 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
         <section className="workspace-panel-surface rounded-3xl panel-body">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
               <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.funnel.title")}</h2>
             </div>
-            <div className="workspace-subtle-surface rounded-2xl text-right text-primary chip-pad">
+            <div className="max-sm:hidden workspace-subtle-surface rounded-2xl text-right text-primary chip-pad">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("funnel.offerRate")}</p>
               <p className="mt-1 text-lg font-semibold">{offerRate}%</p>
             </div>
@@ -324,10 +318,10 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
             <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
+            <p className="max-sm:hidden mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2.5">
+          <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-2">
             {actions.map((action) => {
               const Icon = action.icon;
 
@@ -356,7 +350,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.rolePerformance.eyebrow")}</p>
             <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.rolePerformance.title")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("sections.rolePerformance.description")}</p>
+            <p className="max-sm:hidden mt-1 text-sm text-muted-foreground">{t("sections.rolePerformance.description")}</p>
           </div>
           <Link
             href={`/${locale}/agent/jobs`}

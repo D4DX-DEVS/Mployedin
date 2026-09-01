@@ -154,11 +154,7 @@ export default function AgentReferralLinksPage() {
         icon={Link2}
         title={t("pageTitle")}
         description={t("heroDescription")}
-        summary={{
-          label: t("overviewLabel"),
-          value: t("linksCount", { count: total }),
-          note: t("registrationsCount", { count: totalRegistrations }),
-        }}
+        compactOnMobile={true}
         actions={
             <button
               onClick={() => setCreateOpen(true)}
@@ -172,8 +168,9 @@ export default function AgentReferralLinksPage() {
           { label: t("statTotalLinks"), value: total, icon: Link2 },
           { label: tc("active"), value: activeLinks, icon: Check },
           { label: t("statRegistrations"), value: totalRegistrations, icon: Users },
-          { label: t("statConversion"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, icon: Hash },
+          { label: t("statConversions"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, icon: Hash },
         ]}
+        compactMetrics={true}
       />
 
       {/* Create Modal */}

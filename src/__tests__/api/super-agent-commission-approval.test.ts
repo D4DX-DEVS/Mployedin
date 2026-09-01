@@ -115,11 +115,25 @@ describe("Super-agent commission approval (S1)", () => {
     });
   });
 
-  it("lets a super-agent approve their own commission", async () => {
+  it("lets a super-agent approve their team's placement commission", async () => {
+    // The agent earns this line; the SA is only the overseer named on it.
     const res = await patch({ status: "approved" });
 
     expect(res.status).toBe(200);
     expect(currentDoc.save).toHaveBeenCalled();
+  });
+
+  it("refuses to let a super-agent approve their OWN override commission", async () => {
+    // An override line has no agentId — the super-agent is the beneficiary.
+    // Approving it here would bypass the self-approval exclusion applied when
+    // an invoice is marked paid, and the next payout batch would pay it out.
+    currentDoc = commissionDoc({ agentId: undefined, type: "override" });
+
+    const res = await patch({ status: "approved" });
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain("your own commission");
+    expect(currentDoc.save).not.toHaveBeenCalled();
   });
 
   it("lets a super-agent dispute their own commission", async () => {

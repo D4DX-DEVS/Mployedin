@@ -44,6 +44,17 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     customPaymentDays, dueDate, billingDetails, status: invoiceStatus = "issued",
     overrideAgentRate, overrideSuperAgentRate,
   } = body;
+  // A new invoice can never start out settled — "paid"/"partially_paid" are
+  // derived from recorded payments, never asserted at creation. Without this a
+  // non-admin could create an invoice that reads as paid with no payment behind
+  // it, no verification trail, and a full outstanding balance.
+  if (invoiceStatus === "paid" || invoiceStatus === "partially_paid") {
+    return NextResponse.json(
+      { error: "An invoice cannot be created as paid. Create it, then record a payment." },
+      { status: 400 },
+    );
+  }
+
   const finalInvoiceStatus = ctx.role === "agent" ? "pending_approval" : invoiceStatus;
 
   // Validate job exists

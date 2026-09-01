@@ -8,6 +8,7 @@ import Application from "@/models/Application";
 import { validateBody } from "@/lib/validators";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
 import type { ScorecardRecommendation } from "@/models/Scorecard";
@@ -54,10 +55,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { applicationId };
 
-  if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp) return NextResponse.json({ decisions: [] });
-    query.employerId = emp._id;
+  // Everyone but admin is confined to their own employers. `null` is admin.
+  const employerIds = await getScopedEmployerIds(ctx);
+  if (employerIds !== null) {
+    if (employerIds.length === 0) return NextResponse.json({ decisions: [] });
+    query.employerId = { $in: employerIds };
   }
 
   const decisions = await HiringDecision.find(query)

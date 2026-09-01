@@ -385,6 +385,10 @@ function DroppableKanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: `column-${stage}` });
   const config = stageConfig[stage];
   const totalRevenue = leads.reduce((sum, l) => sum + (l.expectedRevenue ?? 0), 0);
+  // A summed figure is only meaningful when every valued lead shares one
+  // currency; with a mix, a single-currency total would be wrong.
+  const revenueCurrencies = [...new Set(leads.filter((l) => (l.expectedRevenue ?? 0) > 0).map((l) => l.expectedRevenueCurrency ?? "AED"))];
+  const pipelineCurrency = revenueCurrencies.length === 1 ? revenueCurrencies[0] : null;
 
   return (
     <div className={`flex h-full w-full min-w-0 flex-col rounded-2xl border bg-muted/30 transition-colors sm:w-[300px] sm:min-w-[300px] ${isOver ? "border-primary/50 bg-primary/5" : "border-border/50"}`}>
@@ -398,16 +402,16 @@ function DroppableKanbanColumn({
               {leads.length}
             </span>
           </div>
-          {totalRevenue > 0 && (
+          {totalRevenue > 0 && pipelineCurrency && (
             <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-              AED {formatCount(totalRevenue)} pipeline
+              {pipelineCurrency} {formatCount(totalRevenue)} pipeline
             </p>
           )}
         </div>
         {stage === "new" && canCreate && (
           <button
             onClick={onAdd}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-background hover:text-foreground"
+            className="inline-flex items-center justify-center rounded-lg min-h-11 min-w-11 text-muted-foreground transition hover:bg-background hover:text-foreground"
             title={t("addNewLead")}
           >
             <Plus className="h-4 w-4" />
@@ -708,8 +712,6 @@ export default function AgentLeadsPage() {
           </Button>
         ) : null}
         metrics={[
-          { label: t("kpiOpen"), value: leads.filter((l) => !["converted", "lost"].includes(l.status)).length, note: totalPipelineValue > 0 ? `AED ${formatCount(totalPipelineValue)}` : undefined, icon: Flame },
-          { label: t("kpiWon"), value: stageCounts.converted, icon: TrendingUp },
           { label: t("kpiTotal"), value: pagination.total, icon: Target },
         ]}
       />
@@ -724,13 +726,13 @@ export default function AgentLeadsPage() {
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
             <button
               onClick={() => setViewMode("board")}
-              className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-semibold transition ${ viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition min-h-11 px-3 ${ viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />{t("viewBoard")}
             </button>
             <button
               onClick={() => setViewMode("table")}
-              className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-semibold transition ${ viewMode === "table" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition min-h-11 px-3 ${ viewMode === "table" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" }`}
             >
               <List className="h-3.5 w-3.5" />{t("viewTable")}
             </button>

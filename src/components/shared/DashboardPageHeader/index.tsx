@@ -41,6 +41,11 @@ interface DashboardPageHeaderProps {
    *  Opt-in per page: a header with long metric labels or several wide actions
    *  should stay on the default two-row layout. No effect from `sm` up. */
   compact?: boolean;
+  /** Phones only: just the single-row metric strip from `compact` (value over
+   *  label, no tracking), without putting title and actions on one row — for
+   *  pages whose wide action buttons would crush the title. Implied by
+   *  `compact`. No effect from `sm` up. */
+  compactMetrics?: boolean;
 }
 
 /**
@@ -63,8 +68,10 @@ export function DashboardPageHeader({
   inlineActions = false,
   compactOnMobile = false,
   compact = false,
+  compactMetrics = false,
 }: DashboardPageHeaderProps) {
   const Heading = headingLevel === 2 ? "h2" : "h1";
+  const metricCompact = compact || compactMetrics;
   return (
     <section
       data-dashboard-page-header="component"
@@ -140,12 +147,12 @@ export function DashboardPageHeader({
             "mt-3 grid border-y border-border/60 sm:mt-4",
             metrics.length === 1 && "grid-cols-1",
             metrics.length === 2 && "grid-cols-2",
-            metrics.length === 3 && (compact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"),
-            metrics.length === 4 && (compact ? "grid-cols-4" : "grid-cols-2 md:grid-cols-4"),
+            metrics.length === 3 && (metricCompact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"),
+            metrics.length === 4 && (metricCompact ? "grid-cols-4" : "grid-cols-2 md:grid-cols-4"),
             // 5-6 metrics go three-across on a compact phone rather than 2xN:
             // the admin exhibitions and target headers spent 3 rows on six
             // figures before the list started.
-            metrics.length >= 5 && (compact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"),
+            metrics.length >= 5 && (metricCompact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"),
             metricsClassName
           )}
         >
@@ -160,33 +167,33 @@ export function DashboardPageHeader({
                   "flex min-w-0 items-center justify-between gap-1 px-1 py-2 text-start sm:gap-2 sm:px-3 sm:py-2.5",
                   // Compact phones: value over label, centred, so four cells fit
                   // an ~83px column without the label wrapping.
-                  compact && "justify-center px-0.5 py-1.5 text-center sm:justify-between sm:px-3 sm:py-2.5 sm:text-start",
+                  metricCompact && "justify-center px-0.5 py-1.5 text-center sm:justify-between sm:px-3 sm:py-2.5 sm:text-start",
                   "border-e border-border/60 last:border-e-0",
                   metric.onClick && "transition-colors hover:bg-background/45",
                   metric.active && "bg-primary/5 ring-1 ring-inset ring-primary/30"
                 )}
               >
-                <div className={cn("min-w-0", compact && "flex flex-col items-center sm:block")}>
+                <div className={cn("min-w-0", metricCompact && "flex flex-col items-center sm:block")}>
                   {/* Word-wrap instead of truncate on label + value: long labels like
                       "Total Applications" rendered as "Total Applica…" on phones, which said nothing. */}
                   <p className={cn(
                     "line-clamp-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
                     // Label reads under the value on compact phones, and loses the
                     // 0.14em tracking that would push it past an 83px column.
-                    compact && "order-2 tracking-normal sm:order-none sm:tracking-[0.14em]"
+                    metricCompact && "order-2 tracking-normal sm:order-none sm:tracking-[0.14em]"
                   )}>
                     {metric.label}
                   </p>
                   <div className={cn(
                     "mt-1 flex min-w-0 items-baseline gap-2",
-                    compact && "order-1 mt-0 justify-center sm:order-none sm:mt-1 sm:justify-start"
+                    metricCompact && "order-1 mt-0 justify-center sm:order-none sm:mt-1 sm:justify-start"
                   )}>
                     {/* The value is a number — it must never wrap. line-clamp-2 here
                         broke "10" into "1" / "0" once the note squeezed the cell.
                         The note absorbs the squeeze by truncating instead. */}
                     <div className={cn(
                       "shrink-0 whitespace-nowrap text-sm font-semibold leading-tight tracking-tight text-foreground sm:text-2xl sm:leading-none",
-                      compact && "text-lg sm:text-2xl"
+                      metricCompact && "text-lg sm:text-2xl"
                     )}>
                       {metric.value}
                     </div>

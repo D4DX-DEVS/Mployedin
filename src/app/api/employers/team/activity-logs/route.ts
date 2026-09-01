@@ -103,7 +103,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const from = searchParams.get("from") ?? "";
   const to = searchParams.get("to") ?? "";
 
-  // Build query — only logs from team members
+  // Build query — only logs from team members. AuditLog is platform-global, so
+  // a client-supplied memberId must be confirmed to be on this team before it
+  // narrows the filter; otherwise it would widen it to any user on the platform.
+  if (memberId && !teamUserIds.map(String).includes(memberId)) {
+    return NextResponse.json(
+      { error: "Not a member of your team" },
+      { status: 403 }
+    );
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {
     actorId: memberId

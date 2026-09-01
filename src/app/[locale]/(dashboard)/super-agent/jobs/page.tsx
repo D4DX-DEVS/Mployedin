@@ -42,7 +42,6 @@ import {
   Users,
   X,
   FileText,
-  Activity,
   Sparkles,
   Send,
   Laptop,
@@ -56,7 +55,6 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -391,38 +389,6 @@ export default function SuperAgentJobsPage() {
     return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  /* ── KPI Cards ── */
-  const kpis = [
-    {
-      label: t("totalJobsLabel"),
-      value: counts.total,
-      helper: t("totalJobsHelper"),
-      icon: <Briefcase className="h-5 w-5" />,
-      toneClassName: "workspace-tone-sky",
-    },
-    {
-      label: tc("active"),
-      value: counts.active,
-      helper: t("activeJobsHelper"),
-      icon: <Activity className="h-5 w-5" />,
-      toneClassName: "workspace-tone-emerald",
-    },
-    {
-      label: t("draftLabel"),
-      value: counts.draft,
-      helper: t("draftJobsHelper"),
-      icon: <FileText className="h-5 w-5" />,
-      toneClassName: "workspace-tone-amber",
-    },
-    {
-      label: t("employersLabel"),
-      value: counts.employers,
-      helper: t("employersHelper"),
-      icon: <Building2 className="h-5 w-5" />,
-      toneClassName: "workspace-tone-indigo",
-    },
-  ];
-
   const tableHeaders = [
     t("jobTitleHeader"),
     t("employerHeader"),
@@ -451,92 +417,83 @@ export default function SuperAgentJobsPage() {
 
   return (
     <div className="page-container">
+      {/* No metric strip: a lone "Employers" figure read as a stray line on
+          phones, and the status pills below already carry the job counts. */}
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
       />
 
-      <SuperAgentMetricsGrid items={kpis} />
-
-      {/* ── AI Search Section ── */}
-      <SuperAgentSection
-        eyebrow={t("aiSearchEyebrow")}
-        title={t("aiSearchTitle")}
-        description={t("aiSearchDescription")}
-      >
-        <div className="space-y-3">
-          <div className="flex flex-col gap-2 lg:flex-row">
-            <div className="relative min-w-0 flex-1">
-              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-              <Input
-                value={aiQuery}
-                onChange={(e) => setAiQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-                placeholder={t("aiSearchPlaceholder")}
-                className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-              />
-            </div>
+      {/* ── Jobs Listing with Filters ──
+          No section heading: the page title is directly above it. */}
+      <SuperAgentSection>
+        {/* ── AI Search Row: one input with the submit inside it ── */}
+        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end">
+          <div className="relative min-w-0 flex-1">
+            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+            <Input
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
+              placeholder={t("aiSearchPlaceholder")}
+              className="h-11 rounded-lg bg-background/85 pl-9 pe-14 text-sm shadow-none"
+            />
             <Button
               onClick={() => handleAiSearch()}
               disabled={aiLoading || !aiQuery.trim()}
-              className="h-11 gap-2 rounded-xl px-5 disabled:opacity-60"
+              size="sm"
+              aria-label={tc("search")}
+              className="absolute right-1.5 top-1/2 h-8 w-9 -translate-y-1/2 rounded-md px-0 disabled:opacity-60"
             >
               {aiLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              {tc("search")}
             </Button>
           </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {AI_SUGGESTIONS_KEYS.map((key, i) => {
-              const q = t(key);
-              return (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setAiQuery(q);
-                    handleAiSearch(q);
-                  }}
-                  className="rounded-full border border-border/70 bg-background/85 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
-                >
-                  {q}
-                </button>
-              );
-            })}
-          </div>
-
-          {aiActive && (
-            <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 text-sm chip-pad">
-              <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-muted-foreground">
-                {t("aiFilterActive")}: <span className="font-medium text-foreground">&quot;{aiQuery}&quot;</span>
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 px-2 text-xs"
-                onClick={() => {
-                  setAiQuery("");
-                  setAiActive(false);
-                  resetPage();
-                }}
-              >
-                <X className="h-3 w-3 mr-1" /> {t("clearAiFilter")}
-              </Button>
-            </div>
-          )}
         </div>
-      </SuperAgentSection>
 
-      {/* ── Jobs Listing with Filters ── */}
-      <SuperAgentSection
-        eyebrow={t("jobsEyebrow")}
-        title={t("jobsListingTitle")}
-        description={t("jobsListingDescription")}
-      >
+        {/* ── AI Suggestions (hidden on mobile) ── */}
+        <div className="mb-4 hidden flex-wrap gap-1.5 sm:flex">
+          {AI_SUGGESTIONS_KEYS.map((key, i) => {
+            const q = t(key);
+            return (
+              <button
+                key={i}
+                onClick={() => {
+                  setAiQuery(q);
+                  handleAiSearch(q);
+                }}
+                className="rounded-full border border-border/70 bg-background/85 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
+              >
+                {q}
+              </button>
+            );
+          })}
+        </div>
+
+        {aiActive && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 text-sm chip-pad">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-muted-foreground">
+              {t("aiFilterActive")}: <span className="font-medium text-foreground">&quot;{aiQuery}&quot;</span>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-6 px-2 text-xs"
+              onClick={() => {
+                setAiQuery("");
+                setAiActive(false);
+                resetPage();
+              }}
+            >
+              <X className="h-3 w-3 mr-1" /> {t("clearAiFilter")}
+            </Button>
+          </div>
+        )}
+
         {/* ── Merged Filters via TableToolbar ── */}
         <TableToolbar
           search={searchQuery}
@@ -547,7 +504,7 @@ export default function SuperAgentJobsPage() {
           onExportPdf={handleExportPdf}
           hasActiveFilters={hasFilters}
           actions={
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 min-h-9">
               {/* Status quick-filter pills */}
               {([
                 { key: "all" as const, labelKey: "statusFilterAll", count: counts.total, icon: Briefcase },
@@ -561,13 +518,13 @@ export default function SuperAgentJobsPage() {
                 <button
                   key={key}
                   onClick={() => { setJobStatus(key); resetPage(); }}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-9 ${
                     jobStatus === key
                       ? "bg-primary text-primary-foreground"
                       : "border border-border/60 bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                   }`}
                 >
-                  <Icon className="h-3 w-3" />
+                  <span><Icon className="h-3 w-3" /></span>
                   {t(labelKey)}
                   <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${
                     jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"

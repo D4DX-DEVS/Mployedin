@@ -42,13 +42,13 @@ interface ReportResult { content: string; generatedAt: string }
 /* ─── Helpers ─── */
 
 function TrendBadge({ trend }: { trend: TrendData }) {
-  if (trend.direction === "up") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-status-selected"><ArrowUpRight className="h-3 w-3" />+{trend.delta}%</span>;
-  if (trend.direction === "down") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-status-rejected"><ArrowDownRight className="h-3 w-3" />{trend.delta}%</span>;
+  if (trend.direction === "up") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3 w-3" />+{trend.delta}%</span>;
+  if (trend.direction === "down") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-600"><ArrowDownRight className="h-3 w-3" />{trend.delta}%</span>;
   return <span className="text-xs text-muted-foreground">—</span>;
 }
 
 const FUNNEL_STAGES = ["new", "contacted", "interested", "negotiating", "converted", "lost"] as const;
-const FUNNEL_COLORS: Record<string, string> = { new: "bg-status-applied/50", contacted: "bg-status-interview/50", interested: "bg-status-interview/60", negotiating: "bg-status-shortlisted/50", converted: "bg-status-selected/50", lost: "bg-status-rejected/50" };
+const FUNNEL_COLORS: Record<string, string> = { new: "bg-blue-500/60", contacted: "bg-blue-600/60", interested: "bg-amber-500/60", negotiating: "bg-violet-500/60", converted: "bg-emerald-500/60", lost: "bg-muted-foreground/40" };
 
 export default function AgentReportsPage() {
   const t = useTranslations("agentReports");
@@ -118,51 +118,31 @@ export default function AgentReportsPage() {
         icon={BarChart3}
         title={t("reportsAnalytics")}
         description={t("pageDescription")}
-        summary={{
-          label: t("analytics"),
-          value: `${analytics?.kpis.totalLeads ?? "—"} ${t("leadsTotal")}`,
-          note: t("liveDataDesc"),
-        }}
+        metrics={analytics ? [
+          { label: t("kpiLeads30d"), value: analytics.trends.leads.current.toString(), icon: Target },
+          { label: t("kpiApplications30d"), value: analytics.trends.applications.current.toString(), icon: Users },
+          { label: t("kpiPlacements30d"), value: analytics.trends.placements.current.toString(), icon: TrendingUp },
+        ] : undefined}
+        compactMetrics
       />
 
       {/* ─── KPI Cards with Trends ─── */}
       {analyticsLoading ? (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <div key={i} className="min-w-0 h-32 animate-pulse rounded-3xl border border-border/70 bg-card/90" />)}
         </div>
       ) : analytics && (
         <>
-          <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: t("kpiLeads30d"), value: analytics.trends.leads.current, trend: analytics.trends.leads, icon: <Target className="h-5 w-5" />, tone: "workspace-tone-sky" },
-              { label: t("kpiApplications30d"), value: analytics.trends.applications.current, trend: analytics.trends.applications, icon: <Users className="h-5 w-5" />, tone: "workspace-tone-indigo" },
-              { label: t("kpiPlacements30d"), value: analytics.trends.placements.current, trend: analytics.trends.placements, icon: <TrendingUp className="h-5 w-5" />, tone: "workspace-tone-emerald" },
-              { label: t("kpiInterviews30d"), value: analytics.trends.interviews.current, trend: analytics.trends.interviews, icon: <CalendarCheck2 className="h-5 w-5" />, tone: "workspace-tone-amber" },
-            ].map((kpi) => (
-              <div key={kpi.label} className="min-w-0 workspace-glass-panel card-pad rounded-3xl">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
-                    <p className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
-                    <div className="mt-1"><TrendBadge trend={kpi.trend} /></div>
-                  </div>
-                  <div className={`${kpi.tone} rounded-2xl p-2.5`}>{kpi.icon}</div>
-                </div>
-              </div>
-            ))}
-          </section>
-
-          {/* ─── Quick Stats Row ─── */}
-          <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             {[
               { label: t("activeJobs"), value: analytics.kpis.activeJobs, icon: <Briefcase className="h-4 w-4" /> },
               { label: t("employers"), value: analytics.kpis.employers, icon: <Building2 className="h-4 w-4" /> },
               { label: t("overdueFollowups"), value: analytics.kpis.overdueFollowUps, icon: <Flame className="h-4 w-4" />, alert: analytics.kpis.overdueFollowUps > 0 },
               { label: t("scheduledInterviews"), value: analytics.kpis.scheduledInterviews, icon: <CalendarCheck2 className="h-4 w-4" /> },
             ].map((s) => (
-              <div key={s.label} className={`min-w-0 workspace-glass-panel card-pad rounded-2xl ${s.alert ? "border-status-shortlisted/20" : ""}`}>
+              <div key={s.label} className={`min-w-0 workspace-glass-panel card-pad rounded-2xl ${s.alert ? "border-amber-500/30" : ""}`}>
                 <div className="flex items-center gap-2 text-muted-foreground">{s.icon}<p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{s.label}</p></div>
-                <p className={`mt-2 text-xl sm:text-2xl font-semibold ${s.alert ? "text-status-shortlisted" : "text-foreground"}`}>{s.value}</p>
+                <p className={`mt-2 text-xl sm:text-2xl font-semibold ${s.alert ? "text-amber-600" : "text-foreground"}`}>{s.value}</p>
               </div>
             ))}
           </section>
@@ -263,7 +243,7 @@ export default function AgentReportsPage() {
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiPoweredReports")}</p>
         <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("generateCustomReports")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("reportsFromLiveData")}</p>
+        <p className="mt-1 text-sm text-muted-foreground max-sm:hidden">{t("reportsFromLiveData")}</p>
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {REPORT_TEMPLATES.map((template) => (
             <button

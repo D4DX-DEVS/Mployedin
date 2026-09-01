@@ -184,7 +184,7 @@ export default function SuperAgentReportsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                      {agent.name.charAt(0)}
+                      {agent.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">{agent.name}</p>
@@ -298,7 +298,7 @@ export default function SuperAgentReportsPage() {
           <button
             onClick={() => generateAIReport()}
             disabled={!aiQuery.trim() || aiLoading}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="flex w-full sm:w-auto sm:inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {aiLoading ? tc("generating") : t("generateReport")}

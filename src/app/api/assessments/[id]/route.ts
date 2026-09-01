@@ -5,6 +5,7 @@ import SkillAssessment from "@/models/SkillAssessment";
 import AssessmentAttempt from "@/models/AssessmentAttempt";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 
 const submitAnswersSchema = z.object({
   answers: z.array(z.object({
@@ -32,6 +33,16 @@ export const GET = withAuth(async (_req: NextRequest, ctx, params) => {
       })),
     };
     return NextResponse.json({ assessment: sanitized });
+  }
+
+  // The answer key is the employer's IP — only the owning employer (or an
+  // agent/super-agent acting for them) may see it. `null` is admin.
+  const employerIds = await getScopedEmployerIds(ctx);
+  if (
+    employerIds !== null &&
+    !employerIds.map(String).includes(String(assessment.employerId))
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   return NextResponse.json({ assessment });

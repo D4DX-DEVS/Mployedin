@@ -315,7 +315,7 @@ export default function AgentOffersPage() {
           The filter row was a card of its own stacked above the table. */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
-          <div className="relative min-w-0 flex-1">
+          <div className="relative min-w-[140px] flex-1">
             <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t("filters.searchPlaceholder")}

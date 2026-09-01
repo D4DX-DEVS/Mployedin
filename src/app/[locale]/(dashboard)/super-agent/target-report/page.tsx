@@ -22,11 +22,10 @@ import {
   ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import {
-  SuperAgentPageIntro, SuperAgentMetricsGrid,
+  SuperAgentPageIntro,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -258,79 +257,83 @@ export default function SuperAgentTargetReportPage() {
       <SuperAgentPageIntro
         title={t("targetReportTitle")}
         description={t("teamReportHeroDescription", { year: yearFilter })}
-      />
-
-      {/* ═══════ KPI Summary ═══════ */}
-      <SuperAgentMetricsGrid
-        items={[
-          { label: "Employer Target", value: `${data.summary.employerAchieved} / ${data.summary.employerTarget}`, helper: data.yearOverYear ? `${data.yearOverYear.growth.employerAchieved > 0 ? "+" : ""}${data.yearOverYear.growth.employerAchieved}% YoY` : "Year over year", icon: <Building2 className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-          { label: "Employee Target", value: `${data.summary.employeeAchieved} / ${data.summary.employeeTarget}`, helper: data.yearOverYear ? `${data.yearOverYear.growth.employeeAchieved > 0 ? "+" : ""}${data.yearOverYear.growth.employeeAchieved}% YoY` : "Year over year", icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-          { label: "Business Volume", value: formatCurrency(data.totalBusinessVolume, currency), helper: "Team total revenue", icon: <CircleDollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-          { label: "Avg Performance", value: `${data.summary.avgProgress}%`, helper: data.yearOverYear ? `${data.yearOverYear.growth.avgProgress > 0 ? "+" : ""}${data.yearOverYear.growth.avgProgress}% YoY` : "Year over year", icon: <Activity className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+        metrics={[
+          { label: "Employer Target", value: `${data.summary.employerAchieved} / ${data.summary.employerTarget}`, icon: Building2 },
+          { label: "Employee Target", value: `${data.summary.employeeAchieved} / ${data.summary.employeeTarget}`, icon: Users },
+          { label: "Business Volume", value: formatCurrency(data.totalBusinessVolume, currency), icon: CircleDollarSign },
+          { label: "Avg Performance", value: `${data.summary.avgProgress}%`, icon: Activity },
         ]}
+        compact
       />
 
-      {/* ═══════ TOOLBAR ═══════ */}
-      <TableToolbar
-        title={t("performanceDataTitle")}
-        description={t("reportFilterHintRisk")}
-        search={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search agent name…"
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        hasActiveFilters={hasActiveFilters}
-        right={
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 gap-1.5 rounded-lg print:hidden">
-            <FileText className="h-3.5 w-3.5" /> Print
-          </Button>
-        }
-        actions={hasActiveFilters ? (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground">
+      {/* ═══════ FILTER CONTROLS ═══════ */}
+      {/* Phones: 2-up grid — five stacked full-width controls pushed the first
+          chart a whole screen down. */}
+      <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
+        <div className="flex items-center gap-1.5">
+          <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-full sm:w-24 rounded-lg text-sm" />
+        </div>
+        <Select value={quarterFilter} onValueChange={setQuarterFilter}>
+          <SelectTrigger className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Quarters</SelectItem>
+            <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
+            <SelectItem value="2">Q2 (Apr–Jun)</SelectItem>
+            <SelectItem value="3">Q3 (Jul–Sep)</SelectItem>
+            <SelectItem value="4">Q4 (Oct–Dec)</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="h-9 w-full sm:w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="employer">Employer</SelectItem>
+            <SelectItem value="employee">Employee</SelectItem>
+            <SelectItem value="finance">Finance</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={riskFilter} onValueChange={setRiskFilter}>
+          <SelectTrigger className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Risks</SelectItem>
+            <SelectItem value="high">High Risk</SelectItem>
+            <SelectItem value="medium">Medium Risk</SelectItem>
+            <SelectItem value="low">Low Risk</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="ghost" size="sm" onClick={() => setYearFilter(currentYear)} disabled={yearFilter === currentYear} className="h-9 gap-1.5 text-xs max-sm:col-span-2 max-sm:justify-self-start">
+          <RotateCcw className="h-3.5 w-3.5" /> Reset Year
+        </Button>
+      </div>
+
+      {/* ═══════ TOOLBAR ROW ═══════ */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search agent name…"
+          className="h-9 min-w-0 flex-1 rounded-lg text-sm max-sm:min-h-11 max-sm:w-full max-sm:flex-none"
+        />
+        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 gap-1.5 rounded-lg print:hidden max-sm:min-h-11">
+          <FileText className="h-3.5 w-3.5" /> Print
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportCsv} className="h-9 gap-1.5 rounded-lg text-xs max-sm:min-h-11">
+          CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportExcel} className="h-9 gap-1.5 rounded-lg text-xs max-sm:min-h-11">
+          Excel
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleExportPdf} className="h-9 gap-1.5 rounded-lg text-xs max-sm:min-h-11">
+          PDF
+        </Button>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground max-sm:min-h-11">
             <X className="h-3.5 w-3.5 mr-1" /> Clear filters
           </Button>
-        ) : undefined}
-        filterContent={
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
-            </div>
-            <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Quarters</SelectItem>
-                <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
-                <SelectItem value="2">Q2 (Apr–Jun)</SelectItem>
-                <SelectItem value="3">Q3 (Jul–Sep)</SelectItem>
-                <SelectItem value="4">Q4 (Oct–Dec)</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="employer">Employer</SelectItem>
-                <SelectItem value="employee">Employee</SelectItem>
-                <SelectItem value="finance">Finance</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Risks</SelectItem>
-                <SelectItem value="high">High Risk</SelectItem>
-                <SelectItem value="medium">Medium Risk</SelectItem>
-                <SelectItem value="low">Low Risk</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="ghost" size="sm" onClick={() => setYearFilter(currentYear)} disabled={yearFilter === currentYear} className="h-9 gap-1.5 text-xs">
-              <RotateCcw className="h-3.5 w-3.5" /> Reset Year
-            </Button>
-          </div>
-        }
-      />
+        )}
+      </div>
 
       {/* ═══════ Monthly Trend ═══════ */}
       <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid card-pad">

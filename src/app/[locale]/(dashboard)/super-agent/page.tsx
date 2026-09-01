@@ -158,7 +158,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   const signals = [
     { label: t("kpis.activeAgents.label"), value: activeAgents, href: `/${locale}/super-agent/agents`, icon: Users2 },
     { label: t("kpis.totalEmployers.label"), value: totalEmployers, href: `/${locale}/super-agent/employers`, icon: Building2 },
-    { label: t("kpis.totalJobs.label"), value: activeJobs, href: `/${locale}/super-agent/jobs`, icon: Briefcase },
+    { label: t("kpis.activeJobs.label"), value: activeJobs, href: `/${locale}/super-agent/jobs`, icon: Briefcase },
     { label: t("kpis.totalPlacements.label"), value: totalPlacements, href: `/${locale}/super-agent/placements`, icon: ShieldCheck },
   ];
 
@@ -201,9 +201,6 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         </div>
 
         <div className="panel-body">
-          <p className="mb-3 text-xs leading-5 text-muted-foreground">
-            {t("sections.funnel.description")} {t("funnel.ratioExplanation")}
-          </p>
           {funnelRows.map((stage, index) => (
             <div key={stage.key} className="flex h-9 items-center gap-3">
               <div className="w-24 shrink-0 truncate text-xs font-medium text-muted-foreground sm:w-32 sm:text-sm">{stage.label}</div>

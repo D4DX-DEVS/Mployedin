@@ -135,47 +135,72 @@ export default function AgentPlacementsPage() {
           below. The filter card carried its own label and heading before a
           single select — two headings for one dropdown. */}
       <section className="workspace-panel-surface rounded-3xl panel-body" data-table-toolbar="simple">
-        <div className="flex flex-wrap items-end gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+        <div className="space-y-3 border-b border-border pb-3 sm:pb-4 sm:flex sm:flex-wrap sm:items-end sm:gap-2">
           <p className="w-full text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:w-auto sm:pb-2.5">
             {t("resultsLabel")}
           </p>
-          <div className="relative toolbar-search-field min-w-0 flex-1 sm:ms-auto sm:w-56 sm:flex-none">
+
+          {/* Search row - full width on mobile */}
+          <div className="relative toolbar-search-field w-full sm:ms-auto sm:w-56 sm:flex-none">
             <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+              className="h-11 sm:h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
           </div>
-          <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+
+          {/* Status and Export row on mobile */}
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:gap-2">
+            <div className="flex flex-col min-w-0">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+                {tc("status")}
+              </label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-11 sm:h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col items-end justify-end">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+                {tc("export")}
+              </label>
+              <TableToolbar
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+                className="w-full sm:shrink-0"
+              />
+            </div>
           </div>
-          <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
-            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("dateFromLabel")} />
+
+          {/* Date pickers row on mobile */}
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:gap-2">
+            <div className="flex flex-col min-w-0">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+                {t("dateFromLabel")}
+              </label>
+              <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("dateFromLabel")} />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+                {t("dateToLabel")}
+              </label>
+              <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} placeholder={t("dateToLabel")} />
+            </div>
           </div>
-          <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
-            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} placeholder={t("dateToLabel")} />
-          </div>
+
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10 shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-11 sm:h-10 w-full sm:w-auto shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />{t("clearAll")}
             </Button>
           )}
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="shrink-0"
-          />
         </div>
 
         {hasActiveFilters && (

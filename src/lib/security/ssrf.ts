@@ -92,6 +92,27 @@ export async function assertPublicUrl(rawUrl: string): Promise<URL> {
 }
 
 /**
+ * Throws if `hostname` resolves to a non-public address. For protocols that
+ * have no URL to check — SMTP, for one, where the user supplies a bare host
+ * and port and the transport dials it directly.
+ */
+export async function assertPublicHost(hostname: string): Promise<void> {
+  const host = hostname.trim();
+  if (!host) throw new Error("Host is required");
+
+  if (net.isIP(host)) {
+    if (isBlockedIp(host)) throw new Error("Host resolves to a blocked address");
+    return;
+  }
+
+  const records = await dns.lookup(host, { all: true });
+  if (records.length === 0) throw new Error("Host does not resolve");
+  for (const { address } of records) {
+    if (isBlockedIp(address)) throw new Error("Host resolves to a blocked address");
+  }
+}
+
+/**
  * fetch() wrapper that validates the target — and every redirect hop — against
  * the SSRF guard. Use for any server fetch of a user-controlled URL.
  */

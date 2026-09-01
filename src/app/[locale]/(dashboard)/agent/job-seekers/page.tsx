@@ -204,7 +204,7 @@ export default function AgentJobSeekersPage() {
           { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, icon: ArrowRight },
           { label: t("cardWithTitlesLabel"), value: withTitles, icon: BriefcaseBusiness },
         ]}
-        compactOnMobile
+        compactMetrics
       />
 
       {/* One panel: privacy notice, search, filters and the table together.
@@ -417,11 +417,13 @@ export default function AgentJobSeekersPage() {
                   </span>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  <span className="block font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                    {s.currentLocation ?? "\u2014"}
-                  </span>
+                  <div className="grid w-full min-w-0 gap-1 text-start">
+                    <span className="font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      {s.currentLocation ?? "\u2014"}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
@@ -447,7 +449,7 @@ export default function AgentJobSeekersPage() {
                 </TableCell>
                 {can("job_seekers", "update") && (
                   <TableCell>
-                    <Button variant="ghost" size="xs" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title={tc("edit")} aria-label={t("editJobSeeker", { name: s.userId?.name ?? "job seeker" })}>
+                    <Button variant="ghost" size="sm" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title={tc("edit")} aria-label={t("editJobSeeker", { name: s.userId?.name ?? "job seeker" })} data-table-action="">
                       <Edit2 className="h-3.5 w-3.5 text-primary" />
                     </Button>
                   </TableCell>

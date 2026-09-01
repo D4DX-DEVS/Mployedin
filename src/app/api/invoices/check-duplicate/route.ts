@@ -9,6 +9,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -27,6 +28,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
+
+  // The answer reveals an invoice number and status, so confine the probe to
+  // employers the caller actually manages — otherwise any staff user can
+  // enumerate job+employer pairs across the whole platform. Out-of-scope pairs
+  // answer "no duplicate", which is true for the caller and leaks nothing.
+  const employerIds = await getScopedEmployerIds(ctx);
+  if (employerIds !== null && !employerIds.map(String).includes(String(employerId))) {
+    return NextResponse.json({ exists: false });
+  }
 
   const existingInvoice = await Invoice.findOne({
     jobId,

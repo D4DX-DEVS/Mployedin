@@ -5,6 +5,7 @@ import Application from "@/models/Application";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -28,6 +29,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
 
+  // A super-agent's analytics must cover only their own portfolio; admin is
+  // unscoped. Prepended to every pipeline below.
+  const employerIds = await getScopedEmployerIds(ctx);
+  const scopeStage =
+    employerIds === null ? [] : [{ $match: { employerId: { $in: employerIds } } }];
+
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -41,12 +48,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     avgTimeInStatus,
   ] = await Promise.all([
     Application.aggregate([
+      ...scopeStage,
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
     Application.aggregate([
+      ...scopeStage,
       { $group: { _id: { $ifNull: ["$source", "full_form"] }, count: { $sum: 1 } } },
     ]),
     Application.aggregate([
+      ...scopeStage,
       { $match: { appliedAt: { $gte: monthAgo } } },
       {
         $group: {
@@ -57,6 +67,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       { $sort: { _id: 1 } },
     ]),
     Application.aggregate([
+      ...scopeStage,
       { $match: { appliedAt: { $gte: monthAgo } } },
       {
         $group: {
@@ -95,6 +106,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       },
     ]),
     Application.aggregate([
+      ...scopeStage,
       { $match: { aiMatchScore: { $exists: true, $ne: null } } },
       {
         $bucket: {
@@ -106,6 +118,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       },
     ]),
     Application.aggregate([
+      ...scopeStage,
       { $match: { "statusHistory.1": { $exists: true } } },
       { $unwind: "$statusHistory" },
       { $sort: { "statusHistory.changedAt": 1 } },

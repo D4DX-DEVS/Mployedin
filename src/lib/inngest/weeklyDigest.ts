@@ -35,7 +35,7 @@ export const weeklyDigestCron = inngest.createFunction(
     triggers: [{ cron: "0 9 * * 0" }], // Sunday 9 AM UTC
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // Check if admin has enabled this cron
     const enabled = await step.run("check-enabled", () => isCronEnabled("weeklyDigest"));

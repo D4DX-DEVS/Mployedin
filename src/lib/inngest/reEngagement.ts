@@ -50,7 +50,7 @@ export const reEngagementCron = inngest.createFunction(
     triggers: [{ cron: "0 10 * * *" }], // 10 AM UTC daily
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // Check if admin has enabled this cron
     const enabled = await step.run("check-enabled", () => isCronEnabled("reEngagement"));
@@ -202,7 +202,7 @@ export const profileCompletionCron = inngest.createFunction(
     triggers: [{ cron: "30 10 * * *" }], // 10:30 AM UTC daily
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // Check if admin has enabled this cron
     const enabled = await step.run("check-enabled", () => isCronEnabled("profileCompletion"));

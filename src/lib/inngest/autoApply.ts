@@ -31,7 +31,7 @@ export const autoApplyFunction = inngest.createFunction(
     const userId = ((event as unknown) as { data: { userId: string } }).data.userId;
     if (!userId) return { skipped: "no userId" };
 
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     const seeker = await step.run("fetch-seeker", () =>
       JobSeeker.findOne({ userId })
@@ -164,7 +164,7 @@ export const autoApplyDailyReset = inngest.createFunction(
     triggers: [{ cron: "0 0 * * *" }],
   },
   async ({ step }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
     const result = await step.run("reset-counts", () =>
       JobSeeker.updateMany(
         { applicationMode: "auto" },

@@ -5250,6 +5250,10 @@
         "label": "Employers",
         "helper": "Employer accounts under your agents' management."
       },
+      "activeJobs": {
+        "label": "Active Jobs",
+        "helper": "Live roles currently generating applications."
+      },
       "totalJobs": {
         "label": "Jobs",
         "helper": "Vacancies posted across your region."
@@ -5529,13 +5533,13 @@
     },
     "filters": {
       "eyebrow": "Browse roles",
-      "title": "Filter the jobs you need to act on next",
+      "title": "Filters",
       "description": "Search by title or narrow the queue to the status you want to work through.",
       "searchPlaceholder": "Search jobs by title, location..."
     },
     "results": {
       "eyebrow": "Current results",
-      "title": "Keep each role moving from posting to placement",
+      "title": "Jobs",
       "summary": "{total} jobs across {pages} pages"
     },
     "empty": {
@@ -13120,14 +13124,14 @@
     "leadConversionFailed": "Lead conversion failed",
     "confirmDeleteLead": "Delete this lead?",
     "heroBadge": "Lead Pipeline",
-    "heroDescription": "Visual pipeline to track employer leads from first contact through conversion. Hover cards to advance stages.",
+    "heroDescription": "Visual pipeline to track employer leads from first contact through conversion. Tap a card to update its stage.",
     "kpiOpen": "Open",
     "kpiWon": "Won",
     "kpiTotal": "Total",
     "newLead": "New Lead",
     "viewBoard": "Board",
     "viewTable": "Table",
-    "searchPlaceholder": "Search leads...",
+    "searchPlaceholder": "Search...",
     "allStages": "All stages",
     "allExhibitions": "All exhibitions",
     "emptyPipelineTitle": "No leads in your pipeline yet",
@@ -13179,7 +13183,7 @@
     "filterCandidatesLabel": "Filter candidates",
     "filterCandidatesTitle": "Focus on the stage that needs action",
     "filterCandidatesDesc": "Switch between application states or clear the active job constraint when you want the full queue again.",
-    "searchPlaceholder": "Search candidate name, email, or job...",
+    "searchPlaceholder": "Search candidates",
     "clearJobFilter": "Clear job filter",
     "status_applied": "Applied",
     "status_shortlisted": "Shortlisted",
@@ -13340,7 +13344,7 @@
     "browseProfilesLabel": "Browse profiles",
     "searchTitle": "Search by candidate details or skill context",
     "searchDescription": "Find the right subset of job seekers before making profile updates or shortlisting them for roles.",
-    "searchPlaceholder": "Search by name, email or skill",
+    "searchPlaceholder": "Search job seekers",
     "clearAllFilters": "Clear all",
     "availabilityImmediately": "Immediately",
     "availabilityWithinMonth": "Within 1 month",
@@ -13490,7 +13494,7 @@
   "agentReports": {
     "agentWorkspace": "Agent workspace",
     "reportsAnalytics": "Reports & Analytics",
-    "pageDescription": "Structured performance metrics, lead funnel analysis, and AI-powered report generation — all from your live data.",
+    "pageDescription": "Track your performance and generate insights.",
     "analytics": "Analytics",
     "leadsTotal": "leads total",
     "liveDataDesc": "Live structured data with 30-day trend comparisons.",
@@ -13628,7 +13632,11 @@
     "statusVoid": "Void",
     "emptyStateTitle": "No invoices yet",
     "emptyStateDescription": "Create your first invoice to start tracking commissions.",
-    "errorFailedToLoad": "We couldn't load invoices"
+    "errorFailedToLoad": "We couldn't load invoices",
+    "metricRevenue": "Total Revenue",
+    "metricPaid": "Paid",
+    "metricPending": "Pending",
+    "metricTotalInvoices": "Total Invoices"
   },
   "agentCommissions": {
     "agentWorkspace": "Agent workspace",
@@ -13712,7 +13720,7 @@
     "categoryLabelMeeting": "Meeting",
     "categoryLabelDocument": "Document",
     "categoryLabelOther": "Other",
-    "searchPlaceholder": "Search tasks...",
+    "searchPlaceholder": "Search tasks",
     "resetButton": "Reset",
     "emptyStateTitle": "No tasks yet",
     "emptyStateDescription": "Create your first task to start tracking follow-ups",
@@ -13740,6 +13748,7 @@
     "statRegistrationsDesc": "Employers onboarded via your links",
     "statConversion": "Conversion",
     "statConversionDesc": "Avg registrations per link",
+    "statConversions": "Conversions",
     "createModalTitle": "Create Referral Link",
     "formLabelLabel": "Label (optional)",
     "formLabelPlaceholder": "e.g. LinkedIn Campaign",
@@ -13759,7 +13768,7 @@
     "labelCreated": "Created",
     "labelExpires": "Expires",
     "labelUsed": "used",
-    "copyLinkButton": "Copy Link",
+    "copyLinkButton": "Copy",
     "copiedFeedback": "Copied!",
     "disableButton": "Disable",
     "enableButton": "Enable",
@@ -15567,8 +15576,3 @@
     "totalBilled": "Total billed: <strong>{amount} {currency}</strong> across {markets, plural, one {# market} other {# markets}}"
   }
 }
-
-
-
-
-

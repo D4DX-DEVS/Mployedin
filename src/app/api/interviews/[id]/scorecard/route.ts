@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
 import { Scorecard } from "@/models/Scorecard";
-import { Employer } from "@/models/Employer";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { scorecardCreateSchema } from "@/lib/validators/interviews";
@@ -11,6 +11,13 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
+
+/** True when the caller's employer scope covers this interview. Admin passes. */
+async function callerOwnsInterview(employerId: unknown, ctx: AuthCtx): Promise<boolean> {
+  const employerIds = await getScopedEmployerIds(ctx);
+  if (employerIds === null) return true;
+  return employerIds.map(String).includes(String(employerId));
+}
 
 // GET /api/interviews/[id]/scorecard — fetch scorecard for this interview
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
@@ -22,12 +29,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   // Restrict to employer-side roles and the candidate's own interview
   let isCandidate = false;
-  if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp || String(interview.employerId) !== String(emp._id)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  } else if (ctx.role === "job_seeker") {
+  if (ctx.role === "job_seeker") {
     // Candidates can only view their own scorecard, and only once the interview
     // is completed. interview.jobSeekerId is a JobSeeker._id, not a User._id —
     // comparing it to ctx.userId directly 403'd the rightful candidate.
@@ -40,7 +42,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     isCandidate = true;
-  } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
+  } else if (!(await callerOwnsInterview(interview.employerId, ctx))) {
+    // employer/agent/super_agent must own the interview's employer; any other
+    // role resolves to an empty scope and is denied.
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -83,12 +87,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const interview = await Interview.findById(params?.id).lean();
   if (!interview) return NextResponse.json({ error: "Interview not found" }, { status: 404 });
 
-  // Employers can only score their own interviews
-  if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp || String(interview.employerId) !== String(emp._id)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  // Scorers can only score interviews at their own employers — the role check
+  // above only proves the caller is *an* employer/agent.
+  if (!(await callerOwnsInterview(interview.employerId, ctx))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Scorecard is unique per interview (upsert)

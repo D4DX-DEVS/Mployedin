@@ -22,11 +22,69 @@ interface ApproveCommissionsResult {
   notificationFailures: number;
   approvedCommissionIds: unknown[];
   notifications: CommissionApprovalNotification[];
+  /** Lines left pending because the approver owns them (segregation of duties). */
+  skippedSelfApproval: number;
+  skippedCommissionIds: unknown[];
+  /** The approver's own profile ids, so callers can apply the same rule to embedded lines. */
+  approver: CommissionApproverIdentity;
 }
 
 interface ApproveCommissionsOptions {
   sendNotifications?: boolean;
   session?: mongoose.ClientSession;
+}
+
+/** The acting user's commission-earning identities, if any. Admins have none. */
+export interface CommissionApproverIdentity {
+  agentId: string | null;
+  superAgentId: string | null;
+}
+
+/** Resolve the acting user's agent / super-agent profile ids. */
+export async function resolveCommissionApprover(
+  userId: unknown,
+  session?: mongoose.ClientSession,
+): Promise<CommissionApproverIdentity> {
+  const agentQuery = Agent.findOne({ userId }).select("_id");
+  const superAgentQuery = SuperAgent.findOne({ userId }).select("_id");
+  if (session) {
+    agentQuery.session(session);
+    superAgentQuery.session(session);
+  }
+  const [agent, superAgent] = await Promise.all([agentQuery.lean(), superAgentQuery.lean()]);
+  return {
+    agentId: agent ? String(agent._id) : null,
+    superAgentId: superAgent ? String(superAgent._id) : null,
+  };
+}
+
+/**
+ * Segregation of duties: whoever triggers the paid transition must never
+ * auto-approve the commission line they themselves earn. Marking an invoice
+ * paid is self-asserted — there is no gateway confirmation on that path — so a
+ * super-agent approving their own override would be paying themselves.
+ * Their line stays pending for admin review.
+ */
+export function isOwnCommissionLine(
+  line: { agentId?: unknown; superAgentId?: unknown; type?: unknown; role?: unknown },
+  approver: CommissionApproverIdentity,
+): boolean {
+  // Match the BENEFICIARY, not merely a populated id. An agent's "placement"
+  // line also carries the overseeing super-agent's id for scoping — that SA
+  // does not earn it, and treating it as theirs would lock them out of
+  // approving their own team's commissions.
+  // External records carry `type`; the embedded invoice lines carry `role`.
+  const earnedBySuperAgent =
+    line.role === "super_agent" ||
+    line.type === "override" ||
+    (!line.agentId && Boolean(line.superAgentId));
+
+  if (earnedBySuperAgent) {
+    return Boolean(
+      approver.superAgentId && String(line.superAgentId ?? "") === approver.superAgentId,
+    );
+  }
+  return Boolean(approver.agentId && String(line.agentId ?? "") === approver.agentId);
 }
 
 export interface CommissionApprovalNotification {
@@ -133,13 +191,29 @@ export async function approvePendingCommissionsForPaidInvoice(
 ): Promise<ApproveCommissionsResult> {
   const { session } = options;
   const approvedAt = new Date();
-  const pendingCommissions = await Commission.find({ invoiceId, status: "pending" })
+  const approver = await resolveCommissionApprover(approvedBy, session);
+
+  const allPending = await Commission.find({ invoiceId, status: "pending" })
     .select("_id agentId superAgentId amount currency")
     .session(session ?? null)
     .lean();
 
+  // The approver's own line never rides along on their own approval.
+  const pendingCommissions = allPending.filter((c) => !isOwnCommissionLine(c, approver));
+  const skippedCommissionIds = allPending
+    .filter((c) => isOwnCommissionLine(c, approver))
+    .map((c) => c._id);
+
   if (pendingCommissions.length === 0) {
-    return { approved: 0, notificationFailures: 0, approvedCommissionIds: [], notifications: [] };
+    return {
+      approved: 0,
+      notificationFailures: 0,
+      approvedCommissionIds: [],
+      notifications: [],
+      skippedSelfApproval: skippedCommissionIds.length,
+      skippedCommissionIds,
+      approver,
+    };
   }
 
   const commissionIds = pendingCommissions.map((commission) => commission._id);
@@ -200,6 +274,9 @@ export async function approvePendingCommissionsForPaidInvoice(
     notificationFailures,
     approvedCommissionIds: commissionIds,
     notifications,
+    skippedSelfApproval: skippedCommissionIds.length,
+    skippedCommissionIds,
+    approver,
   };
 }
 

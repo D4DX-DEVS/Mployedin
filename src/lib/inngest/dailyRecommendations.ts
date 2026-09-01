@@ -54,7 +54,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
     triggers: [{ cron: "0 9 * * *" }], // 9 AM UTC daily
   },
   async ({ step }: { step: any }) => {
-    await step.run("connect-db", () => connectDB());
+    await connectDB();
 
     // Check if admin has enabled this cron
     const enabled = await step.run("check-enabled", () => isCronEnabled("dailyRecommendations"));

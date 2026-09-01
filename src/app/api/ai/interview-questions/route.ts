@@ -125,6 +125,27 @@ Output ONLY the JSON array, no markdown code blocks.`;
     if (interviewId) {
       try {
         await connectDB();
+
+        // The GET side gates saved questions by employer ownership; without the
+        // same check here a caller could attach content to another employer's
+        // interview and have it served back to them as their own.
+        const { default: Interview } = await import("@/models/Interview");
+        const target = await Interview.findById(interviewId).select("employerId").lean();
+        const { getScopedEmployerIds } = await import("@/lib/auth/agentRestrictions");
+        const employerIds = await getScopedEmployerIds({
+          userId: (session.user as unknown as { id: string }).id,
+          role: userRole,
+        });
+        if (
+          !target ||
+          (employerIds !== null &&
+            !employerIds
+              .map(String)
+              .includes(String((target as { employerId?: unknown }).employerId)))
+        ) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         const doc = await InterviewQuestion.create({
           interviewId,
           generatedBy: (session.user as unknown as { id: string }).id,

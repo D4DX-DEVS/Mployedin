@@ -278,11 +278,7 @@ export default function SuperAgentExhibitionsPage() {
         />
       </DashboardPageHeader>
 
-      <SuperAgentSection
-        eyebrow={t("requests")}
-        title={t("teamExhibitionRequests")}
-        description={t("requestsDesc")}
-      >
+      <SuperAgentSection>
         {loading ? (
           <SuperAgentDataTableShell>
             <div className="border-b border-border/50 bg-muted/30 px-4 py-3.5"><div className="h-4 w-48 animate-pulse rounded bg-muted" /></div>
@@ -359,23 +355,25 @@ export default function SuperAgentExhibitionsPage() {
                         <td className="hidden px-4 py-3.5 md:table-cell"><Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge></td>
                         <td className="hidden px-4 py-3.5 xl:table-cell"><span className="text-xs text-muted-foreground">{item.requiredResources?.length ?? 0} items</span></td>
                         <td className="px-4 py-3.5 text-right">
-                          <div className="flex flex-wrap items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="iconDense"
-                              className="rounded-lg text-muted-foreground hover:text-primary"
-                              onClick={() => setDetailItem(item)}
-                              title={t("viewDetails")}
-                              aria-label={t("viewDetails")}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="h-8 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50"><Clock className="mr-1 h-3.5 w-3.5" /> Review</Button>)}
-                            {item.status === "under_review" && (<>
-                              <Button size="sm" onClick={() => openReview(item, "approved")} className="h-8 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> Approve</Button>
-                              <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="h-8 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
-                              <Button size="dense" variant="destructive" className="rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
-                            </>)}
+                          <div>
+                            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:w-auto">
+                              <Button
+                                variant="ghost"
+                                size="iconDense"
+                                className="max-sm:min-h-11 rounded-lg text-muted-foreground hover:text-primary"
+                                onClick={() => setDetailItem(item)}
+                                title={t("viewDetails")}
+                                aria-label={t("viewDetails")}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="max-sm:min-h-11 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50"><Clock className="mr-1 h-3.5 w-3.5" /> Review</Button>)}
+                              {item.status === "under_review" && (<>
+                                <Button size="sm" onClick={() => openReview(item, "approved")} className="max-sm:min-h-11 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> Approve</Button>
+                                <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="max-sm:min-h-11 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
+                                <Button size="dense" variant="destructive" className="max-sm:min-h-11 rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
+                              </>)}
+                            </div>
                           </div>
                         </td>
                       </tr>
