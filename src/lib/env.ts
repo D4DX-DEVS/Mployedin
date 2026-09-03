@@ -47,6 +47,12 @@ const CHECKS: EnvCheck[] = [
   // (CV upload is a core flow); optional in dev where storage may be absent.
   { name: "SPACES_ACCESS_KEY_ID", required: process.env.NODE_ENV === "production" },
   { name: "SPACES_SECRET_ACCESS_KEY", required: process.env.NODE_ENV === "production" },
+  // Rate limiting silently degrades to a per-instance in-memory store when
+  // Upstash is unset — fine for dev/test, but in production that means login
+  // and API throttles reset on every instance and never apply across replicas.
+  // Fail at boot instead of shipping with no effective rate limit.
+  { name: "UPSTASH_REDIS_REST_URL", required: process.env.NODE_ENV === "production" },
+  { name: "UPSTASH_REDIS_REST_TOKEN", required: process.env.NODE_ENV === "production" },
 ];
 
 let validated = false;

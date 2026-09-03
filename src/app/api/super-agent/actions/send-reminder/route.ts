@@ -74,4 +74,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     sent: validIds.length,
     message: `Reminder sent to ${validIds.length} agent${validIds.length > 1 ? "s" : ""}.`,
   });
-}, { resource: "users", action: "update" });
+}, { resource: "agents", action: "update" });
+// Guard was users:update, which super_agent never holds — the "Send reminder"
+// action in InsightsPanel 403'd for its only intended caller. Middleware already
+// limits /api/super-agent/* to super_agent|admin; roster checks above scope it.

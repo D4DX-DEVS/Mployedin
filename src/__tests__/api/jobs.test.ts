@@ -158,7 +158,8 @@ describe("Jobs API", () => {
     const query = Job.find.mock.calls[0][0];
     expect(query.employerId).toBe("emp_001");
     expect(query.status).toBe("draft");
-    expect(query["poster.approvalStatus"]).toBe("pending");
+    // approvalStatus is a retired filter — it must be ignored, not forwarded to Mongo.
+    expect(query["poster.approvalStatus"]).toBeUndefined();
     expect(query.workMode).toBe("remote");
     expect(query["requirements.skills"]).toEqual({ $all: [expect.any(RegExp), expect.any(RegExp)] });
     expect(query.showSalary).toBe(false);

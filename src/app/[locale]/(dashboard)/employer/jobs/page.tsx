@@ -34,7 +34,6 @@ import { formatCount } from "@/lib/ui/intlFormat";
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
   draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
-  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20",
   paused: "bg-status-applied-bg text-status-applied border-border",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
@@ -44,7 +43,6 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABEL_KEYS: Record<string, string> = {
   active: "statusLabelActive",
   draft: "statusLabelDraft",
-  pending_approval: "statusLabelPendingApproval",
   paused: "statusLabelPaused",
   closed: "statusLabelClosed",
   expired: "statusLabelExpired",
@@ -58,7 +56,6 @@ function getStatusLabelKey(status: string): string {
 const STATUS_TONES: Record<string, string> = {
   active: "workspace-tone-emerald",
   draft: "workspace-tone-amber",
-  pending_approval: "workspace-tone-sky",
   paused: "workspace-tone-sky",
   closed: "workspace-muted-pill",
   expired: "workspace-tone-rose",
@@ -476,7 +473,6 @@ export default function EmployerJobsPage() {
                     { value: "active", label: t("statusActive") },
                     { value: "paused", label: t("statusPaused") },
                     { value: "draft", label: t("statusDraft") },
-                    { value: "pending_approval", label: t("statusPendingApproval") },
                     { value: "closed", label: t("statusClosed") },
                     { value: "expired", label: t("statusExpired") },
                   ]}

@@ -159,4 +159,4 @@ async function handler(
   });
 }
 
-export const POST = withAuth(handler);
+export const POST = withAuth(handler, { resource: "invoices", action: "update" });

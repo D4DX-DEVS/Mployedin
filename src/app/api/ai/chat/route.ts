@@ -333,15 +333,12 @@ export async function POST(req: NextRequest) {
         // ── Jobs stats ──
         const [
           activeJobs, draftJobs, closedJobs, expiredJobs,
-          pendingApprovalJobs, rejectedJobs,
           jobsCreatedThisMonth,
         ] = await Promise.all([
           Job.countDocuments({ status: "active" }),
           Job.countDocuments({ status: "draft" }),
           Job.countDocuments({ status: "closed" }),
           Job.countDocuments({ status: "expired" }),
-          Job.countDocuments({ "poster.approvalStatus": "pending" }),
-          Job.countDocuments({ "poster.approvalStatus": "rejected" }),
           Job.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
         ]);
 
@@ -424,7 +421,6 @@ export async function POST(req: NextRequest) {
 
 ### Jobs
 - Active: ${activeJobs} | Draft: ${draftJobs} | Closed: ${closedJobs} | Expired: ${expiredJobs}
-- Pending approval: ${pendingApprovalJobs} | Rejected: ${rejectedJobs}
 - Created this month: ${jobsCreatedThisMonth}
 - Top categories:
 ${categoryLines || "  (no active jobs)"}
@@ -463,32 +459,16 @@ ${recentJobLines || "  (no jobs yet)"}`;
             : [];
           const agentUserIds = agentDocs.map((a) => a.userId);
           const agentUserIdStrs = agentUserIds.map((id) => id.toString());
-          const employerIds = agentDocs.flatMap((a) => (a as unknown as { assignedEmployerIds?: unknown[] }).assignedEmployerIds ?? []);
 
           const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-          // Pending approvals: match the same scoping as /api/super-agent/approvals
-          // When no agents assigned, super-agent sees ALL pending jobs (no scope filter)
-          const pendingApprovalFilter: Record<string, unknown> = {
-            "poster.approvalStatus": "pending",
-          };
-          if (agentIds.length > 0) {
-            pendingApprovalFilter.$or = [
-              { agentId: { $in: agentIds } },
-              ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
-            ];
-          } else if (employerIds.length > 0) {
-            pendingApprovalFilter.employerId = { $in: employerIds };
-          }
-
-          const [users, allLeads, teamPlacementCount, pendingApprovals, teamJobs] = await Promise.all([
+          const [users, allLeads, teamPlacementCount, teamJobs] = await Promise.all([
             User.find({ _id: { $in: agentUserIds } }).select("name email").lean(),
             // Lead/Placement.agentId ref the Agent doc, not the User
             Lead.find({ agentId: { $in: agentIds } })
               .select("agentId status createdAt convertedAt followUpAt activityLog")
               .lean(),
             Placement.countDocuments({ agentId: { $in: agentIds } }),
-            Job.countDocuments(pendingApprovalFilter),
             Job.countDocuments({ postedBy: { $in: agentUserIds }, status: "active" }),
           ]);
 
@@ -546,7 +526,6 @@ ${recentJobLines || "  (no jobs yet)"}`;
 - Managed agents: ${agentUserIdStrs.length}
 - Total team leads: ${allLeads.length}
 - Total team placements: ${teamPlacementCount}
-- Pending approvals: ${pendingApprovals}
 - Active team jobs: ${teamJobs}
 
 ### Lead Pipeline

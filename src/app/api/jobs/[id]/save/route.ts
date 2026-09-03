@@ -35,12 +35,12 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
     return NextResponse.json({ saved: false });
   }
 
-  // Only allow saving active, approved jobs
-  const job = await Job.findById(jobId).select("status poster.approvalStatus").lean();
+  // Only allow saving active jobs
+  const job = await Job.findById(jobId).select("status").lean();
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
-  if (job.status !== "active" || job.poster?.approvalStatus !== "approved") {
+  if (job.status !== "active") {
     return NextResponse.json({ error: "Job is not available" }, { status: 400 });
   }
 

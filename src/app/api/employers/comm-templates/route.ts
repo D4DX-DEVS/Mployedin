@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import { validateBody } from "@/lib/validators";
 import { commTemplateCreateSchema } from "@/lib/validators/employers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -75,5 +76,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ template }, { status: 201 });
 }
 
-export const GET = withAuth(getHandler, { resource: "employers", action: "read" });
-export const POST = withAuth(postHandler, { resource: "employers", action: "update" });
+// Communication templates are a plan entitlement (`commTemplates`). The page
+// hides itself client-side; this is the server-side gate that actually holds.
+const COMM_TEMPLATES_GATE = { type: "toggle", feature: "commTemplates" } as const;
+
+export const GET = withAuth(withSubscription(getHandler, COMM_TEMPLATES_GATE), { resource: "employers", action: "read" });
+export const POST = withAuth(withSubscription(postHandler, COMM_TEMPLATES_GATE), { resource: "employers", action: "update" });

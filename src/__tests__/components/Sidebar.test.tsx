@@ -42,7 +42,7 @@ describe.skip("Sidebar", () => {
   });
 
   it("renders the super-agent workspace with inline children for active child routes", async () => {
-    pathnameMock = "/en/super-agent/approvals";
+    pathnameMock = "/en/super-agent/agents";
 
     const { container } = render(
       <Sidebar

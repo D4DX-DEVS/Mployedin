@@ -28,14 +28,12 @@ Object.values(chainable).forEach((fn) => (fn as jest.Mock).mockReturnThis());
     _id: "job_active_001",
     title: "Active placement role",
     status: "active",
-    poster: { approvalStatus: "approved" },
     applicantIds: [],
   },
   {
     _id: "job_closed_001",
     title: "Closed placement role",
     status: "closed",
-    poster: { approvalStatus: "approved" },
     applicantIds: [],
   },
 ]);
@@ -86,6 +84,9 @@ describe("Admin Jobs API", () => {
     expect(query.status).toBeUndefined();
 
     const payload = await res.json();
+    // Approval queue retired: no per-job approvalStatus flag and no approvalCounts tiles.
+    expect(payload).not.toHaveProperty("approvalCounts");
+    expect(payload.jobs.every((j: Record<string, unknown>) => !("approvalStatus" in j))).toBe(true);
     expect(payload.jobs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ _id: "job_active_001", status: "active" }),

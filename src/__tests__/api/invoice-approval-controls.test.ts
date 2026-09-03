@@ -117,6 +117,8 @@ interface MockInvoice {
   commissions: MockInvoiceCommission[];
   payments: MockInvoicePayment[];
   save: jest.Mock<Promise<void>, []>;
+  /** Mongoose Document API the paid paths call before a payment save (version check). */
+  increment: jest.Mock<void, []>;
   approvedBy?: unknown;
   approvedAt?: Date;
   rejectedBy?: unknown;
@@ -144,6 +146,7 @@ function makeInvoice(overrides: Partial<MockInvoice> = {}): MockInvoice {
     commissions: [{ role: "agent", agentId: "507f1f77bcf86cd799439031", rate: 10, amount: 100, status: "pending" }],
     payments: [],
     save: jest.fn().mockResolvedValue(undefined),
+    increment: jest.fn(),
     ...overrides,
   };
 }

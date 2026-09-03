@@ -211,7 +211,6 @@ export default function AgentJobsPage() {
     active: t("statuses.active"),
     closed: t("statuses.closed"),
     expired: t("statuses.expired"),
-    pending_approval: t("statuses.pending"),
     paused: t("statuses.paused"),
   };
 

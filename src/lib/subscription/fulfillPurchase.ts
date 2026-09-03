@@ -132,6 +132,10 @@ export async function fulfillSubscriptionPurchase(
         aiUsage: initAiUsage(),
       },
       usageResetAt: nextUsageReset(now),
+      // Subscription.assignedBy is `required: true` — omitting it made every
+      // first-time online purchase fail schema validation. Self-assigned, the
+      // same convention autoAssignDefaultPlan() uses for system grants.
+      assignedBy: input.userId,
       assignedByRole: "system",
       notes: `Purchased online via ${input.provider}`,
     });

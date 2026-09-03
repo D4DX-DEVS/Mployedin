@@ -130,12 +130,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   // ── 2. Job stats ─────────────────────────────────────────────────────────
   const [
-    totalJobs, activeJobs, pendingJobs, closedJobs,
+    totalJobs, activeJobs, closedJobs,
     jobsThisMonth, jobsLastMonth,
   ] = await Promise.all([
     Job.countDocuments(),
     Job.countDocuments({ status: "active" }),
-    Job.countDocuments({ status: "pending_approval" }),
     Job.countDocuments({ status: "closed" }),
     Job.countDocuments({ createdAt: { $gte: startOfMonth } }),
     Job.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
@@ -293,7 +292,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
 ## Jobs
 - Total jobs ever: ${totalJobs}
-- Active: ${activeJobs} | Pending approval: ${pendingJobs} | Closed: ${closedJobs}
+- Active: ${activeJobs} | Closed: ${closedJobs}
 - Posted this month: ${jobsThisMonth} (last month: ${jobsLastMonth})
 - Active jobs by category (top 10):
 ${jobsByCategory.map((c) => `  • ${c._id}: ${c.count}`).join("\n") || "  No category data"}

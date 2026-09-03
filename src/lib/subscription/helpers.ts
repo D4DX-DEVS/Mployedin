@@ -52,6 +52,40 @@ export function buildPlanSnapshot(plan: ISubscriptionPlan) {
   };
 }
 
+/**
+ * Is a boolean-style plan toggle switched on?
+ *
+ * Most toggles are real booleans, but a few are graded strings — `analyticsLevel`
+ * is "none" | "basic" | "advanced". A plain truthiness test treated the string
+ * "none" as enabled, so the analytics gate passed on every plan. Grade strings
+ * explicitly; anything else falls back to truthiness.
+ */
+export function isToggleEnabled(value: unknown): boolean {
+  if (typeof value === "string") return value !== "" && value !== "none";
+  return !!value;
+}
+
+/**
+ * Which customer role each numeric limit belongs to. The plan schema keeps
+ * employer and job-seeker limits in separate objects, so a limit is only ever
+ * meaningful for one of them: a job seeker listing their own applications is
+ * not "viewing applications" against an employer cap, and must not have that
+ * counter reserved on their subscription. Staff roles never reach a gate.
+ */
+export const LIMIT_FEATURE_ROLE = {
+  activeJobs: "employer",
+  applicationsViewed: "employer",
+  teamMembers: "employer",
+  applicationsSubmitted: "job_seeker",
+} as const satisfies Record<string, "employer" | "job_seeker">;
+
+export type LimitFeature = keyof typeof LIMIT_FEATURE_ROLE;
+
+/** True when `feature` is a numeric limit that applies to `targetRole`. */
+export function isLimitFeatureForRole(feature: string, targetRole: "employer" | "job_seeker"): boolean {
+  return (LIMIT_FEATURE_ROLE as Record<string, string>)[feature] === targetRole;
+}
+
 /** Map subscription tier to legacy Employer.subscriptionType. */
 export function tierToLegacyType(tier: number): "basic" | "premium" {
   return tier >= 2 ? "premium" : "basic";

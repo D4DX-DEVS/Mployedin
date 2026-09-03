@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import AuditLog from "@/models/AuditLog";
+import GdprRequest, { GDPR_REQUEST_STATUSES, GDPR_REQUEST_TYPES } from "@/models/GdprRequest";
+import ConsentLog from "@/models/ConsentLog";
 import User from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 
 /* ------------------------------------------------------------------ */
-/*  GET /api/admin/gdpr — GDPR data requests + stats                   */
+/*  GET /api/admin/gdpr — GDPR data-subject requests + stats           */
 /* ------------------------------------------------------------------ */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function handler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role !== "admin") {
@@ -23,56 +26,55 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const type = url.searchParams.get("type") ?? "";
   const status = url.searchParams.get("status") ?? "";
 
-  /* Build query from audit logs with GDPR actions */
-  const filter: Record<string, unknown> = {
-    resource: "gdpr",
-  };
-
-  if (type && type !== "all") {
-    filter.action = type;
+  const filter: Record<string, unknown> = {};
+  if (type && type !== "all" && (GDPR_REQUEST_TYPES as string[]).includes(type)) {
+    filter.requestType = type;
   }
-
-  if (status && status !== "all") {
-    filter["details.status"] = status;
+  if (status && status !== "all" && (GDPR_REQUEST_STATUSES as string[]).includes(status)) {
+    filter.status = status;
   }
-
   if (search) {
     const safe = escapeRegex(search);
     filter.$or = [
-      { "details.userName": { $regex: safe, $options: "i" } },
-      { "details.userEmail": { $regex: safe, $options: "i" } },
+      { userName: { $regex: safe, $options: "i" } },
+      { userEmail: { $regex: safe, $options: "i" } },
     ];
   }
 
-  const [items, total] = await Promise.all([
-    AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-    AuditLog.countDocuments(filter),
-  ]);
+  const [items, total, totalRequests, pendingRequests, completedRequests, responseAgg, totalUsers, consentAgg] =
+    await Promise.all([
+      GdprRequest.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      GdprRequest.countDocuments(filter),
+      GdprRequest.countDocuments({}),
+      GdprRequest.countDocuments({ status: { $in: ["pending", "in_progress"] } }),
+      GdprRequest.countDocuments({ status: "completed" }),
+      GdprRequest.aggregate([
+        { $match: { status: "completed", completedAt: { $ne: null } } },
+        { $group: { _id: null, avgMs: { $avg: { $subtract: ["$completedAt", "$createdAt"] } } } },
+      ]),
+      User.countDocuments({ isActive: true }),
+      // A consent is "active" when the latest entry for (user, consentType) is granted.
+      ConsentLog.aggregate([
+        { $sort: { createdAt: -1 } },
+        { $group: { _id: { userId: "$userId", consentType: "$consentType" }, granted: { $first: "$granted" } } },
+        { $match: { granted: true } },
+        { $count: "activeConsents" },
+      ]),
+    ]);
 
-  /* Compute stats */
-  const [totalRequests, pendingRequests, completedRequests] = await Promise.all([
-    AuditLog.countDocuments({ resource: "gdpr" }),
-    AuditLog.countDocuments({ resource: "gdpr", "details.status": "pending" }),
-    AuditLog.countDocuments({ resource: "gdpr", "details.status": "completed" }),
-  ]);
+  const avgMs = (responseAgg as Array<{ avgMs?: number }>)[0]?.avgMs ?? 0;
+  const activeConsents = (consentAgg as Array<{ activeConsents?: number }>)[0]?.activeConsents ?? 0;
 
-  const totalUsers = await User.countDocuments({ isActive: true });
-
-  /* Map audit logs to GDPR request shape */
-  const mapped = items.map((item: Record<string, unknown>) => ({
+  const mapped = (items as Array<Record<string, unknown>>).map((item) => ({
     _id: String(item._id),
     userId: String(item.userId ?? ""),
-    userName: (item.details as Record<string, unknown>)?.userName ?? "Unknown",
-    userEmail: (item.details as Record<string, unknown>)?.userEmail ?? "",
-    requestType: item.action ?? "export",
-    status: (item.details as Record<string, unknown>)?.status ?? "completed",
+    userName: item.userName ?? "Unknown",
+    userEmail: item.userEmail ?? "",
+    requestType: item.requestType,
+    status: item.status,
     createdAt: item.createdAt,
-    completedAt: (item.details as Record<string, unknown>)?.completedAt,
-    notes: (item.details as Record<string, unknown>)?.notes,
+    completedAt: item.completedAt,
+    notes: item.notes,
   }));
 
   return NextResponse.json({
@@ -82,9 +84,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       totalRequests,
       pendingRequests,
       completedRequests,
-      avgResponseDays: totalRequests > 0 ? Math.round((completedRequests / Math.max(totalRequests, 1)) * 3) : 0,
+      avgResponseDays: Math.round((avgMs / DAY_MS) * 10) / 10,
       dataSubjects: totalUsers,
-      activeConsents: totalUsers,
+      activeConsents,
     },
   });
 }

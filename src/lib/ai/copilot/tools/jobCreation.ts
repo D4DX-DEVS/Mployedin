@@ -100,8 +100,7 @@ export const createJobTool: CopilotTool<{
       }
     }
 
-    // ponytail: no approval queue — jobs go live on publish.
-    const approvalStatus: "pending" | "approved" = "approved";
+    // No approval queue — jobs go live on publish.
     const resolvedStatus: string = args.status ?? "active";
 
     const job = await Job.create({
@@ -129,8 +128,18 @@ export const createJobTool: CopilotTool<{
       vacancies: args.vacancies ?? 1,
       tags: [],
       visibility: "public",
-      "poster.approvalStatus": approvalStatus,
     });
+
+    // POST /api/jobs consumes a job slot through withSubscription(); this path
+    // only *read* the gate above, so copilot-created jobs never counted against
+    // maxActiveJobs and an employer could post past the cap indefinitely.
+    if (ctx.role === "employer") {
+      const { default: Subscription } = await import("@/models/Subscription");
+      await Subscription.updateOne(
+        { userId: ctx.userId, targetRole: "employer", status: "active" },
+        { $inc: { "usage.activeJobs": 1 } },
+      );
+    }
 
     if (agentId) {
       const { incrementAgentCounter } = await import("@/lib/agentPerformance");

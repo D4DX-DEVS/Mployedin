@@ -43,8 +43,6 @@ interface Job {
   employerId?: { _id?: string; companyName?: string; country?: string; industry?: string };
   agentId?: { _id?: string; userId?: { _id?: string; name?: string; email?: string }; superAgentId?: { _id?: string; userId?: { name?: string } } };
   status: string;
-  poster?: { approvalStatus?: string };
-  approvalStatus?: string;
   category?: string;
   location?: string | { isRemote?: boolean; city?: string; country?: string };
   salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean };

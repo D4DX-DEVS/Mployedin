@@ -174,26 +174,6 @@ describe.skip("SuperAgent dark-mode page surfaces", () => {
         });
       }
 
-      if (url === "/api/super-agent/approvals?status=pending") {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            jobs: [
-              {
-                _id: "job-1",
-                title: "Operations Manager",
-                location: "Dubai, UAE",
-                category: "Operations",
-                poster: { approvalStatus: "pending" },
-                createdAt: "2026-04-12T00:00:00.000Z",
-                employerId: { companyName: "Northstar Foods" },
-                postedByAgent: { name: "Amina Noor" },
-              },
-            ],
-          }),
-        });
-      }
-
       if (url === "/api/placements?page=1&limit=10") {
         return Promise.resolve({
           ok: true,

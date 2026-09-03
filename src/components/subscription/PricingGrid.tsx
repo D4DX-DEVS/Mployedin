@@ -67,7 +67,7 @@ function getPlanHighlights(plan: AvailablePlan, isEmployer: boolean): { label: s
       { label: `${numLabel(l.maxActiveJobs)} Job Postings`, included: true },
       { label: `${numLabel(l.maxApplicationsViewPerMonth)} Applications/mo`, included: true },
       { label: `${numLabel(l.maxTeamMembers)} Team Members`, included: true },
-      { label: "CV Database Access", included: l.dataExport },
+      { label: "Data Export", included: l.dataExport },
       { label: `${l.analyticsLevel === "none" ? "Basic" : l.analyticsLevel === "basic" ? "Basic" : "Advanced"} Analytics`, included: l.analyticsLevel !== "none" },
       { label: "Priority Support", included: l.prioritySupport },
     ];

@@ -48,7 +48,6 @@ import {
   Tag,
   Pause,
   CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -66,7 +65,7 @@ import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ────────────────────────────── Types ────────────────────────────── */
 
-type JobStatus = "all" | "active" | "draft" | "closed" | "expired" | "pending_approval" | "paused";
+type JobStatus = "all" | "active" | "draft" | "closed" | "expired" | "paused";
 type EmploymentType = "all" | "full_time" | "part_time" | "contract" | "internship" | "freelance";
 type WorkMode = "all" | "onsite" | "hybrid" | "remote";
 type SortBy = "createdAt" | "title" | "salary" | "views" | "status";
@@ -126,7 +125,6 @@ interface JobCounts {
   draft: number;
   closed: number;
   expired: number;
-  pending: number;
   paused: number;
   employers: number;
   agents: number;
@@ -189,7 +187,7 @@ export default function SuperAgentJobsPage() {
   /* ── Counts ── */
   const [counts, setCounts] = useState<JobCounts>({
     total: 0, active: 0, draft: 0, closed: 0, expired: 0,
-    pending: 0, paused: 0, employers: 0, agents: 0,
+    paused: 0, employers: 0, agents: 0,
   });
 
   /* ── Pagination ── */
@@ -510,7 +508,6 @@ export default function SuperAgentJobsPage() {
                 { key: "all" as const, labelKey: "statusFilterAll", count: counts.total, icon: Briefcase },
                 { key: "active" as const, labelKey: "statusFilterActive", count: counts.active, icon: CheckCircle2 },
                 { key: "draft" as const, labelKey: "statusFilterDraft", count: counts.draft, icon: FileText },
-                { key: "pending_approval" as const, labelKey: "statusFilterPending", count: counts.pending, icon: AlertCircle },
                 { key: "paused" as const, labelKey: "statusFilterPaused", count: counts.paused, icon: Pause },
                 { key: "closed" as const, labelKey: "statusFilterClosed", count: counts.closed, icon: X },
                 { key: "expired" as const, labelKey: "statusFilterExpired", count: counts.expired, icon: Clock },
@@ -553,7 +550,6 @@ export default function SuperAgentJobsPage() {
                       <SelectItem value="all">{t("allStatuses")}</SelectItem>
                       <SelectItem value="active">{tc("active")}</SelectItem>
                       <SelectItem value="draft">{t("draftLabel")}</SelectItem>
-                      <SelectItem value="pending_approval">{t("pendingLabel")}</SelectItem>
                       <SelectItem value="paused">{t("pausedLabel")}</SelectItem>
                       <SelectItem value="closed">{t("closedLabel")}</SelectItem>
                       <SelectItem value="expired">{t("expiredLabel")}</SelectItem>

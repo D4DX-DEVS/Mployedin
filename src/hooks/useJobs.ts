@@ -29,13 +29,11 @@ export interface Job {
   title: string;
   location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
-  status: "draft" | "pending_approval" | "active" | "paused" | "closed" | "expired";
+  status: "draft" | "active" | "paused" | "closed" | "expired";
   workMode?: "onsite" | "hybrid" | "remote";
   employmentType?: "full_time" | "part_time" | "contract" | "internship" | "freelance";
   salary: { min: number; max: number; currency: string; isNegotiable?: boolean; period?: string };
   requirements: { skills: string[]; experienceMin?: number; experienceMax?: number; education?: string; languages?: string[] };
-  poster?: { approvalStatus?: "pending" | "approved" | "rejected" };
-  "poster.approvalStatus"?: "pending" | "approved" | "rejected";
   vacancies?: number;
   maxApplicants?: number;
   showSalary?: boolean;
@@ -68,7 +66,6 @@ export interface JobsFilters {
   limit: number;
   status?: string;
   search?: string;
-  approvalStatus?: string;
   workMode?: string;
   location?: string;
   skills?: string[];
@@ -94,7 +91,6 @@ async function fetchJobs(filters: JobsFilters): Promise<JobsResponse> {
   if (filters.myJobs) params.set("myJobs", "true");
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
   if (filters.search) params.set("search", filters.search);
-  if (filters.approvalStatus && filters.approvalStatus !== "all") params.set("approvalStatus", filters.approvalStatus);
   if (filters.workMode && filters.workMode !== "all") params.set("workMode", filters.workMode);
   if (filters.location) params.set("location", filters.location);
   if (filters.skills?.length) params.set("skills", filters.skills.join(","));

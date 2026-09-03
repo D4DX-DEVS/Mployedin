@@ -210,7 +210,6 @@ test.describe("Employer Journey", () => {
                 status: "active",
                 salary: { min: 18000, max: 24000, currency: "AED", period: "monthly" },
                 requirements: { skills: ["React", "Node.js"], experienceMin: 3, experienceMax: 6 },
-                "poster.approvalStatus": "approved",
                 createdAt: new Date().toISOString(),
                 vacancies: 3,
                 showSalary: true,

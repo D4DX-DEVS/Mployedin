@@ -8,6 +8,36 @@ import Interview from "@/models/Interview";
 import Notification from "@/models/Notification";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import GdprRequest from "@/models/GdprRequest";
+import { getClientIp } from "@/lib/security/clientIp";
+import logger from "@/lib/logger";
+
+/**
+ * Record a completed self-service request in the GDPR register the admin page
+ * reads (`/api/admin/gdpr`). Best-effort: the export / erasure itself has
+ * already happened, so a register write failure must not fail the request.
+ */
+async function recordGdprRequest(input: {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  requestType: "export" | "delete";
+  req: NextRequest;
+}): Promise<void> {
+  try {
+    await GdprRequest.create({
+      userId: input.userId,
+      userName: input.userName,
+      userEmail: input.userEmail,
+      requestType: input.requestType,
+      status: "completed",
+      completedAt: new Date(),
+      ipAddress: getClientIp(input.req.headers),
+    });
+  } catch (err) {
+    logger.error({ err, userId: input.userId, requestType: input.requestType }, "[gdpr] failed to record request in register");
+  }
+}
 
 /**
  * GET /api/gdpr/export
@@ -37,6 +67,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   ]);
 
   await logActivity({ ...actorFromCtx(ctx), action: "gdpr.export", resource: "users", resourceId: ctx.userId, req });
+  const subject = user as { name?: string; email?: string } | null;
+  await recordGdprRequest({
+    userId: ctx.userId,
+    userName: subject?.name ?? "Unknown",
+    userEmail: subject?.email ?? "",
+    requestType: "export",
+    req,
+  });
 
   return NextResponse.json({
     exportedAt: new Date().toISOString(),
@@ -112,6 +150,14 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     resource: "users",
     resourceId: ctx.userId,
     meta: { reason: "GDPR right to erasure" },
+    req,
+  });
+  // The register must not keep the erased identity — record the anonymised one.
+  await recordGdprRequest({
+    userId: ctx.userId,
+    userName: "Deleted User",
+    userEmail: anonymizedEmail,
+    requestType: "delete",
     req,
   });
 

@@ -22,7 +22,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "25"));
   const status = searchParams.get("status") ?? "";
-  const approvalStatus = searchParams.get("approvalStatus") ?? "";
   const search = searchParams.get("search") ?? "";
   const employerId = searchParams.get("employerId") ?? "";
   const agentId = searchParams.get("agentId") ?? "";
@@ -36,7 +35,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { deletedAt: null };
   if (status) query.status = status;
-  if (approvalStatus) query["poster.approvalStatus"] = approvalStatus;
   if (category) query.category = { $regex: escapeRegex(category), $options: "i" };
   if (workMode) query.workMode = workMode;
   if (employmentType) query.employmentType = employmentType;
@@ -165,24 +163,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     totalApplicants += s.applicants ?? 0;
   }
 
-  // Platform-wide poster approval-state counts, independent of the approval tab
-  // and pagination (keeps the approvals overview tiles consistent — M-1).
-  const approvalCountQuery = { ...query };
-  delete approvalCountQuery["poster.approvalStatus"];
-  const approvalAgg = await Job.aggregate([
-    { $match: approvalCountQuery },
-    { $group: { _id: { $ifNull: ["$poster.approvalStatus", "pending"] }, count: { $sum: 1 } } },
-  ]);
-  const approvalCounts: Record<string, number> = {};
-  for (const a of approvalAgg) {
-    if (a._id) approvalCounts[a._id] = a.count;
-  }
-
   // Flatten nested fields for the admin UI
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const jobs = rawJobs.map((job: any) => ({
     ...job,
-    approvalStatus: job.poster?.approvalStatus ?? "pending",
     applicantsCount: Array.isArray(job.applicantIds) ? job.applicantIds.length : 0,
   }));
 
@@ -190,7 +174,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     jobs,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     statusCounts,
-    approvalCounts,
     totalApplicants,
   });
 }

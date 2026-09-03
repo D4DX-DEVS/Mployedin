@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
+import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
+import type { UserRole } from "@/types/user";
 import connectDB from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
@@ -15,7 +17,7 @@ async function GET(_req: NextRequest, ctx: { userId: string }) {
   return NextResponse.json({ weights: sanitizeMatchingWeights(employer?.matchingWeights) });
 }
 
-async function PATCH(req: NextRequest, ctx: AuthContext) {
+async function PATCH(req: NextRequest, ctx: { userId: string; role: UserRole }) {
   await connectDB();
   const { weights } = await validateBody(req, matchingWeightsSchema);
 
@@ -44,5 +46,10 @@ async function PATCH(req: NextRequest, ctx: AuthContext) {
 }
 
 const GET_handler = withAuth(GET, { resource: "employers", action: "read" });
-const PATCH_handler = withAuth(PATCH, { resource: "employers", action: "update" });
+// Reading the current weights stays open (the job form shows them); changing
+// them is the `matchingWeightCustomization` entitlement.
+const PATCH_handler = withAuth(
+  withSubscription(PATCH, { type: "toggle", feature: "matchingWeightCustomization" }),
+  { resource: "employers", action: "update" },
+);
 export { GET_handler as GET, PATCH_handler as PATCH };

@@ -138,6 +138,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           type: "new",
           planName: plan.name,
           description: `New subscription: ${plan.name} (${plan.billingCycle})`,
+          // Totals are derived from subtotal by Invoice.pre("save").
+          subtotal: plan.price,
           amount: plan.price,
           currency: plan.currency,
           billingCycle: plan.billingCycle,

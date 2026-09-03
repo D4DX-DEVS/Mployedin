@@ -65,9 +65,12 @@ export async function GET(req: NextRequest) {
       const newStart = new Date(sub.endDate);
       const newEnd = calcEndDate(newStart, cycle);
 
-      // Guard with current status check (idempotent)
-      const updateResult = await Subscription.findByIdAndUpdate(
-        sub._id,
+      // Re-assert the selection criteria inside the write so a concurrent or
+      // overlapping cron run can only claim each subscription once. Without it
+      // two runs both matched the same doc and each wrote a renewal invoice and
+      // history row. No match => another run already renewed it; skip quietly.
+      const updateResult = await Subscription.findOneAndUpdate(
+        { _id: sub._id, status: "active", endDate: { $lte: now } },
         {
           $set: {
             startDate: newStart,
@@ -83,9 +86,7 @@ export async function GET(req: NextRequest) {
         { returnDocument: "after" }
       );
 
-      if (!updateResult) {
-        throw new Error("Failed to update subscription");
-      }
+      if (!updateResult) return; // already processed by a concurrent run
 
       // History
       await SubscriptionHistory.create({
@@ -109,6 +110,8 @@ export async function GET(req: NextRequest) {
         type: "renewal",
         planName: sub.planSnapshot?.name ?? "Unknown",
         description: `Auto-renewal: ${sub.planSnapshot?.name} (${cycle})`,
+        // Totals are derived from subtotal by Invoice.pre("save").
+        subtotal: sub.planSnapshot?.price ?? 0,
         amount: sub.planSnapshot?.price ?? 0,
         currency: sub.planSnapshot?.currency ?? "AED",
         billingCycle: cycle,
@@ -141,16 +144,15 @@ export async function GET(req: NextRequest) {
       renewedCount++;
     } else {
       // ── Expire ──────────────────────────────────────────────
-      // Guard with current status check (idempotent)
-      const updateResult = await Subscription.findByIdAndUpdate(
-        sub._id,
+      // Status guard makes the flip atomic — a concurrent run that already
+      // expired this subscription matches nothing and skips the history row.
+      const updateResult = await Subscription.findOneAndUpdate(
+        { _id: sub._id, status: "active", endDate: { $lte: now } },
         { $set: { status: "expired" } },
         { returnDocument: "after" }
       );
 
-      if (!updateResult) {
-        throw new Error("Failed to update subscription");
-      }
+      if (!updateResult) return; // already processed by a concurrent run
 
       // History
       await SubscriptionHistory.create({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import Scorecard from "@/models/Scorecard";
 import Interview from "@/models/Interview";
 import Application from "@/models/Application";
@@ -189,7 +190,9 @@ export const GET = withAuth(getHandler, {
   resource: "applications",
   action: "read",
 });
-export const POST = withAuth(postHandler, {
-  resource: "applications",
-  action: "update",
-});
+// Submitting an evaluation is the `scorecardEvaluations` entitlement. Reading
+// existing scorecards stays open so a downgrade never hides historical data.
+export const POST = withAuth(
+  withSubscription(postHandler, { type: "toggle", feature: "scorecardEvaluations" }),
+  { resource: "applications", action: "update" },
+);

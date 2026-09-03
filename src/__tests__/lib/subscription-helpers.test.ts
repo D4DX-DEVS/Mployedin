@@ -1,6 +1,7 @@
 /**
  * @jest-environment node
  */
+import { isLimitFeatureForRole, LIMIT_FEATURE_ROLE } from "@/lib/subscription/helpers";
 import {
   calcEndDate,
   nextUsageReset,
@@ -168,5 +169,29 @@ describe("tierToLegacyType", () => {
 
   test("tier 10 → premium", () => {
     expect(tierToLegacyType(10)).toBe("premium");
+  });
+});
+
+describe("LIMIT_FEATURE_ROLE / isLimitFeatureForRole", () => {
+  test("every numeric limit maps to exactly one customer role, mirroring the plan schema", () => {
+    expect(LIMIT_FEATURE_ROLE).toEqual({
+      activeJobs: "employer",
+      applicationsViewed: "employer",
+      teamMembers: "employer",
+      applicationsSubmitted: "job_seeker",
+    });
+  });
+
+  test.each([
+    ["activeJobs", "employer", true],
+    ["activeJobs", "job_seeker", false],
+    ["applicationsViewed", "employer", true],
+    ["applicationsViewed", "job_seeker", false],
+    ["teamMembers", "employer", true],
+    ["applicationsSubmitted", "job_seeker", true],
+    ["applicationsSubmitted", "employer", false],
+    ["unknownFeature", "employer", false],
+  ] as const)("%s for %s → %s", (feature, role, expected) => {
+    expect(isLimitFeatureForRole(feature, role)).toBe(expected);
   });
 });

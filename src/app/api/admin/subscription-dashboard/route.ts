@@ -4,7 +4,8 @@
  * Returns all KPIs, comparisons, funnel, top customers/agents,
  * renewal forecast, invoice health, revenue by country, and trends.
  *
- * Admin/super_agent only.
+ * Admin only — the payload is platform-wide (top customers/agents, revenue by
+ * country) with no tenant scoping, so super_agent is rejected below (C1).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -81,7 +82,11 @@ const MRR_EXPR = {
 // ── Handler ──────────────────────────────────────────────────────────────────
 
 async function handler(_req: NextRequest, ctx: AuthCtx) {
-  if (!["admin", "super_agent"].includes(ctx.role)) {
+  // Admin only. This aggregates platform-wide revenue, topCustomers (PII) and
+  // topAgents with no tenant scoping — the same data the GraphQL
+  // subscriptionDashboard was restricted to admin for (C1). The only consumer is
+  // the admin subscription-dashboard page; super_agent had no UI for it.
+  if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

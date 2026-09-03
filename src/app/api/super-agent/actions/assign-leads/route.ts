@@ -97,4 +97,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     reassigned: leadsToMove.length,
     message: `${leadsToMove.length} lead${leadsToMove.length > 1 ? "s" : ""} reassigned successfully.`,
   });
-}, { resource: "users", action: "update" });
+}, { resource: "leads", action: "update" });
+// Guard was users:update, which super_agent never holds — the "Assign leads"
+// action in InsightsPanel 403'd for its only intended caller. Middleware already
+// limits /api/super-agent/* to super_agent|admin; roster checks above scope it.

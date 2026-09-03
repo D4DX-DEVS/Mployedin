@@ -139,8 +139,8 @@ describe("AdminDashboardPage", () => {
         { _id: { year: 2026, month: 4 }, count: 3 },
       ])
       .mockResolvedValueOnce([
-        { _id: "job-1", title: "Senior Recruiter", status: "active", approvalStatus: "approved", createdAt: "2026-04-14T10:00:00.000Z" },
-        { _id: "job-2", title: "Sales Manager", status: "pending_approval", approvalStatus: "pending", createdAt: "2026-04-12T10:00:00.000Z" },
+        { _id: "job-1", title: "Senior Recruiter", status: "active", createdAt: "2026-04-14T10:00:00.000Z" },
+        { _id: "job-2", title: "Sales Manager", status: "draft", createdAt: "2026-04-12T10:00:00.000Z" },
       ]);
 
     applicationAggregateMock

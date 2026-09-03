@@ -4,6 +4,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
+import SubscriptionPlan from "@/models/SubscriptionPlan";
+import { isSubscriptionEnforcementEnabled } from "@/lib/subscription/enforcementFlag";
 import mongoose from "mongoose";
 
 /* ------------------------------------------------------------------ */
@@ -32,13 +34,30 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     totalJobs,
     activeJobs,
     applicationsToday,
+    employerPlans,
+    employerDefault,
+    jobSeekerPlans,
+    jobSeekerDefault,
+    enforcementEnabled,
   ] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ isActive: true }),
     Job.countDocuments(),
     Job.countDocuments({ status: "active" }),
     Application.countDocuments({ createdAt: { $gte: todayStart } }),
+    SubscriptionPlan.countDocuments({ targetRole: "employer", isActive: true }),
+    SubscriptionPlan.countDocuments({ targetRole: "employer", isActive: true, isDefault: true }),
+    SubscriptionPlan.countDocuments({ targetRole: "job_seeker", isActive: true }),
+    SubscriptionPlan.countDocuments({ targetRole: "job_seeker", isActive: true, isDefault: true }),
+    isSubscriptionEnforcementEnabled(),
   ]);
+
+  // A role with no active default plan means registration auto-assign silently
+  // skips and every new user lands in the 30-day grace period — a fresh
+  // environment with no seeded catalogue. Worth a warning even while enforcement
+  // is off; critical once it is on.
+  const catalogueMissing = employerDefault === 0 || jobSeekerDefault === 0;
+  const subscriptionPlansStatus = !catalogueMissing ? "healthy" : enforcementEnabled ? "critical" : "warning";
 
   /* Memory usage */
   const memUsage = process.memoryUsage();
@@ -72,6 +91,12 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       active: activeJobs,
       total: totalJobs,
       applicationsToday,
+    },
+    subscriptionPlans: {
+      status: subscriptionPlansStatus,
+      enforcementEnabled,
+      employer: { activePlans: employerPlans, hasDefault: employerDefault > 0 },
+      jobSeeker: { activePlans: jobSeekerPlans, hasDefault: jobSeekerDefault > 0 },
     },
     cron: {
       lastRun: new Date(now.getTime() - 3600_000).toISOString(),

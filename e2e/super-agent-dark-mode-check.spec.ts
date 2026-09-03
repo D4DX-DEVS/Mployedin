@@ -5,7 +5,7 @@ const ROUTES = [
   '/en/super-agent/agents',
   '/en/super-agent/leads',
   '/en/super-agent/employers',
-  '/en/super-agent/approvals',
+  '/en/super-agent/jobs',
   '/en/super-agent/placements',
   '/en/super-agent/commissions',
   '/en/super-agent/reports',

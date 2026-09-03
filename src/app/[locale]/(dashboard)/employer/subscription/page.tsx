@@ -26,6 +26,7 @@ import {
   type MySubscription, type AvailablePlan,
 } from "@/hooks/useSubscription";
 import { useFeatureGateMap } from "@/hooks/useFeatureGate";
+import { deriveEmployerFeatureAccess } from "@/lib/subscription/employerFeatureList";
 import { useInvoices, type InvoiceItem } from "@/hooks/useInvoices";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
@@ -149,15 +150,18 @@ function ActiveView({
   const maxApps = (limits?.maxApplicationsViewPerMonth as number) ?? 0;
   const maxTeam = (limits?.maxTeamMembers as number) ?? 0;
 
+  // Included / locked is decided by the plan's own limits; a live feature-gate
+  // verdict overrides when present (the gate endpoint is a bypass stub today).
+  const access = deriveEmployerFeatureAccess(limits, features);
   const featureList = [
-    { label: t("jobPosting"), detail: maxJobs === -1 ? t("unlimited") : t("jobPostingsDetail", { count: maxJobs }), allowed: features.activeJobs?.allowed ?? true },
-    { label: t("applicantTracking"), detail: t("applicantTrackingDetail", { max: maxApps === -1 ? t("unlimited") : maxApps }), allowed: features.applicationsViewed?.allowed ?? true },
-    { label: t("teamCollaboration"), detail: t("teamCollaborationDetail", { max: maxTeam === -1 ? t("unlimited") : maxTeam }), allowed: features.teamMembers?.allowed ?? true },
-    { label: t("dataExport"), allowed: features.dataExport?.allowed ?? false },
-    { label: t("analytics"), detail: `${(limits?.analyticsLevel as string) ?? "none"} level`, allowed: (limits?.analyticsLevel as string) !== "none" },
-    { label: t("commTemplates"), allowed: features.commTemplates?.allowed ?? false },
-    { label: t("scorecards"), allowed: features.scorecardEvaluations?.allowed ?? false },
-    { label: t("prioritySupport"), allowed: features.prioritySupport?.allowed ?? false },
+    { label: t("jobPosting"), detail: maxJobs === -1 ? t("unlimited") : t("jobPostingsDetail", { count: maxJobs }), allowed: access.jobPosting },
+    { label: t("applicantTracking"), detail: t("applicantTrackingDetail", { max: maxApps === -1 ? t("unlimited") : maxApps }), allowed: access.applicantTracking },
+    { label: t("teamCollaboration"), detail: t("teamCollaborationDetail", { max: maxTeam === -1 ? t("unlimited") : maxTeam }), allowed: access.teamCollaboration },
+    { label: t("dataExport"), allowed: access.dataExport },
+    { label: t("analytics"), detail: `${(limits?.analyticsLevel as string) ?? "none"} level`, allowed: access.analytics },
+    { label: t("commTemplates"), allowed: access.commTemplates },
+    { label: t("scorecards"), allowed: access.scorecards },
+    { label: t("prioritySupport"), allowed: access.prioritySupport },
   ];
   const included = featureList.filter((f) => f.allowed);
   const locked = featureList.filter((f) => !f.allowed);

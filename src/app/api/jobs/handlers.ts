@@ -49,7 +49,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   const search = (searchParams.get("search") ?? "").slice(0, 500);
   const status = searchParams.get("status") ?? "";
-  const approvalStatus = searchParams.get("approvalStatus") ?? "";
   const category = (searchParams.get("category") ?? "").slice(0, 200);
   const location = (searchParams.get("location") ?? "").slice(0, 200);
   const currency = searchParams.get("currency") ?? "";
@@ -130,7 +129,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const canFilterManagedJobs = ownershipScoped || ctx.role === "admin";
 
   if (status && canFilterManagedJobs) query.status = status;
-  if (approvalStatus && canFilterManagedJobs) query["poster.approvalStatus"] = approvalStatus;
   if (search) query.$text = { $search: search };
   if (category) query.category = category;
   if (workMode) query.workMode = workMode;
@@ -215,15 +213,21 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         .skip(skip)
         .limit(limit);
 
+  // Agent commissionRate / super-agent overrideRate are internal compensation
+  // terms: only staff roles may read them. Employers (and seekers) get the
+  // agent identity only — the employer UI never renders these fields.
+  const seesCommissionTerms =
+    ctx.role === "admin" || ctx.role === "agent" || ctx.role === "super_agent";
+
   const [jobs, total, statusAgg] = await Promise.all([
     baseJobQuery
       .populate("employerId", "companyName country industry logo")
       .populate({
         path: "agentId",
-        select: ctx.role === "job_seeker" ? "userId" : "commissionRate userId superAgentId",
+        select: seesCommissionTerms ? "commissionRate userId superAgentId" : "userId",
         populate: [
           { path: "userId", select: "name email" },
-          { path: "superAgentId", select: ctx.role === "job_seeker" ? "userId" : "overrideRate userId", populate: { path: "userId", select: "name" } },
+          { path: "superAgentId", select: seesCommissionTerms ? "overrideRate userId" : "userId", populate: { path: "userId", select: "name" } },
         ],
       })
       .lean()
@@ -401,10 +405,9 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     if (body.agentId) agentId = body.agentId;
   }
 
-  // No approval queue: employers publish directly. Admins/super-agents oversee
-  // and delete via their job lists. Draft stays private until the poster publishes.
-  // ponytail: single source of truth for job status — nothing routes to moderation.
-  const approvalStatus: "pending" | "approved" = "approved";
+  // No approval queue: employers and agents publish directly. Admins and
+  // super-agents oversee (edit / close / delete) via their job lists. A draft
+  // stays private until the poster publishes it.
   const resolvedStatus: string = status ?? "active";
 
   // Advisory only, mirroring the UI panel: the platform cannot know an
@@ -449,7 +452,6 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     tags: tags ?? [],
     visibility: visibility ?? "public",
     screeningQuestions: body.screeningQuestions ?? [],
-    "poster.approvalStatus": approvalStatus,
   });
 
   // Drafts are intentionally partial — a user can save one before filling in

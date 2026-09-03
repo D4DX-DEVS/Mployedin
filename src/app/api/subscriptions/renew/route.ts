@@ -85,6 +85,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     type: "renewal",
     planName: sub.planSnapshot?.name ?? "Unknown",
     description: `Renewal: ${sub.planSnapshot?.name} (${cycle})`,
+    // Totals are derived from subtotal by Invoice.pre("save").
+    subtotal: sub.planSnapshot?.price ?? 0,
     amount: sub.planSnapshot?.price ?? 0,
     currency: sub.planSnapshot?.currency ?? "AED",
     billingCycle: cycle,

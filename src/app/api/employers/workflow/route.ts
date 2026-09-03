@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import connectDB from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
@@ -48,4 +49,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 }
 
 export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });
+// Reading the pipeline stays open (the applications board renders them);
+// editing them is the `workflowCustomization` entitlement.
+export const PATCH = withAuth(
+  withSubscription(patchHandler, { type: "toggle", feature: "workflowCustomization" }),
+  { resource: "employers", action: "update" },
+);

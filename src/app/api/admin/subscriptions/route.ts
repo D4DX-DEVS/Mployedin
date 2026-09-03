@@ -15,6 +15,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Subscription from "@/models/Subscription";
+import { Employer } from "@/models/Employer";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -41,6 +43,19 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Build filter
   const filter: Record<string, unknown> = {};
+
+  // Scope non-admins to the employers they manage. getScopedEmployerIds returns
+  // an explicit id list for agent / super_agent ([] = see nothing), so the list
+  // can never fall through to the platform-wide read it previously performed
+  // (every customer's name, email, plan and status was visible to any agent).
+  if (ctx.role !== "admin") {
+    const employerIds = (await getScopedEmployerIds(ctx)) ?? [];
+    const employerUserIds = employerIds.length
+      ? (await Employer.find({ _id: { $in: employerIds } }).select("userId").lean()).map((e) => e.userId)
+      : [];
+    filter.userId = { $in: employerUserIds };
+  }
+
   if (status && ["active", "expired", "cancelled", "suspended"].includes(status)) {
     filter.status = status;
   }

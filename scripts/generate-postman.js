@@ -27,8 +27,7 @@ const collection = {
     { key: 'invoiceId', value: '', type: 'string' },
     { key: 'taskId', value: '', type: 'string' },
     { key: 'scorecardId', value: '', type: 'string' },
-    { key: 'templateId', value: '', type: 'string' },
-    { key: 'approvalId', value: '', type: 'string' }
+    { key: 'templateId', value: '', type: 'string' }
   ],
   auth: { type: 'bearer', bearer: [{ key: 'token', value: '{{token}}', type: 'string' }] },
   item: []
@@ -105,8 +104,7 @@ const admin = {
       req('Test Email', 'POST', '/api/admin/settings/test-email', { to: 'test@example.com' }, 'Send test email to verify configuration'),
     ]},
     { name: 'Jobs Management', item: [
-      req('List Jobs', 'GET', '/api/admin/jobs?page=1&limit=20&status=active&approvalStatus=pending&search=&employerId=&agentId=', null, 'List all jobs with admin filters'),
-      req('Approve/Reject Job', 'PATCH', '/api/admin/jobs/{{jobId}}/approve', { action: 'approve', notes: 'Approved' }, 'Approve or reject a job posting'),
+      req('List Jobs', 'GET', '/api/admin/jobs?page=1&limit=20&status=active&search=&employerId=&agentId=', null, 'List all jobs with admin filters'),
     ]},
     { name: 'Subscription Plans', item: [
       req('List Plans', 'GET', '/api/admin/subscription-plans', null, 'List all subscription plans'),
@@ -299,9 +297,6 @@ const superAgent = {
     req('List Job Seekers', 'GET', '/api/super-agent/job-seekers', null, 'List job seekers in territory'),
     req('List Applications', 'GET', '/api/super-agent/applications', null, 'List all applications in territory'),
     req('List Interviews', 'GET', '/api/super-agent/interviews', null, 'List all scheduled interviews'),
-    req('List Approvals', 'GET', '/api/super-agent/approvals', null, 'Pending items requiring approval'),
-    req('Approval Count', 'GET', '/api/super-agent/approvals/count', null, 'Quick count of pending approvals'),
-    req('Process Approval', 'PATCH', '/api/super-agent/approvals/{{approvalId}}', { action: 'approve', notes: 'Verified and approved' }, 'Approve or reject a pending item'),
     req('Get Profile', 'GET', '/api/super-agent/profile', null, 'Get super agent profile'),
     req('Update Profile', 'PATCH', '/api/super-agent/profile', { name: 'Super Agent', phone: '+971501234567', bio: 'Team lead for Dubai region' }, 'Update super agent profile'),
     req('Get Settings', 'GET', '/api/super-agent/settings', null, 'Get settings'),

@@ -102,4 +102,4 @@ async function handler(
   });
 }
 
-export const GET = withAuth(handler);
+export const GET = withAuth(handler, { resource: "invoices", action: "read" });

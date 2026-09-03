@@ -17,7 +17,6 @@ export const GET = withAuth(async (_req: NextRequest) => {
     newUsersThisMonth,
     totalJobs,
     activeJobs,
-    pendingApprovals,
     totalApplications,
     applicationsThisMonth,
     totalInterviews,
@@ -27,7 +26,6 @@ export const GET = withAuth(async (_req: NextRequest) => {
     User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     Job.countDocuments(),
     Job.countDocuments({ status: "active" }),
-    Job.countDocuments({ "poster.approvalStatus": "pending" }),
     Application.countDocuments(),
     Application.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     Interview.countDocuments(),
@@ -39,7 +37,7 @@ export const GET = withAuth(async (_req: NextRequest) => {
 
   return NextResponse.json({
     users: { total: totalUsers, newThisMonth: newUsersThisMonth },
-    jobs: { total: totalJobs, active: activeJobs, pendingApprovals },
+    jobs: { total: totalJobs, active: activeJobs },
     applications: { total: totalApplications, thisMonth: applicationsThisMonth },
     interviews: { total: totalInterviews },
     usersByRole,

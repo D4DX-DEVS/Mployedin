@@ -17,6 +17,7 @@ import {
   getGracePeriodEmployerLimits,
   getGracePeriodJobSeekerLimits,
 } from "./gracePeriod";
+import { isLimitFeatureForRole, isToggleEnabled } from "./helpers";
 
 export interface FeatureGateResult {
   allowed: boolean;
@@ -100,6 +101,10 @@ export async function checkFeatureGate(
 
   // ── Numeric Limit ──────────────────────────────────────────────────────
   if (check.type === "limit") {
+    // Limits are role-specific (see LIMIT_FEATURE_ROLE); one that belongs to
+    // the other customer role is simply not applicable here.
+    if (!isLimitFeatureForRole(check.feature, role)) return { allowed: true };
+
     const limitsObj = limits as Record<string, unknown>;
     const limitMap: Record<string, { max: number; current: number }> = {
       activeJobs: {
@@ -144,7 +149,7 @@ export async function checkFeatureGate(
   // ── Boolean Toggle ─────────────────────────────────────────────────────
   if (check.type === "toggle") {
     const value = (limits as Record<string, unknown>)[check.feature];
-    if (!value) {
+    if (!isToggleEnabled(value)) {
       return { allowed: false, reason: "FEATURE_DISABLED" };
     }
     return { allowed: true };
@@ -173,7 +178,6 @@ export async function enforceFeatureGate(
   // Admin/agent roles bypass all subscription gates
   if (BYPASS_ROLES.has(role)) return null;
 
-  /* eslint-disable no-unreachable -- subscription enforcement disabled temporarily */
   // Free-tier AI features bypass subscription gates for all authenticated users
   if (check.type === "ai" && FREE_AI_FEATURES.has(check.feature)) return null;
 
@@ -197,12 +201,34 @@ export async function enforceFeatureGate(
     );
   }
 
-  // Atomically increment usage for AI features
+  // Reserve one unit of AI usage in the same operation that re-checks the
+  // boundary. checkFeatureGate() above only reads; a bare $inc let concurrent
+  // requests all pass the same stale count and overshoot the monthly cap.
   if (check.type === "ai") {
-    await Subscription.findOneAndUpdate(
-      { userId, targetRole, status: "active" },
-      { $inc: { [`usage.aiUsage.${check.feature}`]: 1 } },
-    );
+    const usagePath = `usage.aiUsage.${check.feature}`;
+    const reserveFilter: Record<string, unknown> = { userId, targetRole, status: "active" };
+    const capped = gate.limit !== undefined && gate.limit > 0;
+    if (capped) {
+      reserveFilter.$expr = { $lt: [{ $ifNull: [`$${usagePath}`, 0] }, gate.limit] };
+    }
+
+    const reserved = await Subscription.findOneAndUpdate(reserveFilter, {
+      $inc: { [usagePath]: 1 },
+    });
+
+    // Only a capped feature can lose the race. An uncapped one (or a grace-period
+    // user with no subscription row) matches nothing and must still be allowed.
+    if (!reserved && capped) {
+      return NextResponse.json(
+        {
+          error: "LIMIT_EXCEEDED",
+          message: `Monthly limit reached for this feature`,
+          limit: gate.limit,
+          used: gate.limit,
+        },
+        { status: 429 },
+      );
+    }
   }
 
   return null; // allowed
@@ -305,7 +331,7 @@ export async function getFeatureGateMap(
 
   for (const key of toggleKeys) {
     if (key in limitsObj) {
-      result[key] = { allowed: !!limitsObj[key] };
+      result[key] = { allowed: isToggleEnabled(limitsObj[key]) };
     }
   }
 

@@ -115,11 +115,6 @@ export const chatHistoryCreateSchema = z.object({
   title: z.string().max(200).trim().nullish(),
 });
 
-/** POST /api/admin/jobs/[id]/approve */
-export const jobApprovalSchema = z.object({
-  approved: z.boolean(),
-});
-
 /**
  * POST /api/auth/agent-register
  * Password rule intentionally length-only (matches the previous manual check);

@@ -18,6 +18,7 @@ import {
   sendCommissionApprovalNotifications,
 } from "@/lib/invoices/commissionRecords";
 import { PAYMENT_BLOCKED_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { isStaleInvoiceWrite, staleInvoiceResponse } from "@/lib/invoices/concurrency";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
@@ -120,8 +121,16 @@ async function postHandler(
     recordedBy: ctx.userId as unknown as typeof invoice.markedPaidBy,
   });
 
-  // Pre-save hook will recalculate paidAmount, balanceDue, and status
-  await invoice.save();
+  // Pre-save hook will recalculate paidAmount, balanceDue, and status.
+  // increment() makes this save conditional on __v, so a payment recorded by a
+  // concurrent request becomes a 409 instead of a second, overpaying $push.
+  invoice.increment();
+  try {
+    await invoice.save();
+  } catch (err) {
+    if (isStaleInvoiceWrite(err)) return staleInvoiceResponse();
+    throw err;
+  }
   let commissionsApproved = 0;
   let commissionNotificationFailures = 0;
   let commissionApprovalFailed = false;

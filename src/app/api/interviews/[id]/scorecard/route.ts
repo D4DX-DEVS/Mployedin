@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import Interview from "@/models/Interview";
 import { Scorecard } from "@/models/Scorecard";
 import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
@@ -135,4 +136,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler, { resource: "interviews", action: "create" });
+// Plan entitlement `scorecardEvaluations`; agents/super-agents scoring on an
+// employer's behalf are staff roles and bypass the gate.
+export const POST = withAuth(
+  withSubscription(postHandler, { type: "toggle", feature: "scorecardEvaluations" }),
+  { resource: "interviews", action: "create" },
+);

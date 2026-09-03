@@ -1,17 +1,20 @@
 /**
  * Migration: retire the job approval queue.
  *
- * Employers now publish jobs directly — nothing is ever routed to moderation.
- * Existing rows still carry the legacy shape, so flip them:
- *   - status "pending_approval"        -> "active"
- *   - poster.approvalStatus "pending"  -> "approved"
+ * Employers and agents publish jobs directly — nothing is routed to moderation
+ * and the Job schema no longer carries the approval fields. Existing rows still
+ * have the legacy shape, so bring them in line:
+ *   - status "pending_approval"  -> "active"   (the poster intended to publish)
+ *   - poster.approvalStatus      -> removed
+ *   - approvedBy / approvedAt    -> removed
  *
- * Rejected posters are left alone: they were deliberately taken down, and the
- * new model has no "rejected" state to honour. Delete them from the admin jobs
- * page instead.
+ * Rows whose poster was "rejected" are handled like everyone else: the field is
+ * dropped and the job keeps whatever `status` it has (rejection used to close
+ * the job, so those stay closed). Use the admin jobs page to delete any you no
+ * longer want.
  *
  * Dry-run by default. Pass `--apply` to write.
- * Requires MONGODB_URI (set in .env.local or the shell).
+ * Requires MONGODB_URI (set in .env / .env.local or the shell).
  */
 import mongoose from "mongoose";
 
@@ -26,14 +29,29 @@ await mongoose.connect(MONGODB_URI);
 const jobs = mongoose.connection.collection("jobs");
 
 const pendingStatus = await jobs.countDocuments({ status: "pending_approval" });
-const pendingPoster = await jobs.countDocuments({ "poster.approvalStatus": "pending" });
+const legacyFields = await jobs.countDocuments({
+  $or: [
+    { "poster.approvalStatus": { $exists: true } },
+    { approvedBy: { $exists: true } },
+    { approvedAt: { $exists: true } },
+  ],
+});
 console.log(`status=pending_approval: ${pendingStatus}`);
-console.log(`poster.approvalStatus=pending: ${pendingPoster}`);
+console.log(`rows with legacy approval fields: ${legacyFields}`);
 
 if (APPLY) {
   const a = await jobs.updateMany({ status: "pending_approval" }, { $set: { status: "active" } });
-  const b = await jobs.updateMany({ "poster.approvalStatus": "pending" }, { $set: { "poster.approvalStatus": "approved" } });
-  console.log(`✅  status updated: ${a.modifiedCount}, approvalStatus updated: ${b.modifiedCount}`);
+  const b = await jobs.updateMany(
+    {
+      $or: [
+        { "poster.approvalStatus": { $exists: true } },
+        { approvedBy: { $exists: true } },
+        { approvedAt: { $exists: true } },
+      ],
+    },
+    { $unset: { "poster.approvalStatus": "", approvedBy: "", approvedAt: "" } },
+  );
+  console.log(`✅  status updated: ${a.modifiedCount}, legacy fields removed from: ${b.modifiedCount}`);
 } else {
   console.log("ℹ️   Dry run — re-run with --apply to write.");
 }

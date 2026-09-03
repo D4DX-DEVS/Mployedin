@@ -50,8 +50,6 @@ describe("AdminJobsPage", () => {
         title: "Senior Recruiter",
         employerId: { companyName: "Mployedin" },
         status: "draft",
-        poster: { approvalStatus: "pending" },
-        approvalStatus: "pending",
         category: "Recruitment",
         location: { city: "Dubai", country: "UAE" },
         applicantsCount: 8,
