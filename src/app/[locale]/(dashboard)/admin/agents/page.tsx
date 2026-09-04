@@ -6,9 +6,11 @@ import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { Plus, Pencil, Trash2, MapPin, Globe, Ban, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -69,7 +71,10 @@ export default function AdminAgentsPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  /* The search term addresses the view: an admin notification, a ⌘K people
+     hit and the system-health panel all link here with `?search=<name>`,
+     and a filter kept only in component state would silently ignore it. */
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"createdAt" | "name">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -436,15 +441,7 @@ export default function AdminAgentsPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 6 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableBodySkeleton rows={5} cols={6} />
             ) : agents.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="h-32 text-center">

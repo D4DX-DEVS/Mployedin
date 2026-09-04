@@ -3,13 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Zap,
-  Hand,
   CalendarDays,
   DollarSign,
   Bell,
@@ -23,11 +22,9 @@ import {
   Camera,
   Trash2,
   ShieldCheck,
-  FileText,
   Settings2,
   Save,
-  ArrowLeft,
-} from "lucide-react";
+  ArrowLeft, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,12 +47,6 @@ import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCar
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const settingsFormSchema = z.object({
-  autoApply: z.boolean(),
-  autoApplyFilters: z.object({
-    minScore: z.number().int().min(50).max(95),
-    onlyVerifiedEmployers: z.boolean(),
-  }),
-  applySpeed: z.enum(["safe", "balanced", "aggressive"]),
   preferredJobTypes: z.array(z.string()),
   preferredLocations: z.array(z.string()),
   salaryMin: z.number().min(0).optional(),
@@ -92,22 +83,11 @@ const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((c) => ({
   label: c.symbol !== c.code ? `${c.symbol} ${c.code} — ${c.label}` : `${c.code} — ${c.label}`,
 }));
 
-const SPEED_OPTIONS: { value: SettingsForm["applySpeed"]; label: string; desc: string }[] = [
-  { value: "safe", label: "Safe", desc: "Only jobs ≥ 85% match" },
-  { value: "balanced", label: "Balanced", desc: "Jobs ≥ 70% match" },
-  { value: "aggressive", label: "Aggressive", desc: "Jobs ≥ 55% match" },
-];
-
 const JOB_TYPE_OPTIONS = ["Full-time", "Part-time", "Remote", "Contract", "Freelance"];
-
-const MOCK_STATS = { applied: 23, interviews: 4 };
 
 // ─── Default values ───────────────────────────────────────────────────────────
 
 const DEFAULTS: SettingsForm = {
-  autoApply: false,
-  autoApplyFilters: { minScore: 70, onlyVerifiedEmployers: true },
-  applySpeed: "balanced",
   preferredJobTypes: ["Full-time"],
   preferredLocations: [],
   salaryMin: undefined,
@@ -275,67 +255,16 @@ function getCsrfToken(): string {
   return match?.split("=")[1] ?? "";
 }
 
-/*
- * ══════════════════════════════════════════════════════════════════════════════
- * AUTO APPLY TAB — DISABLED (future feature)
- * TODO: Re-enable by moving this JSX back into the Tabs component
- * and uncommenting the TabsTrigger above.
- * ══════════════════════════════════════════════════════════════════════════════
- *
- * <TabsContent value="auto-apply" className="mt-5 space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-4">
- *   <SettingCard
- *     icon={<Zap className="h-4 w-4" />}
- *     title="Auto Apply Mode"
- *     description="AI finds matching jobs and applies on your behalf — fully automated."
- *     accent={values.autoApply}
- *   >
- *     <SettingRow
- *       label="Enable Auto Apply"
- *       description={values.autoApply
- *         ? "AI is submitting applications automatically."
- *         : "Manual mode — you review every application before it's sent."}
- *       tooltip="When enabled, AI submits applications that meet your match threshold without any action from you."
- *     >
- *       <Controller control={control} name="autoApply"
- *         render={({ field }) => (<Switch checked={field.value} onCheckedChange={field.onChange} />)} />
- *     </SettingRow>
- *   </SettingCard>
- *
- *   {!values.autoApply && (
- *     <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/30 px-4 py-3.5">
- *       <Hand className="h-4 w-4 text-muted-foreground shrink-0" />
- *       <p className="text-sm text-muted-foreground">Manual mode is active — you control every application before it's submitted.</p>
- *     </div>
- *   )}
- *
- *   {values.autoApply && (
- *     <>
- *       <SettingCard icon={<Settings2 className="h-4 w-4" />} title="Auto Apply Filters"
- *         description="Narrow down which jobs the AI targets on your behalf." accent>
- *         <SettingRow label="Match Score Threshold"
- *           description={`AI only applies when match score ≥ ${values.autoApplyFilters.minScore}%`}
- *           tooltip="Higher threshold = fewer, more targeted applications.">
- *           ... Match Score slider, Apply Speed selector, Only Verified toggle ...
- *         </SettingRow>
- *       </SettingCard>
- *       <SettingCard icon={<FileText className="h-4 w-4" />} title="Job Type & Location Targets"
- *         description="Set which jobs you want the AI to pursue.">
- *         ... Preferred Job Types chips, Preferred Locations TagInput, Salary Range inputs ...
- *       </SettingCard>
- *     </>
- *   )}
- * </TabsContent>
- */
-
 export default function JobSeekerSettingsPage() {
   const { data: session, update: updateSession } = useSession();
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations("jobSeekerExtra.settings");
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, type: "success", message: "" });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [activeTab, setActiveTab] = useState("interviews"); // TODO: was "auto-apply" — re-enable when auto-apply feature is ready
+  const [activeTab, setActiveTab] = useState("interviews");
 
   // ── Resume documents from user's profile ────────────────────────────────
   const [userResumes, setUserResumes] = useState<{ id: string; name: string }[]>([]);
@@ -664,13 +593,6 @@ export default function JobSeekerSettingsPage() {
         {/* ── Tabs ────────────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full h-auto p-1 rounded-2xl flex flex-wrap gap-1 bg-muted/40 border border-border/40">
-            {/* TODO: Auto-apply tab — re-enable when auto-apply feature is ready
-            <TabsTrigger value="auto-apply" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Zap className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Auto Apply</span>
-              <span className="sm:hidden">Apply</span>
-            </TabsTrigger>
-            */}
             <TabsTrigger value="interviews" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.interviews")}</span>
@@ -1018,6 +940,23 @@ export default function JobSeekerSettingsPage() {
                 />
               </SettingRow>
             </SettingCard>
+
+            {/* Delivery channels, digest timing and unsubscribe live on their
+                own page against a different API. It had no in-app entry point
+                at all — the only links to it were in transactional email
+                footers, so a seeker who never opened one could not reach it. */}
+            <Link
+              href={`/${locale}/job-seeker/settings/notifications`}
+              className="flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-muted/40"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">{t("notifications.advancedTitle")}</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {t("notifications.advancedDescription")}
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
           </TabsContent>
         </Tabs>
       </form>

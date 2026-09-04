@@ -19,8 +19,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { PermissionEditor } from "@/components/shared/PermissionEditor";
+import { useConfirm } from "@/hooks/useConfirm";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -50,9 +53,13 @@ const ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"];
 
 export default function AdminUsersPage() {
   const t = useTranslations("adminUsers");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  /* The search term addresses the view: an admin notification, a ⌘K people
+     hit and the system-health panel all link here with `?search=<name>`,
+     and a filter kept only in component state would silently ignore it. */
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [roleFilter, setRoleFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
@@ -117,6 +124,31 @@ export default function AdminUsersPage() {
     const timer = setTimeout(fetchUsers, 300);
     return () => clearTimeout(timer);
   }, [fetchUsers]);
+
+  /**
+   * Deactivation signs a real person out of the platform, and the control that
+   * fires it sits in a table that re-renders under a filter. It used to call
+   * `updateUser` straight from onClick with no confirmation, no undo and no
+   * toast naming who was affected — the CMS delete on the next page over has
+   * always been guarded, this was not.
+   */
+  async function toggleUserActive(user: User) {
+    if (user.isActive) {
+      const ok = await confirm({
+        title: t("deactivate_user"),
+        message: t("deactivateConfirmMessage", { name: user.name || user.email }),
+        confirmLabel: t("deactivate_user"),
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
+    await updateUser(user._id, { isActive: !user.isActive });
+    toast.success(
+      user.isActive
+        ? t("toastUserDeactivated", { name: user.name || user.email })
+        : t("toastUserActivated", { name: user.name || user.email }),
+    );
+  }
 
   async function updateUser(userId: string, update: { role?: string; isActive?: boolean }) {
     const res = await fetch("/api/admin/users", {
@@ -227,7 +259,7 @@ export default function AdminUsersPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to save permissions");
+        toast.error(err.error || t("toastFailedSavePermissions"));
         return;
       }
       toast.success(t("toastPermissionsUpdated"));
@@ -251,6 +283,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHero
         compact
         compactOnMobile
@@ -359,15 +392,7 @@ export default function AdminUsersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 6 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableBodySkeleton rows={8} cols={6} />
             ) : users.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="h-32 text-center">
@@ -448,7 +473,7 @@ export default function AdminUsersPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs max-sm:min-h-11"
                         title={t("managePermissions")}
                         aria-label={t("managePermissions")}
                         onClick={() => openPermissions(user)}
@@ -458,10 +483,10 @@ export default function AdminUsersPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-xs"
+                        className="h-7 text-xs max-sm:min-h-11"
                         title={user.isActive ? t("deactivate_user") : t("activate_user")}
                         aria-label={user.isActive ? t("deactivate_user") : t("activate_user")}
-                        onClick={() => updateUser(user._id, { isActive: !user.isActive })}
+                        onClick={() => void toggleUserActive(user)}
                       >
                         {user.isActive ? (
                           <UserX className="w-3.5 h-3.5 text-destructive" />

@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -58,7 +59,9 @@ export default function AgentEmployersPage() {
   const pagination = usePagination();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  // Filters live in the query string so a filtered view of this list is an
+  // address the dashboard, a badge or the palette can link to.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [modalOpen, setModalOpen] = useState(false);
   const [editEmployer, setEditEmployer] = useState<Employer | null>(null);
   const [onboardOpen, setOnboardOpen] = useState(false);

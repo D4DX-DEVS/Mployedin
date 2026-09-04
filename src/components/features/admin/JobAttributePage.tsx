@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { PlatformDataTabs } from "@/components/features/admin/PlatformDataTabs";
 import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -145,6 +146,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
 
   return (
     <div className="page-container">
+      <PlatformDataTabs />
       {ConfirmDialogNode}
 
       {/* Same shape as the employer listing pages: compact hero, then one

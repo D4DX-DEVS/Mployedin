@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
@@ -256,6 +257,7 @@ export default function AdminTargetReportPage() {
   if (loading) {
     return (
       <div className="page-container">
+      <ReportTabs />
         <div className="h-20 w-full animate-pulse rounded-3xl bg-muted/40" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (

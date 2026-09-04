@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +53,9 @@ export default function AgentJobSeekersPage() {
   const pagination = usePagination();
   const [seekers, setSeekers] = useState<JobSeeker[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  // Filters live in the query string so a filtered view of this list is an
+  // address the dashboard, a badge or the palette can link to.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [modalOpen, setModalOpen] = useState(false);
   const [editSeeker, setEditSeeker] = useState<JobSeeker | null>(null);
 
@@ -87,13 +90,13 @@ export default function AgentJobSeekersPage() {
 
   // Filter state
   const [showFilters, setShowFilters] = useState(false);
-  const [availability, setAvailability] = useState("");
+  const [availability, setAvailability] = useUrlFilter("availability", "");
   const [minProfile, setMinProfile] = useState(0);
   const [maxProfile, setMaxProfile] = useState(100);
-  const [locationFilter, setLocationFilter] = useState("");
-  const [skillsFilter, setSkillsFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useUrlFilter("location", "", { debounceMs: 400 });
+  const [skillsFilter, setSkillsFilter] = useUrlFilter("skills", "", { debounceMs: 400 });
   const [hasCV, setHasCV] = useState(false);
-  const [jobType, setJobType] = useState("");
+  const [jobType, setJobType] = useUrlFilter("jobType", "");
   const [sortBy, setSortBy] = useState("newest");
 
   const activeFilterCount = [

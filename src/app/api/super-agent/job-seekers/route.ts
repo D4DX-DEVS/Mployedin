@@ -25,17 +25,22 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const country = url.searchParams.get("country") ?? "";
   const experienceMin = url.searchParams.get("experienceMin") ?? "";
 
-  /* Dual-scoping: team agents + region-based agents */
-  const scope = await getSuperAgentScope(ctx.userId);
-  const agentIds = scope?.effectiveAgentIds ?? [];
-
-  /* Get job seekers assigned to these agents */
-  const agents = await Agent.find({ _id: { $in: agentIds } }).select("assignedJobSeekerIds").lean();
-  const seekerIds = agents.flatMap((a: Record<string, unknown>) => (a.assignedJobSeekerIds as string[]) ?? []);
-
+  /* Dual-scoping: team agents + region-based agents. Admin reads unscoped;
+     a super_agent with an empty scope must see nothing. The previous
+     `if (seekerIds.length > 0)` had no else, so an unscoped super-agent
+     queried JobSeeker.find({}) — the whole seeker table, populated with
+     name/email/phone. */
   const filter: Record<string, unknown> = {};
+  let seekerIds: string[] = [];
 
-  if (seekerIds.length > 0) {
+  if (ctx.role !== "admin") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    const agentIds = scope?.effectiveAgentIds ?? [];
+
+    /* Get job seekers assigned to these agents */
+    const agents = await Agent.find({ _id: { $in: agentIds } }).select("assignedJobSeekerIds").lean();
+    seekerIds = agents.flatMap((a: Record<string, unknown>) => (a.assignedJobSeekerIds as string[]) ?? []);
+
     filter._id = { $in: seekerIds };
   }
 
@@ -71,7 +76,12 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   ]);
 
   /* Collect distinct countries for facets */
-  const countries = await JobSeeker.distinct("country", seekerIds.length > 0 ? { _id: { $in: seekerIds } } : {});
+  /* Same scope as the list. The old `: {}` fallback published a platform-wide
+     country facet to a super-agent whose own scope was empty. */
+  const countries = await JobSeeker.distinct(
+    "country",
+    ctx.role === "admin" ? {} : { _id: { $in: seekerIds } },
+  );
 
   const mapped = items.map((s: Record<string, unknown>) => {
     const user = s.userId as Record<string, unknown> | null;

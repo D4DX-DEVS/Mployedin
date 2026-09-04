@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { DollarSign, Eye, X, FileDown, ChevronDown } from "lucide-react";
+import { DollarSign, Eye, X, FileDown, ChevronDown, UserCheck, Clock3, CircleCheckBig, XCircle } from "lucide-react";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,6 +32,8 @@ function getStatusColor(status: OfferStatus): string {
     default: return "bg-secondary/75 text-muted-foreground border-border";
   }
 }
+
+const OFFER_STATUSES = ["pending", "accepted", "declined", "expired", "withdrawn"] as const;
 
 export default function EmployerOffersPage() {
   const router = useRouter();
@@ -57,8 +60,8 @@ export default function EmployerOffersPage() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }
   const [limit, setLimit] = useState(10);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [jobFilter, setJobFilter] = useState(searchParams.get("jobId") ?? "all");
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: OFFER_STATUSES });
+  const [jobFilter, setJobFilter] = useUrlFilter("jobId", "all");
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [detailOffer, setDetailOffer] = useState<Offer | null>(null);
   const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
@@ -69,6 +72,8 @@ export default function EmployerOffersPage() {
 
   const offers = data?.offers ?? [];
   const total = data?.pagination?.total ?? 0;
+  // Totals for the header strip: the API counts these without the status filter.
+  const stats = data?.stats;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   useEffect(() => {
@@ -150,48 +155,52 @@ export default function EmployerOffersPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
+      {/* Pattern A (compact workspace): title + context line; filters and
+          export sit in the list toolbar directly above the list. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("subtitle")}
-        compactOnMobile
+        context={t("subtitle")}
+        metrics={[
+          { label: t("statOffers"), value: stats ? stats.total : "\u2014", icon: DollarSign, tone: "primary" },
+          { label: t("pending"), value: stats ? stats.pending : "\u2014", icon: Clock3, tone: "warning" },
+          { label: t("accepted"), value: stats ? stats.accepted : "\u2014", icon: CircleCheckBig, tone: "success" },
+          { label: t("declined"), value: stats ? stats.declined : "\u2014", icon: XCircle, tone: "info" },
+        ]}
       />
 
-      {/* One panel: filters + export in the list header, states swap below.
-          The old separate filter card and metric tiles duplicated this info. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        {/* Single toolbar row: label, filters and export inline. Offer count
-            lives in the pagination footer, not repeated here. */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
-          <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {t("offerList")}
-            </p>
-            {/* Privacy info at the point candidate data is shown, compacted to
-                an icon + popover to keep the list above the fold. */}
-            <CandidateDataNotice variant="candidateList" compact />
-          </div>
-          <SearchableSelect
-            className="min-w-0 flex-1 sm:w-52 sm:flex-none"
-            options={jobOptions}
-            value={jobFilter}
-            onValueChange={setJobFilter}
-            placeholder={t("allJobs")}
+      <div className="workspace-toolbar">
+        <SearchableSelect
+          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          options={jobOptions}
+          value={jobFilter}
+          onValueChange={setJobFilter}
+          placeholder={t("allJobs")}
+        />
+        <SearchableSelect
+          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          options={STATUS_OPTIONS}
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          placeholder={t("allStatuses")}
+        />
+        {offers.length > 0 && (
+          <TableToolbar
+            className="ms-auto"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
           />
-          <SearchableSelect
-            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-            placeholder={t("allStatuses")}
-          />
-          {offers.length > 0 && (
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-              className="shrink-0"
-            />
-          )}
+        )}
+      </div>
+
+      <section className="workspace-panel-surface rounded-2xl panel-body">
+        <div className="flex items-center gap-1.5 border-b border-border pb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {t("offerList")}
+          </p>
+          {/* Privacy info at the point candidate data is shown, compacted to
+              an icon + popover to keep the list above the fold. */}
+          <CandidateDataNotice variant="candidateList" compact />
         </div>
 
         {error ? (
@@ -282,7 +291,23 @@ export default function EmployerOffersPage() {
                             {t("withdraw")}
                           </Button>
                         ) : null}
+                        {offer.status === "accepted" ? (
+                          <Button size="dense" variant="outline" className="flex-1 rounded-lg text-[11px] font-semibold" asChild>
+                            <Link href={`/${locale}/employer/placements`}>
+                              <UserCheck className="me-1 h-3.5 w-3.5" />
+                              {t("viewPlacements")}
+                            </Link>
+                          </Button>
+                        ) : null}
                       </div>
+                      {offer.status === "accepted" ? (
+                        // Employers can read and update placements but never
+                        // create one (permissions matrix), so the next step is
+                        // named rather than offered as a button that would 403.
+                        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                          {t("acceptedNextStepBody")}
+                        </p>
+                      ) : null}
                     </div>
                   )}
                 </li>
@@ -351,6 +376,15 @@ export default function EmployerOffersPage() {
                           <Eye className="me-1 h-3.5 w-3.5" />
                           {tc("view")}
                         </Button>
+                        {offer.status === "accepted" ? (
+                          <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs font-semibold" asChild
+                            title={t("acceptedNextStepBody")}>
+                            <Link href={`/${locale}/employer/placements`}>
+                              <UserCheck className="me-1 h-3.5 w-3.5" />
+                              {t("viewPlacements")}
+                            </Link>
+                          </Button>
+                        ) : null}
                         {offer.status === "pending" && !isExpired(offer) ? (
                           <Button size="dense" variant="ghost"
                             className="rounded-xl px-3 text-xs font-semibold text-status-rejected hover:bg-status-rejected-bg hover:text-status-rejected"

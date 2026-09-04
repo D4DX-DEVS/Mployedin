@@ -118,11 +118,19 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   // Outcome filter
   if (outcomeParam && ["passed", "failed", "hold", "no_show"].includes(outcomeParam)) {
     query.outcome = outcomeParam;
+  } else if (outcomeParam === "pending") {
+    // An interview that has already happened and still has no outcome recorded.
+    // The agent dashboard queue links this view, so it has to be a server
+    // filter — the client holds one page and could not find the rest.
+    query.outcome = { $in: [null, ""] };
+    query.scheduledAt = { ...(query.scheduledAt as Record<string, unknown> ?? {}), $lt: new Date() };
+    query.status = { $nin: ["cancelled", "rescheduled"] };
   }
 
-  // Date range filter
+  // Date range filter. Merges rather than replaces: outcome=pending already put
+  // an upper bound on scheduledAt and resetting the object would drop it.
   if (dateFrom || dateTo) {
-    query.scheduledAt = {};
+    query.scheduledAt = { ...(query.scheduledAt ?? {}) };
     if (dateFrom) query.scheduledAt.$gte = new Date(dateFrom);
     if (dateTo) {
       const end = new Date(dateTo);

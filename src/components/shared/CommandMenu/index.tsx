@@ -15,17 +15,37 @@ import {
 } from "@/components/ui/command";
 import type { NavGroup } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
+import { getQuickActions } from "@/lib/nav/quickActions";
+import { getEntitySearchRoutes } from "@/lib/nav/entitySearch";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface CommandMenuProps {
   navGroups: NavGroup[];
   locale: string;
+  userRole?: string;
 }
 
-export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
+interface EntityHits {
+  jobs: { id: string; title: string; status: string }[];
+  candidates: { id: string; name: string; jobTitle: string; status: string }[];
+  /* Employers, agents and platform users. The search API returns these for
+     admin only — that workspace is mostly people lookups, and the palette had
+     no way to answer one. Other roles receive an empty list and render no
+     group. Each entry carries its own href because the destination depends on
+     the record's role, not on the searching user. */
+  people: { id: string; name: string; detail: string; href: string }[];
+}
+
+const NO_HITS: EntityHits = { jobs: [], candidates: [], people: [] };
+
+export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
   const [open, setOpen] = useState(false);
   const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<EntityHits>(NO_HITS);
   const router = useRouter();
   const pathname = usePathname();
+  const { can } = usePermissions();
 
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
@@ -43,6 +63,7 @@ export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
   function handleSelect(href: string) {
     router.push(href);
     setOpen(false);
+    setQuery("");
   }
 
   const isAr = locale === "ar";
@@ -94,11 +115,157 @@ export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
     });
   }, [allItems, locale, pathname]);
 
+  // ── Actions ───────────────────────────────────────────────────────
+  // The palette used to answer only "where is X?". These entries answer
+  // "do X", so the action does not depend on first navigating to the page
+  // that happens to host its button.
+  const tActions = useTranslations("quickActions");
+  const quickActions = useMemo(
+    () =>
+      getQuickActions(userRole, locale).filter(
+        (action) => !action.permission || can(action.permission.resource, action.permission.action)
+      ),
+    [userRole, locale, can]
+  );
+
+  // ── Entity search ─────────────────────────────────────────────────
+  const entityRoutes = getEntitySearchRoutes(userRole);
+  const trimmedQuery = query.trim();
+
+  useEffect(() => {
+    if (!open || !entityRoutes || trimmedQuery.length < 2) {
+      setHits(NO_HITS);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(`/api/workspace-search?q=${encodeURIComponent(trimmedQuery)}`, {
+        signal: controller.signal,
+      })
+        .then((res) => (res.ok ? res.json() : NO_HITS))
+        .then((data: EntityHits) =>
+          setHits({
+            jobs: data.jobs ?? [],
+            candidates: data.candidates ?? [],
+            people: data.people ?? [],
+          })
+        )
+        .catch(() => {
+          // An aborted or failed lookup leaves navigation and actions intact —
+          // entity hits are an addition to the palette, never its content.
+        });
+    }, 250);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+     
+  }, [open, trimmedQuery, Boolean(entityRoutes)]);
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder={t("placeholder")} />
+      <CommandInput
+        placeholder={entityRoutes ? t(entityRoutes.placeholderKey ?? "placeholderWithEntities") : t("placeholder")}
+        value={query}
+        onValueChange={setQuery}
+      />
       <CommandList>
         <CommandEmpty>{t("noResults")}</CommandEmpty>
+
+        {quickActions.length > 0 && (
+          <>
+            <CommandGroup heading={t("actions")}>
+              {quickActions.map((action) => {
+                const Icon = getIcon(action.icon);
+                return (
+                  <CommandItem
+                    key={action.key}
+                    value={`${tActions(action.labelKey)} ${action.descriptionKey ? tActions(action.descriptionKey) : ""}`}
+                    onSelect={() => handleSelect(action.href)}
+                  >
+                    <Icon className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                    <div className="flex flex-col">
+                      <span>{tActions(action.labelKey)}</span>
+                      {action.descriptionKey && (
+                        <span className="text-xs text-muted-foreground">
+                          {tActions(action.descriptionKey)}
+                        </span>
+                      )}
+                    </div>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+
+        {entityRoutes && hits.jobs.length > 0 && (
+          <CommandGroup heading={t("jobsFound")}>
+            {hits.jobs.map((job) => {
+              const Icon = getIcon("Briefcase");
+              return (
+                <CommandItem
+                  key={`job-${job.id}`}
+                  value={`${job.title} ${trimmedQuery}`}
+                  onSelect={() => handleSelect(`/${locale}${entityRoutes.job(job.id)}`)}
+                >
+                  <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span>{job.title}</span>
+                    <span className="text-xs text-muted-foreground">{job.status}</span>
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
+
+        {hits.people.length > 0 && (
+          <CommandGroup heading={t("peopleFound")}>
+            {hits.people.map((person) => {
+              const Icon = getIcon("Building2");
+              return (
+                <CommandItem
+                  key={`person-${person.id}`}
+                  value={`${person.name} ${trimmedQuery}`}
+                  onSelect={() => handleSelect(`/${locale}${person.href}`)}
+                >
+                  <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span>{person.name}</span>
+                    {person.detail && (
+                      <span className="text-xs text-muted-foreground">{person.detail}</span>
+                    )}
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
+
+        {entityRoutes && hits.candidates.length > 0 && (
+          <CommandGroup heading={t(entityRoutes.candidateHeadingKey ?? "candidatesFound")}>
+            {hits.candidates.map((candidate) => {
+              const Icon = getIcon("UserSearch");
+              return (
+                <CommandItem
+                  key={`candidate-${candidate.id}`}
+                  value={`${candidate.name} ${trimmedQuery}`}
+                  onSelect={() => handleSelect(`/${locale}${entityRoutes.candidate(candidate.name)}`)}
+                >
+                  <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span>{candidate.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {candidate.jobTitle || candidate.status}
+                    </span>
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
 
         {recentItems.length > 0 && (
           <>

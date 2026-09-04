@@ -73,7 +73,21 @@ interface ReportData {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Months will be translated in component using t() function
+const getMonthsShort = (t: ReturnType<typeof useTranslations>) => [
+  t("monthJanuary"),
+  t("monthFebruary"),
+  t("monthMarch"),
+  t("monthApril"),
+  t("monthMay"),
+  t("monthJune"),
+  t("monthJuly"),
+  t("monthAugust"),
+  t("monthSeptember"),
+  t("monthOctober"),
+  t("monthNovember"),
+  t("monthDecember"),
+];
 
 function fmt(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
@@ -134,8 +148,9 @@ export default function SuperAgentCommissionsReportPage() {
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
+  const monthsShort = getMonthsShort(t);
   const chartData = data?.monthlyTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
+    name: monthsShort[m.month - 1],
     [t("chartMyOverride")]: m.overrideTotal,
     [t("chartTeamTotal")]: m.teamTotal,
   })) ?? [];

@@ -6,6 +6,7 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
@@ -494,15 +495,7 @@ export default function AdminCommissionsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-border/70 hover:bg-transparent">
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j}>
-                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={6} />
               ) : commissions.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={6} className="px-6 py-14 text-center">

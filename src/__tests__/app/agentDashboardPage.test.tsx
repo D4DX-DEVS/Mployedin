@@ -40,6 +40,27 @@ jest.mock("@/models/Job", () => ({
   },
 }));
 
+// The dashboard reads its queue through the shared work-queue module. Mocked
+// here so this stays a render test: importing it for real pulls in mongoose
+// models, and jest cannot transform bson's ESM build.
+const resolveAgentScopeMock = jest.fn();
+const getAgentQueueItemsMock = jest.fn();
+const getAgentActionCountsMock = jest.fn();
+
+jest.mock("@/lib/agents/workQueue", () => ({
+  __esModule: true,
+  resolveAgentScope: (...args: unknown[]) => resolveAgentScopeMock(...args),
+  getAgentQueueItems: (...args: unknown[]) => getAgentQueueItemsMock(...args),
+  getAgentActionCounts: (...args: unknown[]) => getAgentActionCountsMock(...args),
+  EMPTY_AGENT_COUNTS: {
+    overdueTasks: 0,
+    dueFollowUps: 0,
+    interviewsAwaitingOutcome: 0,
+    offersAwaitingResponse: 0,
+    newCandidates: 0,
+  },
+}));
+
 jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: {
@@ -56,6 +77,27 @@ describe("AgentDashboard", () => {
     jobFindMock.mockReset();
     jobCountDocumentsMock.mockReset();
     applicationAggregateMock.mockReset();
+    resolveAgentScopeMock.mockReset();
+    getAgentQueueItemsMock.mockReset();
+    getAgentActionCountsMock.mockReset();
+
+    resolveAgentScopeMock.mockResolvedValue({
+      agentId: "agent-1",
+      assignedEmployerIds: ["employer-1", "employer-2"],
+      portfolioJobIds: ["job-1"],
+      userId: "user-1",
+    });
+    getAgentQueueItemsMock.mockResolvedValue([
+      { kind: "followUp", id: "lead-1", subject: "Acme Trading", daysLate: 3, href: "/agent/leads?followUp=due" },
+      { kind: "task", id: "task-1", subject: "Call the Gulf Metals HR lead", daysLate: 1, href: "/agent/tasks?due=overdue" },
+    ]);
+    getAgentActionCountsMock.mockResolvedValue({
+      overdueTasks: 1,
+      dueFollowUps: 1,
+      interviewsAwaitingOutcome: 2,
+      offersAwaitingResponse: 0,
+      newCandidates: 5,
+    });
 
     authMock.mockResolvedValue({ user: { id: "user-1" } });
     connectDBMock.mockResolvedValue(undefined);
@@ -107,7 +149,13 @@ describe("AgentDashboard", () => {
     expect(screen.getByText("2 active accounts").closest(".workspace-glass-panel")).not.toBeNull();
     expect(screen.getByRole("heading", { name: /track which parts of the desk need attention/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(screen.getByRole("heading", { name: /jump into the work most agents do every day/i }).closest("section")).toHaveClass("workspace-panel-surface");
-    expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
+    // The queue replaced the "Recommended next" card, which was a three-branch
+    // guess and was hidden below `sm` anyway.
+    expect(screen.queryByRole("heading", { name: /recommended next/i })).toBeNull();
+    expect(screen.getByRole("heading", { name: /9 things need you today/i })).toBeInTheDocument();
+    expect(screen.getByText("Acme Trading")).toBeInTheDocument();
+    expect(screen.getByText("Call the Gulf Metals HR lead")).toBeInTheDocument();
+    expect(screen.getByText(/3 days late/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /desk at a glance/i })).toBeInTheDocument();
 
     expect(view.container.innerHTML).not.toContain("bg-white/80");

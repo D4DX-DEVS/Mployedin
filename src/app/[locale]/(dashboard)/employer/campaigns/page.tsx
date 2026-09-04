@@ -22,7 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useConfirm } from "@/hooks/useConfirm";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import {
   Mail,
   Loader2,
@@ -98,15 +98,14 @@ export default function EmployerCampaignsPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={Mail}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("subtitle")}
+        context={t("subtitle")}
         actions={
           total > 0 ? (
-            <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" />
-              {t("create")}
+            <Button onClick={() => setCreateOpen(true)} aria-label={t("create")} className="rounded-xl px-3 sm:px-4">
+              <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
+              <span className="hidden sm:inline">{t("create")}</span>
             </Button>
           ) : undefined
         }

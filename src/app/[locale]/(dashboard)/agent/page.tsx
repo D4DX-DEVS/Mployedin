@@ -18,7 +18,9 @@ import {
   Users,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
+import { DashboardSignalStrip } from "@/components/shared/DashboardOverview";
+import { AgentTodayQueue, type AgentTodayQueueLabels } from "@/components/features/agent/AgentTodayQueue";
+import { getAgentActionCounts, getAgentQueueItems, resolveAgentScope, EMPTY_AGENT_COUNTS } from "@/lib/agents/workQueue";
 
 export default async function AgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -228,35 +230,63 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     }
   }
 
-  const nextAction = totalApps > 0
-    ? {
-        title: t("actions.candidates.label"),
-        description: t("actions.candidates.note"),
-        href: `/${locale}/agent/candidates`,
-        icon: Users,
-        badge: t("taskFirst.attention"),
-      }
-    : activeJobs === 0
-      ? {
-          title: t("actions.postJob.label"),
-          description: t("actions.postJob.note"),
-          href: `/${locale}/agent/jobs/new`,
-          icon: BriefcaseBusiness,
-          badge: t("taskFirst.startHere"),
-        }
-      : {
-          title: t("actions.addEmployerLead.label"),
-          description: t("actions.addEmployerLead.note"),
-          href: `/${locale}/agent/leads/new`,
-          icon: Target,
-          badge: t("taskFirst.keepMoving"),
-        };
+  // The queue replaces a three-branch guess ("any applications at all? review
+  // candidates") with what is actually late. Both reads go through the same
+  // module the nav badges use, so the badge and this list always agree.
+  const scope = agentDoc ? await resolveAgentScope(String(session.user.id)) : null;
+  const [queueItems, queueCounts] = scope
+    ? await Promise.all([getAgentQueueItems(scope), getAgentActionCounts(scope)])
+    : [[], EMPTY_AGENT_COUNTS];
+
+  const tQueue = await getTranslations("agentQueue");
+  const queueTotal =
+    queueCounts.dueFollowUps +
+    queueCounts.overdueTasks +
+    queueCounts.interviewsAwaitingOutcome +
+    queueCounts.offersAwaitingResponse +
+    queueCounts.newCandidates;
+  // Strings are resolved here, not inside the panel: the shared dashboard
+  // components in this codebase take copy as props, and it keeps the panel a
+  // plain synchronous component.
+  const queueLabels: AgentTodayQueueLabels = {
+    eyebrow: tQueue("eyebrow"),
+    title: queueTotal > 0 ? tQueue("titleWithCount", { count: queueTotal }) : tQueue("titleClear"),
+    summary: {
+      dueFollowUps: tQueue("summary.dueFollowUps"),
+      overdueTasks: tQueue("summary.overdueTasks"),
+      interviewsAwaitingOutcome: tQueue("summary.interviewsAwaitingOutcome"),
+      offersAwaitingResponse: tQueue("summary.offersAwaitingResponse"),
+      newCandidates: tQueue("summary.newCandidates"),
+    },
+    kind: {
+      followUp: tQueue("kind.followUp"),
+      task: tQueue("kind.task"),
+      interviewOutcome: tQueue("kind.interviewOutcome"),
+      offerResponse: tQueue("kind.offerResponse"),
+      newCandidate: tQueue("kind.newCandidate"),
+    },
+    reason: {
+      followUp: tQueue("reason.followUp"),
+      task: tQueue("reason.task"),
+      interviewOutcome: tQueue("reason.interviewOutcome"),
+      offerResponse: tQueue("reason.offerResponse"),
+      newCandidate: tQueue("reason.newCandidate"),
+    },
+    lateness: Object.fromEntries(
+      queueItems.map((item) => [
+        `${item.kind}-${item.id}`,
+        item.daysLate > 0 ? tQueue("daysLate", { days: item.daysLate }) : tQueue("dueToday"),
+      ]),
+    ),
+    emptyTitle: tQueue("empty.title"),
+    emptyDescription: tQueue("empty.description"),
+  };
 
   const signals = [
     { label: t("kpis.activeEmployers"), value: employerCount, href: `/${locale}/agent/employers`, icon: Building2 },
-    { label: t("kpis.activeJobs"), value: activeJobs, href: `/${locale}/agent/jobs`, icon: BriefcaseBusiness },
-    { label: t("kpis.totalApplications"), value: totalApps, href: `/${locale}/agent/candidates`, icon: Users },
-    { label: t("kpis.placements"), value: kpis[3]?.value ?? 0, href: `/${locale}/agent/reports`, icon: CalendarCheck2 },
+    { label: t("kpis.activeJobs"), value: activeJobs, href: `/${locale}/agent/jobs?status=active`, icon: BriefcaseBusiness },
+    { label: t("kpis.totalApplications"), value: totalApps, href: `/${locale}/agent/candidates?status=applied`, icon: Users },
+    { label: t("kpis.placements"), value: kpis[3]?.value ?? 0, href: `/${locale}/agent/placements`, icon: CalendarCheck2 },
   ];
 
   return (
@@ -271,19 +301,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         }}
       />
 
-      <div className="max-sm:hidden">
-        <DashboardNextAction
-          headingId="agent-next-action"
-          title={t("taskFirst.recommendedNext")}
-          description={t("taskFirst.nextDescription")}
-          actionTitle={nextAction.title}
-          actionDescription={nextAction.description}
-          actionLabel={t("taskFirst.openAction")}
-          href={nextAction.href}
-          icon={nextAction.icon}
-          badge={nextAction.badge}
-        />
-      </div>
+      <AgentTodayQueue items={queueItems} counts={queueCounts} locale={locale} labels={queueLabels} />
 
       <DashboardSignalStrip
         headingId="agent-signals"

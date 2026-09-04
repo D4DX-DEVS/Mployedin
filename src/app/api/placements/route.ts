@@ -303,6 +303,23 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  // Admins oversee the platform's revenue events and were told about none of
+  // them — the super-agent had four dedicated triggers and admin had zero.
+  {
+    const { notifyAdminsPlacement } = await import("@/lib/notifications/trigger");
+    const [jsUser, jobDoc, empDoc] = await Promise.all([
+      jobSeekerId ? User.findById(jobSeekerId).select("name").lean() : null,
+      jobId ? Job.findById(jobId).select("title").lean() : null,
+      employerId ? Employer.findById(employerId).select("companyName").lean() : null,
+    ]);
+    notifyAdminsPlacement(
+      (jsUser as { name?: string })?.name ?? "A candidate",
+      (jobDoc as { title?: string })?.title ?? "a position",
+      (empDoc as { companyName?: string })?.companyName ?? "a company",
+      String(placement._id),
+    ).catch((err) => logger.error({ err, placementId: String(placement._id) }, "Failed to notify admins of new placement"));
+  }
+
   await logActivity({
     ...actorFromCtx(ctx),
     action: "placement.create",

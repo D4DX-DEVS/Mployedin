@@ -173,6 +173,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       status: "open",
       priority: "medium",
       category,
+      // The round-robin above already picked the owning admin; recording it
+      // here is what lets "assigned to me" be counted. The field and its index
+      // existed, but only the manual reassignment route ever wrote to it, so
+      // every ticket looked unassigned.
+      assignedTo: adminUser._id,
     },
     lastMessage: message,
     lastMessageAt: new Date(),
@@ -193,6 +198,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     conversation: conversation.toObject(),
     type: "customer_care",
   }).catch((err) => logger.error({ err, conversationId: conversation._id.toString() }, "Failed to notify admin of new customer care conversation"));
+
+  // Realtime only reaches an admin who happens to have the app open. A ticket
+  // assigned by name also needs a notification that survives being offline —
+  // this was the one queue in the product with an owner and no signal.
+  const { notifyAdminSupportTicketAssigned } = await import("@/lib/notifications/trigger");
+  notifyAdminSupportTicketAssigned(
+    adminUser._id.toString(),
+    jobSeekerUser.name ?? jobSeekerUser.email ?? "A job seeker",
+    conversation._id.toString(),
+  ).catch((err) =>
+    logger.error(
+      { err, conversationId: conversation._id.toString() },
+      "Failed to create support ticket notification",
+    ),
+  );
 
   await logActivity({
     ...actorFromCtx(ctx),

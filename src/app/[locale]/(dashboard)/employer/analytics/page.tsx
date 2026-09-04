@@ -56,8 +56,7 @@ import {
 } from "recharts";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { PageHero } from "@/components/shared/PageHero";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 
@@ -166,7 +165,6 @@ export default function EmployerAnalyticsPage() {
   const { data: offerAnalytics, refetch: refetchOffers } = useAnalyticsOffers(activeTab === "offers");
   const { data: diversityReport, refetch: refetchDiversity } = useDiversityReport(activeTab === "diversity");
 
-  const activeTabMeta = ANALYTICS_TABS.find((t) => t.key === activeTab) || ANALYTICS_TABS[0];
 
   // Only figures the funnel below does NOT already show. "Total applied" and
   // "Hired" lived here as well as in the Applied→Hired stage cards.
@@ -278,7 +276,7 @@ export default function EmployerAnalyticsPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHero title={t("title")} description={t("description")} />
+        <WorkspaceHeader title={t("title")} context={t("description")} />
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -297,7 +295,7 @@ export default function EmployerAnalyticsPage() {
   if (error) {
     return (
       <div className="page-container">
-        <PageHero title={t("title")} description={t("description")} />
+        <WorkspaceHeader title={t("title")} context={t("description")} />
 
         <AnalyticsPanel className="border-red-500/20 bg-red-500/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -324,52 +322,52 @@ export default function EmployerAnalyticsPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={activeTabMeta.icon}
-        title={t("title")}
-        description={t("description")}
-        // No `summary`: the "View focus" card repeated whichever tab is already
-        // highlighted in the selector right below the hero.
-        // compact: refresh/export icons share the title row on phones;
-        // compactOnMobile drops the two-line description there too.
-        compact
-        compactOnMobile
-        actions={
+      {/* Pattern A (compact workspace): title, one context line, the refresh
+          time as the header status, two icon actions, and the headline
+          metrics as the strip (their long notes lived in the old cards). */}
+      <WorkspaceHeader
+        title={
           <>
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-60"
-                  title={t("refreshNow")}
-                  aria-label={t("refreshNow")}
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-                  />
-                </button>
-                <button
-                  onClick={handleExportCSV}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected"
-                  title={t("exportCsv")}
-                  aria-label={t("exportCsv")}
-                >
-                  <Download className="h-4 w-4" />
-                </button>
+            <span className="sm:hidden">{t("titleShort")}</span>
+            <span className="hidden sm:inline">{t("title")}</span>
           </>
         }
-        metrics={headlineMetrics.map((metric) => ({
-          label: metric.label,
-          value: metric.value,
-          note: metric.description,
-          icon: metric.icon,
-        }))}
-        // Carries the date, not just the clock time: a bare "12:33" read the
-        // next morning gives no way to tell yesterday's refresh from today's.
-        footer={
-          <span className="text-xs text-muted-foreground" suppressHydrationWarning title={lastRefresh.toLocaleString()}>
+        context={<span className="hidden sm:inline">{t("description")}</span>}
+        status={
+          <span suppressHydrationWarning title={lastRefresh.toLocaleString()}>
             {t("lastRefresh")}: {lastRefresh.toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
           </span>
         }
+        actions={
+          <>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl sm:h-10 sm:w-10 border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-60"
+            title={t("refreshNow")}
+            aria-label={t("refreshNow")}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl sm:h-10 sm:w-10 border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected"
+            title={t("exportCsv")}
+            aria-label={t("exportCsv")}
+          >
+            <Download className="h-4 w-4" />
+          </button>
+          </>
+        }
+        metrics={headlineMetrics.length > 0 ? headlineMetrics.map((metric) => ({
+          label: metric.label,
+          value: metric.value,
+          icon: metric.icon,
+        })) : undefined}
       />
 
       <AnalyticsPanel className="p-2 sm:p-4">

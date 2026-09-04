@@ -38,7 +38,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -223,20 +223,17 @@ export default function TeamActivityLogsPage() {
           route to /employer/team, which has no side-menu entry, so it stays.
           compactOnMobile: the description repeats the Total Activities and Team
           Members stat cards right below. */}
-      <PageHero
-        compact
-        compactOnMobile
+      {/* Icon-only on phones — the labeled button crowded the title row. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description", { activities: formatCount(total), members: members.length })}
-        icon={Activity}
+        context={t("description", { activities: formatCount(total), members: members.length })}
         actions={
-          <Link href={`/${locale}/employer/team`}>
-            {/* Icon-only on phones — the labeled button crowded the title row. */}
-            <Button variant="outline" size="sm" aria-label={t("backToTeam")}>
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+          <Button asChild variant="outline" className="rounded-xl px-3 sm:px-4">
+            <Link href={`/${locale}/employer/team`} aria-label={t("backToTeam")}>
+              <ArrowLeft className="h-4 w-4 sm:me-2" aria-hidden="true" />
               <span className="hidden sm:inline">{t("backToTeam")}</span>
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 

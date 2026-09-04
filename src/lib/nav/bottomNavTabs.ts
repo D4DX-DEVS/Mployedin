@@ -1,5 +1,5 @@
 import type { UserRole } from "@/types/user";
-import type { NavItem } from "./menuConfig";
+import type { NavItem, NavBadgeKey } from "./menuConfig";
 import type { IconName } from "./iconRegistry";
 
 export interface BottomNavTabConfig {
@@ -11,6 +11,14 @@ export interface BottomNavTabConfig {
   labelKey: string;
   /** Exact pathname match instead of startsWith — set on the dashboard root tab. */
   exact?: boolean;
+  /**
+   * Live counter painted on this tab. Counts whose destination IS a visible tab
+   * belong here; the "More" tab only carries the counts whose destination is
+   * hidden behind it. Before this, every count landed on "More" — so employer
+   * and agent saw the unread badge on the drawer while the Messages tab beside
+   * it sat blank.
+   */
+  badgeKey?: NavBadgeKey;
 }
 
 /**
@@ -19,23 +27,36 @@ export interface BottomNavTabConfig {
  * these destinations on mobile and avoid showing them twice.
  */
 export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabConfig[]>> = {
+  // Three tabs, not four. With "More" and the raised Create control the bar was
+  // six slots wide, which pushed Create a third of a tab right of centre and
+  // left every label cramped. Messages moved up to the header, where it is one
+  // tap and carries its own unread badge.
   employer: [
-    { key: "dashboard", href: "/employer", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },
+    { key: "dashboard", href: "/employer", icon: "LayoutDashboard", labelKey: "home", exact: true },
     { key: "jobs", href: "/employer/jobs", icon: "Briefcase", labelKey: "jobs" },
-    { key: "applications", href: "/employer/applications", icon: "FileText", labelKey: "applications" },
-    { key: "interviews", href: "/employer/interviews", icon: "Calendar", labelKey: "interviews" },
+    { key: "hiring", href: "/employer/applications", icon: "FileText", labelKey: "hiring" },
   ],
+  // An admin's phone work is monitoring, people and answering support — not
+  // browsing job posts, which stays one tap away behind "More" and in ⌘K. The
+  // inbox tab replaces Jobs because support tickets are assigned to a named
+  // admin and had no signal anywhere on mobile.
   admin: [
     { key: "dashboard", href: "/admin", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },
-    { key: "jobs", href: "/admin/jobs", icon: "Briefcase", labelKey: "jobs" },
-    { key: "users", href: "/admin/users", icon: "Users", labelKey: "users" },
     { key: "applications", href: "/admin/applications", icon: "FileText", labelKey: "applications" },
+    { key: "users", href: "/admin/users", icon: "Users", labelKey: "users" },
+    { key: "messages", href: "/admin/messages", icon: "MessageSquare", labelKey: "inbox", badgeKey: "unreadMessages" },
   ],
   agent: [
     { key: "dashboard", href: "/agent", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },
     { key: "jobs", href: "/agent/jobs", icon: "Briefcase", labelKey: "jobs" },
-    { key: "leads", href: "/agent/leads", icon: "Target", labelKey: "leads" },
-    { key: "messages", href: "/agent/messages", icon: "MessageSquare", labelKey: "messages" },
+    { key: "leads", href: "/agent/leads", icon: "Target", labelKey: "leads", badgeKey: "dueFollowUps" },
+    { key: "messages", href: "/agent/messages", icon: "MessageSquare", labelKey: "messages", badgeKey: "unreadMessages" },
+  ],
+  job_seeker: [
+    { key: "home", href: "/job-seeker", icon: "LayoutDashboard", labelKey: "home", exact: true },
+    { key: "jobs", href: "/job-seeker/jobs", icon: "Briefcase", labelKey: "jobs" },
+    { key: "applications", href: "/job-seeker/applications", icon: "FileText", labelKey: "applications" },
+    { key: "profile", href: "/job-seeker/profile", icon: "UserCircle", labelKey: "profile" },
   ],
   super_agent: [
     { key: "dashboard", href: "/super-agent", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },

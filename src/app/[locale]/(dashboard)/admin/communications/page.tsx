@@ -178,7 +178,7 @@ export default function AdminCommunicationsPage() {
         setTimeout(() => setSentCount(null), 4000);
       } else {
         const data = await res.json();
-        const msg = data.error ?? "Failed to send broadcast";
+        const msg = data.error ?? tr("broadcastFailed");
         setError(msg);
         toast.error(msg);
       }

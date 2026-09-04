@@ -102,6 +102,7 @@ export const GET = withAuth(async (req: NextRequest, ctx, params) => {
       createdAt: agent.createdAt,
     },
     user: {
+      _id: user?._id,
       name: user?.name ?? "Unknown",
       email: user?.email ?? "",
       isActive: user?.isActive ?? false,

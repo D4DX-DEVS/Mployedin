@@ -46,6 +46,16 @@ export interface IWebhookDelivery {
   responseTime?: number;
   error?: string;
   deliveredAt: Date;
+  /**
+   * The exact body that was sent, retained for failed deliveries only.
+   *
+   * An admin could see that a delivery failed and do nothing about it — the
+   * only way to re-send was to make the underlying event happen again. Storing
+   * the payload is what makes redelivery a real replay rather than a fresh
+   * ping. Successful deliveries do not keep it: there is nothing to replay and
+   * the log holds 50 entries per webhook.
+   */
+  payload?: string;
 }
 
 export interface IWebhook extends Document {
@@ -67,6 +77,7 @@ export interface IWebhook extends Document {
 
 const WebhookDeliverySchema = new Schema<IWebhookDelivery>(
   {
+    payload: { type: String },
     event: { type: String, required: true },
     status: { type: String, enum: ["success", "failed"], required: true },
     statusCode: Number,

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,8 @@ import {
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilters } from "@/hooks/useUrlFilter";
+import { useQueryFlag } from "@/hooks/useQueryFlag";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentPageIntro,
@@ -57,7 +59,7 @@ function aiRowData(a: AgentRow) {
 }
 
 /* ── Filter types ── */
-interface Filters {
+interface Filters extends Record<string, string> {
   search: string;
   performance: string;
   leadsMin: string;
@@ -126,6 +128,8 @@ function parseRange(value: string): { min: string; max: string } {
 
 export default function SuperAgentAgentsPage() {
   const router = useRouter();
+  const locale = useLocale();
+  const searchParams = useSearchParams();
   const t = useTranslations("superAgentAgents");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
@@ -135,12 +139,17 @@ export default function SuperAgentAgentsPage() {
   // page on screen. The API computes them before slicing.
   const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
-  // Create agent modal state
-  const [showCreate, setShowCreate] = useState(false);
+  const { filters, setFilter, resetFilters } = useUrlFilters(
+    INITIAL_FILTERS,
+    { debounceKeys: ["search"], debounceMs: 400 }
+  );
+
+  // Create agent modal state — addressable as ?new=1 so the global Create menu
+  // can open it from any page.
+  const [showCreate, setShowCreate] = useQueryFlag("new");
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", commissionRate: "0" });
   const [createCityIds, setCreateCityIds] = useState<string[]>([]);
   const [createStateIds, setCreateStateIds] = useState<string[]>([]);
@@ -225,38 +234,27 @@ export default function SuperAgentAgentsPage() {
     }
   };
 
-  /* ── Filter helpers ── */
-  const updateFilter = useCallback((key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    resetPage();
-  }, [resetPage]);
-
-  const resetFilters = useCallback(() => {
-    setFilters(INITIAL_FILTERS);
-    resetPage();
-  }, [resetPage]);
-
   const handleLeadsRange = useCallback((value: string) => {
     const { min, max } = parseRange(value);
-    setFilters((prev) => ({ ...prev, leadsMin: min, leadsMax: max }));
+    setFilter("leadsMin", min);
+    setFilter("leadsMax", max);
     resetPage();
-  }, [resetPage]);
+  }, [setFilter, resetPage]);
 
   const handleConvRateRange = useCallback((value: string) => {
     const { min, max } = parseRange(value);
-    setFilters((prev) => ({ ...prev, convRateMin: min, convRateMax: max }));
+    setFilter("convRateMin", min);
+    setFilter("convRateMax", max);
     resetPage();
-  }, [resetPage]);
+  }, [setFilter, resetPage]);
 
   /* ── Column sort ── */
   const toggleSort = useCallback((field: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      sortBy: field,
-      sortOrder: prev.sortBy === field && prev.sortOrder === "asc" ? "desc" : "asc",
-    }));
+    const newOrder = filters.sortBy === field && filters.sortOrder === "asc" ? "desc" : "asc";
+    setFilter("sortBy", field);
+    setFilter("sortOrder", newOrder);
     resetPage();
-  }, [resetPage]);
+  }, [filters.sortBy, filters.sortOrder, setFilter, resetPage]);
 
   /* ── Performance badge logic ── */
   function getPerformanceBadge(agent: AgentRow) {
@@ -360,7 +358,7 @@ export default function SuperAgentAgentsPage() {
         {/* ── Search Row + Advanced Toggle ── */}
         <TableToolbar
           search={filters.search}
-          onSearchChange={(v) => updateFilter("search", v)}
+          onSearchChange={(v) => { setFilter("search", v); resetPage(); }}
           searchPlaceholder={t("searchAgentsPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
@@ -370,7 +368,7 @@ export default function SuperAgentAgentsPage() {
             (activeFilterCount > 0 || filters.search || filters.performance) ? (
               <button
                 type="button"
-                onClick={resetFilters}
+                onClick={() => { resetFilters(); resetPage(); }}
                 className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -387,7 +385,7 @@ export default function SuperAgentAgentsPage() {
                   <SearchableSelect
                     options={getPerformanceOptions(t)}
                     value={filters.performance}
-                    onValueChange={(v) => updateFilter("performance", v)}
+                    onValueChange={(v) => { setFilter("performance", v); resetPage(); }}
                     placeholder={t("allAgents")}
                     searchPlaceholder={t("filterPerformancePlaceholder")}
                     className="h-11 rounded-xl border-border bg-card"
@@ -424,7 +422,7 @@ export default function SuperAgentAgentsPage() {
                   <SearchableSelect
                     options={getSortOptions(t, tc)}
                     value={filters.sortBy}
-                    onValueChange={(v) => updateFilter("sortBy", v)}
+                    onValueChange={(v) => { setFilter("sortBy", v); resetPage(); }}
                     placeholder={tc("name")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
@@ -439,7 +437,7 @@ export default function SuperAgentAgentsPage() {
                       { value: "desc", label: t("descending") },
                     ]}
                     value={filters.sortOrder}
-                    onValueChange={(v) => updateFilter("sortOrder", v)}
+                    onValueChange={(v) => { setFilter("sortOrder", v); resetPage(); }}
                     placeholder={t("ascending")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
@@ -450,10 +448,10 @@ export default function SuperAgentAgentsPage() {
               <div className="flex flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilterLabel")}:</span>
                 {[
-                  { label: t("quickFilterTopPerformers"), action: () => updateFilter("performance", "high_performer") },
-                  { label: t("quickFilterNeedsAttention"), action: () => updateFilter("performance", "needs_attention") },
-                  { label: t("quickFilterSlowResponders"), action: () => updateFilter("performance", "slow_response") },
-                  { label: t("quickFilterNoActivity"), action: () => updateFilter("performance", "no_activity") },
+                  { label: t("quickFilterTopPerformers"), action: () => { setFilter("performance", "high_performer"); resetPage(); } },
+                  { label: t("quickFilterNeedsAttention"), action: () => { setFilter("performance", "needs_attention"); resetPage(); } },
+                  { label: t("quickFilterSlowResponders"), action: () => { setFilter("performance", "slow_response"); resetPage(); } },
+                  { label: t("quickFilterNoActivity"), action: () => { setFilter("performance", "no_activity"); resetPage(); } },
                   { label: t("quickFilterHighVolume"), action: () => handleLeadsRange("51+") },
                   { label: t("quickFilterBestConverters"), action: () => handleConvRateRange("76-100") },
                 ].map((chip) => (
@@ -511,7 +509,7 @@ export default function SuperAgentAgentsPage() {
                 <TableRow
                   key={a._id}
                   className="bg-transparent cursor-pointer hover:bg-muted/40 transition-colors"
-                  onClick={() => router.push(`agents/${a.agentId}`)}
+                  onClick={() => router.push(`/${locale}/super-agent/agents/${a.agentId}`)}
                 >
                   <TableCell>
                     {/* `grid`, not `flex-col`: the card layout re-flows any
@@ -583,7 +581,16 @@ export default function SuperAgentAgentsPage() {
       </SuperAgentSection>
 
       {/* ── Create Agent Dialog ──────────────────────────── */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      <Dialog open={showCreate} onOpenChange={(open) => {
+        setShowCreate(open);
+        if (!open) {
+          // Remove ?new parameter from URL when closing the dialog
+          const params = new URLSearchParams(searchParams?.toString());
+          params.delete("new");
+          const newUrl = params.toString() ? `?${params.toString()}` : "";
+          window.history.replaceState(null, "", newUrl);
+        }
+      }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("dialogAddNewAgent")}</DialogTitle>

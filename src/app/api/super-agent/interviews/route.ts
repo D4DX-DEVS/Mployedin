@@ -19,12 +19,17 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const status = url.searchParams.get("status") ?? "";
   const type = url.searchParams.get("type") ?? "";
 
-  // Dual-scoping: team agents + region-based agents
-  const scope = await getSuperAgentScope(ctx.userId);
-  const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
-
   const filter: Record<string, unknown> = {};
-  if (agentIds.length > 0) {
+
+  // Dual-scoping: team agents + region-based agents. Admin is the only role
+  // that reads unscoped here — a super_agent with an empty scope must see
+  // nothing, not everything. The previous `if (agentIds.length > 0)` had no
+  // else, so a super-agent with no roster and no region overlap (or no
+  // SuperAgent document at all) queried Interview.find({}) — every interview
+  // on the platform, plus the same leak in the three status counts below.
+  if (ctx.role !== "admin") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
     filter.agentId = { $in: agentIds };
   }
   if (status && status !== "all") filter.status = status;

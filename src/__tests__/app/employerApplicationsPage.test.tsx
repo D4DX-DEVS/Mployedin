@@ -41,6 +41,13 @@ jest.mock("@tanstack/react-query", () => {
   };
 });
 
+// The panel's Message action opens a DM; the mutation is not what these tests
+// exercise, and useMutation would need a QueryClientProvider.
+jest.mock("@/hooks/useCandidates", () => ({
+  ...jest.requireActual("@/hooks/useCandidates"),
+  useStartConversation: () => ({ mutateAsync: jest.fn() }),
+}));
+
 jest.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({ can: () => true }),
 }));

@@ -10,6 +10,8 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { readQuery } from "@/lib/ui/urlQuery";
 import {
   CheckSquare, Plus, Clock, AlertCircle, CheckCircle2,
   Trash2, Edit, Calendar, RotateCcw, Search, Inbox, Star,
@@ -76,9 +78,15 @@ export default function AgentTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0, overdue: 0 });
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  // Filters live in the query string so the dashboard queue and the nav badge
+  // can link straight to "overdue tasks" instead of dropping the agent on an
+  // unfiltered list and asking them to narrow it again.
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
+  const [dueFilter, setDueFilter] = useUrlFilter("due", "all");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  // The Create menu and ⌘K link `?new=1` so "New task" starts the task instead
+  // of dropping the agent on the list beside the button that starts it.
+  const [showForm, setShowForm] = useState(() => readQuery().get("new") === "1");
 
   /* New task form */
   const [newTask, setNewTask] = useState({
@@ -91,6 +99,7 @@ export default function AgentTasksPage() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (dueFilter !== "all") params.set("due", dueFilter);
       if (search) params.set("search", search);
 
       const res = await fetch(`/api/agent/tasks?${params}`);
@@ -105,10 +114,10 @@ export default function AgentTasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search, page, limit, updateTotal, t]);
+  }, [statusFilter, dueFilter, search, page, limit, updateTotal, t]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
-  useEffect(() => { resetPage(); }, [statusFilter, search, resetPage]);
+  useEffect(() => { resetPage(); }, [statusFilter, dueFilter, search, resetPage]);
 
   const createTask = async () => {
     if (!newTask.title.trim()) {
@@ -188,11 +197,29 @@ export default function AgentTasksPage() {
             <Plus className="mr-1 h-4 w-4" /> {t("newTaskButton")}
           </Button>
         }
+        // The strip used to be four dead numbers. Each cell is now the filter
+        // it describes, so "Overdue 6" is the way into those six tasks.
         metrics={[
-          { label: t("statPending"), value: stats.pending, icon: Clock },
-          { label: t("statInProgress"), value: stats.inProgress, icon: Star },
-          { label: t("statCompleted"), value: stats.completed, icon: CheckCircle2 },
-          { label: t("statOverdue"), value: stats.overdue, icon: AlertCircle },
+          {
+            label: t("statPending"), value: stats.pending, icon: Clock,
+            onClick: () => setStatusFilter(statusFilter === "pending" ? "all" : "pending"),
+            active: statusFilter === "pending",
+          },
+          {
+            label: t("statInProgress"), value: stats.inProgress, icon: Star,
+            onClick: () => setStatusFilter(statusFilter === "in_progress" ? "all" : "in_progress"),
+            active: statusFilter === "in_progress",
+          },
+          {
+            label: t("statCompleted"), value: stats.completed, icon: CheckCircle2,
+            onClick: () => setStatusFilter(statusFilter === "completed" ? "all" : "completed"),
+            active: statusFilter === "completed",
+          },
+          {
+            label: t("statOverdue"), value: stats.overdue, icon: AlertCircle,
+            onClick: () => setDueFilter(dueFilter === "overdue" ? "all" : "overdue"),
+            active: dueFilter === "overdue",
+          },
         ]}
         compactMetrics
       />
@@ -226,7 +253,7 @@ export default function AgentTasksPage() {
             <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9" />
           </div>
           <SearchableSelect options={getStatusOptions(t)} value={statusFilter} onValueChange={setStatusFilter} placeholder={tc("status")} className="w-36" />
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }} className="min-h-11 min-w-11">
+          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); }} className="min-h-11 min-w-11">
             <RotateCcw className="me-1 h-4 w-4" /> {t("resetButton")}
           </Button>
         </div>

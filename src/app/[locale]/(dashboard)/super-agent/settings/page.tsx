@@ -45,15 +45,24 @@ const COUNTRIES = Object.entries(COUNTRY_CURRENCIES).map(([code, info]) => ({
 
 type TabKey = "profile" | "region" | "commission" | "invoice" | "notifications" | "availability" | "security";
 
-const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Globe }[] = [
-  { key: "profile", label: "Profile & Avatar", desc: "Photo, name & display info", icon: UserCircle },
-  { key: "region", label: "Region & Currency", desc: "Country, currency, display", icon: Globe },
-  { key: "commission", label: "Commission Rate", desc: "Override rate for placements", icon: Percent },
-  { key: "invoice", label: "Invoice Defaults", desc: "Billing & invoice presets", icon: Receipt },
-  { key: "notifications", label: "Notifications", desc: "Email & in-app alerts", icon: Bell },
-  { key: "availability", label: "Availability", desc: "Timezone & working hours", icon: Clock },
-  { key: "security", label: "Account & Security", desc: "Password & account actions", icon: Shield },
+const NAV_ITEM_KEYS: { key: TabKey; labelKey: string; descKey: string; icon: typeof Globe }[] = [
+  { key: "profile", labelKey: "navProfileLabel", descKey: "navProfileDesc", icon: UserCircle },
+  { key: "region", labelKey: "navRegionLabel", descKey: "navRegionDesc", icon: Globe },
+  { key: "commission", labelKey: "navCommissionLabel", descKey: "navCommissionDesc", icon: Percent },
+  { key: "invoice", labelKey: "navInvoiceLabel", descKey: "navInvoiceDesc", icon: Receipt },
+  { key: "notifications", labelKey: "navNotificationsLabel", descKey: "navNotificationsDesc", icon: Bell },
+  { key: "availability", labelKey: "navAvailabilityLabel", descKey: "navAvailabilityDesc", icon: Clock },
+  { key: "security", labelKey: "navSecurityLabel", descKey: "navSecurityDesc", icon: Shield },
 ];
+
+// Helper to resolve nav items with translations
+function getNavItems(t: ReturnType<typeof useTranslations>) {
+  return NAV_ITEM_KEYS.map(item => ({
+    ...item,
+    label: t(item.labelKey),
+    desc: t(item.descKey),
+  }));
+}
 
 type Channel = "in_app" | "email";
 type CategoryKey = "placements" | "commissions" | "team" | "jobs" | "system";
@@ -69,25 +78,51 @@ interface NotifPrefs {
   timezone: string;
 }
 
-const SA_CATEGORIES: { key: CategoryKey; icon: typeof Bell; label: string; desc: string }[] = [
-  { key: "placements", icon: Users, label: "Placements & Agents", desc: "Agent placements, candidate progress, and team activity" },
-  { key: "commissions", icon: DollarSign, label: "Commission Updates", desc: "New commissions earned, payouts, and rate changes" },
-  { key: "team", icon: Briefcase, label: "Team Performance", desc: "Weekly agent performance summaries and milestones" },
-  { key: "jobs", icon: FileText, label: "Job Updates", desc: "New job postings, expirations, and market changes" },
-  { key: "system", icon: Shield, label: "System & Security", desc: "Login alerts, platform notices, and security events" },
+const SA_CATEGORY_KEYS: { key: CategoryKey; icon: typeof Bell; labelKey: string; descKey: string }[] = [
+  { key: "placements", icon: Users, labelKey: "categoryPlacementsLabel", descKey: "categoryPlacementsDesc" },
+  { key: "commissions", icon: DollarSign, labelKey: "categoryCommissionsLabel", descKey: "categoryCommissionsDesc" },
+  { key: "team", icon: Briefcase, labelKey: "categoryTeamLabel", descKey: "categoryTeamDesc" },
+  { key: "jobs", icon: FileText, labelKey: "categoryJobsLabel", descKey: "categoryJobsDesc" },
+  { key: "system", icon: Shield, labelKey: "categorySystemLabel", descKey: "categorySystemDesc" },
 ];
 
-const FREQ_OPTIONS: { value: EmailFrequency; label: string; desc: string }[] = [
-  { value: "instant", label: "Instant", desc: "As events happen" },
-  { value: "daily", label: "Daily", desc: "One email/day" },
-  { value: "weekly", label: "Weekly", desc: "Sunday summary" },
-  { value: "none", label: "Off", desc: "In-app only" },
+// Helper to resolve categories with translations
+function getSaCategories(t: ReturnType<typeof useTranslations>) {
+  return SA_CATEGORY_KEYS.map(cat => ({
+    ...cat,
+    label: t(cat.labelKey),
+    desc: t(cat.descKey),
+  }));
+}
+
+const FREQ_OPTION_KEYS: { value: EmailFrequency; labelKey: string; descKey: string }[] = [
+  { value: "instant", labelKey: "freqInstantLabel", descKey: "freqInstantDesc" },
+  { value: "daily", labelKey: "freqDailyLabel", descKey: "freqDailyDesc" },
+  { value: "weekly", labelKey: "freqWeeklyLabel", descKey: "freqWeeklyDesc" },
+  { value: "none", labelKey: "freqNoneLabel", descKey: "freqNoneDesc" },
 ];
 
-const CH_LABELS: Record<Channel, { label: string; Icon: typeof Bell }> = {
-  in_app: { label: "In-App", Icon: Bell },
-  email: { label: "Email", Icon: Mail },
+// Helper to resolve frequency options with translations
+function getFreqOptions(t: ReturnType<typeof useTranslations>) {
+  return FREQ_OPTION_KEYS.map(opt => ({
+    ...opt,
+    label: t(opt.labelKey),
+    desc: t(opt.descKey),
+  }));
+}
+
+const CH_LABEL_KEYS: Record<Channel, { labelKey: string; Icon: typeof Bell }> = {
+  in_app: { labelKey: "channelInApp", Icon: Bell },
+  email: { labelKey: "channelEmail", Icon: Mail },
 };
+
+// Helper to resolve channel labels with translations
+function getChLabels(t: ReturnType<typeof useTranslations>): Record<Channel, { label: string; Icon: typeof Bell }> {
+  return {
+    in_app: { label: t(CH_LABEL_KEYS.in_app.labelKey), Icon: Bell },
+    email: { label: t(CH_LABEL_KEYS.email.labelKey), Icon: Mail },
+  };
+}
 
 const TIMEZONES = [
   "Asia/Dubai", "Asia/Riyadh", "Asia/Kolkata", "Asia/Karachi", "Asia/Cairo",
@@ -175,7 +210,7 @@ function ProfileTab() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileSnap, setProfileSnap] = useState("");
 
-  const userName = session?.user?.name ?? "Super Agent";
+  const userName = session?.user?.name ?? t("superAgentRole");
   const userEmail = session?.user?.email ?? "";
 
   // Load profile data
@@ -661,6 +696,9 @@ function CommissionTab() {
 function NotificationsTab() {
   const t = useTranslations("superAgentSettings");
   const tc = useTranslations("common");
+  const saCategories = getSaCategories(t);
+  const freqOptions = getFreqOptions(t);
+  const chLabels = getChLabels(t);
   const defaultPrefs: NotifPrefs = {
     emailFrequency: "daily",
     categories: {
@@ -757,7 +795,7 @@ function NotificationsTab() {
       <SectionCard>
         <SectionHeader icon={Clock} title={t("emailFrequency")} description={t("emailFrequencyDesc")} />
         <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {FREQ_OPTIONS.map((opt) => (
+          {freqOptions.map((opt) => (
             <button
               key={opt.value}
               type="button"
@@ -806,7 +844,7 @@ function NotificationsTab() {
       <SectionCard>
         <SectionHeader icon={Bell} title={t("notificationCategories")} description={t("notificationCategoriesDesc")} />
         <div className="divide-y divide-border/30">
-          {SA_CATEGORIES.map((cat) => {
+          {saCategories.map((cat) => {
             const pref = prefs.categories[cat.key];
             return (
               <div key={cat.key} className="px-4 py-4">
@@ -835,8 +873,8 @@ function NotificationsTab() {
                 </div>
                 {pref.enabled && (
                   <div className="flex items-center gap-2 mt-3 ml-11">
-                    {(Object.keys(CH_LABELS) as Channel[]).map((ch) => {
-                      const { label, Icon: ChIcon } = CH_LABELS[ch];
+                    {(Object.keys(CH_LABEL_KEYS) as Channel[]).map((ch) => {
+                      const { label, Icon: ChIcon } = chLabels[ch];
                       const active = pref.channels.includes(ch);
                       return (
                         <button
@@ -1028,40 +1066,64 @@ function AvailabilityTab() {
 
 // ─── Tab: Invoice Defaults ────────────────────────────────────────────────────
 
-const INVOICE_CATEGORIES = [
-  { value: "recruitment", label: "Recruitment Placement" },
-  { value: "subscription", label: "Employer Subscription" },
-  { value: "premium_posting", label: "Premium Job Posting" },
-  { value: "featured_promotion", label: "Featured Employer Promotion" },
-  { value: "exhibition", label: "Exhibition Billing" },
-  { value: "bulk_hiring", label: "Bulk Hiring Package" },
-  { value: "consulting", label: "Consulting Fee" },
-  { value: "custom_enterprise", label: "Custom Enterprise Billing" },
+const INVOICE_CATEGORY_KEYS = [
+  { value: "recruitment", labelKey: "invoiceCategoryRecruitment" },
+  { value: "subscription", labelKey: "invoiceCategorySubscription" },
+  { value: "premium_posting", labelKey: "invoiceCategoryPremiumPosting" },
+  { value: "featured_promotion", labelKey: "invoiceCategoryFeaturedPromotion" },
+  { value: "exhibition", labelKey: "invoiceCategoryExhibition" },
+  { value: "bulk_hiring", labelKey: "invoiceCategoryBulkHiring" },
+  { value: "consulting", labelKey: "invoiceCategoryConsulting" },
+  { value: "custom_enterprise", labelKey: "invoiceCategoryCustomEnterprise" },
 ];
 
-const INVOICE_TAX_TYPES = [
-  { value: "none", label: "No Tax" },
-  { value: "gst", label: "GST" },
-  { value: "vat", label: "VAT" },
-  { value: "reverse_charge", label: "Reverse Charge" },
-  { value: "sales_tax", label: "Sales Tax" },
-  { value: "service_tax", label: "Service Tax" },
-  { value: "withholding_tax", label: "Withholding Tax" },
-  { value: "tds", label: "TDS" },
-  { value: "pst", label: "PST" },
-  { value: "hst", label: "HST" },
+// Helper to resolve invoice categories with translations
+function getInvoiceCategories(t: ReturnType<typeof useTranslations>) {
+  return INVOICE_CATEGORY_KEYS.map(cat => ({
+    value: cat.value,
+    label: t(cat.labelKey),
+  }));
+}
+
+const INVOICE_TAX_TYPE_KEYS = [
+  { value: "none", labelKey: "invoiceTaxNone" },
+  { value: "gst", labelKey: "invoiceTaxGst" },
+  { value: "vat", labelKey: "invoiceTaxVat" },
+  { value: "reverse_charge", labelKey: "invoiceTaxReverseCharge" },
+  { value: "sales_tax", labelKey: "invoiceTaxSalesTax" },
+  { value: "service_tax", labelKey: "invoiceTaxServiceTax" },
+  { value: "withholding_tax", labelKey: "invoiceTaxWithholdingTax" },
+  { value: "tds", labelKey: "invoiceTaxTds" },
+  { value: "pst", labelKey: "invoiceTaxPst" },
+  { value: "hst", labelKey: "invoiceTaxHst" },
 ];
 
-const INVOICE_PAYMENT_TERMS = [
-  { value: "immediate", label: "Immediate" },
-  { value: "net_7", label: "Net 7 days" },
-  { value: "net_15", label: "Net 15 days" },
-  { value: "net_30", label: "Net 30 days" },
-  { value: "net_45", label: "Net 45 days" },
-  { value: "net_60", label: "Net 60 days" },
-  { value: "net_90", label: "Net 90 days" },
-  { value: "custom", label: "Custom" },
+// Helper to resolve invoice tax types with translations
+function getInvoiceTaxTypes(t: ReturnType<typeof useTranslations>) {
+  return INVOICE_TAX_TYPE_KEYS.map(tax => ({
+    value: tax.value,
+    label: t(tax.labelKey),
+  }));
+}
+
+const INVOICE_PAYMENT_TERM_KEYS = [
+  { value: "immediate", labelKey: "invoicePaymentImmediate" },
+  { value: "net_7", labelKey: "invoicePaymentNet7" },
+  { value: "net_15", labelKey: "invoicePaymentNet15" },
+  { value: "net_30", labelKey: "invoicePaymentNet30" },
+  { value: "net_45", labelKey: "invoicePaymentNet45" },
+  { value: "net_60", labelKey: "invoicePaymentNet60" },
+  { value: "net_90", labelKey: "invoicePaymentNet90" },
+  { value: "custom", labelKey: "invoicePaymentCustom" },
 ];
+
+// Helper to resolve invoice payment terms with translations
+function getInvoicePaymentTerms(t: ReturnType<typeof useTranslations>) {
+  return INVOICE_PAYMENT_TERM_KEYS.map(term => ({
+    value: term.value,
+    label: t(term.labelKey),
+  }));
+}
 
 interface InvoiceDefaultsState {
   defaultCurrency: string;
@@ -1100,6 +1162,9 @@ const EMPTY_DEFAULTS: InvoiceDefaultsState = {
 function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defaults" }: { apiBase?: string }) {
   const t = useTranslations("superAgentSettings");
   const tc = useTranslations("common");
+  const invoiceCategories = getInvoiceCategories(t);
+  const invoiceTaxTypes = getInvoiceTaxTypes(t);
+  const invoicePaymentTerms = getInvoicePaymentTerms(t);
   const [form, setForm] = useState<InvoiceDefaultsState>(EMPTY_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1267,7 +1332,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {INVOICE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  {invoiceCategories.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1295,7 +1360,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {INVOICE_TAX_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    {invoiceTaxTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1317,7 +1382,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {INVOICE_PAYMENT_TERMS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    {invoicePaymentTerms.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1400,21 +1465,6 @@ function SecurityTab() {
       <TwoFactorCard />
 
       <ChangeEmailCard />
-
-      <SectionCard>
-        <SectionHeader icon={AlertTriangle} title={t("dangerZone")} description={t("dangerZoneDesc")} />
-        <div className="p-6">
-          <div className="flex items-center justify-between rounded-xl border border-destructive/20 bg-destructive/5 card-pad">
-            <div>
-              <p className="text-sm font-medium text-destructive">{t("deactivateAccount")}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("deactivateAccountDesc")}</p>
-            </div>
-            <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10">
-              {t("deactivateButton")}
-            </Button>
-          </div>
-        </div>
-      </SectionCard>
     </>
   );
 }
@@ -1424,6 +1474,7 @@ function SecurityTab() {
 export default function SuperAgentSettingsPage() {
   const t = useTranslations("superAgentSettings");
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
+  const navItems = getNavItems(t);
 
   return (
     <div className="page-container">
@@ -1437,7 +1488,7 @@ export default function SuperAgentSettingsPage() {
 
         {/* Left Navigation */}
         <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 lg:sticky lg:top-4 lg:self-start">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
             return (

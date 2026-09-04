@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { buildPlatformAlerts } from "@/lib/admin/platformAlerts";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
@@ -378,55 +379,19 @@ export const GET = withAuth(async () => {
     const jobsWithoutApplications = jobsWithoutApplicationsAgg[0]?.count ?? 0;
     const applicationRate = totalJobs > 0 ? totalApplications / totalJobs : 0;
     const placementRate = totalApplications > 0 ? totalPlacements / totalApplications : 0;
-    // Alerts carry an id and the numbers behind them, never rendered copy: this
-    // route has no locale, so composing the sentence here would print English
-    // into an Arabic admin's dashboard. The reports page maps each id to its
-    // message keys and interpolates `values`.
-    const alerts: Array<{
-      id: string;
-      level: "critical" | "warning" | "positive";
-      values: Record<string, number>;
-    }> = [];
-
-    if (jobsWithoutApplications > 0) {
-      alerts.push({
-        id: "jobs-without-applications",
-        level: jobsWithoutApplications >= 5 ? "critical" : "warning",
-        values: { count: jobsWithoutApplications },
-      });
-    }
-
-    if (staleOpenApplications > 0) {
-      alerts.push({
-        id: "stale-open-applications",
-        level: staleOpenApplications >= 3 ? "critical" : "warning",
-        values: { count: staleOpenApplications },
-      });
-    }
-
-    if (currentPlacements === 0 && currentApplications > 0) {
-      alerts.push({
-        id: "zero-placement-momentum",
-        level: "critical",
-        values: { count: currentApplications },
-      });
-    }
-
-    if (currentApplications < previousApplications && currentJobs >= previousJobs) {
-      alerts.push({
-        id: "demand-softening",
-        level: "warning",
-        values: { delta: buildTrend(currentApplications, previousApplications).delta },
-      });
-    }
-
-    if (alerts.length === 0) {
-      alerts.push({
-        id: "platform-stable",
-        level: "positive",
-        values: { rate: Math.round(placementRate * 100) },
-      });
-    }
+    // The thresholds live in `@/lib/admin/platformAlerts` so the server-rendered
+    // dashboard raises exactly the same alerts from the same numbers. They used
+    // to exist only here, which is why the dashboard could not use them.
+    const alerts = buildPlatformAlerts({
+      jobsWithoutApplications,
+      staleOpenApplications,
+      currentApplications,
+      previousApplications,
+      currentPlacements,
+      currentJobs,
+      previousJobs,
+      placementRatePercent: Math.round(placementRate * 100),
+    });
 
     return NextResponse.json({
       totalJobs,

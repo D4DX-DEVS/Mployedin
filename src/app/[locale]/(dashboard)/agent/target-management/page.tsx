@@ -14,6 +14,7 @@ import {
   RiskBadge, CompletionBadge, CompletionStage, getCompletionStage, IncentiveTierBadge,
 } from "@/components/features/targets/TargetComponents";
 import { useTranslations } from "next-intl";
+import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
 import {
   Building2, Users, DollarSign, TrendingUp, CalendarDays,
   RotateCcw, Target, Crosshair, Zap, Trophy, Clock, Search, ArrowRight,
@@ -155,6 +156,7 @@ export default function AgentTargetManagementPage() {
 
   return (
     <div className="page-container">
+      <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">

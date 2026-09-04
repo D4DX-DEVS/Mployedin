@@ -7,10 +7,17 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import {
-  ClipboardCheck, Plus, Trash2, Edit, Users, BarChart3,
-  Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp,
+  ClipboardCheck,
+  Plus,
+  Trash2,
+  Users,
+  BarChart3,
+  Clock,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 interface Assessment {
   _id: string;
@@ -56,17 +63,18 @@ export default function EmployerAssessmentsPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={ClipboardCheck}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
         actions={assessments.length > 0 ? (
           <button
+            type="button"
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            aria-label={t("createAssessment")}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
           >
-            <Plus className="w-4 h-4" />
-            {t("createAssessment")}
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("createAssessment")}</span>
           </button>
         ) : undefined}
       />

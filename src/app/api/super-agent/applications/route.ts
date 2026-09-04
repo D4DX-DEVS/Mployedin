@@ -51,10 +51,13 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const teamJobIds = teamJobs.map((j: Record<string, unknown>) => j._id);
 
   const filter: Record<string, unknown> = {};
-  if (agentFilter && agentFilter !== "all") {
-    filter.agentId = agentFilter;
-  } else if (ctx.role !== "admin") {
-    // super_agent: scope to team agents and their jobs
+
+  // Scope first, filter second. This used to be `if (agentFilter) … else if
+  // (super_agent) … scope`, so passing ?agent=<any Agent _id> skipped the
+  // scope branch entirely and returned another team's applications — with
+  // candidate names and emails attached. The team scope now always applies to
+  // a non-admin caller, and ?agent= narrows within it.
+  if (ctx.role !== "admin") {
     const scopeOr: Record<string, unknown>[] = [];
     if (agentIds.length > 0) scopeOr.push({ agentId: { $in: agentIds } });
     if (teamJobIds.length > 0) scopeOr.push({ jobId: { $in: teamJobIds } });
@@ -62,6 +65,16 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       Object.assign(filter, scopeOr[0]);
     } else if (scopeOr.length > 1) {
       filter.$and = [{ $or: scopeOr }];
+    } else {
+      filter._id = { $in: [] };
+    }
+  }
+
+  if (agentFilter && agentFilter !== "all") {
+    // An out-of-scope id yields no rows rather than someone else's, because
+    // the scope clause above is still in the filter.
+    if (ctx.role === "admin" || agentIds.includes(agentFilter)) {
+      filter.agentId = agentFilter;
     } else {
       filter._id = { $in: [] };
     }

@@ -15,7 +15,11 @@ import { inngest } from "@/lib/inngest/client";
 import logger from "@/lib/logger";
 import { formatCount } from "@/lib/ui/intlFormat";
 
+// Mirrors the enum on the Notification model. A member missing here is a
+// compile error at the call site, not a runtime one, so the two lists have
+// to move together.
 export type NotificationType =
+  | "application_update"
   | "application_received"
   | "application_status_update"
   | "application_invite"
@@ -28,6 +32,10 @@ export type NotificationType =
   | "job_rejected"
   | "lead_converted"
   | "mention"
+  | "profile_update"
+  | "message"
+  | "verification"
+  | "placement"
   | "payment"
   | "system"
   | "agent_joined"
@@ -37,7 +45,8 @@ export type NotificationType =
   | "target_assigned"
   | "target_updated"
   | "target_at_risk"
-  | "target_milestone";
+  | "target_milestone"
+  | "exhibition_request";
 
 type TargetAssigneeRole = "agent" | "super_agent";
 
@@ -70,6 +79,12 @@ interface NotifyPayload {
   params?: Record<string, unknown>;
 }
 
+/**
+ * `link` must be stored WITHOUT a locale segment ("/employer/applications").
+ * `localizeActionUrl` prefixes the reader's active locale when the bell renders
+ * it — a link that already begins with a locale is passed through untouched, so
+ * the eight helpers that hardcoded `/en/` dropped Arabic readers into English.
+ */
 export async function notify(payload: NotifyPayload): Promise<void> {
   await connectDB();
 
@@ -128,7 +143,7 @@ export async function notifyApplicationReceived(
     type: "application_received",
     title: "Application Received",
     message: `Your application for "${jobTitle}" at ${companyName} has been submitted successfully.`,
-    link: `/en/job-seeker/applications`,
+    link: `/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, applicationId },
     titleKey: "applicationReceivedTitle",
@@ -148,7 +163,7 @@ export async function notifyStatusChange(
     type: "application_status_update",
     title: "Application Status Updated",
     message: `Your application for "${jobTitle}" has been moved to: ${status.toUpperCase()}.`,
-    link: `/en/job-seeker/applications`,
+    link: `/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, status, applicationId },
     titleKey: "statusUpdatedTitle",
@@ -170,7 +185,7 @@ export async function notifyInterviewScheduled(
     type: "interview_scheduled",
     title: "Interview Scheduled",
     message: `Your interview for "${jobTitle}" is scheduled for ${dateStr} at ${location}.`,
-    link: `/en/job-seeker/interviews`,
+    link: `/job-seeker/interviews`,
     sendEmail: true,
     metadata: { jobTitle, scheduledAt, location, interviewId },
     titleKey: "interviewScheduledTitle",
@@ -190,7 +205,7 @@ export async function notifyInterviewSelected(
     type: "interview_scheduled",
     title: "Congratulations! Selected for Interview",
     message: `Great news! You have been selected for an interview for the "${jobTitle}" position at ${companyName}. The employer will reach out to you soon with further details.`,
-    link: `/en/job-seeker/applications`,
+    link: `/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, applicationId },
     titleKey: "interviewSelectedTitle",
@@ -210,7 +225,7 @@ export async function notifyOfferMade(
     type: "offer_update",
     title: "Offer Extended!",
     message: `${companyName} has extended an offer to you for the "${jobTitle}" position. Log in to review the details.`,
-    link: `/en/job-seeker/applications`,
+    link: `/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, applicationId },
     titleKey: "offerMadeTitle",
@@ -229,7 +244,7 @@ export async function notifyRejected(
     type: "application_status_update",
     title: "Application Update",
     message: `We're sorry to inform you that your application for "${jobTitle}" was not selected at this time. Keep applying — the right opportunity is ahead.`,
-    link: `/en/job-seeker/applications`,
+    link: `/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, applicationId },
     titleKey: "rejectedTitle",
@@ -249,7 +264,7 @@ export async function notifyMention(
     type: "mention",
     title: "You were mentioned in a note",
     message: `${authorName} mentioned you in a note on ${candidateName}'s application.`,
-    link: `/en/employer/applications?highlight=${applicationId}`,
+    link: `/employer/applications?highlight=${applicationId}`,
     sendEmail: false,
     metadata: { applicationId, authorName },
     titleKey: "mentionTitle",
@@ -274,7 +289,7 @@ export async function notifyScorecardSubmitted(
     type: "interview_update",
     title: "Interview Feedback Available",
     message: `Your interview for "${jobTitle}" at ${companyName} has been evaluated. Score: ${scoreLabel} (${overallScore.toFixed(1)}/5).`,
-    link: `/en/job-seeker/applications`,
+    link: `/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, overallScore, applicationId },
     titleKey: "scorecardTitle",
@@ -423,20 +438,30 @@ export async function getSuperAgentUserId(agentId: string): Promise<string | nul
 }
 
 // ─── Super-agent notification helpers ───
+//
+// `_locale` is kept in each signature so existing positional call sites
+// keep working, but it is deliberately unused: links are stored bare and
+// localizeActionUrl prefixes the reader's own locale at render time.
+//
+// Every one of these already knew the id of the record it is about — it went
+// into `metadata` — while `link` pointed at the bare list page, so the reader
+// landed on a table and had to find the row again. The links below open the
+// record itself: the jobs list opens its detail dialog from `?job=`, and the
+// other lists pre-filter from `?search=`.
 
 export async function notifySuperAgentNewJob(
   superAgentUserId: string,
   employerName: string,
   jobTitle: string,
   jobId: string,
-  locale = "en",
+  _locale = "en",
 ): Promise<void> {
   await notify({
     userId: superAgentUserId,
     type: "new_job_posted",
     title: "New Job Posted",
     message: `${employerName} posted a new job: "${jobTitle}".`,
-    link: `/${locale}/super-agent/jobs`,
+    link: `/super-agent/jobs?job=${jobId}`,
     sendEmail: false,
     metadata: { jobId, employerName, jobTitle },
     titleKey: "saNewJobTitle",
@@ -449,16 +474,22 @@ export async function notifySuperAgentAgentJoined(
   superAgentUserId: string,
   agentName: string,
   agentUserId: string,
-  locale = "en",
+  _locale = "en",
+  /** Agent document _id — what /super-agent/agents/[id] resolves. Optional so
+   *  older callers that only have the user id still work; without it the link
+   *  falls back to the roster pre-filtered to that agent's name. */
+  agentDocId?: string,
 ): Promise<void> {
   await notify({
     userId: superAgentUserId,
     type: "agent_joined",
     title: "New Agent Joined Your Team",
     message: `${agentName} has been added to your team.`,
-    link: `/${locale}/super-agent/agents`,
+    link: agentDocId
+      ? `/super-agent/agents/${agentDocId}`
+      : `/super-agent/agents?search=${encodeURIComponent(agentName)}`,
     sendEmail: true,
-    metadata: { agentUserId },
+    metadata: { agentUserId, agentDocId },
     titleKey: "saAgentJoinedTitle",
     bodyKey: "saAgentJoinedBody",
     params: { agentName },
@@ -470,14 +501,14 @@ export async function notifySuperAgentEmployerRegistered(
   companyName: string,
   agentName: string,
   employerId: string,
-  locale = "en",
+  _locale = "en",
 ): Promise<void> {
   await notify({
     userId: superAgentUserId,
     type: "employer_registered",
     title: "New Employer Registered",
     message: `${companyName} registered via ${agentName}'s referral.`,
-    link: `/${locale}/super-agent/employers`,
+    link: `/super-agent/employers?search=${encodeURIComponent(companyName)}`,
     sendEmail: true,
     metadata: { companyName, employerId },
     titleKey: "saEmployerRegisteredTitle",
@@ -492,18 +523,166 @@ export async function notifySuperAgentPlacement(
   jobTitle: string,
   companyName: string,
   placementId: string,
-  locale = "en",
+  _locale = "en",
 ): Promise<void> {
   await notify({
     userId: superAgentUserId,
     type: "placement_completed",
     title: "New Placement Completed",
     message: `${candidateName} was placed as "${jobTitle}" at ${companyName}.`,
-    link: `/${locale}/super-agent/placements`,
+    link: `/super-agent/placements?search=${encodeURIComponent(candidateName)}`,
     sendEmail: true,
     metadata: { placementId, candidateName, jobTitle, companyName },
     titleKey: "saPlacementTitle",
     bodyKey: "saPlacementBody",
     params: { candidateName, jobTitle, companyName },
   });
+}
+
+/**
+ * An agent submitted an exhibition request for review.
+ *
+ * Reviewing these is the one approval the super-agent alone can perform
+ * (`exhibitions: ["read","update","approve"]` in the permission matrix), and it
+ * produced no notification at all — the queue was only discoverable by
+ * remembering to open "Exhibition Requests" in the sidebar. The link lands on
+ * the review queue with this request already filtered in.
+ */
+export async function notifySuperAgentExhibitionRequest(
+  superAgentUserId: string,
+  agentName: string,
+  eventName: string,
+  exhibitionId: string,
+  _locale = "en",
+): Promise<void> {
+  await notify({
+    userId: superAgentUserId,
+    type: "exhibition_request",
+    title: "Exhibition Request Awaiting Review",
+    message: `${agentName} submitted "${eventName}" for your review.`,
+    link: `/super-agent/exhibitions?status=submitted&search=${encodeURIComponent(eventName)}`,
+    sendEmail: true,
+    metadata: { exhibitionId, agentName, eventName },
+    titleKey: "saExhibitionRequestTitle",
+    bodyKey: "saExhibitionRequestBody",
+    params: { agentName, eventName },
+  });
+}
+
+// ─── Admin notification helpers ───
+//
+// Before these, not one of the eighteen triggers in this file addressed an
+// admin: the super-agent got four dedicated platform-event notifications while
+// the role that oversees the whole platform got none, and its bell was
+// permanently empty. Links are stored locale-free so `localizeActionUrl` can
+// prefix the reader's own language.
+
+/** Every active admin's user id. Platform events fan out to all of them. */
+export async function getAdminUserIds(): Promise<string[]> {
+  const User = (await import("@/models/User")).default;
+  const admins = await User.find({ role: "admin", isActive: true }).select("_id").lean();
+  return admins.map((admin) => String(admin._id));
+}
+
+/**
+ * A support ticket was assigned to one admin by the round-robin in
+ * `/api/dm/customer-care`. That assignment was previously silent: the ticket
+ * was excluded from `/api/dm`, so no badge, no bell and no count anywhere named
+ * it, and the admin learned about it only by opening the Support tab.
+ */
+export async function notifyAdminSupportTicketAssigned(
+  adminUserId: string,
+  seekerName: string,
+  conversationId: string,
+): Promise<void> {
+  await notify({
+    userId: adminUserId,
+    type: "message",
+    title: "Support Ticket Assigned",
+    message: `${seekerName} opened a support ticket and it was assigned to you.`,
+    link: `/admin/messages?tab=support&conv=${conversationId}`,
+    sendEmail: false,
+    metadata: { conversationId, seekerName },
+    titleKey: "adminSupportTicketTitle",
+    bodyKey: "adminSupportTicketBody",
+    params: { seekerName },
+  });
+}
+
+/** A new employer signed up — fans out to every admin. */
+export async function notifyAdminsEmployerRegistered(
+  companyName: string,
+  employerId: string,
+): Promise<void> {
+  const adminIds = await getAdminUserIds();
+  await Promise.all(
+    adminIds.map((adminUserId) =>
+      notify({
+        userId: adminUserId,
+        type: "employer_registered",
+        title: "New Employer Registered",
+        message: `${companyName} joined the platform.`,
+        link: `/admin/employers?search=${encodeURIComponent(companyName)}`,
+        sendEmail: false,
+        metadata: { employerId, companyName },
+        titleKey: "adminEmployerRegisteredTitle",
+        bodyKey: "adminEmployerRegisteredBody",
+        params: { companyName },
+      }),
+    ),
+  );
+}
+
+/** A placement completed — the platform's revenue event. */
+export async function notifyAdminsPlacement(
+  candidateName: string,
+  jobTitle: string,
+  companyName: string,
+  placementId: string,
+): Promise<void> {
+  const adminIds = await getAdminUserIds();
+  await Promise.all(
+    adminIds.map((adminUserId) =>
+      notify({
+        userId: adminUserId,
+        type: "placement_completed",
+        title: "New Placement Completed",
+        message: `${candidateName} was placed as "${jobTitle}" at ${companyName}.`,
+        link: `/admin/placements?search=${encodeURIComponent(candidateName)}`,
+        sendEmail: false,
+        metadata: { placementId, candidateName, jobTitle, companyName },
+        titleKey: "adminPlacementTitle",
+        bodyKey: "adminPlacementBody",
+        params: { candidateName, jobTitle, companyName },
+      }),
+    ),
+  );
+}
+
+/**
+ * A contact-form enquiry arrived. The contact inbox is the one queue with no
+ * owner, so nobody was told an enquiry had landed.
+ */
+export async function notifyAdminsContactSubmission(
+  senderName: string,
+  subject: string,
+  submissionId: string,
+): Promise<void> {
+  const adminIds = await getAdminUserIds();
+  await Promise.all(
+    adminIds.map((adminUserId) =>
+      notify({
+        userId: adminUserId,
+        type: "message",
+        title: "New Contact Enquiry",
+        message: `${senderName} sent an enquiry: "${subject}".`,
+        link: `/admin/cms/contact-submissions?status=unread`,
+        sendEmail: false,
+        metadata: { submissionId, senderName, subject },
+        titleKey: "adminContactSubmissionTitle",
+        bodyKey: "adminContactSubmissionBody",
+        params: { senderName, subject },
+      }),
+    ),
+  );
 }

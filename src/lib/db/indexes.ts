@@ -181,6 +181,15 @@ export async function ensureIndexes() {
     { key: { status: 1, followUpAt: 1 } },
   ]);
 
+  // ── Agent tasks ────────────────────────────────────────────────────────────
+  // The schema used to live inline inside /api/agent/tasks, so its indexes were
+  // invisible to this file and never created. The nav badge, the Today queue
+  // and the calendar all query by owner and due date.
+  await safeCreateIndexes(db, "agenttasks", [
+    { key: { userId: 1 } },
+    { key: { userId: 1, dueDate: 1, status: 1 } },
+  ]);
+
   // ── Commissions ────────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "commissions", [
     { key: { invoiceId: 1 } },

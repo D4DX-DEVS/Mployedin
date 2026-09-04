@@ -19,9 +19,11 @@ import {
 } from "@/components/ui/table";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -76,7 +78,10 @@ export default function AdminPlacementsPage() {
   const [totalValue, setTotalValue] = useState(0);
   const [salaryByCurrency, setSalaryByCurrency] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  /* The search term addresses the view: an admin notification, a ⌘K people
+     hit and the system-health panel all link here with `?search=<name>`,
+     and a filter kept only in component state would silently ignore it. */
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [visaFilter, setVisaFilter] = useState("");
   const [commissionFilter, setCommissionFilter] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
@@ -447,15 +452,7 @@ export default function AdminPlacementsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 9 }).map((_, j) => (
-                      <TableCell key={j} className="px-4 py-3">
-                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={6} cols={9} />
               ) : placements.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={9} className="h-44 text-center">

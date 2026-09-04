@@ -4,13 +4,14 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Users, Briefcase, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -19,6 +20,9 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
+
+const PLACEMENT_STATUSES = ["active", "completed", "terminated"] as const;
+const VISA_STATUSES = ["not_required", "pending", "approved", "rejected", "stamped"] as const;
 
 export default function EmployerPlacementsPage() {
   const router = useRouter();
@@ -36,8 +40,8 @@ export default function EmployerPlacementsPage() {
   }
   const [limit, setLimit] = useState(10);
   const [expandedPlacementId, setExpandedPlacementId] = useState<string | null>(null);
-  const [filter, setFilter] = useState("all");
-  const [visaFilter, setVisaFilter] = useState("all");
+  const [filter, setFilter] = useUrlFilter("status", "all", { allow: PLACEMENT_STATUSES });
+  const [visaFilter, setVisaFilter] = useUrlFilter("visa", "all", { allow: VISA_STATUSES });
 
   const STATUS_OPTIONS = [
     { value: "all", label: t("filterAll") },
@@ -109,16 +113,15 @@ export default function EmployerPlacementsPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={ClipboardList}
+      {/* Pattern A (compact workspace): title, context line and the three
+          API-wide totals; filters and export sit in the list toolbar. */}
+      <WorkspaceHeader
         title={t("workspace")}
-        description={t("subtitle")}
-        compactOnMobile
-        compact
+        context={t("subtitle")}
         metrics={[
-          { label: t("totalHired"), value: stats.total, note: t("totalHiredNote"), icon: Users },
-          { label: t("currentlyActive"), value: stats.active, note: t("currentlyActiveNote"), icon: Briefcase },
-          { label: t("completed"), value: stats.completed, note: t("completedNote"), icon: CircleCheckBig },
+          { label: t("totalHired"), value: stats.total, icon: Users, tone: "primary" },
+          { label: t("currentlyActive"), value: stats.active, icon: Briefcase, tone: "success" },
+          { label: t("completed"), value: stats.completed, icon: CircleCheckBig, tone: "info" },
         ]}
       />
 
@@ -138,36 +141,36 @@ export default function EmployerPlacementsPage() {
           </div>
         </section>
       ) : (
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        {/* Single toolbar row: label, both filters and export inline. The old
-            filter panel and table blurb cost a full screen before any hire. */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
-          <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>
-            {/* Privacy info at the point candidate data is shown, compacted to
-                an icon + popover to keep the list above the fold. */}
-            <CandidateDataNotice variant="candidateList" compact />
-          </div>
-          <SearchableSelect
-            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
-            options={STATUS_OPTIONS}
-            value={filter}
-            onValueChange={setFilter}
-            placeholder={t("filterAll")}
-          />
-          <SearchableSelect
-            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
-            options={VISA_OPTIONS}
-            value={visaFilter}
-            onValueChange={setVisaFilter}
-            placeholder={t("visaAll")}
-          />
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="shrink-0"
-          />
+      <>
+      <div className="workspace-toolbar">
+        <SearchableSelect
+          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          options={STATUS_OPTIONS}
+          value={filter}
+          onValueChange={setFilter}
+          placeholder={t("filterAll")}
+        />
+        <SearchableSelect
+          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          options={VISA_OPTIONS}
+          value={visaFilter}
+          onValueChange={setVisaFilter}
+          placeholder={t("visaAll")}
+        />
+        <TableToolbar
+          className="ms-auto"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+      </div>
+
+      <section className="workspace-panel-surface rounded-2xl panel-body">
+        <div className="flex items-center gap-1.5 border-b border-border pb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("placementList")}</p>
+          {/* Privacy info at the point candidate data is shown, compacted to
+              an icon + popover to keep the list above the fold. */}
+          <CandidateDataNotice variant="candidateList" compact />
         </div>
 
         {/* Phones get compact expandable rows — the shared <Table> stacks every
@@ -304,6 +307,7 @@ export default function EmployerPlacementsPage() {
           </Table>
         </div>
       </section>
+      </>
       )}
 
       <PaginationControls

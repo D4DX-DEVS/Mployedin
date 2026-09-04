@@ -6,8 +6,10 @@ import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -54,7 +56,10 @@ export default function AdminEmployersPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  /* The search term addresses the view: an admin notification, a ⌘K people
+     hit and the system-health panel all link here with `?search=<name>`,
+     and a filter kept only in component state would silently ignore it. */
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Employer | null>(null);
@@ -128,7 +133,9 @@ export default function AdminEmployersPage() {
     try {
       body = await res.json();
     } catch {
-      return res.statusText || "Failed";
+      // Never surface raw HTTP status text — "Unprocessable Entity" is not
+      // something an admin can act on, and it is English in an Arabic UI.
+      return t("requestFailed");
     }
 
     if (body?.details?.length) {
@@ -137,7 +144,7 @@ export default function AdminEmployersPage() {
       ).join("; ")}`;
     }
 
-    return body?.error || res.statusText || "Failed";
+    return body?.error || t("requestFailed");
   };
 
   const validateAdminPassword = (password: string) => {
@@ -293,15 +300,7 @@ export default function AdminEmployersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableBodySkeleton rows={5} cols={5} />
             ) : employers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="h-32 text-center">

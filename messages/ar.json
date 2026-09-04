@@ -37,6 +37,7 @@
     "jobSearch": "البحث عن وظيفة",
     "support": "الدعم",
     "pipeline": "مسار التوظيف",
+    "hiring": "التوظيف",
     "inbox": "الوارد",
     "more": "المزيد",
     "openMoreMenu": "فتح قائمة المزيد",
@@ -50,7 +51,10 @@
     "a11yNavigationMenu": "قائمة التنقل",
     "a11yOpenMenu": "فتح القائمة",
     "a11yCloseMenu": "إغلاق القائمة",
-    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin"
+    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin",
+    "breadcrumb": "مسار التنقل",
+    "breadcrumbDetails": "التفاصيل",
+    "scorecards": "بطاقات التقييم"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -436,7 +440,13 @@
     "actions": "الإجراءات",
     "general": "عام",
     "recent": "الأخيرة",
-    "searchShort": "بحث..."
+    "searchShort": "بحث...",
+    "placeholderWithEntities": "ابحث عن وظائف ومرشحين وإجراءات...",
+    "jobsFound": "الوظائف",
+    "candidatesFound": "المرشحون",
+    "applicationsFound": "طلباتك",
+    "placeholderJobSeeker": "ابحث عن وظائف وطلباتك وإجراءات...",
+    "peopleFound": "الأشخاص والشركات"
   },
   "jobs": {
     "title": "الوظائف",
@@ -531,7 +541,9 @@
     "actions": {
       "refinePreferences": "تحسين التفضيلات",
       "editPreferences": "تعديل التفضيلات",
-      "setPreferences": "تحديد التفضيلات"
+      "setPreferences": "تحديد التفضيلات",
+      "mobileFilters": "الفلاتر",
+      "filters": "الفلاتر"
     },
     "tabs": {
       "eyebrow": "مطابقة الذكاء الاصطناعي",
@@ -684,7 +696,9 @@
         "subtitle": "اختر السيرة الذاتية التي سترسلها مع هذا الطلب.",
         "uploadCv": "رفع سيرة ذاتية مختلفة",
         "uploading": "جارٍ الرفع…",
-        "noCv": "لا توجد سيرة ذاتية بعد — ارفع واحدة للمتابعة."
+        "noCv": "لا توجد سيرة ذاتية بعد — ارفع واحدة للمتابعة.",
+        "buildCV": "بناء سيرتك الذاتية",
+        "uploadDocuments": "رفع المستندات"
       },
       "skills": {
         "heading": "أكّد مهاراتك",
@@ -1077,7 +1091,12 @@
       "customerService": "التميز في خدمة العملاء",
       "digitalMarketing": "أساسيات التسويق الرقمي",
       "constructionSafety": "سلامة البناء (OSHA 10)"
-    }
+    },
+    "loadFailed": "تعذر تحميل الدورات",
+    "loadFailedBody": "يرجى المحاولة مرة أخرى بعد قليل.",
+    "retry": "إعادة المحاولة",
+    "empty": "لا توجد دورات بعد",
+    "emptyBody": "لا توجد دورات متاحة حاليًا. تحقق مرة أخرى قريبًا."
   },
   "jobSeekerInterviews": {
     "status": {
@@ -1540,6 +1559,8 @@
         "skills": "إضافة المهارات",
         "experience": "إضافة الخبرة",
         "education": "إضافة التعليم",
+        "documents": "إضافة المستندات",
+        "portfolio": "إضافة المحفظة",
         "personal": "البيانات الشخصية",
         "preferences": "تحديد تفضيلات الوظائف"
       },
@@ -1607,6 +1628,10 @@
           "within_3_months": "خلال 3 أشهر",
           "not_available": "غير متاح"
         }
+      },
+      "profile": {
+        "aiCareerInsight": "رؤية مهنية بالذكاء الاصطناعي",
+        "smartBadge": "ذكي"
       }
     },
     "settings": {
@@ -1694,7 +1719,9 @@
         "applicationSubmitted": "تم إرسال الطلب",
         "applicationSubmittedDescription": "تأكيد في كل مرة يتم فيها إرسال طلب.",
         "interviewNotifications": "إشعارات المقابلات",
-        "interviewNotificationsDescription": "تذكيرات وتحديثات حول المقابلات المجدولة."
+        "interviewNotificationsDescription": "تذكيرات وتحديثات حول المقابلات المجدولة.",
+        "advancedTitle": "تسليم الإشعارات",
+        "advancedDescription": "اختر البريد أو التطبيق أو واتساب لكل تنبيه، وحدد وقت الملخص اليومي، أو ألغِ الاشتراك."
       }
     },
     "smartWelcome": {
@@ -2094,8 +2121,15 @@
       "highImpact": "تأثير مرتفع",
       "keepMoving": "واصل التقدم",
       "startHere": "ابدأ هنا",
+      "urgent": "عاجل",
+      "medium": "متوسط",
+      "suggestion": "اقتراح",
+      "respondToOfferTitle": "رد على {count} عرض وظيفة قيد الانتظار",
+      "respondToOfferDescription": "راجع وأجب على عروض الوظائف التي تنتظر قرارك.",
       "interviewTitle": "استعد لـ {count} مقابلة قادمة",
       "interviewDescription": "راجع الموعد وجهّز أسئلة مركزة قبل المقابلة.",
+      "checkMessagesTitle": "تحقق من {count} رسالة غير مقروءة",
+      "checkMessagesDescription": "راجع الرسائل الجديدة من أصحاب العمل والمجندين.",
       "trackApplicationsTitle": "تحقق من تقدم طلباتك",
       "trackApplicationsDescription": "راجع تغييرات الحالة وتابع الطلبات التي تحتاج إلى اهتمامك.",
       "browseDescription": "استكشف الوظائف المختارة وفق ملفك وتفضيلاتك."
@@ -3923,7 +3957,9 @@
     "publishingButton": "جارٍ النشر…",
     "toastJobPublished": "تم نشر الوظيفة.",
     "toastFailedPublish": "تعذر نشر الوظيفة.",
-    "confirmPublish": "نشر هذه الوظيفة؟ ستصبح مباشرة على الفور."
+    "confirmPublish": "نشر هذه الوظيفة؟ ستصبح مباشرة على الفور.",
+    "filters": "التصفية",
+    "openingsSummaryShort": "{count, plural, =0 {لا توجد وظائف شاغرة} one {وظيفة شاغرة واحدة} two {وظيفتان شاغرتان} few {# وظائف شاغرة} many {# وظيفة شاغرة} other {# وظيفة شاغرة}}"
   },
   "employerCandidates": {
     "heroTitle": "مطابقة المرشحين",
@@ -3942,7 +3978,7 @@
     "advancedFilters": "متقدم",
     "filters": "عوامل التصفية",
     "searchPlaceholder": "البحث عن مرشحين أو مهارات أو دور أو شركة",
-    "noJobSelected": "الكل",
+    "noJobSelected": "كل الوظائف",
     "filterByLocation": "التصفية حسب الموقع",
     "anyAvailability": "أي توفر",
     "availableNow": "متاح الآن",
@@ -4033,6 +4069,7 @@
     "noPublishedJobs": "لا توجد وظائف منشورة بعد",
     "publishJobFirst": "انشر وظيفة أولاً حتى تتمكن هذه الصفحة من مقارنة المرشحين مقابل دور.",
     "benchmark": "القياس: {title}",
+    "benchmarkJob": "وظيفة القياس",
     "refreshing": "جارٍ التحديث",
     "cvNotAvailable": "السيرة الذاتية غير متوفرة لهذا المرشح.",
     "jobNoLongerAvailable": "الوظيفة المحددة سابقاً لم تعد متاحة. اختر دوراً منشوراً آخر للمتابعة.",
@@ -4064,6 +4101,14 @@
     "workflowDoneDesc": "استخدم القائمة المحفوظة لمراجعة السير الذاتية والملفات الشخصية، أو مراسلة المرشحين مباشرة من هذه الصفحة.",
     "detailEmptyTitle": "اختر مرشحًا",
     "detailEmptyHint": "اختر شخصًا من القائمة لمعاينة ملفه الشخصي الكامل هنا.",
+    "talentPoolContext": "عرض مجموعة المواهب — اعثر على المرشحين المناسبين وطابقهم وتواصل معهم.",
+    "listCount": "{count, plural, one {مرشح واحد} two {مرشحان} few {# مرشحين} many {# مرشحًا} other {# مرشح}}",
+    "detailHintProfile": "عرض الملف الكامل",
+    "detailHintProfileDesc": "الخبرة والتعليم والمهارات والمزيد",
+    "detailHintInsights": "رؤى المطابقة",
+    "detailHintInsightsDesc": "اطّلع على درجة المطابقة بالذكاء الاصطناعي والتوصيات",
+    "detailHintAction": "اتخذ إجراءً",
+    "detailHintActionDesc": "احفظ في مجموعة، أو راسل، أو ادعُ للتقديم",
     "skillsAxis": "المهارات",
     "experienceAxis": "الخبرة",
     "locationAxis": "الموقع",
@@ -4386,7 +4431,8 @@
     "next": "التالي",
     "pageOf": "صفحة {page} من {pages}",
     "perPage": "لكل صفحة",
-    "viewPosterLabel": "عرض ملصق {job}"
+    "viewPosterLabel": "عرض ملصق {job}",
+    "posterCount": "{count, plural, =0 {لا توجد ملصقات بعد} one {ملصق واحد} two {ملصقان} few {# ملصقات} many {# ملصقًا} other {# ملصق}}"
   },
   "employerMessages": {
     "title": "الرسائل",
@@ -4603,7 +4649,10 @@
     "createScorecardTitle": "إنشاء بطاقة تقييم المقابلة",
     "createScorecardDesc": "قيّم المرشح لهذه المقابلة",
     "scoringCandidate": "جارٍ تقييم المرشح {done} من {total}",
-    "a11yCloseActivityTimeline": "إغلاق سجل النشاط"
+    "a11yCloseActivityTimeline": "إغلاق سجل النشاط",
+    "messageCandidate": "مراسلة",
+    "messageCandidateFailed": "تعذّر فتح محادثة مع هذا المرشح. يُرجى المحاولة مرة أخرى.",
+    "openRolesContext": "{count, plural, =0 {لا توجد وظائف مفتوحة بعد} one {عبر وظيفة مفتوحة واحدة} two {عبر وظيفتين مفتوحتين} few {عبر # وظائف مفتوحة} many {عبر # وظيفة مفتوحة} other {عبر # وظيفة مفتوحة}}"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -4823,7 +4872,8 @@
     "hoursValue": "{count} ساعة",
     "daysLabelPlural": "{count, plural, zero {# يوم} one {# يوم} two {# يومين} few {# أيام} many {# يومًا} other {# يوم}}",
     "startDate": "تاريخ البدء",
-    "endDate": "تاريخ الانتهاء"
+    "endDate": "تاريخ الانتهاء",
+    "titleShort": "التحليلات"
   },
   "employerSettings": {
     "title": "إعدادات الشركة",
@@ -5002,7 +5052,8 @@
       "openAction": "فتح مساحة العمل",
       "attention": "يتطلب الانتباه",
       "investigate": "تحقق",
-      "review": "مراجعة"
+      "review": "مراجعة",
+      "alsoNeedsAttention": "يحتاج انتباهًا أيضًا"
     },
     "trend": {
       "vsLastMonth": "مقارنة بالشهر الماضي",
@@ -5215,6 +5266,25 @@
     }
   },
   "superAgentDashboard": {
+    "priority": {
+      "title": "يحتاج انتباهك",
+      "description": "ما ينتظرك، الأكثر إعاقة أولًا.",
+      "empty": "لا شيء ينتظرك الآن.",
+      "emptyHint": "ستظهر هنا الاعتمادات والمتابعات المتأخرة والوكلاء غير النشطين فور حدوثها.",
+      "urgent": "معطِّل",
+      "soon": "مستحق",
+      "review": "مراجعة",
+      "exhibitions": "{count, plural, zero {# طلب معرض بانتظار مراجعتك} one {طلب معرض واحد بانتظار مراجعتك} two {طلبا معرض بانتظار مراجعتك} few {# طلبات معارض بانتظار مراجعتك} many {# طلب معرض بانتظار مراجعتك} other {# طلب معرض بانتظار مراجعتك}}",
+      "exhibitionsAction": "مراجعة الطلبات",
+      "commissions": "{count, plural, zero {# عمولة بانتظار اعتمادك} one {عمولة واحدة بانتظار اعتمادك} two {عمولتان بانتظار اعتمادك} few {# عمولات بانتظار اعتمادك} many {# عمولة بانتظار اعتمادك} other {# عمولة بانتظار اعتمادك}}",
+      "commissionsAction": "اعتماد العمولات",
+      "overdueLeads": "{count, plural, zero {# متابعة عميل متأخرة} one {متابعة عميل واحدة متأخرة} two {متابعتا عميل متأخرتان} few {# متابعات عملاء متأخرة} many {# متابعة عميل متأخرة} other {# متابعة عميل متأخرة}}",
+      "overdueLeadsAction": "فتح المتابعات المتأخرة",
+      "inactiveAgents": "{count, plural, zero {# حساب وكيل معطّل} one {حساب وكيل واحد معطّل} two {حسابا وكيل معطّلان} few {# حسابات وكلاء معطّلة} many {# حساب وكيل معطّل} other {# حساب وكيل معطّل}}",
+      "inactiveAgentsAction": "مراجعة الفريق",
+      "idleAgents": "{count, plural, zero {# وكيل بلا عملاء محتملين} one {وكيل واحد بلا عملاء محتملين} two {وكيلان بلا عملاء محتملين} few {# وكلاء بلا عملاء محتملين} many {# وكيلًا بلا عملاء محتملين} other {# وكيل بلا عملاء محتملين}}",
+      "idleAgentsAction": "عرض غير النشطين"
+    },
     "taskFirst": {
       "recommendedNext": "الخطوة التالية المقترحة",
       "nextDescription": "ابدأ بمشكلة الفريق أو المنطقة الأكثر احتمالًا لإبطاء التنفيذ.",
@@ -6022,7 +6092,9 @@
       "assignedJobs": "الوظائف المخصصة",
       "description": "اختر الوظائف التي يمكن لهذا العضو الوصول إليها. اتركها فارغة لمنح الوصول إلى كل الوظائف.",
       "allJobsPlaceholder": "كل الوظائف (بدون تقييد)"
-    }
+    },
+    "parkedTitle": "الدعوات متوقفة مؤقتًا",
+    "parkedDescription": "يمكنك مراجعة الأعضاء الموجودين في حسابك، لكن إرسال دعوة جديدة معطّل ريثما نُكمل ربط تسجيل الدخول. سنعيد تفعيله هنا."
   },
   "employerActivity": {
     "title": "سجل النشاط",
@@ -6184,7 +6256,11 @@
     "salaryPlaceholder": "5000",
     "generateMeetLink": "إنشاء رابط",
     "meetLinkAutoNote": "اتركه فارغًا لإنشاء غرفة اجتماع تلقائيًا",
-    "unableToLoadDesc": "تعذر تحميل المقابلات. سجلات المقابلات لم تتغير. حاول مرة أخرى."
+    "unableToLoadDesc": "تعذر تحميل المقابلات. سجلات المقابلات لم تتغير. حاول مرة أخرى.",
+    "viewList": "قائمة",
+    "viewCalendar": "تقويم",
+    "viewToggleLabel": "عرض المقابلات",
+    "attentionShort": "انتباه"
   },
   "employerOffers": {
     "title": "مساحة عمل العروض",
@@ -6250,7 +6326,11 @@
     "downloadLetter": "تنزيل خطاب العرض (PDF)",
     "pendingReview": "قيد المراجعة",
     "withdraw": "سحب",
-    "withdrawing": "جارٍ السحب…"
+    "withdrawing": "جارٍ السحب…",
+    "acceptedNextStep": "تم قبول العرض",
+    "acceptedNextStepBody": "يقوم فريق التوظيف بتسجيل التعيين. وبمجرد إنشائه يمكنك متابعة تاريخ المباشرة وحالة التأشيرة والانضمام من صفحة التعيينات.",
+    "viewPlacements": "الذهاب إلى التعيينات",
+    "statOffers": "العروض"
   },
   "employerBackgroundChecks": {
     "searchPlaceholder": "ابحث باسم المرشح...",
@@ -7185,7 +7265,8 @@
     "cancelled": "ملغاة",
     "failedLoadingCalendarEvents": "تعذر تحميل أحداث التقويم",
     "interviewBookedSuccessfully": "تم حجز المقابلة بنجاح",
-    "bookingFailed": "تعذر حجز المقابلة"
+    "bookingFailed": "تعذر حجز المقابلة",
+    "todayLine": "{count, plural, =0 {لا توجد مقابلات اليوم} one {مقابلة واحدة اليوم} two {مقابلتان اليوم} few {# مقابلات اليوم} many {# مقابلة اليوم} other {# مقابلة اليوم}}"
   },
   "employerScorecards": {
     "title": "بطاقات تقييم المقابلات",
@@ -7356,7 +7437,97 @@
     "requestsDesc": "افتح التفاصيل أو نفّذ إجراءات الاعتماد من الجدول أدناه.",
     "recommendedBudget": "مبلغ الميزانية الموصى به",
     "queueHealth": "حالة قائمة المراجعة",
-    "queueHealthNote": "بانتظار مراجعتك"
+    "queueHealthNote": "بانتظار مراجعتك",
+    "tableHeaderEvent": "الحدث",
+    "tableHeaderAgent": "الوكيل",
+    "tableHeaderLocation": "الموقع",
+    "tableHeaderDates": "التواريخ",
+    "tableHeaderParticipation": "المشاركة",
+    "tableHeaderBudgetReq": "الميزانية المطلوبة",
+    "tableHeaderBudgetAppr": "الميزانية الموافق عليها",
+    "tableHeaderObjective": "الهدف",
+    "tableHeaderStatus": "الحالة",
+    "tableHeaderPriority": "الأولوية",
+    "tableHeaderResources": "الموارد",
+    "tableHeaderActions": "الإجراءات",
+    "statusDraft": "مسودة",
+    "statusUnderReview": "قيد المراجعة",
+    "statusApproved": "موافق عليه تشغيلياً",
+    "statusRevisionRequested": "طُلِب التعديل",
+    "statusBudgetApproved": "موافق عليه مالياً",
+    "statusResourcesAssigned": "تم تخصيص الموارد",
+    "statusActive": "نشط",
+    "statusRejected": "مرفوض",
+    "statusArchived": "مؤرشف",
+    "priorityLow": "منخفضة",
+    "priorityMedium": "متوسطة",
+    "priorityHigh": "عالية",
+    "priorityCritical": "حرجة",
+    "categoryCareerFair": "معرض الوظائف",
+    "categoryRecruitmentExpo": "معرض التوظيف",
+    "categoryEmployerBranding": "علامة صاحب العمل التجارية",
+    "categoryHiringDrive": "حملة التوظيف",
+    "categoryUniversityEvent": "حدث جامعي",
+    "categoryGccRecruitment": "توظيف مجلس التعاون الخليج",
+    "categoryJobFair": "معرض الوظائف",
+    "categoryOther": "أخرى",
+    "objectiveEmployerAcquisition": "اكتساب صاحب العمل",
+    "objectiveCandidateSourcing": "البحث عن المرشحين",
+    "objectiveBrandAwareness": "الوعي بالعلامة التجارية",
+    "objectiveLeadGeneration": "توليد العملاء المتوقعين",
+    "objectiveDirectHiring": "التوظيف المباشر",
+    "objectiveMarketExpansion": "توسع السوق",
+    "resourceBrochures": "الكتيبات",
+    "resourceStandee": "لافتة دعائية",
+    "resourceFlyers": "المنشورات",
+    "resourcePresentationDeck": "عرض شرائح",
+    "resourceEmployerCatalog": "كتالوج صاحب العمل",
+    "resourceCandidateForms": "نماذج المرشحين",
+    "resourceBrandingBanners": "لافتات الهوية",
+    "resourceVideoAssets": "أصول الفيديو",
+    "resourceBusinessCards": "بطاقات العمل",
+    "resourceBoothDesign": "تصميم الكشك",
+    "participationStandee": "لافتة دعائية",
+    "participationStall": "كشك",
+    "participationBooth": "حمالة",
+    "participationSponsorship": "الرعاية",
+    "participationFlyers": "المنشورات",
+    "participationRecruitmentDesk": "مكتب التوظيف",
+    "participationBrandingPackage": "حزمة الهوية",
+    "participationOther": "أخرى",
+    "actionReview": "مراجعة",
+    "actionApprove": "الموافقة",
+    "actionRevise": "تعديل",
+    "actionReject": "رفض",
+    "detailAgent": "الوكيل",
+    "detailVenue": "المكان",
+    "detailDates": "التواريخ",
+    "detailOrganizer": "المنظم",
+    "detailBudgetRequested": "الميزانية المطلوبة",
+    "detailBudgetApproved": "الميزانية الموافق عليها",
+    "detailExpectedLeads": "العملاء المتوقعون",
+    "detailParticipation": "المشاركة",
+    "detailObjectives": "الأهداف",
+    "detailRequiredResources": "الموارد المطلوبة",
+    "detailBudgetBreakdown": "تفصيل الميزانية",
+    "detailDescription": "الوصف",
+    "detailExecutionPlan": "خطة التنفيذ",
+    "detailExpectedOutcome": "النتيجة المتوقعة",
+    "detailApprovalHistory": "سجل الموافقة",
+    "reviewStartReview": "بدء المراجعة",
+    "reviewApproveExhibition": "الموافقة على المعرض",
+    "reviewRequestRevision": "طلب تعديل",
+    "reviewRejectExhibition": "رفض المعرض",
+    "reviewOperationalApprovalOnly": "الموافقة التشغيلية فقط - يتم التعامل مع الموافقة على الميزانية من قبل المسؤول.",
+    "reviewRecommendedBudget": "الميزانية الموصى بها",
+    "reviewRequested": "مطلوبة",
+    "reviewNotes": "ملاحظات المراجعة",
+    "reviewRevisionNotes": "ملاحظات التعديل *",
+    "reviewNotesPlaceholder": "ملاحظات اختيارية...",
+    "reviewRevisionNotesPlaceholder": "ما الذي يجب تعديله...",
+    "toastExhibitionApproved": "تمت الموافقة على المعرض",
+    "toastExhibitionRevisionRequested": "طُلِب تعديل المعرض",
+    "toastExhibitionRejected": "تم رفض المعرض"
   },
   "resources": {
     "title": "إدارة الموارد",
@@ -7471,9 +7642,13 @@
     "tagsPlaceholder": "مثال: الخليج، 2026، الهوية البصرية، دبي",
     "versionNotesPlaceholder": "ما الذي تغيّر في هذه النسخة؟",
     "metricTotalResources": "إجمالي الموارد",
-    "metricTotalDownloads": "إجمالي التنزيلات"
+    "metricTotalDownloads": "إجمالي التنزيلات",
+    "actionFailed": "لم نتمكن من إتمام العملية. يرجى المحاولة مرة أخرى."
   },
   "targets": {
+    "reportEmptyTitle": "لا يوجد تقرير أهداف لعرضه",
+    "reportEmptyDescription": "إما أنه لم يتم تحديد أهداف لهذا العام، أو تعذّر تحميل التقرير.",
+    "reportRetry": "إعادة المحاولة",
     "title": "إدارة الأهداف",
     "description": "تعيين وتتبع الأهداف السنوية والشهرية للوكلاء الكبار والوكلاء",
     "superAgentDescription": "عرض الأهداف المعينة لك وتوزيعها على وكلاء فريقك",
@@ -7809,7 +7984,81 @@
     "yoyEmployeeTarget": "هدف الموظفين",
     "yoyEmployeeAchieved": "المحقق للموظفين",
     "yoyFinanceTarget": "الهدف المالي",
-    "yoyFinanceAchieved": "المحقق المالي"
+    "yoyFinanceAchieved": "المحقق المالي",
+    "months": {
+      "jan": "يناير",
+      "feb": "فبراير",
+      "mar": "مارس",
+      "apr": "أبريل",
+      "may": "مايو",
+      "jun": "يونيو",
+      "jul": "يوليو",
+      "aug": "أغسطس",
+      "sep": "سبتمبر",
+      "oct": "أكتوبر",
+      "nov": "نوفمبر",
+      "dec": "ديسمبر"
+    },
+    "noUpdate": "لا توجد تحديثات",
+    "unassigned": "غير مسند",
+    "distributed": "موزع",
+    "notDistributed": "غير موزع",
+    "onTrack": "{month} في المسار الصحيح",
+    "behindPace": "{month} متأخر عن الوتيرة",
+    "riskReason": "{label} في {progress}%",
+    "addEmployers": "إضافة موظفي",
+    "closePlacements": "إغلاق التوظيفات",
+    "pushRevenue": "زيادة الإيرادات",
+    "maintainPace": "المحافظة على الوتيرة",
+    "allTerritories": "جميع المناطق",
+    "go": "انتقل",
+    "mine": "الخاص بي",
+    "team": "الفريق",
+    "filters": "عوامل التصفية",
+    "export": "تصدير",
+    "executionStatus": "حالة التنفيذ",
+    "executionStatusHelper": "عرض سريع لما هو مكتمل وقيد المعالجة وقيد الانتظار.",
+    "progress": "التقدم",
+    "teamCompletionHelper": "{inProgress} قيد المعالجة · {completed} مكتملة",
+    "employerTargetHelper": "{balance} رصيد",
+    "employeeTargetHelper": "{balance} رصيد",
+    "revenueTargetHelper": "{assigned} مسند",
+    "behindEmployer": "{count} وكيل متأخرون في هدف صاحب العمل",
+    "behindEmployee": "{count} وكيل متأخرون في هدف الموظف",
+    "behindFinance": "{count} وكيل متأخرون في هدف الإيرادات",
+    "markedHighRisk": "{count} وكيل معلمون بمخاطر عالية",
+    "csvHeaderAgent": "الوكيل",
+    "csvHeaderTerritory": "المنطقة",
+    "csvHeaderStage": "المرحلة",
+    "csvHeaderNextAction": "الإجراء التالي",
+    "csvHeaderLastUpdate": "آخر تحديث",
+    "resetYear": "إعادة تعيين السنة",
+    "searchAgentName": "البحث عن اسم الوكيل…",
+    "clearFilters": "مسح عوامل التصفية",
+    "businessVolume": "حجم الأعمال — {year}",
+    "monthlyRevenue": "الإيرادات الشهرية (الآلاف)",
+    "was": "كان ",
+    "teamPerformance": "أداء الفريق",
+    "agentsRankedByProgress": "{count} وكيل مرتب حسب التقدم",
+    "nameEmail": "الاسم / البريد الإلكتروني",
+    "regionCountry": "المنطقة / الدولة",
+    "showingAgents": "عرض {shown} من {total} وكيل",
+    "tableHeaderAgent": "الوكيل",
+    "tableHeaderEmployers": "أصحاب العمل",
+    "tableHeaderEmployees": "الموظفون",
+    "tableHeaderRevenue": "الإيرادات",
+    "tableHeaderMonthly": "شهري",
+    "noAgentsInTeam": "لا توجد وكلاء في فريقك",
+    "totalAgents": "الإجمالي ({count} وكيل{plural})",
+    "monthlyDistributionEditable": "التوزيع الشهري (قابل للتحرير)",
+    "sumMismatch": "عدم تطابق المجموع — اضبط القيم الشهرية",
+    "total": "الإجمالي",
+    "assignTargets": "تعيين الأهداف ({count})",
+    "createdSuccessfully": "تم إنشاء {count} هدف وكيل{plural} بنجاح",
+    "metricEmployer": "صاحب العمل",
+    "metricEmployee": "الموظف",
+    "metricRevenue": "الإيرادات",
+    "actionFailed": "لم نتمكن من إتمام العملية. يرجى المحاولة مرة أخرى."
   },
   "webhooks": {
     "title": "الويب هوك",
@@ -7891,7 +8140,10 @@
     "refresh": "تحديث",
     "clearNFilters": "مسح {count} من عوامل التصفية",
     "actions": "الإجراءات",
-    "edit": "تعديل"
+    "edit": "تعديل",
+    "redeliverSucceeded": "تمت إعادة إرسال تسليم {event} المتعثر",
+    "redeliverFailed": "لم نتمكن من إعادة الإرسال. يرجى المحاولة مرة أخرى.",
+    "a11yRedeliver": "إعادة إرسال التسليم المتعثر"
   },
   "notifications": {
     "frequencyInstant": "فوري",
@@ -7942,9 +8194,12 @@
     "filterAll": "الكل",
     "filterUnread": "غير المقروءة",
     "empty": "لا توجد إشعارات",
-    "emptyUnread": "لا توجد إشعارات غير مقروءة"
+    "emptyUnread": "لا توجد إشعارات غير مقروءة",
+    "viewAll": "عرض كل الإشعارات"
   },
   "notificationContent": {
+    "saExhibitionRequestTitle": "طلب معرض بانتظار المراجعة",
+    "saExhibitionRequestBody": "قدّم {agentName} \"{eventName}\" لمراجعتك.",
     "status_applied": "تم التقديم",
     "status_screening": "قيد الفرز",
     "status_shortlisted": "القائمة المختصرة",
@@ -7997,7 +8252,15 @@
     "stageChangedTitle": "تغيّرت مرحلة الطلب",
     "stageChangedBody": "تم نقل طلب لوظيفة \"{jobTitle}\" إلى {status}.",
     "bulkActionTitle": "تحديث جماعي للطلبات",
-    "bulkActionBody": "تم تحديث {count} طلب/طلبات عبر إجراء جماعي: {action}."
+    "bulkActionBody": "تم تحديث {count} طلب/طلبات عبر إجراء جماعي: {action}.",
+    "adminSupportTicketTitle": "تم إسناد تذكرة دعم",
+    "adminSupportTicketBody": "فتح {seekerName} تذكرة دعم وتم إسنادها إليك.",
+    "adminEmployerRegisteredTitle": "تسجيل صاحب عمل جديد",
+    "adminEmployerRegisteredBody": "انضم {companyName} إلى المنصة.",
+    "adminPlacementTitle": "اكتمال توظيف جديد",
+    "adminPlacementBody": "تم توظيف {candidateName} في وظيفة \"{jobTitle}\" لدى {companyName}.",
+    "adminContactSubmissionTitle": "استفسار تواصل جديد",
+    "adminContactSubmissionBody": "أرسل {senderName} استفسارًا: \"{subject}\"."
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -8136,7 +8399,9 @@
       "rejected": "من المرفوضين",
       "withdrawn": "من المنسحبين",
       "expired": "من المنتهية"
-    }
+    },
+    "poolCount": "{count, plural, =0 {لا توجد مجموعات بعد} one {مجموعة واحدة} two {مجموعتان} few {# مجموعات} many {# مجموعة} other {# مجموعة}}",
+    "statAddedThisMonthShort": "هذا الشهر"
   },
   "emailSequences": {
     "previous": "السابق",
@@ -8430,7 +8695,12 @@
     "noAnalytics": "لا تتوفر تحليلات لهذه الوظيفة",
     "questionNumber": "س{number}",
     "loadJobsFailed": "تعذر تحميل الوظائف",
-    "loadFailed": "تعذر تحميل التحليلات"
+    "loadFailed": "تعذر تحميل التحليلات",
+    "noQuestionsOnJob": "لا تحتوي هذه الوظيفة على أسئلة فرز بعد",
+    "noQuestionsOnJobHint": "أضف أسئلة الفرز من محرر الوظيفة وستُلخّص الإجابات هنا.",
+    "editJob": "تعديل الوظيفة",
+    "noJobsYet": "لم تنشر أي وظائف بعد",
+    "postAJob": "انشر وظيفة"
   },
   "employerAssessments": {
     "title": "تقييمات المهارات",
@@ -8531,7 +8801,10 @@
     "toastUpdateFailed": "تعذر تحديث القالب",
     "toastDuplicated": "تم نسخ القالب",
     "toastDuplicateFailed": "تعذر نسخ القالب",
-    "toastUseFailed": "تعذر إنشاء وظيفة من القالب"
+    "toastUseFailed": "تعذر إنشاء وظيفة من القالب",
+    "emptyCta": "اذهب إلى وظائفك",
+    "emptyCtaHint": "افتح قائمة أي وظيفة واختر “حفظ كقالب”.",
+    "templateCount": "{count, plural, =0 {لا توجد قوالب} one {قالب واحد} two {قالبان} few {# قوالب} many {# قالبًا} other {# قالب}}"
   },
   "employerInterviewsBulk": {
     "title": "جدولة مقابلات جماعية",
@@ -9303,7 +9576,23 @@
     "exportHeaderApplied": "تاريخ التقديم",
     "failedToLoadAiInsights": "تعذّر تحميل رؤى الذكاء الاصطناعي. يرجى المحاولة مرة أخرى.",
     "statusUpdated": "تم تحديث الحالة",
-    "failedToUpdateStatus": "تعذّر تحديث الحالة. يرجى المحاولة مرة أخرى."
+    "failedToUpdateStatus": "تعذّر تحديث الحالة. يرجى المحاولة مرة أخرى.",
+    "bulkStatusUpdated": "{count, plural, one {تم تحديث طلب واحد} other {تم تحديث # طلبات}}",
+    "selectedCount": "{count, plural, one {تم تحديد واحد} other {تم تحديد #}}",
+    "bulkChangeStatus": "تغيير الحالة",
+    "bulkApply": "تطبيق",
+    "clearSelection": "إلغاء التحديد",
+    "selectAllOnPage": "تحديد الكل في هذه الصفحة",
+    "selectApplication": "تحديد الطلب",
+    "showDetails": "إظهار التفاصيل",
+    "hideDetails": "إخفاء التفاصيل",
+    "detailContact": "التواصل",
+    "detailSkills": "المهارات",
+    "detailNoSkills": "لا توجد مهارات مدرجة",
+    "openCv": "فتح السيرة الذاتية",
+    "viewJob": "عرض الوظيفة",
+    "viewCandidateProfile": "فتح المرشح في الباحثين عن عمل",
+    "staleFilterLabel": "بحاجة إلى مراجعة (أكثر من 48 ساعة)"
   },
   "adminCmsFaqs": {
     "title": "الأسئلة الشائعة",
@@ -9457,7 +9746,8 @@
     "draftJobsNote": "وظائف غير منشورة بانتظار صاحبها.",
     "open": "متاح",
     "more": "المزيد",
-    "less": "أقل"
+    "less": "أقل",
+    "filterChipNoApplications": "بدون طلبات"
   },
   "adminSettings": {
     "pageTitle": "الإعدادات",
@@ -9785,7 +10075,34 @@
     "noAuditLogEntriesFound": "لم يتم العثور على إدخالات سجل تدقيق",
     "onBehalfOf": "نيابة عن",
     "unknown": "غير معروف",
-    "failedToLoadAuditLogs": "تعذّر تحميل سجلات التدقيق. يرجى المحاولة مرة أخرى."
+    "failedToLoadAuditLogs": "تعذّر تحميل سجلات التدقيق. يرجى المحاولة مرة أخرى.",
+    "filterByActor": "التصفية بالاسم أو البريد الإلكتروني",
+    "allRoles": "كل الأدوار",
+    "roleAdmin": "مدير",
+    "roleSuperAgent": "وكيل رئيسي",
+    "roleAgent": "وكيل",
+    "roleEmployer": "صاحب عمل",
+    "roleJobSeeker": "باحث عن عمل",
+    "roleSystem": "النظام"
+  },
+  "adminPlatformData": {
+    "tabsLabel": "جداول بيانات المنصة",
+    "industries": "القطاعات",
+    "jobSkills": "المهارات الوظيفية",
+    "majorSubjects": "التخصصات",
+    "maritalStatuses": "الحالة الاجتماعية",
+    "genders": "الجنس",
+    "countries": "الدول",
+    "states": "المناطق",
+    "cities": "المدن"
+  },
+  "adminReportTabs": {
+    "tabsLabel": "التقارير",
+    "platform": "المنصة",
+    "aiInsights": "رؤى الذكاء الاصطناعي",
+    "targets": "الأهداف",
+    "commissions": "العمولات",
+    "subscriptions": "الاشتراكات"
   },
   "adminCms": {
     "cmsWorkspaceLabel": "مساحة عمل إدارة المحتوى",
@@ -9906,7 +10223,15 @@
     "fieldDate": "التاريخ",
     "fieldSubject": "الموضوع",
     "fieldMessage": "الرسالة",
-    "ipLabel": "عنوان IP"
+    "ipLabel": "عنوان IP",
+    "replyLabel": "الرد",
+    "replyPlaceholder": "اكتب ردك على {name}…",
+    "replyButton": "إرسال الرد",
+    "replySending": "جارٍ الإرسال…",
+    "replySent": "تم إرسال الرد إلى {name}",
+    "replyFailed": "لم نتمكن من إرسال الرد. يرجى المحاولة مرة أخرى.",
+    "replySentLabel": "ردك",
+    "repliedBadge": "تم الرد"
   },
   "adminCmsStaticPagesIdEdit": {
     "cmsWorkspace": "مساحة عمل إدارة المحتوى",
@@ -10046,29 +10371,45 @@
     "databaseLabel": "قاعدة البيانات",
     "latencyLabel": "الكمون",
     "connectionsLabel": "الاتصالات",
-    "apiLabel": "واجهة برمجية",
-    "avgResponseLabel": "متوسط الاستجابة",
-    "errorRateLabel": "معدل الخطأ",
-    "requestsTodayLabel": "الطلبات اليوم",
     "storageLabel": "التخزين",
-    "usedLabel": "المستخدمة",
     "platformMetricsHeading": "مقاييس المنصة",
     "activeUsersLabel": "المستخدمون النشطون",
-    "onlineNowLabel": "متصل الآن",
     "activeJobsLabel": "الوظائف النشطة",
     "applicationsTodayLabel": "التطبيقات اليوم",
-    "uptimeLabel": "وقت التشغيل",
-    "noIncidentsLabel": "لا توجد حوادث",
-    "lastIncidentLabel": "آخر حادثة:",
-    "cronJobsLabel": "وظائف Cron",
-    "cronStatusOk": "حسنا",
-    "cronStatusFailed": "فشل",
-    "lastRunLabel": "آخر تشغيل:",
-    "neverLabel": "أبدا",
-    "memoryHeading": "استخدام الذاكرة",
     "heapMemoryLabel": "ذاكرة Heap",
     "errorFetchHealth": "تعذر جلب صحة النظام",
-    "errorConnectHealth": "خطأ في الاتصال بنقطة صحة النظام"
+    "errorConnectHealth": "خطأ في الاتصال بنقطة صحة النظام",
+    "statusCritical": "حرج",
+    "measuredOnlyNote": "قيم مقاسة فقط",
+    "dataSizeLabel": "البيانات",
+    "indexSizeLabel": "الفهارس",
+    "allocatedLabel": "المخصص",
+    "storageUnavailable": "إحصاءات التخزين غير متاحة في هذه الفئة من قواعد البيانات.",
+    "integrationsLabel": "عمليات الربط",
+    "activeWebhooksLabel": "خطافات الويب النشطة",
+    "failingWebhooksLabel": "المتعثرة",
+    "openFailingWebhooks": "مراجعة خطافات الويب المتعثرة",
+    "backlogHeading": "بانتظارك",
+    "supportLabel": "الدعم",
+    "openTicketsLabel": "التذاكر المفتوحة",
+    "unreadSubmissionsLabel": "استفسارات غير مقروءة",
+    "openSupportInbox": "فتح بريد الدعم",
+    "openContactInbox": "فتح بريد التواصل",
+    "subscriptionCatalogueLabel": "كتالوج الاشتراكات",
+    "employerPlansLabel": "خطط أصحاب العمل",
+    "jobSeekerPlansLabel": "خطط الباحثين عن عمل",
+    "noDefaultPlan": "بدون خطة افتراضية",
+    "enforcementLabel": "التطبيق",
+    "enforcementOn": "مفعل",
+    "enforcementOff": "متوقف",
+    "openSubscriptionPlans": "فتح خطط الاشتراك",
+    "signedInLast24h": "سجلوا الدخول اليوم",
+    "processUptimeLabel": "مدة تشغيل العملية",
+    "processUptimeNote": "منذ آخر نشر",
+    "heapOfTotal": "من {total} ميجابايت",
+    "uptimeDaysHours": "{days} يوم {hours} ساعة",
+    "uptimeHoursMinutes": "{hours} ساعة {minutes} دقيقة",
+    "uptimeMinutes": "{minutes} دقيقة"
   },
   "adminTerritory": {
     "adminWorkspaceBadge": "مساحة العمل الإدارية",
@@ -10109,7 +10450,7 @@
   },
   "adminAnalytics": {
     "adminWorkspace": "مساحة العمل الإدارية",
-    "analyticsTitle": "التحليلات",
+    "analyticsTitle": "رؤى الذكاء الاصطناعي",
     "analyticsDescription": "اسأل الذكاء الاصطناعي عن بيانات منصتك وصدّر النتائج.",
     "promptLibraryTitle": "تقارير سريعة",
     "promptLibraryDescription": "اضغط على قالب لإنشاء تقرير.",
@@ -10303,7 +10644,8 @@
     "exportColumnStatus": "الحالة",
     "exportColumnJoined": "انضم في",
     "exportTitle": "أصحاب العمل",
-    "toastVerificationFailed": "تعذّر التحقق من صاحب العمل هذا. يرجى المحاولة مرة أخرى."
+    "toastVerificationFailed": "تعذّر التحقق من صاحب العمل هذا. يرجى المحاولة مرة أخرى.",
+    "requestFailed": "لم نتمكن من إتمام العملية. يرجى المحاولة مرة أخرى."
   },
   "adminGdpr": {
     "pageTitle": "GDPR والخصوصية",
@@ -10444,7 +10786,16 @@
     "exportHeaderScheduled": "موعد المقابلة",
     "exportHeaderDurationMin": "المدة (دقيقة)",
     "failedToLoadFilterOptions": "تعذّر تحميل خيارات التصفية. يرجى المحاولة مرة أخرى.",
-    "failedToLoadInterviews": "تعذّر تحميل المقابلات. يرجى المحاولة مرة أخرى."
+    "failedToLoadInterviews": "تعذّر تحميل المقابلات. يرجى المحاولة مرة أخرى.",
+    "manage": "إدارة",
+    "statusUpdated": "تم تحديث حالة المقابلة",
+    "statusUpdateFailed": "لم نتمكن من تحديث المقابلة. يرجى المحاولة مرة أخرى.",
+    "status_scheduled": "مجدولة",
+    "status_confirmed": "مؤكدة",
+    "status_rescheduled": "أعيدت جدولتها",
+    "status_completed": "مكتملة",
+    "status_cancelled": "ملغاة",
+    "status_no_show": "لم يحضر"
   },
   "adminInvoices": {
     "title": "الفواتير",
@@ -10945,7 +11296,8 @@
     "employerRole": "صاحب عمل",
     "agentRole": "وكيل",
     "superAgentRole": "وكيل متقدم",
-    "adminRole": "مسؤول"
+    "adminRole": "مسؤول",
+    "broadcastFailed": "لم نتمكن من إرسال البث. يرجى المحاولة مرة أخرى."
   },
   "adminExhibitions": {
     "adminOperations": "عمليات المسؤول",
@@ -11415,7 +11767,7 @@
   },
   "adminReports": {
     "adminWorkspace": "مساحة عمل المسؤول",
-    "reportsAndAnalytics": "التقارير والتحليلات",
+    "reportsAndAnalytics": "تقرير المنصة",
     "platformDemandDescription": "تابع الأداء واتخذ قرارات مبنية على البيانات.",
     "totalJobs": "إجمالي الوظائف",
     "totalJobsRolesDetail": "تم إنشاء {current} وظيفة في آخر 30 يومًا.",
@@ -11865,7 +12217,11 @@
     "toastBulkUpdated": "تم تحديث {affected}/{total} مستخدم(ين)",
     "toastBulkPartialUpdated": "تم تحديث {affected}/{total}، تم تخطي {failed}: {reasons}",
     "toastBulkNoUpdates": "لم يتم تحديث أي مستخدمين: {reasons}",
-    "toastPermissionsUpdated": "تم تحديث الأذونات"
+    "toastPermissionsUpdated": "تم تحديث الأذونات",
+    "deactivateConfirmMessage": "إلغاء تنشيط {name}؟ سيتم تسجيل خروجه ولن يتمكن من الدخول حتى إعادة التنشيط.",
+    "toastUserDeactivated": "تم إلغاء تنشيط {name}",
+    "toastUserActivated": "تم تنشيط {name}",
+    "toastFailedSavePermissions": "لم نتمكن من حفظ الصلاحيات. يرجى المحاولة مرة أخرى."
   },
   "superAgentSettings": {
     "profilePhoto": "صورة الملف الشخصي",
@@ -11978,7 +12334,68 @@
     "settingsTitle": "الإعدادات",
     "settingsDescription": "إدارة تكوين مساحة عملك — التفضيلات الإقليمية ومعدلات العمولات وقنوات الإخطارات والتوفر والأمان.",
     "saved": "تم الحفظ",
-    "selectTimezone": "اختر المنطقة الزمنية"
+    "selectTimezone": "اختر المنطقة الزمنية",
+    "navProfileLabel": "الملف الشخصي والصورة",
+    "navProfileDesc": "الصورة والاسم والمعلومات",
+    "navRegionLabel": "المنطقة والعملة",
+    "navRegionDesc": "الدولة والعملة والعرض",
+    "navCommissionLabel": "معدل العمولة",
+    "navCommissionDesc": "معدل تجاوز الرسوم",
+    "navInvoiceLabel": "إعدادات الفاتورة",
+    "navInvoiceDesc": "إعدادات الفواتير والدفع",
+    "navNotificationsLabel": "الإشعارات",
+    "navNotificationsDesc": "التنبيهات والرسائل",
+    "navAvailabilityLabel": "توفر الوقت",
+    "navAvailabilityDesc": "المنطقة الزمنية وساعات العمل",
+    "navSecurityLabel": "الحساب والأمان",
+    "navSecurityDesc": "كلمة المرور وإجراءات الحساب",
+    "categoryPlacementsLabel": "التوظيفات والوكلاء",
+    "categoryPlacementsDesc": "توظيفات الوكلاء وتقدم المرشحين ونشاط الفريق",
+    "categoryCommissionsLabel": "تحديثات العمولة",
+    "categoryCommissionsDesc": "العمولات الجديدة والمدفوعات وتغييرات الأسعار",
+    "categoryTeamLabel": "أداء الفريق",
+    "categoryTeamDesc": "ملخصات أداء الوكلاء الأسبوعية والإنجازات",
+    "categoryJobsLabel": "تحديثات الوظائف",
+    "categoryJobsDesc": "إعلانات الوظائف الجديدة والانتهاءات والتغييرات السوقية",
+    "categorySystemLabel": "النظام والأمان",
+    "categorySystemDesc": "تنبيهات تسجيل الدخول والإشعارات والأحداث الأمنية",
+    "freqInstantLabel": "فوري",
+    "freqInstantDesc": "عند حدوث الأحداث",
+    "freqDailyLabel": "يومي",
+    "freqDailyDesc": "رسالة واحدة يومياً",
+    "freqWeeklyLabel": "أسبوعي",
+    "freqWeeklyDesc": "ملخص يوم الأحد",
+    "freqNoneLabel": "مُعطّل",
+    "freqNoneDesc": "داخل التطبيق فقط",
+    "channelInApp": "داخل التطبيق",
+    "channelEmail": "البريد الإلكتروني",
+    "invoiceCategoryRecruitment": "توظيف التوظيف",
+    "invoiceCategorySubscription": "اشتراك المستخدم",
+    "invoiceCategoryPremiumPosting": "نشر وظيفة مميز",
+    "invoiceCategoryFeaturedPromotion": "ترويج صاحب العمل المميز",
+    "invoiceCategoryExhibition": "فاتورة المعرض",
+    "invoiceCategoryBulkHiring": "حزمة التوظيف الضخم",
+    "invoiceCategoryConsulting": "رسوم الاستشارات",
+    "invoiceCategoryCustomEnterprise": "فاتورة المؤسسة المخصصة",
+    "invoiceTaxNone": "بدون ضريبة",
+    "invoiceTaxGst": "ضريبة السلع والخدمات",
+    "invoiceTaxVat": "ضريبة القيمة المضافة",
+    "invoiceTaxReverseCharge": "فرض معكوس",
+    "invoiceTaxSalesTax": "ضريبة المبيعات",
+    "invoiceTaxServiceTax": "ضريبة الخدمات",
+    "invoiceTaxWithholdingTax": "ضريبة الاستقطاع",
+    "invoiceTaxTds": "خصم الضريبة عند المصدر",
+    "invoiceTaxPst": "ضريبة المبيعات الإقليمية",
+    "invoiceTaxHst": "ضريبة المبيعات المنسقة",
+    "invoicePaymentImmediate": "فوري",
+    "invoicePaymentNet7": "صافي 7 أيام",
+    "invoicePaymentNet15": "صافي 15 يوم",
+    "invoicePaymentNet30": "صافي 30 يوم",
+    "invoicePaymentNet45": "صافي 45 يوم",
+    "invoicePaymentNet60": "صافي 60 يوم",
+    "invoicePaymentNet90": "صافي 90 يوم",
+    "invoicePaymentCustom": "مخصص",
+    "saveChanges": "حفظ التغييرات"
   },
   "superAgentJobs": {
     "totalJobsLabel": "إجمالي الوظائف",
@@ -12079,9 +12496,27 @@
     "responsibilitiesLabel": "المسؤوليات",
     "benefitsLabel": "المزايا",
     "jobDetailsUnavailable": "تفاصيل الوظيفة غير متاحة",
-    "failedToLoadJobDetails": "تعذر تحميل تفاصيل الوظيفة."
+    "failedToLoadJobDetails": "تعذر تحميل تفاصيل الوظيفة.",
+    "filterBadgeStatusLabel": "الحالة",
+    "filterBadgeTypeLabel": "النوع",
+    "filterBadgeModeLabel": "الطريقة",
+    "filterBadgeCountryLabel": "البلد",
+    "filterBadgeCityLabel": "المدينة",
+    "filterBadgeSkillsLabel": "المهارات",
+    "filterBadgeSalaryLabel": "الراتب",
+    "filterBadgeExperienceLabel": "الخبرة",
+    "filterBadgeDateLabel": "التاريخ",
+    "filterBadgeSearchLabel": "بحث",
+    "exportTitle": "الوظائف الإقليمية"
   },
   "superAgentLeads": {
+    "columnActions": "الإجراءات",
+    "changeStage": "تغيير المرحلة",
+    "stageUpdated": "تم تحديث المرحلة إلى {stage}.",
+    "stageUpdateError": "تعذّر تحديث المرحلة. يرجى المحاولة مرة أخرى.",
+    "viewAgent": "فتح الوكيل المسؤول عن هذا العميل",
+    "loadError": "تعذّر تحميل خط العملاء المحتملين. يرجى المحاولة مرة أخرى.",
+    "retry": "إعادة المحاولة",
     "pageTitle": "خط أنابيب العملاء المحتملين",
     "pageDescription": "راجع كل عميل محتمل لصاحب عمل عبر فريقك، وانتقل بين المراحل بسرعة، واحفظ عمل المتابعة الإقليمي مرئياً من قائمة انتظار حديثة واحدة.",
     "sectionTitle": "تصفية ومراجعة عملاء صاحب العمل المحتملين",
@@ -12375,9 +12810,17 @@
     "exportCurrency": "العملة",
     "exportCommissionPaid": "تم دفع العمولة",
     "exportStartDate": "تاريخ البدء",
-    "exportPlacedAt": "موضوع في"
+    "exportPlacedAt": "موضوع في",
+    "currencyFilterAllLabel": "جميع العملات",
+    "exportTitle": "التوظيفات"
   },
   "superAgentAgentDetail": {
+    "sendReminder": "إرسال تذكير",
+    "sendReminderTitle": "إرسال تذكير بالأداء",
+    "sendReminderMessage": "إرسال تذكير بالأداء إلى {name}؟",
+    "sendReminderConfirm": "إرسال التذكير",
+    "sendReminderSuccess": "تم إرسال التذكير إلى {name}.",
+    "sendReminderError": "تعذّر إرسال التذكير. يرجى المحاولة مرة أخرى.",
     "failedToLoadDetails": "تعذر تحميل بيانات الوكيل",
     "failedToUpdateAgent": "تعذر تحديث بيانات الوكيل",
     "networkError": "خطأ في الشبكة",
@@ -12447,7 +12890,15 @@
     "formLabelWorkingDays": "أيام العمل",
     "formLabelUpdateRegion": "تحديث المنطقة المعينة (اختياري)",
     "formHintRegionEmpty": "اترك المنطقة فارغة للاحتفاظ بالتعيينات الحالية. يجب أن تكون المناطق الجديدة ضمن إقليمك.",
-    "formSavingLabel": "جاري الحفظ…"
+    "formSavingLabel": "جاري الحفظ…",
+    "dayMonday": "الاثنين",
+    "dayTuesday": "الثلاثاء",
+    "dayWednesday": "الأربعاء",
+    "dayThursday": "الخميس",
+    "dayFriday": "الجمعة",
+    "daySaturday": "السبت",
+    "daySunday": "الأحد",
+    "agentDetailError": "تعذّر تحميل بيانات الوكيل. يرجى التحقق من اتصالك والمحاولة مرة أخرى."
   },
   "superAgentReferralLinks": {
     "eyebrow": "روابط الإحالة",
@@ -12829,7 +13280,8 @@
     "customReport": "تقرير مخصص",
     "customReportPlaceholder": "مثال: ما هو أفضل معدل تحويل من العملاء المتوقعين إلى التوظيفات الناجحة هذا الربع؟",
     "generateReport": "توليد التقرير",
-    "reportGeneratedAt": "تم توليد التقرير في {time}"
+    "reportGeneratedAt": "تم توليد التقرير في {time}",
+    "aiErrorMessage": "تعذّر إنشاء هذا التقرير. لم يتم حفظ أي تقرير. يرجى المحاولة مرة أخرى."
   },
   "superAgentTerritory": {
     "pageTitle": "خريطة الأراضي",
@@ -12859,7 +13311,10 @@
     "cardEmployers": "أصحاب العمل",
     "cardJobs": "الوظائف",
     "cardCandidates": "المرشحون",
-    "loadTerritoryError": "تعذر تحميل بيانات الأراضي"
+    "loadTerritoryError": "تعذر تحميل بيانات الأراضي",
+    "typeCountry": "بلد",
+    "typeState": "محافظة",
+    "typeCity": "مدينة"
   },
   "superAgentCommissionsReport": {
     "pageTitle": "تقرير العمولات",
@@ -12898,7 +13353,19 @@
     "tableColumnCount": "العدد",
     "noTeamDataMessage": "لا توجد بيانات عمولات فريق لـ {year}",
     "failedToLoadReport": "تعذر تحميل تقرير العمولات",
-    "kpiPending": "قيد الانتظار"
+    "kpiPending": "قيد الانتظار",
+    "monthJanuary": "يناير",
+    "monthFebruary": "فبراير",
+    "monthMarch": "مارس",
+    "monthApril": "أبريل",
+    "monthMay": "مايو",
+    "monthJune": "يونيو",
+    "monthJuly": "يوليو",
+    "monthAugust": "أغسطس",
+    "monthSeptember": "سبتمبر",
+    "monthOctober": "أكتوبر",
+    "monthNovember": "نوفمبر",
+    "monthDecember": "ديسمبر"
   },
   "superAgentMarket": {
     "pageTitle": "ذكاء السوق الاصطناعي",
@@ -12930,7 +13397,9 @@
     "query9": "ما هي الدول التي توفر معظم عمال البناء للإمارات العربية المتحدة؟",
     "query10": "ما هي أكثر مهارات تكنولوجيا المعلومات طلباً عبر آسيا؟",
     "query11": "ما هو نطاق راتب الممرضات في المملكة المتحدة مقابل المملكة العربية السعودية؟",
-    "query12": "ما هي الدول الأفريقية التي تنمو كأسواق مصدرة للتوظيف؟"
+    "query12": "ما هي الدول الأفريقية التي تنمو كأسواق مصدرة للتوظيف؟",
+    "showLess": "عرض أقل",
+    "moreSuggestions": "المزيد من الاقتراحات"
   },
   "agentLeads": {
     "stageNew": "جديد",
@@ -13030,7 +13499,9 @@
     "detailNotes": "الملاحظات",
     "pipelineProgress": "تقدم خط الأنابيب",
     "currentStage": "الحالية: {stage}",
-    "aiScoreLabel": "التقييم الذكي"
+    "aiScoreLabel": "التقييم الذكي",
+    "dueFollowUps": "متابعات مستحقة",
+    "dueFollowUpsHint": "العملاء المحتملون الذين حان موعد متابعتهم"
   },
   "agentCandidates": {
     "agentWorkspace": "مساحة عمل الوكيل",
@@ -13191,7 +13662,8 @@
     "ariaEditInterview": "تحرير المقابلة مع {name}",
     "ariaMarkCompleted": "وضع علامة على المقابلة كمكتملة",
     "ariaCancel": "إلغاء المقابلة",
-    "modalEditTitle": "تحرير المقابلة"
+    "modalEditTitle": "تحرير المقابلة",
+    "outcomePending": "بانتظار النتيجة"
   },
   "agentJobSeekers": {
     "heroAgentWorkspace": "مساحة عمل الوكيل",
@@ -14515,6 +14987,9 @@
     "strengths": "نقاط القوة",
     "gaps": "النقاط الضعيفة",
     "previewNotAvailable": "المعاينة غير متاحة هنا",
+    "panes": "السيرة الذاتية أو الملف",
+    "tabCv": "السيرة الذاتية",
+    "tabProfile": "الملف",
     "cvNotEmbeddable": "لا يمكن دمج هذه السيرة الذاتية في المتصفح. افتحها أو حملها لعرض المستند الكامل.",
     "openDownloadCv": "فتح / تحميل السيرة الذاتية",
     "saving": "جاري الحفظ…",
@@ -14671,7 +15146,8 @@
     "edit": "تعديل",
     "delete": "حذف",
     "addTitle": "إضافة {title}",
-    "editTitle": "تعديل {title}"
+    "editTitle": "تعديل {title}",
+    "deleteFailed": "لم نتمكن من حذف هذا العنصر. يرجى المحاولة مرة أخرى."
   },
   "exhibitionHeroFilters": {
     "hideFilters": "إخفاء المرشحات",
@@ -14808,7 +15284,22 @@
     "subtitle": "أكمل هذه الخطوات لفتح سير عمل صاحب العمل الكامل.",
     "progressLabel": "تقدمك",
     "doNotShowAgain": "عدم الإظهار مرة أخرى",
-    "a11yClose": "إغلاق"
+    "a11yClose": "إغلاق",
+    "completedOf": "{done} من {total} مكتملة",
+    "steps": {
+      "companyProfile": "أكمل ملف شركتك",
+      "companyProfileDesc": "أضف اسم الشركة والقطاع والبريد الإلكتروني",
+      "addContact": "أضف بيانات التواصل",
+      "addContactDesc": "أضف الموقع الإلكتروني ورقم الهاتف",
+      "createJob": "أنشئ وظيفتك الأولى",
+      "createJobDesc": "انشر وظيفة لتبدأ باستقبال الطلبات",
+      "addRequirements": "أضف المتطلبات والمهارات",
+      "addRequirementsDesc": "حدّد المهارات والخبرة التي تحتاجها الوظيفة",
+      "setSalary": "حدّد نطاق الراتب",
+      "setSalaryDesc": "حدّد الأجر لجذب المرشحين المناسبين",
+      "publishJob": "راجع وانشر",
+      "publishJobDesc": "اجعل الوظيفة مباشرة لتبدأ باستقبال الطلبات"
+    }
   },
   "teamAllocationDialog": {
     "distributeTargetsToAgents": "توزيع الأهداف على الوكلاء",
@@ -14986,9 +15477,82 @@
     "refresh": "تحديث"
   },
   "quickActions": {
+    "saAddAgent": "إضافة وكيل",
+    "saAddAgentDesc": "إنشاء حساب لعضو جديد في الفريق",
+    "saOnboardEmployer": "تسجيل صاحب عمل",
+    "saOnboardEmployerDesc": "تسجيل شركة في منطقتك",
+    "saNewInvoice": "فاتورة جديدة",
+    "saNewInvoiceDesc": "إصدار فاتورة لتعيين أو اشتراك",
+    "saNewReferralLink": "رابط إحالة جديد",
+    "saNewReferralLinkDesc": "إنشاء رابط تسجيل قابل للتتبع",
+    "saDistributeTargets": "توزيع الأهداف",
+    "saDistributeTargetsDesc": "توزيع أهداف هذا العام على فريقك",
+    "saReviewExhibitions": "مراجعة طلبات المعارض",
+    "saReviewExhibitionsDesc": "اعتماد أو تعديل أو رفض ما قدمه وكلاؤك",
+    "saApproveCommissions": "اعتماد العمولات",
+    "saApproveCommissionsDesc": "اعتماد العمولات التي تنتظر موافقتك",
     "findJobs": "ابحث عن وظائف",
     "updateResume": "تحديث السيرة الذاتية",
-    "setPreferences": "تعيين التفضيلات"
+    "setPreferences": "تعيين التفضيلات",
+    "postJobAi": "نشر وظيفة بالذكاء الاصطناعي",
+    "postJobAiDesc": "صف الوظيفة ودع الذكاء الاصطناعي يكتبها",
+    "postJobManual": "كتابة وظيفة يدويًا",
+    "postJobManualDesc": "فتح نموذج الوظيفة مباشرة",
+    "scheduleInterviews": "جدولة المقابلات",
+    "scheduleInterviewsDesc": "دعوة عدة مرشحين دفعة واحدة",
+    "newMessage": "مراسلة مرشح",
+    "newMessageDesc": "فتح المحادثات",
+    "reviewNewApplications": "مراجعة الطلبات الجديدة",
+    "reviewNewApplicationsDesc": "مرشحون بانتظار المراجعة الأولى",
+    "reviewTopMatches": "مراجعة أفضل التطابقات",
+    "reviewTopMatchesDesc": "مرشحون بنسبة تطابق 80٪ فأعلى",
+    "postJobAdmin": "نشر وظيفة",
+    "postJobAdminDesc": "إنشاء وظيفة لصاحب عمل",
+    "manageUsers": "إدارة المستخدمين",
+    "manageUsersDesc": "الحسابات والأدوار والصلاحيات",
+    "postJobAgent": "نشر وظيفة",
+    "postJobAgentDesc": "إنشاء وظيفة لصاحب عمل مُسند إليك",
+    "openLeads": "العملاء المحتملون",
+    "openLeadsDesc": "قائمة العملاء المحتملين لديك",
+    "openTeam": "فريقك",
+    "openTeamDesc": "الوكلاء الذين تديرهم",
+    "create": "إنشاء",
+    "createMenu": "إنشاء عنصر جديد",
+    "uploadDocument": "رفع مستند",
+    "uploadDocumentDesc": "أضف شهادة أو هوية أو تزكية",
+    "addPortfolioItem": "إضافة عمل",
+    "addPortfolioItemDesc": "اعرض مشروعًا عملت عليه",
+    "reviewOffers": "مراجعة العروض",
+    "reviewOffersDesc": "قبول أو رفض أو تقديم عرض مقابل",
+    "updateResumeDesc": "تعديل وتحميل سيرتك الذاتية",
+    "findJobsDesc": "تصفح الوظائف المطابقة لملفك",
+    "setPreferencesDesc": "أخبرنا بما تبحث عنه",
+    "createInvoice": "إنشاء فاتورة",
+    "createInvoiceDesc": "إصدار فاتورة لصاحب عمل مقابل توظيف",
+    "createTarget": "إنشاء هدف",
+    "createTargetDesc": "تحديد هدف لوكيل أو وكيل رئيسي",
+    "createStaticPage": "صفحة ثابتة جديدة",
+    "createStaticPageDesc": "إضافة صفحة إلى الموقع العام",
+    "bulkImport": "استيراد جماعي",
+    "bulkImportDesc": "رفع المستخدمين أو الوظائف من ملف",
+    "reviewSupportTickets": "بريد الدعم",
+    "reviewSupportTicketsDesc": "التذاكر المسندة إليك",
+    "reviewFailingWebhooks": "خطافات ويب متعثرة",
+    "reviewFailingWebhooksDesc": "عمليات ربط توقفت عن التسليم",
+    "newLead": "عميل محتمل جديد",
+    "newLeadDesc": "أضف شركة محتملة إلى خط العمل",
+    "newTask": "مهمة جديدة",
+    "newTaskDesc": "أضف متابعة أو مكالمة إلى قائمتك",
+    "scheduleInterviewAgent": "جدولة مقابلة",
+    "scheduleInterviewAgentDesc": "احجز مقابلة لأحد المرشحين",
+    "dueFollowUps": "متابعات مستحقة",
+    "dueFollowUpsDesc": "العملاء المحتملون الذين فات موعد متابعتهم",
+    "overdueTasks": "مهام متأخرة",
+    "overdueTasksDesc": "المهام التي تجاوزت تاريخ استحقاقها",
+    "reviewNewCandidates": "مراجعة المتقدمين الجدد",
+    "reviewNewCandidatesDesc": "الطلبات التي لم تُراجع بعد",
+    "recordInterviewOutcomes": "تسجيل نتائج المقابلات",
+    "recordInterviewOutcomesDesc": "مقابلات انتهت دون تسجيل نتيجتها"
   },
   "jobSeekerRecentActivity": {
     "noRecentActivity": "لا يوجد نشاط حديث",
@@ -15115,7 +15679,12 @@
     "no": "لا",
     "skip": "تخطي",
     "skillsUpdated": "✓ شكراً! تم تحديث ملفك الشخصي بـ {count} مهارة.",
-    "moreSkillQuestions": "{count} سؤال مهارة آخر"
+    "moreSkillQuestions": "{count} سؤال مهارة آخر",
+    "errors": {
+      "applyFailed": "تعذر علينا التقديم. حاول مرة أخرى.",
+      "planLimitReached": "لقد وصلت إلى حد التقديمات في خطتك. قم بترقية خطتك للمتابعة.",
+      "networkError": "خطأ في الشبكة. حاول مرة أخرى."
+    }
   },
   "socialShare": {
     "shareJob": "مشاركة الوظيفة",
@@ -15292,7 +15861,10 @@
   "agentCalendar": {
     "failedLoadingCalendarEvents": "تعذر تحميل أحداث التقويم",
     "title": "التقويم",
-    "description": "نظرة عامة مرئية على جميع مقابلاتك ومتابعاتك"
+    "description": "نظرة عامة مرئية على جميع مقابلاتك ومتابعاتك",
+    "eventInterview": "مقابلة",
+    "eventTask": "موعد مهمة",
+    "eventFollowUp": "متابعة عميل محتمل"
   },
   "agentMessages": {
     "title": "الرسائل",
@@ -15440,5 +16012,48 @@
     "title": "الإيرادات حسب الدولة",
     "noCountryData": "لا توجد بيانات دول بعد",
     "totalBilled": "إجمالي الفوترة: <strong>{amount} {currency}</strong> عبر {markets, plural, zero {# سوق} one {سوق واحد} two {سوقين} few {# أسواق} many {# سوقًا} other {# سوق}}"
+  },
+  "agentSections": {
+    "performanceTabsLabel": "عروض الأداء",
+    "inboxTabsLabel": "عروض البريد",
+    "tabActivity": "النشاط",
+    "tabTargets": "الأهداف",
+    "tabTargetReport": "تقرير الأهداف",
+    "tabCommissionReport": "تقرير العمولات",
+    "tabDirect": "مباشر",
+    "tabChannels": "قنوات الفريق"
+  },
+  "agentQueue": {
+    "eyebrow": "بحاجة إليك",
+    "titleWithCount": "{count, plural, zero {لا شيء يحتاجك اليوم} one {أمر واحد يحتاجك اليوم} two {أمران يحتاجانك اليوم} few {# أمور تحتاجك اليوم} many {# أمرًا يحتاجك اليوم} other {# أمر يحتاجك اليوم}}",
+    "titleClear": "لا يوجد شيء متأخر",
+    "daysLate": "{days, plural, zero {متأخر اليوم} one {متأخر يومًا واحدًا} two {متأخر يومين} few {متأخر # أيام} many {متأخر # يومًا} other {متأخر # يوم}}",
+    "dueToday": "مستحق اليوم",
+    "summary": {
+      "dueFollowUps": "متابعات مستحقة",
+      "overdueTasks": "مهام متأخرة",
+      "interviewsAwaitingOutcome": "نتائج بانتظار التسجيل",
+      "offersAwaitingResponse": "عروض بانتظار الرد",
+      "newCandidates": "مرشحون جدد"
+    },
+    "kind": {
+      "followUp": "عميل محتمل",
+      "task": "مهمة",
+      "interviewOutcome": "مقابلة",
+      "offerResponse": "عرض",
+      "newCandidate": "مرشح"
+    },
+    "reason": {
+      "followUp": "المتابعة مستحقة",
+      "task": "المهمة متأخرة",
+      "interviewOutcome": "لم تُسجَّل النتيجة",
+      "offerResponse": "بانتظار رد المرشح",
+      "newCandidate": "لم تتم مراجعته بعد"
+    },
+    "empty": {
+      "title": "قائمتك خالية",
+      "description": "لا متابعات أو مهام أو نتائج أو عروض متأخرة. وقت مناسب للعمل على عملاء جدد."
+    }
   }
 }
+

@@ -131,7 +131,9 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (priority !== undefined && EXHIBITION_PRIORITIES.includes(priority)) item.priority = priority;
     if (venueNotes !== undefined) item.venueNotes = venueNotes?.trim();
 
-    if (newStatus === "submitted" && ["draft", "revision_requested"].includes(item.status)) {
+    const becameSubmitted =
+      newStatus === "submitted" && ["draft", "revision_requested"].includes(item.status);
+    if (becameSubmitted) {
       item.status = "submitted";
       item.statusHistory.push({
         status: "submitted",
@@ -143,6 +145,20 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     }
 
     await item.save();
+
+    // Same queue signal as a first-time submission — a resubmitted request is
+    // just as much work waiting on the super-agent.
+    if (becameSubmitted && item.superAgentId) {
+      const { notifySuperAgentOfExhibition } = await import("@/lib/notifications/exhibitionNotify");
+      void notifySuperAgentOfExhibition(
+        String(item.superAgentId),
+        ctx.userId,
+        item.eventName,
+        item._id.toString(),
+        ctx.locale,
+      );
+    }
+
     return NextResponse.json(item);
   }
 

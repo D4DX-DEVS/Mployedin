@@ -74,6 +74,7 @@ interface ProfileData {
   // New fields
   projects?: Project[];
   accomplishments?: Accomplishment[];
+  documents?: { name: string; url: string }[];
   careerProfile?: CareerProfile;
   profileVisibility?: "visible" | "hidden";
   sectionVisibility?: Record<string, boolean>;
@@ -95,7 +96,7 @@ type ChecklistStep = {
   icon: React.ElementType;
 };
 
-type ChecklistLabels = Record<"cv" | "skills" | "experience" | "education" | "personal" | "preferences", string>;
+type ChecklistLabels = Record<"cv" | "skills" | "experience" | "education" | "personal" | "preferences" | "documents" | "portfolio", string>;
 
 function buildChecklist(profile: ProfileData | null, labels: ChecklistLabels): ChecklistStep[] {
   return [
@@ -103,6 +104,8 @@ function buildChecklist(profile: ProfileData | null, labels: ChecklistLabels): C
     { id: "skills",      label: labels.skills,      bonus: "+20%", done: (profile?.skills?.length ?? 0) > 0,        href: "./cv",                    icon: Award         },
     { id: "experience",  label: labels.experience,  bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv",                    icon: Briefcase     },
     { id: "education",   label: labels.education,   bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv",                    icon: GraduationCap },
+    { id: "documents",   label: labels.documents,   bonus: "+5%",  done: (profile?.documents?.length ?? 0) > 0,     href: "./documents",             icon: FileText      },
+    { id: "portfolio",   label: labels.portfolio,   bonus: "+5%",  done: (profile?.projects?.length ?? 0) > 0,       href: "./portfolio",             icon: FolderKanban   },
     { id: "personal",    label: labels.personal,    bonus: "+10%", done: !!(profile?.dateOfBirth || profile?.nationality), href: "./profile/personal-details", icon: UserCircle    },
     { id: "preferences", label: labels.preferences, bonus: "+15%", done: (profile?.preferredRoles?.length ?? 0) > 0,   href: "./preferences",           icon: Target        },
   ];
@@ -346,6 +349,8 @@ export default function JobSeekerProfilePage() {
     skills: t("checklist.skills"),
     experience: t("checklist.experience"),
     education: t("checklist.education"),
+    documents: t("checklist.documents"),
+    portfolio: t("checklist.portfolio"),
     personal: t("checklist.personal"),
     preferences: t("checklist.preferences"),
   });
@@ -430,7 +435,7 @@ export default function JobSeekerProfilePage() {
     );
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [loading]);
 
   if (loading) {

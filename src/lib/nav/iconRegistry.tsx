@@ -73,6 +73,9 @@ import {
   Lightbulb,
   Search,
   Eye,
+  Plus,
+  Sparkles,
+  ClipboardCheck,
   type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -145,7 +148,10 @@ export type IconName =
   | "ReceiptText"
   | "Lightbulb"
   | "Search"
-  | "Eye";
+  | "Eye"
+  | "Plus"
+  | "Sparkles"
+  | "ClipboardCheck";
 
 const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   LayoutDashboard,
@@ -216,6 +222,9 @@ const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   Lightbulb,
   Search,
   Eye,
+  Plus,
+  Sparkles,
+  ClipboardCheck,
 };
 
 /** Resolve an icon name to its Lucide component. Falls back to a square placeholder. */

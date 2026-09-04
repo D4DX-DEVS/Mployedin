@@ -20,6 +20,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const status = searchParams.get("status");
   const search = searchParams.get("search");
   const exhibitionId = searchParams.get("exhibitionId");
+  // "due" = the follow-up date has passed and the lead is still live. The
+  // dashboard queue, the nav badge and the ⌘K action all address this view by
+  // URL, so it has to be a server filter and not a client-side slice of one page.
+  const followUp = searchParams.get("followUp");
+  const followUpFrom = searchParams.get("followUpFrom");
+  const followUpTo = searchParams.get("followUpTo");
 
   const filter: Record<string, unknown> = {};
 
@@ -45,6 +51,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   if (status) filter.status = status;
   if (exhibitionId) filter.exhibitionId = exhibitionId;
+  if (followUp === "due") {
+    filter.followUpAt = { $ne: null, $lte: new Date() };
+    filter.status = status ?? { $nin: ["converted", "lost"] };
+  } else if (followUpFrom || followUpTo) {
+    // The calendar asks for one month of follow-up dates at a time.
+    const range: Record<string, Date> = {};
+    if (followUpFrom) range.$gte = new Date(followUpFrom);
+    if (followUpTo) range.$lte = new Date(followUpTo);
+    filter.followUpAt = range;
+  }
   if (search) {
     const safe = escapeRegex(search);
     filter.$or = [

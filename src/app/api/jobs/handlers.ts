@@ -63,6 +63,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const remote = searchParams.get("remote") === "true";
   const myJobs = searchParams.get("myJobs") === "true";
   const invoiceableOnly = searchParams.get("invoiceableOnly") === "true";
+  /* "applications=none" — jobs nobody has applied to. The admin dashboard
+     raises these as an alert; the link needs a filter or the admin lands on the
+     full jobs list and has to find them by eye. */
+  const withoutApplications = searchParams.get("applications") === "none";
   const employerId = searchParams.get("employerId") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,6 +165,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     } else {
       query.employerId = new Types.ObjectId(employerId);
     }
+  }
+
+  if (withoutApplications) {
+    const jobIdsWithApplications = await Application.distinct("jobId", {});
+    query._id = { $nin: jobIdsWithApplications };
   }
 
   const skip = (page - 1) * limit;

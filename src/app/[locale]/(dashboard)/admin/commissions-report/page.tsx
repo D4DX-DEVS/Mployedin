@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
@@ -204,6 +205,7 @@ export default function AdminCommissionsReportPage() {
 
   return (
     <div className="page-container">
+      <ReportTabs />
       <DashboardPageHeader
         compact
         compactOnMobile

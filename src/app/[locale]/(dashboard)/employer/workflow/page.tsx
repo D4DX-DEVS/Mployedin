@@ -8,7 +8,7 @@ import {
   Save, Loader2, CheckCircle, Plus, Trash2, Sparkles, Bell, ShieldAlert, Info,
   BookTemplate, Copy,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -194,9 +194,9 @@ export default function EmployerWorkflowPage() {
   return (
     <FeatureGate feature="workflowCustomization">
     <div className="page-container">
-      <PageHeader
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
         actions={
           /* All three stay on one row. Phones use shorter labels rather than a
              squeezed pill: forcing the full text into a flex-1 button made the

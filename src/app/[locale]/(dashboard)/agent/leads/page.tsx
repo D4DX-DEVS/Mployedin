@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -463,9 +464,12 @@ export default function AgentLeadsPage() {
   const pagination = usePagination();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [exhibitionFilter, setExhibitionFilter] = useState("all");
+  // Filters live in the query string so "leads due today" and "leads in
+  // negotiation" are addresses the dashboard queue, nav badges and ⌘K can link.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
+  const [exhibitionFilter, setExhibitionFilter] = useUrlFilter("exhibitionId", "all");
+  const [followUpFilter, setFollowUpFilter] = useUrlFilter("followUp", "all");
   const [updating, setUpdating] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
@@ -540,16 +544,17 @@ export default function AgentLeadsPage() {
     }
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (exhibitionFilter !== "all") params.set("exhibitionId", exhibitionFilter);
+    if (followUpFilter !== "all") params.set("followUp", followUpFilter);
 
     const res = await fetch(`/api/leads?${params}`);
     const data = await res.json();
     setLeads(data.items ?? []);
     pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     setLoading(false);
-  }, [search, statusFilter, exhibitionFilter, pagination.page, pagination.limit, viewMode]);
+  }, [search, statusFilter, exhibitionFilter, followUpFilter, pagination.page, pagination.limit, viewMode]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
-  useEffect(() => { pagination.resetPage(); }, [search, statusFilter, exhibitionFilter]);
+  useEffect(() => { pagination.resetPage(); }, [search, statusFilter, exhibitionFilter, followUpFilter]);
 
   const updateStatus = async (id: string, status: LeadStatus) => {
     setUpdating(id);
@@ -774,6 +779,22 @@ export default function AgentLeadsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* The dashboard queue and the nav badge both link ?followUp=due;
+                this toggle is how the agent turns that view off again. */}
+            <button
+              type="button"
+              onClick={() => setFollowUpFilter(followUpFilter === "due" ? "all" : "due")}
+              aria-pressed={followUpFilter === "due"}
+              title={t("dueFollowUpsHint")}
+              className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-sm font-semibold transition ${
+                followUpFilter === "due"
+                  ? "border-status-rejected/30 bg-status-rejected-bg text-status-rejected"
+                  : "border-border bg-background/70 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              {t("dueFollowUps")}
+            </button>
           </>
 
           {/* Export */}

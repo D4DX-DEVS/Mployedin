@@ -50,20 +50,20 @@ export function PriorityActions({
     urgent: {
       labelKey: "urgent",
       icon: Flame,
-      badgeBg: "bg-red-100",
-      badgeText: "text-red-800",
+      badgeBg: "bg-red-100 dark:bg-red-950/50",
+      badgeText: "text-red-800 dark:text-red-200",
     },
     medium: {
       labelKey: "medium",
       icon: AlertTriangle,
-      badgeBg: "bg-amber-100",
-      badgeText: "text-amber-900",
+      badgeBg: "bg-amber-100 dark:bg-amber-950/50",
+      badgeText: "text-amber-900 dark:text-amber-200",
     },
     suggestion: {
       labelKey: "suggestion",
       icon: Lightbulb,
-      badgeBg: "bg-sky-100",
-      badgeText: "text-sky-900",
+      badgeBg: "bg-sky-100 dark:bg-sky-950/50",
+      badgeText: "text-sky-900 dark:text-sky-200",
     },
   };
 
@@ -95,7 +95,7 @@ export function PriorityActions({
     actions.push({
       icon: Briefcase,
       textKey: "postFirstJob",
-      href: `/${locale}/employer/jobs/new`,
+      href: `/${locale}/employer/jobs/ai-create`,
       priority: "urgent",
       actionLabelKey: "postAJob",
     });

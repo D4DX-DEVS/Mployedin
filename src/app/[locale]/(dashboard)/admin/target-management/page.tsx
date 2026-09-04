@@ -239,7 +239,7 @@ export default function AdminTargetManagementPage() {
     try {
       const res = await csrfFetch(`/api/admin/target-profiles/${id}`, { method: "DELETE" });
       if (res.ok) { toast.success(t("profileCancelled")); fetchProfiles(); }
-      else { const err = await res.json(); toast.error(err.error ?? "Failed"); }
+      else { const err = await res.json(); toast.error(err.error ?? t("actionFailed")); }
     } catch { toast.error(t("failedToCancel")); }
   };
 

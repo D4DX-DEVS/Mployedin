@@ -33,6 +33,18 @@ import {
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { PLATFORM_ALERT_ACTIONS, type PlatformAlertId } from "@/lib/admin/platformAlerts";
+import { getPlatformAlerts } from "@/lib/admin/platformAlerts.server";
+
+/** Lucide component per alert id — the shared registry stores icon names only,
+ *  because it also runs inside an API route that cannot import components. */
+const ALERT_ICONS: Record<PlatformAlertId, LucideIcon> = {
+  "jobs-without-applications": Briefcase,
+  "stale-open-applications": CalendarClock,
+  "zero-placement-momentum": BadgeCheck,
+  "demand-softening": TrendingUp,
+  "platform-stable": BadgeCheck,
+};
 
 interface UsersByRoleRow {
   _id: string | null;
@@ -736,29 +748,46 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
     ? Math.round((stats.totalPlacements / stats.totalApplications) * 100)
     : 0;
 
-  const nextAction = stats.inactiveEmployers > 0
-    ? {
-        title: t("quickActions.userManagement.label"),
-        description: t("quickActions.userManagement.desc"),
-        href: `/${locale}/admin/users`,
-        icon: Users,
-        badge: t("taskFirst.attention"),
-      }
-    : stats.totalInterviews === 0 && stats.totalApplications > 0
-      ? {
-          title: t("quickActions.analytics.label"),
-          description: t("kpis.totalInterviews.empty"),
-          href: `/${locale}/admin/analytics`,
-          icon: TrendingUp,
-          badge: t("taskFirst.investigate"),
-        }
-      : {
-          title: t("quickActions.auditLogs.label"),
-          description: t("quickActions.auditLogs.desc"),
-          href: `/${locale}/admin/audit-logs`,
-          icon: Activity,
-          badge: t("taskFirst.review"),
-        };
+  /* What actually needs attention, ranked critical-first.
+     This used to be a three-branch ternary on `inactiveEmployers` whose final
+     branch — "go read the audit logs" — is what a healthy platform always got,
+     while a real alert engine with thresholds and destinations sat unused two
+     clicks away on the reports page. Both surfaces now read the same engine, so
+     the dashboard and the report cannot disagree about what is wrong. */
+  const alerts = await getPlatformAlerts();
+  const tAlerts = await getTranslations("adminReports");
+  const topAlert = alerts[0];
+  const topAlertAction = PLATFORM_ALERT_ACTIONS[topAlert.id];
+  const alertBadge =
+    topAlert.level === "critical"
+      ? t("taskFirst.attention")
+      : topAlert.level === "warning"
+        ? t("taskFirst.investigate")
+        : t("taskFirst.review");
+
+  const nextAction = {
+    title: tAlerts(topAlertAction.titleKey, topAlert.values),
+    description: tAlerts(topAlertAction.descriptionKey, topAlert.values),
+    // A positive "platform stable" alert has nowhere urgent to send anyone, so
+    // it points at the report the finding came from rather than a fake task.
+    href: `/${locale}${topAlertAction.path ?? "/admin/reports"}`,
+    icon: ALERT_ICONS[topAlert.id],
+    badge: alertBadge,
+  };
+
+  /* The alerts below the top one, so a second problem is not hidden behind the
+     first. Rendered as a compact list, not as another set of cards. */
+  const secondaryAlerts = alerts.slice(1, 3).map((alert) => {
+    const action = PLATFORM_ALERT_ACTIONS[alert.id];
+    return {
+      id: alert.id,
+      title: tAlerts(action.titleKey, alert.values),
+      description: tAlerts(action.descriptionKey, alert.values),
+      href: `/${locale}${action.path ?? "/admin/reports"}`,
+      level: alert.level,
+      icon: ALERT_ICONS[alert.id],
+    };
+  });
 
   // The recommended-next card already shows this action — listing it again in
   // Quick Actions was pure duplication.
@@ -792,6 +821,42 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         icon={nextAction.icon}
         badge={nextAction.badge}
       />
+
+      {secondaryAlerts.length > 0 && (
+        <section aria-labelledby="admin-more-alerts" className="workspace-panel-surface rounded-2xl p-4 sm:p-5">
+          <h2 id="admin-more-alerts" className="heading-label font-semibold tracking-tight text-foreground">
+            {t("taskFirst.alsoNeedsAttention")}
+          </h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            {secondaryAlerts.map((alert) => {
+              const AlertIcon = alert.icon;
+              return (
+                <li key={alert.id}>
+                  <Link
+                    href={alert.href}
+                    className="flex min-h-11 items-center gap-3 rounded-xl border border-border/70 bg-card/60 px-3 py-2 transition-colors hover:border-border hover:bg-card"
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                        alert.level === "critical"
+                          ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
+                          : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
+                      }`}
+                    >
+                      <AlertIcon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground">{alert.title}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{alert.description}</span>
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <DashboardSignalStrip headingId="admin-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 

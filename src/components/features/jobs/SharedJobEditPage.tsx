@@ -25,6 +25,7 @@ import { useCountrySearch } from "@/hooks/useCountrySearch";
 import type { CountryOption } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 
 // ─── Constants ───────────────────────────────────────────────────
 const JOB_CATEGORIES = [
@@ -125,14 +126,17 @@ function Section({
   title,
   subtitle,
   children,
+  field,
 }: {
   icon: React.ElementType;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  /** Target name for ?highlight= deep links (see useFieldHighlight). */
+  field?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+    <div data-field={field} className="rounded-2xl border border-border/60 bg-card overflow-hidden">
       <div className="flex items-center gap-3 border-b border-border/40 bg-muted/30 panel-head">
         <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
           <Icon className="w-3.5 h-3.5 text-primary" />
@@ -256,6 +260,8 @@ export function SharedJobEditPage({
 }: SharedJobEditPageProps) {
   const t = useTranslations("employerJobEdit");
   const router = useRouter();
+  // Setup-guide steps deep-link here with ?highlight=requirements|salary.
+  useFieldHighlight();
 
   const [form, setForm] = useState<FormData>({
     title: "",
@@ -784,7 +790,7 @@ export function SharedJobEditPage({
           </Section>
 
           {/* ④ Requirements */}
-          <Section icon={Users} title={t("requirementsSection")} subtitle={t("requirementsDesc")}>
+          <Section icon={Users} title={t("requirementsSection")} subtitle={t("requirementsDesc")} field="requirements">
             <Field label={t("requiredSkills")} hint={t("hintSkills")}>
               <div className="flex gap-2">
                 <Input aria-label={t("requiredSkills")} placeholder={t("placeholderRequired")} value={skillInput}
@@ -888,7 +894,7 @@ export function SharedJobEditPage({
           />
 
           {/* ⑤ Compensation */}
-          <Section icon={DollarSign} title={t("compensationSection")} subtitle={t("compensationDesc")}>
+          <Section icon={DollarSign} title={t("compensationSection")} subtitle={t("compensationDesc")} field="salary">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label={t("minSalary")} error={fieldErrors.salary}>
                 <div className="relative">

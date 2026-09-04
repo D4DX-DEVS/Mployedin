@@ -2,26 +2,34 @@ import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { connectDB } from "@/lib/db/mongoose";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Placement from "@/models/Placement";
 import Lead from "@/models/Lead";
+import Commission from "@/models/Commission";
+import ExhibitionRequest from "@/models/ExhibitionRequest";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   ArrowRight,
   Building2,
+  CalendarDays,
   CheckCircle2,
   Briefcase,
   DollarSign,
   ShieldCheck,
   Target,
+  UserX,
   Users2,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
+import {
+  SuperAgentPriorityQueue,
+  type PriorityItem,
+} from "@/components/features/super-agent/PriorityQueue";
 
 export default async function SuperAgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -32,12 +40,15 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   await connectDB();
 
-  // Load live data
-  const saProfile = await SuperAgent.findOne({ userId: session.user.id })
-    .select("agentIds assignedCityIds assignedStateIds commissions overrideRate currencyCode")
-    .lean();
-
-  const agentDocIds = saProfile?.agentIds ?? [];
+  // Load live data.
+  //
+  // The scope has to be the canonical one. This page used to read
+  // `saProfile.agentIds` directly — team assignments only — while every list
+  // page it links to is served by an API using getSuperAgentScope(), which is
+  // team ∪ region. A super-agent with region-inherited agents therefore saw
+  // dashboard tiles that under-counted the very lists they open.
+  const scope = await getSuperAgentScope(session.user.id as string);
+  const agentDocIds = scope?.effectiveAgentIds ?? [];
   const agentDocs = await Agent.find({ _id: { $in: agentDocIds } })
     .select("userId assignedEmployerIds performance")
     .lean();
@@ -73,7 +84,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   // Lead.agentId and Placement.agentId reference the Agent doc _id (not User id),
   // and Placement.superAgentId references the SuperAgent doc _id.
-  const saProfileId = (saProfile as { _id?: unknown } | null)?._id;
+  const saProfileId = scope?.saProfileId;
   const totalPlacements = await Placement.countDocuments({
     $or: [
       { agentId: { $in: agentDocIds } },
@@ -84,6 +95,31 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   const totalLeads = await Lead.countDocuments({
     agentId: { $in: agentDocIds },
   });
+
+  // ── Work actually waiting on this super-agent ──────────────────────────
+  // Counts, not ratios. Each of these has a list page that can now be opened
+  // pre-filtered to exactly these records, so the number and the destination
+  // agree. ExhibitionRequest.agentId stores the Agent's User._id; Commission
+  // .superAgentId references the SuperAgent profile _id — the same two shapes
+  // /api/exhibitions and /api/commissions use.
+  const now = new Date();
+  const [pendingExhibitions, pendingCommissions, overdueFollowUps, agentsWithLeads] =
+    await Promise.all([
+      ExhibitionRequest.countDocuments({
+        agentId: { $in: agentUserIds },
+        status: { $in: ["submitted", "under_review"] },
+        isDeleted: { $ne: true },
+      }),
+      saProfileId
+        ? Commission.countDocuments({ superAgentId: saProfileId, status: "pending" })
+        : Promise.resolve(0),
+      Lead.countDocuments({
+        agentId: { $in: agentDocIds },
+        followUpAt: { $lt: now },
+        status: { $nin: ["converted", "lost"] },
+      }),
+      Lead.distinct("agentId", { agentId: { $in: agentDocIds } }),
+    ]);
 
   // Resolve agent display names for the team leaderboard.
   const agentUsers = await User.find({ _id: { $in: agentUserIds } })
@@ -155,6 +191,58 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
       ? { title: t("actions.leadPipeline.label"), description: t("actions.leadPipeline.description"), href: `/${locale}/super-agent/leads`, icon: Target, badge: t("taskFirst.followUp") }
       : { title: t("actions.jobOversight.label"), description: t("taskFirst.jobOversightDescription"), href: `/${locale}/super-agent/jobs`, icon: CheckCircle2, badge: t("taskFirst.review") };
 
+  // Idle agents are those with no lead at all — the distinct() above returns
+  // only the agents that have one, so the remainder have never been given work.
+  const idleAgents = Math.max(0, agentDocIds.length - agentsWithLeads.length);
+
+  const priorityItems: PriorityItem[] = [
+    pendingExhibitions > 0 && {
+      key: "exhibitions",
+      level: "urgent" as const,
+      levelLabel: t("priority.urgent"),
+      text: t("priority.exhibitions", { count: pendingExhibitions }),
+      actionLabel: t("priority.exhibitionsAction"),
+      href: `/${locale}/super-agent/exhibitions?status=submitted`,
+      icon: CalendarDays,
+    },
+    pendingCommissions > 0 && {
+      key: "commissions",
+      level: "urgent" as const,
+      levelLabel: t("priority.urgent"),
+      text: t("priority.commissions", { count: pendingCommissions }),
+      actionLabel: t("priority.commissionsAction"),
+      href: `/${locale}/super-agent/commissions?status=pending`,
+      icon: DollarSign,
+    },
+    overdueFollowUps > 0 && {
+      key: "overdueLeads",
+      level: "soon" as const,
+      levelLabel: t("priority.soon"),
+      text: t("priority.overdueLeads", { count: overdueFollowUps }),
+      actionLabel: t("priority.overdueLeadsAction"),
+      href: `/${locale}/super-agent/leads?hasFollowUp=overdue`,
+      icon: Target,
+    },
+    inactiveAgents > 0 && {
+      key: "inactiveAgents",
+      level: "review" as const,
+      levelLabel: t("priority.review"),
+      text: t("priority.inactiveAgents", { count: inactiveAgents }),
+      actionLabel: t("priority.inactiveAgentsAction"),
+      href: `/${locale}/super-agent/agents`,
+      icon: UserX,
+    },
+    idleAgents > 0 && {
+      key: "idleAgents",
+      level: "review" as const,
+      levelLabel: t("priority.review"),
+      text: t("priority.idleAgents", { count: idleAgents }),
+      actionLabel: t("priority.idleAgentsAction"),
+      href: `/${locale}/super-agent/agents?performance=no_activity`,
+      icon: Users2,
+    },
+  ].filter(Boolean) as PriorityItem[];
+
   const signals = [
     { label: t("kpis.activeAgents.label"), value: activeAgents, href: `/${locale}/super-agent/agents`, icon: Users2 },
     { label: t("kpis.totalEmployers.label"), value: totalEmployers, href: `/${locale}/super-agent/employers`, icon: Building2 },
@@ -170,17 +258,31 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         description={t("hero.description")}
       />
 
-      <DashboardNextAction
-        headingId="super-agent-next-action"
-        title={t("taskFirst.recommendedNext")}
-        description={t("taskFirst.nextDescription")}
-        actionTitle={nextAction.title}
-        actionDescription={nextAction.description}
-        actionLabel={t("taskFirst.openAction")}
-        href={nextAction.href}
-        icon={nextAction.icon}
-        badge={nextAction.badge}
+      <SuperAgentPriorityQueue
+        headingId="super-agent-priority"
+        title={t("priority.title")}
+        description={t("priority.description")}
+        items={priorityItems}
+        emptyTitle={t("priority.empty")}
+        emptyHint={t("priority.emptyHint")}
       />
+
+      {/* The suggestion card is a nudge for a quiet day, not a queue. With real
+          work outstanding it competed with the list above it for the same
+          attention, so it only appears once that list is clear. */}
+      {priorityItems.length === 0 && (
+        <DashboardNextAction
+          headingId="super-agent-next-action"
+          title={t("taskFirst.recommendedNext")}
+          description={t("taskFirst.nextDescription")}
+          actionTitle={nextAction.title}
+          actionDescription={nextAction.description}
+          actionLabel={t("taskFirst.openAction")}
+          href={nextAction.href}
+          icon={nextAction.icon}
+          badge={nextAction.badge}
+        />
+      )}
 
       <DashboardSignalStrip headingId="super-agent-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 

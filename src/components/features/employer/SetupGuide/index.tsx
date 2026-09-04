@@ -6,11 +6,10 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { X, Minus, ChevronRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { setupStepDefinition, type SetupStepId } from "./setupSteps";
 
 interface StepStatus {
-  id: string;
-  label: string;
-  description: string;
+  id: SetupStepId;
   href: string;
   completed: boolean;
 }
@@ -26,6 +25,7 @@ export function SetupGuide() {
   const params = useParams();
   const locale = (params?.locale as string) ?? "en";
   const t = useTranslations("employerSetupGuide");
+  const tSteps = useTranslations("employerSetupGuide.steps");
 
   const [visible, setVisible] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -56,6 +56,13 @@ export function SetupGuide() {
       setLoading(false);
       return;
     }
+    // Expanded, this card is ~520px tall — on a phone it covered the dashboard
+    // it is supposed to be guiding the reader through, and being fixed, it could
+    // not be scrolled past. Phones open it collapsed to its header; one tap
+    // expands it.
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setMinimized(true);
+    }
     fetchStatus();
   }, [fetchStatus]);
 
@@ -75,7 +82,7 @@ export function SetupGuide() {
   return (
     <div
       className={cn(
-        "fixed bottom-20 left-4 right-4 z-50 overflow-hidden rounded-3xl border border-sky-100 bg-white/95 shadow-[0_28px_80px_-48px_rgba(2,132,199,0.45)] backdrop-blur sm:bottom-24 sm:w-[22rem]",
+        "fixed bottom-20 left-4 right-4 z-50 overflow-hidden rounded-3xl border border-border bg-background/95 shadow-[0_28px_80px_-48px_rgba(2,132,199,0.45)] backdrop-blur sm:bottom-24 sm:w-[22rem]",
         isRtl ? "sm:right-auto sm:left-6" : "sm:left-auto sm:right-6",
         "transition-all duration-300"
       )}
@@ -88,7 +95,9 @@ export function SetupGuide() {
           </div>
           <h3 className="heading-label mt-3 font-bold leading-snug text-white">{t("title")}</h3>
           <p className="mt-1 text-xs leading-snug text-white/75">
-            {t("subtitle")}
+            {minimized
+              ? t("completedOf", { done: completedCount, total: steps.length })
+              : t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
@@ -111,16 +120,16 @@ export function SetupGuide() {
 
       {!minimized && (
         <>
-          <div className="border-b border-slate-200/80 px-5 py-4">
+          <div className="border-b border-border px-5 py-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-500">{t("progressLabel")}</span>
-              <span className="text-xs font-bold text-sky-700">
-                {completedCount} / {steps.length} completed
+              <span className="text-xs font-medium text-muted-foreground">{t("progressLabel")}</span>
+              <span className="text-xs font-bold text-primary">
+                {t("completedOf", { done: completedCount, total: steps.length })}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-sky-600 transition-all duration-500"
+                className="h-full rounded-full bg-primary transition-all duration-500"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
@@ -129,11 +138,12 @@ export function SetupGuide() {
           <div className="max-h-72 overflow-y-auto px-3 py-3">
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
               </div>
             ) : (
               steps.map((step, idx) => {
                 const isCurrent = step.id === currentStep?.id;
+                const definition = setupStepDefinition(step.id);
                 return (
                   <Link
                     key={step.id}
@@ -141,22 +151,22 @@ export function SetupGuide() {
                     className={cn(
                       "group mb-2 flex items-start gap-3 rounded-2xl border px-4 py-3 transition-colors",
                       step.completed
-                        ? "border-slate-200 bg-slate-50/80 opacity-70"
+                        ? "border-border bg-muted/50 opacity-70"
                         : isCurrent
-                          ? "border-sky-200 bg-sky-50/80"
-                          : "border-transparent hover:border-slate-200 hover:bg-slate-50/80"
+                          ? "border-primary/30 bg-primary/5"
+                          : "border-transparent hover:border-border hover:bg-muted/50"
                     )}
                   >
                     <div className="mt-0.5 flex-shrink-0">
                       {step.completed ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                       ) : (
                         <div
                           className={cn(
                             "h-5 w-5 rounded-full border-2 flex items-center justify-center text-[11px] font-bold",
                             isCurrent
-                              ? "border-sky-600 text-sky-600"
-                              : "border-slate-300 text-slate-500"
+                              ? "border-primary text-primary"
+                              : "border-border text-muted-foreground"
                           )}
                         >
                           {idx + 1}
@@ -169,16 +179,16 @@ export function SetupGuide() {
                         className={cn(
                           "text-sm font-medium leading-snug",
                           step.completed
-                            ? "line-through text-slate-500"
+                            ? "line-through text-muted-foreground"
                             : isCurrent
-                              ? "font-semibold text-slate-950"
-                              : "text-slate-800"
+                              ? "font-semibold text-foreground"
+                              : "text-foreground/90"
                         )}
                       >
-                        {step.label}
+                        {definition ? tSteps(definition.labelKey) : step.id}
                       </p>
-                      <p className="mt-0.5 text-xs leading-snug text-slate-500">
-                        {step.description}
+                      <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                        {definition ? tSteps(definition.descriptionKey) : ""}
                       </p>
                     </div>
 
@@ -186,12 +196,12 @@ export function SetupGuide() {
                       <ChevronRight
                         className={cn(
                           "h-4 w-4 flex-shrink-0 mt-0.5 transition-colors",
-                          isCurrent ? "text-sky-600" : "text-slate-400 group-hover:text-slate-600"
+                          isCurrent ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                         )}
                       />
                     )}
                     {step.completed && (
-                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                     )}
                   </Link>
                 );
@@ -199,15 +209,15 @@ export function SetupGuide() {
             )}
           </div>
 
-          <div className="border-t border-slate-200/80 px-5 py-4">
+          <div className="border-t border-border px-5 py-4">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={doNotShow}
                 onChange={(e) => setDoNotShow(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-600"
+                className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary"
               />
-              <span className="text-xs text-slate-500">{t("doNotShowAgain")}</span>
+              <span className="text-xs text-muted-foreground">{t("doNotShowAgain")}</span>
             </label>
           </div>
         </>

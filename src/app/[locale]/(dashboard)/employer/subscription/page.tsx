@@ -18,7 +18,7 @@ import {
   CreditCard, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,7 +79,7 @@ export default function EmployerSubscriptionPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHero icon={Crown} title={t("title")} />
+        <WorkspaceHeader title={t("title")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted/30" />
         ))}
@@ -89,16 +89,18 @@ export default function EmployerSubscriptionPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={Crown}
+      {/* Phones: title + the currency selector on one row; the description
+          and the live-rate dot return from sm (the 180px selector is the
+          widest thing in the row). */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={<span className="hidden sm:inline">{t("description")}</span>}
         actions={
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{t("displayCurrency")}</span>
+            <span className="hidden sm:inline">{t("displayCurrency")}</span>
             <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
             {rateSource === "live" && (
-              <span className="text-[11px] text-emerald-500" title={t("a11yLiveExchangeRates")}>● live</span>
+              <span className="hidden text-[11px] text-emerald-500 sm:inline" title={t("a11yLiveExchangeRates")}>● live</span>
             )}
           </div>
         }

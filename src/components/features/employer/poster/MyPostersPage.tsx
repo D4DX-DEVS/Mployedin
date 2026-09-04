@@ -12,7 +12,7 @@ import { CreditsBadge } from "./CreditsBadge";
 import { PosterOverlay } from "./PosterOverlay";
 import { usePosterCredits } from "@/hooks/usePosterCredits";
 import { useConfirm } from "@/hooks/useConfirm";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import type { PosterType, PosterLayout, ShowFields, PosterStyleOverrides } from "@/lib/composer/types";
 
 interface PosterItem {
@@ -91,25 +91,26 @@ export function MyPostersPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      <PageHero
+      {/* Pattern A (compact workspace): title, one context line (the eyebrow
+          on phones, the description from sm), credits + the create action. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
-        eyebrow={t("eyebrow")}
+        context={
+          <>
+            <span className="sm:hidden">{t("posterCount", { count: data?.posters?.length ?? 0 })}</span>
+            <span className="hidden sm:inline">{t("description")}</span>
+          </>
+        }
         actions={
-          /* Flattened out of a wrapper div: DashboardPageHeader's actions row is
-             already `flex flex-wrap items-center gap-2 [&>*]:shrink-0`, and that
-             shrink-0 applied to a nested div stopped it wrapping, so the credits
-             pill + CTA overflowed the card at 360-390px. */
           <>
             <CreditsBadge credits={credits} />
             <Link
               href={`/${locale}/employer/jobs`}
-              /* Sized down on phones so the credits pill + CTA fit one row
-                 inside the hero (~326px inner at 390px) instead of stacking. */
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90 transition-colors shrink-0 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
+              aria-label={t("createCta")}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90 sm:px-4"
             >
-              <Plus className="h-4 w-4" />
-              {t("createCta")}
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">{t("createCta")}</span>
             </Link>
           </>
         }

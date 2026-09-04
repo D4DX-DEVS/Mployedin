@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ViewToggle } from "@/components/shared/ViewToggle";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,9 +18,11 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useConfirm } from "@/hooks/useConfirm";
 import {
-  Inbox, Sparkles, CalendarDays, CircleCheckBig, RotateCcw, ArrowRight, Clock3,
+  Inbox, Sparkles, CalendarDays, CircleCheckBig, RotateCcw, ArrowRight, Clock3, ClipboardCheck,
   CalendarClock, CheckCircle2, XCircle, AlertTriangle, Forward, FileText,
   Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, ChevronRight, X,
+  List,
+  MoreHorizontal,
 } from "lucide-react";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -35,6 +39,13 @@ import type { Interview } from "@/hooks/useInterviews";
 import type { ExportColumn } from "@/lib/export";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatNumber } from "@/lib/formatNumber";
 import { formatDateTime as formatIntlDateTime } from "@/lib/ui/intlFormat";
 
@@ -69,6 +80,17 @@ interface PrepBriefResult {
   timeAllocation: { intro: number; technical: number; behavioral: number; questions: number; closing: number };
 }
 
+/**
+ * The filter vocabularies, kept beside the selects that offer them so a value
+ * arriving from a link, a dashboard tile or a hand-edited URL is checked
+ * against the same list the UI can produce.
+ */
+const INTERVIEW_STATUSES = ["scheduled", "confirmed", "completed", "cancelled"] as const;
+const INTERVIEW_TYPES = ["video", "offline", "hybrid"] as const;
+const INTERVIEW_OUTCOMES = ["passed", "failed", "hold", "no_show"] as const;
+const INTERVIEW_SORT_FIELDS = ["scheduledAt", "createdAt"] as const;
+const SORT_ORDERS = ["asc", "desc"] as const;
+
 export default function EmployerInterviewsPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
@@ -95,15 +117,18 @@ export default function EmployerInterviewsPage() {
 
   // ── Filter state ──────────────────────────────────────────────────
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
+  const [status, setStatus] = useUrlFilter("status", "", { allow: INTERVIEW_STATUSES });
+  const [search, setSearch] = useUrlFilter("q", "", { debounceMs: 400 });
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [outcomeFilter, setOutcomeFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState("scheduledAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [typeFilter, setTypeFilter] = useUrlFilter("type", "", { allow: INTERVIEW_TYPES });
+  const [outcomeFilter, setOutcomeFilter] = useUrlFilter("outcome", "", { allow: INTERVIEW_OUTCOMES });
+  const [dateFrom, setDateFrom] = useUrlFilter("from", "");
+  const [dateTo, setDateTo] = useUrlFilter("to", "");
+  const [sortBy, setSortBy] = useUrlFilter("sort", "scheduledAt", { allow: INTERVIEW_SORT_FIELDS });
+  const [sortOrder, setSortOrder] = useUrlFilter("dir", "asc", { allow: SORT_ORDERS }) as [
+    "asc" | "desc",
+    (next: "asc" | "desc") => void,
+  ];
 
   // AI search
   const [aiSearchQuery, setAiSearchQuery] = useState("");
@@ -308,6 +333,27 @@ export default function EmployerInterviewsPage() {
     }
   }
 
+  const exportCalendar = async () => {
+    try {
+      const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
+      if (!res.ok) {
+        toast.error(t("failedExportCalendar"));
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "mployedin-interviews.ics";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(t("calendarExportFailed"));
+    }
+  };
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -335,20 +381,34 @@ export default function EmployerInterviewsPage() {
         />
       )}
 
-      {/* ── Page header ───────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{tn("interviews")}</h1>
-            {/* Privacy info at the point candidate data is shown, compacted to
-                an icon + popover to keep the list above the fold. */}
-            <CandidateDataNotice variant="candidateList" compact />
-          </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {formatNumber(deduplicatedInterviews.length, locale)} {t("active")} · {formatNumber(total, locale)} {t("total")}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
+      {/* ── Page header (Pattern A: compact workspace) ────────────────── */}
+      <WorkspaceHeader
+        title={tn("interviews")}
+        context={`${formatNumber(deduplicatedInterviews.length, locale)} ${t("active")} · ${formatNumber(total, locale)} ${t("total")}`}
+        actions={
+          <>
+          {/* The calendar left the sidebar; it is a view of this page now. */}
+          <ViewToggle
+            ariaLabel={t("viewToggleLabel")}
+            active="list"
+            options={[
+              { key: "list", href: `/${locale}/employer/interviews`, label: t("viewList"), icon: List },
+              { key: "calendar", href: `/${locale}/employer/calendar`, label: t("viewCalendar"), icon: CalendarDays },
+            ]}
+          />
+          {/* Scorecards left the sidebar: filling one is a step in completing
+              an interview, and reading them back belongs beside the interviews
+              they came from rather than in a menu of its own. */}
+          <Button
+            asChild
+            variant="outline"
+            className="hidden gap-2 rounded-xl px-3 text-sm font-semibold sm:inline-flex sm:px-4"
+          >
+            <Link href={`/${locale}/employer/scorecards`} aria-label={tn("scorecards")}>
+              <ClipboardCheck className="h-4 w-4" />
+              <span className="hidden lg:inline">{tn("scorecards")}</span>
+            </Link>
+          </Button>
           {can("interviews", "create") ? (
             <Button
               asChild
@@ -363,103 +423,110 @@ export default function EmployerInterviewsPage() {
           <Button
             variant="outline"
             aria-label={t("exportCalendar")}
-            className="gap-2 rounded-xl px-3 text-sm font-semibold sm:px-4"
-            onClick={async () => {
-              try {
-                const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
-                if (!res.ok) {
-                  toast.error(t("failedExportCalendar"));
-                  return;
-                }
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "mployedin-interviews.ics";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } catch {
-                toast.error(t("calendarExportFailed"));
-              }
-            }}
+            className="hidden gap-2 rounded-xl px-3 text-sm font-semibold sm:inline-flex sm:px-4"
+            onClick={exportCalendar}
           >
             <CalendarDays className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("exportCalendar")}</span>
+            <span className="hidden lg:inline">{t("exportCalendar")}</span>
           </Button>
-        </div>
-      </div>
-
-      {/* ── Stat row — tap a tile to filter the list by that status ────── */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-        {([
-          { key: "scheduled", label: t("scheduled"), value: scheduledTotal, icon: CalendarDays, tone: "text-primary" },
-          { key: "completed", label: t("completed"), value: completedTotal, icon: CircleCheckBig, tone: "text-status-approved" },
-          { key: "cancelled", label: t("needsAttention"), value: attentionTotal, icon: RotateCcw, tone: "text-status-pending" },
-          { key: "confirmed", label: t("confirmed"), value: confirmedTotal, icon: Clock3, tone: "text-muted-foreground" },
-        ] as const).map((s) => {
-          const Icon = s.icon;
-          const active = status === s.key;
-          return (
-            <button
-              key={s.key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => { setStatus(active ? "" : s.key); setPage(1); }}
-              className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border text-center transition-colors sm:flex-row sm:gap-2 sm:text-start ${ active ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-secondary/40" } chip-pad`}
-            >
-              <Icon className={`hidden h-4 w-4 shrink-0 sm:block ${s.tone}`} />
-              <span className="text-base font-semibold leading-none text-foreground">{formatNumber(s.value, locale)}</span>
-              <span className="text-[11px] leading-tight text-muted-foreground sm:text-xs">{s.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Filter Section ────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-2xl panel-body">
-        {/* Search + Toggle — one row at every width; search shrinks, controls stay put */}
-        <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
-          <div className="relative min-w-0 flex-1 sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder={tc("search")}
-              aria-label={tc("search")}
-              className="h-10 w-full min-w-0 rounded-xl border border-border bg-background pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="dense" className="px-2 text-xs text-muted-foreground hover:text-destructive"
-                onClick={() => { setStatus(""); setTypeFilter(""); setOutcomeFilter(""); setDateFrom(""); setDateTo(""); setPage(1); }}>
-                <X className="h-3 w-3 sm:me-1" /> <span className="hidden sm:inline">{tc("clearFilters")}</span>
+          {/* Phones: the two secondary actions live in a menu so the title keeps
+              its row; tablets show them as icon buttons for the same reason. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" aria-label={tn("more")} className="rounded-xl px-3 sm:hidden">
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
               </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 rounded-xl text-xs font-medium"
-              onClick={() => setFiltersOpen(!filtersOpen)}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              {t("filters")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-              {filtersOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </Button>
-          </div>
-        </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem asChild>
+                <Link href={`/${locale}/employer/scorecards`}>
+                  <ClipboardCheck className="me-2 h-4 w-4" />
+                  {tn("scorecards")}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { void exportCalendar(); }}>
+                <CalendarDays className="me-2 h-4 w-4" />
+                {t("exportCalendar")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          </>
+        }
+        metrics={([
+          { key: "scheduled", label: t("scheduled"), value: scheduledTotal, icon: CalendarDays, tone: "primary" },
+          { key: "completed", label: t("completed"), value: completedTotal, icon: CircleCheckBig, tone: "success" },
+          { key: "cancelled", label: t("needsAttention"), shortLabel: t("attentionShort"), value: attentionTotal, icon: RotateCcw, tone: "warning" },
+          { key: "confirmed", label: t("confirmed"), value: confirmedTotal, icon: Clock3, tone: "info" },
+        ] as const).map((m) => ({
+          label: m.label,
+          shortLabel: "shortLabel" in m ? m.shortLabel : undefined,
+          value: formatNumber(m.value, locale),
+          icon: m.icon,
+          tone: m.tone,
+          active: status === m.key,
+          // Tap a tile to filter the list by that status; tap again to clear.
+          onClick: () => { setStatus(status === m.key ? "" : m.key); setPage(1); },
+        }))}
+      />
 
-        {/* Expanded filters */}
-        {filtersOpen && (
-          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:mt-4 sm:gap-3 sm:pt-4 lg:grid-cols-4">
+      {/* ── List toolbar — search, Filters and Export sit with the list ──
+          No select on this page, so the search shares the phone row with the
+          two buttons instead of leaving them stranded on a row of their own. */}
+      <div className="workspace-toolbar">
+        <div className="workspace-toolbar-search basis-0 sm:basis-64">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder={tc("search")}
+            aria-label={tc("search")}
+            className="h-11 w-full min-w-0 rounded-xl border border-border bg-background ps-9 pe-9 text-sm shadow-none focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:h-10"
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label={tc("clearFilters")}
+              onClick={() => setSearch("")}
+              className="absolute end-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        {activeFilterCount > 0 && (
+          <Button variant="ghost" size="sm" className="h-11 px-2 text-xs text-muted-foreground hover:text-destructive sm:h-10"
+            onClick={() => { setStatus(""); setTypeFilter(""); setOutcomeFilter(""); setDateFrom(""); setDateTo(""); setPage(1); }}>
+            <X className="h-3 w-3 sm:me-1" /> <span className="hidden sm:inline">{tc("clearFilters")}</span>
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={() => setFiltersOpen(!filtersOpen)}
+          aria-expanded={filtersOpen}
+          aria-label={t("filters")}
+          className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${filtersOpen ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
+        >
+          <Filter className="h-4 w-4 sm:me-2" aria-hidden="true" />
+          <span className="hidden sm:inline">{t("filters")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</span>
+          {activeFilterCount > 0 ? (
+            <span className="ms-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground sm:hidden">
+              {activeFilterCount}
+            </span>
+          ) : null}
+        </Button>
+        <TableToolbar
+          className="ms-auto"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+      </div>
+
+      {/* Expanded filters — a panel of its own under the toolbar */}
+      {filtersOpen && (
+        <section className="workspace-panel-surface rounded-2xl panel-body">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("statusLabel")}</label>
               <SearchableSelect
@@ -570,8 +637,8 @@ export default function EmployerInterviewsPage() {
               </div>
             </div>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* ── Error State ───────────────────────────────────────────────── */}
       {error ? (
@@ -592,15 +659,13 @@ export default function EmployerInterviewsPage() {
       ) : (
       /* ── Interview Table ──────────────────────────────────────────── */
       <section className="workspace-panel-surface rounded-2xl panel-body">
-        <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
           <h2 className="heading-label font-semibold text-foreground">
             {formatNumber(deduplicatedInterviews.length, locale)} {tn("interviews")}
           </h2>
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-          />
+          {/* Privacy info at the point candidate data is shown, compacted to
+              an icon + popover to keep the list above the fold. */}
+          <CandidateDataNotice variant="candidateList" compact />
         </div>
 
         <div className="workspace-subtle-surface mt-3 hidden overflow-x-auto rounded-xl border border-border sm:block">

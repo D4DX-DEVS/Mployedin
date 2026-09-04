@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
@@ -243,6 +245,17 @@ export default function AdminInvoicesPage() {
         title={t("title")}
         description={t("description")}
         compactOnMobile
+        actions={
+          /* The builder page existed and worked, but nothing linked to it — the
+             only role that could not raise an invoice from the UI was the one
+             with the widest financial authority. Agent and super-agent both
+             have this control on their own invoice lists. */
+          <Link href={`/${locale}/admin/invoices/new`}>
+            <Button size="sm" className="gap-1.5 max-sm:min-h-11">
+              <Plus className="h-4 w-4" /> {t("createInvoice")}
+            </Button>
+          </Link>
+        }
       />
 
       {/* KPI Cards */}
@@ -337,13 +350,7 @@ export default function AdminInvoicesPage() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i} className="border-border/70 hover:bg-transparent">
-                        {Array.from({ length: 12 }).map((_, j) => (
-                          <TableCell key={j}><div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" /></TableCell>
-                        ))}
-                      </TableRow>
-                    ))
+                    <TableBodySkeleton rows={5} cols={12} />
                   ) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableCell colSpan={12} className="px-6 py-14 text-center">

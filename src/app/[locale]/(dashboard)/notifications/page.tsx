@@ -7,7 +7,7 @@ import { Bell, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePageNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/useNotifications";
 import { EnablePushButton } from "@/components/shared/EnablePushButton";
-import { resolveNotificationText } from "@/lib/notifications/resolve";
+import { resolveNotificationText, localizeActionUrl } from "@/lib/notifications/resolve";
 import Link from "next/link";
 
 export default function NotificationsPage() {
@@ -99,11 +99,16 @@ export default function NotificationsPage() {
               )}
             </>;
 
-            if (n.actionUrl) {
+            // Stored actionUrls carry no locale segment, so prefixing keeps
+            // the reader in the language they are already in instead of
+            // bouncing them through the locale redirect (same helper the bell
+            // uses).
+            const actionHref = localizeActionUrl(n.actionUrl, locale);
+            if (actionHref) {
               return (
                 <Link
                   key={n._id}
-                  href={n.actionUrl}
+                  href={actionHref}
                   aria-label={`${title}. ${body}`}
                   onClick={() => { if (!n.isRead) markOneReadMutation.mutate(n._id); }}
                   className={cardClassName}

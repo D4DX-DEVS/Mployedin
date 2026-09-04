@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { ShieldCheck, Plus, Trash2, UserCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
@@ -77,9 +78,9 @@ export default function BackgroundChecksPage() {
   const [refs, setRefs] = useState<NewReferenceRow[]>([{ name: "", relationship: "", company: "", email: "" }]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [search, setSearch] = useUrlFilter("q", "", { debounceMs: 400 });
+  const [dateFrom, setDateFrom] = useUrlFilter("from", "");
+  const [dateTo, setDateTo] = useUrlFilter("to", "");
 
   useEffect(() => {
     document.title = `${t("title")} · MPLOYEDIN`;
@@ -225,15 +226,13 @@ export default function BackgroundChecksPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        compact
-        icon={ShieldCheck}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
         actions={
-          <Button onClick={openCreate} className="rounded-xl">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("newCheck")}
+          <Button onClick={openCreate} aria-label={t("newCheck")} className="rounded-xl px-3 sm:px-4">
+            <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("newCheck")}</span>
           </Button>
         }
       />
@@ -258,35 +257,34 @@ export default function BackgroundChecksPage() {
         </div>
       ) : (
         <>
-          <div className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder={t("searchPlaceholder")}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-10 rounded-xl border-border bg-background"
-                  aria-label={t("searchPlaceholder")}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <DateTimePicker
-                  mode="date"
-                  value={dateFrom}
-                  onChange={setDateFrom}
-                  placeholder={t("fromDate")}
-                />
-                <DateTimePicker
-                  mode="date"
-                  value={dateTo}
-                  onChange={setDateTo}
-                  placeholder={t("toDate")}
-                />
-                {/* Privacy info at the point candidate data is shown, compacted
-                    to an icon + popover to keep the list above the fold. */}
-                <CandidateDataNotice variant="candidateList" compact />
-              </div>
+          {/* List toolbar — search and date range sit with the list, not in a card of their own */}
+          <div className="workspace-toolbar">
+            <div className="workspace-toolbar-search">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                placeholder={t("searchPlaceholder")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-11 rounded-xl border-border bg-background ps-9 sm:h-10"
+                aria-label={t("searchPlaceholder")}
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+              <DateTimePicker
+                mode="date"
+                value={dateFrom}
+                onChange={setDateFrom}
+                placeholder={t("fromDate")}
+              />
+              <DateTimePicker
+                mode="date"
+                value={dateTo}
+                onChange={setDateTo}
+                placeholder={t("toDate")}
+              />
+              {/* Privacy info at the point candidate data is shown, compacted
+                  to an icon + popover to keep the list above the fold. */}
+              <CandidateDataNotice variant="candidateList" compact />
             </div>
           </div>
 

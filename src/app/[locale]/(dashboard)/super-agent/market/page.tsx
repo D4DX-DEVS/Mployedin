@@ -10,6 +10,7 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatDateTime } from "@/lib/ui/intlFormat";
 
 const getQuickQueries = (t: any) => [
   t("query1"),
@@ -143,7 +144,7 @@ export default function MarketIntelligencePage() {
               aria-expanded={showAllSuggestions}
               className="rounded-full border border-dashed border-border/70 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/5"
             >
-              {showAllSuggestions ? "Show less" : "More suggestions"}
+              {showAllSuggestions ? t("showLess") : t("moreSuggestions")}
             </button>
           </div>
         </div>
@@ -175,7 +176,7 @@ export default function MarketIntelligencePage() {
                 {t("marketSummaryLabel")}
               </div>
               <p>{report.summary}</p>
-              {report.generatedAt ? <p className="text-xs text-muted-foreground">{t("generatedLabel")}: {new Date(report.generatedAt).toLocaleString("en-AE")}</p> : null}
+              {report.generatedAt ? <p className="text-xs text-muted-foreground">{t("generatedLabel")}: {formatDateTime(report.generatedAt)}</p> : null}
             </div>
           </SuperAgentSection>
 

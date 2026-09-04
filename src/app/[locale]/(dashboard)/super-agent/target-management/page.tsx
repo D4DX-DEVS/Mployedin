@@ -146,7 +146,7 @@ interface SideListCardProps {
   children: ReactNode;
 }
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// MONTHS_SHORT resolved in component with useTranslations hook, see below
 
 const METRIC_TONE_CLASS_MAP: Record<MetricTone, string> = {
   blue: "workspace-tone-sky",
@@ -174,51 +174,66 @@ function getProgressTextColor(progress: number): string {
   return "text-red-500";
 }
 
-function formatShortDate(value?: string): string {
-  if (!value) return "No update";
+// Returns key if invalid; caller resolves with t()
+function formatShortDate(value?: string): string | null {
+  if (!value) return "noUpdate";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No update";
+  if (Number.isNaN(date.getTime())) return "noUpdate";
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
 }
 
+// Returns key; caller resolves with t()
 function getTerritory(agent: EnrichedProfile): string {
-  return agent.territory ?? agent.region ?? "Unassigned";
+  return agent.territory ?? agent.region ?? "unassigned";
 }
 
-function getRiskReason(agent: EnrichedProfile): string {
+// Returns { key, label, progress } for caller to resolve with t()
+interface RiskReasonResult {
+  key: string;
+  label: string;
+  progress: number;
+}
+function getRiskReason(agent: EnrichedProfile): RiskReasonResult {
   const metrics = [
-    { label: "Employer", progress: agent.employerProgress },
-    { label: "Employee", progress: agent.employeeProgress },
-    { label: "Revenue", progress: agent.financeProgress },
+    { labelKey: "metricEmployer", progress: agent.employerProgress },
+    { labelKey: "metricEmployee", progress: agent.employeeProgress },
+    { labelKey: "metricRevenue", progress: agent.financeProgress },
   ].sort((a, b) => a.progress - b.progress);
 
-  return `${metrics[0].label} at ${metrics[0].progress}%`;
+  return { key: "riskReason", label: metrics[0].labelKey, progress: metrics[0].progress };
 }
 
+// Returns key; caller resolves with t()
 function getNextAction(agent: EnrichedProfile): string {
   const metrics = [
-    { label: "Add employers", progress: agent.employerProgress },
-    { label: "Close placements", progress: agent.employeeProgress },
-    { label: "Push revenue", progress: agent.financeProgress },
+    { key: "addEmployers", progress: agent.employerProgress },
+    { key: "closePlacements", progress: agent.employeeProgress },
+    { key: "pushRevenue", progress: agent.financeProgress },
   ].sort((a, b) => a.progress - b.progress);
 
-  if (getCompletionStage(agent.overallProgress) === "completed") return "Maintain pace";
-  return metrics[0].label;
+  if (getCompletionStage(agent.overallProgress) === "completed") return "maintainPace";
+  return metrics[0].key;
 }
 
-function getDeadlineAlert(agent: EnrichedProfile): string {
+// Returns { key, month } for caller to resolve month name and then format message
+interface DeadlineAlertResult {
+  key: string;
+  month?: number;
+}
+function getDeadlineAlert(agent: EnrichedProfile): DeadlineAlertResult {
   const currentMonth = new Date().getMonth() + 1;
   const currentMonthData = agent.monthlyAchievements.find((month) => month.month === currentMonth);
-  if (!currentMonthData) return "Annual target";
-  if (currentMonthData.overallProgress >= 75) return `${MONTHS_SHORT[currentMonth - 1]} on track`;
-  if (currentMonthData.overallProgress > 0) return `${MONTHS_SHORT[currentMonth - 1]} behind pace`;
-  return `${MONTHS_SHORT[currentMonth - 1]} not started`;
+  if (!currentMonthData) return { key: "annualTarget" };
+  if (currentMonthData.overallProgress >= 75) return { key: "onTrack", month: currentMonth };
+  if (currentMonthData.overallProgress > 0) return { key: "behindPace", month: currentMonth };
+  return { key: "notStarted", month: currentMonth };
 }
 
+// Returns key; caller resolves with t()
 function getDistributionStatus(agent: EnrichedProfile): string {
-  if (getCompletionStage(agent.overallProgress) === "completed") return "Completed";
-  if (agent.employerTarget + agent.employeeTarget + agent.financeTarget > 0) return "Distributed";
-  return "Not distributed";
+  if (getCompletionStage(agent.overallProgress) === "completed") return "completed";
+  if (agent.employerTarget + agent.employeeTarget + agent.financeTarget > 0) return "distributed";
+  return "notDistributed";
 }
 
 function DashboardMetricCard({
@@ -277,6 +292,34 @@ export default function SuperAgentTargetProfilesPage() {
   const t = useTranslations("targets");
   const searchParams = useSearchParams();
   const currentYear = new Date().getFullYear();
+
+  // Translated month names
+  const monthsShort = useMemo(() => [
+    t("months.jan"),
+    t("months.feb"),
+    t("months.mar"),
+    t("months.apr"),
+    t("months.may"),
+    t("months.jun"),
+    t("months.jul"),
+    t("months.aug"),
+    t("months.sep"),
+    t("months.oct"),
+    t("months.nov"),
+    t("months.dec"),
+  ], [t]);
+
+  // Resolve helper function returns with t()
+  const resolveRiskReason = (agent: EnrichedProfile) => {
+    const reason = getRiskReason(agent);
+    return t("riskReason", { label: t(reason.label), progress: reason.progress });
+  };
+
+  const resolveDeadlineAlert = (agent: EnrichedProfile) => {
+    const alert = getDeadlineAlert(agent);
+    if (!alert.month) return t(alert.key);
+    return t(alert.key, { month: monthsShort[alert.month - 1] });
+  };
   const requestedYear = Number.parseInt(searchParams.get("year") ?? "", 10);
   const initialYearFilter = Number.isFinite(requestedYear) && requestedYear > 0
     ? requestedYear
@@ -400,7 +443,7 @@ export default function SuperAgentTargetProfilesPage() {
   const totalTeamPages = teamTotalPages;
   const paginatedTeamProfiles = teamProfiles;
   const territoryOptions = [
-    { value: "all", label: "All territories" },
+    { value: "all", label: t("allTerritories") },
     ...teamOverview.territories.map((territory) => ({ value: territory, label: territory })),
   ];
   const currencyLabel = teamOverview.currencyLabel;
@@ -414,10 +457,10 @@ export default function SuperAgentTargetProfilesPage() {
     riskHigh: teamTotals.riskBreakdown.high,
   };
   const attentionItems = [
-    { label: `${teamOverview.attention.behindEmployer} agents are behind on employer target`, tone: "bg-red-500" },
-    { label: `${teamOverview.attention.behindEmployee} agents are behind on employee target`, tone: "bg-amber-500" },
-    { label: `${teamOverview.attention.behindFinance} agents are behind on revenue target`, tone: "bg-amber-500" },
-    { label: `${teamOverview.attention.highRisk} agents are marked high risk`, tone: "bg-red-500" },
+    { label: t("behindEmployer", { count: teamOverview.attention.behindEmployer }), tone: "bg-red-500" },
+    { label: t("behindEmployee", { count: teamOverview.attention.behindEmployee }), tone: "bg-amber-500" },
+    { label: t("behindFinance", { count: teamOverview.attention.behindFinance }), tone: "bg-amber-500" },
+    { label: t("markedHighRisk", { count: teamOverview.attention.highRisk }), tone: "bg-red-500" },
   ];
   const topPerformers = teamOverview.topPerformers;
   const underPerformers = teamOverview.underPerformers;
@@ -427,10 +470,48 @@ export default function SuperAgentTargetProfilesPage() {
 
   const handleExport = () => {
     const csvRows = [
-      ["Agent","Email","Territory","Currency","Employer Target","Employer Achieved","Employee Target","Employee Achieved","Finance Target","Finance Achieved","Overall %","Stage","Risk","Next Action","Last Update"].join(","),
-      ...teamProfiles.map((r) =>
-        [`"${r.assigneeName}"`, `"${r.assigneeEmail}"`, `"${getTerritory(r)}"`, r.currency ?? "AED", r.employerTarget, r.employerAchieved, r.employeeTarget, r.employeeAchieved, r.financeTarget, r.financeAchieved, r.overallProgress, getCompletionStage(r.overallProgress), r.riskScore, `"${getNextAction(r)}"`, `"${formatShortDate(r.lastActivityAt ?? r.updatedAt)}"`].join(",")
-      ),
+      [
+        t("csvHeaderAgent"),
+        t("csvHeaderEmail"),
+        t("csvHeaderTerritory"),
+        t("csvHeaderCurrency"),
+        t("csvHeaderEmployerTarget"),
+        t("csvHeaderEmployerAchieved"),
+        t("csvHeaderEmployeeTarget"),
+        t("csvHeaderEmployeeAchieved"),
+        t("csvHeaderFinanceTarget"),
+        t("csvHeaderFinanceAchieved"),
+        t("csvHeaderOverallPercent"),
+        t("csvHeaderStage"),
+        t("csvHeaderRisk"),
+        t("csvHeaderNextAction"),
+        t("csvHeaderLastUpdate"),
+      ].join(","),
+      ...teamProfiles.map((r) => {
+        const territory = getTerritory(r);
+        const territoryDisplay = territory === "unassigned" ? t("unassigned") : territory;
+        const lastUpdate = formatShortDate(r.lastActivityAt ?? r.updatedAt);
+        const lastUpdateDisplay = lastUpdate ? lastUpdate : t("noUpdate");
+        const nextActionKey = getNextAction(r);
+        const nextActionDisplay = t(nextActionKey);
+        return [
+          `"${r.assigneeName}"`,
+          `"${r.assigneeEmail}"`,
+          `"${territoryDisplay}"`,
+          r.currency ?? "AED",
+          r.employerTarget,
+          r.employerAchieved,
+          r.employeeTarget,
+          r.employeeAchieved,
+          r.financeTarget,
+          r.financeAchieved,
+          r.overallProgress,
+          t(getCompletionStage(r.overallProgress)),
+          t(r.riskScore),
+          `"${nextActionDisplay}"`,
+          `"${lastUpdateDisplay}"`,
+        ].join(",");
+      }),
     ];
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -489,15 +570,15 @@ export default function SuperAgentTargetProfilesPage() {
               if (parsed >= 2020 && parsed <= 2099) setYearFilter(parsed);
             }}
           >
-            <CalendarDays className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Go</span>
+            <CalendarDays className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("go")}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={handleResetDashboard} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
-            <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Reset</span>
+            <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("reset")}</span>
           </Button>
           <div className="flex rounded-xl border border-border/60 bg-background p-0.5">
-            <Button variant={tab === "own" ? "default" : "ghost"} size="sm" onClick={() => setTab("own")} className="h-9 flex-1 rounded-lg px-3">Mine</Button>
-            <Button variant={tab === "team" ? "default" : "ghost"} size="sm" onClick={() => setTab("team")} className="h-9 flex-1 rounded-lg px-3">Team</Button>
-            <Button variant={tab === "analytics" ? "default" : "ghost"} size="sm" onClick={() => setTab("analytics")} className="h-9 flex-1 rounded-lg px-3">Analytics</Button>
+            <Button variant={tab === "own" ? "default" : "ghost"} size="sm" onClick={() => setTab("own")} className="h-9 flex-1 rounded-lg px-3">{t("mine")}</Button>
+            <Button variant={tab === "team" ? "default" : "ghost"} size="sm" onClick={() => setTab("team")} className="h-9 flex-1 rounded-lg px-3">{t("team")}</Button>
+            <Button variant={tab === "analytics" ? "default" : "ghost"} size="sm" onClick={() => setTab("analytics")} className="h-9 flex-1 rounded-lg px-3">{t("analytics")}</Button>
           </div>
           {tab === "team" && (
             <Button
@@ -507,7 +588,7 @@ export default function SuperAgentTargetProfilesPage() {
               aria-expanded={showTeamFilters}
               className={showTeamFilters ? "h-10 rounded-xl border-primary/30 bg-primary/10 text-primary" : "h-10 rounded-xl"}
             >
-              <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Filters</span>
+              <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("filters")}</span>
             </Button>
           )}
           {tab === "team" && showTeamFilters ? (
@@ -530,10 +611,10 @@ export default function SuperAgentTargetProfilesPage() {
               />
               <SearchableSelect
                 options={[
-                  { value: "all", label: "All stages" },
-                  { value: "not_started", label: "Not started" },
-                  { value: "in_progress", label: "In progress" },
-                  { value: "completed", label: "Completed" },
+                  { value: "all", label: t("allStages") },
+                  { value: "not_started", label: t("notStarted") },
+                  { value: "in_progress", label: t("inProgress") },
+                  { value: "completed", label: t("completed") },
                 ]}
                 value={teamCompletionFilter}
                 onValueChange={(value) => setTeamCompletionFilter(value as "all" | CompletionStage)}
@@ -542,10 +623,10 @@ export default function SuperAgentTargetProfilesPage() {
               />
               <SearchableSelect
                 options={[
-                  { value: "all", label: "All risk" },
-                  { value: "high", label: "High risk" },
-                  { value: "medium", label: "Medium risk" },
-                  { value: "low", label: "Low risk" },
+                  { value: "all", label: t("allRisk") },
+                  { value: "high", label: t("highRisk") },
+                  { value: "medium", label: t("mediumRisk") },
+                  { value: "low", label: t("lowRisk") },
                 ]}
                 value={teamRiskFilter}
                 onValueChange={(value) => setTeamRiskFilter(value as "all" | "high" | "medium" | "low")}
@@ -553,12 +634,12 @@ export default function SuperAgentTargetProfilesPage() {
                 className="h-10 w-32 rounded-xl"
               />
               <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExport} disabled={teamProfiles.length === 0}>
-                <Download className="h-4 w-4" /> <span className="hidden sm:inline">Export</span>
+                <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("export")}</span>
               </Button>
             </>
           ) : null}
           <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)}>
-            <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">Distribute</span>
+            <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">{t("distribute")}</span>
           </Button>
         </div>
 
@@ -580,8 +661,8 @@ export default function SuperAgentTargetProfilesPage() {
                 <div className="flex items-center gap-3">
                   <div className="workspace-tone-violet rounded-lg p-1.5"><TrendingUp className="h-4 w-4" /></div>
                   <div>
-                    <p className="text-sm font-semibold">Execution Status</p>
-                    <p className="text-xs text-muted-foreground">Quick view of what is completed, active, and still pending.</p>
+                    <p className="text-sm font-semibold">{t("executionStatus")}</p>
+                    <p className="text-xs text-muted-foreground">{t("executionStatusHelper")}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -677,10 +758,10 @@ export default function SuperAgentTargetProfilesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Rank</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Agent</TableHead>
-                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Progress</TableHead>
-                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Risk</TableHead>
+                        <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
+                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
+                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -729,7 +810,7 @@ export default function SuperAgentTargetProfilesPage() {
             <DashboardMetricCard
               label={t("teamCompletion")}
               value={`${filteredTotals.avgPerformance}%`}
-              helper={`${filteredStageCounts.in_progress} active · ${filteredStageCounts.completed} completed`}
+              helper={t("teamCompletionHelper", { inProgress: filteredStageCounts.in_progress, completed: filteredStageCounts.completed })}
               icon={<TrendingUp className="h-5 w-5" />}
               progress={filteredTotals.avgPerformance}
               tone="blue"
@@ -737,7 +818,7 @@ export default function SuperAgentTargetProfilesPage() {
             <DashboardMetricCard
               label={t("employerTarget")}
               value={<>{filteredTotals.employer.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employer.target}</span></>}
-              helper={`${Math.max(0, filteredTotals.employer.target - filteredTotals.employer.achieved)} balance`}
+              helper={t("employerTargetHelper", { balance: Math.max(0, filteredTotals.employer.target - filteredTotals.employer.achieved) })}
               icon={<Building2 className="h-5 w-5" />}
               progress={pct(filteredTotals.employer.achieved, filteredTotals.employer.target)}
               tone="green"
@@ -745,7 +826,7 @@ export default function SuperAgentTargetProfilesPage() {
             <DashboardMetricCard
               label={t("employeeTarget")}
               value={<>{filteredTotals.employee.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employee.target}</span></>}
-              helper={`${Math.max(0, filteredTotals.employee.target - filteredTotals.employee.achieved)} balance`}
+              helper={t("employeeTargetHelper", { balance: Math.max(0, filteredTotals.employee.target - filteredTotals.employee.achieved) })}
               icon={<Users className="h-5 w-5" />}
               progress={pct(filteredTotals.employee.achieved, filteredTotals.employee.target)}
               tone="violet"
@@ -753,7 +834,7 @@ export default function SuperAgentTargetProfilesPage() {
             <DashboardMetricCard
               label={t("revenueTarget")}
               value={formatCompactCurrency(filteredTotals.finance.achieved, ownProfile?.currency ?? "AED")}
-              helper={`${formatCompactCurrency(filteredTotals.finance.target, ownProfile?.currency ?? "AED")} assigned`}
+              helper={t("revenueTargetHelper", { assigned: formatCompactCurrency(filteredTotals.finance.target, ownProfile?.currency ?? "AED") })}
               icon={<DollarSign className="h-5 w-5" />}
               progress={pct(filteredTotals.finance.achieved, filteredTotals.finance.target)}
               tone="amber"
@@ -779,20 +860,20 @@ export default function SuperAgentTargetProfilesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Agent</TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Territory</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("territory")}</TableHead>
                   <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> Employer</div>
+                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {t("metricEmployer")}</div>
                   </TableHead>
                   <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Employee</div>
+                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {t("metricEmployee")}</div>
                   </TableHead>
                   <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Finance</div>
+                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> {t("metricRevenue")}</div>
                   </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Performance</TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Stage</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Risk</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("stage")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
                   <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Update</TableHead>
                   <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Actions</TableHead>
                 </TableRow>
@@ -814,7 +895,7 @@ export default function SuperAgentTargetProfilesPage() {
                         description={t("distributeEmptyHint")}
                         action={
                           <Button size="sm" onClick={() => setShowDistribute(true)} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                            <SplitSquareVertical className="h-4 w-4" /> Distribute
+                            <SplitSquareVertical className="h-4 w-4" /> {t("distribute")}
                           </Button>
                         }
                       />
@@ -838,7 +919,7 @@ export default function SuperAgentTargetProfilesPage() {
                             }}
                             className="mt-2 rounded-lg"
                           >
-                            Clear filters
+                            {t("clearFilters")}
                           </Button>
                         }
                       />
@@ -852,15 +933,15 @@ export default function SuperAgentTargetProfilesPage() {
                           <p className="font-medium">{agent.assigneeName}</p>
                           <p className="text-xs text-muted-foreground">{agent.assigneeEmail}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <Badge variant="info" className="px-2 py-0.5 text-[11px]">{getDistributionStatus(agent)}</Badge>
-                            <span className="text-[11px] text-muted-foreground">{getDeadlineAlert(agent)}</span>
+                            <Badge variant="info" className="px-2 py-0.5 text-[11px]">{t(getDistributionStatus(agent))}</Badge>
+                            <span className="text-[11px] text-muted-foreground">{resolveDeadlineAlert(agent)}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                           <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                          {getTerritory(agent)}
+                          {getTerritory(agent) === "unassigned" ? t("unassigned") : getTerritory(agent)}
                         </div>
                         <p className="mt-1 text-[11px] text-muted-foreground">{agent.regionalCurrency ?? agent.currency}</p>
                       </TableCell>
@@ -883,12 +964,12 @@ export default function SuperAgentTargetProfilesPage() {
                         <div className="space-y-1">
                           <RiskBadge risk={agent.riskScore} />
                           <IncentiveTierBadge tier={agent.incentiveTier ?? "none"} />
-                          <p className="text-[11px] text-muted-foreground">{getRiskReason(agent)}</p>
+                          <p className="text-[11px] text-muted-foreground">{resolveRiskReason(agent)}</p>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <p className="text-sm font-medium text-foreground">{formatShortDate(agent.lastActivityAt ?? agent.updatedAt ?? agent.createdAt)}</p>
-                        <p className="text-[11px] text-muted-foreground">{getNextAction(agent)}</p>
+                        <p className="text-sm font-medium text-foreground">{formatShortDate(agent.lastActivityAt ?? agent.updatedAt ?? agent.createdAt) || t("noUpdate")}</p>
+                        <p className="text-[11px] text-muted-foreground">{t(getNextAction(agent))}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -1164,7 +1245,7 @@ export default function SuperAgentTargetProfilesPage() {
                         <TimerReset className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
-                          <p className="text-[11px] text-muted-foreground">{getDeadlineAlert(agent)}</p>
+                          <p className="text-[11px] text-muted-foreground">{resolveDeadlineAlert(agent)}</p>
                         </div>
                       </div>
                     ))}

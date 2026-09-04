@@ -22,8 +22,9 @@ import {
   exhibitionFiltersAreActive,
 } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTimeline";
 import {
@@ -32,7 +33,7 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -88,12 +89,19 @@ const STATUS_COLORS: Record<string, string> = {
   archived: "bg-slate-100 text-slate-600",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft", submitted: "Submitted", under_review: "Under Review",
-  approved: "Operationally Approved", revision_requested: "Revision Requested",
-  budget_approved: "Financially Approved", resources_assigned: "Resources Assigned",
-  active: "Active", completed: "Completed", rejected: "Rejected", archived: "Archived",
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  draft: "statusDraft", submitted: "statusSubmitted", under_review: "statusUnderReview",
+  approved: "statusApproved", revision_requested: "statusRevisionRequested",
+  budget_approved: "statusBudgetApproved", resources_assigned: "statusResourcesAssigned",
+  active: "statusActive", completed: "statusCompleted", rejected: "statusRejected", archived: "statusArchived",
 };
+
+// Helper to resolve status labels with translations
+function getStatusLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(STATUS_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
+  );
+}
 
 const PRIORITY_COLORS: Record<string, string> = {
   low: "bg-gray-100 text-gray-600",
@@ -102,50 +110,107 @@ const PRIORITY_COLORS: Record<string, string> = {
   critical: "bg-red-100 text-red-700",
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  career_fair: "Career Fair", recruitment_expo: "Recruitment Expo",
-  employer_branding: "Employer Branding", hiring_drive: "Hiring Drive",
-  university_event: "University Event", gcc_recruitment: "GCC Recruitment",
-  job_fair: "Job Fair", other: "Other",
+const PRIORITY_LABEL_KEYS: Record<string, string> = {
+  low: "priorityLow", medium: "priorityMedium",
+  high: "priorityHigh", critical: "priorityCritical",
 };
 
-const OBJECTIVE_LABELS: Record<string, string> = {
-  employer_acquisition: "Employer Acquisition", candidate_sourcing: "Candidate Sourcing",
-  brand_awareness: "Brand Awareness", lead_generation: "Lead Generation",
-  direct_hiring: "Direct Hiring", market_expansion: "Market Expansion",
+// Helper to resolve priority labels with translations
+function getPriorityLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(PRIORITY_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
+  );
+}
+
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  career_fair: "categoryCareerFair", recruitment_expo: "categoryRecruitmentExpo",
+  employer_branding: "categoryEmployerBranding", hiring_drive: "categoryHiringDrive",
+  university_event: "categoryUniversityEvent", gcc_recruitment: "categoryGccRecruitment",
+  job_fair: "categoryJobFair", other: "categoryOther",
 };
 
-const RESOURCE_LABELS: Record<string, string> = {
-  brochures: "Brochures", standee: "Standee", flyers: "Flyers",
-  presentation_deck: "Presentation Deck", employer_catalog: "Employer Catalog",
-  candidate_forms: "Candidate Forms", branding_banners: "Branding Banners",
-  video_assets: "Video Assets", business_cards: "Business Cards", booth_design: "Booth Design",
+// Helper to resolve category labels with translations
+function getCategoryLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(CATEGORY_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
+  );
+}
+
+const OBJECTIVE_LABEL_KEYS: Record<string, string> = {
+  employer_acquisition: "objectiveEmployerAcquisition", candidate_sourcing: "objectiveCandidateSourcing",
+  brand_awareness: "objectiveBrandAwareness", lead_generation: "objectiveLeadGeneration",
+  direct_hiring: "objectiveDirectHiring", market_expansion: "objectiveMarketExpansion",
 };
 
-const PARTICIPATION_LABELS: Record<string, string> = {
-  standee: "Standee", stall: "Stall", booth: "Booth", sponsorship: "Sponsorship",
-  flyers: "Flyers", recruitment_desk: "Recruitment Desk", branding_package: "Branding Package", other: "Other",
+// Helper to resolve objective labels with translations
+function getObjectiveLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(OBJECTIVE_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
+  );
+}
+
+const RESOURCE_LABEL_KEYS: Record<string, string> = {
+  brochures: "resourceBrochures", standee: "resourceStandee", flyers: "resourceFlyers",
+  presentation_deck: "resourcePresentationDeck", employer_catalog: "resourceEmployerCatalog",
+  candidate_forms: "resourceCandidateForms", branding_banners: "resourceBrandingBanners",
+  video_assets: "resourceVideoAssets", business_cards: "resourceBusinessCards", booth_design: "resourceBoothDesign",
 };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  { value: "submitted", label: "Submitted" }, { value: "under_review", label: "Under Review" },
-  { value: "approved", label: "Operationally Approved" }, { value: "revision_requested", label: "Revision Requested" },
-  { value: "budget_approved", label: "Financially Approved" },
-  { value: "active", label: "Active" }, { value: "completed", label: "Completed" },
-  { value: "rejected", label: "Rejected" },
-];
+// Helper to resolve resource labels with translations
+function getResourceLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(RESOURCE_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
+  );
+}
 
-const PRIORITY_OPTIONS = [
-  { value: "all", label: "All Priorities" },
-  { value: "low", label: "Low" }, { value: "medium", label: "Medium" },
-  { value: "high", label: "High" }, { value: "critical", label: "Critical" },
-];
+const PARTICIPATION_LABEL_KEYS: Record<string, string> = {
+  standee: "participationStandee", stall: "participationStall", booth: "participationBooth", sponsorship: "participationSponsorship",
+  flyers: "participationFlyers", recruitment_desk: "participationRecruitmentDesk", branding_package: "participationBrandingPackage", other: "participationOther",
+};
 
-const CATEGORY_OPTIONS = [
-  { value: "all", label: "All Categories" },
-  ...Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
-];
+// Helper to resolve participation labels with translations
+function getParticipationLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(PARTICIPATION_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
+  );
+}
+
+// Helper to create status options with translations
+function getStatusOptions(t: ReturnType<typeof useTranslations>) {
+  const statusLabels = getStatusLabels(t);
+  return [
+    { value: "all", label: t("tableHeaderStatus") },
+    { value: "submitted", label: statusLabels.submitted },
+    { value: "under_review", label: statusLabels.under_review },
+    { value: "approved", label: statusLabels.approved },
+    { value: "revision_requested", label: statusLabels.revision_requested },
+    { value: "budget_approved", label: statusLabels.budget_approved },
+    { value: "active", label: statusLabels.active },
+    { value: "completed", label: statusLabels.completed },
+    { value: "rejected", label: statusLabels.rejected },
+  ];
+}
+
+// Helper to create priority options with translations
+function getPriorityOptions(t: ReturnType<typeof useTranslations>) {
+  const priorityLabels = getPriorityLabels(t);
+  return [
+    { value: "all", label: t("tableHeaderPriority") },
+    { value: "low", label: priorityLabels.low },
+    { value: "medium", label: priorityLabels.medium },
+    { value: "high", label: priorityLabels.high },
+    { value: "critical", label: priorityLabels.critical },
+  ];
+}
+
+// Helper to create category options with translations
+function getCategoryOptions(t: ReturnType<typeof useTranslations>) {
+  const categoryLabels = getCategoryLabels(t);
+  return [
+    { value: "all", label: t("tableHeaderDates") },
+    ...Object.entries(categoryLabels).map(([value, label]) => ({ value, label })),
+  ];
+}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -154,6 +219,15 @@ const CATEGORY_OPTIONS = [
 export default function SuperAgentExhibitionsPage() {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
+  const locale = useLocale();
+  const statusLabels = getStatusLabels(t);
+  const categoryLabels = getCategoryLabels(t);
+  const objectiveLabels = getObjectiveLabels(t);
+  const resourceLabels = getResourceLabels(t);
+  const participationLabels = getParticipationLabels(t);
+  const statusOptions = getStatusOptions(t);
+  const priorityOptions = getPriorityOptions(t);
+  const categoryOptions = getCategoryOptions(t);
   const {
     page, limit, total, totalPages,
     setPage, setLimit, updateTotal, resetPage, paginationParams,
@@ -164,11 +238,12 @@ export default function SuperAgentExhibitionsPage() {
   // only ever saw the current page, so the header under-reported past page 1.
   const [pendingReview, setPendingReview] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+
+  const { filters, setFilter, resetFilters } = useUrlFilters(
+    { status: "all", priority: "all", category: "all", search: "" },
+    { debounceKeys: ["search"], debounceMs: 400 }
+  );
 
   // Review dialog
   const [reviewItem, setReviewItem] = useState<ExhibitionRequest | null>(null);
@@ -183,10 +258,10 @@ export default function SuperAgentExhibitionsPage() {
     setLoading(true);
     try {
       const params = paginationParams();
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (priorityFilter !== "all") params.set("priority", priorityFilter);
-      if (categoryFilter !== "all") params.set("category", categoryFilter);
-      if (search) params.set("search", search);
+      if (filters.status !== "all") params.set("status", filters.status);
+      if (filters.priority !== "all") params.set("priority", filters.priority);
+      if (filters.category !== "all") params.set("category", filters.category);
+      if (filters.search) params.set("search", filters.search);
       const res = await fetch(`/api/exhibitions?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -195,12 +270,9 @@ export default function SuperAgentExhibitionsPage() {
         updateTotal(data.total ?? 0);
       }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
-  }, [statusFilter, priorityFilter, categoryFilter, search, t, page, limit, paginationParams, updateTotal]);
+  }, [filters, t, page, limit, paginationParams, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  useEffect(() => {
-    resetPage();
-  }, [statusFilter, priorityFilter, categoryFilter, search, resetPage]);
 
   const handleReview = async () => {
     if (!reviewItem || !reviewAction) return;
@@ -212,7 +284,12 @@ export default function SuperAgentExhibitionsPage() {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
       if (res.ok) {
-        toast.success(`Exhibition ${reviewAction === "rejected" ? "rejected" : reviewAction === "revision_requested" ? "revision requested" : "approved"}`);
+        const actionMap: Record<string, string> = {
+          rejected: "toastExhibitionRejected",
+          revision_requested: "toastExhibitionRevisionRequested",
+          approved: "toastExhibitionApproved",
+        };
+        toast.success(t(actionMap[reviewAction] || "toastExhibitionApproved"));
         setReviewItem(null); setReviewNote(""); setApprovedBudget(""); fetchItems();
       } else { const err = await res.json(); toast.error(err.error ?? t("errorUpdatingExhibition")); }
     } catch { toast.error(t("errorUpdatingExhibition")); }
@@ -222,12 +299,7 @@ export default function SuperAgentExhibitionsPage() {
     setReviewItem(item); setReviewAction(action); setReviewNote(""); setApprovedBudget(item.approvedBudget?.toString() ?? item.estimatedBudget?.toString() ?? "");
   };
 
-  const fmtDate = (d: string | undefined | null) => {
-    if (!d) return "—";
-    const parsed = new Date(d);
-    if (isNaN(parsed.getTime())) return "—";
-    return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-  };
+  const fmtDate = (d: string | undefined | null) => formatDate(d, { day: "2-digit", month: "short", year: "numeric" }, locale);
   const dayCount = (s: string | undefined | null, e: string | undefined | null) => {
     if (!s || !e) return null;
     const start = new Date(s);
@@ -236,13 +308,7 @@ export default function SuperAgentExhibitionsPage() {
     return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1);
   };
 
-  const hasActiveFilters = exhibitionFiltersAreActive(search, statusFilter, priorityFilter, categoryFilter);
-  const clearFilters = () => {
-    setSearch("");
-    setStatusFilter("all");
-    setPriorityFilter("all");
-    setCategoryFilter("all");
-  };
+  const hasActiveFilters = exhibitionFiltersAreActive(filters.search, filters.status, filters.priority, filters.category);
   return (
     <div className="page-container">
       <DashboardPageHeader
@@ -257,23 +323,23 @@ export default function SuperAgentExhibitionsPage() {
               onToggle={() => setShowFilters((value) => !value)}
               hasActiveFilters={hasActiveFilters}
             />
-            {hasActiveFilters && <ExhibitionFilterClearButton onClear={clearFilters} />}
+            {hasActiveFilters && <ExhibitionFilterClearButton onClear={resetFilters} />}
           </div>
         }
       >
         <ExhibitionFilterPanel
           open={showFilters}
-          search={search}
-          onSearchChange={setSearch}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          statusOptions={STATUS_OPTIONS}
-          priorityFilter={priorityFilter}
-          onPriorityChange={setPriorityFilter}
-          priorityOptions={PRIORITY_OPTIONS}
-          categoryFilter={categoryFilter}
-          onCategoryChange={setCategoryFilter}
-          categoryOptions={CATEGORY_OPTIONS}
+          search={filters.search}
+          onSearchChange={(v) => setFilter("search", v)}
+          statusFilter={filters.status}
+          onStatusChange={(v) => setFilter("status", v)}
+          statusOptions={statusOptions}
+          priorityFilter={filters.priority}
+          onPriorityChange={(v) => setFilter("priority", v)}
+          priorityOptions={priorityOptions}
+          categoryFilter={filters.category}
+          onCategoryChange={(v) => setFilter("category", v)}
+          categoryOptions={categoryOptions}
           searchPlaceholder={t("searchPlaceholder")}
         />
       </DashboardPageHeader>
@@ -300,18 +366,18 @@ export default function SuperAgentExhibitionsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/25">
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Agent</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Location</th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dates</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">Participation</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Budget Req.</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Budget Appr.</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">Objective</th>
-                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Priority</th>
-                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">Resources</th>
-                    <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderEvent")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderAgent")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">{t("tableHeaderLocation")}</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderDates")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">{t("tableHeaderParticipation")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderBudgetReq")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">{t("tableHeaderBudgetAppr")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">{t("tableHeaderObjective")}</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderStatus")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderPriority")}</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">{t("tableHeaderResources")}</th>
+                    <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderActions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
@@ -321,7 +387,7 @@ export default function SuperAgentExhibitionsPage() {
                       <tr key={item._id} className={`transition-colors hover:bg-primary/[0.03] ${idx % 2 === 0 ? "bg-background" : "bg-muted/15"}`}>
                         <td className="px-4 py-3.5">
                           <button type="button" onClick={() => setDetailItem(item)} className="text-left font-semibold text-foreground hover:text-primary hover:underline">{item.eventName}</button>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{CATEGORY_LABELS[item.eventCategory] ?? item.eventCategory}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{categoryLabels[item.eventCategory] ?? item.eventCategory}</p>
                         </td>
                         <td className="hidden px-4 py-3.5 md:table-cell">
                           <p className="text-sm font-medium">{item.agentId?.name}</p>
@@ -336,7 +402,7 @@ export default function SuperAgentExhibitionsPage() {
                         </td>
                         <td className="hidden px-4 py-3.5 sm:table-cell">
                           <div className="flex flex-wrap gap-1">
-                            {(item.participationTypes ?? []).slice(0, 2).map((pt) => (<Badge key={pt} variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-[11px] font-medium">{PARTICIPATION_LABELS[pt] ?? pt}</Badge>))}
+                            {(item.participationTypes ?? []).slice(0, 2).map((pt) => (<Badge key={pt} variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-[11px] font-medium">{participationLabels[pt] ?? pt}</Badge>))}
                             {(item.participationTypes?.length ?? 0) > 2 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.participationTypes.length - 2}</Badge>}
                           </div>
                         </td>
@@ -344,12 +410,12 @@ export default function SuperAgentExhibitionsPage() {
                         <td className="hidden whitespace-nowrap px-4 py-3.5 md:table-cell lg:table-cell">{item.approvedBudget ? <span className="font-medium text-emerald-600">{item.budgetCurrency} {formatCount(item.approvedBudget)}</span> : <span className="text-muted-foreground">—</span>}</td>
                         <td className="hidden px-4 py-3.5 xl:table-cell">
                           <div className="flex flex-wrap gap-1">
-                            {(item.objectives ?? []).slice(0, 1).map((o) => (<Badge key={o} variant="outline" className="rounded-md text-[11px]">{OBJECTIVE_LABELS[o] ?? o}</Badge>))}
+                            {(item.objectives ?? []).slice(0, 1).map((o) => (<Badge key={o} variant="outline" className="rounded-md text-[11px]">{objectiveLabels[o] ?? o}</Badge>))}
                             {(item.objectives?.length ?? 0) > 1 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.objectives.length - 1}</Badge>}
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
-                          <Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{STATUS_LABELS[item.status] ?? item.status}</Badge>
+                          <Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{statusLabels[item.status] ?? item.status}</Badge>
                           {item.reviewedBy && <p className="mt-0.5 text-[11px] text-muted-foreground">by {item.reviewedBy.name}</p>}
                         </td>
                         <td className="hidden px-4 py-3.5 md:table-cell"><Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge></td>
@@ -367,11 +433,11 @@ export default function SuperAgentExhibitionsPage() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="max-sm:min-h-11 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50"><Clock className="mr-1 h-3.5 w-3.5" /> Review</Button>)}
+                              {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="max-sm:min-h-11 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50"><Clock className="mr-1 h-3.5 w-3.5" /> {t("actionReview")}</Button>)}
                               {item.status === "under_review" && (<>
-                                <Button size="sm" onClick={() => openReview(item, "approved")} className="max-sm:min-h-11 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> Approve</Button>
-                                <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="max-sm:min-h-11 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
-                                <Button size="dense" variant="destructive" className="max-sm:min-h-11 rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
+                                <Button size="sm" onClick={() => openReview(item, "approved")} className="max-sm:min-h-11 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> {t("actionApprove")}</Button>
+                                <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="max-sm:min-h-11 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50"><RotateCcw className="mr-1 h-3.5 w-3.5" /> {t("actionRevise")}</Button>
+                                <Button size="dense" variant="destructive" className="max-sm:min-h-11 rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> {t("actionReject")}</Button>
                               </>)}
                             </div>
                           </div>
@@ -399,8 +465,8 @@ export default function SuperAgentExhibitionsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {detailItem && (<>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">{detailItem.eventName}<Badge className={STATUS_COLORS[detailItem.status]}>{STATUS_LABELS[detailItem.status]}</Badge><Badge className={PRIORITY_COLORS[detailItem.priority]}>{detailItem.priority}</Badge></DialogTitle>
-              <DialogDescription>{CATEGORY_LABELS[detailItem.eventCategory]} · {detailItem.eventLocation} {detailItem.country ? `· ${detailItem.country}` : ""}</DialogDescription>
+              <DialogTitle className="flex items-center gap-2">{detailItem.eventName}<Badge className={STATUS_COLORS[detailItem.status]}>{statusLabels[detailItem.status]}</Badge><Badge className={PRIORITY_COLORS[detailItem.priority]}>{detailItem.priority}</Badge></DialogTitle>
+              <DialogDescription>{categoryLabels[detailItem.eventCategory]} · {detailItem.eventLocation} {detailItem.country ? `· ${detailItem.country}` : ""}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
@@ -413,9 +479,9 @@ export default function SuperAgentExhibitionsPage() {
                 <div><span className="text-muted-foreground">Expected Leads:</span> {detailItem.expectedLeads ?? "—"}</div>
               </div>
 
-              {detailItem.participationTypes?.length > 0 && (<div><p className="text-muted-foreground mb-1">Participation:</p><div className="flex flex-wrap gap-1">{detailItem.participationTypes.map((pt) => (<Badge key={pt} variant="outline">{PARTICIPATION_LABELS[pt] ?? pt}</Badge>))}</div></div>)}
-              {detailItem.objectives?.length > 0 && (<div><p className="text-muted-foreground mb-1">Objectives:</p><div className="flex flex-wrap gap-1">{detailItem.objectives.map((o) => (<Badge key={o} variant="outline">{OBJECTIVE_LABELS[o] ?? o}</Badge>))}</div></div>)}
-              {detailItem.requiredResources?.length > 0 && (<div><p className="text-muted-foreground mb-1">Required Resources:</p><div className="flex flex-wrap gap-1">{detailItem.requiredResources.map((r) => (<Badge key={r} variant="outline">{RESOURCE_LABELS[r] ?? r}</Badge>))}</div></div>)}
+              {detailItem.participationTypes?.length > 0 && (<div><p className="text-muted-foreground mb-1">Participation:</p><div className="flex flex-wrap gap-1">{detailItem.participationTypes.map((pt) => (<Badge key={pt} variant="outline">{participationLabels[pt] ?? pt}</Badge>))}</div></div>)}
+              {detailItem.objectives?.length > 0 && (<div><p className="text-muted-foreground mb-1">Objectives:</p><div className="flex flex-wrap gap-1">{detailItem.objectives.map((o) => (<Badge key={o} variant="outline">{objectiveLabels[o] ?? o}</Badge>))}</div></div>)}
+              {detailItem.requiredResources?.length > 0 && (<div><p className="text-muted-foreground mb-1">Required Resources:</p><div className="flex flex-wrap gap-1">{detailItem.requiredResources.map((r) => (<Badge key={r} variant="outline">{resourceLabels[r] ?? r}</Badge>))}</div></div>)}
               {detailItem.budgetBreakdown && (<div><p className="text-muted-foreground mb-1">Budget Breakdown:</p><div className="grid grid-cols-3 gap-2">{Object.entries(detailItem.budgetBreakdown).map(([k, v]) => (<div key={k} className="rounded border p-2 text-center"><p className="text-xs text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1")}</p><p className="font-semibold">{detailItem.budgetCurrency} {formatCount(v as number)}</p></div>))}</div></div>)}
               {detailItem.description && <div><p className="text-muted-foreground">Description:</p><p>{detailItem.description}</p></div>}
               {detailItem.executionPlan && <div><p className="text-muted-foreground">Execution Plan:</p><p>{detailItem.executionPlan}</p></div>}
@@ -442,13 +508,13 @@ export default function SuperAgentExhibitionsPage() {
           {reviewItem && (<>
             <DialogHeader>
               <DialogTitle>
-                {reviewAction === "under_review" ? "Start Review" : reviewAction === "approved" ? "Approve Exhibition" : reviewAction === "revision_requested" ? "Request Revision" : "Reject Exhibition"}
+                {reviewAction === "under_review" ? t("reviewStartReview") : reviewAction === "approved" ? t("reviewApproveExhibition") : reviewAction === "revision_requested" ? t("reviewRequestRevision") : t("reviewRejectExhibition")}
               </DialogTitle>
               <DialogDescription>
                 {reviewItem.eventName} — {reviewItem.agentId?.name}
                 {reviewAction === "approved" && (
                   <span className="mt-1 block text-[11px] text-amber-600">
-                    Operational approval only — budget approval is handled by Admin.
+                    {t("reviewOperationalApprovalOnly")}
                   </span>
                 )}
               </DialogDescription>
@@ -456,14 +522,14 @@ export default function SuperAgentExhibitionsPage() {
             <div className="space-y-4">
               {reviewAction === "approved" && (
                 <div>
-                  <Label>Recommended Budget ({reviewItem.budgetCurrency})</Label>
-                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder={t("recommendedBudget")} />
-                  <p className="text-xs text-muted-foreground mt-1">Requested: {reviewItem.budgetCurrency} {formatCount(reviewItem.estimatedBudget)}</p>
+                  <Label>{t("reviewRecommendedBudget")} ({reviewItem.budgetCurrency})</Label>
+                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder={t("reviewRecommendedBudget")} />
+                  <p className="text-xs text-muted-foreground mt-1">{t("reviewRequested")}: {reviewItem.budgetCurrency} {formatCount(reviewItem.estimatedBudget)}</p>
                 </div>
               )}
               <div>
-                <Label>{reviewAction === "revision_requested" ? "Revision Notes *" : "Review Notes"}</Label>
-                <Textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} placeholder={reviewAction === "revision_requested" ? "What needs to be revised..." : "Optional notes..."} rows={3} />
+                <Label>{reviewAction === "revision_requested" ? t("reviewRevisionNotes") : t("reviewNotes")}</Label>
+                <Textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} placeholder={reviewAction === "revision_requested" ? t("reviewRevisionNotesPlaceholder") : t("reviewNotesPlaceholder")} rows={3} />
               </div>
             </div>
             <DialogFooter>
@@ -472,7 +538,7 @@ export default function SuperAgentExhibitionsPage() {
                 variant={reviewAction === "rejected" ? "destructive" : "default"}
                 className={!["rejected"].includes(reviewAction) ? (reviewAction === "revision_requested" ? "bg-orange-600 hover:bg-orange-700" : "bg-emerald-600 hover:bg-emerald-700") : ""}
                 disabled={reviewAction === "revision_requested" && !reviewNote.trim()}>
-                {reviewAction === "rejected" ? "Reject" : reviewAction === "revision_requested" ? "Request Revision" : "Confirm"}
+                {reviewAction === "rejected" ? t("actionReject") : reviewAction === "revision_requested" ? t("reviewRequestRevision") : tc("confirm")}
               </Button>
             </DialogFooter>
           </>)}

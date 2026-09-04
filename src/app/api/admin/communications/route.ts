@@ -11,7 +11,11 @@ import { inngest } from "@/lib/inngest/client";
 interface AuthCtx { userId: string; role: string; locale: string; }
 
 async function getHandler(_req: NextRequest, ctx: AuthCtx) {
-  if (!["admin", "super_agent"].includes(ctx.role)) {
+  // The broadcast history is platform-wide with no scoping, and POST below is
+  // already admin-only — a role that cannot send a broadcast has no reason to
+  // read every broadcast ever sent. The only consumer is the admin
+  // communications page.
+  if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();

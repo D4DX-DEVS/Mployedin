@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Search, Users, Clock, Send, CheckCircle, Loader2, X } from "lucide-react";
+import { Calendar, Search, Clock, Send, CheckCircle, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -102,9 +102,9 @@ export default function EmployerBulkInterviewPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

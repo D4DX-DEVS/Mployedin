@@ -5,12 +5,24 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  Upload, FileImage, Loader2, Sparkles, Check, X,
-  Briefcase, MapPin, DollarSign, Users, ArrowRight,
-  Trash2, Edit, Send, FileText, AlertCircle,
+  Upload,
+  FileImage,
+  Loader2,
+  Sparkles,
+  Check,
+  Briefcase,
+  MapPin,
+  DollarSign,
+  Users,
+  ArrowRight,
+  Trash2,
+  Edit,
+  Send,
+  FileText,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { cn } from "@/lib/utils";
 import type { JobFormValues } from "@/components/features/employer/job-form/jobFormSchema";
 import { formatCount } from "@/lib/ui/intlFormat";
@@ -436,9 +448,9 @@ export default function AIJobExtractPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
       />
 
       {/* Upload Section */}

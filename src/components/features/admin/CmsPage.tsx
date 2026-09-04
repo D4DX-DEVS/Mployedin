@@ -198,7 +198,7 @@ export default function CmsPage({
     const r = await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
     if (!r.ok) {
       const err = await r.json();
-      toast.error(err.error || "Failed to delete");
+      toast.error(err.error || t("deleteFailed"));
       return;
     }
     setItems((current) => current.filter((item) => String(item._id) !== id));

@@ -47,10 +47,7 @@ interface TargetRow {
   monthlyTargets: MonthlyTarget[];
 }
 
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+// MONTHS_SHORT resolved in component with useTranslations hook, see below
 
 function generateEqualDistribution(annual: { employerTarget: number; employeeTarget: number; financeTarget: number }): MonthlyTarget[] {
   return Array.from({ length: 12 }, (_, i) => {
@@ -79,6 +76,22 @@ export default function SuperAgentCreateTargetPage() {
   const locale = pathname.split("/")[1] || "en";
   const router = useRouter();
   const currentYear = new Date().getFullYear();
+
+  // Translated month names
+  const monthsShort = useMemo(() => [
+    t("months.jan"),
+    t("months.feb"),
+    t("months.mar"),
+    t("months.apr"),
+    t("months.may"),
+    t("months.jun"),
+    t("months.jul"),
+    t("months.aug"),
+    t("months.sep"),
+    t("months.oct"),
+    t("months.nov"),
+    t("months.dec"),
+  ], [t]);
 
   const [year, setYear] = useState(currentYear + 1);
   const [creating, setCreating] = useState(false);
@@ -285,7 +298,7 @@ export default function SuperAgentCreateTargetPage() {
         onClick={() => router.push(`/${locale}/super-agent/target-management`)}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to Target Management
+        <ArrowLeft className="h-4 w-4" /> {t("backToTargetManagement")}
       </button>
 
       {/* Header */}
@@ -316,7 +329,7 @@ export default function SuperAgentCreateTargetPage() {
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <Filter className="h-4 w-4" />
-            Filters
+            {t("filters")}
             {hasActiveFilters && (
               <Badge variant="info" className="text-[11px] px-1.5 py-0">
                 {[filterName, filterRegion].filter(Boolean).length}
@@ -330,7 +343,7 @@ export default function SuperAgentCreateTargetPage() {
               onClick={clearFilters}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              <X className="h-3 w-3" /> Clear
+              <X className="h-3 w-3" /> {t("clearFilters")}
             </button>
           )}
         </div>
@@ -341,7 +354,7 @@ export default function SuperAgentCreateTargetPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {/* Name Search */}
               <div className="field">
-                <Label className="text-[11px] font-medium text-muted-foreground">Name / Email</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("nameEmail")}</Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -355,24 +368,24 @@ export default function SuperAgentCreateTargetPage() {
 
               {/* Region Filter */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Region / Country</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("regionCountry")}</Label>
                 <SearchableSelect
                   value={filterRegion}
                   onValueChange={(val) => setFilterRegion(val)}
                   options={[
-                    { value: "", label: "All regions" },
+                    { value: "", label: t("allRegions") },
                     ...regionOptions.map((r) => ({ value: r, label: r })),
                   ]}
                   placeholder={t("allRegions")}
-                  searchPlaceholder="Search regions..."
-                  emptyMessage="No regions found"
+                  searchPlaceholder={t("searchRegions")}
+                  emptyMessage={t("noRegionsFound")}
                   className="h-8 text-xs"
                 />
               </div>
             </div>
             {hasActiveFilters && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Showing {filteredAgents.length} of {agents.length} agents
+                {t("showingAgents", { shown: filteredAgents.length, total: agents.length })}
               </p>
             )}
           </div>
@@ -395,7 +408,7 @@ export default function SuperAgentCreateTargetPage() {
         ) : agents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">No agents in your team</p>
+            <p className="text-sm text-muted-foreground">{t("noAgentsInTeam")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -403,28 +416,28 @@ export default function SuperAgentCreateTargetPage() {
               <thead className="bg-muted/40 border-b border-border/70">
                 <tr>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[200px]">
-                    Agent
+                    {t("tableHeaderAgent")}
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[130px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <Building2 className="h-3.5 w-3.5" />
-                      Employers
+                      {t("tableHeaderEmployers")}
                     </div>
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[130px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <Users className="h-3.5 w-3.5" />
-                      Employees
+                      {t("tableHeaderEmployees")}
                     </div>
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[140px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <DollarSign className="h-3.5 w-3.5" />
-                      Revenue
+                      {t("tableHeaderRevenue")}
                     </div>
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[120px]">
-                    Monthly
+                    {t("tableHeaderMonthly")}
                   </th>
                 </tr>
               </thead>
@@ -432,7 +445,7 @@ export default function SuperAgentCreateTargetPage() {
                 {filteredAgents.length === 0 && !loading ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      No agents match the current filters
+                      {t("noAgentsMatchFilters")}
                     </td>
                   </tr>
                 ) : (
@@ -448,6 +461,8 @@ export default function SuperAgentCreateTargetPage() {
                         onUpdateTarget={updateTarget}
                         onToggleMonthly={toggleMonthly}
                         onUpdateMonthly={updateMonthlyTarget}
+                        monthsShort={monthsShort}
+                        t={t}
                       />
                     );
                   })
@@ -457,7 +472,7 @@ export default function SuperAgentCreateTargetPage() {
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
                   <td className="px-4 py-3 text-sm font-semibold text-foreground">
-                    Total ({validRows.length} agent{validRows.length !== 1 ? "s" : ""})
+                    {t("totalAgents", { count: validRows.length })}
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
                     {formatCount(totals.employer)}
@@ -484,7 +499,7 @@ export default function SuperAgentCreateTargetPage() {
           className="gap-2 rounded-xl px-6"
         >
           {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Assign Targets ({validRows.length})
+          {t("assignTargets", { count: validRows.length })}
         </Button>
       </div>
     </div>
@@ -502,6 +517,8 @@ interface AgentTargetRowProps {
   onUpdateTarget: (id: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
   onToggleMonthly: (id: string) => void;
   onUpdateMonthly: (id: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
+  monthsShort: string[];
+  t: (key: string, options?: any) => string;
 }
 
 function AgentTargetRow({
@@ -511,6 +528,8 @@ function AgentTargetRow({
   onUpdateTarget,
   onToggleMonthly,
   onUpdateMonthly,
+  monthsShort,
+  t,
 }: AgentTargetRowProps) {
   const hasTarget = row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0;
 
@@ -599,6 +618,8 @@ function AgentTargetRow({
                 financeTarget: row.financeTarget,
               }}
               onUpdate={onUpdateMonthly}
+              monthsShort={monthsShort}
+              t={t}
             />
           </td>
         </tr>
@@ -617,6 +638,8 @@ interface MonthlyDistributionTableProps {
   currency: string;
   annualTargets: { employerTarget: number; employeeTarget: number; financeTarget: number };
   onUpdate: (agentId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
+  monthsShort: string[];
+  t: (key: string, options?: any) => string;
 }
 
 function MonthlyDistributionTable({
@@ -625,6 +648,8 @@ function MonthlyDistributionTable({
   currency,
   annualTargets,
   onUpdate,
+  monthsShort,
+  t,
 }: MonthlyDistributionTableProps) {
   const monthlySum = monthly.reduce(
     (acc, m) => ({
@@ -643,10 +668,10 @@ function MonthlyDistributionTable({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-muted-foreground">Monthly Distribution (editable)</p>
+        <p className="text-xs font-semibold text-muted-foreground">{t("monthlyDistributionEditable")}</p>
         {!isValid && (
           <Badge variant="destructive" className="text-[11px]">
-            Sum mismatch — adjust monthly values
+            {t("sumMismatch")}
           </Badge>
         )}
       </div>
@@ -655,15 +680,15 @@ function MonthlyDistributionTable({
           <thead className="bg-muted/30">
             <tr>
               <th className="px-2 py-2 text-left font-semibold text-muted-foreground">Month</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Employers</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Employees</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Revenue</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("tableHeaderEmployers")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("tableHeaderEmployees")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("tableHeaderRevenue")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
             {monthly.map((m) => (
               <tr key={m.month} className="hover:bg-muted/10">
-                <td className="px-2 py-1.5 font-medium text-muted-foreground">{MONTHS_SHORT[m.month - 1]}</td>
+                <td className="px-2 py-1.5 font-medium text-muted-foreground">{monthsShort[m.month - 1]}</td>
                 <td className="px-2 py-1.5">
                   <Input
                     type="number"
@@ -696,7 +721,7 @@ function MonthlyDistributionTable({
           </tbody>
           <tfoot className="bg-muted/20 border-t border-border">
             <tr>
-              <td className="px-2 py-1.5 font-semibold">Total</td>
+              <td className="px-2 py-1.5 font-semibold">{t("total")}</td>
               <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.employer !== annualTargets.employerTarget ? "text-red-500" : ""}`}>
                 {monthlySum.employer}
               </td>

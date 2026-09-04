@@ -34,6 +34,7 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface ApplicationDetail {
@@ -277,7 +278,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
   async function handleRespond(response: "confirmed" | "declined" | "reschedule_requested") {
     setResponding(true);
     try {
-      const res = await fetch(`/api/interviews/${iv._id}/respond`, {
+      const res = await csrfFetch(`/api/interviews/${iv._id}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -420,9 +421,8 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
   async function handleRespond(status: "accepted" | "declined") {
     setResponding(true);
     try {
-      const res = await fetch(`/api/offers/${offer._id}`, {
+      const res = await csrfFetch(`/api/offers/${offer._id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status,
           ...(status === "declined" && declineReason && { declineReason }),
@@ -556,7 +556,7 @@ function DocumentsSection({
     if (!docName.trim() || !docUrl.trim()) return;
     setUploading(true);
     try {
-      const res = await fetch(`/api/applications/${applicationId}/documents`, {
+      const res = await csrfFetch(`/api/applications/${applicationId}/documents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: docName.trim(), url: docUrl.trim(), type: docType }),
@@ -576,7 +576,7 @@ function DocumentsSection({
   async function handleDelete(url: string) {
     setDeleting(url);
     try {
-      await fetch(`/api/applications/${applicationId}/documents`, {
+      await csrfFetch(`/api/applications/${applicationId}/documents`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),

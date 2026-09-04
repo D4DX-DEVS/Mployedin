@@ -9,11 +9,18 @@ import {
 import {
   ArrowUpDown, ChevronDown, ChevronUp,
   Gauge, Loader2, RotateCcw,
-  Sparkles, Target, X,
+  Sparkles, Target, X, MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
@@ -24,6 +31,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -71,7 +79,7 @@ interface Facets {
   sources: string[];
 }
 
-interface Filters {
+interface Filters extends Record<string, string> {
   status: string;
   search: string;
   country: string;
@@ -106,6 +114,19 @@ const SORT_OPTIONS = [
   { value: "industry", label: "sortOptionIndustry" },
 ];
 
+/**
+ * The label key for a sort field.
+ *
+ * The active-filter chip used to build this key by concatenation —
+ * `sortOption${filters.sortBy}` — which produces `sortOptioncreatedAt` for a
+ * value of `createdAt`, while the key is `sortOptionCreatedAt`. next-intl
+ * throws on an unknown key, so simply switching the sort order to ascending
+ * crashed the page. SORT_OPTIONS already holds the correct key per value.
+ */
+function sortLabelKey(value: string): string {
+  return SORT_OPTIONS.find((option) => option.value === value)?.label ?? "sortOptionCreatedAt";
+}
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -132,12 +153,20 @@ export default function SuperAgentLeadsPage() {
   const t = useTranslations("superAgentLeads");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
+  const tStage = useTranslations("statusBadge");
 
   const [leads, setLeads] = useState<Lead[]>([]);
   // Per-stage totals across the whole filtered pipeline, from the API.
   const [apiStageCounts, setApiStageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [error, setError] = useState("");
+  // In the URL, not just in state: the dashboard's "overdue follow-ups" row
+  // links straight to ?hasFollowUp=overdue, and that only works if this page
+  // reads its filters back from the query string on mount.
+  const { filters, setFilter, resetFilters: clearUrlFilters } = useUrlFilters<Filters>(
+    INITIAL_FILTERS,
+    { debounceKeys: ["search"], debounceMs: 400 },
+  );
 
   const [facets, setFacets] = useState<Facets>({ countries: [], industries: [], sources: [] });
   const [agents, setAgents] = useState<AgentOption[]>([]);
@@ -148,6 +177,7 @@ export default function SuperAgentLeadsPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState("");
   const [aiDegraded, setAiDegraded] = useState(false);
+  const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
   const aiInputRef = useRef<HTMLInputElement>(null);
 
   /* -- Fetch agents for filter dropdown -- */
@@ -157,7 +187,7 @@ export default function SuperAgentLeadsPage() {
         const res = await fetch("/api/super-agent/agents?limit=200");
         if (res.ok) {
           const data = await res.json();
-          setAgents(data.agents?.map((a: { _id: string; name: string; email: string }) => ({
+          setAgents(data.items?.map((a: { _id: string; name: string; email: string }) => ({
             _id: a._id, name: a.name, email: a.email,
           })) ?? []);
         }
@@ -168,6 +198,7 @@ export default function SuperAgentLeadsPage() {
   /* -- Fetch leads -- */
   const fetchLeads = useCallback(async (overrideFilters?: Partial<Filters>) => {
     setLoading(true);
+    setError("");
     const f = { ...filters, ...overrideFilters };
     const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true" });
     if (f.status) params.set("status", f.status);
@@ -193,35 +224,39 @@ export default function SuperAgentLeadsPage() {
         setApiStageCounts(data.stageCounts ?? {});
         updateTotal(data.total ?? 0);
         if (data.facets) setFacets(data.facets);
+      } else {
+        setError(t("loadError"));
       }
-    } catch { /* ignore */ }
+    } catch {
+      setError(t("loadError"));
+    }
     setLoading(false);
-  }, [filters, page, limit, updateTotal]);
+  }, [filters, page, limit, updateTotal, t]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
   /* -- Filter helpers -- */
-  const updateFilter = useCallback((key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  const updateFilter = useCallback((key: keyof Filters & string, value: string) => {
+    setFilter(key, value);
     resetPage();
-  }, [resetPage]);
+  }, [setFilter, resetPage]);
 
   const resetFilters = useCallback(() => {
-    setFilters(INITIAL_FILTERS);
+    clearUrlFilters();
     setAiSummary("");
     setAiQuery("");
     resetPage();
-  }, [resetPage]);
+  }, [clearUrlFilters, resetPage]);
 
   /* -- Column sort -- */
   const toggleSort = useCallback((field: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      sortBy: field,
-      sortOrder: prev.sortBy === field && prev.sortOrder === "desc" ? "asc" : "desc",
-    }));
+    setFilter("sortBy", field);
+    setFilter(
+      "sortOrder",
+      filters.sortBy === field && filters.sortOrder === "desc" ? "asc" : "desc",
+    );
     resetPage();
-  }, [resetPage]);
+  }, [filters.sortBy, filters.sortOrder, setFilter, resetPage]);
 
   /* -- AI Search -- */
   const handleAiSearch = useCallback(async () => {
@@ -254,14 +289,45 @@ export default function SuperAgentLeadsPage() {
           sortBy: f.sortBy ?? "createdAt",
           sortOrder: f.sortOrder ?? "desc",
         };
-        setFilters(newFilters);
+        // One key at a time: the hook keeps the query string and the state in
+        // step, and each write composes on the previous one.
+        (Object.keys(newFilters) as (keyof Filters & string)[]).forEach((key) => {
+          setFilter(key, newFilters[key]);
+        });
         setAiSummary(data.summary ?? "");
         setAiDegraded(data.degraded ?? false);
         resetPage();
       }
     } catch { /* ignore */ }
     setAiLoading(false);
-  }, [aiQuery, resetPage]);
+  }, [aiQuery, setFilter, resetPage]);
+
+  /* -- Change lead stage -- */
+  const handleChangeStage = useCallback(async (leadId: string, newStatus: LeadStatus) => {
+    setUpdatingLeadId(leadId);
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setLeads((prev) =>
+          prev.map((l) => (l._id === leadId ? { ...l, status: newStatus } : l))
+        );
+        const message = t("stageUpdated", { stage: tStage(newStatus) });
+        toast.success(message);
+      } else {
+        const message = t("stageUpdateError");
+        toast.error(message);
+      }
+    } catch {
+      const message = t("stageUpdateError");
+      toast.error(message);
+    } finally {
+      setUpdatingLeadId(null);
+    }
+  }, [t, tStage]);
 
   /* -- Computed values -- */
   // Counts come from the API aggregate, over the whole filtered pipeline.
@@ -340,6 +406,20 @@ export default function SuperAgentLeadsPage() {
       />
 
       <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
+        {/* ---- Error State ---- */}
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{error}</p>
+            <button
+              type="button"
+              onClick={() => fetchLeads()}
+              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+            >
+              {t("retry")}
+            </button>
+          </div>
+        )}
+
         {/* ---- Stage Strip ---- */}
         <div className="flex flex-col gap-4">
           {/* Phones: one scrollable chip row. Six stage cards owned a full screen. */}
@@ -352,7 +432,7 @@ export default function SuperAgentLeadsPage() {
                 aria-pressed={filters.status === s}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-start transition-all sm:block sm:shrink sm:rounded-2xl sm:px-4 sm:py-3 ${filters.status === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-[0.18em]">{s}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-[0.18em]">{tStage(s)}</p>
                 <p className="text-[13px] font-semibold tabular-nums tracking-tight text-foreground sm:mt-2 sm:text-2xl">{stageCounts[s]}</p>
               </button>
             ))}
@@ -546,7 +626,7 @@ export default function SuperAgentLeadsPage() {
                   {(filters.followUpFrom || filters.followUpTo) && <FilterChip label={t("filterLabelFollowUp", { from: filters.followUpFrom || "…", to: filters.followUpTo || "…" })} onRemove={() => { updateFilter("followUpFrom", ""); updateFilter("followUpTo", ""); }} />}
                   {filters.hasNotes && <FilterChip label={filters.hasNotes === "true" ? t("filterLabelHasNotes") : t("filterLabelNoNotes")} onRemove={() => updateFilter("hasNotes", "")} />}
                   {filters.hasFollowUp && <FilterChip label={filters.hasFollowUp === "overdue" ? t("filterLabelOverdueFollowUps") : t("filterLabelHasFollowUp")} onRemove={() => updateFilter("hasFollowUp", "")} />}
-                  {(filters.sortBy !== "createdAt" || filters.sortOrder !== "desc") && <FilterChip label={t("filterLabelSort", { sortBy: t(`sortOption${filters.sortBy}`), order: filters.sortOrder })} onRemove={() => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); }} />}
+                  {(filters.sortBy !== "createdAt" || filters.sortOrder !== "desc") && <FilterChip label={t("filterLabelSort", { sortBy: t(sortLabelKey(filters.sortBy)), order: filters.sortOrder })} onRemove={() => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); }} />}
                 </div>
               )}
             </div>
@@ -564,20 +644,21 @@ export default function SuperAgentLeadsPage() {
                   <TableHead><SortHeader field="industry">{t("columnIndustry")}</SortHeader></TableHead>
                   <TableHead>{t("columnAgent")}</TableHead>
                   <TableHead><SortHeader field="followUpAt">{t("columnFollowUp")}</SortHeader></TableHead>
+                  <TableHead>{t("columnActions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 5 }).map((_, j) => (
+                      {Array.from({ length: 6 }).map((_, j) => (
                         <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : leads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-16 text-center">
+                    <TableCell colSpan={6} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                           <Target className="h-6 w-6" />
@@ -591,6 +672,7 @@ export default function SuperAgentLeadsPage() {
                   </TableRow>
                 ) : leads.map((lead) => {
                   const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
+                  const otherStages = STAGES.filter((s) => s !== lead.status);
                   return (
                     <TableRow key={lead._id} className="bg-transparent">
                       <TableCell className="min-w-0">
@@ -629,6 +711,38 @@ export default function SuperAgentLeadsPage() {
                           <span className="text-muted-foreground/50">—</span>
                         )}
                         <span className="mt-1 block text-[11px] text-muted-foreground">{formatDate(new Date(lead.createdAt))}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={t("columnActions")}
+                              disabled={updatingLeadId === lead._id}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-50"
+                            >
+                              {updatingLeadId === lead._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreHorizontal className="h-4 w-4" />
+                              )}
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                              {t("changeStage")}
+                            </div>
+                            {otherStages.map((stage) => (
+                              <DropdownMenuItem
+                                key={stage}
+                                onClick={() => handleChangeStage(lead._id, stage)}
+                                disabled={updatingLeadId === lead._id}
+                              >
+                                {tStage(stage)}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );

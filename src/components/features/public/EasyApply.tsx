@@ -412,12 +412,17 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         return;
       }
       if (!res.ok) {
-        setError(data.error ?? "Failed to apply. Please try again.");
+        // Map plan-quota errors to friendly messages like in EasyApplyFlowDialog
+        if (data?.error === "LIMIT_EXCEEDED" || data?.error === "SUBSCRIPTION_REQUIRED") {
+          setError(t("errors.planLimitReached"));
+        } else {
+          setError(data?.error ?? t("errors.applyFailed"));
+        }
         return;
       }
       setApplied(true);
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("errors.networkError"));
     } finally {
       setLoading(false);
     }

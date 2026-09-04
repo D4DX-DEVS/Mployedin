@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -178,15 +179,7 @@ export default function AdminUserImpersonatePage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-border/70 hover:bg-transparent">
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j}>
-                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={6} />
               ) : users.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={6} className="px-6 py-12 text-center">

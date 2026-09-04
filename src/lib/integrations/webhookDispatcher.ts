@@ -89,6 +89,10 @@ async function deliverWithRetry(
       responseTime: result.responseTime,
       error: result.error,
       deliveredAt: new Date(),
+      // Only failures carry the body — it is what an admin replays from the
+      // webhooks page. Keeping it on every success would bloat a 50-entry log
+      // with data nobody re-sends.
+      ...(result.success ? {} : { payload: body }),
     };
 
     await Webhook.findByIdAndUpdate(webhook._id, {

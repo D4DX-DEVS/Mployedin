@@ -27,7 +27,9 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
@@ -82,7 +84,9 @@ export default function AdminWebhooksPage() {
   // Filter state
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  /* System Health and the "Failing webhooks" quick action both link here with
+     ?status=failed; in component state that filter would be ignored on arrival. */
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [eventFilter, setEventFilter] = useState("all");
 
   // Delivery log drawer
@@ -244,6 +248,8 @@ export default function AdminWebhooksPage() {
     }
   };
 
+  const [redeliveringId, setRedeliveringId] = useState<string | null>(null);
+
   const handleTestPing = async (id: string) => {
     setTestingId(id);
     try {
@@ -258,6 +264,29 @@ export default function AdminWebhooksPage() {
       toast.error(t("testRequestFailed"));
     } finally {
       setTestingId(null);
+    }
+  };
+
+  /**
+   * Replay the newest failed delivery. The page showed failures and a retry
+   * count and offered nothing to do about them — an admin could see a broken
+   * integration and had to ask an engineer to re-trigger the event.
+   */
+  const handleRedeliver = async (id: string) => {
+    setRedeliveringId(id);
+    try {
+      const res = await csrfFetch(`/api/admin/webhooks/${id}/redeliver`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(t("redeliverSucceeded", { event: data.event }));
+        fetchWebhooks();
+      } else {
+        toast.error(data.message ?? t("redeliverFailed"));
+      }
+    } catch {
+      toast.error(t("redeliverFailed"));
+    } finally {
+      setRedeliveringId(null);
     }
   };
 
@@ -580,15 +609,7 @@ export default function AdminWebhooksPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j} className="px-4 py-3">
-                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={3} cols={6} />
               ) : filteredWebhooks.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={6} className="h-44 text-center">
@@ -670,6 +691,19 @@ export default function AdminWebhooksPage() {
                       >
                         <Send className={`h-3.5 w-3.5 ${testingId === wh._id ? "animate-pulse" : ""}`} />
                       </Button>
+                      {wh.lastStatus === "failed" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRedeliver(wh._id)}
+                          disabled={redeliveringId === wh._id}
+                          title={t("a11yRedeliver")}
+                          aria-label={t("a11yRedeliver")}
+                          className="h-8 w-8 p-0 text-red-600 max-sm:min-h-11"
+                        >
+                          <RotateCcw className={`h-3.5 w-3.5 ${redeliveringId === wh._id ? "animate-spin" : ""}`} />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"

@@ -4,8 +4,8 @@ import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import ExhibitionRequest from "@/models/ExhibitionRequest";
 import ExhibitionPerformance from "@/models/ExhibitionPerformance";
 import Agent from "@/models/Agent";
-import SuperAgent from "@/models/SuperAgent";
 import User from "@/models/User";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -23,13 +23,16 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const scopeFilter: Record<string, any> = {};
 
   if (ctx.role === "super_agent") {
-    const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (saProfile) {
-      const agentProfiles = await Agent.find({ superAgentId: saProfile._id }).select("userId").lean();
-      scopeFilter.agentId = { $in: agentProfiles.map((a) => a.userId) };
-    } else {
-      scopeFilter.agentId = { $in: [] };
-    }
+    // Canonical scope (team ∪ region), matching /api/exhibitions. This used to
+    // read Agent.find({ superAgentId }), a third and narrower notion of "my
+    // agents", so the analytics page silently omitted region-inherited agents
+    // that the request list right next to it included.
+    // ExhibitionRequest.agentId stores the Agent's User._id — map ids → userIds.
+    const scope = await getSuperAgentScope(ctx.userId);
+    const agentProfiles = scope
+      ? await Agent.find({ _id: { $in: scope.effectiveAgentIds } }).select("userId").lean()
+      : [];
+    scopeFilter.agentId = { $in: agentProfiles.map((a) => a.userId) };
   }
 
   const yearStart = new Date(year, 0, 1);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
@@ -242,6 +243,7 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="page-container">
+      <ReportTabs />
       <PageHero
         compact
         compactOnMobile

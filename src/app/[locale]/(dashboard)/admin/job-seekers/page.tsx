@@ -6,8 +6,10 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PageHero } from "@/components/shared/PageHero";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
   Pencil, Trash2, UserX, ChevronDown, ChevronUp, Briefcase,
@@ -108,7 +110,9 @@ export default function AdminJobSeekersPage() {
   const [viewCv, setViewCv] = useState<{ id: string; name: string } | null>(null);
 
   // ── Filter state ────────────────────────────────────────
-  const [search, setSearch] = useState("");
+  /* In the URL so a ⌘K hit, an application row or a notification can open this
+     list already narrowed to one candidate. */
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [skillsFilter, setSkillsFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [availabilityFilter, setAvailabilityFilter] = useState("");
@@ -730,15 +734,7 @@ export default function AdminJobSeekersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableBodySkeleton rows={5} cols={7} />
             ) : jobSeekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={7} className="h-32 text-center">

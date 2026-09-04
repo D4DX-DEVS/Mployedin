@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
 import { Search, Shield, Clock } from "lucide-react";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,11 @@ export default function AuditLogsPage() {
   const t = useTranslations("adminAuditLogs");
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  /* Actor search and role filter arrived with the merge of the separate
+     activity-timeline page, which read this same collection through a second
+     endpoint with a different — and non-overlapping — filter set. */
+  const [actorSearch, setActorSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [actorRole, setActorRole] = useUrlFilter("actorRole", "all");
   const [resource, setResource] = useState("all");
   const [action, setAction] = useState("");
   const [country, setCountry] = useState("");
@@ -96,6 +102,8 @@ export default function AuditLogsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (actorSearch) params.set("search", actorSearch);
+      if (actorRole && actorRole !== "all") params.set("actorRole", actorRole);
       if (resource && resource !== "all") params.set("resource", resource);
       if (action) params.set("action", action);
       if (country) params.set("country", country);
@@ -115,7 +123,7 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [resource, action, country, fromDate, toDate, page, limit, t]);
+  }, [actorSearch, actorRole, resource, action, country, fromDate, toDate, page, limit, t]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -132,9 +140,33 @@ export default function AuditLogsPage() {
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        hasActiveFilters={resource !== "all" || !!action || !!country || !!fromDate || !!toDate}
+        hasActiveFilters={resource !== "all" || !!action || !!country || !!fromDate || !!toDate || !!actorSearch || actorRole !== "all"}
         filterContent={
           <div className="flex gap-3 flex-wrap items-center">
+            <div className="relative">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder={t("filterByActor")}
+                value={actorSearch}
+                onChange={(e) => { setActorSearch(e.target.value); resetPage(); }}
+                className="h-11 rounded-xl border-border bg-card ps-10 w-56 text-sm shadow-none"
+              />
+            </div>
+            <SearchableSelect
+              className="h-11 w-44 rounded-xl border-border bg-card"
+              options={[
+                { value: "all", label: t("allRoles") },
+                { value: "admin", label: t("roleAdmin") },
+                { value: "super_agent", label: t("roleSuperAgent") },
+                { value: "agent", label: t("roleAgent") },
+                { value: "employer", label: t("roleEmployer") },
+                { value: "job_seeker", label: t("roleJobSeeker") },
+                { value: "system", label: t("roleSystem") },
+              ]}
+              value={actorRole}
+              onValueChange={(v) => { setActorRole(v); resetPage(); }}
+              placeholder={t("allRoles")}
+            />
             <SearchableSelect
               className="h-11 w-44 rounded-xl border-border bg-card"
               options={resourceOptions}

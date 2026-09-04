@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 import { Button } from "@/components/ui/button";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -151,14 +153,18 @@ export default function SuperAgentJobsPage() {
   const tt = useTranslations("table");
 
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const locale = (params?.locale as string) ?? "en";
 
   const [jobs, setJobs] = useState<RegionalJob[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /* ── URL-based filters for status and search ── */
+  const [jobStatus, setJobStatusState] = useUrlFilter("status", "all" as JobStatus);
+  const [searchQuery, setSearchQueryState] = useUrlFilter("search", "", { debounceMs: 400 });
+
   /* ── Standard Filters ── */
-  const [jobStatus, setJobStatus] = useState<JobStatus>("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [employmentType, setEmploymentType] = useState<EmploymentType>("all");
@@ -198,6 +204,19 @@ export default function SuperAgentJobsPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  /* A notification or a ⌘K hit lands here as ?job=<id>. There is no
+     jobs/[id] route in this workspace — the record opens in this dialog — so
+     the id has to arrive in the query string. Mount-only on purpose:
+     `searchParams` changes identity on every filter write, and depending on it
+     would reopen the dialog after the user closed it. */
+  useEffect(() => {
+    const jobId = searchParams?.get("job");
+    if (jobId && detailOpen === false) {
+      openDetail(jobId);
+    }
+     
+  }, []);
 
   /* ────────────────── Build query params ────────────────── */
   const buildParams = useCallback(
@@ -267,10 +286,8 @@ export default function SuperAgentJobsPage() {
 
   /* ── Debounced search ── */
   const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
+    setSearchQueryState(value);
     resetPage();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => loadJobs({ search: value }), 400);
   };
 
   /* ── AI Search submit ── */
@@ -285,8 +302,8 @@ export default function SuperAgentJobsPage() {
 
   /* ── Clear all filters ── */
   const clearFilters = () => {
-    setSearchQuery("");
-    setJobStatus("all");
+    setSearchQueryState("");
+    setJobStatusState("all");
     setDateFrom("");
     setDateTo("");
     setEmploymentType("all");
@@ -410,7 +427,7 @@ export default function SuperAgentJobsPage() {
     data: jobs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agent-jobs",
-    title: "Regional Jobs",
+    title: t("exportTitle"),
   });
 
   return (
@@ -514,7 +531,7 @@ export default function SuperAgentJobsPage() {
               ] as const).map(({ key, labelKey, count, icon: Icon }) => (
                 <button
                   key={key}
-                  onClick={() => { setJobStatus(key); resetPage(); }}
+                  onClick={() => { setJobStatusState(key); resetPage(); }}
                   className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-9 ${
                     jobStatus === key
                       ? "bg-primary text-primary-foreground"
@@ -544,7 +561,7 @@ export default function SuperAgentJobsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">{tc("status")}</label>
-                  <Select value={jobStatus} onValueChange={(v) => { setJobStatus(v as JobStatus); resetPage(); }}>
+                  <Select value={jobStatus} onValueChange={(v) => { setJobStatusState(v as JobStatus); resetPage(); }}>
                     <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={tc("status")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t("allStatuses")}</SelectItem>
@@ -706,62 +723,62 @@ export default function SuperAgentJobsPage() {
                 <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
                   {jobStatus !== "all" && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Status: {jobStatus.replace("_", " ")}
-                      <button onClick={() => setJobStatus("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      {t("filterBadgeStatusLabel")}: {jobStatus.replace("_", " ")}
+                      <button onClick={() => setJobStatusState("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {employmentType !== "all" && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Type: {formatEmploymentType(employmentType)}
+                      {t("filterBadgeTypeLabel")}: {formatEmploymentType(employmentType)}
                       <button onClick={() => setEmploymentType("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {workMode !== "all" && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Mode: {workMode}
+                      {t("filterBadgeModeLabel")}: {workMode}
                       <button onClick={() => setWorkMode("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {country && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Country: {country}
+                      {t("filterBadgeCountryLabel")}: {country}
                       <button onClick={() => setCountry("")} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {city && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      City: {city}
+                      {t("filterBadgeCityLabel")}: {city}
                       <button onClick={() => setCity("")} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {skills && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Skills: {skills}
+                      {t("filterBadgeSkillsLabel")}: {skills}
                       <button onClick={() => setSkills("")} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {(salaryMin || salaryMax) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Salary: {salaryMin || "0"}–{salaryMax || "∞"} {currency}
+                      {t("filterBadgeSalaryLabel")}: {salaryMin || "0"}–{salaryMax || "∞"} {currency}
                       <button onClick={() => { setSalaryMin(""); setSalaryMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {(experienceMin || experienceMax) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Exp: {experienceMin || "0"}–{experienceMax || "∞"} yrs
+                      {t("filterBadgeExperienceLabel")}: {experienceMin || "0"}–{experienceMax || "∞"} yrs
                       <button onClick={() => { setExperienceMin(""); setExperienceMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {(dateFrom || dateTo) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Date: {dateFrom || "…"} → {dateTo || "…"}
+                      {t("filterBadgeDateLabel")}: {dateFrom || "…"} → {dateTo || "…"}
                       <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {searchQuery && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      Search: &quot;{searchQuery}&quot;
-                      <button onClick={() => setSearchQuery("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      {t("filterBadgeSearchLabel")}: &quot;{searchQuery}&quot;
+                      <button onClick={() => setSearchQueryState("")} className="ml-0.5"><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                 </div>
@@ -909,7 +926,20 @@ export default function SuperAgentJobsPage() {
       </SuperAgentSection>
 
       {/* ── Job Detail Dialog ── */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+      <Dialog open={detailOpen} onOpenChange={(open) => {
+        setDetailOpen(open);
+        if (!open) {
+          // Drop ?job so a closed dialog does not reopen on refresh or on
+          // back/forward. Written through the shared query helper rather than
+          // history.replaceState: a filter write in the same tick has not
+          // reached window.location yet, and a raw replaceState built from the
+          // stale string would wipe it. `page` is deliberately left alone —
+          // closing a dialog is not a filter change.
+          const params = readQuery();
+          params.delete("job");
+          writeQuery(params, (href) => router.replace(href, { scroll: false }));
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto gap-5 p-6">
           {detailLoading ? (
             <>

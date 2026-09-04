@@ -1,7 +1,8 @@
 "use client";
+import { useQueryFlag } from "@/hooks/useQueryFlag";
 
-import { useState, useCallback, Fragment } from "react";
-import { useParams } from "next/navigation";
+import { useState, useCallback, Fragment, useEffect } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,16 +60,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
-import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
-
-function formatDate(d: string | undefined): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatDate } from "@/lib/ui/intlFormat";
 
 function linkStatus(link: ReferralLinkItem): "active" | "expired" | "maxed" | "inactive" {
   if (!link.isActive) return "inactive";
@@ -93,14 +85,26 @@ function creatorName(link: ReferralLinkItem): string {
 
 export default function SuperAgentReferralLinksPage() {
   const { locale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const t = useTranslations("superAgentReferralLinks");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const pagination = usePagination();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
+  // Addressable as ?new=1 for the global Create menu.
+  const [createOpen, setCreateOpen] = useQueryFlag("new");
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
+
+  // Close create form and remove ?new from URL when form closes
+  useEffect(() => {
+    if (!createOpen) {
+      const params = new URLSearchParams(searchParams?.toString());
+      params.delete("new");
+      const newUrl = params.toString() ? `?${params.toString()}` : "";
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [createOpen, searchParams]);
 
 
   // Filter state
@@ -186,8 +190,8 @@ export default function SuperAgentReferralLinksPage() {
     { header: t("exportColumnActive"), key: "isActive", formatter: (v) => v ? t("yesText") : t("noText") },
     { header: t("tableHeadUsed"), key: "usedCount" },
     { header: t("exportColumnMaxUses"), key: "maxUses" },
-    { header: t("exportColumnCreated"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
-    { header: t("tableHeadExpires"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
+    { header: t("exportColumnCreated"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("tableHeadExpires"), key: "expiresAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({

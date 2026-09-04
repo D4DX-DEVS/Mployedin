@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,16 @@ const INSIGHT_ICONS = {
 const TYPE_ICON = { video: Video, offline: MapPin, hybrid: Blend } as const;
 
 /* ---------- Page ---------- */
+
+/** The statuses `/api/interviews/[id]` accepts, in the order an admin uses them. */
+const INTERVIEW_STATUS_OPTIONS = [
+  "scheduled",
+  "confirmed",
+  "rescheduled",
+  "completed",
+  "cancelled",
+  "no_show",
+] as const;
 
 export default function AdminInterviewOversightPage() {
   const t = useTranslations("adminInterviews");
@@ -276,6 +287,37 @@ export default function AdminInterviewOversightPage() {
   const completedCount = hasServerCounts ? (statusCounts.completed ?? 0) : interviews.filter((i) => i.status === "completed").length;
   const cancelledCount = hasServerCounts ? (statusCounts.cancelled ?? 0) : interviews.filter((i) => i.status === "cancelled").length;
   const noShowCount = serverNoShow ?? interviews.filter((i) => i.outcome === "no_show").length;
+
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  /**
+   * Admin owns `interviews: [create, read, update, delete]` in the permission
+   * matrix and `/api/interviews/[id]` PATCH accepts the role — this list was
+   * simply read-only, the one operational admin list with no write action.
+   */
+  async function changeInterviewStatus(id: string, status: string) {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/interviews/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        toast.error(error.error ?? t("statusUpdateFailed"));
+        return;
+      }
+      toast.success(t("statusUpdated"));
+      setInterviews((previous) =>
+        previous.map((interview) => (interview._id === id ? { ...interview, status: status as Interview["status"] } : interview)),
+      );
+    } catch {
+      toast.error(t("statusUpdateFailed"));
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   return (
     <div className="page-container">
@@ -472,22 +514,15 @@ export default function AdminInterviewOversightPage() {
                 <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("type")}</TableHead>
                 <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("agent")}</TableHead>
                 <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("date")}</TableHead>
+                <TableHead className="md:min-w-[150px] px-4 py-3 text-end text-[11px] font-semibold uppercase tracking-[0.12em]">{t("manage")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j} className="px-4 py-3">
-                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={6} />
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="h-44 text-center">
+                  <TableCell colSpan={6} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-3 text-muted-foreground">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
                         <Inbox className="h-7 w-7 opacity-40" />
@@ -532,6 +567,18 @@ export default function AdminInterviewOversightPage() {
                       <span className="text-sm text-muted-foreground">
                         {new Date(iv.scheduledAt).toLocaleDateString("en-AE", { day: "2-digit", month: "short", year: "numeric" })}
                       </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-end">
+                      <SearchableSelect
+                        className="h-9 w-[150px] rounded-lg border-border bg-card text-xs"
+                        options={INTERVIEW_STATUS_OPTIONS.map((value) => ({ value, label: t(`status_${value}`) }))}
+                        value={iv.status}
+                        onValueChange={(value) => {
+                          if (value && value !== iv.status) void changeInterviewStatus(iv._id, value);
+                        }}
+                        placeholder={t("status")}
+                        disabled={updatingId === iv._id}
+                      />
                     </TableCell>
                   </TableRow>
                 );

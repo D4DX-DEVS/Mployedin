@@ -50,8 +50,22 @@ export default async function JobSeekerPage({
   const seekerId = seeker._id;
   const now = new Date();
 
+  // Dynamic imports for models that might not be available yet
+  let Offer;
+  let Conversation;
+  try {
+    Offer = await import("@/models/Offer").then(m => m.default);
+  } catch {
+    Offer = null;
+  }
+  try {
+    Conversation = await import("@/models/Conversation").then(m => m.default);
+  } catch {
+    Conversation = null;
+  }
+
   // Fetch applied job IDs and snippets in parallel with other counts
-  const [appCount, interviewCount, savedCount, viewCount, recentJobs, appliedApps, allActiveApps] = await Promise.all([
+  const countPromises: Promise<unknown>[] = [
     Application.countDocuments({ jobSeekerId: seekerId }),
     Interview.countDocuments({
       jobSeekerId: seekerId,
@@ -87,7 +101,38 @@ export default async function JobSeekerPage({
     Application.find({ jobSeekerId: seekerId, status: { $ne: "withdrawn" } })
       .select("jobId")
       .lean(),
-  ]);
+  ];
+
+  // Add optional offer count if model exists
+  if (Offer) {
+    countPromises.push(
+      Offer.countDocuments({ jobSeekerId: seekerId, status: "pending" })
+    );
+  } else {
+    countPromises.push(Promise.resolve(0));
+  }
+
+  // Add optional unread message count if model exists
+  if (Conversation) {
+    countPromises.push(
+      Conversation.findOne({
+        participants: new (await import("mongoose")).Types.ObjectId(seeker.userId),
+        type: { $ne: "customer_care" },
+      })
+        .select("unreadCounts")
+        .lean()
+        .then((conv: unknown) => {
+          const c = conv as { unreadCounts?: Record<string, number> } | null;
+          if (!c?.unreadCounts) return 0;
+          return Object.values(c.unreadCounts).reduce((sum, count) => sum + (count || 0), 0);
+        })
+        .catch(() => 0)
+    );
+  } else {
+    countPromises.push(Promise.resolve(0));
+  }
+
+  const [appCount, interviewCount, savedCount, viewCount, recentJobs, appliedApps, allActiveApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
 
   // Build a Set of applied job IDs for fast exclusion
   const appliedJobIdSet = new Set(
@@ -148,10 +193,12 @@ export default async function JobSeekerPage({
   const initialData: InitialHomeData = {
     profile: JSON.parse(JSON.stringify(seeker)),
     stats: {
-      applicationsSent: { count: appCount },
-      upcomingInterviews: { count: interviewCount },
-      savedJobs: { count: savedCount },
-      recruiterViews: { total: viewCount },
+      applicationsSent: { count: appCount as number },
+      upcomingInterviews: { count: interviewCount as number },
+      savedJobs: { count: savedCount as number },
+      recruiterViews: { total: viewCount as number },
+      pendingOffers: { count: Math.max(0, Number(pendingOfferCount) || 0) },
+      unreadMessages: { count: Math.max(0, Number(unreadMessageCount) || 0) },
     },
     jobs: scoredJobs,
     appliedJobs: (appliedApps as Array<Record<string, unknown>>).map((app) => {
