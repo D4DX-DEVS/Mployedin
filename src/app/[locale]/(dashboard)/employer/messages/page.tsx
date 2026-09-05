@@ -8,6 +8,7 @@ export default function EmployerMessagesPage() {
   return (
     <UnifiedMessagesPage
       dashboardPrefix="employer"
+      headerVariant="workspace"
       title={t("title")}
       description={t("description")}
       showNewChat={true}

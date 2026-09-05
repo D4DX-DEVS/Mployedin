@@ -92,7 +92,9 @@ export function TableToolbar({
   const exportMenu = hasExport ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-11 w-11 justify-center gap-1.5 rounded-xl p-0 sm:w-auto sm:px-3">
+        {/* The label is hidden below `sm`, so name the trigger explicitly or
+            the phone layout is an unnamed icon button. */}
+        <Button variant="outline" size="sm" aria-label={t("export")} className="h-11 w-11 justify-center gap-1.5 rounded-xl p-0 sm:w-auto sm:px-3">
           <Download className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{t("export")}</span>
         </Button>

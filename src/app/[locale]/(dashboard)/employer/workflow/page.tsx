@@ -467,6 +467,7 @@ export default function EmployerWorkflowPage() {
                       <span className="flex shrink-0 items-center gap-1.5">
                         <span className="whitespace-nowrap" id={`autoProgress-${stage.id}`}>{t("autoProgress")}</span>
                         <Switch
+                          className="tap-target-box"
                           checked={stage.autoProgress}
                           onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
                           disabled={!stage.enabled}
@@ -476,6 +477,7 @@ export default function EmployerWorkflowPage() {
                       <span className="flex shrink-0 items-center gap-1.5">
                         <span className="whitespace-nowrap" id={`stage-enabled-${stage.id}`}>{t("stage")}</span>
                         <Switch
+                          className="tap-target-box"
                           checked={stage.enabled}
                           onCheckedChange={() => toggleStage(stage.id, "enabled")}
                           aria-labelledby={`stage-enabled-${stage.id}`}
@@ -533,6 +535,7 @@ export default function EmployerWorkflowPage() {
                     <p id="wf-ai-auto-screening" className="truncate text-sm font-medium text-foreground">{t("aiAutoScreening")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
+                        className="tap-target-box"
                         aria-labelledby="wf-ai-auto-screening"
                         checked={aiAutoScreen}
                         onCheckedChange={(v) => { setAiAutoScreen(v); markDirty(); }}
@@ -561,6 +564,7 @@ export default function EmployerWorkflowPage() {
                     <p id="wf-notify-candidates" className="truncate text-sm font-medium text-foreground">{t("notifyCandidates")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
+                        className="tap-target-box"
                         aria-labelledby="wf-notify-candidates"
                         checked={notifyOnStageChange}
                         onCheckedChange={(v) => { setNotifyOnStageChange(v); markDirty(); }}

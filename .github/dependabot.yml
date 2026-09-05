@@ -9,6 +9,10 @@ updates:
       time: "09:00"
       timezone: "UTC"
     open-pull-requests-limit: 10
+    # Wait a week before proposing a newly published version: fresh releases are
+    # where malicious or broken publishes show up.
+    cooldown:
+      default-days: 7
     groups:
       # Group all non-breaking minor/patch updates into a single PR
       minor-and-patch:
@@ -29,3 +33,7 @@ updates:
       time: "09:00"
       timezone: "UTC"
     open-pull-requests-limit: 5
+    # Wait a week before proposing a newly published version: fresh releases are
+    # where malicious or broken publishes show up.
+    cooldown:
+      default-days: 7

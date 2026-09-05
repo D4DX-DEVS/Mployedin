@@ -836,14 +836,18 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                     href={alert.href}
                     className="flex min-h-11 items-center gap-3 rounded-xl border border-border/70 bg-card/60 px-3 py-2 transition-colors hover:border-border hover:bg-card"
                   >
+                    {/* The 16px glyph on a rose-50/amber-50 tint was all but
+                        invisible next to the primary alert card. Stronger tint,
+                        a ring to define the square, and an 18px stroke-2.25
+                        glyph make the severity readable at a glance. */}
                     <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${
                         alert.level === "critical"
-                          ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300"
-                          : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
+                          ? "bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-950/60 dark:text-rose-200 dark:ring-rose-900"
+                          : "bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900"
                       }`}
                     >
-                      <AlertIcon className="h-4 w-4" />
+                      <AlertIcon className="h-[18px] w-[18px]" strokeWidth={2.25} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-foreground">{alert.title}</span>

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star, Plus, RotateCcw } from "lucide-react";
+import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star, Plus, RotateCcw, CheckCircle2, Archive, UserCheck } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { DirectMessageChat } from "@/components/features/dm/DirectMessageChat";
 import { NewChatSearch } from "@/components/features/dm/NewChatSearch";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,29 @@ interface UnifiedMessagesPageProps {
   selectConversationTitle?: string;
   /** Description shown when no conversation is selected */
   selectConversationHint?: string;
+  /** Which header to render. "workspace" puts the page on the compact
+   *  Pattern A header (24px title) used across the employer workspace;
+   *  "page" keeps the 30px PageHeader the other roles still use. */
+  headerVariant?: "page" | "workspace";
+}
+
+/** Messages is the one page shared verbatim by all five roles, so the header
+ *  is chosen per role rather than swapped for everyone at once. */
+function MessagesHeader({
+  variant,
+  title,
+  description,
+  actions,
+}: {
+  variant: "page" | "workspace";
+  title: string;
+  description: string;
+  actions?: ReactNode;
+}) {
+  if (variant === "workspace") {
+    return <WorkspaceHeader title={title} context={description} actions={actions} />;
+  }
+  return <PageHeader title={title} description={description} actions={actions} />;
 }
 
 export function UnifiedMessagesPage({
@@ -72,6 +96,7 @@ export function UnifiedMessagesPage({
   emptyStateText,
   selectConversationTitle,
   selectConversationHint,
+  headerVariant = "page",
 }: UnifiedMessagesPageProps) {
   const t = useTranslations("messagesPage");
   const { data: session } = useSession();
@@ -147,6 +172,39 @@ export function UnifiedMessagesPage({
       queryClient.invalidateQueries({ queryKey: ["customerCareConversations"] });
     } finally {
       setReopening(false);
+    }
+  }
+
+  /**
+   * Admin ticket management.
+   *
+   * The nav badge counts customer-care conversations still `open` or
+   * `assigned` (see /api/admin/action-counts). Reading a ticket does not
+   * change its status, and this page previously offered no way to change one
+   * either — only `handleReopenTicket` above, which moves the other way. So a
+   * badge that said "2 things need you" could never reach zero through the
+   * product. These controls call the manage endpoint that already supported
+   * every transition, and invalidate the counts query so the badge settles
+   * without a reload.
+   */
+  const [ticketUpdating, setTicketUpdating] = useState<string | null>(null);
+  async function updateTicket(
+    conversationId: string,
+    patch: { status?: "open" | "assigned" | "resolved" | "closed"; assignedTo?: string },
+    intent: string
+  ) {
+    setTicketUpdating(intent);
+    try {
+      const res = await fetch(`/api/dm/customer-care/${conversationId}/manage`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error("Failed to update ticket");
+      queryClient.invalidateQueries({ queryKey: ["customerCareConversations"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "action-counts"] });
+    } finally {
+      setTicketUpdating(null);
     }
   }
 
@@ -259,7 +317,8 @@ export function UnifiedMessagesPage({
 
   return (
     <div className="page-container">
-      <PageHeader
+      <MessagesHeader
+        variant={headerVariant}
         title={title ?? t("defaultTitle")}
         description={description ?? t("defaultDescription")}
         actions={
@@ -550,6 +609,102 @@ export function UnifiedMessagesPage({
                     </Button>
                   </div>
                 )}
+              {/* Admin ticket controls. `supportOnly` is the seeker's view of
+                  their own ticket; an admin arrives through the Support tab
+                  and needs the opposite transitions. */}
+              {showCustomerCare && activeConversation.customerCare && (() => {
+                const cc = activeConversation.customerCare!;
+                const isOpen = cc.status === "open" || cc.status === "assigned";
+                const mine = cc.assignedTo === currentUserId;
+                const convId = activeConversation._id;
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 bg-muted/40 panel-head">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[11px]",
+                          cc.status === "open"
+                            ? "border-amber-200 bg-amber-50 text-amber-900"
+                            : cc.status === "assigned"
+                              ? "border-sky-200 bg-sky-50 text-sky-900"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        )}
+                      >
+                        {hasKey(STATUS_KEYS, cc.status) ? t(`status.${cc.status}`) : cc.status}
+                      </Badge>
+                      {mine && (
+                        <span className="text-[11px] text-muted-foreground">{t("assignedToYou")}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isOpen && !mine && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          disabled={ticketUpdating !== null}
+                          onClick={() => updateTicket(convId, { assignedTo: currentUserId }, "assign")}
+                        >
+                          {ticketUpdating === "assign" ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <UserCheck className="h-3.5 w-3.5" />
+                          )}
+                          {t("assignToMe")}
+                        </Button>
+                      )}
+                      {isOpen && (
+                        <Button
+                          size="sm"
+                          className="gap-1.5"
+                          disabled={ticketUpdating !== null}
+                          onClick={() => updateTicket(convId, { status: "resolved" }, "resolve")}
+                        >
+                          {ticketUpdating === "resolve" ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          )}
+                          {t("markResolved")}
+                        </Button>
+                      )}
+                      {cc.status !== "closed" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          disabled={ticketUpdating !== null}
+                          onClick={() => updateTicket(convId, { status: "closed" }, "close")}
+                        >
+                          {ticketUpdating === "close" ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Archive className="h-3.5 w-3.5" />
+                          )}
+                          {t("closeTicket")}
+                        </Button>
+                      )}
+                      {!isOpen && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          disabled={ticketUpdating !== null}
+                          onClick={() => updateTicket(convId, { status: "open" }, "reopen")}
+                        >
+                          {ticketUpdating === "reopen" ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          )}
+                          {t("reopen")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               <DirectMessageChat
                 key={activeConversation._id}
                 conversation={activeConversation}

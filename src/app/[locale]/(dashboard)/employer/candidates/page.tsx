@@ -341,7 +341,7 @@ function CandidateMatchCard({
       <div className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2.5 px-3 py-3 sm:gap-3 sm:px-4 sm:py-3.5">
         <span className="flex h-8 w-5 items-center justify-center" onClick={stopRowClick} onKeyDown={stopRowClick}>
           <Checkbox
-            className="h-5 w-5"
+            className="h-5 w-5 tap-target-box"
             checked={isInReviewList}
             onCheckedChange={() => onToggleReviewList(candidate._id)}
             aria-label={t("selectCandidate", { name: candidateDisplayName })}

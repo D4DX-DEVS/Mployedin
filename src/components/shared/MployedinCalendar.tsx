@@ -1087,6 +1087,11 @@ export default function MployedinCalendar({
             <button
               key={key}
               onClick={() => setView(key)}
+              /* The label is hidden below `sm`; without a name these are three
+                 unnamed icon buttons on a phone. `aria-pressed` states which
+                 view is the current one. */
+              aria-label={t(labelKey)}
+              aria-pressed={view === key}
               className={`flex items-center gap-1.5 rounded-[10px] text-xs font-medium transition-all duration-200 ${ view === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
             >
               <Icon className="h-3.5 w-3.5" />

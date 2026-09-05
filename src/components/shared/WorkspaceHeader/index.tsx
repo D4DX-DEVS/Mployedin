@@ -23,7 +23,9 @@ interface WorkspaceHeaderProps {
   /** Page title. A ReactNode so a page can swap in a shorter title on phones. */
   title: ReactNode;
   /** One short context line under the title — the scope or benchmark, not a
-   *  description of the page. */
+   *  description of the page. Clamped to a single line at every width, so a
+   *  long string costs nothing in height but is read truncated: keep it short
+   *  enough to fit ~45 characters on a 390px phone. */
   context?: ReactNode;
   /** Live status shown after the context ("Refreshing…"). Announced politely. */
   status?: ReactNode;
@@ -66,7 +68,7 @@ export function WorkspaceHeader({
           <Heading className="workspace-header-title text-balance">{title}</Heading>
           {(context || status) && (
             <p className="workspace-header-context">
-              {context && <span className="min-w-0 flex-1 basis-0 line-clamp-2 sm:line-clamp-1">{context}</span>}
+              {context && <span className="min-w-0 flex-1 basis-0 line-clamp-1">{context}</span>}
               {status && (
                 <span className="workspace-header-status shrink-0" aria-live="polite">
                   {status}

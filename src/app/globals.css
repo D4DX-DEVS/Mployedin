@@ -1633,6 +1633,37 @@ input::placeholder {
     margin-block: -0.75rem;
   }
 
+  /* Same real-padded-box trick as .tap-target-row, for a single small control
+     rather than a whole row: a 20px checkbox or a 36x20 switch reaches the
+     44px touch height while the equal negative margin keeps it out of the
+     layout, so neighbouring rows do not move. Deliberately grows less on the
+     inline axis (32px, past the 24px WCAG 2.2 AA floor) because a full 44px
+     box would reach the control beside it — the failure that made an earlier
+     `min-height: 44px` attempt on the workflow switches get reverted, since it
+     wrapped every toggle onto its own line.
+
+     Put this ON the control. Padding cannot be used here: on a Radix checkbox
+     or switch the root is also the visible box, so padding enlarges the
+     graphic (and `h-5` plus border-box caps it at 26px). A wrapper cannot be
+     used either — a plain span does not forward clicks to the control. The
+     pseudo-element belongs to the control, so taps on it hit the control. */
+  .tap-target-box {
+    position: relative;
+  }
+  .tap-target-box::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 50%;
+    width: 2rem;
+    height: 2.75rem;
+    transform: translate(-50%, -50%);
+    /* The earlier pseudo-element attempt failed because an auto z-index let
+       later siblings paint over the band, so elementFromPoint returned them
+       instead. Lifting it one layer fixes exactly that. */
+    z-index: 1;
+  }
+
   .dashboard-shell-workspace .page-header-title {
     font-size: 1.375rem;
     line-height: 1.2;
@@ -3492,4 +3523,8 @@ table.workspace-list-table tbody tr:focus-visible {
 /* rebuild marker: header export height 2026-09-04 */
 
 /* rebuild marker: header export height v2 2026-09-04 */
+
+
+/* touch: force Turbopack to re-emit globals.css (see turbopack-css-stale) */
+
 

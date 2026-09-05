@@ -8,7 +8,6 @@ import { useTranslations } from "next-intl";
 import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
 import { CommandMenuTrigger } from "@/components/shared/CommandMenu";
 import { CreateMenu } from "@/components/shared/CreateMenu";
-import { WorkspaceBreadcrumb } from "@/components/shared/WorkspaceBreadcrumb";
 import { MessagesIndicator, navHasMessagesEntry } from "@/components/shared/MessagesIndicator";
 import { useUnreadMessageCount } from "@/hooks/useConversations";
 import dynamic from "next/dynamic";
@@ -140,14 +139,6 @@ export function DashboardShell({
   // and Settings were all unreachable without navigating home first. The
   // header stays.
   const hasBottomNav = bottomNavTabs.length > 0;
-  // How far below the workspace root this route sits. One level down —
-  // "Dashboard > Hiring" — repeats the active sidebar item and the page title,
-  // so the trail only earns its band from two levels down.
-  const workspaceRootHref = dashboardRoot ? `/${locale}${dashboardRoot}` : "";
-  const breadcrumbDepth =
-    workspaceRootHref && pathname.startsWith(workspaceRootHref)
-      ? pathname.slice(workspaceRootHref.length).split("/").filter(Boolean).length
-      : 0;
 
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
   const [mounted, setMounted] = useState(false);
@@ -237,22 +228,6 @@ export function DashboardShell({
         </header>
         {/* Page content */}
           <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
-            {/* Only a route two or more levels down gets a trail: one level
-                down repeats the sidebar's active item and the page title. */}
-            {usesModernWorkspaceShell && dashboardRoot && breadcrumbDepth >= 2 && (
-              // Phones: no trail. The bottom tabs and the page title carry the
-              // location, and the 41px band pushed every list further down.
-              <div className="hidden items-center gap-2 border-b border-border/40 px-4 py-2 sm:flex sm:px-6">
-                <div className="min-w-0 flex-1">
-                  <WorkspaceBreadcrumb
-                    navGroups={navGroups}
-                    locale={locale}
-                    rootHref={`/${locale}${dashboardRoot}`}
-                    rootLabel={tNav("dashboard")}
-                  />
-                </div>
-              </div>
-            )}
             {children}
           </main>
           {/* Workspace phones get a tab bar for each role's daily destinations;

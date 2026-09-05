@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Clock, Sparkles } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
 
 interface SmartHeaderProps {
@@ -28,30 +28,25 @@ export function SmartHeader({
   const t = useTranslations("employerDashboard.smartHeader");
 
   // AI matches take priority — the platform's key differentiator — then fall
-  // back through review / interview / active / cold-start states. The eyebrow
-  // badge and the action-oriented subtitle share the same state so the hero
-  // reads coherently.
-  let eyebrowKey: string;
+  // back through review / interview / active / cold-start states. The state
+  // picks one action-oriented context line; the eyebrow badge that used to
+  // restate it was dropped when this moved onto WorkspaceHeader, which carries
+  // one context line and reads the same signal without saying it twice.
   let subtitleKey: string;
   let subtitleCount: number;
   if (newApplications > 0) {
-    eyebrowKey = "reviewQueueActive";
     subtitleKey = "subtitleReview";
     subtitleCount = newApplications;
   } else if (highMatchCount > 0) {
-    eyebrowKey = "aiMatchesFound";
     subtitleKey = "subtitleAiMatches";
     subtitleCount = highMatchCount;
   } else if (scheduledInterviews > 0) {
-    eyebrowKey = "interviewMomentum";
     subtitleKey = "subtitleInterviews";
     subtitleCount = scheduledInterviews;
   } else if (activeJobCount > 0) {
-    eyebrowKey = "employerWorkspace";
     subtitleKey = "subtitleActive";
     subtitleCount = activeJobCount;
   } else {
-    eyebrowKey = "readyToLaunch";
     subtitleKey = "subtitleEmpty";
     subtitleCount = 0;
   }
@@ -63,11 +58,19 @@ export function SmartHeader({
       : t("freshWorkspace");
 
   return (
-    <DashboardPageHeader
-      icon={Sparkles}
-      eyebrow={t(eyebrowKey)}
-      title={`${t("welcomeBack", { userName })} 👋`}
-      description={t(subtitleKey, { count: subtitleCount })}
+    <WorkspaceHeader
+      title={`${t("welcomeBack", { userName })} \u{1F44B}`}
+      context={t(subtitleKey, { count: subtitleCount })}
+      /* Hidden below `sm`: the status slot does not shrink, so on a 390px
+         phone it took the whole context row and clamped the hiring signal
+         next to it down to a single character. The timestamp is ambient —
+         the signal is what the line is for. */
+      status={
+        <span className="hidden items-center gap-1.5 sm:inline-flex">
+          <Clock className="h-3.5 w-3.5" />
+          {activityLabel}
+        </span>
+      }
       actions={
         <>
           <Link
@@ -82,15 +85,6 @@ export function SmartHeader({
           <CopilotLauncher />
         </>
       }
-      footer={
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock className="h-3.5 w-3.5" />
-          {activityLabel}
-        </span>
-      }
-      inlineActions
-      compactOnMobile
-      className="!rounded-none !border-0 !bg-transparent !px-0 !py-0 !shadow-none"
     />
   );
 }

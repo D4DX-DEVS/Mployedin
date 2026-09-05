@@ -43,6 +43,9 @@ export function ViewToggle({ options, active, ariaLabel, className }: ViewToggle
             href={option.href}
             prefetch={false}
             aria-current={isActive ? "page" : undefined}
+            /* The label is visually hidden below `sm`, so without this the
+               toggle is two unnamed icon links on a phone. */
+            aria-label={option.label}
             className={cn(
               "inline-flex min-h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition-colors",
               isActive

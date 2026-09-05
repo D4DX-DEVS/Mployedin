@@ -3462,11 +3462,11 @@
       "interviewMomentum": "Interview momentum",
       "employerWorkspace": "Employer workspace",
       "readyToLaunch": "Ready to launch",
-      "subtitleReview": "{count} new applications are ready for review.",
-      "subtitleInterviews": "{count} upcoming interviews need your attention.",
-      "subtitleActive": "{count} active jobs are currently collecting candidates.",
+      "subtitleReview": "{count, plural, one {# new application is ready for review.} other {# new applications are ready for review.}}",
+      "subtitleInterviews": "{count, plural, one {# upcoming interview needs your attention.} other {# upcoming interviews need your attention.}}",
+      "subtitleActive": "{count, plural, one {# active job is currently collecting candidates.} other {# active jobs are currently collecting candidates.}}",
       "subtitleEmpty": "Start hiring smarter with AI — post your first job to receive AI-powered candidate recommendations.",
-      "subtitleAiMatches": "{count} profile match estimates are ready to review.",
+      "subtitleAiMatches": "{count, plural, one {# profile match estimate is ready to review.} other {# profile match estimates are ready to review.}}",
       "aiMatchesFound": "AI matches found",
       "welcomeBack": "Welcome back, {userName}",
       "lastActivity": "Last activity {time}",
@@ -4350,6 +4350,10 @@
     "back": "Back",
     "ticketStatus": "This ticket has been {status}.",
     "reopen": "Re-open",
+    "assignToMe": "Assign to me",
+    "assignedToYou": "Assigned to you",
+    "markResolved": "Mark resolved",
+    "closeTicket": "Close ticket",
     "selectConversation": "Select a conversation",
     "selectSupportTicketHint": "Select a support ticket from the left to respond.",
     "selectConversationHint": "Choose a conversation from the left, or start a new chat.",
@@ -16056,4 +16060,3 @@
     }
   }
 }
-
