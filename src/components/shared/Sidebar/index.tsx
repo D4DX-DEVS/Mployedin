@@ -451,6 +451,11 @@ export function Sidebar({
           <span className="min-w-0 flex-1 break-words leading-5 line-clamp-2">
             {locale === "ar" ? child.titleAr : child.title}
           </span>
+          {badgeCount(child) > 0 && (
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+              {badgeCount(child) > 99 ? "99+" : badgeCount(child)}
+            </span>
+          )}
           {isRtl
             ? <ChevronLeft className="h-4 w-4 shrink-0" />
             : <ChevronRight className="h-4 w-4 shrink-0" />}
@@ -533,6 +538,14 @@ export function Sidebar({
             )}
           >
             {locale === "ar" ? child.titleAr : child.title}
+          </span>
+        )}
+        {/* A group's badge is a sum of its children (see badgeCount); if the
+            panel that opens does not repeat the count on the child that owns
+            it, the trail dies here and the user cannot find what was flagged. */}
+        {badgeCount(child) > 0 && (
+          <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center self-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+            {badgeCount(child) > 99 ? "99+" : badgeCount(child)}
           </span>
         )}
       </Link>

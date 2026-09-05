@@ -1168,26 +1168,44 @@ export default function EmployerApplicationsPage() {
       )}
 
       {canUpdate && selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-sky-500/20 bg-sky-500/10 text-sky-800 card-pad">
-          <span className="text-sm font-semibold">{selected.length} {t("bulkActions")}</span>
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
+        <div className="flex flex-col gap-3 rounded-3xl border border-sky-500/20 bg-sky-500/10 text-sky-800 card-pad sm:flex-row sm:flex-wrap sm:items-center">
+          {/* On phones the count and the dismiss share the top row. Previously
+              every child sat in one wrapping flex row, so `ms-auto` pushed the
+              dismiss onto a line of its own and left a tall empty band under
+              the buttons. `sm:contents` dissolves this wrapper from `sm` up so
+              both rejoin the parent row and the original desktop layout holds. */}
+          <div className="flex items-center justify-between gap-3 sm:contents">
+            <span className="text-sm font-semibold">{t("bulkSelectedCount", { count: selected.length })}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={t("clearSelection")}
+              className="h-10 w-10 shrink-0 rounded-xl p-0 text-muted-foreground hover:bg-background/70 sm:order-last sm:ms-auto"
+              onClick={() => setSelected([])}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          {/* Phones: all three verbs on one row with short labels. Two rows of
+              wide buttons cost a third of the viewport and pushed the candidate
+              list off screen — the list is what the selection is for. */}
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="h-10 flex-1 rounded-xl border-border bg-background/80 px-2 text-xs sm:flex-none sm:px-4 sm:text-sm"
               onClick={() => openEmailPreview("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
-              {t("moveToShortlisted")}
+              <span className="sm:hidden">{t("moveToShortlistedShort")}</span>
+              <span className="hidden sm:inline">{t("moveToShortlisted")}</span>
             </Button>
-            <Button size="sm" variant="outline" className="h-10 rounded-xl border-violet-200/40 bg-background/80 px-4 text-sm text-status-interview hover:bg-violet-500/10"
+            <Button size="sm" variant="outline" className="h-10 flex-1 rounded-xl border-violet-200/40 bg-background/80 px-2 text-xs text-status-interview hover:bg-violet-500/10 sm:flex-none sm:px-4 sm:text-sm"
               onClick={openBulkInterviewModal} disabled={createInterview.isPending}>
-              <Calendar className="me-2 h-3.5 w-3.5" />
-              {t("scheduleInterview")}
+              <Calendar className="h-3.5 w-3.5 sm:me-2" />
+              <span className="hidden sm:inline">{t("scheduleInterview")}</span>
+              <span className="ms-1.5 sm:hidden">{t("scheduleInterviewShort")}</span>
             </Button>
-            <Button size="sm" variant="outline" className="h-10 rounded-xl border-destructive/30 bg-background/80 px-4 text-sm text-destructive hover:bg-destructive/10"
+            <Button size="sm" variant="outline" className="h-10 flex-1 rounded-xl border-destructive/30 bg-background/80 px-2 text-xs text-destructive hover:bg-destructive/10 sm:flex-none sm:px-4 sm:text-sm"
               onClick={() => setShowRejectPrompt(true)} disabled={bulkAction.isPending}>
               {t("reject")}
             </Button>
           </div>
-          <Button size="sm" variant="ghost" className="ms-auto h-10 w-10 rounded-xl p-0 text-muted-foreground hover:bg-background/70" onClick={() => setSelected([])}>
-            <X className="h-4 w-4" />
-          </Button>
         </div>
       )}
 
@@ -1701,13 +1719,29 @@ function TableView({
 
               {/* Candidate */}
               <div className="flex min-w-0 items-center gap-3">
+                {/* Selection below `lg`. The checkbox above is a grid cell that
+                    only exists from `lg`, so without this one the narrower
+                    layouts can only select every visible row at once. */}
+                {onToggle ? (
+                  <button
+                    type="button"
+                    aria-label={t("selectCandidate", { name: candidateName })}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onToggle(app._id);
+                    }}
+                    className="tap-target-box shrink-0 text-muted-foreground transition hover:text-foreground lg:hidden"
+                  >
+                    {isSelected ? <CheckSquare className="h-5 w-5 text-status-applied" /> : <Square className="h-5 w-5" />}
+                  </button>
+                ) : null}
                 <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background shadow-sm">
                   {avatarUrl ? <AvatarImage src={avatarUrl} alt={candidateName} className="object-cover" /> : null}
                   <AvatarFallback className="bg-status-applied-bg text-xs font-semibold text-status-applied">
                     {candidateInitials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
@@ -1725,12 +1759,37 @@ function TableView({
                         {t("newBadge")}
                       </span>
                     ) : null}
-                    <StatusBadge status={app.status} className="shrink-0" />
+                    {/* Below `lg` the status rides the right-hand column with
+                        the match score. Kept in this row it competed with the
+                        name for the same line and truncated it to "Job…". */}
+                    <span className="hidden shrink-0 lg:block">
+                      <StatusBadge status={app.status} />
+                    </span>
                   </div>
+                  {/* Role and match score are grid cells from `lg` only, so a
+                      phone or tablet row showed nothing to rank candidates by —
+                      the whole point of the list. Repeated here, compactly, for
+                      the widths where those cells do not render. */}
+                  {!compact && (
+                    <p className="truncate text-xs font-medium text-foreground lg:hidden">
+                      {app.jobId?.title || t("roleNotSpecified")}
+                    </p>
+                  )}
                   <p className="truncate text-xs text-muted-foreground">
                     {location}
                     {experienceYears != null ? (location ? ` • ${t("yearsExp", { count: experienceYears })} exp` : `${t("yearsExp", { count: experienceYears })} exp`) : ""}
                   </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1 lg:hidden">
+                  {matchScore != null ? (
+                    <div className="text-end">
+                      <p className={`text-base font-bold leading-tight ${matchColor}`}>{matchScore}%</p>
+                      <p className={`text-[11px] font-semibold leading-tight ${matchColor}`}>{matchText}</p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">{t("aiPending")}</p>
+                  )}
+                  <StatusBadge status={app.status} />
                 </div>
               </div>
 
@@ -2420,7 +2479,7 @@ function ApplicationDetailsPanel({
                 <FileText className="h-4 w-4 text-status-interview" />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notes")}</p>
               </div>
-              <p className="text-xs text-muted-foreground">Add private notes about this candidate for your team.</p>
+              <p className="text-xs text-muted-foreground">{t("notesHint")}</p>
               <textarea
                 value={noteText}
                 onChange={(e) => { setNoteText(e.target.value); setNoteSaved(false); }}
@@ -2429,7 +2488,7 @@ function ApplicationDetailsPanel({
                 className="h-28 w-full rounded-xl border border-border bg-background/80 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-sky-300 chip-pad"
               />
               <div className="flex items-center justify-between">
-                {noteSaved ? <span className="text-xs text-emerald-600">Saved</span> : <span />}
+                {noteSaved ? <span className="text-xs text-emerald-600">{t("noteSaved")}</span> : <span />}
                 <Button size="sm" className="rounded-xl px-4 text-xs" disabled={!noteText.trim() || noteSaving} onClick={handleAddNote}>
                   <Plus className="me-1.5 h-3.5 w-3.5" /> {noteSaving ? t("updating") : t("addNote")}
                 </Button>
@@ -2527,6 +2586,7 @@ function BulkInterviewScheduleModal({
   onCancel: () => void;
   isLoading: boolean;
 }) {
+  const t = useTranslations("employerApplications");
   const [scheduledAt, setScheduledAt] = useState("");
   const [type, setType] = useState<"video" | "offline" | "hybrid">("video");
   const [durationPerCandidate, setDurationPerCandidate] = useState(30);
@@ -2711,56 +2771,56 @@ function BulkInterviewScheduleModal({
         <div className="px-6 py-4 border-b border-border">
           <h2 className="heading-section font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5 text-status-applied" />
-            Bulk Schedule Interviews
+            {t("bulkIvTitle")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Schedule interviews for {candidateCount} candidate{candidateCount > 1 ? "s" : ""} with auto-staggered time slots
+            {t("bulkIvSubtitle", { count: candidateCount })}
           </p>
         </div>
         <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
           {/* Start Date & Time */}
           <DateTimePicker
-            label="Start Date & Time *"
+            label={`${t("bulkIvStartDateTime")} *`}
             value={scheduledAt}
             onChange={setScheduledAt}
             minDate={new Date()}
-            placeholder="Pick date & time"
+            placeholder={t("ivPickDateTime")}
           />
           {isPast && (
-            <p className="text-xs text-red-500 -mt-2">Please select a future date and time</p>
+            <p className="text-xs text-red-500 -mt-2">{t("bulkIvPastWarning")}</p>
           )}
 
           {/* Type / Duration / Gap row */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Type</label>
+              <label className="block text-xs font-medium mb-1">{t("ivType")}</label>
               <SearchableSelect
                 className="h-9"
                 options={[
-                  { value: "video", label: "Video" },
-                  { value: "offline", label: "In-Person" },
-                  { value: "hybrid", label: "Hybrid" },
+                  { value: "video", label: t("ivTypeVideo") },
+                  { value: "offline", label: t("ivTypeOffline") },
+                  { value: "hybrid", label: t("ivTypeHybrid") },
                 ]}
                 value={type}
                 onValueChange={(v) => setType(v as typeof type)}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Per Candidate</label>
+              <label className="block text-xs font-medium mb-1">{t("bulkIvPerCandidate")}</label>
               <SearchableSelect
                 className="h-9"
                 options={[
-                  { value: "15", label: "15 min" },
-                  { value: "30", label: "30 min" },
-                  { value: "45", label: "45 min" },
-                  { value: "60", label: "60 min" },
+                  { value: "15", label: t("ivMinutes", { count: 15 }) },
+                  { value: "30", label: t("ivMinutes", { count: 30 }) },
+                  { value: "45", label: t("ivMinutes", { count: 45 }) },
+                  { value: "60", label: t("ivMinutes", { count: 60 }) },
                 ]}
                 value={String(durationPerCandidate)}
                 onValueChange={(v) => setDurationPerCandidate(+v)}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Gap Between</label>
+              <label className="block text-xs font-medium mb-1">{t("bulkIvGapBetween")}</label>
               <SearchableSelect
                 className="h-9"
                 options={[
@@ -2784,25 +2844,25 @@ function BulkInterviewScheduleModal({
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">Start</label>
+                <label className="block text-[11px] text-muted-foreground mb-1">{t("bulkIvWindowStart")}</label>
                 <DateTimePicker mode="time" value={whStart} onChange={setWhStart} />
               </div>
               <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">End</label>
+                <label className="block text-[11px] text-muted-foreground mb-1">{t("bulkIvWindowEnd")}</label>
                 <DateTimePicker mode="time" value={whEnd} onChange={setWhEnd} />
               </div>
             </div>
 
             {/* Break Windows */}
             <div className="space-y-2">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Break Windows</p>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{t("bulkIvBreakWindows")}</p>
               {breaks.map((brk, idx) => (
                 <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                   <div>
                     <input
                       value={brk.label}
                       onChange={(e) => updateBreak(idx, "label", e.target.value)}
-                      placeholder="e.g. Lunch Break"
+                      placeholder={t("bulkIvBreakPlaceholder")}
                       className="w-full h-8 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
                     />
                   </div>
@@ -2831,15 +2891,15 @@ function BulkInterviewScheduleModal({
           {/* Location / Meeting Link */}
           {type !== "video" && (
             <div>
-              <label className="block text-xs font-medium mb-1">Location</label>
+              <label className="block text-xs font-medium mb-1">{t("location")}</label>
               <input value={location} onChange={(e) => setLocation(e.target.value)}
-                placeholder="Office address or room"
+                placeholder={t("ivLocationPlaceholder")}
                 className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
             </div>
           )}
           {type !== "offline" && (
             <div>
-              <label className="block text-xs font-medium mb-1">Meeting Link</label>
+              <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
               <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
                 placeholder="https://meet.google.com/..."
                 className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
@@ -2889,7 +2949,7 @@ function BulkInterviewScheduleModal({
           )}
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
+          <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
           <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Calendar className="w-3.5 h-3.5 me-1" />
             {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
@@ -2919,6 +2979,7 @@ function EmailPreviewModal({
   onCancel: () => void;
   isLoading: boolean;
 }) {
+  const t = useTranslations("employerApplications");
   const statusLabel =
     action === "reject" ? "Rejection" :
     targetStage === "shortlisted" ? "Shortlisted" :
@@ -2984,7 +3045,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             </p>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Email Subject</label>
+            <label className="block text-xs font-medium mb-1">{t("emailSubjectLabel")}</label>
             <input
               value={subject}
               onChange={(e) => { setSubject(e.target.value); setCustomized(true); }}
@@ -2993,7 +3054,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Email Body</label>
+            <label className="block text-xs font-medium mb-1">{t("emailBodyLabel")}</label>
             <textarea
               value={body}
               onChange={(e) => { setBody(e.target.value); setCustomized(true); }}
@@ -3004,10 +3065,10 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
 
           {/* Live preview */}
           <div>
-            <label className="block text-xs font-medium mb-2">Preview</label>
+            <label className="block text-xs font-medium mb-2">{t("emailPreviewLabel")}</label>
             <div className="rounded-xl border border-border bg-card text-sm card-pad">
               <div className="border-b border-border pb-2 mb-3">
-                <p className="text-xs text-muted-foreground">Subject:</p>
+                <p className="text-xs text-muted-foreground">{t("emailPreviewSubject")}</p>
                 <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, "Company")}</p>
               </div>
               <div
@@ -3031,7 +3092,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             Reset to Default
           </Button>
           <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
+            <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
             {action !== "send_message" && (
               <Button variant="outline" onClick={() => onConfirm()} disabled={isLoading} className="h-9">
                 {isLoading ? "Processing..." : `${statusLabel} Without Email`}
@@ -3068,6 +3129,7 @@ function InterviewScheduleModal({
   const [meetLink, setMeetLink] = useState("");
   const [instructions, setInstructions] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const t = useTranslations("employerApplications");
 
   async function handleSubmit() {
     if (!scheduledAt) return;
@@ -3090,40 +3152,40 @@ function InterviewScheduleModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="heading-section font-semibold">Schedule Interview</h2>
-          <p className="text-sm text-muted-foreground mt-1">Set up the interview details</p>
+          <h2 className="heading-section font-semibold">{t("scheduleInterview")}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{t("ivSubtitle")}</p>
         </div>
         <div className="px-6 py-4 space-y-4">
           <DateTimePicker
-            label="Date & Time *"
+            label={`${t("ivDateTime")} *`}
             value={scheduledAt}
             onChange={setScheduledAt}
             minDate={new Date()}
-            placeholder="Pick date & time"
+            placeholder={t("ivPickDateTime")}
           />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Type</label>
+              <label className="block text-xs font-medium mb-1">{t("ivType")}</label>
               <SearchableSelect
                 className="h-9"
                 options={[
-                  { value: "video", label: "Video" },
-                  { value: "offline", label: "In-Person" },
-                  { value: "hybrid", label: "Hybrid" },
+                  { value: "video", label: t("ivTypeVideo") },
+                  { value: "offline", label: t("ivTypeOffline") },
+                  { value: "hybrid", label: t("ivTypeHybrid") },
                 ]}
                 value={type}
                 onValueChange={(v) => setType(v as typeof type)}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Duration</label>
+              <label className="block text-xs font-medium mb-1">{t("ivDuration")}</label>
               <SearchableSelect
                 className="h-9"
                 options={[
-                  { value: "15", label: "15 min" },
-                  { value: "30", label: "30 min" },
-                  { value: "45", label: "45 min" },
-                  { value: "60", label: "60 min" },
+                  { value: "15", label: t("ivMinutes", { count: 15 }) },
+                  { value: "30", label: t("ivMinutes", { count: 30 }) },
+                  { value: "45", label: t("ivMinutes", { count: 45 }) },
+                  { value: "60", label: t("ivMinutes", { count: 60 }) },
                 ]}
                 value={String(duration)}
                 onValueChange={(v) => setDuration(+v)}
@@ -3132,32 +3194,32 @@ function InterviewScheduleModal({
           </div>
           {type !== "video" && (
             <div>
-              <label className="block text-xs font-medium mb-1">Location</label>
+              <label className="block text-xs font-medium mb-1">{t("location")}</label>
               <input value={location} onChange={(e) => setLocation(e.target.value)}
-                placeholder="Office address or room"
+                placeholder={t("ivLocationPlaceholder")}
                 className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
             </div>
           )}
           {type !== "offline" && (
             <div>
-              <label className="block text-xs font-medium mb-1">Meeting Link</label>
+              <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
               <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
                 placeholder="https://meet.google.com/..."
                 className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium mb-1">Instructions (optional)</label>
+            <label className="block text-xs font-medium mb-1">{t("ivInstructions")}</label>
             <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Any special instructions for the candidate..."
+              placeholder={t("ivInstructionsPlaceholder")}
               maxLength={500}
               className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
+          <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
           <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || submitting} className="">
-            {submitting ? "Scheduling..." : "Schedule Interview"}
+            {submitting ? t("ivScheduling") : t("scheduleInterview")}
           </Button>
         </div>
       </div>
@@ -3183,6 +3245,7 @@ function OfferCreateModal({
   const [notes, setNotes] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const t = useTranslations("employerApplications");
 
   async function handleSubmit() {
     if (!amount || !startDate) return;
@@ -3204,15 +3267,15 @@ function OfferCreateModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="heading-section font-semibold">Create Offer</h2>
-          <p className="text-sm text-muted-foreground mt-1">Send an offer to this candidate</p>
+          <h2 className="heading-section font-semibold">{t("offerTitle")}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{t("offerSubtitle")}</p>
         </div>
         <div className="px-6 py-4 space-y-4">
           <div>
-            <label className="block text-xs font-medium mb-1">Salary *</label>
+            <label className="block text-xs font-medium mb-1">{`${t("offerSalary")} *`}</label>
             <div className="flex gap-2">
               <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
-                placeholder="Amount" min="0" step="100"
+                placeholder={t("offerAmountPlaceholder")} min="0" step="100"
                 className="flex-1 h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
               <SearchableSelect
                 className="w-24 h-9"
@@ -3229,8 +3292,8 @@ function OfferCreateModal({
               <SearchableSelect
                 className="w-28 h-9"
                 options={[
-                  { value: "monthly", label: "Monthly" },
-                  { value: "annually", label: "Annually" },
+                  { value: "monthly", label: t("offerMonthly") },
+                  { value: "annually", label: t("offerAnnually") },
                 ]}
                 value={period}
                 onValueChange={(v) => setPeriod(v as typeof period)}
@@ -3239,35 +3302,35 @@ function OfferCreateModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Start Date *</label>
+              <label className="block text-xs font-medium mb-1">{`${t("offerStartDate")} *`}</label>
               <DateTimePicker mode="date" value={startDate} onChange={setStartDate} />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Expires On</label>
+              <label className="block text-xs font-medium mb-1">{t("offerExpiresOn")}</label>
               <DateTimePicker mode="date" value={expiresAt} onChange={setExpiresAt} />
-              <p className="text-[11px] text-muted-foreground mt-0.5">Default: 7 days</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{t("offerExpiryDefault")}</p>
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Benefits</label>
+            <label className="block text-xs font-medium mb-1">{t("offerBenefits")}</label>
             <textarea value={benefits} onChange={(e) => setBenefits(e.target.value)}
-              placeholder="Health insurance, PTO, remote work..."
+              placeholder={t("offerBenefitsPlaceholder")}
               maxLength={2000}
               className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">Notes</label>
+            <label className="block text-xs font-medium mb-1">{t("notes")}</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional details for the candidate..."
+              placeholder={t("offerNotesPlaceholder")}
               maxLength={1000}
               className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
+          <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
           <Button size="sm" onClick={handleSubmit} disabled={!amount || !startDate || submitting} className="">
             <DollarSign className="w-3.5 h-3.5 me-1" />
-            {submitting ? "Sending..." : "Send Offer"}
+            {submitting ? t("offerSending") : t("sendOffer")}
           </Button>
         </div>
       </div>
@@ -3359,24 +3422,24 @@ function ActivityTimelinePanel({
                   <History className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">Application Activity</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">{t("activityEyebrow")}</p>
                   <h2 className="heading-section truncate font-semibold text-foreground">{candidateLabel}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">Recent workflow events for this application</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("activitySubtitle")}</p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <div className="rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <span className="font-semibold text-foreground">App ID</span>
+                  <span className="font-semibold text-foreground">{t("activityAppId")}</span>
                   <span className="ml-1.5 font-mono">{appId.slice(-8)}</span>
                 </div>
                 <div className="rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <span className="font-semibold text-foreground">Events</span>
+                  <span className="font-semibold text-foreground">{t("activityEvents")}</span>
                   <span className="ml-1.5">{entries.length}</span>
                 </div>
                 {latestEntry && (
                   <div className="rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                    <span className="font-semibold text-foreground">Latest</span>
+                    <span className="font-semibold text-foreground">{t("activityLatest")}</span>
                     <span className="ml-1.5">{formatDate(new Date(latestEntry.createdAt), { day: "2-digit", month: "short" })}</span>
                   </div>
                 )}
@@ -3410,8 +3473,8 @@ function ActivityTimelinePanel({
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/8 ring-1 ring-primary/10">
                 <History className="h-7 w-7 text-primary/60" />
               </div>
-              <p className="text-base font-semibold text-foreground">No activity recorded yet</p>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">Status changes, interviews, offers, and other candidate actions will appear here once the workflow starts moving.</p>
+              <p className="text-base font-semibold text-foreground">{t("activityEmptyTitle")}</p>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">{t("activityEmptyBody")}</p>
             </div>
           ) : (
             <div className="relative pl-6">
@@ -3440,7 +3503,7 @@ function ActivityTimelinePanel({
                             <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                               <div className="flex items-center gap-1.5 rounded-full bg-muted/35 px-2.5 py-1">
                                 <User className="h-3.5 w-3.5" />
-                                <span className="font-medium text-foreground/85">{entry.actorName || "System"}</span>
+                                <span className="font-medium text-foreground/85">{entry.actorName || t("activitySystemActor")}</span>
                               </div>
                               <div className="flex items-center gap-1.5 rounded-full bg-muted/35 px-2.5 py-1">
                                 <Clock className="h-3.5 w-3.5" />
@@ -3452,7 +3515,7 @@ function ActivityTimelinePanel({
 
                         {entry.changes?.after && Object.keys(entry.changes.after).length > 0 && (
                           <div className="mt-3 rounded-2xl border border-border/45 bg-secondary/65/80 chip-pad">
-                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Updated Fields</p>
+                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("activityUpdatedFields")}</p>
                             <div className="grid gap-2">
                               {Object.entries(entry.changes.after).map(([key, val]) => (
                                 <div key={key} className="rounded-xl border border-border/35 bg-background/90 text-sm shadow-sm chip-pad">

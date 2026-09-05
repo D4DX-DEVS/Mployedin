@@ -98,7 +98,7 @@ export default function EmployerSubscriptionPage() {
         actions={
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="hidden sm:inline">{t("displayCurrency")}</span>
-            <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
+            <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} ariaLabel={t("a11yDisplayCurrency")} />
             {rateSource === "live" && (
               <span className="hidden text-[11px] text-emerald-500 sm:inline" title={t("a11yLiveExchangeRates")}>● live</span>
             )}
@@ -179,7 +179,7 @@ function ActiveView({
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="heading-subsection font-bold">{snap?.name ?? "Unknown"}</h3>
+                <h2 className="heading-subsection font-bold">{snap?.name ?? "Unknown"}</h2>
                 <Badge className={subscription.status === "active" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-amber-500/10 text-amber-600 border border-amber-500/30"}>
                   {subscription.status === "active" ? t("active") : subscription.status}
                 </Badge>

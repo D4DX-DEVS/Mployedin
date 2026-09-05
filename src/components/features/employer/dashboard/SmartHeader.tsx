@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Clock, Sparkles } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
 
 interface SmartHeaderProps {
@@ -28,30 +28,25 @@ export function SmartHeader({
   const t = useTranslations("employerDashboard.smartHeader");
 
   // AI matches take priority — the platform's key differentiator — then fall
-  // back through review / interview / active / cold-start states. The eyebrow
-  // badge and the action-oriented subtitle share the same state so the hero
-  // reads coherently.
-  let eyebrowKey: string;
+  // back through review / interview / active / cold-start states. The state
+  // picks one action-oriented context line; the eyebrow badge that used to
+  // restate it was dropped when this moved onto WorkspaceHeader, which carries
+  // one context line and reads the same signal without saying it twice.
   let subtitleKey: string;
   let subtitleCount: number;
   if (newApplications > 0) {
-    eyebrowKey = "reviewQueueActive";
     subtitleKey = "subtitleReview";
     subtitleCount = newApplications;
   } else if (highMatchCount > 0) {
-    eyebrowKey = "aiMatchesFound";
     subtitleKey = "subtitleAiMatches";
     subtitleCount = highMatchCount;
   } else if (scheduledInterviews > 0) {
-    eyebrowKey = "interviewMomentum";
     subtitleKey = "subtitleInterviews";
     subtitleCount = scheduledInterviews;
   } else if (activeJobCount > 0) {
-    eyebrowKey = "employerWorkspace";
     subtitleKey = "subtitleActive";
     subtitleCount = activeJobCount;
   } else {
-    eyebrowKey = "readyToLaunch";
     subtitleKey = "subtitleEmpty";
     subtitleCount = 0;
   }
@@ -63,13 +58,22 @@ export function SmartHeader({
       : t("freshWorkspace");
 
   return (
-    <DashboardPageHeader
-      icon={Sparkles}
-      eyebrow={t(eyebrowKey)}
-      title={`${t("welcomeBack", { userName })} 👋`}
-      description={t(subtitleKey, { count: subtitleCount })}
+    <WorkspaceHeader
+      title={`${t("welcomeBack", { userName })} \u{1F44B}`}
+      context={t(subtitleKey, { count: subtitleCount })}
+      /* The timestamp rides the title row (leading the actions) so it reads
+         inline with the heading rather than trailing the context line. It is
+         ambient, so it stays hidden below `sm` where the actions wrap under
+         the title and it would only push the primary button further down. */
       actions={
         <>
+          <span
+            className="hidden items-center gap-1.5 self-center text-xs font-medium text-muted-foreground sm:inline-flex"
+            aria-live="polite"
+          >
+            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            {activityLabel}
+          </span>
           <Link
             href={newJobHref}
             aria-label={t("createJob")}
@@ -82,15 +86,6 @@ export function SmartHeader({
           <CopilotLauncher />
         </>
       }
-      footer={
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock className="h-3.5 w-3.5" />
-          {activityLabel}
-        </span>
-      }
-      inlineActions
-      compactOnMobile
-      className="!rounded-none !border-0 !bg-transparent !px-0 !py-0 !shadow-none"
     />
   );
 }

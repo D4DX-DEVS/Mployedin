@@ -348,9 +348,9 @@ export default function EmployerWorkflowPage() {
           <div className="flex min-w-0 flex-row items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("workflowBuilder")}</p>
-              <h3 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
+              <h2 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
                 <Settings2 className="h-4 w-4 text-status-applied" /> {t("pipelineStages")}
-              </h3>
+              </h2>
               {/* Phones show only the live counts — the instructional sentence
                   wrapped to three lines next to the Add stage button and pushed
                   the first stage off screen. */}
@@ -467,6 +467,7 @@ export default function EmployerWorkflowPage() {
                       <span className="flex shrink-0 items-center gap-1.5">
                         <span className="whitespace-nowrap" id={`autoProgress-${stage.id}`}>{t("autoProgress")}</span>
                         <Switch
+                          className="tap-target-box"
                           checked={stage.autoProgress}
                           onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
                           disabled={!stage.enabled}
@@ -476,6 +477,7 @@ export default function EmployerWorkflowPage() {
                       <span className="flex shrink-0 items-center gap-1.5">
                         <span className="whitespace-nowrap" id={`stage-enabled-${stage.id}`}>{t("stage")}</span>
                         <Switch
+                          className="tap-target-box"
                           checked={stage.enabled}
                           onCheckedChange={() => toggleStage(stage.id, "enabled")}
                           aria-labelledby={`stage-enabled-${stage.id}`}
@@ -518,7 +520,7 @@ export default function EmployerWorkflowPage() {
           <section className="workspace-panel-surface space-y-5 rounded-3xl panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
-              <h3 className="heading-subsection mt-2 font-semibold text-foreground">{t("recruitmentRules")}</h3>
+              <h2 className="heading-subsection mt-2 font-semibold text-foreground">{t("recruitmentRules")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("rulesDesc")}</p>
             </div>
 
@@ -533,6 +535,7 @@ export default function EmployerWorkflowPage() {
                     <p id="wf-ai-auto-screening" className="truncate text-sm font-medium text-foreground">{t("aiAutoScreening")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
+                        className="tap-target-box"
                         aria-labelledby="wf-ai-auto-screening"
                         checked={aiAutoScreen}
                         onCheckedChange={(v) => { setAiAutoScreen(v); markDirty(); }}
@@ -561,6 +564,7 @@ export default function EmployerWorkflowPage() {
                     <p id="wf-notify-candidates" className="truncate text-sm font-medium text-foreground">{t("notifyCandidates")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
+                        className="tap-target-box"
                         aria-labelledby="wf-notify-candidates"
                         checked={notifyOnStageChange}
                         onCheckedChange={(v) => { setNotifyOnStageChange(v); markDirty(); }}

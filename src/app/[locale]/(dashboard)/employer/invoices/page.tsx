@@ -935,7 +935,7 @@ export default function EmployerInvoicesPage() {
       <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
         <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("billingHistory")}</p>
-          <h3 className="heading-subsection font-semibold text-foreground">{t("yourInvoices")}</h3>
+          <h2 className="heading-subsection font-semibold text-foreground">{t("yourInvoices")}</h2>
         </div>
         {/* Mobile card list (<sm) — 9-column table doesn't fit a phone */}
         <div className="space-y-3 p-4 sm:hidden">

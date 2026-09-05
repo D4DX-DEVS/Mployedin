@@ -175,6 +175,20 @@ export default function EmployerPlacementsPage() {
 
         {/* Phones get compact expandable rows — the shared <Table> stacks every
             cell into a labelled block, which made one placement fill the screen. */}
+        {/* The empty state lived only in the desktop table, so a phone with no
+            placements got a blank panel and no next step. */}
+        {placements.length === 0 ? (
+          <div className="mt-3 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 px-4 py-10 text-center sm:hidden">
+            <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
+              <Inbox className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t("noPlacementsTitle")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("noPlacementsDesc")}</p>
+            </div>
+          </div>
+        ) : null}
+
         <ul className="mt-3 space-y-1.5 sm:hidden">
           {placements.map((placement) => {
             const isOpen = expandedPlacementId === placement._id;
