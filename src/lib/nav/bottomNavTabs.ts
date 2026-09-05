@@ -34,7 +34,10 @@ export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabCon
   employer: [
     { key: "dashboard", href: "/employer", icon: "LayoutDashboard", labelKey: "home", exact: true },
     { key: "jobs", href: "/employer/jobs", icon: "Briefcase", labelKey: "jobs" },
-    { key: "hiring", href: "/employer/applications", icon: "FileText", labelKey: "hiring" },
+    // Labelled for the page it opens, not the sidebar group it mirrors: the tab
+    // lands on Applications, and "Hiring" over an "Applications" header read as
+    // the wrong destination.
+    { key: "hiring", href: "/employer/applications", icon: "FileText", labelKey: "applications" },
   ],
   // An admin's phone work is monitoring, people and answering support — not
   // browsing job posts, which stays one tap away behind "More" and in ⌘K. The
