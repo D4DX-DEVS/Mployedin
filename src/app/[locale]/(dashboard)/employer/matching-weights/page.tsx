@@ -256,9 +256,9 @@ export default function EmployerMatchingWeightsPage() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
-              <h3 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
+              <h2 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
                 <Sliders className="h-4 w-4 text-status-applied" /> {t("weightConfig")}
-              </h3>
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("adjustPercentages")}</p>
               {/* Top priority as one line. It used to be a second full header
                   whose three tiles restated the total and this same value. */}
@@ -331,7 +331,7 @@ export default function EmployerMatchingWeightsPage() {
           <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>
-              <h3 className="heading-subsection mt-2 font-semibold text-foreground">{t("weightOverview")}</h3>
+              <h2 className="heading-subsection mt-2 font-semibold text-foreground">{t("weightOverview")}</h2>
             </div>
             <div className="space-y-3">
               {weightKeys.map((key) => (
@@ -362,7 +362,7 @@ export default function EmployerMatchingWeightsPage() {
 
           <section className="rounded-3xl border border-border bg-background/60 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)] panel-body">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tuningGuidance")}</p>
-            <h3 className="heading-subsection mt-2 font-semibold text-foreground">{t("tuningTitle")}</h3>
+            <h2 className="heading-subsection mt-2 font-semibold text-foreground">{t("tuningTitle")}</h2>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {t("tuningBody")}
             </p>

@@ -61,18 +61,19 @@ export function SmartHeader({
     <WorkspaceHeader
       title={`${t("welcomeBack", { userName })} \u{1F44B}`}
       context={t(subtitleKey, { count: subtitleCount })}
-      /* Hidden below `sm`: the status slot does not shrink, so on a 390px
-         phone it took the whole context row and clamped the hiring signal
-         next to it down to a single character. The timestamp is ambient —
-         the signal is what the line is for. */
-      status={
-        <span className="hidden items-center gap-1.5 sm:inline-flex">
-          <Clock className="h-3.5 w-3.5" />
-          {activityLabel}
-        </span>
-      }
+      /* The timestamp rides the title row (leading the actions) so it reads
+         inline with the heading rather than trailing the context line. It is
+         ambient, so it stays hidden below `sm` where the actions wrap under
+         the title and it would only push the primary button further down. */
       actions={
         <>
+          <span
+            className="hidden items-center gap-1.5 self-center text-xs font-medium text-muted-foreground sm:inline-flex"
+            aria-live="polite"
+          >
+            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            {activityLabel}
+          </span>
           <Link
             href={newJobHref}
             aria-label={t("createJob")}

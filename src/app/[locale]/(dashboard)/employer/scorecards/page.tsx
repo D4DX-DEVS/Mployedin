@@ -1,6 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { User, Calendar, Award } from "lucide-react";
@@ -51,6 +52,7 @@ function getScoreBadgeColor(score: number) {
 export default function ScorecardListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const t = useTranslations("employerScorecards");
   const tc = useTranslations("employerCommon");
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
@@ -140,10 +142,16 @@ export default function ScorecardListPage() {
       {scorecards.length === 0 ? (
         <div className="py-12 text-center">
           <Award className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-          <h3 className="font-semibold mb-1">{t("noScorecards")}</h3>
+          <h2 className="font-semibold mb-1">{t("noScorecards")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("noScorecardsDesc")}
           </p>
+          {/* Scorecards are written from the interview, so an empty list needs
+              to point at the interviews board — without this the page was the
+              only employer list that ended in a dead stop. */}
+          <Button asChild className="mt-5 rounded-xl">
+            <Link href={`/${locale}/employer/interviews`}>{t("reviewInterviews")}</Link>
+          </Button>
         </div>
       ) : (
         <div className="mt-3 overflow-x-auto">

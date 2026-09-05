@@ -57,7 +57,9 @@ export function CandidateDataNotice({ variant, className, compact = false }: Can
             type="button"
             aria-label={t("title")}
             className={cn(
-              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary transition-colors",
+              // 44px on phones, compact once there is a pointer: at h-7 this
+              // was a 28px tap target.
+              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition-colors sm:h-7 sm:w-7",
               "hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               className
             )}

@@ -47,7 +47,10 @@ export function ViewToggle({ options, active, ariaLabel, className }: ViewToggle
                toggle is two unnamed icon links on a phone. */
             aria-label={option.label}
             className={cn(
-              "inline-flex min-h-9 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition-colors",
+              // 44px on phones, where the label is hidden and this is a bare
+              // 36px icon — the only sub-44 control left in the employer
+              // workspace once the ::after tap targets are hit-tested.
+              "inline-flex min-h-11 items-center gap-1.5 rounded-[10px] px-3 text-sm font-medium transition-colors sm:min-h-9",
               isActive
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

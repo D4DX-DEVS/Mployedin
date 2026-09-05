@@ -95,7 +95,7 @@ export default function EmployerAssessmentsPage() {
       ) : assessments.length === 0 ? (
         <div className="text-center py-16 bg-card border border-border rounded-xl">
           <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="font-semibold text-foreground mb-1">{t("noAssessments")}</h3>
+          <h2 className="font-semibold text-foreground mb-1">{t("noAssessments")}</h2>
           <p className="text-sm text-muted-foreground mb-4">{t("noAssessmentsDesc")}</p>
           <button
             onClick={() => setShowCreate(true)}

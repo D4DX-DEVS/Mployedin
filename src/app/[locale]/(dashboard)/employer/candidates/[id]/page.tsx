@@ -7,7 +7,7 @@ import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft, Briefcase, MapPin, Calendar, Clock, CheckCircle,
+  ArrowLeft, Briefcase, MapPin, Calendar, Clock,
   XCircle, FileText, Star, MessageSquare, User, ChevronDown, ChevronUp,
   GraduationCap, Languages, Award, Eye, Download, AlertCircle,
 } from "lucide-react";
@@ -122,12 +122,6 @@ const formatDateTime = (d: string) =>
 const scoreColor = (s: number) =>
   s >= 80 ? "text-emerald-600" : s >= 60 ? "text-amber-600" : "text-red-500";
 
-const availabilityLabel: Record<string, string> = {
-  immediately: "Available Immediately",
-  within_month: "Within 1 Month",
-  within_3_months: "Within 3 Months",
-  not_available: "Not Available",
-};
 
 /* ── Page ── */
 export default function UnifiedCandidatePage() {
@@ -138,6 +132,7 @@ export default function UnifiedCandidatePage() {
   const [activeTab, setActiveTab] = useState<"profile" | "applications" | "interviews" | "timeline" | "notes">("profile");
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
   const [viewingCv, setViewingCv] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
 
   if (loading) {
     return (
@@ -195,15 +190,28 @@ export default function UnifiedCandidatePage() {
 
   return (
     <div className="page-container">
-      {/* Back + Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)} aria-label={t("goBack")}>
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </Button>
-        <WorkspaceHeader title={name} context={t("unifiedProfile")} />
-      </div>
-
-      <CandidateDataNotice variant="candidateDetail" />
+      {/* Back, title and the data notice all live inside the header panel.
+          The back button used to sit outside it, which left the panel inset
+          from the page edge, and the notice was a full-width banner costing
+          about a third of a phone screen before any candidate detail. */}
+      <WorkspaceHeader
+        title={
+          <span className="flex min-w-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/${locale}/employer/candidates`)}
+              aria-label={t("goBack")}
+              className="-ms-2 h-9 w-9 shrink-0 p-0"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <span className="truncate">{name}</span>
+          </span>
+        }
+        context={t("unifiedProfile")}
+        actions={<CandidateDataNotice variant="candidateDetail" compact />}
+      />
 
       {/* Profile Card */}
       <div className="card-base panel-body">
@@ -211,7 +219,6 @@ export default function UnifiedCandidatePage() {
           {/* Left — Info */}
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="heading-section font-bold">{name}</h2>
               {summary.hired && <Badge className="bg-green-100 text-green-800">{t("hired")}</Badge>}
               {candidate.availabilityStatus && (
                 <Badge variant="secondary">{{immediately: t("availableImmediately"), within_month: t("within1Month"), within_3_months: t("within3Months"), not_available: t("notAvailable")}[candidate.availabilityStatus as string] ?? candidate.availabilityStatus}</Badge>
@@ -225,7 +232,7 @@ export default function UnifiedCandidatePage() {
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               {currentRole && (
                 <span className="flex items-center gap-1">
-                  <Briefcase className="h-3.5 w-3.5" /> {currentRole.jobTitle} at {currentRole.company}
+                  <Briefcase className="h-3.5 w-3.5" /> {t("roleAtCompany", { role: currentRole.jobTitle, company: currentRole.company })}
                 </span>
               )}
               {candidate.currentLocation && (
@@ -240,14 +247,24 @@ export default function UnifiedCandidatePage() {
               )}
             </div>
 
-            {/* Skills */}
+            {/* Skills. The "+N" used to be a dead badge and a second card below
+                listed every skill again — the same chips twice on one page.
+                It now expands in place and that card is gone. */}
             {candidate.skills && candidate.skills.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {candidate.skills.slice(0, 10).map((s: string) => (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {(showAllSkills ? candidate.skills : candidate.skills.slice(0, 10)).map((s: string) => (
                   <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
                 ))}
                 {candidate.skills.length > 10 && (
-                  <Badge variant="outline" className="text-xs">+{candidate.skills.length - 10}</Badge>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSkills((v) => !v)}
+                    className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {showAllSkills
+                      ? t("showFewerSkills")
+                      : t("showAllSkills", { count: candidate.skills.length })}
+                  </button>
                 )}
               </div>
             )}
@@ -268,44 +285,54 @@ export default function UnifiedCandidatePage() {
           </div>
 
           {/* Right — Summary Stats */}
-          <div className="grid grid-cols-2 gap-3 min-w-0 md:min-w-[200px]">
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-700">{summary.totalApplications}</p>
-              <p className="text-xs text-blue-600">{t("applications")}</p>
+          {/* One row of four on a phone — as 2x2 boxes this block cost about
+              200px before any profile detail. Two columns again from md, where
+              it sits in the narrow side column. */}
+          <div className="grid grid-cols-4 gap-2 min-w-0 md:grid-cols-2 md:gap-3 md:min-w-[200px]">
+            <div className="rounded-lg bg-blue-50 p-2 text-center md:p-3">
+              <p className="text-lg font-bold leading-tight text-blue-700 md:text-2xl">{summary.totalApplications}</p>
+              <p className="truncate text-[11px] leading-tight text-blue-600 md:text-xs">
+                <span className="md:hidden">{t("applicationsShort")}</span>
+                <span className="hidden md:inline">{t("applications")}</span>
+              </p>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <p className="text-2xl font-bold text-purple-700">{summary.totalInterviews}</p>
-              <p className="text-xs text-purple-600">{t("interviews")}</p>
+            <div className="rounded-lg bg-purple-50 p-2 text-center md:p-3">
+              <p className="text-lg font-bold leading-tight text-purple-700 md:text-2xl">{summary.totalInterviews}</p>
+              <p className="truncate text-[11px] leading-tight text-purple-600 md:text-xs">{t("interviews")}</p>
             </div>
-            <div className="text-center p-3 bg-emerald-50 rounded-lg">
-              <p className="text-2xl font-bold text-emerald-700">{summary.activeApplications}</p>
-              <p className="text-xs text-emerald-600">{t("active")}</p>
+            <div className="rounded-lg bg-emerald-50 p-2 text-center md:p-3">
+              <p className="text-lg font-bold leading-tight text-emerald-700 md:text-2xl">{summary.activeApplications}</p>
+              <p className="truncate text-[11px] leading-tight text-emerald-600 md:text-xs">{t("active")}</p>
             </div>
-            <div className="text-center p-3 bg-amber-50 rounded-lg">
-              <p className="text-2xl font-bold text-amber-700">
+            <div className="rounded-lg bg-amber-50 p-2 text-center md:p-3">
+              <p className="text-lg font-bold leading-tight text-amber-700 md:text-2xl">
                 {applications.filter((a: UnifiedApplication) => a.aiMatchScore != null).length > 0
                   ? Math.round(applications.reduce((s: number, a: UnifiedApplication) => s + (a.aiMatchScore ?? 0), 0) / applications.filter((a: UnifiedApplication) => a.aiMatchScore != null).length)
                   : "—"}
               </p>
-              <p className="text-xs text-amber-600">{t("avgMatch")}</p>
+              <p className="truncate text-[11px] leading-tight text-amber-600 md:text-xs">{t("avgMatch")}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b">
+      {/* Tabs. Five labels do not fit a phone, and without `nowrap` they broke
+          mid-word ("Applicati / ons"). The strip scrolls sideways instead. */}
+      <div className="scrollbar-none flex gap-1 overflow-x-auto border-b" role="tablist">
         {tabs.map((tab) => (
           <button
             key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 ${
               activeTab === tab.key
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab.label} {tab.count != null && <span className="ml-1 text-xs opacity-60">({tab.count})</span>}
+            {tab.label}
+            {tab.count != null && <span className="text-xs opacity-60">({tab.count})</span>}
           </button>
         ))}
       </div>
@@ -390,11 +417,11 @@ export default function UnifiedCandidatePage() {
                     <div key={i} className="relative pl-4 border-l-2 border-border">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-sm">{exp.jobTitle}</p>
-                        {exp.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-[11px]">Current</Badge>}
+                        {exp.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-[11px]">{t("currentRoleBadge")}</Badge>}
                       </div>
                       <p className="text-xs text-muted-foreground">{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {exp.startDate ? formatDate(exp.startDate) : "?"} – {exp.isCurrent ? "Present" : (exp.endDate ? formatDate(exp.endDate) : "?")}
+                        {exp.startDate ? formatDate(exp.startDate) : "?"} – {exp.isCurrent ? t("presentDate") : (exp.endDate ? formatDate(exp.endDate) : "?")}
                       </p>
                       {exp.description && (
                         <p className="text-xs text-muted-foreground mt-1">{exp.description}</p>
@@ -414,11 +441,11 @@ export default function UnifiedCandidatePage() {
                 <div className="space-y-3">
                   {candidate.education.map((edu: { degree?: string; institution?: string; field?: string; graduationDate?: string; grade?: string }, i: number) => (
                     <div key={i} className="pl-4 border-l-2 border-border">
-                      <p className="font-medium text-sm">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+                      <p className="font-medium text-sm">{edu.field ? t("degreeInField", { degree: edu.degree ?? "", field: edu.field }) : edu.degree}</p>
                       <p className="text-xs text-muted-foreground">{edu.institution}</p>
                       <div className="flex gap-3 text-[11px] text-muted-foreground mt-0.5">
                         {edu.graduationDate && <span>{formatDate(edu.graduationDate)}</span>}
-                        {edu.grade && <span>Grade: {edu.grade}</span>}
+                        {edu.grade && <span>{t("gradeLabel")}: {edu.grade}</span>}
                       </div>
                     </div>
                   ))}
@@ -457,19 +484,6 @@ export default function UnifiedCandidatePage() {
               </div>
             )}
 
-            {/* Full Skills */}
-            {candidate.skills && candidate.skills.length > 0 && (
-              <div className="card-base space-y-3 panel-body">
-                <h3 className="heading-label font-semibold flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-primary" /> {t("allSkills")}
-                </h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {candidate.skills.map((s: string) => (
-                    <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Column — AI Insights + Resume */}
@@ -482,11 +496,17 @@ export default function UnifiedCandidatePage() {
               const jobSkills = (scoredApp.job as CandidateJob & { requirements?: { skills?: string[] } })?.requirements?.skills;
               const candidateSkills = candidate.skills ?? [];
               const missingSkills = jobSkills?.filter((s: string) => !candidateSkills.some((cs: string) => cs.toLowerCase() === s.toLowerCase())) ?? [];
+              // The mirror of the gaps: what the job asked for and this
+              // candidate has. It used to render `candidateSkills.slice(0, 8)`,
+              // which was both a second copy of the chips in the profile card
+              // and untrue — those skills were listed as match "strengths"
+              // without any reference to the job being matched against.
+              const matchedSkills = jobSkills?.filter((s: string) => candidateSkills.some((cs: string) => cs.toLowerCase() === s.toLowerCase())) ?? [];
               return (
                 <div className="card-base space-y-3 sm:space-y-4 panel-body">
                   <h3 className="heading-label font-semibold flex items-center gap-2">
                     <Star className="h-4 w-4 text-amber-500" /> {t("aiMatchInsights")}
-                    <span className="text-xs text-muted-foreground ms-auto">for {scoredApp.job?.title}</span>
+                    <span className="text-xs text-muted-foreground ms-auto">{t("insightsForJob", { job: scoredApp.job?.title ?? "" })}</span>
                   </h3>
                   <div className="flex items-center gap-3">
                     <div className={`text-3xl font-bold ${scoreColor(scoredApp.aiMatchScore!)}`}>
@@ -511,17 +531,14 @@ export default function UnifiedCandidatePage() {
                       );
                     })}
                   </div>
-                  {/* Strengths */}
-                  {candidateSkills.length > 0 && (
+                  {/* Matching skills */}
+                  {matchedSkills.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-emerald-700 mb-1">{t("strengths")}</p>
+                      <p className="text-xs font-medium text-emerald-700 mb-1">{t("matchedSkills")}</p>
                       <div className="flex flex-wrap gap-1">
-                        {candidateSkills.slice(0, 8).map((s: string) => (
+                        {matchedSkills.map((s: string) => (
                           <Badge key={s} className="text-[11px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{s}</Badge>
                         ))}
-                        {candidateSkills.length > 8 && (
-                          <span className="text-[11px] text-muted-foreground">+{candidateSkills.length - 8} more</span>
-                        )}
                       </div>
                     </div>
                   )}
@@ -630,7 +647,7 @@ export default function UnifiedCandidatePage() {
                     {/* Interviews for this application */}
                     {interviews.filter((iv: UnifiedInterview) => iv.applicationId === app._id).length > 0 && (
                       <div className="pt-2">
-                        <p className="text-xs font-medium text-muted-foreground mb-1.5">Interviews</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("interviewsLabel")}</p>
                         {interviews
                           .filter((iv: UnifiedInterview) => iv.applicationId === app._id)
                           .map((iv: UnifiedInterview) => (

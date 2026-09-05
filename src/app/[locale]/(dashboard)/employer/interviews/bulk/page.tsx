@@ -177,9 +177,9 @@ export default function EmployerBulkInterviewPage() {
 
         {/* Slot Configuration */}
         <div className="card-base space-y-3 sm:space-y-4 panel-body">
-          <h3 className="heading-label font-semibold flex items-center gap-2">
+          <h2 className="heading-label font-semibold flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" /> {t("interviewDetails")}
-          </h3>
+          </h2>
 
           <div className="space-y-3">
             <DateTimePicker
