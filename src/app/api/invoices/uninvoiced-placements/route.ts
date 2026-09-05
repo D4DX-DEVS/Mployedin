@@ -44,12 +44,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Super-agent scoping: only placements from their agents
   if (ctx.role === "super_agent") {
-    const SuperAgent = (await import("@/models/SuperAgent")).default;
-    const Agent = (await import("@/models/Agent")).default;
-    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!sa) return NextResponse.json({ error: "Super agent profile not found" }, { status: 404 });
-    const agentIds = await Agent.find({ superAgentId: sa._id }).select("_id").lean();
-    placementQuery.agentId = { $in: agentIds.map((a) => a._id) };
+    // Canonical scope (team ∪ region). Agent.find({ superAgentId }) missed
+    // region-inherited agents, so placements the super-agent can see on
+    // /super-agent/placements were absent from the invoice builder.
+    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+    const scope = await getSuperAgentScope(ctx.userId);
+    if (!scope) return NextResponse.json({ error: "Super agent profile not found" }, { status: 404 });
+    placementQuery.agentId = { $in: scope.effectiveAgentIds };
   }
 
   // Get all placements with populated data

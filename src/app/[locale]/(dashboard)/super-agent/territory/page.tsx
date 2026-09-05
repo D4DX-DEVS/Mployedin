@@ -80,6 +80,19 @@ export default function SuperAgentTerritoryPage() {
     return "bg-red-100 text-red-700";
   };
 
+  const getTypeLabel = (type: "country" | "state" | "city"): string => {
+    switch (type) {
+      case "country":
+        return t("typeCountry");
+      case "state":
+        return t("typeState");
+      case "city":
+        return t("typeCity");
+      default:
+        return type;
+    }
+  };
+
   /* Compute coverage summary */
   const coverageSummary = {
     high: regions.filter((r) => r.agentCount >= 5).length,
@@ -158,7 +171,7 @@ export default function SuperAgentTerritoryPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{region.name}</p>
-                      <p className="text-xs capitalize text-muted-foreground">{region.type}</p>
+                      <p className="text-xs capitalize text-muted-foreground">{getTypeLabel(region.type)}</p>
                     </div>
                   </div>
                   <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${getHeatBadge(region.agentCount)}`}>

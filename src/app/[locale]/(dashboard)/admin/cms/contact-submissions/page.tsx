@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useConfirm } from "@/hooks/useConfirm";
+import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Inbox, Eye, Trash2, Mail, MailOpen, MessageSquare } from "lucide-react";
+import { Inbox, Eye, Trash2, Mail, MailOpen, MessageSquare, Send } from "lucide-react";
 import CmsHeroFilters, {
   type CmsFilterField,
   type CmsFilterValues,
@@ -40,6 +43,8 @@ interface ContactItem {
   subject: string;
   message: string;
   isRead: boolean;
+  repliedAt?: string | null;
+  replyBody?: string;
   readAt: string | null;
   ipAddress: string;
   createdAt: string;
@@ -49,9 +54,21 @@ export default function ContactSubmissionsPage() {
   const t = useTranslations("adminCmsContactSubmissions");
   const [items, setItems] = useState<ContactItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterValues, setFilterValues] = useState<CmsFilterValues>(getDefaultCmsFilterValues);
+  /* The "new contact enquiry" notification links here with ?status=unread.
+     Seeded from `useSearchParams` rather than `window.location`: this page is a
+     client component but Next still renders it on the server, where reading
+     `window` gives the fallback and the client gives the real value — the
+     hydration mismatch that pattern always produces. */
+  const searchParams = useSearchParams();
+  const [filterValues, setFilterValues] = useState<CmsFilterValues>(() => {
+    const defaults = getDefaultCmsFilterValues();
+    const fromUrl = searchParams.get("status");
+    return fromUrl ? { ...defaults, status: fromUrl } : defaults;
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [viewItem, setViewItem] = useState<ContactItem | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replySending, setReplySending] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -99,6 +116,36 @@ export default function ContactSubmissionsPage() {
   const handleFilterChange = (next: CmsFilterValues) => {
     setFilterValues(next);
     resetPage();
+  };
+
+  /**
+   * Answer the enquiry from here. The inbox could previously only be read and
+   * emptied — an enquiry arrived, was marked read, and the conversation had to
+   * continue in someone's personal mail client, where no record of it existed.
+   */
+  const handleReply = async () => {
+    if (!viewItem || !replyText.trim()) return;
+    setReplySending(true);
+    try {
+      const res = await fetch(`/api/admin/cms/contact-submissions/${viewItem._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: replyText.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? t("replyFailed"));
+        return;
+      }
+      toast.success(t("replySent", { name: viewItem.name }));
+      setReplyText("");
+      setViewItem(null);
+      fetchItems();
+    } catch {
+      toast.error(t("replyFailed"));
+    } finally {
+      setReplySending(false);
+    }
   };
 
   const handleMarkRead = async (id: string) => {
@@ -219,7 +266,14 @@ export default function ContactSubmissionsPage() {
                     </TableCell>
                     <TableCell className={!item.isRead ? "font-semibold text-foreground" : "font-medium text-foreground"}>{item.name}</TableCell>
                     <TableCell className="text-muted-foreground">{item.email}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{item.subject || "—"}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">
+                      {item.subject || "—"}
+                      {item.repliedAt && (
+                        <span className="ms-2 rounded-full bg-status-selected-bg px-2 py-0.5 text-[11px] font-medium text-status-selected">
+                          {t("repliedBadge")}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {formatDate(new Date(item.createdAt))}
                     </TableCell>
@@ -289,6 +343,40 @@ export default function ContactSubmissionsPage() {
                   {viewItem.message}
                 </div>
               </div>
+              {viewItem.repliedAt ? (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{t("replySentLabel")}</p>
+                  <div className="mt-1 whitespace-pre-wrap rounded-lg border border-emerald-200 bg-emerald-50/60 text-sm card-pad dark:border-emerald-900 dark:bg-emerald-950/30">
+                    {viewItem.replyBody}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label htmlFor="contact-reply" className="text-sm font-medium text-muted-foreground">
+                    {t("replyLabel")}
+                  </label>
+                  <Textarea
+                    id="contact-reply"
+                    value={replyText}
+                    onChange={(event) => setReplyText(event.target.value)}
+                    placeholder={t("replyPlaceholder", { name: viewItem.name })}
+                    rows={5}
+                    className="mt-1"
+                    maxLength={5000}
+                  />
+                  <div className="mt-2 flex justify-end">
+                    <Button
+                      onClick={() => void handleReply()}
+                      disabled={!replyText.trim() || replySending}
+                      className="max-sm:min-h-11"
+                    >
+                      <Send className="me-1.5 h-4 w-4" />
+                      {replySending ? t("replySending") : t("replyButton")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="text-xs text-muted-foreground">
                 {t("ipLabel")}: {viewItem.ipAddress}
               </div>

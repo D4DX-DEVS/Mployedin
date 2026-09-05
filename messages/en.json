@@ -37,6 +37,7 @@
     "jobSearch": "Job Search",
     "support": "Support",
     "pipeline": "Pipeline",
+    "hiring": "Hiring",
     "inbox": "Inbox",
     "more": "More",
     "openMoreMenu": "Open more menu",
@@ -50,7 +51,10 @@
     "a11yNavigationMenu": "Navigation menu",
     "a11yOpenMenu": "Open menu",
     "a11yCloseMenu": "Close menu",
-    "a11yHome": "Mployedin home"
+    "a11yHome": "Mployedin home",
+    "breadcrumb": "Breadcrumb",
+    "breadcrumbDetails": "Details",
+    "scorecards": "Scorecards"
   },
   "auth": {
     "login": "Login",
@@ -436,7 +440,13 @@
     "actions": "Actions",
     "general": "General",
     "recent": "Recent",
-    "searchShort": "Search..."
+    "searchShort": "Search...",
+    "placeholderWithEntities": "Search jobs, candidates, actions...",
+    "jobsFound": "Jobs",
+    "candidatesFound": "Candidates",
+    "applicationsFound": "Your applications",
+    "placeholderJobSeeker": "Search jobs, your applications, actions...",
+    "peopleFound": "People & companies"
   },
   "jobs": {
     "title": "Jobs",
@@ -444,7 +454,6 @@
     "edit": "Edit Job",
     "status": {
       "draft": "Draft",
-      "pending_approval": "Pending Approval",
       "active": "Active",
       "paused": "Paused",
       "closed": "Closed",
@@ -532,7 +541,9 @@
     "actions": {
       "refinePreferences": "Refine preferences",
       "editPreferences": "Edit preferences",
-      "setPreferences": "Set Preferences"
+      "setPreferences": "Set Preferences",
+      "mobileFilters": "Filters",
+      "filters": "Filters"
     },
     "tabs": {
       "eyebrow": "AI Matching",
@@ -685,7 +696,9 @@
         "subtitle": "Choose the CV to send with this application.",
         "uploadCv": "Upload a different CV",
         "uploading": "Uploading…",
-        "noCv": "No CV on file yet — upload one to continue."
+        "noCv": "No CV on file yet — upload one to continue.",
+        "buildCV": "Build your CV",
+        "uploadDocuments": "Upload documents"
       },
       "skills": {
         "heading": "Confirm your skills",
@@ -1078,7 +1091,12 @@
       "customerService": "Customer Service Excellence",
       "digitalMarketing": "Digital Marketing Fundamentals",
       "constructionSafety": "Construction Safety (OSHA 10)"
-    }
+    },
+    "loadFailed": "We couldn't load courses",
+    "loadFailedBody": "Please try again in a moment.",
+    "retry": "Retry",
+    "empty": "No courses yet",
+    "emptyBody": "There are no courses available right now. Check back soon."
   },
   "jobSeekerInterviews": {
     "status": {
@@ -1541,6 +1559,8 @@
         "skills": "Add Skills",
         "experience": "Add Experience",
         "education": "Add Education",
+        "documents": "Add Documents",
+        "portfolio": "Add Portfolio",
         "personal": "Personal Details",
         "preferences": "Set Job Preferences"
       },
@@ -1608,6 +1628,10 @@
           "within_3_months": "Within 3 months",
           "not_available": "Not available"
         }
+      },
+      "profile": {
+        "aiCareerInsight": "AI career insight",
+        "smartBadge": "SMART"
       }
     },
     "settings": {
@@ -1695,7 +1719,9 @@
         "applicationSubmitted": "Application Submitted",
         "applicationSubmittedDescription": "Confirmation each time an application is sent.",
         "interviewNotifications": "Interview Notifications",
-        "interviewNotificationsDescription": "Reminders and updates about scheduled interviews."
+        "interviewNotificationsDescription": "Reminders and updates about scheduled interviews.",
+        "advancedTitle": "Notification delivery",
+        "advancedDescription": "Choose email, in-app or WhatsApp per alert, set your daily digest time, or unsubscribe."
       }
     },
     "smartWelcome": {
@@ -2095,8 +2121,15 @@
       "highImpact": "High impact",
       "keepMoving": "Keep moving",
       "startHere": "Start here",
+      "urgent": "Urgent",
+      "medium": "Medium",
+      "suggestion": "Suggestion",
+      "respondToOfferTitle": "Respond to {count} pending offer(s)",
+      "respondToOfferDescription": "Review and respond to job offers awaiting your decision.",
       "interviewTitle": "Prepare for {count} upcoming interview(s)",
       "interviewDescription": "Review the schedule and prepare focused questions before the conversation.",
+      "checkMessagesTitle": "Check {count} unread message(s)",
+      "checkMessagesDescription": "Review new messages from employers and recruiters.",
       "trackApplicationsTitle": "Check your application progress",
       "trackApplicationsDescription": "Review status changes and follow up on applications that need your attention.",
       "browseDescription": "Explore roles selected from your profile and job preferences."
@@ -3816,10 +3849,8 @@
     "statusDraft": "Draft",
     "statusClosed": "Closed",
     "statusExpired": "Expired",
-    "statusPendingApproval": "Pending Approval",
     "statusLabelDraft": "Draft",
     "statusLabelDraftNotPublished": "Draft (Not Published)",
-    "statusLabelPendingApproval": "In Review",
     "statusLabelActive": "Live",
     "statusLabelPaused": "Paused",
     "statusLabelClosed": "Closed",
@@ -3926,7 +3957,9 @@
     "publishingButton": "Publishing…",
     "toastJobPublished": "Job published.",
     "toastFailedPublish": "We couldn't publish job.",
-    "confirmPublish": "Publish this job? It will go live immediately."
+    "confirmPublish": "Publish this job? It will go live immediately.",
+    "filters": "Filters",
+    "openingsSummaryShort": "{count, plural, one {# open position} other {# open positions}}"
   },
   "employerCandidates": {
     "heroTitle": "Candidate Matching",
@@ -3945,7 +3978,7 @@
     "advancedFilters": "Advanced",
     "filters": "Filters",
     "searchPlaceholder": "Search candidates, skills, role, or company",
-    "noJobSelected": "All",
+    "noJobSelected": "All jobs",
     "filterByLocation": "Filter by location",
     "anyAvailability": "Any availability",
     "availableNow": "Available now",
@@ -4036,6 +4069,7 @@
     "noPublishedJobs": "No published jobs available yet",
     "publishJobFirst": "Publish a job first so this page has a role to compare candidates against.",
     "benchmark": "Benchmark: {title}",
+    "benchmarkJob": "Benchmark job",
     "refreshing": "Refreshing",
     "cvNotAvailable": "CV not available for this candidate.",
     "jobNoLongerAvailable": "The previously selected job is no longer available. Choose another published role to continue.",
@@ -4067,6 +4101,14 @@
     "workflowDoneDesc": "Use the saved list to review CVs and profiles, or message candidates directly from this page.",
     "detailEmptyTitle": "Select a candidate",
     "detailEmptyHint": "Pick someone from the list to preview their full profile here.",
+    "talentPoolContext": "Talent pool view — find, match and connect with the right candidates.",
+    "listCount": "{count, plural, one {# candidate} other {# candidates}}",
+    "detailHintProfile": "View full profile",
+    "detailHintProfileDesc": "Experience, education, skills and more",
+    "detailHintInsights": "Matching insights",
+    "detailHintInsightsDesc": "See AI match score and recommendations",
+    "detailHintAction": "Take action",
+    "detailHintActionDesc": "Save to a pool, message or invite to apply",
     "skillsAxis": "Skills",
     "experienceAxis": "Experience",
     "locationAxis": "Location",
@@ -4389,7 +4431,8 @@
     "next": "Next",
     "pageOf": "Page {page} of {pages}",
     "perPage": "Per page",
-    "viewPosterLabel": "View poster for {job}"
+    "viewPosterLabel": "View poster for {job}",
+    "posterCount": "{count, plural, =0 {No posters yet} one {# poster} other {# posters}}"
   },
   "employerMessages": {
     "title": "Messages",
@@ -4606,7 +4649,10 @@
     "createScorecardTitle": "Create Interview Scorecard",
     "createScorecardDesc": "Evaluate the candidate for this interview",
     "scoringCandidate": "Scoring candidate {done} of {total}",
-    "a11yCloseActivityTimeline": "Close activity timeline"
+    "a11yCloseActivityTimeline": "Close activity timeline",
+    "messageCandidate": "Message",
+    "messageCandidateFailed": "We couldn't open a conversation with this candidate. Please try again.",
+    "openRolesContext": "{count, plural, =0 {No open roles yet} one {Across # open role} other {Across # open roles}}"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -4826,7 +4872,8 @@
     "hoursValue": "{count} hours",
     "daysLabelPlural": "{count, plural, one {# day} other {# days}}",
     "startDate": "Start date",
-    "endDate": "End date"
+    "endDate": "End date",
+    "titleShort": "Analytics"
   },
   "employerSettings": {
     "title": "Company Settings",
@@ -4963,7 +5010,7 @@
     "catOffers": "Offer Responses",
     "catOffersDesc": "Candidate accepts, rejects, or negotiates offers",
     "catJobs": "Job Updates",
-    "catJobsDesc": "Approval status, expiry, and applicant limits",
+    "catJobsDesc": "Job expiry and applicant limits",
     "catSystem": "System & Security",
     "catSystemDesc": "Login alerts, team changes, and platform notices",
     "freqInstant": "Instant",
@@ -5005,7 +5052,8 @@
       "openAction": "Open workspace",
       "attention": "Attention",
       "investigate": "Investigate",
-      "review": "Review"
+      "review": "Review",
+      "alsoNeedsAttention": "Also needs attention"
     },
     "trend": {
       "vsLastMonth": "vs last month",
@@ -5218,6 +5266,25 @@
     }
   },
   "superAgentDashboard": {
+    "priority": {
+      "title": "Needs your attention",
+      "description": "What is waiting on you, most blocking first.",
+      "empty": "Nothing is waiting on you right now.",
+      "emptyHint": "Approvals, overdue follow-ups and idle agents show up here as they happen.",
+      "urgent": "Blocking",
+      "soon": "Due",
+      "review": "Review",
+      "exhibitions": "{count, plural, one {# exhibition request awaits your review} other {# exhibition requests await your review}}",
+      "exhibitionsAction": "Review requests",
+      "commissions": "{count, plural, one {# commission is waiting on your approval} other {# commissions are waiting on your approval}}",
+      "commissionsAction": "Approve commissions",
+      "overdueLeads": "{count, plural, one {# lead follow-up is overdue} other {# lead follow-ups are overdue}}",
+      "overdueLeadsAction": "Open overdue leads",
+      "inactiveAgents": "{count, plural, one {# agent account is deactivated} other {# agent accounts are deactivated}}",
+      "inactiveAgentsAction": "Review the roster",
+      "idleAgents": "{count, plural, one {# agent has no leads yet} other {# agents have no leads yet}}",
+      "idleAgentsAction": "See who is idle"
+    },
     "taskFirst": {
       "recommendedNext": "Recommended next",
       "nextDescription": "Start with the team or regional issue most likely to slow delivery.",
@@ -5226,7 +5293,7 @@
       "attention": "Team attention",
       "followUp": "Follow up",
       "review": "Review",
-      "jobOversightDescription": "Review live roles, approvals, and delivery blockers across your region."
+      "jobOversightDescription": "Review live roles and delivery blockers across your region."
     },
     "hero": {
       "eyebrow": "Super agent workspace",
@@ -5236,10 +5303,10 @@
     "control": {
       "lanesEyebrow": "Control lanes",
       "teamOversight": "Team and oversight",
-      "teamOversightDesc": "Manage field execution, approvals, placements, and commission visibility without bouncing between layouts.",
+      "teamOversightDesc": "Manage field execution, placements, and commission visibility without bouncing between layouts.",
       "rhythmEyebrow": "Operating rhythm",
       "dailyReview": "Built for daily review",
-      "dailyReviewDesc": "Open the day with agent performance, move into approvals, then finish with placements and commission checks."
+      "dailyReviewDesc": "Open the day with agent performance, then finish with placements and commission checks."
     },
     "kpis": {
       "activeAgents": {
@@ -5282,11 +5349,6 @@
       "totalApplications": "Total applications",
       "leadsGenerated": "Leads Generated",
       "acrossAgents": "Across all agents"
-    },
-    "approvals": {
-      "title": "{count} job approvals waiting on you",
-      "description": "Clear pending postings so your agents can go live without delay.",
-      "action": "Review approvals"
     },
     "funnel": {
       "leads": "Leads",
@@ -5331,10 +5393,6 @@
         "title": "Team coordination",
         "description": "Keep agents, employers, and pipeline follow-ups moving from one compact control surface."
       },
-      "approvalControl": {
-        "title": "Approval control",
-        "description": "Resolve blockers in job approvals before they slow regional hiring momentum."
-      },
       "regionalGrowth": {
         "title": "Regional growth",
         "description": "Balance market coverage, employer activity, and placements against commission outcomes."
@@ -5344,7 +5402,7 @@
       "quickActions": {
         "eyebrow": "Quick actions",
         "title": "Jump into the work that moves your region forward",
-        "description": "Jump straight into approvals, pipeline, and reporting — everything your region needs in one place."
+        "description": "Jump straight into your pipeline and reporting — everything your region needs in one place."
       },
       "oversight": {
         "eyebrow": "Oversight focus",
@@ -5560,7 +5618,6 @@
       "active": "Active",
       "closed": "Closed",
       "expired": "Expired",
-      "pending": "Pending approval",
       "paused": "Paused"
     },
     "actions": {
@@ -6035,7 +6092,9 @@
       "assignedJobs": "Assigned Jobs",
       "description": "Select the jobs this member can access. Leave empty to grant access to all jobs.",
       "allJobsPlaceholder": "All Jobs (no restriction)"
-    }
+    },
+    "parkedTitle": "Invites are paused",
+    "parkedDescription": "You can review the people already on your account, but sending a new invite is switched off while we finish the sign-in handover. We'll turn it back on here."
   },
   "employerActivity": {
     "title": "Activity History",
@@ -6197,7 +6256,11 @@
     "salaryPlaceholder": "5000",
     "generateMeetLink": "Generate link",
     "meetLinkAutoNote": "Leave blank to auto-generate a video room",
-    "unableToLoadDesc": "We couldn’t load interviews. Your interview records are unchanged. Try again."
+    "unableToLoadDesc": "We couldn’t load interviews. Your interview records are unchanged. Try again.",
+    "viewList": "List",
+    "viewCalendar": "Calendar",
+    "viewToggleLabel": "Interview view",
+    "attentionShort": "Attention"
   },
   "employerOffers": {
     "title": "Offer workspace",
@@ -6263,7 +6326,11 @@
     "downloadLetter": "Download offer letter (PDF)",
     "pendingReview": "Pending Review",
     "withdraw": "Withdraw",
-    "withdrawing": "Withdrawing…"
+    "withdrawing": "Withdrawing…",
+    "acceptedNextStep": "Offer accepted",
+    "acceptedNextStepBody": "Your recruitment team records the placement. Once it exists you can track the start date, visa status and onboarding under Placements.",
+    "viewPlacements": "Go to placements",
+    "statOffers": "Offers"
   },
   "employerBackgroundChecks": {
     "searchPlaceholder": "Search by candidate name...",
@@ -6832,7 +6899,7 @@
       "assignAgent": "Assign Agent",
       "noAgent": "No agent - self-manage",
       "loadingAgents": "Loading agents...",
-      "assignAgentHint": "Assigning an agent routes this job through the approval workflow before going live.",
+      "assignAgentHint": "The assigned agent will help manage candidates for this job.",
       "employmentTypes": {
         "full_time": "Full-time",
         "part_time": "Part-time",
@@ -7105,7 +7172,7 @@
       "maxApplicantsHint": "Job auto-closes when this many applications are received (optional)",
       "assignAgent": "Assign Agent",
       "noAgent": "No agent — self-manage",
-      "assignAgentHint": "Assigned agent will manage candidates for this job. Job will require approval before going live.",
+      "assignAgentHint": "Assigned agent will manage candidates for this job.",
       "configurationTemplates": "Hiring Configuration Templates",
       "configurationTemplatesHint": "Optionally apply a workflow pipeline and matching weight preset to this job",
       "tags": "Tags",
@@ -7198,7 +7265,8 @@
     "cancelled": "Cancelled",
     "failedLoadingCalendarEvents": "We couldn't load calendar events",
     "interviewBookedSuccessfully": "Interview booked successfully",
-    "bookingFailed": "We couldn't book interview"
+    "bookingFailed": "We couldn't book interview",
+    "todayLine": "{count, plural, =0 {No interviews today} one {# interview today} other {# interviews today}}"
   },
   "employerScorecards": {
     "title": "Interview Scorecards",
@@ -7369,7 +7437,97 @@
     "requestsDesc": "Open details or run approval actions from the table below.",
     "recommendedBudget": "Recommended budget amount",
     "queueHealth": "Queue health",
-    "queueHealthNote": "Awaiting your review"
+    "queueHealthNote": "Awaiting your review",
+    "tableHeaderEvent": "Event",
+    "tableHeaderAgent": "Agent",
+    "tableHeaderLocation": "Location",
+    "tableHeaderDates": "Dates",
+    "tableHeaderParticipation": "Participation",
+    "tableHeaderBudgetReq": "Budget Req.",
+    "tableHeaderBudgetAppr": "Budget Appr.",
+    "tableHeaderObjective": "Objective",
+    "tableHeaderStatus": "Status",
+    "tableHeaderPriority": "Priority",
+    "tableHeaderResources": "Resources",
+    "tableHeaderActions": "Actions",
+    "statusDraft": "Draft",
+    "statusUnderReview": "Under Review",
+    "statusApproved": "Operationally Approved",
+    "statusRevisionRequested": "Revision Requested",
+    "statusBudgetApproved": "Financially Approved",
+    "statusResourcesAssigned": "Resources Assigned",
+    "statusActive": "Active",
+    "statusRejected": "Rejected",
+    "statusArchived": "Archived",
+    "priorityLow": "Low",
+    "priorityMedium": "Medium",
+    "priorityHigh": "High",
+    "priorityCritical": "Critical",
+    "categoryCareerFair": "Career Fair",
+    "categoryRecruitmentExpo": "Recruitment Expo",
+    "categoryEmployerBranding": "Employer Branding",
+    "categoryHiringDrive": "Hiring Drive",
+    "categoryUniversityEvent": "University Event",
+    "categoryGccRecruitment": "GCC Recruitment",
+    "categoryJobFair": "Job Fair",
+    "categoryOther": "Other",
+    "objectiveEmployerAcquisition": "Employer Acquisition",
+    "objectiveCandidateSourcing": "Candidate Sourcing",
+    "objectiveBrandAwareness": "Brand Awareness",
+    "objectiveLeadGeneration": "Lead Generation",
+    "objectiveDirectHiring": "Direct Hiring",
+    "objectiveMarketExpansion": "Market Expansion",
+    "resourceBrochures": "Brochures",
+    "resourceStandee": "Standee",
+    "resourceFlyers": "Flyers",
+    "resourcePresentationDeck": "Presentation Deck",
+    "resourceEmployerCatalog": "Employer Catalog",
+    "resourceCandidateForms": "Candidate Forms",
+    "resourceBrandingBanners": "Branding Banners",
+    "resourceVideoAssets": "Video Assets",
+    "resourceBusinessCards": "Business Cards",
+    "resourceBoothDesign": "Booth Design",
+    "participationStandee": "Standee",
+    "participationStall": "Stall",
+    "participationBooth": "Booth",
+    "participationSponsorship": "Sponsorship",
+    "participationFlyers": "Flyers",
+    "participationRecruitmentDesk": "Recruitment Desk",
+    "participationBrandingPackage": "Branding Package",
+    "participationOther": "Other",
+    "actionReview": "Review",
+    "actionApprove": "Approve",
+    "actionRevise": "Revise",
+    "actionReject": "Reject",
+    "detailAgent": "Agent",
+    "detailVenue": "Venue",
+    "detailDates": "Dates",
+    "detailOrganizer": "Organizer",
+    "detailBudgetRequested": "Budget Requested",
+    "detailBudgetApproved": "Budget Approved",
+    "detailExpectedLeads": "Expected Leads",
+    "detailParticipation": "Participation",
+    "detailObjectives": "Objectives",
+    "detailRequiredResources": "Required Resources",
+    "detailBudgetBreakdown": "Budget Breakdown",
+    "detailDescription": "Description",
+    "detailExecutionPlan": "Execution Plan",
+    "detailExpectedOutcome": "Expected Outcome",
+    "detailApprovalHistory": "Approval History",
+    "reviewStartReview": "Start Review",
+    "reviewApproveExhibition": "Approve Exhibition",
+    "reviewRequestRevision": "Request Revision",
+    "reviewRejectExhibition": "Reject Exhibition",
+    "reviewOperationalApprovalOnly": "Operational approval only — budget approval is handled by Admin.",
+    "reviewRecommendedBudget": "Recommended Budget",
+    "reviewRequested": "Requested",
+    "reviewNotes": "Review Notes",
+    "reviewRevisionNotes": "Revision Notes *",
+    "reviewNotesPlaceholder": "Optional notes...",
+    "reviewRevisionNotesPlaceholder": "What needs to be revised...",
+    "toastExhibitionApproved": "Exhibition approved",
+    "toastExhibitionRevisionRequested": "Exhibition revision requested",
+    "toastExhibitionRejected": "Exhibition rejected"
   },
   "resources": {
     "title": "Resource Management",
@@ -7484,9 +7642,13 @@
     "tagsPlaceholder": "e.g. gcc, 2026, branding, dubai",
     "versionNotesPlaceholder": "What changed in this version?",
     "metricTotalResources": "Total Resources",
-    "metricTotalDownloads": "Total Downloads"
+    "metricTotalDownloads": "Total Downloads",
+    "actionFailed": "We couldn't complete that. Please try again."
   },
   "targets": {
+    "reportEmptyTitle": "No target report to show",
+    "reportEmptyDescription": "Either no targets are set for this year, or the report could not be loaded.",
+    "reportRetry": "Try again",
     "title": "Target Management",
     "description": "Set and track yearly & monthly targets for super agents and agents",
     "superAgentDescription": "View your assigned targets and distribute them to your team agents",
@@ -7822,7 +7984,81 @@
     "yoyEmployeeTarget": "Empl. Target",
     "yoyEmployeeAchieved": "Empl. Achieved",
     "yoyFinanceTarget": "Fin. Target",
-    "yoyFinanceAchieved": "Fin. Achieved"
+    "yoyFinanceAchieved": "Fin. Achieved",
+    "months": {
+      "jan": "Jan",
+      "feb": "Feb",
+      "mar": "Mar",
+      "apr": "Apr",
+      "may": "May",
+      "jun": "Jun",
+      "jul": "Jul",
+      "aug": "Aug",
+      "sep": "Sep",
+      "oct": "Oct",
+      "nov": "Nov",
+      "dec": "Dec"
+    },
+    "noUpdate": "No update",
+    "unassigned": "Unassigned",
+    "distributed": "Distributed",
+    "notDistributed": "Not distributed",
+    "onTrack": "{month} on track",
+    "behindPace": "{month} behind pace",
+    "riskReason": "{label} at {progress}%",
+    "addEmployers": "Add employers",
+    "closePlacements": "Close placements",
+    "pushRevenue": "Push revenue",
+    "maintainPace": "Maintain pace",
+    "allTerritories": "All territories",
+    "go": "Go",
+    "mine": "Mine",
+    "team": "Team",
+    "filters": "Filters",
+    "export": "Export",
+    "executionStatus": "Execution Status",
+    "executionStatusHelper": "Quick view of what is completed, active, and still pending.",
+    "progress": "Progress",
+    "teamCompletionHelper": "{inProgress} active · {completed} completed",
+    "employerTargetHelper": "{balance} balance",
+    "employeeTargetHelper": "{balance} balance",
+    "revenueTargetHelper": "{assigned} assigned",
+    "behindEmployer": "{count} agents are behind on employer target",
+    "behindEmployee": "{count} agents are behind on employee target",
+    "behindFinance": "{count} agents are behind on revenue target",
+    "markedHighRisk": "{count} agents are marked high risk",
+    "csvHeaderAgent": "Agent",
+    "csvHeaderTerritory": "Territory",
+    "csvHeaderStage": "Stage",
+    "csvHeaderNextAction": "Next Action",
+    "csvHeaderLastUpdate": "Last Update",
+    "resetYear": "Reset Year",
+    "searchAgentName": "Search agent name…",
+    "clearFilters": "Clear filters",
+    "businessVolume": "Business Volume — {year}",
+    "monthlyRevenue": "Monthly revenue (thousands)",
+    "was": "was ",
+    "teamPerformance": "Team Performance",
+    "agentsRankedByProgress": "{count} agents ranked by progress",
+    "nameEmail": "Name / Email",
+    "regionCountry": "Region / Country",
+    "showingAgents": "Showing {shown} of {total} agents",
+    "tableHeaderAgent": "Agent",
+    "tableHeaderEmployers": "Employers",
+    "tableHeaderEmployees": "Employees",
+    "tableHeaderRevenue": "Revenue",
+    "tableHeaderMonthly": "Monthly",
+    "noAgentsInTeam": "No agents in your team",
+    "totalAgents": "Total ({count} agent{plural})",
+    "monthlyDistributionEditable": "Monthly Distribution (editable)",
+    "sumMismatch": "Sum mismatch — adjust monthly values",
+    "total": "Total",
+    "assignTargets": "Assign Targets ({count})",
+    "createdSuccessfully": "{count} agent target{plural} created successfully",
+    "metricEmployer": "Employer",
+    "metricEmployee": "Employee",
+    "metricRevenue": "Revenue",
+    "actionFailed": "We couldn't complete that. Please try again."
   },
   "webhooks": {
     "title": "Webhooks",
@@ -7904,7 +8140,10 @@
     "refresh": "Refresh",
     "clearNFilters": "Clear {count} filters",
     "actions": "Actions",
-    "edit": "Edit"
+    "edit": "Edit",
+    "redeliverSucceeded": "Replayed the failed {event} delivery",
+    "redeliverFailed": "We couldn't replay the delivery. Please try again.",
+    "a11yRedeliver": "Replay the failed delivery"
   },
   "notifications": {
     "frequencyInstant": "Instant",
@@ -7955,9 +8194,12 @@
     "filterAll": "All",
     "filterUnread": "Unread",
     "empty": "No notifications",
-    "emptyUnread": "No unread notifications"
+    "emptyUnread": "No unread notifications",
+    "viewAll": "View all notifications"
   },
   "notificationContent": {
+    "saExhibitionRequestTitle": "Exhibition request awaiting review",
+    "saExhibitionRequestBody": "{agentName} submitted \"{eventName}\" for your review.",
     "status_applied": "Applied",
     "status_screening": "Screening",
     "status_shortlisted": "Shortlisted",
@@ -8010,7 +8252,15 @@
     "stageChangedTitle": "Application stage changed",
     "stageChangedBody": "An application for \"{jobTitle}\" moved to {status}.",
     "bulkActionTitle": "Bulk application update",
-    "bulkActionBody": "{count} application(s) were updated via bulk action: {action}."
+    "bulkActionBody": "{count} application(s) were updated via bulk action: {action}.",
+    "adminSupportTicketTitle": "Support ticket assigned",
+    "adminSupportTicketBody": "{seekerName} opened a support ticket and it was assigned to you.",
+    "adminEmployerRegisteredTitle": "New employer registered",
+    "adminEmployerRegisteredBody": "{companyName} joined the platform.",
+    "adminPlacementTitle": "New placement completed",
+    "adminPlacementBody": "{candidateName} was placed as \"{jobTitle}\" at {companyName}.",
+    "adminContactSubmissionTitle": "New contact enquiry",
+    "adminContactSubmissionBody": "{senderName} sent an enquiry: \"{subject}\"."
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -8149,7 +8399,9 @@
       "rejected": "From rejected",
       "withdrawn": "From withdrawn",
       "expired": "From expired"
-    }
+    },
+    "poolCount": "{count, plural, =0 {No pools yet} one {# pool} other {# pools}}",
+    "statAddedThisMonthShort": "This month"
   },
   "emailSequences": {
     "previous": "Previous",
@@ -8443,7 +8695,12 @@
     "noAnalytics": "No analytics available for this job",
     "questionNumber": "Q{number}",
     "loadJobsFailed": "We couldn't load jobs",
-    "loadFailed": "We couldn't load analytics"
+    "loadFailed": "We couldn't load analytics",
+    "noQuestionsOnJob": "This job has no screening questions yet",
+    "noQuestionsOnJobHint": "Add screening questions in the job editor and the answers will be summarised here.",
+    "editJob": "Edit job",
+    "noJobsYet": "You haven't posted any jobs yet",
+    "postAJob": "Post a job"
   },
   "employerAssessments": {
     "title": "Skill Assessments",
@@ -8544,7 +8801,10 @@
     "toastUpdateFailed": "We couldn't update template",
     "toastDuplicated": "Template duplicated",
     "toastDuplicateFailed": "We couldn't duplicate template",
-    "toastUseFailed": "We couldn't create job from template"
+    "toastUseFailed": "We couldn't create job from template",
+    "emptyCta": "Go to your jobs",
+    "emptyCtaHint": "Open any job's menu and choose “Save as template”.",
+    "templateCount": "{count, plural, one {# template} other {# templates}}"
   },
   "employerInterviewsBulk": {
     "title": "Bulk Interview Scheduling",
@@ -8764,7 +9024,6 @@
     "deleting": "Deleting…",
     "statusDraft": "Draft",
     "statusDraftHint": "Not yet published — only visible to you.",
-    "statusPendingApproval": "Pending Approval",
     "statusActive": "Active",
     "statusPaused": "Paused",
     "statusClosed": "Closed",
@@ -9317,7 +9576,23 @@
     "exportHeaderApplied": "Applied",
     "failedToLoadAiInsights": "We couldn't load AI insights. Please try again.",
     "statusUpdated": "Status updated",
-    "failedToUpdateStatus": "We couldn't update the status. Please try again."
+    "failedToUpdateStatus": "We couldn't update the status. Please try again.",
+    "bulkStatusUpdated": "{count, plural, one {# application updated} other {# applications updated}}",
+    "selectedCount": "{count, plural, one {# selected} other {# selected}}",
+    "bulkChangeStatus": "Change status",
+    "bulkApply": "Apply",
+    "clearSelection": "Clear selection",
+    "selectAllOnPage": "Select all on this page",
+    "selectApplication": "Select application",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "detailContact": "Contact",
+    "detailSkills": "Skills",
+    "detailNoSkills": "No skills listed",
+    "openCv": "Open CV",
+    "viewJob": "View job",
+    "viewCandidateProfile": "Open candidate in Job Seekers",
+    "staleFilterLabel": "Needs review (48h+)"
   },
   "adminCmsFaqs": {
     "title": "FAQs",
@@ -9362,7 +9637,7 @@
   "adminJobs": {
     "recruitmentControl": "Recruitment Control",
     "jobListings": "Job Listings",
-    "jobListingsDescription": "Manage and monitor all job postings across the platform — approve, reject, or edit roles from employers and agents.",
+    "jobListingsDescription": "Manage and monitor all job postings across the platform — edit, close, or delete roles from employers and agents.",
     "platformTotal": "Platform total",
     "jobsCount": "{total} jobs",
     "acrossPages": "Across {totalPages} page{totalPages, plural, one {} other {s}}",
@@ -9434,15 +9709,11 @@
     "nextActions": "Next actions",
     "nextActionsDescription": "Manage this role in one place.",
     "viewDetails": "View Details",
-    "approve": "Approve",
     "reject": "Reject",
     "edit": "Edit",
     "applications": "Applications",
     "delete": "Delete",
     "deleteConfirmation": "Are you sure you want to delete this job?",
-    "jobApprovedSuccess": "Job approved successfully",
-    "jobApprovalFailed": "We couldn't approve job",
-    "jobIncompleteForApproval": "Cannot publish — this draft is missing: {fields}",
     "expandJobDetails": "Show details for {title}",
     "collapseJobDetails": "Hide details for {title}",
     "jobRejectedSuccess": "Job rejected",
@@ -9475,7 +9746,8 @@
     "draftJobsNote": "Unpublished jobs waiting on their poster.",
     "open": "Open",
     "more": "More",
-    "less": "Less"
+    "less": "Less",
+    "filterChipNoApplications": "No applications"
   },
   "adminSettings": {
     "pageTitle": "Settings",
@@ -9803,7 +10075,34 @@
     "noAuditLogEntriesFound": "No audit log entries found",
     "onBehalfOf": "On behalf of",
     "unknown": "Unknown",
-    "failedToLoadAuditLogs": "We couldn't load the audit logs. Please try again."
+    "failedToLoadAuditLogs": "We couldn't load the audit logs. Please try again.",
+    "filterByActor": "Filter by user name or email",
+    "allRoles": "All roles",
+    "roleAdmin": "Admin",
+    "roleSuperAgent": "Super agent",
+    "roleAgent": "Agent",
+    "roleEmployer": "Employer",
+    "roleJobSeeker": "Job seeker",
+    "roleSystem": "System"
+  },
+  "adminPlatformData": {
+    "tabsLabel": "Platform data tables",
+    "industries": "Industries",
+    "jobSkills": "Job skills",
+    "majorSubjects": "Major subjects",
+    "maritalStatuses": "Marital status",
+    "genders": "Genders",
+    "countries": "Countries",
+    "states": "States",
+    "cities": "Cities"
+  },
+  "adminReportTabs": {
+    "tabsLabel": "Reports",
+    "platform": "Platform",
+    "aiInsights": "AI insights",
+    "targets": "Targets",
+    "commissions": "Commissions",
+    "subscriptions": "Subscriptions"
   },
   "adminCms": {
     "cmsWorkspaceLabel": "CMS Workspace",
@@ -9924,7 +10223,15 @@
     "fieldDate": "Date",
     "fieldSubject": "Subject",
     "fieldMessage": "Message",
-    "ipLabel": "IP"
+    "ipLabel": "IP",
+    "replyLabel": "Reply",
+    "replyPlaceholder": "Write your reply to {name}…",
+    "replyButton": "Send reply",
+    "replySending": "Sending…",
+    "replySent": "Reply sent to {name}",
+    "replyFailed": "We couldn't send the reply. Please try again.",
+    "replySentLabel": "Your reply",
+    "repliedBadge": "Replied"
   },
   "adminCmsStaticPagesIdEdit": {
     "cmsWorkspace": "CMS workspace",
@@ -10064,29 +10371,45 @@
     "databaseLabel": "Database",
     "latencyLabel": "Latency",
     "connectionsLabel": "Connections",
-    "apiLabel": "API",
-    "avgResponseLabel": "Avg Response",
-    "errorRateLabel": "Error Rate",
-    "requestsTodayLabel": "Requests Today",
     "storageLabel": "Storage",
-    "usedLabel": "Used",
     "platformMetricsHeading": "Platform Metrics",
     "activeUsersLabel": "Active Users",
-    "onlineNowLabel": "online now",
     "activeJobsLabel": "Active Jobs",
     "applicationsTodayLabel": "applications today",
-    "uptimeLabel": "Uptime",
-    "noIncidentsLabel": "No incidents",
-    "lastIncidentLabel": "Last incident:",
-    "cronJobsLabel": "Cron Jobs",
-    "cronStatusOk": "OK",
-    "cronStatusFailed": "failed",
-    "lastRunLabel": "Last run:",
-    "neverLabel": "Never",
-    "memoryHeading": "Memory Usage",
     "heapMemoryLabel": "Heap Memory",
     "errorFetchHealth": "We couldn't fetch system health",
-    "errorConnectHealth": "Error connecting to health endpoint"
+    "errorConnectHealth": "Error connecting to health endpoint",
+    "statusCritical": "Critical",
+    "measuredOnlyNote": "Measured values only",
+    "dataSizeLabel": "Data",
+    "indexSizeLabel": "Indexes",
+    "allocatedLabel": "Allocated",
+    "storageUnavailable": "Storage statistics aren't available on this database tier.",
+    "integrationsLabel": "Integrations",
+    "activeWebhooksLabel": "Active webhooks",
+    "failingWebhooksLabel": "Failing",
+    "openFailingWebhooks": "Review failing webhooks",
+    "backlogHeading": "Waiting on you",
+    "supportLabel": "Support",
+    "openTicketsLabel": "Open tickets",
+    "unreadSubmissionsLabel": "Unread enquiries",
+    "openSupportInbox": "Open support inbox",
+    "openContactInbox": "Open contact inbox",
+    "subscriptionCatalogueLabel": "Subscription catalogue",
+    "employerPlansLabel": "Employer plans",
+    "jobSeekerPlansLabel": "Job seeker plans",
+    "noDefaultPlan": "no default",
+    "enforcementLabel": "Enforcement",
+    "enforcementOn": "On",
+    "enforcementOff": "Off",
+    "openSubscriptionPlans": "Open subscription plans",
+    "signedInLast24h": "signed in today",
+    "processUptimeLabel": "Process uptime",
+    "processUptimeNote": "Since the last deployment",
+    "heapOfTotal": "of {total} MB heap",
+    "uptimeDaysHours": "{days}d {hours}h",
+    "uptimeHoursMinutes": "{hours}h {minutes}m",
+    "uptimeMinutes": "{minutes}m"
   },
   "adminTerritory": {
     "adminWorkspaceBadge": "Admin workspace",
@@ -10127,7 +10450,7 @@
   },
   "adminAnalytics": {
     "adminWorkspace": "Admin workspace",
-    "analyticsTitle": "Analytics",
+    "analyticsTitle": "AI Insights",
     "analyticsDescription": "Ask AI about your platform data and export the results.",
     "promptLibraryTitle": "Quick Reports",
     "promptLibraryDescription": "Tap a template to generate a report.",
@@ -10180,65 +10503,6 @@
     "a11yAnalyticsTemplates": "Analytics templates",
     "a11yCustomAnalyticsQuery": "Custom analytics query",
     "a11yAnalyticsReport": "Analytics report"
-  },
-  "adminApprovals": {
-    "allJobs": "All jobs",
-    "platformJobsOverview": "Platform Jobs Overview",
-    "platformJobsDescription": "View all job postings across the platform. Filter by employer, agent, super agent, status, or approval state.",
-    "total": "Total",
-    "active": "Active",
-    "pending": "Pending",
-    "thisPage": "This page",
-    "findSpecificJobs": "Find specific jobs",
-    "searchByJobTitle": "Search by job title…",
-    "statusLabel": "Status",
-    "approvalLabel": "Approval",
-    "employerLabel": "Employer",
-    "agentLabel": "Agent",
-    "superAgentLabel": "Super Agent",
-    "allStatuses": "All statuses",
-    "draft": "Draft",
-    "statusActive": "Active",
-    "paused": "Paused",
-    "closed": "Closed",
-    "expired": "Expired",
-    "allApprovals": "All approvals",
-    "approvalPending": "Pending",
-    "approvalApproved": "Approved",
-    "approvalRejected": "Rejected",
-    "allEmployers": "All employers",
-    "allAgents": "All agents",
-    "allSuperAgents": "All super agents",
-    "noJobsFound": "No jobs found",
-    "adjustFiltersMessage": "Adjust the filters to widen the view.",
-    "tableHeaderTitle": "Title",
-    "tableHeaderEmployer": "Employer",
-    "tableHeaderPostedBy": "Posted By",
-    "tableHeaderSuperAgent": "Super Agent",
-    "tableHeaderLocation": "Location",
-    "tableHeaderStatus": "Status",
-    "tableHeaderApproval": "Approval",
-    "tableHeaderApps": "Apps",
-    "tableHeaderPosted": "Posted",
-    "tableHeaderView": "View",
-    "viewDetails": "View details",
-    "reviewDetailsAria": "Review details and approval status for this job listing.",
-    "factLabelLocation": "Location",
-    "factLabelSalary": "Salary",
-    "factLabelType": "Type",
-    "factLabelWorkMode": "Work mode",
-    "factLabelVacancies": "Vacancies",
-    "factLabelPosted": "Posted",
-    "factLabelPostedBy": "Posted by",
-    "factLabelSuperAgent": "Super agent",
-    "salaryNegotiable": "Negotiable",
-    "description": "Description",
-    "requiredSkills": "Required Skills",
-    "experience": "Experience",
-    "education": "Education",
-    "responsibilities": "Responsibilities",
-    "benefits": "Benefits",
-    "employer": "Employer"
   },
   "adminBulkImport": {
     "title": "Bulk Import",
@@ -10380,7 +10644,8 @@
     "exportColumnStatus": "Status",
     "exportColumnJoined": "Joined",
     "exportTitle": "Employers",
-    "toastVerificationFailed": "We couldn't verify this employer. Please try again."
+    "toastVerificationFailed": "We couldn't verify this employer. Please try again.",
+    "requestFailed": "We couldn't complete that. Please try again."
   },
   "adminGdpr": {
     "pageTitle": "GDPR & Privacy",
@@ -10521,7 +10786,16 @@
     "exportHeaderScheduled": "Scheduled",
     "exportHeaderDurationMin": "Duration (min)",
     "failedToLoadFilterOptions": "We couldn't load the filter options. Please try again.",
-    "failedToLoadInterviews": "We couldn't load interviews. Please try again."
+    "failedToLoadInterviews": "We couldn't load interviews. Please try again.",
+    "manage": "Manage",
+    "statusUpdated": "Interview status updated",
+    "statusUpdateFailed": "We couldn't update the interview. Please try again.",
+    "status_scheduled": "Scheduled",
+    "status_confirmed": "Confirmed",
+    "status_rescheduled": "Rescheduled",
+    "status_completed": "Completed",
+    "status_cancelled": "Cancelled",
+    "status_no_show": "No show"
   },
   "adminInvoices": {
     "title": "Invoices",
@@ -11022,7 +11296,8 @@
     "employerRole": "employer",
     "agentRole": "agent",
     "superAgentRole": "super agent",
-    "adminRole": "admin"
+    "adminRole": "admin",
+    "broadcastFailed": "We couldn't send the broadcast. Please try again."
   },
   "adminExhibitions": {
     "adminOperations": "Admin operations",
@@ -11492,7 +11767,7 @@
   },
   "adminReports": {
     "adminWorkspace": "Admin workspace",
-    "reportsAndAnalytics": "Reports & Analytics",
+    "reportsAndAnalytics": "Platform Report",
     "platformDemandDescription": "Track performance and make data-driven decisions.",
     "totalJobs": "Total Jobs",
     "totalJobsRolesDetail": "{current} roles created in the last 30 days.",
@@ -11942,7 +12217,11 @@
     "toastBulkUpdated": "{affected}/{total} user(s) updated",
     "toastBulkPartialUpdated": "{affected}/{total} updated, {failed} skipped: {reasons}",
     "toastBulkNoUpdates": "No users updated: {reasons}",
-    "toastPermissionsUpdated": "Permissions updated"
+    "toastPermissionsUpdated": "Permissions updated",
+    "deactivateConfirmMessage": "Deactivate {name}? They will be signed out and cannot sign in until reactivated.",
+    "toastUserDeactivated": "{name} deactivated",
+    "toastUserActivated": "{name} activated",
+    "toastFailedSavePermissions": "We couldn't save those permissions. Please try again."
   },
   "superAgentSettings": {
     "profilePhoto": "Profile photo",
@@ -12055,7 +12334,68 @@
     "settingsTitle": "Settings",
     "settingsDescription": "Manage your super-agent workspace configuration — regional preferences, commission rates, notification channels, availability, and account security.",
     "saved": "Saved",
-    "selectTimezone": "Select timezone"
+    "selectTimezone": "Select timezone",
+    "navProfileLabel": "Profile & Avatar",
+    "navProfileDesc": "Photo, name & display info",
+    "navRegionLabel": "Region & Currency",
+    "navRegionDesc": "Country, currency, display",
+    "navCommissionLabel": "Commission Rate",
+    "navCommissionDesc": "Override rate for placements",
+    "navInvoiceLabel": "Invoice Defaults",
+    "navInvoiceDesc": "Billing & invoice presets",
+    "navNotificationsLabel": "Notifications",
+    "navNotificationsDesc": "Email & in-app alerts",
+    "navAvailabilityLabel": "Availability",
+    "navAvailabilityDesc": "Timezone & working hours",
+    "navSecurityLabel": "Account & Security",
+    "navSecurityDesc": "Password & account actions",
+    "categoryPlacementsLabel": "Placements & Agents",
+    "categoryPlacementsDesc": "Agent placements, candidate progress, and team activity",
+    "categoryCommissionsLabel": "Commission Updates",
+    "categoryCommissionsDesc": "New commissions earned, payouts, and rate changes",
+    "categoryTeamLabel": "Team Performance",
+    "categoryTeamDesc": "Weekly agent performance summaries and milestones",
+    "categoryJobsLabel": "Job Updates",
+    "categoryJobsDesc": "New job postings, expirations, and market changes",
+    "categorySystemLabel": "System & Security",
+    "categorySystemDesc": "Login alerts, platform notices, and security events",
+    "freqInstantLabel": "Instant",
+    "freqInstantDesc": "As events happen",
+    "freqDailyLabel": "Daily",
+    "freqDailyDesc": "One email/day",
+    "freqWeeklyLabel": "Weekly",
+    "freqWeeklyDesc": "Sunday summary",
+    "freqNoneLabel": "Off",
+    "freqNoneDesc": "In-app only",
+    "channelInApp": "In-App",
+    "channelEmail": "Email",
+    "invoiceCategoryRecruitment": "Recruitment Placement",
+    "invoiceCategorySubscription": "Employer Subscription",
+    "invoiceCategoryPremiumPosting": "Premium Job Posting",
+    "invoiceCategoryFeaturedPromotion": "Featured Employer Promotion",
+    "invoiceCategoryExhibition": "Exhibition Billing",
+    "invoiceCategoryBulkHiring": "Bulk Hiring Package",
+    "invoiceCategoryConsulting": "Consulting Fee",
+    "invoiceCategoryCustomEnterprise": "Custom Enterprise Billing",
+    "invoiceTaxNone": "No Tax",
+    "invoiceTaxGst": "GST",
+    "invoiceTaxVat": "VAT",
+    "invoiceTaxReverseCharge": "Reverse Charge",
+    "invoiceTaxSalesTax": "Sales Tax",
+    "invoiceTaxServiceTax": "Service Tax",
+    "invoiceTaxWithholdingTax": "Withholding Tax",
+    "invoiceTaxTds": "TDS",
+    "invoiceTaxPst": "PST",
+    "invoiceTaxHst": "HST",
+    "invoicePaymentImmediate": "Immediate",
+    "invoicePaymentNet7": "Net 7 days",
+    "invoicePaymentNet15": "Net 15 days",
+    "invoicePaymentNet30": "Net 30 days",
+    "invoicePaymentNet45": "Net 45 days",
+    "invoicePaymentNet60": "Net 60 days",
+    "invoicePaymentNet90": "Net 90 days",
+    "invoicePaymentCustom": "Custom",
+    "saveChanges": "Save Changes"
   },
   "superAgentJobs": {
     "totalJobsLabel": "Total Jobs",
@@ -12096,13 +12436,11 @@
     "statusFilterAll": "All",
     "statusFilterActive": "Active",
     "statusFilterDraft": "Draft",
-    "statusFilterPending": "Pending",
     "statusFilterPaused": "Paused",
     "statusFilterClosed": "Closed",
     "statusFilterExpired": "Expired",
     "clearAllFilters": "Clear all",
     "allStatuses": "All Statuses",
-    "pendingLabel": "Pending",
     "pausedLabel": "Paused",
     "closedLabel": "Closed",
     "expiredLabel": "Expired",
@@ -12158,9 +12496,27 @@
     "responsibilitiesLabel": "Responsibilities",
     "benefitsLabel": "Benefits",
     "jobDetailsUnavailable": "Job details unavailable",
-    "failedToLoadJobDetails": "We couldn't load job details."
+    "failedToLoadJobDetails": "We couldn't load job details.",
+    "filterBadgeStatusLabel": "Status",
+    "filterBadgeTypeLabel": "Type",
+    "filterBadgeModeLabel": "Mode",
+    "filterBadgeCountryLabel": "Country",
+    "filterBadgeCityLabel": "City",
+    "filterBadgeSkillsLabel": "Skills",
+    "filterBadgeSalaryLabel": "Salary",
+    "filterBadgeExperienceLabel": "Exp",
+    "filterBadgeDateLabel": "Date",
+    "filterBadgeSearchLabel": "Search",
+    "exportTitle": "Regional Jobs"
   },
   "superAgentLeads": {
+    "columnActions": "Actions",
+    "changeStage": "Change stage",
+    "stageUpdated": "Stage updated to {stage}.",
+    "stageUpdateError": "We couldn't update the stage. Please try again.",
+    "viewAgent": "Open the agent handling this lead",
+    "loadError": "We couldn't load the lead pipeline. Please try again.",
+    "retry": "Try again",
     "pageTitle": "Lead Pipeline",
     "pageDescription": "Review every employer lead across your team, switch between stages quickly, and keep regional follow-up work visible from one modern queue.",
     "sectionTitle": "Filter and review employer leads",
@@ -12454,9 +12810,17 @@
     "exportCurrency": "Currency",
     "exportCommissionPaid": "Commission Paid",
     "exportStartDate": "Start Date",
-    "exportPlacedAt": "Placed At"
+    "exportPlacedAt": "Placed At",
+    "currencyFilterAllLabel": "All currencies",
+    "exportTitle": "Placements"
   },
   "superAgentAgentDetail": {
+    "sendReminder": "Send reminder",
+    "sendReminderTitle": "Send performance reminder",
+    "sendReminderMessage": "Send a performance reminder to {name}?",
+    "sendReminderConfirm": "Send reminder",
+    "sendReminderSuccess": "Reminder sent to {name}.",
+    "sendReminderError": "We couldn't send the reminder. Please try again.",
     "failedToLoadDetails": "We couldn't load agent details",
     "failedToUpdateAgent": "We couldn't update agent",
     "networkError": "Network error",
@@ -12526,7 +12890,15 @@
     "formLabelWorkingDays": "Working Days",
     "formLabelUpdateRegion": "Update Assigned Region (optional)",
     "formHintRegionEmpty": "Leave region empty to keep current assignments. New regions must fall within your territory.",
-    "formSavingLabel": "Saving…"
+    "formSavingLabel": "Saving…",
+    "dayMonday": "Mon",
+    "dayTuesday": "Tue",
+    "dayWednesday": "Wed",
+    "dayThursday": "Thu",
+    "dayFriday": "Fri",
+    "daySaturday": "Sat",
+    "daySunday": "Sun",
+    "agentDetailError": "We couldn't load this agent. Check your connection and try again."
   },
   "superAgentReferralLinks": {
     "eyebrow": "Referral Links",
@@ -12647,60 +13019,6 @@
     "tableTitle": "Team Invoices",
     "myCommission": "My Commission",
     "emptyStateMessage": "Team invoices will appear here when agents create them."
-  },
-  "superAgentApprovals": {
-    "pageTitle": "Job Approvals",
-    "pageDescription": "Review and approve job postings from your agents before they go live, and monitor all jobs across your region.",
-    "approvalGateTitle": "Approval gate",
-    "approvalGateDescription": "Jobs submitted by your agents wait here for your approval. Approve to publish, or reject to send back as a draft.",
-    "kpiPendingApprovalLabel": "Pending Approval",
-    "kpiPendingApprovalHelper": "Jobs awaiting your approval decision.",
-    "kpiTotalJobsLabel": "Total Jobs",
-    "kpiTotalJobsHelper": "All jobs in your region.",
-    "kpiActiveHelper": "Live jobs visible to seekers.",
-    "kpiEmployersLabel": "Employers",
-    "kpiEmployersHelper": "Distinct employers in your region.",
-    "tableHeaderJobTitle": "Job Title",
-    "tableHeaderEmployer": "Employer",
-    "tableHeaderPostedBy": "Posted By",
-    "tableHeaderLocation": "Location",
-    "sectionEyebrow": "Jobs",
-    "sectionTitle": "Regional job listings",
-    "sectionDescription": "Browse all jobs in your region. Use filters to narrow down by status, date, or keyword.",
-    "searchPlaceholder": "Search job title or employer…",
-    "clearFilters": "Clear filters",
-    "statusFilterPlaceholder": "Job Status",
-    "statusFilterAll": "All Statuses",
-    "statusFilterPendingApproval": "Pending Approval",
-    "statusFilterDraft": "Draft",
-    "statusFilterClosed": "Closed",
-    "statusFilterExpired": "Expired",
-    "dateFromLabel": "From",
-    "dateToLabel": "To",
-    "noJobsFound": "No jobs found",
-    "noJobsFoundHint": "No jobs match your current filters. Try adjusting the filters or check back later.",
-    "defaultEmployer": "Employer",
-    "statusPendingApproval": "Pending Approval",
-    "approveButtonLabel": "Approve",
-    "rejectButtonLabel": "Reject",
-    "viewJobDetailsTitle": "View job details",
-    "loadingJobDetails": "Loading job details",
-    "detailLocation": "Location",
-    "detailSalary": "Salary",
-    "salaryNegotiable": "Negotiable",
-    "detailType": "Type",
-    "detailWorkMode": "Work Mode",
-    "detailVacancies": "Vacancies",
-    "detailPosted": "Posted",
-    "detailDescription": "Description",
-    "detailRequiredSkills": "Required Skills",
-    "experienceRange": "{min}–{max} yrs",
-    "detailResponsibilities": "Responsibilities",
-    "detailBenefits": "Benefits",
-    "processingEllipsis": "Processing…",
-    "approvePublishButtonLabel": "Approve & Publish",
-    "jobDetailsUnavailable": "Job details unavailable",
-    "failedToLoadJobDetails": "We couldn't load job details."
   },
   "superAgentExhibitionsAnalytics": {
     "superAgentAnalytics": "Super Agent Analytics",
@@ -12962,7 +13280,8 @@
     "customReport": "Custom report",
     "customReportPlaceholder": "e.g. Which agents have the best lead-to-placement conversion rate this quarter?",
     "generateReport": "Generate Report",
-    "reportGeneratedAt": "Report Generated at {time}"
+    "reportGeneratedAt": "Report Generated at {time}",
+    "aiErrorMessage": "We couldn't generate this report. No report was saved. Try again."
   },
   "superAgentTerritory": {
     "pageTitle": "Territory Map",
@@ -12992,7 +13311,10 @@
     "cardEmployers": "Employers",
     "cardJobs": "Jobs",
     "cardCandidates": "Candidates",
-    "loadTerritoryError": "We couldn't load territory data"
+    "loadTerritoryError": "We couldn't load territory data",
+    "typeCountry": "Country",
+    "typeState": "State",
+    "typeCity": "City"
   },
   "superAgentCommissionsReport": {
     "pageTitle": "Commission Report",
@@ -13031,7 +13353,19 @@
     "tableColumnCount": "Count",
     "noTeamDataMessage": "No team commission data for {year}",
     "failedToLoadReport": "We couldn't load commission report",
-    "kpiPending": "Pending"
+    "kpiPending": "Pending",
+    "monthJanuary": "Jan",
+    "monthFebruary": "Feb",
+    "monthMarch": "Mar",
+    "monthApril": "Apr",
+    "monthMay": "May",
+    "monthJune": "Jun",
+    "monthJuly": "Jul",
+    "monthAugust": "Aug",
+    "monthSeptember": "Sep",
+    "monthOctober": "Oct",
+    "monthNovember": "Nov",
+    "monthDecember": "Dec"
   },
   "superAgentMarket": {
     "pageTitle": "AI Market Intelligence",
@@ -13063,7 +13397,9 @@
     "query9": "Which countries supply the most construction workers to UAE?",
     "query10": "What are the most in-demand IT skills across Asia?",
     "query11": "What is the nursing salary range in the UK vs KSA?",
-    "query12": "Which African countries are growing as recruitment source markets?"
+    "query12": "Which African countries are growing as recruitment source markets?",
+    "showLess": "Show less",
+    "moreSuggestions": "More suggestions"
   },
   "agentLeads": {
     "stageNew": "New",
@@ -13163,7 +13499,9 @@
     "detailNotes": "Notes",
     "pipelineProgress": "Pipeline Progress",
     "currentStage": "Current: {stage}",
-    "aiScoreLabel": "AI Score"
+    "aiScoreLabel": "AI Score",
+    "dueFollowUps": "Due follow-ups",
+    "dueFollowUpsHint": "Leads whose follow-up date has passed"
   },
   "agentCandidates": {
     "agentWorkspace": "Agent workspace",
@@ -13324,7 +13662,8 @@
     "ariaEditInterview": "Edit interview for {name}",
     "ariaMarkCompleted": "Mark interview completed",
     "ariaCancel": "Cancel interview",
-    "modalEditTitle": "Edit Interview"
+    "modalEditTitle": "Edit Interview",
+    "outcomePending": "Awaiting outcome"
   },
   "agentJobSeekers": {
     "heroAgentWorkspace": "Agent workspace",
@@ -14204,7 +14543,6 @@
   },
   "jobSeekerJobDetail": {
     "jobDetail": "Job detail",
-    "notAvailablePending": "This job is under review and not open for applications yet. Check back soon.",
     "notAvailableClosed": "This job is no longer accepting applications.",
     "browseOtherJobs": "Browse other jobs",
     "verifiedEmployer": "Verified employer",
@@ -14649,6 +14987,9 @@
     "strengths": "Strengths",
     "gaps": "Missing",
     "previewNotAvailable": "Preview isn't available here",
+    "panes": "CV or profile",
+    "tabCv": "CV",
+    "tabProfile": "Profile",
     "cvNotEmbeddable": "This CV can't be embedded in the browser. Open or download it to view the full document.",
     "openDownloadCv": "Open / Download CV",
     "saving": "Saving…",
@@ -14805,7 +15146,8 @@
     "edit": "Edit",
     "delete": "Delete",
     "addTitle": "Add {title}",
-    "editTitle": "Edit {title}"
+    "editTitle": "Edit {title}",
+    "deleteFailed": "We couldn't delete that item. Please try again."
   },
   "exhibitionHeroFilters": {
     "hideFilters": "Hide Filters",
@@ -14942,7 +15284,22 @@
     "subtitle": "Complete these steps to open the full employer workflow.",
     "progressLabel": "Your progress",
     "doNotShowAgain": "Do not show again",
-    "a11yClose": "Close"
+    "a11yClose": "Close",
+    "completedOf": "{done} of {total} done",
+    "steps": {
+      "companyProfile": "Complete your company profile",
+      "companyProfileDesc": "Add company name, industry and contact email",
+      "addContact": "Add contact details",
+      "addContactDesc": "Add your website and phone number",
+      "createJob": "Create your first job",
+      "createJobDesc": "Post a job to start receiving applications",
+      "addRequirements": "Add requirements and skills",
+      "addRequirementsDesc": "Define the skills and experience the role needs",
+      "setSalary": "Set a salary range",
+      "setSalaryDesc": "Specify pay to attract the right candidates",
+      "publishJob": "Review and publish",
+      "publishJobDesc": "Make the job live to start receiving applications"
+    }
   },
   "teamAllocationDialog": {
     "distributeTargetsToAgents": "Distribute Targets to Agents",
@@ -15120,9 +15477,82 @@
     "refresh": "Refresh"
   },
   "quickActions": {
+    "saAddAgent": "Add agent",
+    "saAddAgentDesc": "Create an account for a new team member",
+    "saOnboardEmployer": "Onboard employer",
+    "saOnboardEmployerDesc": "Register a company in your region",
+    "saNewInvoice": "New invoice",
+    "saNewInvoiceDesc": "Bill a placement or subscription",
+    "saNewReferralLink": "New referral link",
+    "saNewReferralLinkDesc": "Create a tracked signup link",
+    "saDistributeTargets": "Distribute targets",
+    "saDistributeTargetsDesc": "Assign this year's goals across your team",
+    "saReviewExhibitions": "Review exhibition requests",
+    "saReviewExhibitionsDesc": "Approve, revise or reject what your agents submitted",
+    "saApproveCommissions": "Approve commissions",
+    "saApproveCommissionsDesc": "Clear commissions waiting on your sign-off",
     "findJobs": "Find Jobs",
     "updateResume": "Update Resume",
-    "setPreferences": "Set Preferences"
+    "setPreferences": "Set Preferences",
+    "postJobAi": "Post a job with AI",
+    "postJobAiDesc": "Describe the role and let AI draft it",
+    "postJobManual": "Write a job myself",
+    "postJobManualDesc": "Open the job form directly",
+    "scheduleInterviews": "Schedule interviews",
+    "scheduleInterviewsDesc": "Invite several candidates at once",
+    "newMessage": "Message a candidate",
+    "newMessageDesc": "Open your conversations",
+    "reviewNewApplications": "Review new applications",
+    "reviewNewApplicationsDesc": "Candidates waiting for a first look",
+    "reviewTopMatches": "Review top AI matches",
+    "reviewTopMatchesDesc": "Candidates scoring 80% and above",
+    "postJobAdmin": "Post a job",
+    "postJobAdminDesc": "Create a listing for an employer",
+    "manageUsers": "Manage users",
+    "manageUsersDesc": "Accounts, roles and access",
+    "postJobAgent": "Post a job",
+    "postJobAgentDesc": "Create a listing for an assigned employer",
+    "openLeads": "Open leads",
+    "openLeadsDesc": "Your pipeline of employer leads",
+    "openTeam": "Open your team",
+    "openTeamDesc": "Agents you manage",
+    "create": "Create",
+    "createMenu": "Create something new",
+    "uploadDocument": "Upload document",
+    "uploadDocumentDesc": "Add a certificate, ID or reference",
+    "addPortfolioItem": "Add portfolio item",
+    "addPortfolioItemDesc": "Show a project you worked on",
+    "reviewOffers": "Review offers",
+    "reviewOffersDesc": "Accept, decline or counter an offer",
+    "updateResumeDesc": "Edit and download your CV",
+    "findJobsDesc": "Browse jobs matched to your profile",
+    "setPreferencesDesc": "Tell us what you are looking for",
+    "createInvoice": "Create invoice",
+    "createInvoiceDesc": "Bill an employer for a placement",
+    "createTarget": "Create target",
+    "createTargetDesc": "Set a goal for an agent or super agent",
+    "createStaticPage": "New static page",
+    "createStaticPageDesc": "Add a page to the public site",
+    "bulkImport": "Bulk import",
+    "bulkImportDesc": "Upload users or jobs from a spreadsheet",
+    "reviewSupportTickets": "Support inbox",
+    "reviewSupportTicketsDesc": "Tickets assigned to you",
+    "reviewFailingWebhooks": "Failing webhooks",
+    "reviewFailingWebhooksDesc": "Integrations that stopped delivering",
+    "newLead": "New lead",
+    "newLeadDesc": "Add a prospect company to your pipeline",
+    "newTask": "New task",
+    "newTaskDesc": "Add a follow-up or call to your list",
+    "scheduleInterviewAgent": "Schedule interview",
+    "scheduleInterviewAgentDesc": "Book an interview for a candidate",
+    "dueFollowUps": "Due follow-ups",
+    "dueFollowUpsDesc": "Leads whose follow-up date has passed",
+    "overdueTasks": "Overdue tasks",
+    "overdueTasksDesc": "Tasks past their due date",
+    "reviewNewCandidates": "Review new candidates",
+    "reviewNewCandidatesDesc": "Applications nobody has looked at yet",
+    "recordInterviewOutcomes": "Record interview outcomes",
+    "recordInterviewOutcomesDesc": "Interviews that happened with no result logged"
   },
   "jobSeekerRecentActivity": {
     "noRecentActivity": "No recent activity",
@@ -15249,7 +15679,12 @@
     "no": "No",
     "skip": "Skip",
     "skillsUpdated": "✓ Thanks! Your profile has been updated with {count, plural, one {# skill} other {# skills}}.",
-    "moreSkillQuestions": "{count, plural, one {# more skill question} other {# more skill questions}}"
+    "moreSkillQuestions": "{count, plural, one {# more skill question} other {# more skill questions}}",
+    "errors": {
+      "applyFailed": "We couldn't apply. Please try again.",
+      "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
+      "networkError": "Network error. Please try again."
+    }
   },
   "socialShare": {
     "shareJob": "Share this job",
@@ -15426,7 +15861,10 @@
   "agentCalendar": {
     "failedLoadingCalendarEvents": "We couldn't load calendar events",
     "title": "Calendar",
-    "description": "Visual overview of all your interviews and follow-ups"
+    "description": "Visual overview of all your interviews and follow-ups",
+    "eventInterview": "Interview",
+    "eventTask": "Task due",
+    "eventFollowUp": "Lead follow-up"
   },
   "agentMessages": {
     "title": "Messages",
@@ -15479,7 +15917,7 @@
       "superAgent3": "Create a new lead",
       "admin1": "Show platform stats",
       "admin2": "Search users",
-      "admin3": "Are any jobs pending approval?",
+      "admin3": "How many jobs are still in draft?",
       "default1": "What can you do?",
       "default2": "Search jobs",
       "default3": "Show my recent activity"
@@ -15574,5 +16012,48 @@
     "title": "Revenue by country",
     "noCountryData": "No country data yet",
     "totalBilled": "Total billed: <strong>{amount} {currency}</strong> across {markets, plural, one {# market} other {# markets}}"
+  },
+  "agentSections": {
+    "performanceTabsLabel": "Performance views",
+    "inboxTabsLabel": "Inbox views",
+    "tabActivity": "Activity",
+    "tabTargets": "Targets",
+    "tabTargetReport": "Target report",
+    "tabCommissionReport": "Commission report",
+    "tabDirect": "Direct",
+    "tabChannels": "Team channels"
+  },
+  "agentQueue": {
+    "eyebrow": "Needs you",
+    "titleWithCount": "{count, plural, one {# thing needs you today} other {# things need you today}}",
+    "titleClear": "Nothing is overdue",
+    "daysLate": "{days, plural, one {# day late} other {# days late}}",
+    "dueToday": "Due today",
+    "summary": {
+      "dueFollowUps": "Follow-ups due",
+      "overdueTasks": "Overdue tasks",
+      "interviewsAwaitingOutcome": "Outcomes to record",
+      "offersAwaitingResponse": "Offers awaiting reply",
+      "newCandidates": "New candidates"
+    },
+    "kind": {
+      "followUp": "Lead",
+      "task": "Task",
+      "interviewOutcome": "Interview",
+      "offerResponse": "Offer",
+      "newCandidate": "Candidate"
+    },
+    "reason": {
+      "followUp": "Follow-up due",
+      "task": "Task overdue",
+      "interviewOutcome": "No outcome recorded",
+      "offerResponse": "Awaiting candidate reply",
+      "newCandidate": "Not reviewed yet"
+    },
+    "empty": {
+      "title": "Your queue is clear",
+      "description": "No overdue follow-ups, tasks, outcomes or offers. Good time to work new leads."
+    }
   }
 }
+

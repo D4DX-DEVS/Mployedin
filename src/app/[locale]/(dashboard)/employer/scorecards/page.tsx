@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -89,11 +89,7 @@ export default function ScorecardListPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <PageHero
-          icon={Award}
-          title={t("title")}
-          description="Loading scorecards..."
-        />
+        <WorkspaceHeader title={t("title")} context={tc("loading")} />
         <div className="grid grid-cols-1 gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="card-base h-16 animate-pulse" />
@@ -105,10 +101,18 @@ export default function ScorecardListPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={Award}
+      {/* Pattern A (compact workspace): title, the total, Export on the title
+          row (no search or filters here, so no toolbar row). */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("totalScorecards", { count: total })}
+        context={t("totalScorecards", { count: total })}
+        actions={
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
+        }
       />
 
       {isError ? (
@@ -120,26 +124,21 @@ export default function ScorecardListPage() {
         </div>
       ) : (
       <>
-      {/* Privacy info at the point candidate data is shown, compacted to
-          an icon + popover to keep the list above the fold. */}
-      <div className="flex items-center gap-2 mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          {t("scorecardList")}
-        </p>
-        <CandidateDataNotice variant="candidateList" compact />
-      </div>
-
       {/* Aggregate Feedback Trends */}
       <FeedbackTrendsPanel />
 
-      <TableToolbar
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-      />
+      <section className="workspace-panel-surface rounded-2xl panel-body">
+        {/* Privacy info at the point candidate data is shown, compacted to
+            an icon + popover to keep the list above the fold. */}
+        <div className="flex items-center gap-1.5 border-b border-border pb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {t("scorecardList")}
+          </p>
+          <CandidateDataNotice variant="candidateList" compact />
+        </div>
 
       {scorecards.length === 0 ? (
-        <div className="card-base text-center py-16">
+        <div className="py-12 text-center">
           <Award className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
           <h3 className="font-semibold mb-1">{t("noScorecards")}</h3>
           <p className="text-sm text-muted-foreground">
@@ -147,7 +146,7 @@ export default function ScorecardListPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+        <div className="mt-3 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -202,6 +201,7 @@ export default function ScorecardListPage() {
           </Table>
         </div>
       )}
+      </section>
 
       <PaginationControls
         page={page}

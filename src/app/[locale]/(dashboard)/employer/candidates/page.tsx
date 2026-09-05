@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -12,7 +13,6 @@ import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialo
 import { ScoreRing, matchBandLabel } from "@/components/features/employer/candidates/ScoreRing";
 import { CandidateDetailPanel } from "@/components/features/employer/candidates/CandidateDetailPanel";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -62,7 +62,8 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { cn } from "@/lib/utils";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 const MATCH_SESSION_STORAGE_KEY = "employer-candidate-matching-session-v1";
@@ -74,6 +75,8 @@ const AI_SEARCH_SUGGESTIONS = [
 ];
 
 // AVAILABILITY_OPTIONS and SCORE_FILTER_LABELS moved into EmployerCandidatesPage as useMemo (needs t())
+const AVAILABILITY_VALUES = ["immediately", "within_month", "within_3_months", "not_available"] as const;
+const SCORE_BANDS = ["high", "good", "low", "unscored"] as const;
 
 interface AiCandidateSearchResponse {
   summary?: string;
@@ -902,7 +905,7 @@ export default function EmployerCandidatesPage() {
 
   const searchParams = useSearchParams();
 
-  const [selectedJob, setSelectedJob] = useState("");
+  const [selectedJob, setSelectedJob] = useUrlFilter("jobId", "");
   const [pageState, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
 
   function setPage(next: number) {
@@ -914,11 +917,16 @@ export default function EmployerCandidatesPage() {
 
   const page = pageState;
   const [limit, setLimit] = useState(20);
-  const [search, setSearch] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [skillsFilter, setSkillsFilter] = useState("");
-  const [availabilityFilter, setAvailabilityFilter] = useState("all");
-  const [scoreFilter, setScoreFilter] = useState<CandidateScoreFilter>("all");
+  const [search, setSearch] = useUrlFilter("q", "", { debounceMs: 400 });
+  const [locationFilter, setLocationFilter] = useUrlFilter("location", "", { debounceMs: 400 });
+  const [skillsFilter, setSkillsFilter] = useUrlFilter("skills", "", { debounceMs: 400 });
+  const [availabilityFilter, setAvailabilityFilter] = useUrlFilter("availability", "all", {
+    allow: AVAILABILITY_VALUES,
+  });
+  const [scoreFilter, setScoreFilter] = useUrlFilter("score", "all", { allow: SCORE_BANDS }) as [
+    CandidateScoreFilter,
+    (next: CandidateScoreFilter) => void,
+  ];
   const [savedOnly, setSavedOnly] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -1114,7 +1122,9 @@ export default function EmployerCandidatesPage() {
 
   useEffect(() => {
     const persistedState = safeParseCandidateMatchSessionState(sessionStorage.getItem(MATCH_SESSION_STORAGE_KEY));
-    if (persistedState.selectedJobId) setSelectedJob(persistedState.selectedJobId);
+    if (persistedState.selectedJobId && !new URLSearchParams(window.location.search).get("jobId")) {
+      setSelectedJob(persistedState.selectedJobId);
+    }
     if (persistedState.reviewListIds.length > 0) {
       setReviewListIds(new Set(persistedState.reviewListIds));
     }
@@ -1447,39 +1457,41 @@ export default function EmployerCandidatesPage() {
         onOpenChange={setBulkPoolOpen}
       />
 
-      <DashboardPageHeader
-        icon={Users}
-        eyebrow={selectedJobData ? t("benchmark", { title: selectedJobData.title }) : t("talentPoolView")}
+      {/* Pattern A (compact workspace): title row + slim metric strip. Search,
+          benchmark job, filters and export live in the list toolbar below,
+          not in the header. */}
+      <WorkspaceHeader
         title={t("heroTitle")}
-        description={isRefreshingCandidates ? t("refreshing") : undefined}
+        context={selectedJobData ? t("benchmark", { title: selectedJobData.title }) : (
+          <>
+            <span className="sm:hidden">{t("talentPoolView")}</span>
+            <span className="hidden sm:inline">{t("talentPoolContext")}</span>
+          </>
+        )}
+        status={isRefreshingCandidates ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            {t("refreshing")}
+          </>
+        ) : undefined}
         actions={
           <>
+            {/* Screening only means something once candidates carry a score, so
+                the button stays out of the header until there is something to screen. */}
+            {selectedJob && scoredCount > 0 ? (
+              <Button
+                size="sm"
+                onClick={runAIScreening}
+                disabled={screenMutation.isPending}
+                variant="outline"
+                className="rounded-xl border-border bg-background/80 px-3 text-sm font-semibold sm:px-4"
+              >
+                {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
+                {screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}
+              </Button>
+            ) : null}
             <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowFilters((current) => {
-                  const next = !current;
-                  if (!next) setMatchFeedback(null);
-                  return next;
-                });
-              }}
-              aria-expanded={filtersExpanded}
-              aria-label={t("filters")}
-              className="h-9 rounded-xl border-border bg-background/80 px-3 text-sm font-semibold sm:px-4"
-            >
-              {/* Icon-only on phones. The label costs ~45px, and the header row
-                  it shares with the title and the primary action only has ~165px
-                  to give before the title starts breaking mid-word. */}
-              <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-2" />
-              <span className="hidden sm:inline">{t("filters")}</span>
-              {activeFilterChips.length > 0 ? (
-                <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-                  {activeFilterChips.length}
-                </span>
-              ) : null}
-            </Button>
-            <Button size="sm"
+              size="sm"
               onClick={runAIMatch}
               disabled={!selectedJob || !!matchProgress || structuredCandidates.length === 0}
               className="whitespace-nowrap rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
@@ -1488,36 +1500,20 @@ export default function EmployerCandidatesPage() {
               {matchProgress
                 ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}`
                 : (
-                  // "Run" is dropped on phones. Those ~30px are what let the
-                  // page title stay on one line beside the actions.
                   <>
                     <span className="hidden sm:inline">{t("runAiMatch")}</span>
                     <span className="sm:hidden">{t("runAiMatchShort")}</span>
                   </>
                 )}
             </Button>
-            {/* Screening only means something once candidates carry a score, so
-                the button stays out of the header until there is something to screen. */}
-            {selectedJob && scoredCount > 0 ? (
-            <Button size="sm"
-              onClick={runAIScreening}
-              disabled={screenMutation.isPending}
-              variant="outline"
-              className="rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
-            >
-              {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
-              {screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}
-            </Button>
-            ) : null}
           </>
         }
         metrics={[
-          { label: t("statCandidates"), value: total, icon: Users },
-          { label: t("statScored"), value: scoredCount, icon: BarChart3 },
-          { label: t("statHighMatch"), value: visibleHighMatchCount, icon: Trophy },
-          { label: t("statAvailable"), value: readyNowCount, icon: CheckCircle2 },
+          { label: t("statCandidates"), value: total, icon: Users, tone: "primary" },
+          { label: t("statScored"), value: scoredCount, icon: BarChart3, tone: "success" },
+          { label: t("statHighMatch"), value: visibleHighMatchCount, icon: Trophy, tone: "info" },
+          { label: t("statAvailable"), value: readyNowCount, icon: CheckCircle2, tone: "warning" },
         ]}
-        compact
       />
 
       {screeningResults && (
@@ -1572,49 +1568,70 @@ export default function EmployerCandidatesPage() {
         </div>
       )}
 
-      {/* Collapsible filter panel — toggled from the hero, full width for breathing room */}
+      {/* List toolbar — search, benchmark job, Filters and Export sit with the
+          list they act on. Filters expands the panel directly beneath. */}
+      <div className="workspace-toolbar">
+        <div className="workspace-toolbar-search">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchPlaceholder")}
+            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
+          />
+        </div>
+        <SearchableSelect
+          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          ariaLabel={t("benchmarkJob")}
+          options={[
+            { value: "none", label: t("noJobSelected") },
+            ...jobs.map((job) => ({ value: job._id, label: job.title })),
+          ]}
+          value={selectedJob || "none"}
+          onValueChange={(value) => applySelectedJob(value === "none" ? "" : value)}
+          placeholder={t("noJobSelected")}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setShowFilters((current) => {
+              const next = !current;
+              if (!next) setMatchFeedback(null);
+              return next;
+            });
+          }}
+          aria-expanded={filtersExpanded}
+          aria-label={t("filters")}
+          className={cn(
+            "h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4",
+            filtersExpanded && "border-primary/30 bg-primary/10 text-primary"
+          )}
+        >
+          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
+          <span className="hidden sm:inline">{t("filters")}</span>
+          {activeFilterChips.length > 0 ? (
+            <span className="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+              {activeFilterChips.length}
+            </span>
+          ) : null}
+        </Button>
+        <TableToolbar
+          className="ms-auto"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+      </div>
+
+      {/* Filter panel — expands from the toolbar's Filters button, full width so the AI search has room */}
       {filtersExpanded ? (
-          <section className="workspace-panel-surface rounded-3xl backdrop-blur panel-body">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterAndActLabel")}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{t("filterAndActDescription")}</p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-                className="rounded-xl border-border bg-background/80 px-3 text-xs font-semibold text-foreground/85"
-              onClick={() => setShowAdvancedFilters((current) => !current)}
-            >
-              <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
-              {showAdvancedFilters ? t("advancedFilters") : `${t("advancedFilters")}${advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}`}
-            </Button>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
-              />
-            </div>
-
-            <div>
-              <SearchableSelect
-                className="h-10 w-full rounded-xl border-border bg-background/70"
-                options={[
-                  { value: "none", label: t("noJobSelected") },
-                  ...jobs.map((job) => ({ value: job._id, label: job.title })),
-                ]}
-                value={selectedJob || "none"}
-                onValueChange={(value) => applySelectedJob(value === "none" ? "" : value)}
-                placeholder={t("noJobSelected")}
-              />
-            </div>
-
+          <section className="workspace-panel-surface rounded-2xl backdrop-blur panel-body">
+          {/* Location + availability + the Advanced toggle share one row; the
+              AI search row follows. No panel heading — the toolbar's Filters
+              button is the label. */}
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:gap-3">
             <div>
               <Input
                 value={locationFilter}
@@ -1633,6 +1650,20 @@ export default function EmployerCandidatesPage() {
                 placeholder={t("availability")}
               />
             </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-expanded={showAdvancedFilters}
+              className={cn(
+                "h-11 rounded-xl border-border bg-background/80 px-3 text-sm font-semibold text-foreground/85 sm:h-10",
+                showAdvancedFilters && "border-primary/30 bg-primary/10 text-primary"
+              )}
+              onClick={() => setShowAdvancedFilters((current) => !current)}
+            >
+              <SlidersHorizontal className="me-2 h-3.5 w-3.5" aria-hidden="true" />
+              {showAdvancedFilters ? t("advancedFilters") : `${t("advancedFilters")}${advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}`}
+            </Button>
           </div>
 
           <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -1815,12 +1846,12 @@ export default function EmployerCandidatesPage() {
 
       {/* List + sticky detail */}
       <div ref={layoutRef} className="@container/cands">
-      <div className="grid gap-4 @4xl/cands:grid-cols-[minmax(340px,380px)_minmax(0,1fr)]">
+      <div className="grid gap-4 @4xl/cands:grid-cols-[minmax(360px,0.92fr)_minmax(0,1.08fr)]">
         {/* Center: candidate list */}
-        <div className="min-w-0 sticky top-4 flex h-[calc(100vh-1.5rem)] flex-col gap-3">
-      {/* Toolbar — Select all (left) + bulk actions + Export (right) on one horizontal section */}
+        <section className="workspace-list-panel min-w-0 sticky top-4 h-[calc(100vh-1.5rem)]" aria-label={t("heroTitle")}>
+      {/* Panel head — Select all + privacy notice (left), count or bulk actions (right). Export lives in the list toolbar above. */}
       <TableToolbar
-        className="flex-wrap rounded-2xl border border-border bg-card px-3 py-1.5 sm:px-4 sm:py-2.5"
+        className="workspace-list-head"
         left={
           // The privacy notice rides in this toolbar rather than sitting on its
           // own line: as a standalone row the compact icon was a lone glyph in
@@ -1844,7 +1875,9 @@ export default function EmployerCandidatesPage() {
           </div>
         }
         right={
-          reviewCount > 0 ? (
+          reviewCount === 0 && !loading && total > 0 ? (
+            <span className="text-sm tabular-nums text-muted-foreground">{t("listCount", { count: total })}</span>
+          ) : reviewCount > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
@@ -1865,26 +1898,25 @@ export default function EmployerCandidatesPage() {
             </div>
           ) : null
         }
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
       />
 
-      <div className="flex-1 overflow-y-auto pe-1">
+      <div className="workspace-list-body">
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-px p-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="workspace-panel-surface h-[88px] animate-pulse rounded-3xl" />
+            <div key={index} className="h-[88px] animate-pulse rounded-xl bg-secondary/60" />
           ))}
         </div>
       ) : filteredCandidates.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={t("noCandidatesMatch")}
-          description={hasSearchRefinements ? t("adjustSearchHint") : t("noProfilesYet")}
-        />
+        <div className="p-4">
+          <EmptyState
+            icon={Users}
+            title={t("noCandidatesMatch")}
+            description={hasSearchRefinements ? t("adjustSearchHint") : t("noProfilesYet")}
+          />
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div>
           {filteredCandidates.map((candidate) => {
             const rank = matchRank(candidate);
             const isInReviewList = reviewListIds.has(candidate._id);
@@ -1911,7 +1943,7 @@ export default function EmployerCandidatesPage() {
         </div>
       )}
       </div>
-        </div>
+        </section>
 
         {/* Right: sticky detail panel (only when the container is wide enough) */}
         <aside className="hidden @4xl/cands:block">

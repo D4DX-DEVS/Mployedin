@@ -215,6 +215,9 @@ export function ResumeViewerModal({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState(status);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Phones show one pane at a time; from sm both sit side by side.
+  const [mobilePane, setMobilePane] = useState<"cv" | "profile">("cv");
+  const [imgFailed, setImgFailed] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
 
@@ -313,18 +316,18 @@ export function ResumeViewerModal({
 
   const modal = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className={`relative flex flex-col bg-background shadow-2xl border border-border/60 overflow-hidden transition-all duration-200 ${
           isFullscreen
             ? "w-screen h-screen rounded-none"
-            : `rounded-2xl w-full h-[92vh] ${hasRightPanel ? "max-w-[1100px]" : "max-w-4xl"}`
+            : `w-full h-[100dvh] rounded-none sm:h-[92vh] sm:rounded-2xl ${hasRightPanel ? "max-w-[1100px]" : "max-w-4xl"}`
         }`}
       >
         {/* ── Top Bar ──────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 py-3 border-b bg-background/95 backdrop-blur shrink-0 gap-3">
+        <div className="flex items-center justify-between px-3 py-2.5 sm:px-5 sm:py-3 border-b bg-background/95 backdrop-blur shrink-0 gap-3">
           {/* Left: icon + name + badge */}
           <div className="flex items-center gap-2.5 min-w-0">
             <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -410,11 +413,31 @@ export function ResumeViewerModal({
           </div>
         </div>
 
+        {/* ── Phone pane switch (CV / Profile) — only when there is a profile panel ── */}
+        {hasRightPanel && (
+          <div className="grid grid-cols-2 gap-1 border-b border-border/60 bg-background p-1.5 sm:hidden" role="tablist" aria-label={t("panes")}>
+            {(["cv", "profile"] as const).map((pane) => (
+              <button
+                key={pane}
+                type="button"
+                role="tab"
+                aria-selected={mobilePane === pane}
+                onClick={() => setMobilePane(pane)}
+                className={`min-h-10 rounded-lg text-sm font-semibold transition-colors ${
+                  mobilePane === pane ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {pane === "cv" ? t("tabCv") : t("tabProfile")}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* ── Body ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* CV Viewer — padded, light bg */}
-          <div className="flex-1 overflow-auto bg-gray-50 p-4">
+          {/* CV Viewer — padded, light bg. Hidden on phones while the profile pane is open. */}
+          <div className={`flex-1 overflow-auto bg-gray-50 p-3 sm:p-4 ${hasRightPanel && mobilePane === "profile" ? "hidden sm:block" : ""}`}>
             {isPdf ? (
               previewFailed ? (
                 <div className="flex flex-col items-center justify-center min-h-full gap-3 text-center px-6">
@@ -450,11 +473,33 @@ export function ResumeViewerModal({
                 </div>
               )
             ) : (
+              imgFailed ? (
+                <div className="flex flex-col items-center justify-center min-h-full gap-3 text-center px-6">
+                  <FileText className="w-10 h-10 text-muted-foreground/60" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{t("previewNotAvailable")}</p>
+                    <p className="text-xs text-muted-foreground max-w-xs">{t("cvNotEmbeddable")}</p>
+                  </div>
+                  {url && (
+                    <a
+                      href={url}
+                      download={displayName}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      {t("openDownloadCv")}
+                    </a>
+                  )}
+                </div>
+              ) : (
               <div className="flex items-center justify-center min-h-full">
                 <img
                   src={url}
                   alt={displayName}
                   className="rounded-lg shadow-sm"
+                  onError={() => setImgFailed(true)}
                   style={{
                     transform: `scale(${imgScale}) rotate(${imgRotation}deg)`,
                     transition: "transform 0.2s ease",
@@ -463,12 +508,13 @@ export function ResumeViewerModal({
                   }}
                 />
               </div>
+              )
             )}
           </div>
 
           {/* ── Decision Panel (right) ──────────────────────────────────── */}
           {hasRightPanel && (
-            <aside className="w-[300px] shrink-0 border-s border-border/70 overflow-y-auto bg-background flex flex-col">
+            <aside className={`w-full shrink-0 overflow-y-auto bg-background flex-col sm:flex sm:w-[300px] sm:border-s sm:border-border/70 ${mobilePane === "profile" ? "flex" : "hidden"}`}>
 
               {/* ── Candidate Identity ── */}
               <div className="p-5 space-y-4">

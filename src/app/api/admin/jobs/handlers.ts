@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
 import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -22,7 +23,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "25"));
   const status = searchParams.get("status") ?? "";
-  const approvalStatus = searchParams.get("approvalStatus") ?? "";
   const search = searchParams.get("search") ?? "";
   const employerId = searchParams.get("employerId") ?? "";
   const agentId = searchParams.get("agentId") ?? "";
@@ -36,7 +36,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { deletedAt: null };
   if (status) query.status = status;
-  if (approvalStatus) query["poster.approvalStatus"] = approvalStatus;
   if (category) query.category = { $regex: escapeRegex(category), $options: "i" };
   if (workMode) query.workMode = workMode;
   if (employmentType) query.employmentType = employmentType;
@@ -90,14 +89,32 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Auto-scope: super_agent sees only jobs from their own agents (unless already filtered)
-  if (ctx.role === "super_agent" && !query.agentId) {
-    const saDoc = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
-    if (saDoc?.agentIds?.length) {
-      query.agentId = { $in: saDoc.agentIds };
-    } else {
+  // Auto-scope: a super_agent sees only jobs from agents in their own scope.
+  // This used to be guarded by `!query.agentId`, so passing ?agentId= or
+  // ?superAgentId= set query.agentId first and the scope never ran — one
+  // super-agent could read another's entire job book. The scope now applies
+  // unconditionally and any caller-supplied agent id is intersected with it.
+  if (ctx.role === "super_agent") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    const allowedAgentIds = (scope?.effectiveAgentIds ?? []).map(String);
+    if (!allowedAgentIds.length) {
       return NextResponse.json({ jobs: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
+
+    const requested: string[] | null = query.agentId
+      ? (query.agentId.$in
+          ? (query.agentId.$in as unknown[]).map(String)
+          : [String(query.agentId)])
+      : null;
+
+    const effective = requested
+      ? requested.filter((id) => allowedAgentIds.includes(id))
+      : allowedAgentIds;
+
+    if (!effective.length) {
+      return NextResponse.json({ jobs: [], pagination: { page, limit, total: 0, pages: 0 } });
+    }
+    query.agentId = { $in: effective.map((id) => new Types.ObjectId(id)) };
   }
 
   // Search: match jobs by title/desc/tags AND also by employer company name
@@ -165,24 +182,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     totalApplicants += s.applicants ?? 0;
   }
 
-  // Platform-wide poster approval-state counts, independent of the approval tab
-  // and pagination (keeps the approvals overview tiles consistent — M-1).
-  const approvalCountQuery = { ...query };
-  delete approvalCountQuery["poster.approvalStatus"];
-  const approvalAgg = await Job.aggregate([
-    { $match: approvalCountQuery },
-    { $group: { _id: { $ifNull: ["$poster.approvalStatus", "pending"] }, count: { $sum: 1 } } },
-  ]);
-  const approvalCounts: Record<string, number> = {};
-  for (const a of approvalAgg) {
-    if (a._id) approvalCounts[a._id] = a.count;
-  }
-
   // Flatten nested fields for the admin UI
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const jobs = rawJobs.map((job: any) => ({
     ...job,
-    approvalStatus: job.poster?.approvalStatus ?? "pending",
     applicantsCount: Array.isArray(job.applicantIds) ? job.applicantIds.length : 0,
   }));
 
@@ -190,7 +193,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     jobs,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     statusCounts,
-    approvalCounts,
     totalApplicants,
   });
 }

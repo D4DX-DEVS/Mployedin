@@ -3,8 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import ReferralLink from "@/models/ReferralLink";
-import User from "@/models/User";
-import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 import { getClientIp } from "@/lib/security/clientIp";
 
 export async function GET(req: NextRequest) {
@@ -30,9 +29,10 @@ export async function GET(req: NextRequest) {
   if (rl) {
     const expired = rl.expiresAt && new Date(rl.expiresAt) < new Date();
     const maxReached = rl.maxUses > 0 && rl.usedCount >= rl.maxUses;
+    // Public, unauthenticated endpoint: answer validity only. The creator's role
+    // (agent vs super-agent) is internal structure a code oracle must not leak.
     return NextResponse.json({
       valid: !expired && !maxReached,
-      type: rl.creatorRole,
       ...(expired ? { reason: "expired" } : {}),
       ...(maxReached ? { reason: "max_reached" } : {}),
     });
@@ -41,18 +41,12 @@ export async function GET(req: NextRequest) {
   // Fallback: legacy codes on Agent/SuperAgent models
   const agent = await Agent.findOne({ referralCode: code }).lean();
   if (agent) {
-    return NextResponse.json({
-      valid: true,
-      type: "agent",
-    });
+    return NextResponse.json({ valid: true });
   }
 
   const sa = await SuperAgent.findOne({ referralCode: code }).lean();
   if (sa) {
-    return NextResponse.json({
-      valid: true,
-      type: "super_agent",
-    });
+    return NextResponse.json({ valid: true });
   }
 
   return NextResponse.json({ valid: false }, { status: 404 });

@@ -13,8 +13,9 @@ import {
   type JobOption,
 } from "@/components/shared/MployedinCalendar";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
-import { Briefcase, CalendarDays } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { Briefcase, CalendarDays, List } from "lucide-react";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { ViewToggle } from "@/components/shared/ViewToggle";
 
 // ssr:false — calendar renders "today" from the client clock; SSR would use the
 // server clock (UTC) and hydration-mismatch for users in other timezones.
@@ -26,6 +27,7 @@ const MployedinCalendar = dynamic(
 export default function EmployerCalendarPage() {
   const t = useTranslations("employerCalendar");
   const tc = useTranslations("employerCommon");
+  const ti = useTranslations("employerInterviews");
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) ?? "en";
@@ -171,15 +173,32 @@ export default function EmployerCalendarPage() {
 
   return (
     <div className="page-container">
-      {/* Hero */}
-      <DashboardPageHeader
-        icon={CalendarDays}
+      {/* Pattern A (compact workspace): same header as the Interviews list
+          this calendar is a view of. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={
+          <>
+            <span className="sm:hidden">{t("todayLine", { count: todayCount })}</span>
+            <span className="hidden sm:inline">{t("description")}</span>
+          </>
+        }
         metrics={[
-          { label: t("today"), value: `${todayCount} ${t("interviews")}`, icon: CalendarDays },
-          { label: t("thisMonth"), value: `${upcomingCount} ${t("upcoming")}`, icon: Briefcase },
+          { label: t("today"), value: todayCount, icon: CalendarDays, tone: "primary" },
+          { label: t("thisMonth"), value: upcomingCount, icon: Briefcase, tone: "info" },
         ]}
+        actions={
+          // Paired with the interview list rather than standing alone in the
+          // sidebar, so this view is never the end of the road.
+          <ViewToggle
+            ariaLabel={ti("viewToggleLabel")}
+            active="calendar"
+            options={[
+              { key: "list", href: `/${locale}/employer/interviews`, label: ti("viewList"), icon: List },
+              { key: "calendar", href: `/${locale}/employer/calendar`, label: ti("viewCalendar"), icon: CalendarDays },
+            ]}
+          />
+        }
       />
 
       <MployedinCalendar

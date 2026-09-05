@@ -45,9 +45,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const job = await Job.findById(params?.id);
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  const body = await validateBody(req, jobUpdateSchema);
-
-  // Ownership check
+  // Ownership check FIRST — a caller who does not own the job must get 403, not
+  // schema-level 400 feedback about what a valid body would look like.
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp || String(job.employerId) !== String(emp._id)) {
@@ -67,7 +66,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Admin can approve, everyone can update their own
+  const body = await validateBody(req, jobUpdateSchema);
+
+  // Everyone can update their own job; a few fields stay admin-only.
   const allowedFields = [
     "title", "description", "category", "location", "requirements",
     "salary", "status", "expiresAt", "applicationMode", "tags", "vacancies",
@@ -75,7 +76,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     "employmentType", "workMode", "duration", "responsibilities",
     "qualifications", "benefits", "learningOutcomes",
   ];
-  const adminFields = ["poster.approvalStatus", "featuredUntil"];
+  const adminFields = ["featuredUntil"];
 
   const bodyRecord = body as Record<string, unknown>;
   const updateData: Record<string, unknown> = {};

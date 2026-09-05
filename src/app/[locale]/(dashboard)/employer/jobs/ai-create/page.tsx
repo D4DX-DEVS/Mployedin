@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import Link from "next/link";
 import { Bot, FileText, Globe, Loader2, Mic, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -602,22 +602,19 @@ export default function EmployerAIJobCreatePage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={Sparkles}
-        eyebrow={t("jobCreator.eyebrow")}
+      <WorkspaceHeader
         title={t("jobCreator.title")}
-        description={t("jobCreator.description")}
+        context={t("jobCreator.description")}
         actions={
           <Link
             href={`/${locale}/employer/jobs/new?mode=manual`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
+            aria-label={t("jobCreator.manualJobForm")}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
           >
             <FileText className="h-4 w-4" aria-hidden="true" />
-            {t("jobCreator.manualJobForm")}
+            <span className="hidden sm:inline">{t("jobCreator.manualJobForm")}</span>
           </Link>
         }
-        inlineActions
-        compactOnMobile
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

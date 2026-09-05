@@ -166,10 +166,29 @@ export function CandidateDetailPanel({
   // ── Empty state (nothing selected) ──
   if (!candidate) {
     return (
-      <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center">
-        <UserRound className="mb-3 h-10 w-10 text-muted-foreground/50" />
-        <p className="text-sm font-semibold text-foreground">{t("detailEmptyTitle")}</p>
-        <p className="mt-1 max-w-[15rem] text-xs text-muted-foreground">{t("detailEmptyHint")}</p>
+      <div className="workspace-detail-empty">
+        <span className="workspace-detail-empty-icon" aria-hidden="true">
+          <UserRound className="h-8 w-8" />
+        </span>
+        <p className="text-base font-semibold text-foreground">{t("detailEmptyTitle")}</p>
+        <p className="max-w-[22rem] text-sm text-muted-foreground">{t("detailEmptyHint")}</p>
+        <ul className="workspace-detail-hints list-none p-0">
+          <li className="workspace-detail-hint">
+            <FileText aria-hidden="true" />
+            <b>{t("detailHintProfile")}</b>
+            <span>{t("detailHintProfileDesc")}</span>
+          </li>
+          <li className="workspace-detail-hint">
+            <Sparkles aria-hidden="true" />
+            <b>{t("detailHintInsights")}</b>
+            <span>{t("detailHintInsightsDesc")}</span>
+          </li>
+          <li className="workspace-detail-hint">
+            <MessageSquare aria-hidden="true" />
+            <b>{t("detailHintAction")}</b>
+            <span>{t("detailHintActionDesc")}</span>
+          </li>
+        </ul>
       </div>
     );
   }

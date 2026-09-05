@@ -68,3 +68,15 @@ export function resolveNotificationText(
   const body = bodyKey && tc.has(bodyKey) ? tc(bodyKey, params) : n.body;
   return { title, body };
 }
+
+/**
+ * Notification `actionUrl`s are stored without a locale segment ("/agent/leads").
+ * Prefixing keeps the reader in the language they were already using instead of
+ * bouncing through the locale redirect.
+ */
+export function localizeActionUrl(actionUrl: string | undefined, locale: string): string | null {
+  if (!actionUrl) return null;
+  if (!actionUrl.startsWith("/")) return null;
+  if (actionUrl === `/${locale}` || actionUrl.startsWith(`/${locale}/`)) return actionUrl;
+  return `/${locale}${actionUrl}`;
+}

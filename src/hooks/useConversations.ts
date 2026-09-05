@@ -62,3 +62,21 @@ export function useConversations(options?: { enabled?: boolean }) {
     refetchInterval: externalEnabled ? 30_000 : false,
   });
 }
+
+/**
+ * Total unread direct messages for the signed-in user.
+ *
+ * Shared by the sidebar's Messages badge and the phone tab bar, so the two
+ * cannot drift — on a phone the sidebar sits behind "More", and without a
+ * signal out there a reply is invisible until the user goes looking.
+ */
+export function useUnreadMessageCount(): number {
+  const { data: session } = useSession();
+  const currentUserId = (session?.user as unknown as { id?: string } | undefined)?.id ?? "";
+  const { data: conversations } = useConversations();
+  if (!currentUserId) return 0;
+  return (conversations ?? []).reduce(
+    (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
+    0
+  );
+}

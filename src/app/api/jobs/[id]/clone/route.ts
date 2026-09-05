@@ -25,9 +25,9 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  // Resolve effective agent and approval status (mirrors POST /api/jobs logic)
+  // Resolve the effective agent (mirrors POST /api/jobs logic). There is no
+  // approval queue: the clone is a plain draft the poster publishes themselves.
   let effectiveAgentId = source.agentId ?? null;
-  let approvalStatus: "pending" | "approved";
 
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId").lean();
@@ -36,7 +36,6 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }
     // Use current employer agent if source had none
     effectiveAgentId = source.agentId ?? emp.agentId ?? null;
-    approvalStatus = effectiveAgentId ? "pending" : "approved";
   } else if (ctx.role === "agent") {
     // Clone writes a job into source.employerId's account, so it needs the same
     // assignment check createHandler does (jobs/handlers.ts:344) — otherwise clone
@@ -50,10 +49,6 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       );
     }
     effectiveAgentId = agent._id;
-    approvalStatus = "pending";
-  } else {
-    // admin — always approved
-    approvalStatus = "approved";
   }
 
   const clone = await Job.create({
@@ -69,7 +64,6 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     vacancies: source.vacancies,
     workflowMode: source.workflowMode,
     status: "draft",
-    poster: { approvalStatus },
   });
 
   await logActivity({

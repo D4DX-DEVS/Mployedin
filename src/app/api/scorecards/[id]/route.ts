@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import Scorecard from "@/models/Scorecard";
 import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
@@ -127,7 +128,8 @@ export const GET = withAuth(getHandler, {
   resource: "applications",
   action: "read",
 });
-export const PATCH = withAuth(patchHandler, {
-  resource: "applications",
-  action: "update",
-});
+// Plan entitlement `scorecardEvaluations` — see ../route.ts.
+export const PATCH = withAuth(
+  withSubscription(patchHandler, { type: "toggle", feature: "scorecardEvaluations" }),
+  { resource: "applications", action: "update" },
+);

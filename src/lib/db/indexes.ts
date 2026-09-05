@@ -181,9 +181,21 @@ export async function ensureIndexes() {
     { key: { status: 1, followUpAt: 1 } },
   ]);
 
+  // ── Agent tasks ────────────────────────────────────────────────────────────
+  // The schema used to live inline inside /api/agent/tasks, so its indexes were
+  // invisible to this file and never created. The nav badge, the Today queue
+  // and the calendar all query by owner and due date.
+  await safeCreateIndexes(db, "agenttasks", [
+    { key: { userId: 1 } },
+    { key: { userId: 1, dueDate: 1, status: 1 } },
+  ]);
+
   // ── Commissions ────────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "commissions", [
     { key: { invoiceId: 1 } },
+    // Idempotency guard for createCommissionRecordsForInvoice(): one record per (invoice, agent, type).
+    // Partial so placement-only commissions (no invoiceId) stay unconstrained. Mirrors the schema declaration.
+    { key: { invoiceId: 1, agentId: 1, type: 1 }, unique: true, partialFilterExpression: { invoiceId: { $exists: true } } },
     { key: { agentId: 1 } },
     { key: { superAgentId: 1 } },
     { key: { placementId: 1 } },
@@ -746,6 +758,19 @@ export async function ensureIndexes() {
     { key: { scope: 1 } },
     { key: { employerId: 1 } },
     { key: { scope: 1, isDefault: 1 } },
+  ]);
+
+  // ── GDPR register (admin GDPR page) ────────────────────────────────────────
+  await safeCreateIndexes(db, "gdprrequests", [
+    { key: { createdAt: -1 } },
+    { key: { status: 1 } },
+    { key: { userId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "consentlogs", [
+    { key: { createdAt: -1 } },
+    // "latest consent per (user, type)" aggregation + per-user history
+    { key: { userId: 1, consentType: 1, createdAt: -1 } },
   ]);
 
   logger.info("[DB] Indexes ensured ✅");

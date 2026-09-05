@@ -8,7 +8,7 @@ import type { CopilotTool } from "../types";
 
 export const platformStatsTool: CopilotTool<Record<string, never>> = {
   name: "platform_stats",
-  description: "Get real-time platform-wide KPIs: users, jobs by status, applications, pending approvals.",
+  description: "Get real-time platform-wide KPIs: users, jobs by status, applications.",
   resource: "reports",
   action: "read",
   roles: ["admin"],
@@ -17,18 +17,18 @@ export const platformStatsTool: CopilotTool<Record<string, never>> = {
   summarize: () => "Get platform stats",
   execute: async () => {
     await connectDB();
-    const [totalUsers, totalEmployers, totalSeekers, activeJobs, pendingApprovalJobs, totalApplications] = await Promise.all([
+    const [totalUsers, totalEmployers, totalSeekers, activeJobs, draftJobs, totalApplications] = await Promise.all([
       User.countDocuments(),
       Employer.countDocuments(),
       JobSeeker.countDocuments(),
       Job.countDocuments({ status: "active" }),
-      Job.countDocuments({ "poster.approvalStatus": "pending" }),
+      Job.countDocuments({ status: "draft" }),
       Application.countDocuments(),
     ]);
     return {
       ok: true,
       message: "Platform stats retrieved.",
-      data: { totalUsers, totalEmployers, totalSeekers, activeJobs, pendingApprovalJobs, totalApplications },
+      data: { totalUsers, totalEmployers, totalSeekers, activeJobs, draftJobs, totalApplications },
     };
   },
 };

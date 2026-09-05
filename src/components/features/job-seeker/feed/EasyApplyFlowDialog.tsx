@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useLocale } from "next-intl";
 import {
   Check,
   CheckCircle2,
@@ -170,6 +172,7 @@ export function EasyApplyFlowDialog({
     return list;
   }, [unansweredSkills.length, matchedSkills.length, questions.length]);
 
+  const locale = useLocale();
   const currentStep = steps[Math.min(stepIndex, steps.length - 1)];
   const isLastStep = stepIndex >= steps.length - 1;
   const progress =
@@ -416,6 +419,7 @@ export function EasyApplyFlowDialog({
                       onUploadClick={() => fileInputRef.current?.click()}
                       fileInputRef={fileInputRef}
                       onUpload={handleUpload}
+                      locale={locale}
                       t={t}
                     />
                   )}
@@ -519,6 +523,7 @@ function CvStep({
   onUploadClick,
   fileInputRef,
   onUpload,
+  locale,
   t,
 }: {
   resumeDocs: ProfileDocument[];
@@ -529,6 +534,7 @@ function CvStep({
   onUploadClick: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  locale: string;
   t: Tx;
 }) {
   const noCv = !hasProfileCv && resumeDocs.length === 0;
@@ -555,7 +561,27 @@ function CvStep({
             onSelect={() => onSelect(d.id)}
           />
         ))}
-        {noCv && <p className="text-xs text-muted-foreground/70">{t("cv.noCv")}</p>}
+        {noCv && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground/70">{t("cv.noCv")}</p>
+            <div className="space-y-2">
+              <Link
+                href={`/${locale}/job-seeker/cv`}
+                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-medium text-primary hover:bg-primary/[0.10] transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {t("cv.buildCV")}
+              </Link>
+              <Link
+                href={`/${locale}/job-seeker/documents`}
+                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-medium text-primary hover:bg-primary/[0.10] transition-colors"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                {t("cv.uploadDocuments")}
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       <input

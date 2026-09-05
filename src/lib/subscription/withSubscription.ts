@@ -16,6 +16,7 @@ import type { UserRole } from "@/types/user";
 import type { AIFeatureKey } from "@/models/SubscriptionPlan";
 import { isSubscriptionEnforcementEnabled } from "./enforcementFlag";
 import { isInGracePeriod } from "./gracePeriod";
+import { isLimitFeatureForRole, isToggleEnabled } from "./helpers";
 
 // ── Feature check types ──────────────────────────────────────────────────────
 
@@ -159,6 +160,14 @@ export function withSubscription(
 
     // ── Numeric Limit Check ──────────────────────────────────────────────
     if (check.type === "limit") {
+      // A limit that belongs to the other customer role (e.g. the employer-only
+      // applicationsViewed cap on a job seeker's own applications list) is not
+      // an entitlement of this subscriber at all: pass through without touching
+      // their usage counters.
+      if (!isLimitFeatureForRole(check.feature, targetRole)) {
+        return handler(req, ctx, params);
+      }
+
       const limitMap: Record<string, { max: number; current: number }> = {
         activeJobs: {
           max: (limits as Record<string, unknown>).maxActiveJobs as number ?? -1,
@@ -247,7 +256,7 @@ export function withSubscription(
     // ── Boolean Toggle Check ─────────────────────────────────────────────
     if (check.type === "toggle") {
       const value = (limits as Record<string, unknown>)[check.feature];
-      if (!value) {
+      if (!isToggleEnabled(value)) {
         return NextResponse.json(
           {
             error: "FEATURE_DISABLED",

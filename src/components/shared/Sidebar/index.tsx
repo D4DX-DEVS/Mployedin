@@ -11,7 +11,11 @@ import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { withoutBottomTabItems } from "@/lib/nav/bottomNavTabs";
 import { getIcon } from "@/lib/nav/iconRegistry";
-import { useConversations } from "@/hooks/useConversations";
+import { useUnreadMessageCount } from "@/hooks/useConversations";
+import { useAdminActionCounts } from "@/hooks/useAdminActionCounts";
+import { useJobSeekerActionCounts } from "@/hooks/useJobSeekerActionCounts";
+import { useSuperAgentActionCounts } from "@/hooks/useSuperAgentActionCounts";
+import { useAgentActionCounts } from "@/hooks/useAgentActionCounts";
 
 interface SidebarProps {
   navGroups: NavGroup[];
@@ -35,14 +39,61 @@ export function Sidebar({
   const sessionRole = (session?.user as { role?: string } | undefined)?.role;
   const effectiveRole = userRole ?? sessionRole;
   const isRtl = locale === "ar";
-  const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
-  const { data: conversations } = useConversations();
-  const unreadMessageCount = (conversations ?? []).reduce(
-    (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
-    0
-  );
+  const unreadMessageCount = useUnreadMessageCount();
+  // Only a seeker has offers or interview invites waiting on them, so the
+  // endpoint is not called for anyone else.
+  const seekerCounts = useJobSeekerActionCounts(effectiveRole === "job_seeker");
+  const adminCounts = useAdminActionCounts(effectiveRole === "admin");
+  const superAgentCounts = useSuperAgentActionCounts(effectiveRole === "super_agent");
+  const agentCounts = useAgentActionCounts(effectiveRole === "agent");
+  /**
+   * Badge count for a nav entry. This used to be `item.title === "Messages"`,
+   * which meant a renamed entry silently lost its badge and no second counter
+   * could ever be added — the reason pending offers and unanswered interview
+   * invites were invisible in navigation.
+   */
+  const ownBadgeCount = (item: NavItem): number => {
+    switch (item.badgeKey) {
+      case "unreadMessages":
+        return unreadMessageCount;
+      case "pendingOffers":
+        return seekerCounts.pendingOffers;
+      case "interviewsAwaitingResponse":
+        return seekerCounts.interviewsAwaitingResponse;
+      case "openSupportTickets":
+        return adminCounts.openSupportTickets;
+      case "unreadContactSubmissions":
+        return adminCounts.unreadContactSubmissions;
+      case "pendingExhibitionReviews":
+        return superAgentCounts.pendingExhibitionReviews;
+      case "pendingCommissionApprovals":
+        return superAgentCounts.pendingCommissionApprovals;
+      case "overdueTasks":
+        return agentCounts.overdueTasks;
+      case "dueFollowUps":
+        return agentCounts.dueFollowUps;
+      default:
+        // Legacy entries carry no badgeKey; keep the original title match so
+        // employer/admin Messages badges survive until they declare one.
+        return item.title === "Messages" ? unreadMessageCount : 0;
+    }
+  };
+
+  /**
+   * A group carries what it hides.
+   *
+   * The rail renders top-level entries only. Grouping admin's eleven entries
+   * into five primaries plus "More Admin Tools" pushed every badged destination
+   * a level down, so an assigned support ticket had a badge that nothing on
+   * screen ever displayed. Summing children means a collapsed group still says
+   * "something in here needs you", and opening it shows which child.
+   */
+  const badgeCount = (item: NavItem): number => {
+    const own = ownBadgeCount(item);
+    if (!item.children?.length) return own;
+    return item.children.reduce((sum, child) => sum + badgeCount(child), own);
+  };
   const usesSimpleEmployerMenu = effectiveRole === "employer";
-  const isSuperAgent = effectiveRole === "super_agent";
   const isAdminWorkspace = effectiveRole === "admin";
   const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesDualTierLayout = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
@@ -52,15 +103,23 @@ export function Sidebar({
   const desktopSidebarRef = useRef<HTMLElement | null>(null);
 
   const allMainItems = navGroups.flatMap((group) => group.items);
+  /**
+   * The group heading each top-level item belongs to.
+   *
+   * `navGroups` is flattened for rendering, which silently discarded
+   * `NavGroup.label` — a menu authored as four task groups ("Find work",
+   * "Track progress", …) rendered as one flat scroll list. This keeps the
+   * heading addressable by item so a flat list can still print its dividers.
+   */
+  const groupLabelByItemHref = new Map<string, string>();
+  for (const group of navGroups) {
+    const label = locale === "ar" ? group.labelAr : group.label;
+    if (!label) continue;
+    for (const item of group.items) groupLabelByItemHref.set(item.href, label);
+  }
 
   const rootItem = (title: string) =>
     allMainItems.find((item) => item.title === title);
-  const childItems = (rootTitle: string, titles: string[]) => {
-    const children = rootItem(rootTitle)?.children ?? [];
-    return titles
-      .map((title) => children.find((item) => item.title === title))
-      .filter((item): item is NavItem => Boolean(item));
-  };
   const standaloneAsChild = (title: string, group?: string, groupAr?: string) => {
     const item = rootItem(title);
     return item ? { ...item, group, groupAr } : undefined;
@@ -78,7 +137,7 @@ export function Sidebar({
   const adminMoreChildren = allMainItems
     .filter((item) => !adminPrimaryTitles.includes(item.title))
     .map((item) => ({ ...item, group: undefined, groupAr: undefined }));
-  const adminMobileItems: NavItem[] = [
+  const adminGroupedItems: NavItem[] = [
     ...adminPrimaryTitles.map(rootItem).filter((item): item is NavItem => Boolean(item)),
     {
       title: "More Admin Tools",
@@ -91,84 +150,12 @@ export function Sidebar({
     },
   ];
 
-  const agentTools = rootItem("Tools")?.children ?? [];
-  const findAgentTool = (title: string) => agentTools.find((item) => item.title === title);
-  const agentMobileItems: NavItem[] = [
-    rootItem("Dashboard"),
-    {
-      ...(rootItem("Hiring") ?? {
-        title: "Hiring",
-        titleAr: "التوظيف",
-        href: `/${locale}/agent/jobs`,
-        icon: "Briefcase" as const,
-      }),
-      children: [
-        ...childItems("Hiring", ["Jobs", "Candidates", "Job Seekers", "Interviews"]),
-        ...compactChildren([findAgentTool("Offers")]),
-        ...childItems("Hiring", ["Placements"]),
-      ],
-    },
-    {
-      title: "Accounts",
-      titleAr: "الحسابات",
-      href: `/${locale}/agent/employers`,
-      icon: "Building2",
-      description: "Employers, leads and referral links",
-      descriptionAr: "أصحاب العمل والعملاء المحتملون وروابط الإحالة",
-      children: compactChildren(
-        ["Employers", "Leads", "Referral Links"].map(findAgentTool)
-      ),
-    },
-    {
-      title: "Tasks",
-      titleAr: "المهام",
-      href: `/${locale}/agent/tasks`,
-      icon: "CheckSquare",
-      description: "Tasks and calendar",
-      descriptionAr: "المهام والتقويم",
-      children: compactChildren(["Tasks", "Calendar"].map(findAgentTool)),
-    },
-    {
-      title: "Messages",
-      titleAr: "الرسائل",
-      href: `/${locale}/agent/messages`,
-      icon: "MessageSquare",
-      description: "Employer messages and team chat",
-      descriptionAr: "رسائل أصحاب العمل ودردشة الفريق",
-      children: compactChildren([
-        standaloneAsChild("Messages"),
-        standaloneAsChild("Team Chat"),
-      ]),
-    },
-    {
-      title: "More",
-      titleAr: "المزيد",
-      href: `/${locale}/agent/reports`,
-      icon: "Grid3x3",
-      description: "Performance, finance and resources",
-      descriptionAr: "الأداء والمالية والموارد",
-      children: [
-        ...compactChildren(
-          ["Reports", "Targets", "Target Report"].map(findAgentTool),
-          "Performance",
-          "الأداء"
-        ),
-        ...compactChildren(
-          ["Commissions", "Commission Report", "Invoices"].map(findAgentTool),
-          "Finance",
-          "المالية"
-        ),
-        ...compactChildren(
-          [
-            standaloneAsChild("Exhibition Requests"),
-            standaloneAsChild("Resource Downloads"),
-          ],
-          "Resources",
-          "الموارد"
-        ),
-      ],
-    },
-  ].filter((item): item is NavItem => Boolean(item));
+  // The agent drawer used to be re-grouped here by hand — Hiring, Accounts,
+  // Tasks, Messages, More — because the real nav was two parents and a
+  // twelve-child "Tools" junk drawer that no phone could present. menuConfig
+  // now groups the agent workspace properly (Pipeline / Earnings / Performance
+  // plus top-level Tasks and Calendar), so the drawer renders the same tree as
+  // the desktop rail. Re-deriving it here would only be able to go stale again.
 
   const superOverview = rootItem("Overview")?.children ?? [];
   const findSuperOverview = (title: string) =>
@@ -228,19 +215,25 @@ export function Sidebar({
     },
   ].filter((item): item is NavItem => Boolean(item));
 
+  /* Admin carries eleven top-level entries and fifty-two children — by far the
+     heaviest workspace in the product. The five-primary grouping below was
+     written for the phone drawer and never applied to the desktop rail, so the
+     wider viewport kept the flat list the narrow one had already rejected.
+     Same grouping, both breakpoints: Dashboard, Recruitment, People, Finance,
+     CMS, and everything else behind "More Admin Tools". */
   const navigationMainItems = mobileOpen
     ? withoutBottomTabItems(
         effectiveRole === "admin"
-          ? adminMobileItems
-          : effectiveRole === "agent"
-            ? agentMobileItems
-            : effectiveRole === "super_agent"
-              ? superAgentMobileItems
-              : allMainItems,
+          ? adminGroupedItems
+          : effectiveRole === "super_agent"
+            ? superAgentMobileItems
+            : allMainItems,
         effectiveRole,
         locale
       )
-    : allMainItems;
+    : effectiveRole === "admin"
+      ? adminGroupedItems
+      : allMainItems;
 
   const getInitialActiveItem = () => {
     for (const item of allMainItems) {
@@ -255,9 +248,14 @@ export function Sidebar({
       if (item.children?.some((child) => pathname.startsWith(child.href + "/"))) return item.title;
     }
 
-    for (const item of allMainItems) {
-      if (pathname.startsWith(item.href + "/")) return item.title;
-    }
+    // Longest prefix wins. Scanning in array order made the workspace root
+    // (always first, and a prefix of every route under it) match before the
+    // real section, so every detail page like /job-seeker/jobs/123 lit up
+    // "Home" and dimmed "Jobs".
+    const prefixMatch = allMainItems
+      .filter((item) => pathname.startsWith(item.href + "/"))
+      .sort((a, b) => b.href.length - a.href.length)[0];
+    if (prefixMatch) return prefixMatch.title;
 
     return allMainItems[0]?.title || "";
   };
@@ -382,13 +380,7 @@ export function Sidebar({
   const resolvedActiveMainTitle =
     mobileOpen && effectiveRole === "admin" && !compactRootTitles.includes(activeMainTitle)
       ? "More Admin Tools"
-      : mobileOpen && effectiveRole === "agent" && !compactRootTitles.includes(activeMainTitle)
-        ? agentMobileItems.find((item) =>
-            item.children?.some((child) =>
-              pathname === child.href || pathname.startsWith(`${child.href}/`)
-            )
-          )?.title ?? activeMainTitle
-        : mobileOpen && effectiveRole === "super_agent" && !compactRootTitles.includes(activeMainTitle)
+      : mobileOpen && effectiveRole === "super_agent" && !compactRootTitles.includes(activeMainTitle)
           ? superAgentMobileItems.find((item) =>
               item.children?.some((child) =>
                 pathname === child.href || pathname.startsWith(`${child.href}/`)
@@ -617,7 +609,25 @@ export function Sidebar({
         "flex-1 overflow-y-auto flex flex-col sidebar-scroll",
         usesDualTierLayout ? "py-4 px-3 gap-1" : "py-4 px-3 gap-1"
       )}>
-        {navigationMainItems.map((item) => {
+        {navigationMainItems.map((item, itemIndex) => {
+          // A heading prints once, above the first item of its group.
+          const groupLabel = groupLabelByItemHref.get(item.href);
+          const previousGroupLabel =
+            itemIndex > 0
+              ? groupLabelByItemHref.get(navigationMainItems[itemIndex - 1].href)
+              : undefined;
+          const groupHeading =
+            groupLabel && groupLabel !== previousGroupLabel ? (
+              <div
+                key={`group-${groupLabel}`}
+                className={cn(
+                  "px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] first:pt-1",
+                  usesDualTierLayout ? "text-white/40" : "text-muted-foreground/70"
+                )}
+              >
+                {groupLabel}
+              </div>
+            ) : null;
           const Icon = getIcon(item.icon);
           const isSelected = resolvedActiveMainTitle === item.title;
           const hasChildren = Boolean(item.children?.length);
@@ -642,9 +652,9 @@ export function Sidebar({
                 <span className="min-w-0 flex-1 break-words text-[13px] font-medium leading-5 line-clamp-2">
                   {dualTierLabel}
                 </span>
-                {item.title === "Messages" && unreadMessageCount > 0 && (
+                {badgeCount(item) > 0 && (
                   <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
-                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                    {badgeCount(item) > 99 ? "99+" : badgeCount(item)}
                   </span>
                 )}
                 {hasChildren && (
@@ -658,6 +668,10 @@ export function Sidebar({
               </>
             );
 
+            /* A group always toggles its panel and never navigates. "Hiring"
+               used to open Applications on click because its href matched its
+               first child; from Offers or Interviews that tap jumped the user
+               to Applications when all they wanted was the list of siblings. */
             if (hasChildren) {
               return (
                 <button
@@ -714,9 +728,9 @@ export function Sidebar({
               >
                 {locale === "ar" ? item.titleAr : item.title}
               </span>
-              {item.title === "Messages" && unreadMessageCount > 0 && (
+              {badgeCount(item) > 0 && (
                 <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
-                  {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  {badgeCount(item) > 99 ? "99+" : badgeCount(item)}
                 </span>
               )}
               {usesInlineWorkspaceSidebar && hasChildren && (
@@ -760,6 +774,7 @@ export function Sidebar({
           if (hasChildren) {
             return (
               <div key={item.title} className="space-y-1">
+                {groupHeading}
                 <button
                   id={`${itemSubmenuId}-label`}
                   type="button"
@@ -803,7 +818,7 @@ export function Sidebar({
             );
           }
 
-          return (
+          const leafLink = (
             <Link
               key={item.title}
               href={item.href}
@@ -817,6 +832,14 @@ export function Sidebar({
             >
               {itemContent}
             </Link>
+          );
+
+          if (!groupHeading) return leafLink;
+          return (
+            <div key={item.title} className="space-y-1">
+              {groupHeading}
+              {leafLink}
+            </div>
           );
         })}
       </nav>

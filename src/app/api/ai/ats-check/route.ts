@@ -91,9 +91,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Candidate profile not found" }, { status: 404 });
   }
 
-  // ── Access control for jobSeekerId without jobId ─────────────────────────────
-  // For employer/agent roles requesting jobSeekerId without jobId, verify access
-  if (ctx.role === "employer" && jobSeekerId && !jobId) {
+  // ── Access control for a targeted candidate ──────────────────────────────────
+  // Employers and agents may only analyse candidates who applied to their jobs.
+  // This must hold whether or not a jobId is supplied — the jobId branch below
+  // only decides whether keyword coverage is attached, never access to the CV.
+  if (ctx.role === "employer" && jobSeekerId) {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     const hasApplication = emp && await Application.exists({
       jobSeekerId: seeker._id,
@@ -102,7 +104,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (!hasApplication) {
       return NextResponse.json({ error: "Forbidden — seeker not accessible" }, { status: 403 });
     }
-  } else if (ctx.role === "agent" && jobSeekerId && !jobId) {
+  } else if (ctx.role === "agent" && jobSeekerId) {
     const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean() as
       { _id: unknown; assignedEmployerIds?: unknown[] } | null;
     if (!agent) {

@@ -10,6 +10,7 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { useStartConversation } from "@/hooks/useCandidates";
 import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import {
   Award,
@@ -29,6 +30,7 @@ import {
   Inbox,
   Mail,
   MapPin,
+  MessageSquare,
   MoreHorizontal,
   Paperclip,
   Plus,
@@ -36,6 +38,7 @@ import {
   Send,
   Sparkles,
   Square,
+  Star,
   User,
   Users,
   X,
@@ -44,7 +47,7 @@ import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { FeatureGate } from "@/components/shared/FeatureGate";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -240,8 +243,9 @@ export default function EmployerApplicationsPage() {
   const [showFilters, setShowFilters] = useState(false);
   // Phones collapse the whole primary filter row behind a toggle — six stacked
   // full-width controls pushed the applicant list off the first screen.
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  // ?search=<name> deep-links from the ⌘K palette straight to one candidate's
+  // row instead of dropping the user on an unfiltered list to hunt for them.
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") ?? "");
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
   const [detailPanel, setDetailPanel] = useState<Applicant | null>(null);
   const detailTriggerRef = useRef<HTMLElement | null>(null);
@@ -323,6 +327,7 @@ export default function EmployerApplicationsPage() {
     sortBy,
     sortOrder,
     fetchJobs: !jobsLoaded,
+    fetchCounts: true,
   });
   const updateStatus = useUpdateApplicationStatus();
   const bulkAction = useBulkAction();
@@ -334,12 +339,18 @@ export default function EmployerApplicationsPage() {
   const computeAiMatch = useComputeAiMatch();
   const bulkAiMatch = useBulkAiMatch();
   const qc = useQueryClient();
+  const startConversation = useStartConversation();
 
   // ── Derived values ────────────────────────────────────────────────
   const applications = (applicationsQuery.data?.applications ?? []) as Applicant[];
   const total = applicationsQuery.data?.pagination?.total ?? applications.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const isLoading = applicationsQuery.isLoading;
+  // Pipeline totals for the header strip: the whole job scope, not this page.
+  const statusCounts = (applicationsQuery.data?.statusCounts ?? null) as Record<string, number> | null;
+  const countOf = (...keys: string[]) => keys.reduce((n, k) => n + (statusCounts?.[k] ?? 0), 0);
+  const pipelineTotal = statusCounts ? Object.values(statusCounts).reduce((a, b) => a + b, 0) : 0;
+  const metricValue = (n: number) => (statusCounts ? n : "\u2014");
   const timelineData: TimelineEntry[] = timelineQuery.data?.timeline ?? [];
   const timelineLoading = timelineQuery.isLoading;
 
@@ -656,6 +667,21 @@ export default function EmployerApplicationsPage() {
     });
   }
 
+  // Opens (or reuses) the direct conversation with this candidate and lands on
+  // it, so a one-line reply no longer means leaving the pipeline to search
+  // Messages for the same person.
+  async function messageCandidate(app: Applicant) {
+    const recipientId =
+      typeof app.jobSeekerId?.userId === "object" ? app.jobSeekerId.userId?._id : undefined;
+    if (!recipientId) return;
+    try {
+      const data = await startConversation.mutateAsync(recipientId);
+      router.push(`/${locale}/employer/messages?conv=${data.conversation._id}`);
+    } catch {
+      toast.error(t("messageCandidateFailed"));
+    }
+  }
+
   // Filter applications — most filtering is now server-side; only days-in-pipeline remains client-side
   const filteredApplications = applications.filter((app) => {
     if (daysFilter) {
@@ -809,110 +835,55 @@ export default function EmployerApplicationsPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
-        title={selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
-        actions={canUpdate ? (
-          // Wraps rather than scrolls: the three labelled buttons need 261px at
-          // 320px wide, so the old nowrap scroller hid the third one with no
-          // scroll affordance. Wrapping keeps every action reachable at any width.
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl border-border bg-background/80 px-3 text-xs font-medium"
-              onClick={toggleAll}
-              disabled={!filteredApplications.length}
-            >
-              {allVisibleSelected ? <CheckSquare className="me-2 h-3.5 w-3.5 text-status-applied" /> : <Square className="me-2 h-3.5 w-3.5 text-muted-foreground" />}
-              {allVisibleSelected ? t("clearVisible") : t("selectVisible")}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl border-border bg-background/80 px-3 text-xs"
-              disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
-              onClick={handleBulkAiMatch}
-            >
-              <Sparkles className={`me-2 h-3.5 w-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
-              {bulkMatchProgress
-                ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
-                : t("scoreAll")}
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-xl bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
-              disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
-              onClick={handleAutoShortlist}
-            >
-              <CheckCheck className="me-2 h-3.5 w-3.5" />
-              {t("shortlistTop")}
-            </Button>
-          </div>
-        ) : undefined}
+      {/* Pattern A (compact workspace): title, the job in view, and the
+          pipeline totals for that scope. Per-page counts and bulk actions
+          live with the list they describe. */}
+      <WorkspaceHeader
+        title={t("title")}
+        context={
+          selectedJob
+            ? selectedJob.title
+            : jobsLoaded
+              ? t("openRolesContext", { count: employerJobs.filter((j) => j.status === "active").length })
+              : "\u00a0"
+        }
+        metrics={[
+          { label: t("applicants"), value: metricValue(pipelineTotal), icon: Users, tone: "primary" },
+          { label: t("shortlisted"), value: metricValue(countOf("shortlisted")), icon: Star, tone: "success" },
+          { label: t("interviews"), value: metricValue(countOf("interview_scheduled")), icon: Calendar, tone: "info" },
+          { label: t("selected"), value: metricValue(countOf("selected")), icon: BadgeCheck, tone: "warning" },
+        ]}
       />
 
-      <div className="flex flex-wrap items-center gap-x-1 px-3 text-sm text-muted-foreground sm:px-4">
-        {/* Privacy info at the point candidate data is shown, compacted to an
-            icon + popover to keep the list above the fold. */}
-        <CandidateDataNotice variant="candidateList" compact className="-ms-1.5" />
-        <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
-        <span className="px-2 text-border">•</span>
-        <span className="font-medium text-foreground">{isLoading ? "—" : highMatchCount}</span> {t("highMatch")}
-        <span className="px-2 text-border">•</span>
-        <span className="font-medium text-foreground">{isLoading ? "—" : interviewCount}</span> {t("interviews")}
-        <span className="px-2 text-border">•</span>
-        <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
-      </div>
-
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-
-          <div className="mb-2 flex items-center gap-2 sm:mb-3">
-            <button
-              type="button"
-              onClick={() => setMobileFiltersOpen((v) => !v)}
-              aria-expanded={mobileFiltersOpen}
-              className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-border bg-background/70 text-left text-sm font-semibold text-foreground sm:hidden chip-pad"
-            >
-              <span className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-primary" />
-                {t("filters")}
-              </span>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${mobileFiltersOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-              className="shrink-0"
-            />
-          </div>
-
-          {/* Primary filter row: Job selector + search + status + sort + toggle */}
-          <div className={`grid-cols-2 gap-2 sm:grid-cols-1 xl:grid-cols-[minmax(170px,1fr)_minmax(0,1.5fr)_minmax(150px,0.7fr)_minmax(150px,0.7fr)_auto_auto] ${mobileFiltersOpen ? "grid" : "hidden sm:grid"}`}>
-            <SearchableSelect
-              className="h-10 w-full rounded-xl border-border bg-status-applied-bg/50"
-              options={jobOptions}
-              value={jobFilter}
-              onValueChange={(v) => {
-                setJobFilter(v);
-                setExperienceRange([null, null]);
-                setSkillsFilter([]);
-              }}
-              placeholder={t("selectJob")}
-            />
-            <div className="relative col-span-2 sm:col-span-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={tc("search")}
-                className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
-              />
-            </div>
-
-              <SearchableSelect
-                className="h-10 w-full rounded-xl border-border bg-background/70"
+      {/* ── List toolbar — job, search, status, sort, Filters, High match, Export ──
+          Phones: search on its own row, then job + Filters + Export; status,
+          sort and High match move into the Filters panel below. */}
+      <div className="workspace-toolbar">
+        <div className="workspace-toolbar-search sm:max-w-[17rem]">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={tc("search")}
+            aria-label={tc("search")}
+            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
+          />
+        </div>
+        <SearchableSelect
+          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          options={jobOptions}
+          value={jobFilter}
+          onValueChange={(v) => {
+            setJobFilter(v);
+            setExperienceRange([null, null]);
+            setSkillsFilter([]);
+          }}
+          placeholder={t("selectJob")}
+          ariaLabel={t("selectJob")}
+        />
+        <div className="hidden w-36 sm:block">
+          <SearchableSelect
+                className="h-10 w-full rounded-xl border-border bg-background"
                 options={[
                   { value: "all", label: t("allStatuses") },
                   ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
@@ -921,8 +892,10 @@ export default function EmployerApplicationsPage() {
                 onValueChange={setStatusFilter}
                 placeholder={t("allStatuses")}
               />
-              <SearchableSelect
-                className="h-10 w-full rounded-xl border-border bg-background/70"
+        </div>
+        <div className="hidden w-32 sm:block">
+          <SearchableSelect
+                className="h-10 w-full rounded-xl border-border bg-background"
                 options={[
                   { value: "newest", label: t("sortNewest") },
                   { value: "oldest", label: t("sortOldest") },
@@ -933,14 +906,23 @@ export default function EmployerApplicationsPage() {
                 placeholder={t("sortLabel")}
                 ariaLabel={t("sortLabel")}
               />
-              <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm">
-                <Filter className="mr-2 h-3.5 w-3.5" />
-                {t("filters")}
-                {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0) && (
-                  <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[11px]">Active</Badge>
-                )}
-              </Button>
-              <Button
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowFilters(!showFilters)}
+          aria-expanded={showFilters}
+          aria-label={t("filters")}
+          className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${showFilters ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
+        >
+          <Filter className="h-4 w-4 sm:me-2" aria-hidden="true" />
+          <span className="hidden sm:inline">{t("filters")}</span>
+          {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0) && (
+            <span className="ms-1.5 inline-flex h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
+          )}
+        </Button>
+        <div className="hidden sm:block">
+          <Button
                 size="sm"
                 variant="outline"
                 className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-10 rounded-xl border-status-selected/20 bg-status-selected-bg px-3 text-sm text-emerald-700 hover:bg-status-selected-bg" : "h-10 rounded-xl border-border bg-background/80 px-3 text-sm"}
@@ -949,7 +931,14 @@ export default function EmployerApplicationsPage() {
                 <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
                 {t("highMatch")}
               </Button>
-          </div>
+        </div>
+        <TableToolbar
+          className="ms-auto"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+      </div>
 
           {/* Selected job info strip */}
           {selectedJob && (
@@ -994,7 +983,42 @@ export default function EmployerApplicationsPage() {
           )}
 
       {showFilters && (
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-3xl border border-border/60 bg-background/60 sm:gap-4 lg:grid-cols-4 card-pad">
+        <section className="workspace-panel-surface rounded-2xl panel-body">
+          {/* Phones only: the controls that sit in the toolbar from sm */}
+          <div className="mb-3 grid gap-2 sm:hidden">
+            <SearchableSelect
+                className="h-11 w-full rounded-xl border-border bg-background/70"
+                options={[
+                  { value: "all", label: t("allStatuses") },
+                  ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
+                ]}
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                placeholder={t("allStatuses")}
+              />
+            <SearchableSelect
+                className="h-11 w-full rounded-xl border-border bg-background/70"
+                options={[
+                  { value: "newest", label: t("sortNewest") },
+                  { value: "oldest", label: t("sortOldest") },
+                  { value: "score", label: t("sortScore") },
+                ]}
+                value={sortOption}
+                onValueChange={(v) => setSortOption(v as typeof sortOption)}
+                placeholder={t("sortLabel")}
+                ariaLabel={t("sortLabel")}
+              />
+            <Button
+                size="sm"
+                variant="outline"
+                className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-11 rounded-xl border-status-selected/20 bg-status-selected-bg px-3 text-sm text-emerald-700 hover:bg-status-selected-bg" : "h-11 rounded-xl border-border bg-background/80 px-3 text-sm"}
+                onClick={() => setScoreRange(scoreRange[0] === 70 && scoreRange[1] === 100 ? [0, 100] : [70, 100])}
+              >
+                <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                {t("highMatch")}
+              </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           {/* AI Score Range */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
@@ -1140,8 +1164,8 @@ export default function EmployerApplicationsPage() {
             </div>
           )}
         </div>
+        </section>
       )}
-      </section>
 
       {canUpdate && selected.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-sky-500/20 bg-sky-500/10 text-sky-800 card-pad">
@@ -1330,6 +1354,49 @@ export default function EmployerApplicationsPage() {
         className={isWide && detailPanel ? "grid grid-cols-[minmax(0,1fr)_minmax(480px,600px)] items-start gap-4" : ""}
       >
         <div className="min-w-0 space-y-3">
+          {/* Selection row — bulk list actions and the counts for this page.
+              Phones: three text-only chips share the row (icons return from sm). */}
+          {canUpdate && (
+            <div className="flex flex-wrap items-center gap-2 [&>button]:min-w-0">
+              {/* Privacy info at the point candidate data is shown — same spot as on Candidates. */}
+              <CandidateDataNotice variant="candidateList" compact />
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs font-medium sm:min-h-0 sm:flex-none sm:px-3"
+              onClick={toggleAll}
+              disabled={!filteredApplications.length}
+            >
+              {allVisibleSelected ? <CheckSquare className="me-2 hidden h-3.5 w-3.5 text-status-applied sm:block" /> : <Square className="me-2 hidden h-3.5 w-3.5 text-muted-foreground sm:block" />}
+              {allVisibleSelected ? t("clearVisible") : t("selectVisible")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs sm:min-h-0 sm:flex-none sm:px-3"
+              disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
+              onClick={handleBulkAiMatch}
+            >
+              <Sparkles className={`me-2 hidden h-3.5 w-3.5 sm:block ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
+              {bulkMatchProgress
+                ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
+                : t("scoreAll")}
+            </Button>
+            <Button
+              size="sm"
+              className="min-h-11 flex-1 justify-center rounded-xl bg-emerald-700 px-2 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:flex-none sm:px-3"
+              disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
+              onClick={handleAutoShortlist}
+            >
+              <CheckCheck className="me-2 hidden h-3.5 w-3.5 sm:block" />
+              {t("shortlistTop")}
+            </Button>
+          
+              <span className="ms-auto hidden text-xs text-muted-foreground lg:inline">
+                {isLoading ? "—" : highMatchCount} {t("highMatch")} · {isLoading ? "—" : interviewCount} {t("interviews")} · {isLoading ? "—" : selectedStageCount} {t("selected")}
+              </span>
+            </div>
+          )}
           {applicationsQuery.isError ? (
             <div className="workspace-panel-surface rounded-3xl px-6 py-16 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-status-rejected-bg text-rose-500">
@@ -1379,6 +1446,7 @@ export default function EmployerApplicationsPage() {
             onOpenScorecard={canUpdate ? handleOpenScorecard : undefined}
             onOpenTimeline={openTimeline}
             onScheduleInterview={canUpdate ? openInterviewModal : undefined}
+            onMessageCandidate={messageCandidate}
             onViewCv={(app) => setViewingCv(buildViewingCv(app))}
             onViewDocument={(app, url) => setViewingCv(buildViewingCv(app, url))}
             onCreateOffer={canUpdate ? (app) => setOfferModal({ appId: app._id }) : undefined}
@@ -1805,6 +1873,7 @@ function ApplicationDetailsPanel({
   onOpenScorecard,
   onOpenTimeline,
   onScheduleInterview,
+  onMessageCandidate,
   onViewCv,
   onViewDocument,
   onCreateOffer,
@@ -1821,6 +1890,7 @@ function ApplicationDetailsPanel({
   onOpenScorecard?: (data: { applicationId: string }) => void;
   onOpenTimeline?: (appId: string, candidateName?: string) => void;
   onScheduleInterview?: (app: Applicant) => void;
+  onMessageCandidate?: (app: Applicant) => void;
   onViewCv?: (app: Applicant) => void;
   onViewDocument?: (app: Applicant, url: string) => void;
   onCreateOffer?: (app: Applicant) => void;
@@ -1828,6 +1898,8 @@ function ApplicationDetailsPanel({
   getCandidateName: (app: Applicant) => string;
 }) {
   const [mounted, setMounted] = useState(false);
+  const messageRecipientId =
+    typeof app.jobSeekerId?.userId === "object" ? app.jobSeekerId.userId?._id ?? "" : "";
   const [nextStage, setNextStage] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [statusPending, setStatusPending] = useState(false);
@@ -2070,6 +2142,15 @@ function ApplicationDetailsPanel({
               <Button variant="outline" size="sm" className="rounded-lg border-border px-3 text-sm" onClick={() => onScheduleInterview(app)}>
                 <Calendar className="me-1.5 h-3.5 w-3.5" />
                 {t("scheduleInterview")}
+              </Button>
+            ) : null}
+            {onMessageCandidate && messageRecipientId ? (
+              // The panel could draft an email but not send a message, so the
+              // one-line reply meant leaving the pipeline and finding the
+              // person again in Messages.
+              <Button variant="outline" size="sm" className="rounded-lg border-border px-3 text-sm" onClick={() => onMessageCandidate(app)}>
+                <MessageSquare className="me-1.5 h-3.5 w-3.5" />
+                {t("messageCandidate")}
               </Button>
             ) : null}
             <AIEmailDraftButton

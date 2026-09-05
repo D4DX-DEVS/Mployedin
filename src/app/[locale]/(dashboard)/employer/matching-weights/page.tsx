@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { useState, useEffect } from "react";
 import { Sliders, Save, RotateCcw, Loader2, CheckCircle, BookTemplate, Copy } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -132,9 +132,9 @@ export default function EmployerMatchingWeightsPage() {
   return (
     <FeatureGate feature="matchingWeightCustomization">
     <div className="page-container">
-      <PageHeader
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
         actions={
           /* One row. Phones use a shorter label rather than a squeezed pill —
              the full text in a flex-1 button spilled outside its own pill. */

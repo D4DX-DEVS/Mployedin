@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import connectDB from "@/lib/db/mongoose";
 import WorkflowTemplate from "@/models/WorkflowTemplate";
 import Employer from "@/models/Employer";
@@ -71,4 +72,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 }
 
 export const GET = withAuth(getHandler, { resource: "employers", action: "read" });
-export const POST = withAuth(postHandler, { resource: "employers", action: "update" });
+// Listing stays open (system templates feed the job form); authoring a custom
+// template is the `workflowCustomization` entitlement.
+export const POST = withAuth(
+  withSubscription(postHandler, { type: "toggle", feature: "workflowCustomization" }),
+  { resource: "employers", action: "update" },
+);

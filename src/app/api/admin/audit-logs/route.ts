@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import AuditLog from "@/models/AuditLog";
+import User from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { getSuperAgentTeamUserIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
@@ -23,6 +24,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const country = searchParams.get("country") ?? "";
   const from = searchParams.get("from") ?? "";
   const to = searchParams.get("to") ?? "";
+  /* `search` (actor name or email) and `actorRole` came from the separate
+     activity-timeline page, which read this same AuditLog collection through a
+     second endpoint. Neither filter set was a superset of the other, so
+     "everything user X did last week" needed both pages: one had the name
+     search, the other had the date range. */
+  const search = searchParams.get("search")?.trim() ?? "";
+  const actorRole = searchParams.get("actorRole") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -34,6 +42,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.createdAt = {};
     if (from) query.createdAt.$gte = new Date(from);
     if (to) query.createdAt.$lte = new Date(to + "T23:59:59.999Z");
+  }
+  if (actorRole) query.actorRole = actorRole;
+  if (search) {
+    const rx = new RegExp(escapeRegex(search), "i");
+    const matchingUsers = await User.find({ $or: [{ name: rx }, { email: rx }] })
+      .select("_id")
+      .limit(100)
+      .lean();
+    // No match must mean "no rows", never "every row".
+    query.actorId = { $in: matchingUsers.map((user) => user._id) };
   }
 
   // super_agent: restrict to their own + effective-scope agents' actions.
@@ -49,6 +67,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         );
       }
       query.actorId = actorId;
+    } else if (search) {
+      // Intersect the name search with the team scope — a super-agent must not
+      // widen their view by searching for someone outside it.
+      const searched = (query.actorId as { $in?: unknown[] } | undefined)?.$in ?? [];
+      const teamIds = new Set(teamUserIds.map(String));
+      query.actorId = { $in: searched.filter((id) => teamIds.has(String(id))) };
     } else {
       query.actorId = { $in: teamUserIds };
     }

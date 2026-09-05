@@ -19,7 +19,6 @@ const STATUS_COLORS: Record<string, string> = {
   paused: "bg-sky-100 text-sky-700 border-sky-200",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-red-100 text-red-700 border-red-200",
-  pending_approval: "bg-blue-100 text-blue-700 border-blue-200",
 };
 
 export default function AgentJobDetailPage() {

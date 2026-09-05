@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import CareerPage from "@/models/CareerPage";
 import Employer from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -94,5 +95,8 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler, { resource: "employers", action: "update" });
-export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });
+// Building or editing the branded page is the `brandedCompanyPage` entitlement.
+// Reading it, and the public /[slug] render of an already-published page, stay open.
+const BRANDED_PAGE_GATE = { type: "toggle", feature: "brandedCompanyPage" } as const;
+export const POST = withAuth(withSubscription(postHandler, BRANDED_PAGE_GATE), { resource: "employers", action: "update" });
+export const PATCH = withAuth(withSubscription(patchHandler, BRANDED_PAGE_GATE), { resource: "employers", action: "update" });

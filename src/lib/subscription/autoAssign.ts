@@ -6,6 +6,7 @@
  */
 
 import connectDB from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import SubscriptionPlan from "@/models/SubscriptionPlan";
 import Subscription from "@/models/Subscription";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
@@ -24,7 +25,16 @@ export async function autoAssignDefaultPlan(
     isActive: true,
   }).lean();
 
-  if (!plan) return; // No default plan configured — grace period covers the user
+  if (!plan) {
+    // Not an error for the user (the grace period covers them), but a fresh
+    // environment with no seeded catalogue used to look identical to a healthy
+    // one. Surface it — /api/admin/system-health reports the same condition.
+    logger.warn(
+      { userId, targetRole },
+      "[subscription] No active default plan for role — registration auto-assign skipped. Run scripts/seed-subscription-plans.mjs.",
+    );
+    return;
+  }
 
   // Check if user already has an active subscription (shouldn't happen on signup, but guard)
   const existing = await Subscription.findOne({

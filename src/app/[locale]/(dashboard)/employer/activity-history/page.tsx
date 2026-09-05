@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import {
   History,
-  User,
   Globe,
   Calendar,
   ArrowUpRight,
@@ -21,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/ui/intlFormat";
 
@@ -166,72 +165,55 @@ export default function ActivityHistoryPage() {
 
   return (
     <div className="page-container">
-      {/* Hero + Filters Combined */}
-      <DashboardPageHeader
-        icon={History}
-        title={t("title")}
-        description={t("description")}
-        compact
-        compactOnMobile
-        // Phones: the lone "Total Entries" strip cost a full row for a number
-        // the pagination footer already reports.
-        metricsClassName="max-sm:hidden"
-        metrics={[
-          { label: t("totalEntries"), value: pagination.total, icon: History },
-        ]}
-      >
-          {/* Phones: both selects + Refresh share one row (labels hidden, the
-              select values already say All Actions / All Roles). */}
-          <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-border/50 pt-3 sm:gap-3">
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
-              <label className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">
-                {t("actionType")}
-              </label>
-              <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger className="w-full sm:w-[150px] rounded-xl h-9 text-sm" aria-label={t("actionType")}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("allActions")}</SelectItem>
-                  <SelectItem value="start">Session Start</SelectItem>
-                  <SelectItem value="exit">Session End</SelectItem>
-                  <SelectItem value="create">{t("created")}</SelectItem>
-                  <SelectItem value="update">{t("updated")}</SelectItem>
-                  <SelectItem value="delete">{t("deleted")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Pattern A (compact workspace): title + context; the filters sit in
+          a toolbar row beneath, like every other list page. The entry count
+          stays in the pagination footer, which already reports it. */}
+      <WorkspaceHeader title={t("title")} context={t("description")} />
 
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
-              <label className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">
-                {t("role")}
-              </label>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full sm:w-[150px] rounded-xl h-9 text-sm" aria-label={t("role")}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("allRoles")}</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="super_agent">Super Agent</SelectItem>
-                  <SelectItem value="agent">Agent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Phones: both selects + Refresh share one row (labels hidden, the
+          select values already say All Actions / All Roles). */}
+      <div className="workspace-toolbar">
+        <div className="min-w-0 flex-1 sm:flex-none">
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-full sm:w-[150px] h-11 rounded-xl text-sm sm:h-10" aria-label={t("actionType")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allActions")}</SelectItem>
+              <SelectItem value="start">Session Start</SelectItem>
+              <SelectItem value="exit">Session End</SelectItem>
+              <SelectItem value="create">{t("created")}</SelectItem>
+              <SelectItem value="update">{t("updated")}</SelectItem>
+              <SelectItem value="delete">{t("deleted")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl ml-auto h-9 shrink-0"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              aria-label={t("refresh")}
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5 sm:mr-1.5", refreshing && "animate-spin")} />
-              <span className="hidden sm:inline">{t("refresh")}</span>
-            </Button>
-          </div>
-      </DashboardPageHeader>
+        <div className="min-w-0 flex-1 sm:flex-none">
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-full sm:w-[150px] h-11 rounded-xl text-sm sm:h-10" aria-label={t("role")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allRoles")}</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="super_agent">Super Agent</SelectItem>
+              <SelectItem value="agent">Agent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          variant="outline"
+          className="ms-auto h-11 shrink-0 rounded-xl sm:h-10"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          aria-label={t("refresh")}
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5 sm:mr-1.5", refreshing && "animate-spin")} />
+          <span className="hidden sm:inline">{t("refresh")}</span>
+        </Button>
+      </div>
 
       {/* Activity List */}
       <section className="space-y-3">

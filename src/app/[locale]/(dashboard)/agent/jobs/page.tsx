@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -87,9 +88,11 @@ export default function AgentJobsPage() {
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [employerFilter, setEmployerFilter] = useState("all");
+  // Filters live in the query string so a filtered view of this list is an
+  // address the dashboard, a badge or the palette can link to.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "");
+  const [employerFilter, setEmployerFilter] = useUrlFilter("employerId", "all");
 
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
 
@@ -211,7 +214,6 @@ export default function AgentJobsPage() {
     active: t("statuses.active"),
     closed: t("statuses.closed"),
     expired: t("statuses.expired"),
-    pending_approval: t("statuses.pending"),
     paused: t("statuses.paused"),
   };
 

@@ -8,6 +8,7 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,8 +44,6 @@ interface Job {
   employerId?: { _id?: string; companyName?: string; country?: string; industry?: string };
   agentId?: { _id?: string; userId?: { _id?: string; name?: string; email?: string }; superAgentId?: { _id?: string; userId?: { name?: string } } };
   status: string;
-  poster?: { approvalStatus?: string };
-  approvalStatus?: string;
   category?: string;
   location?: string | { isRemote?: boolean; city?: string; country?: string };
   salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean };
@@ -152,8 +151,14 @@ export default function AdminJobsPage() {
   const [serverApplicants, setServerApplicants] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  // Filters address the view. Before this, no admin list except applications
+  // read anything from the query string, so a dashboard alert, a quick action
+  // or a shared link could not open a filtered list, and Back from a job
+  // returned an unfiltered one.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [status, setStatus] = useUrlFilter("status", "all");
+  /** "none" — jobs with no applications, the dashboard's demand alert. */
+  const [applicationsFilter, setApplicationsFilter] = useUrlFilter("applications", "all");
   const [showFilters, setShowFilters] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -161,18 +166,22 @@ export default function AdminJobsPage() {
 
   const [employers, setEmployers] = useState<FilterOption[]>([]);
   const [agents, setAgents] = useState<FilterOption[]>([]);
-  const [selectedEmployer, setSelectedEmployer] = useState("all");
-  const [selectedAgent, setSelectedAgent] = useState("all");
-  const [workMode, setWorkMode] = useState("all");
-  const [employmentType, setEmploymentType] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [skillsFilter, setSkillsFilter] = useState("");
+  const [selectedEmployer, setSelectedEmployer] = useUrlFilter("employerId", "all");
+  const [selectedAgent, setSelectedAgent] = useUrlFilter("agentId", "all");
+  const [workMode, setWorkMode] = useUrlFilter("workMode", "all");
+  const [employmentType, setEmploymentType] = useUrlFilter("employmentType", "all");
+  const [locationFilter, setLocationFilter] = useUrlFilter("location", "", { debounceMs: 400 });
+  const [skillsFilter, setSkillsFilter] = useUrlFilter("skills", "", { debounceMs: 400 });
 
   const [aiQuery, setAiQuery] = useState("");
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  /* ?job=<id> opens that job's detail dialog. ⌘K entity results need an address
+     for a single record; admin had none, which is why the palette withheld
+     entity search from this role entirely. */
+  const [deepLinkedJobId, setDeepLinkedJobId] = useUrlFilter("job", "");
 
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
@@ -213,6 +222,7 @@ export default function AdminJobsPage() {
       if (employmentType !== "all") params.set("employmentType", employmentType);
       if (locationFilter) params.set("location", locationFilter);
       if (skillsFilter) params.set("skills", skillsFilter);
+      if (applicationsFilter === "none") params.set("applications", "none");
 
       const res = await fetch(`/api/admin/jobs?${params}`);
       if (!res.ok) throw new Error(t("jobLoadFailed"));
@@ -229,9 +239,19 @@ export default function AdminJobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, status, selectedEmployer, selectedAgent, workMode, employmentType, locationFilter, skillsFilter, page, limit, updateTotal]);
+  }, [search, status, selectedEmployer, selectedAgent, workMode, employmentType, locationFilter, skillsFilter, applicationsFilter, page, limit, updateTotal]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  // Open the deep-linked job once the list it belongs to has loaded.
+  useEffect(() => {
+    if (!deepLinkedJobId) return;
+    const match = jobs.find((job) => job._id === deepLinkedJobId);
+    if (match) {
+      setSelectedJob(match);
+      setDeepLinkedJobId("");
+    }
+  }, [deepLinkedJobId, jobs, setDeepLinkedJobId]);
 
   const handleDeleteJob = async (jobId: string) => {
     if (!confirm(t("deleteConfirmation"))) return;
@@ -248,7 +268,7 @@ export default function AdminJobsPage() {
   const draftJobs = statusCounts.draft ?? jobs.filter((j) => j.status === "draft").length;
   const totalApplicants = serverApplicants ?? jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
 
-  const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter;
+  const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter || applicationsFilter !== "all";
 
   const statusOptionsList = getStatusOptions(t);
   const workModeOptionsList = getWorkModeOptions(t);
@@ -263,6 +283,7 @@ export default function AdminJobsPage() {
     employmentType !== "all" ? { key: "type", label: employmentTypeOptionsList.find((o) => o.value === employmentType)?.label ?? employmentType, clear: () => setEmploymentType("all") } : null,
     locationFilter ? { key: "location", label: locationFilter, clear: () => setLocationFilter("") } : null,
     skillsFilter ? { key: "skills", label: skillsFilter, clear: () => setSkillsFilter("") } : null,
+    applicationsFilter === "none" ? { key: "applications", label: t("filterChipNoApplications"), clear: () => setApplicationsFilter("all") } : null,
   ].filter((chip): chip is { key: string; label: string; clear: () => void } => chip !== null);
   const activeFilterCount = activeFilterChips.length;
 
@@ -292,6 +313,7 @@ export default function AdminJobsPage() {
     setEmploymentType("all");
     setLocationFilter("");
     setSkillsFilter("");
+    setApplicationsFilter("all");
     setAiQuery("");
     setAiSummary(null);
     resetPage();

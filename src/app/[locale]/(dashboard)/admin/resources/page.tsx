@@ -159,7 +159,7 @@ export default function AdminResourcesPage() {
       formFiles.forEach((f) => fd.append("files", f));
       const res = await csrfFetch("/api/resources", { method: "POST", body: fd });
       if (res.ok) { toast.success(t("created")); resetForm(); fetchItems(); }
-      else { const err = await res.json(); toast.error(err.error ?? "Failed"); }
+      else { const err = await res.json(); toast.error(err.error ?? t("actionFailed")); }
     } catch { toast.error(t("createError")); }
   };
 
@@ -175,7 +175,7 @@ export default function AdminResourcesPage() {
       formFiles.forEach((f) => fd.append("files", f));
       const res = await csrfFetch(`/api/resources/${editingId}`, { method: "PATCH", body: fd });
       if (res.ok) { toast.success(t("updated")); resetForm(); fetchItems(); }
-      else { const err = await res.json(); toast.error(err.error ?? "Failed"); }
+      else { const err = await res.json(); toast.error(err.error ?? t("actionFailed")); }
     } catch { toast.error(t("updateError")); }
   };
 

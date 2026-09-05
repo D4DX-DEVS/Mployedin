@@ -10,12 +10,14 @@ describe("withoutBottomTabItems", () => {
       [
         item("Dashboard", "/en/employer"),
         item("Jobs", "/en/employer/jobs"),
-        item("Interviews", "/en/employer/interviews"),
+        item("Applications", "/en/employer/applications"),
         item("Calendar", "/en/employer/calendar"),
       ],
       "employer",
       "en"
     );
+    // Messages is no longer a tab — it is a header control at every width — so
+    // it is no longer pruned from the drawer either.
     expect(kept.map((i) => i.title)).toEqual(["Calendar"]);
   });
 
@@ -51,8 +53,10 @@ describe("withoutBottomTabItems", () => {
     expect(kept[0].children?.map((c) => c.title)).toEqual(["Employers"]);
   });
 
-  it("leaves roles without a bottom tab bar untouched", () => {
-    const items = [item("Dashboard", "/en/job-seeker")];
-    expect(withoutBottomTabItems(items, "job_seeker", "en")).toBe(items);
+  it("leaves a role with no bottom tab bar untouched", () => {
+    // Every role in WORKSPACE_BOTTOM_NAV_TABS now has tabs, so this pins the
+    // fall-through for a role that is absent from the map entirely.
+    const items = [item("Dashboard", "/en/unknown")];
+    expect(withoutBottomTabItems(items, "not_a_role", "en")).toBe(items);
   });
 });

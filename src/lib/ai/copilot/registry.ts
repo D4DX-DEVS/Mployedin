@@ -3,6 +3,7 @@ import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import { jobSeekerTools } from "./tools/jobSeeker";
 import { employerTools } from "./tools/employer";
 import { agentTools } from "./tools/agent";
+import { agentWorkTools } from "./tools/agentWork";
 import { superAgentTools } from "./tools/superAgent";
 import { adminTools } from "./tools/admin";
 import { sharedTools } from "./tools/shared";
@@ -14,6 +15,7 @@ export const ALL_TOOLS: CopilotTool<any>[] = [
   ...jobSeekerTools,
   ...employerTools,
   ...agentTools,
+  ...agentWorkTools,
   ...superAgentTools,
   ...adminTools,
   ...sharedTools,

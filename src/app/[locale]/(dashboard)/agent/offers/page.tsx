@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { useTableExport } from "@/hooks/useTableExport";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
@@ -70,10 +71,13 @@ interface OfferItem {
   }>;
 }
 
-interface Filters {
+// A type alias rather than an interface: useUrlFilters constrains its generic
+// to Record<string, string>, which an interface cannot satisfy without an
+// explicit index signature.
+type Filters = {
   search: string;
   status: string;
-}
+};
 
 const INITIAL_FILTERS: Filters = { search: "", status: "all" };
 
@@ -86,7 +90,12 @@ export default function AgentOffersPage() {
   const locale = useLocale();
   const [offers, setOffers] = useState<OfferItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  // Filters mirror into the query string: "offers awaiting a response" is a
+  // dashboard queue row and a ⌘K action, and both need a URL to point at.
+  const { filters, setFilter: updateFilter, resetFilters } = useUrlFilters<Filters>(
+    INITIAL_FILTERS,
+    { debounceKeys: ["search"] },
+  );
   const [stats, setStats] = useState({ total: 0, pending: 0, accepted: 0, declined: 0 });
   const [detailOffer, setDetailOffer] = useState<OfferItem | null>(null);
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
@@ -179,10 +188,6 @@ export default function AgentOffersPage() {
 
   useEffect(() => { fetchOffers(); }, [fetchOffers]);
 
-  const updateFilter = (key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    pagination.resetPage();
-  };
 
   const handleWithdraw = async (offerId: string) => {
     setWithdrawPending(true);
@@ -303,11 +308,17 @@ export default function AgentOffersPage() {
         icon={Gift}
         title={t("header.title")}
         description={t("header.description")}
+        // Each status cell is the filter it totals; "Pending 7" is how the agent
+        // gets to the seven offers still waiting on a candidate.
         metrics={[
-          { label: t("metrics.total"), value: stats.total, icon: Gift },
-          { label: t("status.pending"), value: stats.pending, icon: Clock },
-          { label: t("status.accepted"), value: stats.accepted, icon: CheckCircle2 },
-          { label: t("status.declined"), value: stats.declined, icon: XCircle },
+          { label: t("metrics.total"), value: stats.total, icon: Gift,
+            onClick: () => updateFilter("status", "all"), active: filters.status === "all" },
+          { label: t("status.pending"), value: stats.pending, icon: Clock,
+            onClick: () => updateFilter("status", filters.status === "pending" ? "all" : "pending"), active: filters.status === "pending" },
+          { label: t("status.accepted"), value: stats.accepted, icon: CheckCircle2,
+            onClick: () => updateFilter("status", filters.status === "accepted" ? "all" : "accepted"), active: filters.status === "accepted" },
+          { label: t("status.declined"), value: stats.declined, icon: XCircle,
+            onClick: () => updateFilter("status", filters.status === "declined" ? "all" : "declined"), active: filters.status === "declined" },
         ]}
       />
 
@@ -325,7 +336,7 @@ export default function AgentOffersPage() {
             />
           </div>
           <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
-          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}>
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={resetFilters}>
             <RotateCcw className="me-1 h-4 w-4" /> {t("actions.reset")}
           </Button>
           {!loading && offers.length > 0 && (

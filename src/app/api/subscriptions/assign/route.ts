@@ -127,6 +127,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     type: "new",
     planName: plan.name,
     description: `New subscription: ${plan.name} (${plan.billingCycle})`,
+    // Invoice.pre("save") derives totalAmount/amount from subtotal — passing only
+    // `amount` left every admin-issued subscription invoice at 0.00.
+    subtotal: plan.price,
     amount: plan.price,
     currency: plan.currency,
     billingCycle: plan.billingCycle,

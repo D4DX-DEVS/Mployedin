@@ -112,7 +112,6 @@ const baseJob = {
   showSalary: true,
   vacancies: 2,
   createdAt: "2026-04-13T00:00:00.000Z",
-  "poster.approvalStatus": "approved" as const,
 };
 
 // TODO: Tests need updating after page refactor - filter labels changed
@@ -203,7 +202,6 @@ describe.skip("EmployerJobsPage", () => {
     render(<EmployerJobsPage />);
 
     await user.selectOptions(screen.getByLabelText("All statuses"), "draft");
-    await user.selectOptions(screen.getByLabelText("All approvals"), "pending");
     await user.selectOptions(screen.getByLabelText("All work modes"), "remote");
     await user.selectOptions(screen.getByLabelText("All salary visibility"), "hidden");
     await user.type(screen.getByPlaceholderText("Filter by location"), "Dubai");
@@ -211,7 +209,6 @@ describe.skip("EmployerJobsPage", () => {
 
     await waitFor(() => expect(useJobsMock).toHaveBeenLastCalledWith(expect.objectContaining({
       status: "draft",
-      approvalStatus: "pending",
       workMode: "remote",
       location: "Dubai",
       skills: ["React", "Node.js"],

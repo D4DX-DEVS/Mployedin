@@ -18,6 +18,9 @@ const paginationParamsMock = jest.fn(() => new URLSearchParams({ page: "1", limi
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
   useRouter: () => ({ push: pushMock }),
+  // The page seeds its search box from `?search=` so the ⌘K palette can deep
+  // link into a filtered list.
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 jest.mock("framer-motion", () => ({

@@ -8,12 +8,27 @@ import { usePagination } from "@/hooks/usePagination";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  RotateCcw, CalendarDays, Inbox,
-  Eye, FileText, Download, Building2,
-  CreditCard, CheckCircle2, Clock, AlertTriangle, Send,
-  Banknote, Receipt, ExternalLink,
-  MessageSquareWarning, ShieldCheck, Zap, Smartphone,
-  Globe, HelpCircle, ReceiptText,
+  RotateCcw,
+  Inbox,
+  Eye,
+  FileText,
+  Download,
+  Building2,
+  CreditCard,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Send,
+  Banknote,
+  Receipt,
+  ExternalLink,
+  MessageSquareWarning,
+  ShieldCheck,
+  Zap,
+  Smartphone,
+  Globe,
+  HelpCircle,
+  ReceiptText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +42,7 @@ import {
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import type { ExportColumn } from "@/lib/export";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -855,15 +870,16 @@ export default function EmployerInvoicesPage() {
 
   return (
     <div className="page-container">
-      <PageHero
+      {/* Pattern A (compact workspace): title + the invoice count (with the
+          description from sm). The billing stat card it replaced said the
+          same number in a box of its own. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
-        icon={Building2}
-        actions={
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("employerBilling")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{t("invoiceCount", { count: total })}</p>
-          </div>
+        context={
+          <>
+            <span className="sm:hidden">{t("invoiceCount", { count: total })}</span>
+            <span className="hidden sm:inline">{t("description")} · {t("invoiceCount", { count: total })}</span>
+          </>
         }
       />
       <TableToolbar

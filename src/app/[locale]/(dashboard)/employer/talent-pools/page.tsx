@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +28,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import {
   Layers,
   Loader2,
@@ -111,6 +112,7 @@ function CandidateAvatar({ ref, size = "sm" }: { ref: PooledCandidateRef | null;
 }
 
 type SortKey = "updated" | "newest" | "count" | "name";
+const SORT_KEYS = ["updated", "newest", "count", "name"] as const;
 
 export default function EmployerTalentPoolsPage() {
   const t = useTranslations("talentPool");
@@ -118,8 +120,11 @@ export default function EmployerTalentPoolsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [activePoolId, setActivePoolId] = useState<string | null>(null);
   const [renamingPool, setRenamingPool] = useState<TalentPool | null>(null);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("updated");
+  const [search, setSearch] = useUrlFilter("q", "", { debounceMs: 400 });
+  const [sortBy, setSortBy] = useUrlFilter("sort", "updated", { allow: SORT_KEYS }) as [
+    SortKey,
+    (next: SortKey) => void,
+  ];
 
   const deletePool = useDeletePool();
   const { confirm, ConfirmDialogNode } = useConfirm();
@@ -166,48 +171,52 @@ export default function EmployerTalentPoolsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      <DashboardPageHeader
-        compact
-        icon={Layers}
+      {/* Pattern A (compact workspace): title, one context line, Create pool,
+          and the pool totals. The hook loads every pool, so these are
+          whole-library numbers rather than a page. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("subtitle")}
+        context={
+          <>
+            <span className="sm:hidden">{t("poolCount", { count: stats.totalPools })}</span>
+            <span className="hidden sm:inline">{t("subtitle")}</span>
+          </>
+        }
         actions={pools.length > 0 ? (
-          <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("createPool")}
+          <Button onClick={() => setCreateOpen(true)} aria-label={t("createPool")} className="rounded-xl px-3 sm:px-4">
+            <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("createPool")}</span>
           </Button>
         ) : undefined}
         metrics={pools.length > 0 ? [
-          { label: t("statPools"), value: stats.totalPools, icon: Layers },
-          { label: t("statCandidates"), value: stats.totalCandidates, icon: Users },
-          { label: t("statAddedThisMonth"), value: stats.addedThisMonth, icon: Plus },
+          { label: t("statPools"), value: stats.totalPools, icon: Layers, tone: "primary" },
+          { label: t("statCandidates"), value: stats.totalCandidates, icon: Users, tone: "success" },
+          { label: t("statAddedThisMonth"), shortLabel: t("statAddedThisMonthShort"), value: stats.addedThisMonth, icon: Plus, tone: "info" },
         ] : undefined}
       />
 
       {pools.length > 0 && (
-        <section className="workspace-panel-surface rounded-2xl panel-body">
+        <div className="workspace-toolbar">
           {/* Search + sort share one row on phones too. */}
-          <div className="flex flex-row items-center gap-2 sm:gap-3">
-            <div className="relative min-w-0 flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("searchPools")} className="pl-9" />
-            </div>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-              <SelectTrigger className="w-[10.5rem] shrink-0 sm:w-[200px]" aria-label={t("sortBy")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated">{t("sortRecentlyUpdated")}</SelectItem>
-                <SelectItem value="newest">{t("sortNewest")}</SelectItem>
-                <SelectItem value="count">{t("sortMostCandidates")}</SelectItem>
-                <SelectItem value="name">{t("sortAlphabetical")}</SelectItem>
-              </SelectContent>
-            </Select>
-            {/* Privacy info at the point candidate data is shown, compacted to
-                an icon + popover to keep the list above the fold. */}
-            <CandidateDataNotice variant="candidateList" compact />
+          <div className="workspace-toolbar-search basis-0 sm:basis-64">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("searchPools")} className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10" />
           </div>
-        </section>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+            <SelectTrigger className="h-11 w-[10.5rem] shrink-0 rounded-xl sm:h-10 sm:w-[200px]" aria-label={t("sortBy")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updated">{t("sortRecentlyUpdated")}</SelectItem>
+              <SelectItem value="newest">{t("sortNewest")}</SelectItem>
+              <SelectItem value="count">{t("sortMostCandidates")}</SelectItem>
+              <SelectItem value="name">{t("sortAlphabetical")}</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* Privacy info at the point candidate data is shown, compacted to
+              an icon + popover to keep the list above the fold. */}
+          <CandidateDataNotice variant="candidateList" compact />
+        </div>
       )}
 
       {isLoading ? (

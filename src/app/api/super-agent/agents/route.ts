@@ -5,6 +5,7 @@ import User from "@/models/User";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import Lead from "@/models/Lead";
+import Placement from "@/models/Placement";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { z } from "zod";
@@ -71,6 +72,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .select("agentId status convertedAt activityLog createdAt")
     .lean();
 
+  // Get placement counts per agent — Placement.agentId references Agent doc _id
+  const placementStats = await Placement.aggregate([
+    { $match: { agentId: { $in: agentDocIds } } },
+    { $group: { _id: "$agentId", count: { $sum: 1 } } },
+  ]);
+  const placementsByAgentId = new Map(
+    placementStats.map((stat: { _id: unknown; count: number }) => [String(stat._id), stat.count])
+  );
+
   let items = users.map((u) => {
     const agentDocId = userToAgentMap.get(u._id.toString());
     const agentProfile = userToAgentProfileMap.get(u._id.toString());
@@ -98,7 +108,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       currencyCode: agentProfile?.currencyCode ?? "AED",
       leadsCount: agentLeads.length,
       conversions: converted,
-      placements: 0, // would come from Placement model
+      placements: placementsByAgentId.get(agentDocId ?? "") ?? 0,
       conversionRate: agentLeads.length > 0 ? Math.round((converted / agentLeads.length) * 100) : 0,
       avgResponseHours,
     };

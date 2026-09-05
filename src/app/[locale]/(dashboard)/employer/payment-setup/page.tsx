@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  CreditCard, Shield, CheckCircle2, AlertTriangle, Lock,
-  Building2, Banknote, Zap,
+  CreditCard,
+  Shield,
+  Lock,
+  Banknote,
+  Zap,
 } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 /* ------------------------------------------------------------------ */
@@ -91,15 +94,17 @@ export default function EmployerPaymentSetupPage() {
   return (
     <div className="page-container">
       {/* Hero */}
-      <DashboardPageHeader
-        icon={CreditCard}
+      {/* Pattern A (compact workspace): title, one context line, and the
+          gateway state as the header status instead of a summary card. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("subtitle")}
-        summary={{
-          label: connected ? t("statusConnected") : t("statusDisconnected"),
-          value: connected ? t("statusConnected") : t("statusDisconnected"),
-          note: connected ? t("statusConnectedDesc") : t("statusDisconnectedDesc"),
-        }}
+        context={t("subtitle")}
+        status={
+          <>
+            <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
+            {connected ? t("statusConnected") : t("statusDisconnected")}
+          </>
+        }
       />
 
       {/* Gateway Selection */}

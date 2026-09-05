@@ -61,4 +61,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   });
 
   return NextResponse.json({ ok: true });
-}, { resource: "users", action: "read" });
+}, { resource: "agents", action: "read" });
+// Guard was users:read, which super_agent never holds — insight 👍/👎 feedback
+// 403'd for its only intended caller. Matches the GET /api/super-agent/insights
+// guard (agents:read); middleware limits the namespace to super_agent|admin.

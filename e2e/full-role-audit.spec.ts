@@ -22,7 +22,7 @@ const ROLES: RoleDef[] = [
     home: "/admin",
     pages: [
       "/admin", "/admin/activity-timeline", "/admin/agents", "/admin/analytics", "/admin/applications",
-      "/admin/approvals", "/admin/audit", "/admin/audit-logs", "/admin/bulk-import", "/admin/cms",
+      "/admin/audit", "/admin/audit-logs", "/admin/bulk-import", "/admin/cms",
       "/admin/cms/banners", "/admin/cms/blogs", "/admin/cms/contact-submissions", "/admin/cms/faqs",
       "/admin/cms/static-pages", "/admin/cms/static-pages/new", "/admin/cms/testimonials", "/admin/cms/videos",
       "/admin/commissions", "/admin/commissions-report", "/admin/communications", "/admin/employers",
@@ -48,7 +48,7 @@ const ROLES: RoleDef[] = [
     password: "SuperAgent@1234",
     home: "/super-agent",
     pages: [
-      "/super-agent", "/super-agent/agents", "/super-agent/applications", "/super-agent/approvals",
+      "/super-agent", "/super-agent/agents", "/super-agent/applications",
       "/super-agent/commissions", "/super-agent/commissions-report", "/super-agent/employers",
       "/super-agent/exhibitions", "/super-agent/exhibitions/analytics", "/super-agent/insights",
       "/super-agent/interviews", "/super-agent/invoices", "/super-agent/invoices/new", "/super-agent/jobs",

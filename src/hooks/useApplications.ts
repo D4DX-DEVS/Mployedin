@@ -17,6 +17,8 @@ export interface ApplicationsFilters {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   fetchJobs?: boolean;
+  /** Employer only: per-status totals for the whole job scope (header strip). */
+  fetchCounts?: boolean;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -49,6 +51,7 @@ export function useApplications(filters: ApplicationsFilters) {
       if (filters.sortBy) params.set("sortBy", filters.sortBy);
       if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
       if (filters.fetchJobs) params.set("fetchJobs", "true");
+      if (filters.fetchCounts) params.set("fetchCounts", "true");
       const res = await fetch(`/api/applications?${params}`);
       if (!res.ok) throw new Error("Failed to fetch applications");
       return res.json();

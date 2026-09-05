@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { PlatformDataTabs } from "@/components/features/admin/PlatformDataTabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -157,6 +158,7 @@ export default function CountriesPage() {
 
   return (
     <div className="page-container">
+      <PlatformDataTabs />
       {ConfirmDialogNode}
 
       {/* Employer listing shape: compact hero, then one panel holding search,

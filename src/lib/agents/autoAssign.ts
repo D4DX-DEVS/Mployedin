@@ -50,7 +50,7 @@ export async function autoAssignAgent(
     {
       $match: {
         agentId: { $in: agentIds },
-        status: { $in: ["draft", "active", "pending_approval"] },
+        status: { $in: ["draft", "active"] },
       },
     },
     { $group: { _id: "$agentId", count: { $sum: 1 } } },

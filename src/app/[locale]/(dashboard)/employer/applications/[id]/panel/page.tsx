@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/ui/intlFormat";
 
@@ -170,7 +170,7 @@ export default function HiringPanelPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <PageHeader title={t("title")} description={t("loading")} />
+        <WorkspaceHeader title={t("title")} context={t("loading")} />
         <div className="space-y-3 sm:space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="card-base h-24 animate-pulse" />
@@ -182,9 +182,9 @@ export default function HiringPanelPage() {
 
   return (
     <div className="page-container max-w-5xl">
-      <PageHeader
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description", { count: scorecards.length })}
+        context={t("description", { count: scorecards.length })}
       />
 
       {/* ── Consensus Summary ─────────────────────────────────────── */}

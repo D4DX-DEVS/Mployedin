@@ -95,7 +95,6 @@ function minimizeJob(value: unknown): unknown {
     "applicationMode",
     "matchScore",
     "matchedSkills",
-    "approvalStatus",
     "applicantsCount",
     "applicationCount",
   ];
@@ -385,7 +384,7 @@ export function registerMcpTools(server: McpServer) {
       title: "List accessible job postings",
       description: "Use this when an employer, agent, super agent, or admin wants job postings within their current role and team scope.",
       inputSchema: {
-        status: z.enum(["active", "draft", "closed", "expired", "pending_approval", "paused"]).optional(),
+        status: z.enum(["active", "draft", "closed", "expired", "paused"]).optional(),
         search: z.string().max(500).optional(),
         page: z.number().int().min(1).optional(),
         limit: z.number().int().min(1).max(50).optional(),

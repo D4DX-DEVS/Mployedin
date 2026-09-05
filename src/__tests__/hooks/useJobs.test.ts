@@ -142,7 +142,6 @@ describe("useJobs", () => {
         limit: 10,
         myJobs: true,
         status: "draft",
-        approvalStatus: "pending",
         workMode: "remote",
         location: "Dubai",
         skills: ["React", "Node.js"],
@@ -154,7 +153,7 @@ describe("useJobs", () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalled());
     const url: string = mockFetch.mock.calls[0][0];
     expect(url).toContain("status=draft");
-    expect(url).toContain("approvalStatus=pending");
+    expect(url).not.toContain("approvalStatus");
     expect(url).toContain("workMode=remote");
     expect(url).toContain("location=Dubai");
     expect(url).toContain("skills=React%2CNode.js");

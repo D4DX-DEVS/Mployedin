@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -44,11 +45,13 @@ export default function AgentPlacementsPage() {
   const pagination = usePagination();
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  // Filters live in the query string so a filtered view of this list is an
+  // address the dashboard, a badge or the palette can link to.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
+  const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
+  const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
 
   // Build STATUS_OPTIONS dynamically with translations
   const STATUS_OPTIONS = [

@@ -43,7 +43,17 @@ interface SearchableSelectProps {
   listClassName?: string;
   /** Content rendered below the list (e.g. result count) */
   footerContent?: React.ReactNode;
+  /**
+   * Show the search box. Left unset, it appears only when the list is long
+   * enough to be worth filtering (or when search is controlled by the caller,
+   * i.e. results come from the server). Short lists — sort orders, status
+   * filters — get a plain menu instead of a search field nobody types in.
+   */
+  searchable?: boolean;
 }
+
+/** Below this many options, scrolling beats typing — hide the search box. */
+const SEARCH_THRESHOLD = 8;
 
 export function SearchableSelect({
   options,
@@ -64,6 +74,7 @@ export function SearchableSelect({
   modal: modalProp = false,
   listClassName,
   footerContent,
+  searchable,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [internalSearchValue, setInternalSearchValue] = React.useState("");
@@ -71,6 +82,7 @@ export function SearchableSelect({
   const triggerLabel = selectedLabel || placeholder;
   const isSearchControlled = searchValue !== undefined;
   const resolvedSearchValue = isSearchControlled ? searchValue : internalSearchValue;
+  const showSearch = searchable ?? (isSearchControlled || options.length >= SEARCH_THRESHOLD);
 
   const handleSearchValueChange = React.useCallback((nextValue: string) => {
     if (!isSearchControlled) {
@@ -139,12 +151,16 @@ export function SearchableSelect({
         }}
       >
         <Command>
-          <CommandInput
-            placeholder={searchPlaceholder}
-            className="h-9"
-            value={resolvedSearchValue}
-            onValueChange={handleSearchValueChange}
-          />
+          {/* Kept mounted when hidden: cmdk routes arrow/enter keys through the
+              focused input, so removing it would break keyboard navigation. */}
+          <div className={cn(!showSearch && "sr-only")}>
+            <CommandInput
+              placeholder={searchPlaceholder}
+              className="h-9 searchable-select-search"
+              value={resolvedSearchValue}
+              onValueChange={handleSearchValueChange}
+            />
+          </div>
           <CommandList className={cn("max-h-[300px] overflow-y-auto", listClassName)}>
             <CommandEmpty>{loading ? loadingMessage : emptyMessage}</CommandEmpty>
             <CommandGroup>

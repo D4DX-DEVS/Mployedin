@@ -307,6 +307,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Admins are told about every registration, referred or not — a super-agent
+    // only ever hears about their own network's.
+    {
+      const { notifyAdminsEmployerRegistered } = await import("@/lib/notifications/trigger");
+      notifyAdminsEmployerRegistered(companyName || "A company", String(employer._id)).catch((err) =>
+        logger.error({ err, employerId: String(employer._id) }, "Failed to notify admins of employer registration"),
+      );
+    }
+
     // Auto-create CompanyUser with owner role
     await CompanyUser.create({
       companyId: employer._id,

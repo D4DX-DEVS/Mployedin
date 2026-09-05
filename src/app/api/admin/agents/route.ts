@@ -263,7 +263,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       const saDoc = await SuperAgent.findById(superAgentId).select("userId").lean();
       if (saDoc?.userId) {
         const { notifySuperAgentAgentJoined } = await import("@/lib/notifications/trigger");
-        notifySuperAgentAgentJoined(String(saDoc.userId), name, String(user._id)).catch((err) => { logger.error({ err, agentId: String(user._id), superAgentId }, "Failed to send agent joined notification"); });
+        // The Agent document id is what /super-agent/agents/[id] resolves, so
+        // passing it lets the notification open the agent instead of the roster.
+        notifySuperAgentAgentJoined(String(saDoc.userId), name, String(user._id), undefined, String(agentDoc._id)).catch((err) => { logger.error({ err, agentId: String(user._id), superAgentId }, "Failed to send agent joined notification"); });
       }
     }
   } catch (err) {

@@ -9,6 +9,7 @@ import {
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentPageIntro, SuperAgentSection,
@@ -36,7 +37,7 @@ interface ApplicationItem {
   source?: string;
 }
 
-interface Filters {
+interface Filters extends Record<string, string> {
   search: string;
   status: string;
   agent: string;
@@ -64,10 +65,14 @@ export default function SuperAgentApplicationsPage() {
   const t = useTranslations("superAgentApplications");
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [agentOptions, setAgentOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allAgentsPlaceholder") }]);
   const [stats, setStats] = useState({ total: 0, shortlisted: 0, hired: 0, conversionRate: 0 });
   const pagination = usePagination();
+
+  const { filters, setFilter, resetFilters } = useUrlFilters(
+    INITIAL_FILTERS,
+    { debounceKeys: ["search"], debounceMs: 400 }
+  );
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -95,14 +100,9 @@ export default function SuperAgentApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, pagination.page, pagination.limit]);
+  }, [filters, pagination.page, pagination.limit, t, pagination]);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
-
-  const updateFilter = (key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    pagination.resetPage();
-  };
 
   const metrics = [
     { label: t("metrics.totalApplications"), value: stats.total, icon: FileText },
@@ -127,13 +127,13 @@ export default function SuperAgentApplicationsPage() {
             type="text"
             placeholder={t("searchPlaceholder")}
             value={filters.search}
-            onChange={(e) => updateFilter("search", e.target.value)}
+            onChange={(e) => setFilter("search", e.target.value)}
             className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-border bg-card text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           {(filters.search || filters.status !== "all" || filters.agent !== "all") && (
             <button
               type="button"
-              onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
+              onClick={() => { resetFilters(); pagination.resetPage(); }}
               className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all max-sm:min-h-11"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -146,14 +146,14 @@ export default function SuperAgentApplicationsPage() {
           <SearchableSelect
             options={getStatusOptions(t)}
             value={filters.status}
-            onValueChange={(v) => updateFilter("status", v)}
+            onValueChange={(v) => { setFilter("status", v); pagination.resetPage(); }}
             placeholder={t("statusPlaceholder")}
             className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
           />
           <SearchableSelect
             options={agentOptions}
             value={filters.agent}
-            onValueChange={(v) => updateFilter("agent", v)}
+            onValueChange={(v) => { setFilter("agent", v); pagination.resetPage(); }}
             placeholder={t("allAgentsPlaceholder")}
             className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
           />

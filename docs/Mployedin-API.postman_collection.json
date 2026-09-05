@@ -109,11 +109,6 @@
       "key": "templateId",
       "value": "",
       "type": "string"
-    },
-    {
-      "key": "approvalId",
-      "value": "",
-      "type": "string"
     }
   ],
   "auth": {
@@ -717,7 +712,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/api/admin/jobs?page=1&limit=20&status=active&approvalStatus=pending&search=&employerId=&agentId=",
+                  "raw": "{{baseUrl}}/api/admin/jobs?page=1&limit=20&status=active&search=&employerId=&agentId=",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -740,10 +735,6 @@
                       "value": "active"
                     },
                     {
-                      "key": "approvalStatus",
-                      "value": "pending"
-                    },
-                    {
                       "key": "search",
                       "value": ""
                     },
@@ -758,36 +749,6 @@
                   ]
                 },
                 "description": "List all jobs with admin filters"
-              }
-            },
-            {
-              "name": "Approve/Reject Job",
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/api/admin/jobs/{{jobId}}/approve",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "admin",
-                    "jobs",
-                    "{{jobId}}",
-                    "approve"
-                  ]
-                },
-                "description": "Approve or reject a job posting",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"action\": \"approve\",\n  \"notes\": \"Approved\"\n}"
-                }
               }
             }
           ]
@@ -4566,84 +4527,6 @@
               ]
             },
             "description": "List all scheduled interviews"
-          }
-        },
-        {
-          "name": "List Approvals",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/super-agent/approvals",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "super-agent",
-                "approvals"
-              ]
-            },
-            "description": "Pending items requiring approval"
-          }
-        },
-        {
-          "name": "Approval Count",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/super-agent/approvals/count",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "super-agent",
-                "approvals",
-                "count"
-              ]
-            },
-            "description": "Quick count of pending approvals"
-          }
-        },
-        {
-          "name": "Process Approval",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/super-agent/approvals/{{approvalId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "super-agent",
-                "approvals",
-                "{{approvalId}}"
-              ]
-            },
-            "description": "Approve or reject a pending item",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"action\": \"approve\",\n  \"notes\": \"Verified and approved\"\n}"
-            }
           }
         },
         {

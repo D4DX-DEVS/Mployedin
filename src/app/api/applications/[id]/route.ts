@@ -310,6 +310,17 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result: Record<string, any> = { ...application };
 
+  // Candidates never see recruiter-internal fields. The list handler already
+  // strips these for job_seeker (handlers.ts .select("-employerNotes ...")), but
+  // this detail route returned the raw document — leaking employer/agent notes,
+  // the rejection reason, AI match gaps and the internal notes thread to the
+  // applicant. aiMatchScore stays: the seeker UI renders it.
+  if (ctx.role === "job_seeker") {
+    for (const key of ["employerNotes", "agentNotes", "rejectionReason", "matchStrengths", "matchGaps", "matchBreakdown", "notes"]) {
+      delete result[key];
+    }
+  }
+
   if (includes.includes("interviews")) {
     const Interview = (await import("@/models/Interview")).default;
     result.interviews = await Interview.find({ applicationId: params?.id })

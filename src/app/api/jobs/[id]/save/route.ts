@@ -35,15 +35,37 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
     return NextResponse.json({ saved: false });
   }
 
-  // Only allow saving active, approved jobs
-  const job = await Job.findById(jobId).select("status poster.approvalStatus").lean();
+  // Only allow saving active jobs
+  const job = await Job.findById(jobId).select("status").lean();
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
-  if (job.status !== "active" || job.poster?.approvalStatus !== "approved") {
+  if (job.status !== "active") {
     return NextResponse.json({ error: "Job is not available" }, { status: 400 });
   }
 
   await SavedJob.create({ jobSeekerId: seeker._id, jobId, savedAt: new Date() });
   return NextResponse.json({ saved: true }, { status: 201 });
+});
+
+/**
+ * GET /api/jobs/[id]/save — is this job already saved by the caller?
+ *
+ * Without this the save control had no way to know its own state, so a job the
+ * seeker had already saved rendered as unsaved and the first tap un-saved it.
+ * Returns { saved: boolean }.
+ */
+export const GET = withAuth(async (_req: NextRequest, ctx, params) => {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  if (ctx.role !== "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await connectDB();
+
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  if (!seeker) return NextResponse.json({ saved: false });
+
+  const existing = await SavedJob.exists({ jobSeekerId: seeker._id, jobId: params!.id });
+  return NextResponse.json({ saved: Boolean(existing) });
 });

@@ -4,14 +4,14 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity, Calculator, FileBarChart } from "lucide-react";
+import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity, Calculator, FileBarChart, Info } from "lucide-react";
 import Link from "next/link";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import {
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useTeam, useInviteTeamMember, useUpdateTeamMember, useRemoveTeamMember } from "@/hooks/useTeam";
+import { TEAM_INVITE_ENABLED } from "@/lib/features/teamFeature";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { CompanyRole, MemberStatus, TeamMember } from "@/hooks/useTeam";
@@ -202,26 +203,40 @@ export default function TeamManagementPage() {
       {/* Header */}
       {/* compactOnMobile: the description ("N active members") repeats the
           Active stat card right below the hero. */}
-      <PageHero
-        icon={Users}
+      {/* Pattern A (compact workspace): title, the member line, two actions
+          that go icon-only on phones so they share the title row. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={pendingCount > 0 ? t("descriptionWithPending", { activeCount, pendingCount }) : t("descriptionActiveOnly", { activeCount })}
-        compactOnMobile
+        context={pendingCount > 0 ? t("descriptionWithPending", { activeCount, pendingCount }) : t("descriptionActiveOnly", { activeCount })}
         actions={
-          <div className="flex items-center gap-2">
-            <Link href={`/${locale}/employer/team/activity-logs`}>
-              <Button variant="outline" size="sm">
-                <Activity className="h-4 w-4 me-2" />
-                {t("activityLogs")}
-              </Button>
-            </Link>
-            <Button onClick={() => setShowInviteModal(true)}>
-              <Plus className="h-4 w-4 me-2" />
-              {t("inviteMember")}
+          <>
+            <Button asChild variant="outline" className="rounded-xl px-3 sm:px-4">
+              <Link href={`/${locale}/employer/team/activity-logs`} aria-label={t("activityLogs")}>
+                <Activity className="h-4 w-4 sm:me-2" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("activityLogs")}</span>
+              </Link>
             </Button>
-          </div>
+            {TEAM_INVITE_ENABLED && (
+              <Button onClick={() => setShowInviteModal(true)} aria-label={t("inviteMember")} className="rounded-xl px-3 sm:px-4">
+                <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("inviteMember")}</span>
+              </Button>
+            )}
+          </>
         }
       />
+
+      {/* The invite endpoint answers 501 while membership is parked, so the page
+          says so instead of leaving a missing button unexplained. */}
+      {!TEAM_INVITE_ENABLED && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/40">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">{t("parkedTitle")}</p>
+            <p className="text-sm text-amber-900/80 dark:text-amber-200/80">{t("parkedDescription")}</p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Row — phones: three cards across one row (value over label,
           icon hidden) instead of three full-width stacked rows. */}
@@ -268,10 +283,12 @@ export default function TeamManagementPage() {
               {t("empty.description")}
             </p>
           </div>
-          <Button onClick={() => setShowInviteModal(true)} className="mt-1">
-            <Plus className="h-4 w-4 me-2" />
-            {t("empty.cta")}
-          </Button>
+          {TEAM_INVITE_ENABLED && (
+            <Button onClick={() => setShowInviteModal(true)} className="mt-1">
+              <Plus className="h-4 w-4 me-2" />
+              {t("empty.cta")}
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

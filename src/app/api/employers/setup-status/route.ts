@@ -4,11 +4,18 @@ import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import Job from "@/models/Job";
 import logger from "@/lib/logger";
+import {
+  setupStepHref,
+  type SetupStepId,
+} from "@/components/features/employer/SetupGuide/setupSteps";
 
+/**
+ * Labels are resolved client-side from `employerSetupGuide.steps.*`; this route
+ * returns only ids, links and completion so an Arabic employer does not get an
+ * English checklist.
+ */
 interface StepResult {
-  id: string;
-  label: string;
-  description: string;
+  id: SetupStepId;
   href: string;
   completed: boolean;
 }
@@ -36,6 +43,8 @@ export async function GET() {
       .select("requirements salary status")
       .lean();
 
+    const firstJobId = firstJob ? String(firstJob._id) : null;
+
     const hasJob = firstJob !== null;
 
     const hasProfile =
@@ -61,54 +70,25 @@ export async function GET() {
     const isPublished = firstJob?.status === "active";
 
     // Base steps everyone sees
+    const step = (id: SetupStepId, completed: boolean): StepResult => ({
+      id,
+      href: setupStepHref(id, firstJobId),
+      completed,
+    });
+
     const steps: StepResult[] = [
-      {
-        id: "company_profile",
-        label: "Complete Company Profile",
-        description: "Add company name, industry and contact email",
-        href: "/employer/settings?tab=profile&highlight=companyName",
-        completed: hasProfile,
-      },
-      {
-        id: "add_contact",
-        label: "Add Contact Details",
-        description: "Add your website and phone number",
-        href: "/employer/settings?tab=contact&highlight=website",
-        completed: hasContact,
-      },
-      {
-        id: "create_job",
-        label: "Create Your First Job",
-        description: "Post a job to start receiving applications",
-        href: "/employer/jobs/new",
-        completed: hasJob,
-      },
+      step("company_profile", hasProfile),
+      step("add_contact", hasContact),
+      step("create_job", hasJob),
     ];
 
-    // Only show job-detail steps once a job exists
+    // The job-detail steps need a job to point at, so they only appear once one
+    // exists — otherwise they would fall back to the bare job list.
     if (hasJob) {
       steps.push(
-        {
-          id: "add_requirements",
-          label: "Add Requirements & Skills",
-          description: "Define skills and experience needed for the role",
-          href: "/employer/jobs",
-          completed: hasRequirements,
-        },
-        {
-          id: "set_salary",
-          label: "Set Salary Range",
-          description: "Specify compensation to attract the right candidates",
-          href: "/employer/jobs",
-          completed: Boolean(hasSalary),
-        },
-        {
-          id: "publish_job",
-          label: "Review & Publish",
-          description: "Make your job live to start receiving applications",
-          href: "/employer/jobs",
-          completed: isPublished,
-        },
+        step("add_requirements", hasRequirements),
+        step("set_salary", Boolean(hasSalary)),
+        step("publish_job", isPublished),
       );
     }
 

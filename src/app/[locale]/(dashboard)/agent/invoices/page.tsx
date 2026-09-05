@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -66,9 +67,11 @@ export default function AgentInvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  // Filters live in the query string so a filtered view of this list is an
+  // address the dashboard, a badge or the palette can link to.
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "");
+  const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
+  const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
   const { displayCurrency } = useCurrencyPreference();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showBuilder, setShowBuilder] = useState(false);

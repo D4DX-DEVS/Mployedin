@@ -18,7 +18,13 @@ import type { UserRole } from "@/types/user";
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
 async function handler(_req: NextRequest, ctx: AuthCtx) {
-  if (!["admin", "super_agent"].includes(ctx.role)) {
+  // Every aggregation below is platform-wide (MRR, tier mix, revenue, counts
+  // by role) with no tenant scoping, and the guard is `subscriptions:read`,
+  // which super_agent holds — so admitting super_agent here handed a regional
+  // manager the whole platform's revenue. Restricted to admin for the same
+  // reason as /api/admin/subscription-dashboard; the only consumer is the
+  // admin subscriptions page.
+  if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

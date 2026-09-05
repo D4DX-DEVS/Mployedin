@@ -4,6 +4,9 @@ import connectDB from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
+import ConsentLog from "@/models/ConsentLog";
+import { getClientIp } from "@/lib/security/clientIp";
+import logger from "@/lib/logger";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 
@@ -93,6 +96,15 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
 
   await connectDB();
 
+  // Consent history for the GDPR register: remember the previous marketing
+  // consent so only real changes are logged (onboarding and profile edits
+  // both land here).
+  const requestedConsent = (seekerData as { marketingConsent?: boolean }).marketingConsent;
+  const previousConsent =
+    typeof requestedConsent === "boolean"
+      ? await JobSeeker.findOne({ userId: ctx.userId }).select("marketingConsent").lean<{ marketingConsent?: boolean } | null>()
+      : null;
+
   // Update User.name and User.phone if provided
   const userUpdate: Record<string, string> = {};
   if (name) userUpdate.name = name;
@@ -146,6 +158,17 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     { $set: jsUpdate },
     { upsert: true, returnDocument: "after" }
   );
+
+  if (typeof requestedConsent === "boolean" && previousConsent?.marketingConsent !== requestedConsent) {
+    await ConsentLog.create({
+      userId: ctx.userId,
+      userName: updated.fullName ?? name ?? "Unknown",
+      consentType: "marketing",
+      granted: requestedConsent,
+      source: "profile",
+      ipAddress: getClientIp(req.headers),
+    }).catch((err: unknown) => logger.warn({ err, userId: ctx.userId }, "[consent] failed to record marketing consent change"));
+  }
 
   await logActivity({
     actorId: ctx.userId,

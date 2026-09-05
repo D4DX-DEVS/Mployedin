@@ -11,8 +11,10 @@ import {
   ChevronRight,
   Eye,
   FileText,
+  Lightbulb,
   Loader2,
   MapPin,
+  MessageSquare,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -21,6 +23,7 @@ import {
   UserCircle,
   Wand2,
   X,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -55,6 +58,8 @@ type DashboardStats = {
   upcomingInterviews?: { count: number };
   savedJobs?: { count: number };
   recruiterViews?: { total: number };
+  pendingOffers?: { count: number };
+  unreadMessages?: { count: number };
 };
 
 type ProfileData = {
@@ -85,6 +90,33 @@ type SuggestionItem = {
   /** AI-fillable section id — when set, the suggestion can be auto-filled by AI */
   section?: "summary" | "skills" | "experience" | "education" | "languages";
   placeholder?: string;
+};
+
+type Priority = "urgent" | "medium" | "suggestion";
+
+/**
+ * Severity is carried in colour as well as in the label, so the ranking is
+ * legible at a glance. Every row previously wore one hardcoded "HIGH IMPACT"
+ * badge, which told the reader nothing.
+ */
+function severityBadgeClass(severity: Priority): string {
+  switch (severity) {
+    case "urgent":
+      return "bg-[hsl(var(--status-rejected-bg))] text-[hsl(var(--status-rejected))]";
+    case "medium":
+      return "bg-[hsl(var(--status-shortlisted-bg))] text-[hsl(var(--status-shortlisted))]";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
+
+type NextActionItem = {
+  title: string;
+  description: string;
+  href: string;
+  icon: LucideIcon;
+  badge: string;
+  severity: Priority;
 };
 
 /** Typed bundle passed from the server component for zero-waterfall hydration. */
@@ -210,6 +242,21 @@ export function JobSeekerHomePage({
     }
   };
 
+  // Handle onboarding drawer auto-open — independent of data loading
+  useEffect(() => {
+    try {
+      const seen = window.sessionStorage.getItem("job-seeker-home-guide-seen");
+      if (!seen) {
+        setGuideAnnouncement(t("announcements.guideOpened"));
+        setGuideOpen(true);
+        window.sessionStorage.setItem("job-seeker-home-guide-seen", "1");
+      }
+    } catch {
+      setGuideAnnouncement(t("announcements.guideOpened"));
+      setGuideOpen(true);
+    }
+  }, [t]);
+
   useEffect(() => {
     // SSR primed — skip the initial data fetch entirely
     if (initialData) {
@@ -271,22 +318,10 @@ export function JobSeekerHomePage({
 
     void load();
 
-    try {
-      const seen = window.sessionStorage.getItem("job-seeker-home-guide-seen");
-      if (!seen) {
-        setGuideAnnouncement(t("announcements.guideOpened"));
-        setGuideOpen(true);
-        window.sessionStorage.setItem("job-seeker-home-guide-seen", "1");
-      }
-    } catch {
-      setGuideAnnouncement(t("announcements.guideOpened"));
-      setGuideOpen(true);
-    }
-
     return () => {
       active = false;
     };
-  }, [initialData]);
+  }, [initialData, t]);
 
   // Fetch real AI insights (cached per day + completeness level in sessionStorage)
   useEffect(() => {
@@ -512,6 +547,9 @@ export function JobSeekerHomePage({
   }, [profile, t]);
   const applicationCount = stats?.applicationsSent?.count ?? 0;
   const interviewCount = stats?.upcomingInterviews?.count ?? 0;
+  const pendingOfferCount = stats?.pendingOffers?.count ?? 0;
+  const unreadMessageCount = stats?.unreadMessages?.count ?? 0;
+
   const quickLinks = [
     {
       label: t("quickAccess.applications"),
@@ -551,37 +589,79 @@ export function JobSeekerHomePage({
     countLabel: formatNumber(suggestions.length),
   });
   const firstSuggestion = suggestions[0];
-  const nextAction = interviewCount > 0
-    ? {
-        title: t("taskFirst.interviewTitle", { count: formatNumber(interviewCount) }),
-        description: t("taskFirst.interviewDescription"),
-        href: `/${locale}/job-seeker/interviews`,
-        icon: CalendarDays,
-        badge: t("taskFirst.timeSensitive"),
-      }
-    : firstSuggestion
-      ? {
-          title: firstSuggestion.title,
-          description: firstSuggestion.body,
-          href: `/${locale}/job-seeker/${firstSuggestion.href}`,
-          icon: Sparkles,
-          badge: t("taskFirst.highImpact"),
-        }
-      : applicationCount > 0
-        ? {
-            title: t("taskFirst.trackApplicationsTitle"),
-            description: t("taskFirst.trackApplicationsDescription"),
-            href: `/${locale}/job-seeker/applications`,
-            icon: FileText,
-            badge: t("taskFirst.keepMoving"),
-          }
-        : {
-            title: t("hero.browseMatchingJobs"),
-            description: t("taskFirst.browseDescription"),
-            href: `/${locale}/job-seeker/jobs`,
-            icon: Search,
-            badge: t("taskFirst.startHere"),
-          };
+
+  /**
+   * Everything currently waiting on the seeker, most urgent first.
+   *
+   * This used to be a single if/else that returned one action, so a pending
+   * offer hid an unconfirmed interview behind it and the seeker never learned
+   * the second thing existed. Building the full list and rendering the tail as
+   * secondary actions mirrors the employer's PriorityActions.
+   */
+  const rankedActions: NextActionItem[] = [];
+  if (pendingOfferCount > 0) {
+    rankedActions.push({
+      title: t("taskFirst.respondToOfferTitle", { count: formatNumber(pendingOfferCount) }),
+      description: t("taskFirst.respondToOfferDescription"),
+      href: `/${locale}/job-seeker/offers`,
+      icon: CheckCircle2,
+      badge: t("taskFirst.urgent"),
+      severity: "urgent",
+    });
+  }
+  if (interviewCount > 0) {
+    rankedActions.push({
+      title: t("taskFirst.interviewTitle", { count: formatNumber(interviewCount) }),
+      description: t("taskFirst.interviewDescription"),
+      href: `/${locale}/job-seeker/interviews`,
+      icon: CalendarDays,
+      badge: t("taskFirst.urgent"),
+      severity: "urgent",
+    });
+  }
+  if (unreadMessageCount > 0) {
+    rankedActions.push({
+      title: t("taskFirst.checkMessagesTitle", { count: formatNumber(unreadMessageCount) }),
+      description: t("taskFirst.checkMessagesDescription"),
+      href: `/${locale}/job-seeker/messages`,
+      icon: MessageSquare,
+      badge: t("taskFirst.medium"),
+      severity: "medium",
+    });
+  }
+  if (firstSuggestion) {
+    rankedActions.push({
+      title: firstSuggestion.title,
+      description: firstSuggestion.body,
+      href: `/${locale}/job-seeker/${firstSuggestion.href}`,
+      icon: Sparkles,
+      badge: t("taskFirst.suggestion"),
+      severity: "suggestion",
+    });
+  }
+  if (applicationCount > 0) {
+    rankedActions.push({
+      title: t("taskFirst.trackApplicationsTitle"),
+      description: t("taskFirst.trackApplicationsDescription"),
+      href: `/${locale}/job-seeker/applications`,
+      icon: FileText,
+      badge: t("taskFirst.suggestion"),
+      severity: "suggestion",
+    });
+  }
+  // A seeker with nothing pending and nothing applied still needs a first move.
+  if (rankedActions.length === 0) {
+    rankedActions.push({
+      title: t("hero.browseMatchingJobs"),
+      description: t("taskFirst.browseDescription"),
+      href: `/${locale}/job-seeker/jobs`,
+      icon: Search,
+      badge: t("taskFirst.suggestion"),
+      severity: "suggestion",
+    });
+  }
+  const nextAction = rankedActions[0];
+  const secondaryActions = rankedActions.slice(1, 3);
 
   const signals = quickLinks.map((item) => ({
     label: item.label,
@@ -611,13 +691,13 @@ export function JobSeekerHomePage({
               {/* Single row on phones: the primary CTA flexes, the two secondary
                   actions shrink to icon-sized pills so nothing wraps to line 3. */}
               <div className="flex items-center gap-2 sm:flex-wrap">
-                <Button asChild className="h-10 min-w-0 flex-1 rounded-full px-4 sm:h-11 sm:flex-none sm:px-5">
+                <Button asChild className="min-h-11 min-w-0 flex-1 rounded-full px-4 sm:flex-none sm:px-5">
                   <Link href={`/${locale}/job-seeker/jobs`}>
                     <Search className="me-2 h-4 w-4 shrink-0" />
                     <span className="truncate">{t("hero.browseMatchingJobs")}</span>
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="h-10 shrink-0 rounded-full px-3 sm:h-11 sm:px-5">
+                <Button asChild variant="outline" className="min-h-11 shrink-0 rounded-full px-3 sm:px-5">
                   <Link href={`/${locale}/job-seeker/preferences`} aria-label={t("hero.refine")}>
                     <SlidersHorizontal className="h-4 w-4 sm:me-2" />
                     <span className="hidden sm:inline">{t("hero.refine")}</span>
@@ -627,7 +707,7 @@ export function JobSeekerHomePage({
                   type="button"
                   onClick={openGuide}
                   aria-label={t("hero.aiSuggestions")}
-                  className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-border/70 px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:h-11 sm:border-0"
+                  className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-border/70 px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:border-0"
                 >
                   <Sparkles className="h-4 w-4" />
                   <span className="hidden sm:inline">{t("hero.aiSuggestions")}</span>
@@ -653,6 +733,27 @@ export function JobSeekerHomePage({
           icon={nextAction.icon}
           badge={nextAction.badge}
         />
+
+        {secondaryActions.length > 0 && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {secondaryActions.map((action) => {
+              const ActionIcon = action.icon;
+              return (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="flex min-h-11 items-center gap-3 rounded-2xl border border-border/70 bg-background px-3 py-2.5 transition-colors hover:border-primary/40 hover:bg-muted/40"
+                >
+                  <ActionIcon className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{action.title}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${severityBadgeClass(action.severity)}`}>
+                    {action.badge}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
         <DashboardSignalStrip headingId="job-seeker-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 
@@ -863,7 +964,7 @@ export function JobSeekerHomePage({
                     {t("priorityActions.description")}
                   </p>
                 </div>
-                <Button type="button" variant="outline" className="h-10 rounded-full px-5 sm:h-11" onClick={openGuide}>
+                <Button type="button" variant="outline" className="min-h-11 rounded-full px-5" onClick={openGuide}>
                   <Sparkles className="me-2 h-4 w-4" />
                   {t("priorityActions.openAiSuggestions")}
                 </Button>
@@ -871,32 +972,38 @@ export function JobSeekerHomePage({
 
               {suggestions.length > 0 ? (
                 <div className="space-y-3">
-                  {suggestions.map((item, index) => (
-                    <Link
-                      key={item.id}
-                      href={`/${locale}/job-seeker/${item.href}`}
-                      className="flex flex-col gap-3 sm:gap-4 rounded-lg sm:rounded-3xl border border-border/60 bg-background transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between card-pad"
-                    >
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-primary/[0.08] text-sm font-semibold text-primary">
-                          {formatNumber(index + 1)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-[15px] font-semibold text-foreground">{item.title}</div>
-                            <Badge className="rounded-full border border-border/60 bg-muted/20 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:bg-muted/20">
-                              {t("priorityActions.highImpact")}
-                            </Badge>
+                  {suggestions.map((item, index) => {
+                    // All suggestions get the "suggestion" severity badge styling
+                    const badgeBg = "bg-sky-100 dark:bg-sky-950/50";
+                    const badgeText = "text-sky-900 dark:text-sky-200";
+                    return (
+                      <Link
+                        key={item.id}
+                        href={`/${locale}/job-seeker/${item.href}`}
+                        className="flex flex-col gap-3 sm:gap-4 rounded-lg sm:rounded-3xl border border-border/60 bg-background transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between card-pad"
+                      >
+                        <div className="flex items-start gap-3 sm:gap-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-primary/[0.08] text-sm font-semibold text-primary">
+                            {formatNumber(index + 1)}
                           </div>
-                          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{item.body}</p>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="text-[15px] font-semibold text-foreground">{item.title}</div>
+                              <Badge className={cn("rounded-full border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] hover:opacity-80", badgeBg, badgeText)}>
+                                <Lightbulb className="me-1 inline h-3 w-3" />
+                                {t("taskFirst.suggestion")}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{item.body}</p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:shrink-0">
-                        {item.cta}
-                        <ArrowRight className="h-4 w-4" />
-                      </div>
-                    </Link>
-                  ))}
+                        <div className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:shrink-0">
+                          {item.cta}
+                          <ArrowRight className="h-4 w-4" />
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="dashboard-surface-success rounded-2xl border text-foreground sm:rounded-3xl panel-body">

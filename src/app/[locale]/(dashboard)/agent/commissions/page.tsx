@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,15 +52,16 @@ export default function AgentCommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [currencyFilter, setCurrencyFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  // Query-string filters: "unpaid commissions" is a view the dashboard and the
+  // ⌘K palette link to, so it needs an address of its own.
+  const [filter, setFilter] = useUrlFilter("status", "all");
+  const [typeFilter, setTypeFilter] = useUrlFilter("type", "all");
+  const [currencyFilter, setCurrencyFilter] = useUrlFilter("currency", "all");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
+  const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [currencyCode, setCurrencyCode] = useState("AED");
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const TYPE_OPTIONS = [
     { value: "all", label: t("typeFilterAll") },
@@ -136,10 +138,9 @@ export default function AgentCommissionsPage() {
 
   useEffect(() => { pagination.resetPage(); }, [filter, typeFilter, currencyFilter, search, dateFrom, dateTo]);
 
-  const handleSearchChange = (value: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setSearch(value), 400);
-  };
+  // useUrlFilter already debounces the write, and the returned value updates
+  // immediately, so the input can be controlled and the local timer is gone.
+  const handleSearchChange = (value: string) => setSearch(value);
 
   const clearFilters = () => {
     setFilter("all");
@@ -166,11 +167,17 @@ export default function AgentCommissionsPage() {
         description={t("pageDescription")}
         summary={{ label: t("ledgerLabel"), value: `${pagination.total} ${t("commissionRecords")}` }}
         compactMetrics
+        // Each cell filters to the status it totals, so "Pending 4,200" is the
+        // way into those commissions rather than a number to read and re-find.
         metrics={summary ? [
-          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), icon: Clock },
-          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), icon: TrendingUp },
-          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode), icon: DollarSign },
-          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode), icon: X },
+          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), icon: Clock,
+            onClick: () => setFilter(filter === "pending" ? "all" : "pending"), active: filter === "pending" },
+          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), icon: TrendingUp,
+            onClick: () => setFilter(filter === "approved" ? "all" : "approved"), active: filter === "approved" },
+          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode), icon: DollarSign,
+            onClick: () => setFilter(filter === "paid" ? "all" : "paid"), active: filter === "paid" },
+          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode), icon: X,
+            onClick: () => setFilter(filter === "disputed" ? "all" : "disputed"), active: filter === "disputed" },
         ] : undefined}
       />
 
@@ -184,12 +191,14 @@ export default function AgentCommissionsPage() {
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t("searchPlaceholder")}
-              defaultValue={search}
+              value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="h-10 rounded-xl border-border bg-secondary/65 ps-10 pe-10"
             />
+            {/* Controlled now that the value updates immediately, so clearing no
+                longer has to find the input by matching its placeholder text. */}
             {search && (
-              <button onClick={() => { setSearch(""); const el = document.querySelector<HTMLInputElement>(`[placeholder="${t("searchPlaceholder")}"]`); if (el) el.value = ""; }} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <button onClick={() => setSearch("")} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             )}

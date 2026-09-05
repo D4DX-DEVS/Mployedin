@@ -84,6 +84,15 @@ export async function POST(req: NextRequest) {
       ipAddress,
     });
 
+    // The contact inbox is the one queue with no owner: nothing told an admin
+    // an enquiry had landed, so it was found only by opening the page.
+    const { notifyAdminsContactSubmission } = await import("@/lib/notifications/trigger");
+    notifyAdminsContactSubmission(
+      name.trim(),
+      (subject ?? "").trim() || message.trim().slice(0, 60),
+      submission._id.toString(),
+    ).catch((err) => logger.error({ err }, "[Contact] Failed to notify admins of new submission"));
+
     await logActivity({
       action: "contact.submission_create",
       resource: "contact_submissions",

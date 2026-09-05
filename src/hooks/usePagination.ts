@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 
 const DEFAULT_PAGE_SIZE = 10;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -51,11 +52,14 @@ export function usePagination(initialLimit: number = DEFAULT_PAGE_SIZE): UsePagi
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Reads through `readQuery` rather than `window.location.search` so a filter
+  // write from useUrlFilter in the same tick is not overwritten — the browser
+  // has not necessarily applied it yet when this runs.
   const syncUrl = useCallback((nextPage: number, nextLimit: number) => {
-    const params = new URLSearchParams(window.location.search);
+    const params = readQuery();
     if (nextPage > 1) params.set("page", String(nextPage)); else params.delete("page");
     if (nextLimit !== DEFAULT_PAGE_SIZE) params.set("limit", String(nextLimit)); else params.delete("limit");
-    router.replace(`?${params.toString()}`, { scroll: false });
+    writeQuery(params, (href) => router.replace(href, { scroll: false }));
   }, [router]);
 
   const setPage = useCallback((p: number) => {

@@ -6,6 +6,7 @@ import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -31,7 +32,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useSearchParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
@@ -82,23 +83,16 @@ export default function AgentCandidatesPage() {
   const tconf = useTranslations("confirm");
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
-  const searchParams = useSearchParams();
-  const initialJobId = searchParams.get("jobId") ?? "";
-  const initialStatus = searchParams.get("status") ?? "";
-
   const pagination = usePagination();
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [jobIdFilter, setJobIdFilter] = useState(initialJobId);
+  // This page already read jobId and status from the URL on mount but then
+  // stopped writing them back, and search was never in the URL at all — so
+  // ⌘K's "candidates" hit had nowhere to send a name. All three round-trip now.
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "");
+  const [jobIdFilter, setJobIdFilter] = useUrlFilter("jobId", "");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 400);
-    return () => clearTimeout(t);
-  }, [search]);
 
   const loadApplications = useCallback(async () => {
     setLoading(true);
@@ -106,7 +100,7 @@ export default function AgentCandidatesPage() {
       const params = pagination.paginationParams();
       if (statusFilter) params.set("status", statusFilter);
       if (jobIdFilter) params.set("jobId", jobIdFilter);
-      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (search) params.set("search", search);
       const res = await fetch(`/api/applications?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -116,14 +110,14 @@ export default function AgentCandidatesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, jobIdFilter, debouncedSearch, pagination.page, pagination.limit]);
+  }, [statusFilter, jobIdFilter, search, pagination.page, pagination.limit]);
 
   useEffect(() => {
     const t = setTimeout(loadApplications, 300);
     return () => clearTimeout(t);
   }, [loadApplications]);
 
-  useEffect(() => { pagination.resetPage(); }, [statusFilter, jobIdFilter, debouncedSearch]);
+  useEffect(() => { pagination.resetPage(); }, [statusFilter, jobIdFilter, search]);
 
   // Scheduling dialog state
   const [scheduleApp, setScheduleApp] = useState<ApplicationItem | null>(null);

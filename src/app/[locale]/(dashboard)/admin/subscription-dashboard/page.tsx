@@ -9,6 +9,7 @@
  */
 
 import { AlertTriangle } from "lucide-react";
+import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useTranslations } from "next-intl";
 import { exportCSV } from "@/lib/export";
 import type { SubscriptionDashboardData } from "@/components/features/subscription-dashboard/useSubscriptionDashboard";
@@ -60,6 +61,7 @@ export default function AdminSubscriptionDashboardPage() {
   if (isLoading) {
     return (
       <div className="page-container">
+      <ReportTabs />
         <div className="h-32 animate-pulse rounded-3xl bg-background/70" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (

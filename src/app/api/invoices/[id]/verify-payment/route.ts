@@ -16,6 +16,7 @@ import {
   createCommissionRecordsForInvoice,
 } from "@/lib/invoices/commissionRecords";
 import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { isStaleInvoiceWrite, staleInvoiceResponse } from "@/lib/invoices/concurrency";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
 import logger from "@/lib/logger";
@@ -99,7 +100,15 @@ async function postHandler(
       invoice.markedPaidBy = ctx.userId as unknown as typeof invoice.markedPaidBy;
     }
 
-    await invoice.save();
+    // Version-checked: if another request already recorded a payment on this
+    // invoice, fail with 409 instead of stacking a second verified payment.
+    invoice.increment();
+    try {
+      await invoice.save();
+    } catch (err) {
+      if (isStaleInvoiceWrite(err)) return staleInvoiceResponse();
+      throw err;
+    }
 
     // Create + approve commissions for paid invoice
     if (invoice.status === "paid") {

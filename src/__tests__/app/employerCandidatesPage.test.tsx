@@ -18,10 +18,17 @@ const sessionStorageSetItemMock = jest.fn();
 
 global.fetch = mockFetch as unknown as typeof fetch;
 
+// The filters live in the query string, so `replace` has to actually move the
+// URL: a no-op mock leaves the shared query cache holding a write that never
+// lands, and the next test mounts with the previous test's filters applied.
+const replaceMock = jest.fn((href: string) => {
+  window.history.replaceState({}, "", href);
+});
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: pushMock, replace: jest.fn() }),
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
   useParams: () => ({ locale: "en" }),
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 jest.mock("sonner", () => ({
@@ -65,13 +72,14 @@ jest.mock("@/components/ui/input", () => ({
 }));
 
 jest.mock("@/components/ui/searchable-select", () => ({
-  SearchableSelect: ({ options, value, onValueChange, placeholder }: {
+  SearchableSelect: ({ options, value, onValueChange, placeholder, ariaLabel }: {
     options: Array<{ value: string; label: string }>;
     value: string;
     onValueChange: (value: string) => void;
     placeholder?: string;
+    ariaLabel?: string;
   }) => (
-    <select aria-label={placeholder} value={value} onChange={(event) => onValueChange(event.target.value)}>
+    <select aria-label={ariaLabel ?? placeholder} value={value} onChange={(event) => onValueChange(event.target.value)}>
       {options.map((option) => (
         <option key={option.value} value={option.value}>{option.label}</option>
       ))}
@@ -93,6 +101,8 @@ jest.mock("@/components/features/employer/SaveToPoolDialog", () => ({
 
 describe("EmployerCandidatesPage", () => {
   beforeEach(() => {
+    window.history.replaceState({}, "", "/en/employer/candidates");
+    replaceMock.mockClear();
     pushMock.mockReset();
     useCandidatesMock.mockReset();
     usePublishedJobsMock.mockReset();
@@ -396,7 +406,7 @@ describe("EmployerCandidatesPage", () => {
     await user.click(screen.getByRole("button", { name: /^filters$/i }));
     // The job selector now doubles as the AI-match comparison target; its
     // accessible name is its placeholder ("All"), not a dedicated label
-    expect(screen.getByLabelText("All")).toHaveValue("job-frontend");
+    expect(screen.getByLabelText("Benchmark job")).toHaveValue("job-frontend");
 
     await user.click(screen.getByRole("button", { name: /^save for review$/i }));
 
@@ -494,7 +504,7 @@ describe("EmployerCandidatesPage", () => {
     render(<EmployerCandidatesPage />);
 
     await user.click(screen.getByRole("button", { name: /^filters$/i }));
-    await user.selectOptions(screen.getByLabelText("All"), "job-frontend");
+    await user.selectOptions(screen.getByLabelText("Benchmark job"), "job-frontend");
     await waitFor(() => expect(useCandidatesMock).toHaveBeenLastCalledWith(expect.objectContaining({
       search: "",
       jobId: "job-frontend",

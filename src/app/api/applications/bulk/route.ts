@@ -21,6 +21,7 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import CommTemplate from "@/models/CommTemplate";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -107,8 +108,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   let emailSubjectOverride: string | undefined = params?.emailSubject as string | undefined;
   let emailBodyOverride: string | undefined = params?.emailBody as string | undefined;
 
-  // If a templateId was provided, load it
+  // If a templateId was provided, load it. Applying a saved template is the
+  // `commTemplates` entitlement in use — gate it here since this route is the
+  // one place templates are consumed outside their own CRUD endpoints.
   if (params?.templateId && !emailBodyOverride) {
+    const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "toggle", feature: "commTemplates" });
+    if (gateErr) return gateErr;
     const template = await CommTemplate.findById(params.templateId).lean() as {
       subject?: string; body?: string;
     } | null;

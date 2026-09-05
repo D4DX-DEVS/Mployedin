@@ -1,6 +1,7 @@
 /* Global mock for next-intl in Jest tests */
 import * as fs from "fs";
 import * as path from "path";
+import IntlMessageFormat from "intl-messageformat";
 
 // Load actual English translations
 let messages: Record<string, unknown> = {};
@@ -49,9 +50,18 @@ const useTranslations = (namespace?: string) => {
       text = keyToReadable(key);
     }
     if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        text = text!.replace(`{${k}}`, String(v));
-      });
+      // Real next-intl compiles ICU, so a plural or a select message has to be
+      // formatted here too. The old naive `{k}` replacement left
+      // "{count, plural, one {# thing} other {# things}}" on screen verbatim,
+      // which meant no test could assert on a pluralised string — it looked
+      // like a product bug and was a mock limitation.
+      try {
+        text = String(new IntlMessageFormat(text!, "en").format(params as never));
+      } catch {
+        Object.entries(params).forEach(([k, v]) => {
+          text = text!.replace(`{${k}}`, String(v));
+        });
+      }
     }
     return text;
   };

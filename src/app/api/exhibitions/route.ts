@@ -12,6 +12,7 @@ import ExhibitionRequest, {
 import Agent from "@/models/Agent";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { notifySuperAgentOfExhibition } from "@/lib/notifications/exhibitionNotify";
 
 async function getHandler(req: NextRequest, ctx: AuthContext) {
   await connectDB();
@@ -251,6 +252,18 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     status: initialStatus,
     statusHistory: [{ status: initialStatus, changedAt: new Date(), changedBy: ctx.userId }],
   });
+
+  // A submitted request is work waiting on the super-agent, so tell them.
+  // Fire-and-forget: a notification failure must not fail the submission.
+  if (initialStatus === "submitted" && agentProfile?.superAgentId) {
+    void notifySuperAgentOfExhibition(
+      String(agentProfile.superAgentId),
+      ctx.userId,
+      eventName.trim(),
+      String(exhibition._id),
+      ctx.locale,
+    );
+  }
 
   return NextResponse.json(exhibition, { status: 201 });
 }

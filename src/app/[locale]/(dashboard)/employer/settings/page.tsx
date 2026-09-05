@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { LogoUpload } from "@/components/features/employer/LogoUpload";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
@@ -27,6 +27,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
+import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 import { useTranslations } from "next-intl";
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -200,7 +201,7 @@ function CompanySettingsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
-  const [highlightField, setHighlightField] = useState<string | null>(null);
+  const highlightField = useFieldHighlight();
 
   const [form, setForm] = useState<FormData>(buildInitialForm());
   const initialFormRef = useRef<FormData>(buildInitialForm());
@@ -246,28 +247,12 @@ function CompanySettingsPage() {
     await deleteDocMutation.mutateAsync(url);
   };
 
-  // Handle query params from setup guide navigation (?tab=contact&highlight=website)
+  // ?tab= picks the section; ?highlight= scrolls to and flashes the control
+  // inside it (shared with the job form — see useFieldHighlight).
   useEffect(() => {
     const tab = searchParams.get("tab") as TabKey | null;
-    const highlight = searchParams.get("highlight");
     if (tab && ["profile", "contact", "hiring", "notifications", "account"].includes(tab)) {
       setActiveTab(tab);
-    }
-    if (highlight) {
-      setHighlightField(highlight);
-      // Scroll to and flash the highlighted field after a short delay
-      const timer = setTimeout(() => {
-        const el = document.querySelector(`[data-field="${highlight}"]`);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
-          setTimeout(() => {
-            el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
-            setHighlightField(null);
-          }, 3000);
-        }
-      }, 300);
-      return () => clearTimeout(timer);
     }
   }, [searchParams]);
 
@@ -406,7 +391,7 @@ function CompanySettingsPage() {
     <div className={`page-container${hasChanges ? " pb-20" : ""}`}>
       {ConfirmDialogNode}
       {/* â”€â”€ Page Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <PageHero icon={Building2} title={t("title")} description={t("description")} />
+      <WorkspaceHeader title={t("title")} context={t("description")} />
 
       {/* â”€â”€ Hero Identity Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.02] shadow-sm overflow-hidden">

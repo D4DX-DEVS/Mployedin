@@ -1,4 +1,5 @@
 "use client";
+import { useQueryFlag } from "@/hooks/useQueryFlag";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -15,6 +16,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentPageIntro,
@@ -41,7 +43,7 @@ interface Employer {
 }
 
 /* ── Filter types ── */
-interface Filters {
+interface Filters extends Record<string, string> {
   search: string;
   industry: string;
   location: string;
@@ -75,9 +77,13 @@ function countActiveFilters(f: Filters): number {
 export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const router = useRouter();
   const locale = useLocale();
+
+  const { filters, setFilter, resetFilters } = useUrlFilters(
+    INITIAL_FILTERS,
+    { debounceKeys: ["search"], debounceMs: 400 }
+  );
   const t = useTranslations("superAgentEmployers");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
@@ -103,7 +109,9 @@ export default function SuperAgentEmployersPage() {
   const [facets, setFacets] = useState<Facets>({ industries: [], locations: [] });
   const [serverStats, setServerStats] = useState<{ total: number; active: number; assigned: number } | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
-  const [onboardOpen, setOnboardOpen] = useState(false);
+  // Addressable as ?new=1: the global Create menu links straight to the
+  // onboarding modal, which previously opened only from this page's own button.
+  const [onboardOpen, setOnboardOpen] = useQueryFlag("new");
   const [referralDialogOpen, setReferralDialogOpen] = useState(false);
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [switchingEmployerId, setSwitchingEmployerId] = useState<string | null>(null);
@@ -178,26 +186,13 @@ export default function SuperAgentEmployersPage() {
     return () => clearTimeout(t);
   }, [loadEmployers]);
 
-  /* ── Filter helpers ── */
-  const updateFilter = useCallback((key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-    resetPage();
-  }, [resetPage]);
-
-  const resetFilters = useCallback(() => {
-    setFilters(INITIAL_FILTERS);
-    resetPage();
-  }, [resetPage]);
-
   /* ── Column sort ── */
   const toggleSort = useCallback((field: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      sortBy: field,
-      sortOrder: prev.sortBy === field && prev.sortOrder === "asc" ? "desc" : "asc",
-    }));
+    const newOrder = filters.sortBy === field && filters.sortOrder === "asc" ? "desc" : "asc";
+    setFilter("sortBy", field);
+    setFilter("sortOrder", newOrder);
     resetPage();
-  }, [resetPage]);
+  }, [filters.sortBy, filters.sortOrder, setFilter, resetPage]);
 
   const activeFilterCount = countActiveFilters(filters);
 
@@ -303,7 +298,7 @@ export default function SuperAgentEmployersPage() {
         {/* ── Search + Advanced Toggle via TableToolbar ── */}
         <TableToolbar
           search={filters.search}
-          onSearchChange={(v) => updateFilter("search", v)}
+          onSearchChange={(v) => { setFilter("search", v); resetPage(); }}
           searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
@@ -313,7 +308,7 @@ export default function SuperAgentEmployersPage() {
             (activeFilterCount > 0 || filters.search) ? (
               <button
                 type="button"
-                onClick={resetFilters}
+                onClick={() => { resetFilters(); resetPage(); }}
                 className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -330,7 +325,7 @@ export default function SuperAgentEmployersPage() {
                   <SearchableSelect
                     options={[{ value: "", label: t("allIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
                     value={filters.industry}
-                    onValueChange={(v) => updateFilter("industry", v)}
+                    onValueChange={(v) => { setFilter("industry", v); resetPage(); }}
                     placeholder={t("allIndustries")}
                     searchPlaceholder={t("searchIndustry")}
                     className="h-11 rounded-xl border-border bg-card"
@@ -343,7 +338,7 @@ export default function SuperAgentEmployersPage() {
                   <SearchableSelect
                     options={[{ value: "", label: t("allLocations") }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
                     value={filters.location}
-                    onValueChange={(v) => updateFilter("location", v)}
+                    onValueChange={(v) => { setFilter("location", v); resetPage(); }}
                     placeholder={t("allLocations")}
                     searchPlaceholder={t("searchLocation")}
                     className="h-11 rounded-xl border-border bg-card"
@@ -356,7 +351,7 @@ export default function SuperAgentEmployersPage() {
                   <SearchableSelect
                     options={statusOptions}
                     value={filters.status}
-                    onValueChange={(v) => updateFilter("status", v)}
+                    onValueChange={(v) => { setFilter("status", v); resetPage(); }}
                     placeholder={tc("all")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
@@ -368,7 +363,7 @@ export default function SuperAgentEmployersPage() {
                   <SearchableSelect
                     options={verifiedOptions}
                     value={filters.verified}
-                    onValueChange={(v) => updateFilter("verified", v)}
+                    onValueChange={(v) => { setFilter("verified", v); resetPage(); }}
                     placeholder={tc("all")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
@@ -380,7 +375,7 @@ export default function SuperAgentEmployersPage() {
                   <SearchableSelect
                     options={sortOptions}
                     value={filters.sortBy}
-                    onValueChange={(v) => updateFilter("sortBy", v)}
+                    onValueChange={(v) => { setFilter("sortBy", v); resetPage(); }}
                     placeholder={tc("name")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
@@ -395,7 +390,7 @@ export default function SuperAgentEmployersPage() {
                       { value: "desc", label: t("descending") },
                     ]}
                     value={filters.sortOrder}
-                    onValueChange={(v) => updateFilter("sortOrder", v)}
+                    onValueChange={(v) => { setFilter("sortOrder", v); resetPage(); }}
                     placeholder={t("ascending")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
@@ -406,11 +401,11 @@ export default function SuperAgentEmployersPage() {
               <div className="flex flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilters")}:</span>
                 {[
-                  { label: t("activeOnly"), action: () => updateFilter("status", "active") },
-                  { label: t("inactiveOnly"), action: () => updateFilter("status", "inactive") },
-                  { label: t("verifiedOnly"), action: () => updateFilter("verified", "verified") },
-                  { label: t("notVerifiedOnly"), action: () => updateFilter("verified", "unverified") },
-                  { label: t("newestFirst"), action: () => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); } },
+                  { label: t("activeOnly"), action: () => { setFilter("status", "active"); resetPage(); } },
+                  { label: t("inactiveOnly"), action: () => { setFilter("status", "inactive"); resetPage(); } },
+                  { label: t("verifiedOnly"), action: () => { setFilter("verified", "verified"); resetPage(); } },
+                  { label: t("notVerifiedOnly"), action: () => { setFilter("verified", "unverified"); resetPage(); } },
+                  { label: t("newestFirst"), action: () => { setFilter("sortBy", "createdAt"); setFilter("sortOrder", "desc"); resetPage(); } },
                 ].map((chip) => (
                   <button
                     key={chip.label}

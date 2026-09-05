@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useLocale, useTranslations } from "next-intl";
+import { PLATFORM_ALERT_ACTIONS } from "@/lib/admin/platformAlerts";
 import { PageHero } from "@/components/shared/PageHero";
 import Link from "next/link";
 import {
@@ -61,7 +63,10 @@ interface AlertItem {
    behind it rather than a finished sentence. The mapping lives here, spelled out
    per id so the keys stay statically greppable. An id this map doesn't know is
    skipped rather than rendered — next-intl throws on an unknown key.
-   `href` is where the admin acts on the finding; null renders a plain row. */
+   `href` is where the admin acts on the finding; null renders a plain row. The
+   paths come from the shared alert registry, so the link the dashboard uses and
+   the link this page uses are the same one — and both carry the filter that
+   narrows the destination to the rows the alert counted. */
 const ALERT_META: Record<string, {
   titleKey: string;
   descriptionKey: string;
@@ -72,25 +77,25 @@ const ALERT_META: Record<string, {
     titleKey: "alertJobsWithoutDemandTitle",
     descriptionKey: "alertJobsWithoutDemandDescription",
     Icon: Briefcase,
-    href: "/admin/jobs",
+    href: PLATFORM_ALERT_ACTIONS["jobs-without-applications"].path,
   },
   "stale-open-applications": {
     titleKey: "alertStaleApplicationsTitle",
     descriptionKey: "alertStaleApplicationsDescription",
     Icon: Clock3,
-    href: "/admin/applications",
+    href: PLATFORM_ALERT_ACTIONS["stale-open-applications"].path,
   },
   "zero-placement-momentum": {
     titleKey: "alertNoPlacementMomentumTitle",
     descriptionKey: "alertNoPlacementMomentumDescription",
     Icon: Target,
-    href: "/admin/placements",
+    href: PLATFORM_ALERT_ACTIONS["zero-placement-momentum"].path,
   },
   "demand-softening": {
     titleKey: "alertDemandSofteningTitle",
     descriptionKey: "alertDemandSofteningDescription",
     Icon: TrendingDown,
-    href: "/admin/applications",
+    href: PLATFORM_ALERT_ACTIONS["demand-softening"].path,
   },
   "platform-stable": {
     titleKey: "alertPlatformStableTitle",
@@ -346,6 +351,7 @@ export default function AdminReportsPage() {
 
   return (
     <div className="page-container">
+      <ReportTabs />
       <PageHero
         compact
         compactOnMobile

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -11,11 +12,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Copy, Trash2, Search, FileText, Inbox, Pencil, ArrowRight, Loader2,
+  Copy, Trash2, Search, FileText, Inbox, Pencil, ArrowRight, Loader2, Briefcase,
 } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { useConfirm } from "@/hooks/useConfirm";
 import {
   useJobTemplateLibrary,
@@ -116,23 +117,30 @@ export default function EmployerJobTemplatesPage() {
     <div className="page-container">
       {ConfirmDialogNode}
 
-      {/* Hero */}
-      <DashboardPageHeader
-        icon={FileText}
+      {/* Pattern A (compact workspace): title + the library size; the
+          search sits in the list toolbar like every other list page. */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
-        summary={{ label: t("totalTemplates"), value: total }}
-        compact
-        compactOnMobile
+        context={
+          <>
+            <span className="sm:hidden">{t("templateCount", { count: total })}</span>
+            <span className="hidden sm:inline">{t("description")} · {t("templateCount", { count: total })}</span>
+          </>
+        }
       />
 
-      {/* Search */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t("search")} value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" aria-label={t("search")} />
+      <div className="workspace-toolbar">
+        <div className="workspace-toolbar-search">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            placeholder={t("search")}
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
+            aria-label={t("search")}
+          />
         </div>
-      </section>
+      </div>
 
       {/* Template Grid — the items are cards themselves, so on phones the outer
           panel surface read as a card inside a card with double edges. Panel
@@ -163,6 +171,15 @@ export default function EmployerJobTemplatesPage() {
             <Inbox className="h-12 w-12 text-muted-foreground/40" />
             <p className="mt-4 text-sm font-medium text-muted-foreground">{t("noTemplates")}</p>
             <p className="mt-1 text-xs text-muted-foreground/70">{t("noTemplatesDesc")}</p>
+            {/* Templates are only created from an existing job, so the empty
+                state has to say where that happens instead of dead-ending. */}
+            <p className="mt-3 text-xs text-muted-foreground">{t("emptyCtaHint")}</p>
+            <Link href={`/${locale}/employer/jobs`} className="mt-3">
+              <Button variant="outline" size="sm">
+                <Briefcase className="h-4 w-4 me-2" />
+                {t("emptyCta")}
+              </Button>
+            </Link>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { StatusFilterStrip } from "@/components/shared/StatusFilterStrip";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
 import { DraftExtractionsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -34,7 +34,6 @@ import { formatCount } from "@/lib/ui/intlFormat";
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
   draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
-  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20",
   paused: "bg-status-applied-bg text-status-applied border-border",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
@@ -44,7 +43,6 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABEL_KEYS: Record<string, string> = {
   active: "statusLabelActive",
   draft: "statusLabelDraft",
-  pending_approval: "statusLabelPendingApproval",
   paused: "statusLabelPaused",
   closed: "statusLabelClosed",
   expired: "statusLabelExpired",
@@ -58,7 +56,6 @@ function getStatusLabelKey(status: string): string {
 const STATUS_TONES: Record<string, string> = {
   active: "workspace-tone-emerald",
   draft: "workspace-tone-amber",
-  pending_approval: "workspace-tone-sky",
   paused: "workspace-tone-sky",
   closed: "workspace-muted-pill",
   expired: "workspace-tone-rose",
@@ -170,6 +167,7 @@ export default function EmployerJobsPage() {
   const activeJobs = data?.statusCounts?.active ?? jobs.filter((job) => job.status === "active").length;
   const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
   const pausedJobs = data?.statusCounts?.paused ?? jobs.filter((job) => job.status === "paused").length;
+  const closedJobs = data?.statusCounts?.closed ?? jobs.filter((job) => job.status === "closed").length;
   const totalOpenings = data?.totalVacancies ?? jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
   const exportColumns: ExportColumn<ExportJobRecord>[] = [
     { header: t("exportTitleCol"), key: "title", formatter: (v) => String(v ?? "") },
@@ -387,88 +385,94 @@ export default function EmployerJobsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary sm:text-[11px]">{t("heroBadge")}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{t("heroTitle")}</h1>
-          <p className="mt-1 hidden max-w-2xl text-sm text-muted-foreground md:block">{t("heroSubtitle")}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <CopilotLauncher />
-          {jobs.length > 0 && (
-            <TableToolbar
-              className="shrink-0"
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          )}
-          {can("jobs", "create") ? (
-            <Button
-              onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
-              aria-label={t("postAJob")}
-              className="min-h-11 min-w-11 shrink-0 gap-2 rounded-xl bg-primary px-0 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("postAJob")}</span>
-            </Button>
-          ) : null}
-        </div>
-      </header>
+      {/* Pattern A (compact workspace): title, the openings line, the two
+          header actions, and a tap-to-filter status strip fed by the API-wide
+          status counts (not this page). Export lives with the list toolbar. */}
+      <WorkspaceHeader
+        title={t("heroTitle")}
+        context={
+          <>
+            <span className="sm:hidden">{t("openingsSummaryShort", { count: totalOpenings })}</span>
+            <span className="hidden sm:inline">{t("openingsSummary", { count: totalOpenings })}</span>
+          </>
+        }
+        actions={
+          <>
+            <CopilotLauncher />
+            {can("jobs", "create") ? (
+              <Button
+                onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
+                aria-label={t("postAJob")}
+                className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("postAJob")}</span>
+              </Button>
+            ) : null}
+          </>
+        }
+        metrics={([
+          { key: "active", label: t("statActiveLabel"), value: activeJobs, icon: PlayCircle, tone: "success" },
+          { key: "draft", label: t("statDraftsLabel"), value: draftJobs, icon: Edit2, tone: "primary" },
+          { key: "paused", label: t("statPausedLabel"), value: pausedJobs, icon: PauseCircle, tone: "warning" },
+          { key: "closed", label: t("statusClosed"), value: closedJobs, icon: CheckCircle, tone: "info" },
+        ] as const).map((m) => ({
+          label: m.label,
+          value: formatCount(m.value) ?? "0",
+          icon: m.icon,
+          tone: m.tone,
+          active: statusFilter === m.key,
+          // Tap a tile to filter the list by that status; tap again to clear.
+          onClick: () => { setStatusFilter(statusFilter === m.key ? "all" : m.key); setPage(1); },
+        }))}
+      />
 
-      <div className="workspace-panel-surface chip-pad">
-        <div className="flex gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              aria-label={t("searchJobsPlaceholder")}
-              placeholder={t("searchJobsPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-            aria-controls="employer-job-filters"
-            aria-label={t("filterHeading")}
-            title={t("filterHeading")}
-            className="relative h-11 w-11 shrink-0 rounded-xl border-border bg-background p-0"
-          >
-            <SlidersHorizontal className="h-4 w-4 text-primary" />
-            {hasActiveFilters && <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-primary" aria-hidden />}
-          </Button>
+      {/* ── List toolbar — search, Filters and Export sit with the list ──
+          No select here, so the search shares the phone row with the buttons. */}
+      <div className="workspace-toolbar">
+        <div className="workspace-toolbar-search basis-0 sm:basis-64">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            type="search"
+            aria-label={t("searchJobsPlaceholder")}
+            placeholder={t("searchJobsPlaceholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
+          />
         </div>
-        <StatusFilterStrip
-          label={t("statusSummaryLabel")}
-          className="mt-2"
-          selectedId={statusFilter}
-          onSelect={setStatusFilter}
-          items={[
-            { id: "all", label: t("allStatusesShort"), value: total },
-            { id: "active", label: t("statActiveLabel"), value: activeJobs },
-            { id: "draft", label: t("statDraftsLabel"), value: draftJobs },
-            { id: "paused", label: t("statPausedLabel"), value: pausedJobs },
-          ]}
-        />
-        <p className="mt-2 px-1 text-xs text-muted-foreground">{t("openingsSummary", { count: totalOpenings })}</p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          aria-controls="employer-job-filters"
+          aria-label={t("filters")}
+          className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${filtersOpen ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
+        >
+          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
+          <span className="hidden sm:inline">{t("filters")}</span>
+          {hasActiveFilters && <span className="ms-1.5 inline-flex h-2 w-2 rounded-full bg-primary" aria-hidden="true" />}
+        </Button>
+        {jobs.length > 0 && (
+          <TableToolbar
+            className="ms-auto"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
+        )}
       </div>
 
       <div>
 
         {/* Filter panel — toggled from the compact hero control above. */}
         {filtersOpen && (
-          <div id="employer-job-filters" className="workspace-panel-surface overflow-hidden rounded-2xl">
-            <div className="p-3 sm:p-5">
-              <p className="hidden text-sm text-muted-foreground sm:block">{t("filterDescription")}</p>
-
+          <section id="employer-job-filters" className="workspace-panel-surface rounded-2xl panel-body">
+            <div>
               {/* Two controls per row on phones — eight stacked full-width inputs
                   turned the open filter panel into three screens of scrolling. */}
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <SearchableSelect
                   className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
@@ -476,7 +480,6 @@ export default function EmployerJobsPage() {
                     { value: "active", label: t("statusActive") },
                     { value: "paused", label: t("statusPaused") },
                     { value: "draft", label: t("statusDraft") },
-                    { value: "pending_approval", label: t("statusPendingApproval") },
                     { value: "closed", label: t("statusClosed") },
                     { value: "expired", label: t("statusExpired") },
                   ]}
@@ -584,7 +587,7 @@ export default function EmployerJobsPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </section>
         )}
       </div>
 

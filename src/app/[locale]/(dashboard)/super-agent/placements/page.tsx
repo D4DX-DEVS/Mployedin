@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -79,9 +80,9 @@ const INITIAL_FILTERS: Filters = {
 
 const VISA_STATUSES: VisaStatus[] = ["not_required", "pending", "approved", "rejected", "stamped"];
 
-// Static currency options - labels are currency codes, not translated
+// Static currency options - currency codes are data, first label translated at render time
 const CURRENCY_OPTIONS = [
-  { value: "", label: "All currencies" }, // Will be translated in component
+  { value: "", label: "" }, // Label will be translated in component
   { value: "AED", label: "AED" },
   { value: "USD", label: "USD" },
   { value: "EUR", label: "EUR" },
@@ -93,6 +94,12 @@ const CURRENCY_OPTIONS = [
   { value: "OMR", label: "OMR" },
   { value: "EGP", label: "EGP" },
   { value: "INR", label: "INR" },
+];
+
+// Prepare currency options with translated "All currencies" label
+const getCurrencyOptions = (t: ReturnType<typeof useTranslations>) => [
+  { value: "", label: t("currencyFilterAllLabel") },
+  ...CURRENCY_OPTIONS.slice(1),
 ];
 
 /* ------------------------------------------------------------------ */
@@ -144,6 +151,7 @@ export default function SuperAgentPlacementsPage() {
 
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearchState] = useUrlFilter("search", "", { debounceMs: 400 });
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
 
   const [agents, setAgents] = useState<AgentOption[]>([]);
@@ -199,7 +207,7 @@ export default function SuperAgentPlacementsPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (filters.visaStatus) params.set("visaStatus", filters.visaStatus);
-    if (filters.search) params.set("search", filters.search);
+    if (search) params.set("search", search);
     if (filters.commissionPaid) params.set("commissionPaid", filters.commissionPaid);
     if (filters.currency) params.set("currency", filters.currency);
     if (filters.salaryMin) params.set("salaryMin", filters.salaryMin);
@@ -221,7 +229,7 @@ export default function SuperAgentPlacementsPage() {
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, [filters, page, limit, updateTotal]);
+  }, [filters, search, page, limit, updateTotal]);
 
   useEffect(() => { fetchPlacements(); }, [fetchPlacements]);
 
@@ -270,7 +278,7 @@ export default function SuperAgentPlacementsPage() {
     data: placements as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agent-placements",
-    title: "Placements",
+    title: t("exportTitle"),
   });
 
   const kpis = [
@@ -366,13 +374,13 @@ export default function SuperAgentPlacementsPage() {
 
         {/* ---- Merged Filters via TableToolbar ---- */}
         <TableToolbar
-          search={filters.search}
-          onSearchChange={(v) => updateFilter("search", v)}
+          search={search}
+          onSearchChange={(v) => { setSearchState(v); resetPage(); }}
           searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          hasActiveFilters={activeFilterCount > 0 || !!filters.visaStatus || !!filters.commissionPaid}
+          hasActiveFilters={activeFilterCount > 0 || !!filters.visaStatus || !!filters.commissionPaid || !!search}
           actions={
             <div className="flex items-center gap-2">
               {/* Commission Toggle */}
@@ -395,7 +403,7 @@ export default function SuperAgentPlacementsPage() {
                   {opt.label}
                 </button>
               ))}
-              {(activeFilterCount > 0 || filters.visaStatus || filters.search || filters.commissionPaid) && (
+              {(activeFilterCount > 0 || filters.visaStatus || search || filters.commissionPaid) && (
                 <button type="button" onClick={resetFilters} className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all">
                   <RotateCcw className="h-3.5 w-3.5" /> {t("reset")}
                 </button>
@@ -415,7 +423,7 @@ export default function SuperAgentPlacementsPage() {
               <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterCurrency")}</label>
-                  <SearchableSelect options={[{ value: "", label: t("filterCurrencyPlaceholder") }, ...CURRENCY_OPTIONS.slice(1)]} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
+                  <SearchableSelect options={getCurrencyOptions(t)} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSalaryMin")}</label>

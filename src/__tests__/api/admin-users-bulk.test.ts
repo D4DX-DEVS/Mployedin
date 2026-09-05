@@ -31,16 +31,25 @@ jest.mock("@/lib/audit/log", () => ({
 
 const updateOneMock = jest.fn();
 const deleteOneMock = jest.fn();
+const findByIdMock = jest.fn();
 
 jest.mock("@/models/User", () => ({
   __esModule: true,
   default: {
     updateOne: (...args: unknown[]) => updateOneMock(...args),
     deleteOne: (...args: unknown[]) => deleteOneMock(...args),
+    findById: (...args: unknown[]) => findByIdMock(...args),
     findOne: jest.fn(),
     find: jest.fn(),
     countDocuments: jest.fn(),
   },
+}));
+
+const deactivateEmployerAccountMock = jest.fn().mockResolvedValue({ employerId: "emp_1", affectedJobs: 1 });
+const reactivateEmployerAccountMock = jest.fn().mockResolvedValue({ employerId: "emp_1", affectedJobs: 1 });
+jest.mock("@/lib/employers/accountStatus", () => ({
+  deactivateEmployerAccount: (...args: unknown[]) => deactivateEmployerAccountMock(...args),
+  reactivateEmployerAccount: (...args: unknown[]) => reactivateEmployerAccountMock(...args),
 }));
 
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: {} }));
@@ -68,6 +77,8 @@ describe("PATCH /api/admin/users (bulk itemized results)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default target: a non-employer, so the employer job-visibility hook stays out of the way.
+    findByIdMock.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: ID_A, role: "job_seeker" }) }) });
   });
 
   it("reports a mix of updated and skipped rows", async () => {
@@ -126,5 +137,34 @@ describe("PATCH /api/admin/users (bulk itemized results)", () => {
   it("rejects setRole without a role", async () => {
     const res = await PATCH(makePatchRequest({ ids: [ID_A], action: "setRole" }));
     expect(res.status).toBe(400);
+  });
+
+  it("deactivating an employer also takes their live jobs off the market", async () => {
+    findByIdMock.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: ID_A, role: "employer" }) }) });
+    updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
+
+    const res = await PATCH(makePatchRequest({ ids: [ID_A], action: "deactivate" }));
+
+    expect(res.status).toBe(200);
+    expect(deactivateEmployerAccountMock).toHaveBeenCalledWith(ID_A);
+    expect(reactivateEmployerAccountMock).not.toHaveBeenCalled();
+  });
+
+  it("reactivating an employer brings those jobs back", async () => {
+    findByIdMock.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: ID_A, role: "employer" }) }) });
+    updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
+
+    await PATCH(makePatchRequest({ ids: [ID_A], action: "activate" }));
+
+    expect(reactivateEmployerAccountMock).toHaveBeenCalledWith(ID_A);
+  });
+
+  it("does not touch jobs when the deactivated user is not an employer", async () => {
+    findByIdMock.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: ID_A, role: "job_seeker" }) }) });
+    updateOneMock.mockResolvedValueOnce({ modifiedCount: 1 });
+
+    await PATCH(makePatchRequest({ ids: [ID_A], action: "deactivate" }));
+
+    expect(deactivateEmployerAccountMock).not.toHaveBeenCalled();
   });
 });

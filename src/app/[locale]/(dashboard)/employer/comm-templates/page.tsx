@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Trash2, Plus, Mail } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import type { CommTemplateType } from "@/models/CommTemplate";
 import { toast } from "sonner";
@@ -91,17 +91,18 @@ export default function CommTemplatesPage() {
     <FeatureGate feature="commTemplates">
     <div className="page-container">
       {ConfirmDialogNode}
-      <PageHero
-        icon={Mail}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
         actions={
           <Button
             onClick={() => setShowForm(!showForm)}
-            className="gap-2"
+            aria-label={t("newTemplate")}
+            aria-expanded={showForm}
+            className="rounded-xl px-3 sm:px-4"
           >
-            <Plus className="w-4 h-4" />
-            {t("newTemplate")}
+            <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("newTemplate")}</span>
           </Button>
         }
       />

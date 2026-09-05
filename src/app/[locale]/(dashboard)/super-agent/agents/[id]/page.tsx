@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   ArrowLeft, Briefcase, Calendar, Clock, Copy, ExternalLink,
   Globe, Link2, Loader2, Mail, MapPin, Pencil, Phone, Target, TrendingUp,
@@ -25,11 +26,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ── Types ── */
 
 interface AgentUser {
+  _id: string;
   name: string;
   email: string;
   isActive: boolean;
@@ -151,6 +155,9 @@ export default function AgentDetailPage() {
   const [data, setData] = useState<AgentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sendingReminder, setSendingReminder] = useState(false);
+
+  const { confirm, ConfirmDialogNode } = useConfirm();
 
   const fetchDetail = useCallback(async () => {
     setLoading(true);
@@ -158,7 +165,7 @@ export default function AgentDetailPage() {
       const res = await fetch(`/api/super-agent/agents/${agentId}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setError(err.error || `Error ${res.status}`);
+        setError(err.error || t("agentDetailError"));
         return;
       }
       setData(await res.json());
@@ -240,7 +247,43 @@ export default function AgentDetailPage() {
     }
   };
 
-  const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const ALL_DAYS = [
+    t("dayMonday"),
+    t("dayTuesday"),
+    t("dayWednesday"),
+    t("dayThursday"),
+    t("dayFriday"),
+    t("daySaturday"),
+    t("daySunday"),
+  ];
+
+  const handleSendReminder = useCallback(async () => {
+    if (!data?.user) return;
+    const confirmed = await confirm({
+      title: t("sendReminderTitle"),
+      message: t("sendReminderMessage", { name: data.user.name }),
+      confirmLabel: t("sendReminderConfirm"),
+    });
+    if (!confirmed) return;
+
+    setSendingReminder(true);
+    try {
+      const res = await fetch("/api/super-agent/actions/send-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentUserIds: [data.user._id] }),
+      });
+      if (!res.ok) {
+        toast.error(t("sendReminderError"));
+        return;
+      }
+      toast.success(t("sendReminderSuccess", { name: data.user.name }));
+    } catch {
+      toast.error(t("sendReminderError"));
+    } finally {
+      setSendingReminder(false);
+    }
+  }, [data, t, confirm]);
 
   if (loading) {
     return (
@@ -304,7 +347,7 @@ export default function AgentDetailPage() {
       {/* Hero */}
       <SuperAgentPageIntro
         title={user.name}
-        description={`${user.email} · ${t("joinedLabel")} ${new Date(user.joinedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
+        description={`${user.email} · ${t("joinedLabel")} ${formatDate(user.joinedAt, { day: "numeric", month: "short", year: "numeric" })}`}
         eyebrow={t("agentProfile")}
       >
         <div className="hidden workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:block sm:min-w-[180px]">
@@ -315,10 +358,16 @@ export default function AgentDetailPage() {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{t("commissionLabel")}: {agent.commissionRate ?? 0}%</p>
         </div>
-        <Button variant="outline" size="sm" onClick={openEditDialog} className="gap-2">
-          <Pencil className="h-3.5 w-3.5" />
-          {t("editAgentButton")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={openEditDialog} className="gap-2">
+            <Pencil className="h-3.5 w-3.5" />
+            {t("editAgentButton")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSendReminder} disabled={sendingReminder} className="gap-2">
+            {sendingReminder && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {t("sendReminder")}
+          </Button>
+        </div>
       </SuperAgentPageIntro>
 
       {/* KPIs */}
@@ -639,6 +688,8 @@ export default function AgentDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {ConfirmDialogNode}
     </div>
   );
 }

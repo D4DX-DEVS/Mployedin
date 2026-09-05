@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
 import { ArrowRight, ArrowUpRight, ArrowDownRight, BarChart3, Briefcase, Building2, CalendarCheck2, CircleDollarSign, Download, Flame, Loader2, Sparkles, Target, TrendingUp, Users } from "lucide-react";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import {
@@ -114,6 +115,7 @@ export default function AgentReportsPage() {
 
   return (
     <div className="page-container">
+      <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
       <DashboardPageHeader
         icon={BarChart3}
         title={t("reportsAnalytics")}

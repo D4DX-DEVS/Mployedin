@@ -2,10 +2,6 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export type JobStatus =
   | "draft"
-  // ponytail: legacy — the approval queue is gone; nothing writes this any more.
-  // Kept so pre-migration documents still validate. Run
-  // scripts/migrate-drop-job-approval.mjs --apply, then it can be dropped.
-  | "pending_approval"
   | "active"
   | "paused"
   | "closed"
@@ -43,7 +39,6 @@ export interface IJobLocation {
 
 export interface IJobPoster {
   url?: string;
-  approvalStatus: "pending" | "approved" | "rejected";
   uploadedAt?: Date;
 }
 
@@ -115,8 +110,8 @@ export interface IJob extends Document {
   vacancies?: number;
   applicantIds: mongoose.Types.ObjectId[];
   poster: IJobPoster;
-  approvedBy?: mongoose.Types.ObjectId;
-  approvedAt?: Date;
+  /** Set when the job was paused because its employer account was deactivated. */
+  pauseReason?: "employer_deactivated";
   expiresAt?: Date;
   maxApplicants?: number;
   showSalary?: boolean;
@@ -190,7 +185,7 @@ const JobSchema = new Schema<IJob>(
     },
     status: {
       type: String,
-      enum: ["draft", "pending_approval", "active", "paused", "closed", "expired"],
+      enum: ["draft", "active", "paused", "closed", "expired"],
       default: "draft",
     },
     workflowMode: { type: String, enum: ["auto", "manual"], default: "manual" },
@@ -229,15 +224,11 @@ const JobSchema = new Schema<IJob>(
     applicantIds: [{ type: Schema.Types.ObjectId, ref: "JobSeeker" }],
     poster: {
       url: String,
-      approvalStatus: {
-        type: String,
-        enum: ["pending", "approved", "rejected"],
-        default: "pending",
-      },
       uploadedAt: Date,
     },
-    approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
-    approvedAt: Date,
+    // Set when the job was paused because its employer account was deactivated;
+    // reactivation resumes exactly these jobs (see lib/employers/accountStatus).
+    pauseReason: { type: String, enum: ["employer_deactivated"] },
     expiresAt: Date,
     maxApplicants: { type: Number, min: 1 },
     showSalary: { type: Boolean, default: true },
@@ -267,7 +258,7 @@ const JobSchema = new Schema<IJob>(
     // Status at soft-delete time, so restore can put the job back as it was
     preDeletionStatus: {
       type: String,
-      enum: ["draft", "pending_approval", "active", "paused", "closed", "expired"],
+      enum: ["draft", "active", "paused", "closed", "expired"],
     },
   },
   { timestamps: true }
@@ -286,10 +277,6 @@ JobSchema.index({ isFeatured: -1, createdAt: -1 });
 JobSchema.index(
   { title: "text", description: "text", "requirements.skills": "text" },
   { name: "jobs_text_search", weights: { title: 10, "requirements.skills": 5, description: 1 } }
-);
-JobSchema.index(
-  { status: 1, "poster.approvalStatus": 1, createdAt: -1 },
-  { partialFilterExpression: { status: "active" } }
 );
 
 export const Job =

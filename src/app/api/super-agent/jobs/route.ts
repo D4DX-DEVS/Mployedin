@@ -24,7 +24,7 @@ async function parseAIQuery(
   const prompt = `You are a job search query parser for a recruitment platform. Convert this natural language query into a JSON filter object.
 
 Available filter fields:
-- "status": one of "draft", "pending_approval", "active", "paused", "closed", "expired"
+- "status": one of "draft", "active", "paused", "closed", "expired"
 - "employmentType": one of "full_time", "part_time", "contract", "internship", "freelance"
 - "workMode": one of "onsite", "hybrid", "remote"
 - "location.country": country name
@@ -133,7 +133,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     "draft",
     "closed",
     "expired",
-    "pending_approval",
     "paused",
   ];
   if (status && validStatuses.includes(status)) {
@@ -347,7 +346,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     draftCount,
     closedCount,
     expiredCount,
-    pendingCount,
     pausedCount,
     employerAgg,
     agentAgg,
@@ -367,7 +365,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     Job.countDocuments({ ...scopeFilter, status: "draft" }),
     Job.countDocuments({ ...scopeFilter, status: "closed" }),
     Job.countDocuments({ ...scopeFilter, status: "expired" }),
-    Job.countDocuments({ ...scopeFilter, status: "pending_approval" }),
     Job.countDocuments({ ...scopeFilter, status: "paused" }),
     Job.distinct("employerId", scopeFilter),
     Job.distinct("agentId", scopeFilter),
@@ -378,7 +375,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     draftCount +
     closedCount +
     expiredCount +
-    pendingCount +
     pausedCount;
 
   return NextResponse.json({
@@ -389,7 +385,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       draft: draftCount,
       closed: closedCount,
       expired: expiredCount,
-      pending: pendingCount,
       paused: pausedCount,
       employers: employerAgg.length,
       agents: agentAgg.length,

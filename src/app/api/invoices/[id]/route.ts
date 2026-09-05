@@ -18,6 +18,7 @@ import {
   sendCommissionApprovalNotifications,
 } from "@/lib/invoices/commissionRecords";
 import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { isStaleInvoiceWrite, staleInvoiceResponse } from "@/lib/invoices/concurrency";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
@@ -312,6 +313,9 @@ async function patchHandler(
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
+        // Version-checked: a concurrent payment on this invoice makes the save a
+        // VersionError (→ 409 below) rather than a second STATUS-PAID payment.
+        invoice.increment();
         await invoice.save({ session });
 
         const approvedCommissionsResult = await approvePendingCommissionsForPaidInvoice(
@@ -349,6 +353,7 @@ async function patchHandler(
         }
       });
     } catch (err) {
+      if (isStaleInvoiceWrite(err)) return staleInvoiceResponse();
       logger.error({ err, invoiceId: String(invoice._id) }, "Commission approval transaction failed after invoice payment");
       commissionApprovalFailed = true;
     } finally {

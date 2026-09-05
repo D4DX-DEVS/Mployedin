@@ -80,6 +80,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const oldTier = subscription.planSnapshot?.tier ?? 0;
   const action = newPlan.tier > oldTier ? "upgraded" : "downgraded";
   const oldPlanName = subscription.planSnapshot?.name ?? "Unknown";
+  // Captured before step 6 reassigns subscription.planId — history used to read
+  // it afterwards, so every upgrade/downgrade row stored fromPlanId === toPlanId.
+  const oldPlanId = subscription.planId;
 
   // 6. Update subscription
   const now = new Date();
@@ -95,7 +98,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     userId: body.userId,
     subscriptionId: subscription._id,
     action,
-    fromPlanId: subscription.planId,
+    fromPlanId: oldPlanId,
     toPlanId: newPlan._id,
     fromPlanName: oldPlanName,
     toPlanName: newPlan.name,
@@ -115,6 +118,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     type: action === "upgraded" ? "upgrade" : "downgrade",
     planName: newPlan.name,
     description: `${action === "upgraded" ? "Upgrade" : "Downgrade"}: ${oldPlanName} → ${newPlan.name}`,
+    // Totals are derived from subtotal by Invoice.pre("save").
+    subtotal: newPlan.price,
     amount: newPlan.price,
     currency: newPlan.currency,
     billingCycle: newPlan.billingCycle,

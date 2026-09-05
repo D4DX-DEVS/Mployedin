@@ -18,7 +18,7 @@ import {
   CreditCard, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +26,7 @@ import {
   type MySubscription, type AvailablePlan,
 } from "@/hooks/useSubscription";
 import { useFeatureGateMap } from "@/hooks/useFeatureGate";
+import { deriveEmployerFeatureAccess } from "@/lib/subscription/employerFeatureList";
 import { useInvoices, type InvoiceItem } from "@/hooks/useInvoices";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
@@ -78,7 +79,7 @@ export default function EmployerSubscriptionPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHero icon={Crown} title={t("title")} />
+        <WorkspaceHeader title={t("title")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted/30" />
         ))}
@@ -88,16 +89,18 @@ export default function EmployerSubscriptionPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={Crown}
+      {/* Phones: title + the currency selector on one row; the description
+          and the live-rate dot return from sm (the 180px selector is the
+          widest thing in the row). */}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={<span className="hidden sm:inline">{t("description")}</span>}
         actions={
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{t("displayCurrency")}</span>
+            <span className="hidden sm:inline">{t("displayCurrency")}</span>
             <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
             {rateSource === "live" && (
-              <span className="text-[11px] text-emerald-500" title={t("a11yLiveExchangeRates")}>● live</span>
+              <span className="hidden text-[11px] text-emerald-500 sm:inline" title={t("a11yLiveExchangeRates")}>● live</span>
             )}
           </div>
         }
@@ -149,15 +152,18 @@ function ActiveView({
   const maxApps = (limits?.maxApplicationsViewPerMonth as number) ?? 0;
   const maxTeam = (limits?.maxTeamMembers as number) ?? 0;
 
+  // Included / locked is decided by the plan's own limits; a live feature-gate
+  // verdict overrides when present (the gate endpoint is a bypass stub today).
+  const access = deriveEmployerFeatureAccess(limits, features);
   const featureList = [
-    { label: t("jobPosting"), detail: maxJobs === -1 ? t("unlimited") : t("jobPostingsDetail", { count: maxJobs }), allowed: features.activeJobs?.allowed ?? true },
-    { label: t("applicantTracking"), detail: t("applicantTrackingDetail", { max: maxApps === -1 ? t("unlimited") : maxApps }), allowed: features.applicationsViewed?.allowed ?? true },
-    { label: t("teamCollaboration"), detail: t("teamCollaborationDetail", { max: maxTeam === -1 ? t("unlimited") : maxTeam }), allowed: features.teamMembers?.allowed ?? true },
-    { label: t("dataExport"), allowed: features.dataExport?.allowed ?? false },
-    { label: t("analytics"), detail: `${(limits?.analyticsLevel as string) ?? "none"} level`, allowed: (limits?.analyticsLevel as string) !== "none" },
-    { label: t("commTemplates"), allowed: features.commTemplates?.allowed ?? false },
-    { label: t("scorecards"), allowed: features.scorecardEvaluations?.allowed ?? false },
-    { label: t("prioritySupport"), allowed: features.prioritySupport?.allowed ?? false },
+    { label: t("jobPosting"), detail: maxJobs === -1 ? t("unlimited") : t("jobPostingsDetail", { count: maxJobs }), allowed: access.jobPosting },
+    { label: t("applicantTracking"), detail: t("applicantTrackingDetail", { max: maxApps === -1 ? t("unlimited") : maxApps }), allowed: access.applicantTracking },
+    { label: t("teamCollaboration"), detail: t("teamCollaborationDetail", { max: maxTeam === -1 ? t("unlimited") : maxTeam }), allowed: access.teamCollaboration },
+    { label: t("dataExport"), allowed: access.dataExport },
+    { label: t("analytics"), detail: `${(limits?.analyticsLevel as string) ?? "none"} level`, allowed: access.analytics },
+    { label: t("commTemplates"), allowed: access.commTemplates },
+    { label: t("scorecards"), allowed: access.scorecards },
+    { label: t("prioritySupport"), allowed: access.prioritySupport },
   ];
   const included = featureList.filter((f) => f.allowed);
   const locked = featureList.filter((f) => !f.allowed);

@@ -8,6 +8,7 @@ import { employerAdminUpdateSchema } from "@/lib/validators/employers";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { buildEmployerAdminUpdatePayload } from "@/lib/employers/admin";
+import { deactivateEmployerAccount } from "@/lib/employers/accountStatus";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -132,6 +133,8 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
 
   user.isActive = false;
   await user.save();
+  // Take the company's live jobs off the market too (restored on reactivation).
+  await deactivateEmployerAccount(user._id);
 
   await logActivity({
     ...actorFromCtx(ctx),

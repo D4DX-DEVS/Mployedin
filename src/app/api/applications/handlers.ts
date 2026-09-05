@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { OPEN_APPLICATION_STATUSES, STALE_APPLICATION_MS } from "@/lib/admin/platformAlerts";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withSubscription } from "@/lib/subscription/withSubscription";
@@ -48,6 +49,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
   const fetchEmployers = searchParams.get("fetchEmployers") === "true";
   const fetchStats = searchParams.get("fetchStats") === "true";
+  // Employer header strip: counts per status across the whole job scope.
+  const fetchCounts = searchParams.get("fetchCounts") === "true";
+  /* Open applications nobody has touched inside the review window. The admin
+     dashboard raises this as an alert; without the filter its link landed on an
+     unfiltered list and the finding was lost on arrival. */
+  const staleOnly = searchParams.get("stale") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -138,6 +145,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.jobId = new mongoose.Types.ObjectId(jobId);
   }
 
+  // Pipeline scope for the employer header strip: every application in the
+  // selected job (or all jobs) before status/search/score filters narrow the
+  // page, so the strip reads as totals rather than describing this page.
+  const scopeQuery = { ...query };
+  delete scopeQuery.status;
+
   // Date range filter on appliedAt
   if (dateFrom || dateTo) {
     const dateFilter: Record<string, Date> = {};
@@ -153,6 +166,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       }
     }
     if (Object.keys(dateFilter).length > 0) query.appliedAt = dateFilter;
+  }
+
+  // Stale = still open and older than the review window. Same threshold and
+  // status set the alert engine counts with, so the number in the alert and the
+  // number of rows on the page always agree.
+  if (staleOnly) {
+    const staleBefore = new Date(Date.now() - STALE_APPLICATION_MS);
+    const existingAppliedAt = query.appliedAt as Record<string, Date> | undefined;
+    query.appliedAt = { ...(existingAppliedAt ?? {}), $lte: staleBefore };
+    if (!status) query.status = { $in: OPEN_APPLICATION_STATUSES };
   }
 
   // AI score range filter
@@ -434,6 +457,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     };
   }
 
+  let statusCounts: Record<string, number> | null = null;
+  if (fetchCounts && ctx.role === "employer") {
+    const rows = await Application.aggregate<{ _id: string; count: number }>([
+      { $match: scopeQuery },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+    statusCounts = Object.fromEntries(rows.map((r) => [String(r._id), r.count]));
+  }
+
   return NextResponse.json({
     applications: applications.map((app) => ({
       ...app,
@@ -446,6 +478,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ...(fetchJobs ? { employerJobs } : {}),
     ...(fetchEmployers ? { allEmployers } : {}),
     ...(fetchStats ? { stats } : {}),
+    ...(statusCounts ? { statusCounts } : {}),
   });
 }
 

@@ -190,6 +190,18 @@ describe("checkFeatureGate", () => {
       expect(result.allowed).toBe(true);
     });
 
+    test("an employer-only limit is not applicable to a job seeker (no cap, no usage read)", async () => {
+      mockFindOne.mockReturnValue({ lean: () => Promise.resolve(jsSubFixture) });
+      const result = await checkFeatureGate("user2", { type: "limit", feature: "applicationsViewed" }, "job_seeker");
+      expect(result).toEqual({ allowed: true });
+    });
+
+    test("a job-seeker-only limit is not applicable to an employer", async () => {
+      mockFindOne.mockReturnValue({ lean: () => Promise.resolve(baseSub) });
+      const result = await checkFeatureGate("user1", { type: "limit", feature: "applicationsSubmitted" }, "employer");
+      expect(result).toEqual({ allowed: true });
+    });
+
     test("handles applicationsSubmitted for job seekers", async () => {
       mockFindOne.mockReturnValue({ lean: () => Promise.resolve(jsSubFixture) });
       const result = await checkFeatureGate("user2", { type: "limit", feature: "applicationsSubmitted" }, "job_seeker");
@@ -209,6 +221,28 @@ describe("checkFeatureGate", () => {
     test("blocks disabled toggle", async () => {
       mockFindOne.mockReturnValue({ lean: () => Promise.resolve(baseSub) });
       const result = await checkFeatureGate("user1", { type: "toggle", feature: "workflowCustomization" }, "employer");
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe("FEATURE_DISABLED");
+    });
+
+    test("allows a graded string toggle above the floor", async () => {
+      mockFindOne.mockReturnValue({ lean: () => Promise.resolve(baseSub) });
+      const result = await checkFeatureGate("user1", { type: "toggle", feature: "analyticsLevel" }, "employer");
+      expect(result.allowed).toBe(true);
+    });
+
+    // analyticsLevel is a graded string, not a boolean. A plain truthiness test
+    // treated "none" as enabled, so /api/employers/analytics passed on every plan.
+    test('blocks analyticsLevel "none"', async () => {
+      const noAnalyticsSub = {
+        ...baseSub,
+        planSnapshot: {
+          ...baseSub.planSnapshot,
+          employerLimits: { ...baseSub.planSnapshot.employerLimits, analyticsLevel: "none" },
+        },
+      };
+      mockFindOne.mockReturnValue({ lean: () => Promise.resolve(noAnalyticsSub) });
+      const result = await checkFeatureGate("user1", { type: "toggle", feature: "analyticsLevel" }, "employer");
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe("FEATURE_DISABLED");
     });

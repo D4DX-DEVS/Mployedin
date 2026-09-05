@@ -11,6 +11,7 @@ import { CalendarDays, CheckCircle2, Coins, Info, ReceiptText, Search, Settings2
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,8 +56,9 @@ export default function SuperAgentCommissionsPage() {
   // aggregate), so the KPI tiles don't describe only the visible page.
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
   const [showOverrideInfo, setShowOverrideInfo] = useState(false);
+
+  const [statusFilter, setStatusFilterState] = useUrlFilter("status", "");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
@@ -191,7 +193,7 @@ export default function SuperAgentCommissionsPage() {
               {(["", "pending", "approved", "paid", "disputed"] as const).map((s) => (
                 <Button
                   key={s}
-                  onClick={() => { setStatusFilter(s); resetPage(); }}
+                  onClick={() => { setStatusFilterState(s); resetPage(); }}
                   aria-pressed={statusFilter === s}
                   variant={statusFilter === s ? "default" : "outline"}
                   size="sm"

@@ -252,6 +252,60 @@ describe("withSubscription", () => {
     });
   });
 
+  // ── Role applicability of numeric limits ────────────────────────────────
+
+  describe("numeric limits belong to one customer role", () => {
+    const jobSeekerSub = {
+      _id: "sub4",
+      userId: "u4",
+      status: "active",
+      planSnapshot: { jobSeekerLimits: { maxApplicationsPerMonth: 10, aiFeatures: [] } },
+      usage: { applicationsSubmitted: 2 },
+    };
+
+    test("a job seeker listing their own applications is not metered against the employer-only applicationsViewed cap", async () => {
+      mockFindOne.mockResolvedValue(jobSeekerSub);
+      const wrapped = withSubscription(mockHandler, { type: "limit", feature: "applicationsViewed" });
+      const req = makeReq();
+      const res = await wrapped(req, jobSeekerCtx);
+      expect(res.status).toBe(200);
+      expect(mockHandler).toHaveBeenCalledWith(req, jobSeekerCtx, undefined);
+      // no reservation, no rollback — the counter is not theirs
+      expect(mockFindOneAndUpdate).not.toHaveBeenCalled();
+      expect(mockUpdateOne).not.toHaveBeenCalled();
+    });
+
+    test("an employer hitting the job-seeker-only applicationsSubmitted cap passes through untouched", async () => {
+      mockFindOne.mockResolvedValue(activeSub);
+      const wrapped = withSubscription(mockHandler, { type: "limit", feature: "applicationsSubmitted" });
+      await wrapped(makeReq(), employerCtx);
+      expect(mockHandler).toHaveBeenCalled();
+      expect(mockFindOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    test("the same cap is still enforced for the role it belongs to", async () => {
+      mockFindOne.mockResolvedValue(jobSeekerSub);
+      mockFindOneAndUpdate.mockResolvedValue(null); // reservation loses: at cap
+      const wrapped = withSubscription(mockHandler, { type: "limit", feature: "applicationsSubmitted" });
+      const res = await wrapped(makeReq(), jobSeekerCtx);
+      expect(res.status).toBe(429);
+      expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: "sub4", $expr: expect.any(Object) }),
+        { $inc: { "usage.applicationsSubmitted": 1 } },
+        { new: true },
+      );
+      expect(mockHandler).not.toHaveBeenCalled();
+    });
+
+    test("a job seeker with no subscription is still refused on their own cap", async () => {
+      mockFindOne.mockResolvedValue(null);
+      const wrapped = withSubscription(mockHandler, { type: "limit", feature: "applicationsSubmitted" });
+      const res = await wrapped(makeReq(), jobSeekerCtx);
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toBe("SUBSCRIPTION_REQUIRED");
+    });
+  });
+
   // ── Toggle checks ────────────────────────────────────────────────────────
 
   describe("toggle checks", () => {

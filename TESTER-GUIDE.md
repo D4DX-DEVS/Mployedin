@@ -37,10 +37,7 @@ Login page: `/en/login`. Separate signup pages: job seeker `/en/register`, emplo
 ## 3. Core Flow (highest priority — test this end-to-end first)
 
 1. **Employer** logs in → *Jobs → Post a Job* (choose **Manual** mode) → fills the wizard → publishes.
-2. What happens next depends on whether the employer is **verified** (see section 4 — this is important):
-   - **Unverified employer** → job goes to **Pending Approval**. It is NOT visible to job seekers. **Admin** must approve it under *Admin → Jobs*.
-   - **Verified employer** → job goes **Active immediately**, no admin approval needed.
-   - Saving as **Draft** always stays private as a draft (never needs approval).
+2. The job is **Active immediately** — there is no admin approval queue for any role. Saving as **Draft** keeps it private until the employer publishes it. Employer verification (section 4) controls the verified badge, not whether a job goes live.
 3. **Job Seeker** logs in → searches jobs → opens the job → **applies** (with CV).
 4. **Employer** sees the application → moves it through pipeline stages (shortlist → interview) → **schedules an interview**.
 5. **Job Seeker** sees the interview invitation on their Interviews/Calendar page.
@@ -51,31 +48,25 @@ Login page: `/en/login`. Separate signup pages: job seeker `/en/register`, emplo
 
 ---
 
-## 4. Employer verification & job approval rules (read carefully)
+## 4. Employer verification & job publishing rules (read carefully)
 
-Not every job needs admin approval. The actual rules are:
+**No job needs approval.** Whoever publishes a job — employer, agent, or admin — the job is live to job seekers immediately. A **Draft** stays private until its poster publishes it. Admins and super-agents oversee postings from their *Jobs* pages (edit, close, delete) but never gate publication.
 
-| Who posts the job | What happens |
-| --- | --- |
-| **Verified** employer, on their own | Job becomes **Active immediately** — no approval step |
-| **Unverified** employer, publishing | Job goes to **Pending Approval** (admin queue) |
-| Any employer, with an **agent attached** to the job | Always **Pending Approval** |
-| **Agent** posting a job | Always **Pending Approval** |
-| **Admin** posting a job | Active immediately |
+Employer **verification** is separate: it controls the verified badge and trust signals on the employer's profile and job cards.
 
 **How an employer gets verified (test this flow):**
 
 1. Log in as **Admin** → *Employers* → open an employer.
 2. Use the **Verify** action. Rules to check:
    - If the employer has **no verification documents uploaded**, verification must be **refused** with a message asking for documents — unless the admin explicitly chooses **override with a reason**. Test both paths.
-   - After verification, the employer's next job post should go **Active without approval**.
+   - After verification, the employer's profile and job cards show the **verified** badge.
 3. Everything the admin does here should appear in **Audit Logs**.
 
 **What to verify as tester:**
 
-- Post a job as an unverified employer → confirm job seekers CANNOT see it → approve as admin → confirm it appears publicly.
-- Verify the employer as admin → post another job → confirm it is live immediately with no approval step.
-- Post a job as an agent → confirm it always lands in the approval queue.
+- Publish a job as an unverified employer → it is visible to job seekers immediately; save another as Draft → it is NOT visible.
+- Verify the employer as admin → the badge appears; job publishing behaviour is unchanged.
+- Post a job as an agent → it is live immediately and appears under the employer's jobs (no approval queue anywhere).
 
 ---
 
@@ -119,7 +110,7 @@ Not every job needs admin approval. The actual rules are:
 - Dashboard shows their own candidates, leads, and tasks — never another agent's.
 - Add/manage candidates and leads; refer candidates to jobs.
 - Referral links: generate one, open it in a private/incognito window, register a new user through it — the new user must be linked to that agent.
-- Post a job on behalf of an employer → confirm it goes to the approval queue (section 4).
+- Post a job on behalf of an employer → confirm it is live immediately and appears under that employer's jobs (no approval queue — section 4).
 - Raise a recruitment invoice (section 11) → confirm it needs approval before it is issued.
 - Targets: see assigned targets and live progress (section 10).
 - Commissions: appear after invoice is paid (section 11); commission report numbers must match.
@@ -167,13 +158,13 @@ This is how the platform earns and how agents get paid. Test it in this exact or
 
 - Everything an agent can do (sections 9–11), **plus**:
 - See and manage their team of agents.
-- **Approvals** page: approve/reject items submitted by agents (e.g. agent-created invoices).
+- **Invoices** page: approve/reject invoices submitted by agents (status *Pending approval*).
 - Team-level reports, targets, territory management, market insights.
 - Data isolation: an agent must not see other agents' data; a super agent sees only their own team, not other teams.
 
 ## 13. Admin
 
-- **Verify employers** (section 4) and **approve/reject job posts** — the two gates of the platform.
+- **Verify employers** (section 4) — the only gate on the platform; job posts go live without admin approval.
 - Manage users: job seekers, employers, agents, super agents — activate/deactivate accounts; a deactivated user must not be able to log in.
 - Impersonate a user (log in as them), do something, and return to admin safely.
 - CMS: edit banners/content and confirm the public site actually changes.

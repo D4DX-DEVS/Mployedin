@@ -102,7 +102,7 @@ export default function SuperAgentReportsPage() {
       const data = await res.json();
       setAiResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: formatTime(new Date()) });
     } catch (e) {
-      setAiError("We couldn't generate this report. No report was saved. Try again.");
+      setAiError(t("aiErrorMessage"));
     } finally {
       setAiLoading(false);
     }

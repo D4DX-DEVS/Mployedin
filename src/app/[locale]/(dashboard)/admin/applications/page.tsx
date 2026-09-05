@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -9,14 +9,17 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Search, Inbox, Sparkles, Calendar, Building2, ArrowUpDown,
+  Search, Inbox, Sparkles, Building2, ArrowUpDown,
   TrendingUp, Users, FileText, Brain, ChevronDown, ChevronUp,
-  Filter, BarChart3, Zap, AlertTriangle, CheckCircle, Info, Target,
-  RefreshCw, Wand2, User,
+  Filter, Zap, AlertTriangle, CheckCircle, Info, Target,
+  RefreshCw, Wand2, User, Briefcase,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -30,6 +33,7 @@ import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 /* ------------------------------------------------------------------ */
 
 interface ApplicationJob {
+  _id?: string;
   title?: string;
   employerId?: { companyName?: string; logo?: string };
   location?: { city?: string; country?: string; isRemote?: boolean };
@@ -39,11 +43,15 @@ interface ApplicationSeeker {
   _id?: string;
   fullName?: string;
   email?: string;
+  phone?: string;
+  headline?: string;
+  cvUrl?: string;
+  resumeUrl?: string;
   skills?: string[];
   totalExperienceYears?: number;
   currentLocation?: string;
   profileCompleteness?: number;
-  userId?: { name?: string; email?: string };
+  userId?: { name?: string; email?: string; phone?: string };
 }
 
 interface Application {
@@ -143,6 +151,7 @@ function ScoreBadge({ score }: { score?: number }) {
 
 export default function AdminApplicationsPage() {
   const t = useTranslations("adminApplications");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -155,18 +164,37 @@ export default function AdminApplicationsPage() {
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
 
-  // Filters
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [employerId, setEmployerId] = useState("");
-  const [source, setSource] = useState("");
-  const [scoreRange, setScoreRange] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState("appliedAt");
-  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  // Filters live in the query string, not in component state. Only `jobId` used
+  // to be read from the URL, so `?status=applied` — the very link the dashboard
+  // alerts, the quick actions and the ⌘K palette all want to send an admin —
+  // did nothing, back from a record returned an unfiltered list, and a filtered
+  // view could not be shared with a colleague.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [status, setStatus] = useUrlFilter("status", "");
+  const [employerId, setEmployerId] = useUrlFilter("employerId", "");
+  const [source, setSource] = useUrlFilter("source", "");
+  const [scoreRange, setScoreRange] = useUrlFilter("scoreRange", "");
+  const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
+  const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "appliedAt");
+  const [sortOrderValue, setSortOrderValue] = useUrlFilter("sortOrder", "desc");
+  const sortOrder = sortOrderValue === "asc" ? "asc" : "desc";
+  const setSortOrder = (next: "asc" | "desc") => setSortOrderValue(next);
+  /** Open applications untouched for 48h+ — what the dashboard's stale alert links to. */
+  const [stale, setStale] = useUrlFilter("stale", "");
   const [showFilters, setShowFilters] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  /* Selection and inline detail. The admin list had neither: changing twenty
+     applications meant twenty interactions, and reading a candidate meant
+     leaving for the job-seekers list and retyping the name, because a row
+     carried no link to the person or the job it was about. The bulk endpoint
+     (`/api/applications/bulk`) already authorises admin and scopes correctly —
+     only the UI was missing. */
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkRunning, setBulkRunning] = useState(false);
 
   // AI Insights
   const [aiInsights, setAiInsights] = useState<AIInsightsData | null>(null);
@@ -178,7 +206,7 @@ export default function AdminApplicationsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
 
-  const activeFilters = [jobIdFilter, status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
+  const activeFilters = [jobIdFilter, status, employerId, source, scoreRange, dateFrom, dateTo, stale].filter(Boolean).length;
 
   // Build STATUS_OPTIONS, SOURCE_OPTIONS, SORT_OPTIONS, SCORE_RANGE_OPTIONS inside component for translations
   const STATUS_OPTIONS = [{ value: "", label: t("allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: t(statusLabelKey(s)) }))];
@@ -241,6 +269,7 @@ export default function AdminApplicationsPage() {
     if (dateTo) params.set("dateTo", dateTo);
     if (sortBy) params.set("sortBy", sortBy);
     if (sortOrder) params.set("sortOrder", sortOrder);
+    if (stale === "true") params.set("stale", "true");
     if (scoreRange) {
       const [min, max] = scoreRange.split("-");
       if (min) params.set("scoreMin", min);
@@ -258,7 +287,7 @@ export default function AdminApplicationsPage() {
       if (data.stats) setStats(data.stats);
     }
     setLoading(false);
-  }, [jobIdFilter, search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, page, limit, employers.length, stats, updateTotal]);
+  }, [jobIdFilter, search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, stale, page, limit, employers.length, stats, updateTotal]);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
@@ -349,9 +378,50 @@ export default function AdminApplicationsPage() {
     }
   };
 
+  /* ---- Bulk: move many applications at once ----
+     Calls the same endpoint the employer workspace uses. It already permits
+     admin ("employer, agent, super_agent, admin") and resolves an unscoped
+     query for this role, and it has its own scope test. */
+  const allVisibleSelected = applications.length > 0 && selectedIds.length === applications.length;
+  const toggleSelectAll = () => {
+    setSelectedIds(allVisibleSelected ? [] : applications.map((app) => app._id));
+  };
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));
+  };
+
+  const runBulkStatus = async () => {
+    if (!bulkStatus || selectedIds.length === 0) return;
+    setBulkRunning(true);
+    try {
+      const res = await fetch("/api/applications/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationIds: selectedIds,
+          action: bulkStatus === "rejected" ? "reject" : "move_stage",
+          params: bulkStatus === "rejected" ? {} : { targetStage: bulkStatus },
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? t("failedToUpdateStatus"));
+        return;
+      }
+      toast.success(t("bulkStatusUpdated", { count: data.processed ?? selectedIds.length }));
+      setSelectedIds([]);
+      setBulkStatus("");
+      fetchApplications();
+    } catch {
+      toast.error(t("failedToUpdateStatus"));
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
   const clearAllFilters = () => {
     setSearch(""); setStatus(""); setEmployerId(""); setSource("");
-    setScoreRange(""); setDateFrom(""); setDateTo("");
+    setScoreRange(""); setDateFrom(""); setDateTo(""); setStale("");
     setSortBy("appliedAt"); setSortOrder("desc");
     setAiQuery(""); setAiSummary(null);
     resetPage();
@@ -386,7 +456,7 @@ export default function AdminApplicationsPage() {
               if (!showAiPanel && !aiInsights) fetchAiInsights();
             }}
             size="lg"
-            className="h-10 gap-2 rounded-xl border-0 px-4"
+            className="h-10 gap-2 rounded-xl border-0 px-4 max-sm:min-h-11"
           >
             <Sparkles className="h-4 w-4" />
             {t("aiInsights")}
@@ -404,7 +474,7 @@ export default function AdminApplicationsPage() {
             <button
               type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
+              className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50 sm:min-h-0"
             >
               <Filter className="h-4 w-4 text-muted-foreground" />
               {showFilters ? t("hideFilters") : t("showFilters")}
@@ -698,9 +768,48 @@ export default function AdminApplicationsPage() {
             </div>
           </div>
 
+          {/* Bulk bar. Appears only with a selection, so the resting list is
+              unchanged; the endpoint behind it is the one the employer
+              workspace has always used. */}
+          {selectedIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-primary/5 px-3 py-2 sm:px-5 sm:py-3">
+              <span className="text-xs font-semibold text-foreground">
+                {t("selectedCount", { count: selectedIds.length })}
+              </span>
+              <SearchableSelect
+                className="h-9 w-44 rounded-lg border-border bg-card text-xs"
+                options={STATUSES.map((value) => ({ value, label: t(statusLabelKey(value)) }))}
+                value={bulkStatus}
+                onValueChange={(value) => setBulkStatus(value ?? "")}
+                placeholder={t("bulkChangeStatus")}
+              />
+              <Button
+                size="sm"
+                className="max-sm:min-h-11"
+                disabled={!bulkStatus || bulkRunning}
+                onClick={() => void runBulkStatus()}
+              >
+                {bulkRunning ? <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+                {t("bulkApply")}
+              </Button>
+              <Button variant="ghost" size="sm" className="max-sm:min-h-11" onClick={() => setSelectedIds([])}>
+                {t("clearSelection")}
+              </Button>
+            </div>
+          )}
+
           {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
-            <span>{t("candidate")}</span>
+            <span className="flex items-center gap-3">
+              <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center sm:min-h-0 sm:min-w-0">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label={t("selectAllOnPage")}
+                />
+              </label>
+              {t("candidate")}
+            </span>
             <span>{t("roleMatchSkills")}</span>
             <span className="text-right">
               <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("appliedAt")}>
@@ -729,6 +838,11 @@ export default function AdminApplicationsPage() {
                   : "bg-status-rejected-bg text-status-rejected"
                 : "";
 
+              const isExpanded = expandedId === app._id;
+              const seekerContact = seeker?.email ?? seeker?.userId?.email;
+              const seekerPhone = seeker?.phone ?? seeker?.userId?.phone;
+              const cvHref = seeker?.cvUrl ?? seeker?.resumeUrl;
+
               return (
                 <article
                   key={app._id}
@@ -736,6 +850,17 @@ export default function AdminApplicationsPage() {
                 >
                   {/* Candidate */}
                   <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                    {/* The box stays 16px so the row does not grow; the label
+                        around it is the 44px target a thumb needs, because
+                        selecting rows is the repeated gesture in a bulk edit. */}
+                    <label className="-m-2 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center p-2 sm:m-0 sm:min-h-0 sm:min-w-0 sm:p-0">
+                      <Checkbox
+                        checked={selectedIds.includes(app._id)}
+                        onCheckedChange={() => toggleSelected(app._id)}
+                        aria-label={t("selectApplication")}
+                        className="shrink-0"
+                      />
+                    </label>
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-status-applied shadow-inner sm:h-10 sm:w-10 sm:rounded-xl">
                       <User className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                     </div>
@@ -809,7 +934,66 @@ export default function AdminApplicationsPage() {
                       placeholder={t("status")}
                       disabled={updatingId === app._id}
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 min-h-11 px-2 sm:min-h-0"
+                      aria-expanded={isExpanded}
+                      aria-label={isExpanded ? t("hideDetails") : t("showDetails")}
+                      onClick={() => setExpandedId(isExpanded ? null : app._id)}
+                    >
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
                   </div>
+
+                  {/* Inline detail. A panel here keeps the list, its filters and
+                      the scroll position intact — the alternative was leaving for
+                      another page and searching for the same person again. */}
+                  {isExpanded && (
+                    <div className="rounded-xl border border-border/70 bg-card/60 p-3 text-xs sm:col-span-3 sm:p-4">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div>
+                          <p className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground">{t("detailContact")}</p>
+                          <p className="truncate text-foreground">{seekerContact ?? "—"}</p>
+                          {seekerPhone && <p className="truncate text-muted-foreground">{seekerPhone}</p>}
+                          {seeker?.currentLocation && <p className="truncate text-muted-foreground">{seeker.currentLocation}</p>}
+                        </div>
+                        <div className="sm:col-span-2">
+                          <p className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground">{t("detailSkills")}</p>
+                          {seeker?.skills?.length ? (
+                            <div className="flex flex-wrap gap-1">
+                              {seeker.skills.slice(0, 12).map((skill) => (
+                                <span key={skill} className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground">{t("detailNoSkills")}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+                        {cvHref && (
+                          <a href={cvHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-medium text-primary hover:underline sm:min-h-0">
+                            <FileText className="h-3.5 w-3.5" /> {t("openCv")}
+                          </a>
+                        )}
+                        {job?.title && (
+                          <Link href={`/${locale}/admin/jobs?search=${encodeURIComponent(job.title)}`} className="inline-flex min-h-11 items-center gap-1 font-medium text-primary hover:underline sm:min-h-0">
+                            <Briefcase className="h-3.5 w-3.5" /> {t("viewJob")}
+                          </Link>
+                        )}
+                        <Link
+                          href={`/${locale}/admin/job-seekers?search=${encodeURIComponent(candidateName)}`}
+                          className="inline-flex min-h-11 items-center gap-1 font-medium text-primary hover:underline sm:min-h-0"
+                        >
+                          <User className="h-3.5 w-3.5" /> {t("viewCandidateProfile")}
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </article>
               );
             })}

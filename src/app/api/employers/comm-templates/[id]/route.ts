@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import { validateBody } from "@/lib/validators";
 import { commTemplateUpdateSchema } from "@/lib/validators/employers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -148,6 +149,9 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   return NextResponse.json({ message: "Template deleted" });
 }
 
-export const GET = withAuth(getHandler, { resource: "employers", action: "read" });
-export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });
-export const DELETE = withAuth(deleteHandler, { resource: "employers", action: "update" });
+// Plan entitlement `commTemplates` — see ../route.ts.
+const COMM_TEMPLATES_GATE = { type: "toggle", feature: "commTemplates" } as const;
+
+export const GET = withAuth(withSubscription(getHandler, COMM_TEMPLATES_GATE), { resource: "employers", action: "read" });
+export const PATCH = withAuth(withSubscription(patchHandler, COMM_TEMPLATES_GATE), { resource: "employers", action: "update" });
+export const DELETE = withAuth(withSubscription(deleteHandler, COMM_TEMPLATES_GATE), { resource: "employers", action: "update" });

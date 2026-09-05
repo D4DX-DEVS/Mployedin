@@ -9,13 +9,14 @@ import {
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp, BookmarkPlus, SlidersHorizontal } from "lucide-react";
+import { Sparkles, Search, X, ChevronLeft, ChevronRight, ArrowUp, BookmarkPlus, SlidersHorizontal } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import Link from "next/link";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import { JobFeedCard, type FeedJob } from "./JobFeedCard";
 import { JobFeedSidebar, type FeedFilters } from "./JobFeedSidebar";
@@ -40,7 +41,7 @@ interface JobPage {
 
 // ── Filter logic ──────────────────────────────────────────────────────────────
 
-function passesFilters(job: FeedJob, filters: FeedFilters): boolean {
+function passesFilters(job: FeedJob, filters: FeedFilters, inSearchMode: boolean = false): boolean {
   if (filters.workTypes.length > 0) {
     const isRemote = job.location.isRemote;
     const matchesRemote = filters.workTypes.includes("remote") && isRemote;
@@ -48,7 +49,8 @@ function passesFilters(job: FeedJob, filters: FeedFilters): boolean {
     if (!matchesRemote && !matchesOnsite) return false;
   }
 
-  if (filters.matchRanges.length > 0) {
+  // Only apply match score filtering in recommended mode (not in search mode where matchScore is always 0)
+  if (filters.matchRanges.length > 0 && !inSearchMode) {
     const s = job.matchScore;
     const in80 = filters.matchRanges.includes("80+") && s >= 80;
     const in60 = filters.matchRanges.includes("60-79") && s >= 60 && s < 80;
@@ -102,6 +104,22 @@ async function fetchAppliedJobIds(): Promise<string[]> {
     // Withdrawn applications can be re-applied to, so they don't count as "applied".
     .filter((a) => a.status !== "withdrawn")
     .map((a) => (typeof a.jobId === "object" ? a.jobId?._id : a.jobId))
+    .filter((id): id is string => Boolean(id));
+}
+
+/**
+ * Fetch the set of job IDs the seeker has saved/bookmarked.
+ */
+async function fetchSavedJobIds(): Promise<string[]> {
+  // Same source the Saved Jobs page reads. `jobId` arrives populated, so the
+  // id has to be unwrapped the way applied ids are above.
+  const res = await fetch(`/api/saved-jobs?limit=100`);
+  if (!res.ok) return [];
+  const data = (await res.json()) as {
+    items?: Array<{ jobId?: string | { _id?: string } | null }>;
+  };
+  return (data.items ?? [])
+    .map((item) => (typeof item.jobId === "object" ? item.jobId?._id : item.jobId))
     .filter((id): id is string => Boolean(id));
 }
 
@@ -196,6 +214,11 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const searchParams = useSearchParams();
   const employerIdParam = searchParams.get("employerId")?.trim() ?? "";
   const employerIdFilter = OBJECT_ID_PATTERN.test(employerIdParam) ? employerIdParam : "";
+  // The retired /job-seeker/search route redirects here as `?search=`, and the
+  // ⌘K palette links the same way. Without seeding the box from it, every one
+  // of those links landed on the generic recommended feed with the query
+  // silently dropped.
+  const urlSearch = searchParams.get("search")?.trim() ?? "";
 
   const [sortMode, setSortMode] = useState<SortMode>("match");
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -209,12 +232,16 @@ export function JobFeedPage({ locale }: { locale: string }) {
     dateRanges: [],
     experienceLevels: [],
   });
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // ── Search state ────────────────────────────────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
   const [searchPage, setSearchPage] = useState(1);
   const [saveSearchOpen, setSaveSearchOpen] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 400);
+  useEffect(() => {
+    if (urlSearch) setSearchQuery(urlSearch);
+  }, [urlSearch]);
   const isSearchMode = debouncedSearch.trim().length > 0 || employerIdFilter.length > 0;
   // Only one experience/work-type selection maps cleanly onto a saved search's
   // single-value filters; otherwise leave it for the user to pick in the dialog.
@@ -223,11 +250,17 @@ export function JobFeedPage({ locale }: { locale: string }) {
   // A saved search needs a text query; hide the action in employer-only browse.
   const canSaveSearch = debouncedSearch.trim().length > 0;
 
-  // Hydrate already-applied job IDs so the "Applied" state shows on first load,
+  // Hydrate already-applied and saved job IDs so the "Applied" and "Saved" states show on first load,
   // including for jobs surfaced through search (not just the recommended feed).
   const { data: appliedIdsData } = useQuery({
     queryKey: ["applied-job-ids"],
     queryFn: fetchAppliedJobIds,
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: savedIdsData } = useQuery({
+    queryKey: ["saved-job-ids"],
+    queryFn: fetchSavedJobIds,
     staleTime: 5 * 60_000,
   });
 
@@ -236,6 +269,12 @@ export function JobFeedPage({ locale }: { locale: string }) {
       setAppliedIds((s) => new Set([...s, ...appliedIdsData]));
     }
   }, [appliedIdsData]);
+
+  useEffect(() => {
+    if (savedIdsData?.length) {
+      setSavedIds((s) => new Set([...s, ...savedIdsData]));
+    }
+  }, [savedIdsData]);
 
   const {
     data: searchData,
@@ -345,7 +384,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const allJobs = [
     ...new Map((data?.pages.flatMap((p) => p.jobs) ?? []).map((j) => [String(j._id), j])).values(),
   ];
-  const total = data?.pages[0]?.total ?? 0;
   const totalPoolPages = data?.pages[0]?.totalPoolPages ?? 1;
   const totalJobs = data?.pages[0]?.totalJobs ?? 0;
   const matchedCount = data?.pages[0]?.matchedCount ?? 0;
@@ -355,7 +393,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   const visibleJobs = allJobs
     .filter((j) => !hidden.has(j._id))
-    .filter((j) => passesFilters(j, filters));
+    .filter((j) => passesFilters(j, filters, false));
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -450,10 +488,23 @@ export function JobFeedPage({ locale }: { locale: string }) {
               </div>
 
               <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:justify-end">
+                <button
+                  onClick={() => setFiltersOpen(true)}
+                  aria-label={t("actions.mobileFilters")}
+                  className="inline-flex lg:hidden h-11 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-background/90 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 sm:px-4"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span className="hidden min-[420px]:inline">{t("actions.filters")}</span>
+                  {filters.workTypes.length + filters.matchRanges.length + filters.dateRanges.length + filters.experienceLevels.length > 0 && (
+                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                      {filters.workTypes.length + filters.matchRanges.length + filters.dateRanges.length + filters.experienceLevels.length}
+                    </span>
+                  )}
+                </button>
                 <Link
                   href={`/${locale}/job-seeker/preferences`}
                   aria-label={t("actions.refinePreferences")}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 sm:px-4"
+                  className="inline-flex hidden min-[1024px]:h-11 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 sm:px-4 lg:inline-flex"
                 >
                   <SlidersHorizontal className="h-4 w-4 sm:hidden" />
                   <span className="hidden sm:inline">{t("actions.refinePreferences")}</span>
@@ -536,7 +587,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
               {!searchLoading &&
                 searchData?.jobs
                   .filter((j) => !hidden.has(j._id))
-                  .filter((j) => passesFilters(j, filters))
+                  .filter((j) => passesFilters(j, filters, true))
                   .map((job) => (
                     <JobFeedCard
                       key={job._id}
@@ -761,6 +812,21 @@ export function JobFeedPage({ locale }: { locale: string }) {
           />
         </div>
       </div>
+
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <DialogContent mobileSheet className="gap-0 overflow-y-auto p-0">
+          <DialogHeader className="sticky top-0 z-10 border-b border-border/60 bg-background px-6 py-4">
+            <DialogTitle>{t("sidebar.filters")}</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-4">
+            <JobFeedSidebar
+              filters={filters}
+              onFiltersChange={setFilters}
+              locale={locale}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {applyJob && (
         <EasyApplyFlowDialog

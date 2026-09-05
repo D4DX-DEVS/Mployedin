@@ -11,14 +11,12 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 
 const ALLOWED_ROLES: UserRole[] = ["employer", "agent", "admin", "super_agent"];
 const JOB_STATUSES = new Set(["active", "draft", "closed", "expired"]);
-const APPROVAL_STATUSES = new Set(["pending", "approved", "rejected"]);
 const WORK_MODES = new Set(["onsite", "hybrid", "remote"]);
 const SORT_OPTIONS = new Set(["applications_desc", "applications_asc", "newest", "oldest", "relevance"]);
 
 interface RawJobSearchFilters {
   search?: unknown;
   status?: unknown;
-  approvalStatus?: unknown;
   workMode?: unknown;
   location?: unknown;
   skills?: unknown;
@@ -38,9 +36,6 @@ function normalizeJobSearchFilters(raw: RawJobSearchFilters) {
   const status = typeof raw.status === "string" && JOB_STATUSES.has(raw.status)
     ? raw.status
     : undefined;
-  const approvalStatus = typeof raw.approvalStatus === "string" && APPROVAL_STATUSES.has(raw.approvalStatus)
-    ? raw.approvalStatus
-    : undefined;
   const workMode = typeof raw.workMode === "string" && WORK_MODES.has(raw.workMode)
     ? raw.workMode
     : undefined;
@@ -58,7 +53,6 @@ function normalizeJobSearchFilters(raw: RawJobSearchFilters) {
   return {
     search: normalizeString(raw.search),
     status,
-    approvalStatus,
     workMode,
     location: normalizeString(raw.location),
     skills,
@@ -94,7 +88,6 @@ Return ONLY valid JSON with this exact shape:
 {
   "search": string | null,
   "status": "active" | "draft" | "closed" | "expired" | null,
-  "approvalStatus": "pending" | "approved" | "rejected" | null,
   "workMode": "onsite" | "hybrid" | "remote" | null,
   "location": string | null,
   "skills": string[],

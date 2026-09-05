@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import { escapeRegex, isValidRole } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { adminUserCreateSchema, adminUserPatchSchema, adminUserDeleteSchema } from "@/lib/validators/admin";
+import { deactivateEmployerAccount, reactivateEmployerAccount } from "@/lib/employers/accountStatus";
 
 import bcrypt from "bcryptjs";
 import logger from "@/lib/logger";
@@ -106,6 +107,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
+/**
+ * Employers own live jobs. Flipping `User.isActive` alone left a deactivated
+ * company's postings public and still accepting applications — mirror the
+ * account state onto the Employer profile and pause / resume its jobs.
+ */
+async function syncEmployerAccountStatus(userId: string, isActive: boolean): Promise<void> {
+  const target = await User.findById(userId).select("role").lean<{ role?: string } | null>();
+  if (target?.role !== "employer") return;
+  if (isActive) await reactivateEmployerAccount(userId);
+  else await deactivateEmployerAccount(userId);
+}
+
 // PATCH /api/admin/users — single update OR bulk action
 async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -159,9 +172,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
           }
           case "activate":
             modified = (await User.updateOne({ _id: id }, { $set: { isActive: true } })).modifiedCount > 0;
+            if (modified) await syncEmployerAccountStatus(id, true);
             break;
           case "deactivate":
             modified = (await User.updateOne({ _id: id }, { $set: { isActive: false } })).modifiedCount > 0;
+            if (modified) await syncEmployerAccountStatus(id, false);
             break;
           case "delete": {
             const targetUser = await User.findById(id);
@@ -257,6 +272,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   ).select("-passwordHash").lean();
 
   if (!updated) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  if (typeof isActive === "boolean" && (updated as { role?: string }).role === "employer") {
+    if (isActive) await reactivateEmployerAccount(userId as string);
+    else await deactivateEmployerAccount(userId as string);
+  }
 
   if (role) {
     await ensureRoleProfile(updated as { _id: unknown; name?: string; email?: string }, role as string, oldUser?.role);

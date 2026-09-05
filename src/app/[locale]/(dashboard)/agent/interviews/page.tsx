@@ -6,6 +6,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { readQuery } from "@/lib/ui/urlQuery";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +70,9 @@ const TYPE_OPTIONS_BASE: (t: ReturnType<typeof useTranslations>) => Array<{ valu
 
 const OUTCOME_OPTIONS_BASE: (t: ReturnType<typeof useTranslations>) => Array<{ value: string; label: string }> = (t) => [
   { value: "", label: t("filterAllOutcomes") },
+  // The interview has happened and nobody recorded how it went — the one
+  // outcome state that is a task rather than a result.
+  { value: "pending", label: t("outcomePending") },
   { value: "passed", label: t("outcomePassed") },
   { value: "failed", label: t("outcomeFailed") },
   { value: "hold", label: t("outcomeOnHold") },
@@ -109,23 +114,26 @@ export default function AgentInterviewsPage() {
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
   const [jobs, setJobs] = useState<JobOption[]>([]);
 
-  /* Filter state */
-  const [status, setStatus] = useState("");
-  const [employerFilter, setEmployerFilter] = useState("all");
-  const [jobFilter, setJobFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [outcomeFilter, setOutcomeFilter] = useState("");
-  const [search, setSearch] = useState("");
+  /* Filter state — mirrored into the query string so a filtered view is an
+     address. "Interviews with no outcome recorded" is a thing the dashboard
+     queue links to; it needs a URL to link to. */
+  const [status, setStatus] = useUrlFilter("status", "");
+  const [employerFilter, setEmployerFilter] = useUrlFilter("employerId", "all");
+  const [jobFilter, setJobFilter] = useUrlFilter("jobId", "all");
+  const [typeFilter, setTypeFilter] = useUrlFilter("type", "");
+  const [outcomeFilter, setOutcomeFilter] = useUrlFilter("outcome", "");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
+  const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
   // Five selects and two date pickers were always open, filling a screen
   // before the first interview row. Collapsed by default; the active pills
   // below still show what is applied.
   const [showFilters, setShowFilters] = useState(false);
 
   /* Modal state */
-  const [modalOpen, setModalOpen] = useState(false);
+  // `?new=1` from the Create menu and ⌘K opens the schedule dialog on arrival.
+  const [modalOpen, setModalOpen] = useState(() => readQuery().get("new") === "1");
   const [editInterview, setEditInterview] = useState<Interview | null>(null);
 
   /* Debounce search */
@@ -229,7 +237,19 @@ export default function AgentInterviewsPage() {
     setDateTo("");
   };
 
-  const hasActiveFilters = status || employerFilter || jobFilter || typeFilter || outcomeFilter || debouncedSearch || dateFrom || dateTo;
+  // "all" is the employer/job default and is truthy, so this used to be true on
+  // every render — the active-filter pill row and Clear button showed on an
+  // unfiltered list.
+  const hasActiveFilters = Boolean(
+    status ||
+    (employerFilter && employerFilter !== "all") ||
+    (jobFilter && jobFilter !== "all") ||
+    typeFilter ||
+    outcomeFilter ||
+    debouncedSearch ||
+    dateFrom ||
+    dateTo
+  );
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("columnCandidate"), key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },

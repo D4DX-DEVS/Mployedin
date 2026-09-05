@@ -174,12 +174,13 @@ describe("T9 — job credit inside tenant view", () => {
     expect(capturedJob.agentId).toBe(DEFAULT_AGENT_ID);
   });
 
-  it("T8 — an admin posting inside an employer's account keeps auto-approval", async () => {
+  it("T8 — an admin posting inside an employer's account publishes directly with no approval state", async () => {
     const { createHandler } = await import("@/app/api/jobs/handlers");
     await createHandler(postReq(), tenantCtx("admin", "ffffffffffffffffffffffff"));
 
-    // ctx.role is "employer" here; the approval decision must follow the real human.
-    expect(capturedJob["poster.approvalStatus"]).toBe("approved");
+    // The approval queue is retired: nothing writes poster.approvalStatus any more.
+    expect(capturedJob["poster.approvalStatus"]).toBeUndefined();
+    expect(capturedJob.poster).toBeUndefined();
     expect(capturedJob.status).toBe("active");
   });
 });

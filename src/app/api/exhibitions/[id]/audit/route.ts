@@ -28,6 +28,28 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Super-agent access control: team jurisdiction only (mirrors the GET/PATCH
+  // handlers in ../route.ts). Without this, any super_agent could read the full
+  // decision history of exhibitions raised by other teams' agents.
+  if (ctx.role === "super_agent") {
+    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+    const Agent = (await import("@/models/Agent")).default;
+    const scope = await getSuperAgentScope(ctx.userId);
+    const teamProfileIds = scope?.effectiveAgentIds ?? [];
+    const teamUserIds = teamProfileIds.length
+      ? (await Agent.find({ _id: { $in: teamProfileIds } }).select("userId").lean())
+          .map((a) => String(a.userId))
+      : [];
+    const rawAgent = item.agentId as unknown as { _id?: unknown } | null;
+    const requestAgentUserId = String(rawAgent?._id ?? item.agentId ?? "");
+    if (!teamUserIds.includes(requestAgentUserId)) {
+      return NextResponse.json(
+        { error: "Forbidden — this request is not from your team" },
+        { status: 403 },
+      );
+    }
+  }
+
   const deriveActionType = (entry: { status?: string; note?: string; statusReason?: string }, prevStatus?: string): string => {
     if (entry.status === "budget_approved") return "BUDGET_APPROVED";
     if (entry.status === "resources_assigned") return "RESOURCES_ASSIGNED";

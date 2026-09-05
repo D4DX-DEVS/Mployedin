@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Video, MapPin, Calendar, Clock, ExternalLink, CheckCircle, AlertCircle, Check, X, RotateCcw } from "lucide-react";
+import { Video, MapPin, Calendar, Clock, ExternalLink, CheckCircle, AlertCircle, Check, X, RotateCcw, List, Building2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -12,7 +14,14 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useDebounce } from "@/hooks/useDebounce";
+import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
 import type { ExportColumn } from "@/lib/export";
+import type { CalendarEvent } from "@/components/shared/MployedinCalendar";
+
+const MployedinCalendar = dynamic(
+  () => import("@/components/shared/MployedinCalendar"),
+  { ssr: false, loading: () => <CalendarSkeleton /> },
+);
 
 interface Interview {
   _id: string;
@@ -47,10 +56,14 @@ export default function InterviewsPage() {
   const t = useTranslations("jobSeekerInterviews");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const searchParams = useSearchParams();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [view, setView] = useState<"list" | "calendar">(
+    (searchParams.get("view") as "list" | "calendar") || "list"
+  );
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
 
@@ -123,70 +136,127 @@ export default function InterviewsPage() {
         description={t("summary", { upcoming: upcoming.length.toLocaleString(numberLocale), past: past.length.toLocaleString(numberLocale) })}
       />
 
-      <TableToolbar
-        search={searchTerm}
-        onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
-        searchPlaceholder={t("searchPlaceholder")}
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        className="mb-4"
-      />
-
-      {/* Status filter tabs */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-        {STATUS_TABS.map((status) => (
+      {/* Toolbar with view toggle */}
+      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+        <TableToolbar
+          search={searchTerm}
+          onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
+          searchPlaceholder={t("searchPlaceholder")}
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="flex-1"
+        />
+        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1 border border-border/40">
           <Button
-            key={status}
-            variant={statusFilter === status ? "default" : "outline"}
+            variant={view === "list" ? "default" : "ghost"}
             size="sm"
-            onClick={() => { setStatusFilter(status); pagination.resetPage(); }}
-            className="whitespace-nowrap"
+            onClick={() => setView("list")}
+            className="gap-1"
           >
-            {t(`status.${status}`)}
+            <List className="w-4 h-4" />
+            <span className="hidden sm:inline">List</span>
           </Button>
-        ))}
+          <Button
+            variant={view === "calendar" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setView("calendar")}
+            className="gap-1"
+          >
+            <Calendar className="w-4 h-4" />
+            <span className="hidden sm:inline">Calendar</span>
+          </Button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-3 sm:space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="card-base animate-pulse h-24 sm:h-28" />
-          ))}
-        </div>
-      ) : interviews.length === 0 ? (
-        <div className="card-base text-center py-10 sm:py-16">
-          <Video className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-semibold mb-1">{t("emptyTitle")}</h3>
-          <p className="text-sm text-muted-foreground">
-            {t("emptyDescription")}
-          </p>
-        </div>
-      ) : (
+      {view === "calendar" ? (
         <>
-          {upcoming.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="heading-label font-semibold text-foreground">{t("upcoming")}</h2>
-              {upcoming.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming onRefresh={fetchInterviews} />)}
-            </section>
-          )}
-          {past.length > 0 && (
-            <section className="space-y-3 mt-6">
-              <h2 className="heading-label font-semibold text-muted-foreground">{t("past")}</h2>
-              {past.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming={false} onRefresh={fetchInterviews} />)}
-            </section>
+          {loading ? (
+            <CalendarSkeleton />
+          ) : (
+            <MployedinCalendar
+              events={interviews.map((i) => ({
+                _id: i._id,
+                title: i.jobTitle ?? t("interviewFallback"),
+                subtitle: i.companyName ?? "",
+                type: (i.type as CalendarEvent["type"]) ?? "video",
+                status: i.status,
+                scheduledAt: i.scheduledAt,
+                duration: i.duration,
+                meetLink: i.meetLink,
+                location: i.location,
+              }))}
+              loading={loading}
+              onMonthChange={() => {}}
+              renderEventExtra={(e) =>
+                e.subtitle ? (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Building2 className="h-3 w-3 flex-shrink-0" />
+                    {e.subtitle}
+                  </p>
+                ) : null
+              }
+            />
           )}
         </>
-      )}
+      ) : (
+        <>
+          {/* Status filter tabs - only show in list view */}
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+            {STATUS_TABS.map((status) => (
+              <Button
+                key={status}
+                variant={statusFilter === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setStatusFilter(status); pagination.resetPage(); }}
+                className="whitespace-nowrap"
+              >
+                {t(`status.${status}`)}
+              </Button>
+            ))}
+          </div>
 
-      <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
-      />
+          {loading ? (
+            <div className="space-y-3 sm:space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="card-base animate-pulse h-24 sm:h-28" />
+              ))}
+            </div>
+          ) : interviews.length === 0 ? (
+            <div className="card-base text-center py-10 sm:py-16">
+              <Video className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold mb-1">{t("emptyTitle")}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t("emptyDescription")}
+              </p>
+            </div>
+          ) : (
+            <>
+              {upcoming.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="heading-label font-semibold text-foreground">{t("upcoming")}</h2>
+                  {upcoming.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming onRefresh={fetchInterviews} />)}
+                </section>
+              )}
+              {past.length > 0 && (
+                <section className="space-y-3 mt-6">
+                  <h2 className="heading-label font-semibold text-muted-foreground">{t("past")}</h2>
+                  {past.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming={false} onRefresh={fetchInterviews} />)}
+                </section>
+              )}
+            </>
+          )}
+
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            limit={pagination.limit}
+            onPageChange={pagination.setPage}
+            onLimitChange={pagination.setLimit}
+          />
+        </>
+      )}
     </div>
   );
 }

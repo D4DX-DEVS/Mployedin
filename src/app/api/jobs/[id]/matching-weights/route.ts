@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
@@ -123,4 +124,5 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler);
+// Per-job weights are the `matchingWeightCustomization` entitlement; staff roles bypass.
+export const PATCH = withAuth(withSubscription(patchHandler, { type: "toggle", feature: "matchingWeightCustomization" }));

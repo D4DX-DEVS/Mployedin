@@ -12,6 +12,7 @@ import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/feature
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
+import { SaveJobButton } from "@/components/features/job-seeker/SaveJobButton";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
@@ -130,16 +131,12 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
   if (!job) notFound();
 
   if (job.status !== "active") {
-    // Job exists but is under review, paused, closed or expired — show a
-    // friendly page instead of a raw 404 (metadata above already resolves).
+    // Job exists but is a draft, paused, closed or expired — show a friendly
+    // page instead of a raw 404 (metadata above already resolves).
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-24 text-center">
         <h1 className="text-2xl font-semibold">{job.title}</h1>
-        <p className="text-muted-foreground">
-          {job.status === "pending_approval"
-            ? t("notAvailablePending")
-            : t("notAvailableClosed")}
-        </p>
+        <p className="text-muted-foreground">{t("notAvailableClosed")}</p>
         <Link
           href={`/${locale}/job-seeker/jobs`}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
@@ -250,6 +247,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                         {t("verifiedEmployer")}
                       </span>
                     )}
+                    <SaveJobButton jobId={String(job._id)} variant="icon" />
                     <ShareJob
                       jobId={String(job._id)}
                       jobTitle={job.title}

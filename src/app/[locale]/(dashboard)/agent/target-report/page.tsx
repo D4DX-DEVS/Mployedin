@@ -19,6 +19,7 @@ import {
   ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -256,6 +257,7 @@ export default function AgentTargetReportPage() {
 
   return (
     <div className="page-container print:space-y-4">
+      <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
       {/* ═══════ HERO ═══════ */}
       <DashboardPageHeader
         icon={Target}

@@ -3,6 +3,7 @@ export { PageHeaderSkeleton } from "./PageHeaderSkeleton";
 export { KpiGridSkeleton } from "./KpiGridSkeleton";
 export { CardListSkeleton } from "./CardListSkeleton";
 export { TableRowsSkeleton } from "./TableRowsSkeleton";
+export { TableBodySkeleton } from "./TableBodySkeleton";
 export { FormFieldsSkeleton } from "./FormFieldsSkeleton";
 export { DashboardPageSkeleton } from "./DashboardPageSkeleton";
 export { ChartSkeleton } from "./ChartSkeleton";

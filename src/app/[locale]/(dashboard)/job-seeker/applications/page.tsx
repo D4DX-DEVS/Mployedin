@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -110,11 +110,14 @@ export default function ApplicationsPage() {
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("jobSeekerApplications");
   const router = useRouter();
+  // The ⌘K palette deep-links here as `?search=<job title>`; without seeding
+  // the box from the URL the link landed on an unfiltered list.
+  const urlSearch = useSearchParams().get("search") ?? "";
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [overallTotal, setOverallTotal] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -127,6 +130,12 @@ export default function ApplicationsPage() {
   useEffect(() => {
     document.title = t("documentTitle");
   }, [t]);
+
+  // A second palette hit while already on this page changes the query string
+  // but not the component, so the box has to follow it.
+  useEffect(() => {
+    if (urlSearch) setSearchTerm(urlSearch);
+  }, [urlSearch]);
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);

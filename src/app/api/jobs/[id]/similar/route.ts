@@ -41,11 +41,10 @@ export async function GET(
     return NextResponse.json({ jobs: [] });
   }
 
-  // Find active, approved jobs that share skills or tags (exclude current job)
+  // Find active jobs that share skills or tags (exclude current job)
   const similar = await Job.find({
     _id: { $ne: job._id },
     status: "active",
-    "poster.approvalStatus": "approved",
     $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }],
     $and: [
       {

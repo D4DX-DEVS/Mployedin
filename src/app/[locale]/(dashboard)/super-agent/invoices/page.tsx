@@ -8,6 +8,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   RotateCcw, ArrowRight,
@@ -75,6 +76,8 @@ export default function SuperAgentInvoicesPage() {
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
   const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
 
+  const [search, setSearchState] = useUrlFilter("search", "", { debounceMs: 400 });
+
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
@@ -82,6 +85,7 @@ export default function SuperAgentInvoicesPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (statusFilter) params.set("status", statusFilter);
       if (categoryFilter) params.set("category", categoryFilter);
+      if (search) params.set("search", search);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       const res = await fetch(`/api/invoices?${params}`);
@@ -96,7 +100,7 @@ export default function SuperAgentInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, categoryFilter, dateFrom, dateTo, page, limit, updateTotal, t]);
+  }, [statusFilter, categoryFilter, search, dateFrom, dateTo, page, limit, updateTotal, t]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
@@ -184,7 +188,7 @@ export default function SuperAgentInvoicesPage() {
 
       {/* ── Filters ── */}
       <TableToolbar
-        search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
+        search={search} onSearchChange={(v) => { setSearchState(v); resetPage(); }} searchPlaceholder={t("searchPlaceholder")}
         filterContent={
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

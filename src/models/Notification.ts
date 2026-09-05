@@ -27,7 +27,8 @@ export type NotificationType =
   | "target_assigned"
   | "target_updated"
   | "target_at_risk"
-  | "target_milestone";
+  | "target_milestone"
+  | "exhibition_request";
 
 export type NotificationChannel = "in_app" | "email" | "whatsapp";
 
@@ -81,6 +82,7 @@ const NotificationSchema = new Schema<INotification>(
         "target_updated",
         "target_at_risk",
         "target_milestone",
+        "exhibition_request",
       ],
       required: true,
     },

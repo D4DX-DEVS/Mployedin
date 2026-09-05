@@ -13,8 +13,10 @@ import type { CopilotTool } from "../types";
  * Job creation — usable by employer, agent, admin only. super_agent is
  * intentionally excluded: the permission matrix gives super_agent
  * jobs:["read","approve","export"] (no "create") everywhere in the app —
- * super-agents review/approve postings, they don't author them. Mirroring
- * POST /api/jobs's `allowed` role list and approval-status resolution exactly.
+ * super-agents oversee postings, they don't author them. Mirrors POST
+ * /api/jobs's `allowed` role list. The approval queue itself is gone (see the
+ * publish path below): a published job is live, and the `approve` permission
+ * now only gates commission approval.
  */
 export const createJobTool: CopilotTool<{
   title: string;
@@ -37,7 +39,7 @@ export const createJobTool: CopilotTool<{
 }> = {
   name: "create_job",
   description:
-    "Create a new job posting. Employers post for their own company; agents/admin must pass employerId (use search_employers first to find it). New postings from agents, or from employers with an involved agent, are routed to approval automatically — tell the user that up front rather than implying it goes live immediately.",
+    "Create a new job posting. Employers post for their own company; agents/admin must pass employerId (use search_employers first to find it). Published postings go live immediately — there is no approval queue, so do not tell the user their job is waiting on a review.",
   resource: "jobs",
   action: "create",
   roles: ["employer", "agent", "admin"],
@@ -100,8 +102,7 @@ export const createJobTool: CopilotTool<{
       }
     }
 
-    // ponytail: no approval queue — jobs go live on publish.
-    const approvalStatus: "pending" | "approved" = "approved";
+    // No approval queue — jobs go live on publish.
     const resolvedStatus: string = args.status ?? "active";
 
     const job = await Job.create({
@@ -129,8 +130,18 @@ export const createJobTool: CopilotTool<{
       vacancies: args.vacancies ?? 1,
       tags: [],
       visibility: "public",
-      "poster.approvalStatus": approvalStatus,
     });
+
+    // POST /api/jobs consumes a job slot through withSubscription(); this path
+    // only *read* the gate above, so copilot-created jobs never counted against
+    // maxActiveJobs and an employer could post past the cap indefinitely.
+    if (ctx.role === "employer") {
+      const { default: Subscription } = await import("@/models/Subscription");
+      await Subscription.updateOne(
+        { userId: ctx.userId, targetRole: "employer", status: "active" },
+        { $inc: { "usage.activeJobs": 1 } },
+      );
+    }
 
     if (agentId) {
       const { incrementAgentCounter } = await import("@/lib/agentPerformance");

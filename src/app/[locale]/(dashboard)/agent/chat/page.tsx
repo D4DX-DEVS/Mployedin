@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { AgentSectionTabs, AGENT_INBOX_TABS } from "@/components/features/agent/AgentSectionTabs";
 import { ChevronLeft, Hash, Loader2, Send, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
@@ -93,6 +94,7 @@ export default function AgentChatPage() {
 
   return (
     <div className="page-container flex flex-col">
+      <AgentSectionTabs tabs={AGENT_INBOX_TABS} ariaLabelKey="inboxTabsLabel" />
       <DashboardPageHeader
         icon={Users}
         title={t("teamChannelsHeading")}

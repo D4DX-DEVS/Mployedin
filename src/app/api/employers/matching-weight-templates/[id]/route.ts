@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import connectDB from "@/lib/db/mongoose";
 import MatchingWeightTemplate from "@/models/MatchingWeightTemplate";
 import Employer from "@/models/Employer";
@@ -116,5 +117,6 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
 }
 
 export const GET = withAuth(getHandler, { resource: "employers", action: "read" });
-export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });
-export const DELETE = withAuth(deleteHandler, { resource: "employers", action: "delete" });
+const MATCHING_GATE = { type: "toggle", feature: "matchingWeightCustomization" } as const;
+export const PATCH = withAuth(withSubscription(patchHandler, MATCHING_GATE), { resource: "employers", action: "update" });
+export const DELETE = withAuth(withSubscription(deleteHandler, MATCHING_GATE), { resource: "employers", action: "delete" });
