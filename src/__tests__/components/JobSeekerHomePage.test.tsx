@@ -65,6 +65,10 @@ const translations: Record<string, unknown> = {
     emptyTitle: "لا توجد توصيات بعد",
     emptyBody: "أكمل ملفك وتفضيلاتك للحصول على اقتراحات وظائف أقوى.",
     emptyCta: "حدد التفضيلات",
+    noMatchesTitle: "لا توجد وظائف مطابقة حالياً",
+    noMatchesBody: "أنت على اطلاع بكل جديد! لا توجد حالياً وظائف جديدة غير مُقدّم عليها تتطابق مع تفضيلاتك.",
+    noMatchesCta: "تعديل التفضيلات",
+    browseJobsCta: "تصفح جميع الوظائف",
   },
   priorityActions: {
     eyebrow: "إجراءات ذات أولوية",

@@ -73,10 +73,34 @@ export function useConversations(options?: { enabled?: boolean }) {
 export function useUnreadMessageCount(): number {
   const { data: session } = useSession();
   const currentUserId = (session?.user as unknown as { id?: string } | undefined)?.id ?? "";
+  const role = (session?.user as unknown as { role?: string } | undefined)?.role;
   const { data: conversations } = useConversations();
+  const isJobSeeker = role === "job_seeker";
+
+  const { data: customerCareConvs } = useQuery({
+    queryKey: ["customerCareConversations"],
+    queryFn: async () => {
+      const res = await fetch("/api/dm/customer-care?limit=50");
+      if (!res.ok) throw new Error("Failed to fetch customer care conversations");
+      const data = await res.json();
+      return (data.conversations ?? []) as Conversation[];
+    },
+    enabled: !!currentUserId && isJobSeeker,
+    staleTime: 30 * 1000,
+    refetchInterval: isJobSeeker ? 30_000 : false,
+  });
+
   if (!currentUserId) return 0;
-  return (conversations ?? []).reduce(
+  const dmCount = (conversations ?? []).reduce(
     (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
     0
   );
+  const ccCount = isJobSeeker
+    ? (customerCareConvs ?? []).reduce(
+        (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
+        0
+      )
+    : 0;
+
+  return dmCount + ccCount;
 }

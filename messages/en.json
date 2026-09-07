@@ -1161,8 +1161,8 @@
     }
   },
   "jobSeekerMessages": {
-    "title": "Support",
-    "description": "Contact support for help"
+    "title": "Messages",
+    "description": "Direct messages & support"
   },
   "jobSeekerExtra": {
     "subscription": {
@@ -2196,7 +2196,11 @@
       "viewDetails": "View details",
       "emptyTitle": "No recommendations yet",
       "emptyBody": "Finish your profile and preferences to unlock stronger job suggestions.",
-      "emptyCta": "Set preferences"
+      "emptyCta": "Set preferences",
+      "noMatchesTitle": "No matching roles right now",
+      "noMatchesBody": "You're all caught up! There are currently no new unapplied jobs matching your preferences.",
+      "noMatchesCta": "Edit preferences",
+      "browseJobsCta": "Browse all jobs"
     },
     "appliedJobs": {
       "eyebrow": "Already applied",

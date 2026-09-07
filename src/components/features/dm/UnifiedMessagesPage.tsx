@@ -336,7 +336,7 @@ export function UnifiedMessagesPage({
         title={title ?? t("defaultTitle")}
         description={description ?? t("defaultDescription")}
         actions={
-          supportOnly ? (
+          (activeTab === "support" || supportOnly) ? (
             <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-1.5">

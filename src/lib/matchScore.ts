@@ -9,6 +9,8 @@
  * All inputs are plain primitives — no Mongoose documents.
  */
 
+import { COUNTRY_REGION_CODES } from "@/lib/i18n/locations";
+
 export interface SeekerProfile {
   skills: string[];
   /** Primary preferred country (lower-cased). Pass "" if unknown. */
@@ -130,6 +132,20 @@ const SKILL_GROUPS: string[][] = [
   ["php", "laravel", "symfony", "codeigniter"],
   // .NET
   ["c#", "csharp", ".net", "dotnet", "asp.net"],
+  // Civil Engineering & Construction CAD/BIM
+  ["autocad", "civil 3d", "revit", "bim", "microstation", "sketchup", "archicad"],
+  // Structural Analysis & Civil Design
+  ["staad pro", "staad.pro", "staad", "etabs", "sap2000", "safe", "structural analysis", "structural engineering", "tekla"],
+  // Civil Site & Construction Management
+  ["site engineer", "site supervision", "construction management", "civil engineering", "civil eng", "project engineering", "site execution"],
+  // Estimation & Quantity Surveying
+  ["quantity surveying", "estimation", "cost estimation", "boq", "bar bending schedule", "rate analysis"],
+  // Mechanical & CAD/CAM
+  ["solidworks", "catia", "creo", "ansys", "inventor", "mechanical design"],
+  // Accounting & ERP
+  ["tally", "tally prime", "quickbooks", "sap", "sap fico", "zoho books", "odoo"],
+  // Financial Reporting & Auditing
+  ["financial reporting", "auditing", "general ledger", "balance sheet", "gst", "taxation", "accounting"],
 ];
 
 /**
@@ -337,7 +353,10 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weig
       .filter(Boolean);
     if (seekerLocations.length === 0) return 0.5; // partial when unknown
     const jobLocation = job.location.toLowerCase().trim();
-    if (!seekerLocations.includes(jobLocation)) return 0;
+    const normalizeCountry = (c: string) => COUNTRY_REGION_CODES[c] ?? c;
+    const seekerNormalized = seekerLocations.map(normalizeCountry);
+    const jobNormalized = normalizeCountry(jobLocation);
+    if (!seekerNormalized.includes(jobNormalized) && !seekerLocations.includes(jobLocation)) return 0;
 
     // Right country — refine by city when both sides actually stated one, so an
     // onsite role 2000km away stops scoring the same as one down the road.

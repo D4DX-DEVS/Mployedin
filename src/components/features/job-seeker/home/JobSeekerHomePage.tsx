@@ -164,10 +164,20 @@ export function JobSeekerHomePage({
   }, []);
 
   useEffect(() => {
-    // SSR primed — skip the initial data fetch entirely
-    if (initialData) {
+    // If SSR data provided recommendations, use them immediately
+    if (initialData?.jobs && initialData.jobs.length > 0) {
+      setProfile(initialData.profile ?? null);
+      setStats(initialData.stats ?? null);
+      setJobs(initialData.jobs);
+      setAppliedJobs(initialData.appliedJobs ?? []);
       setLoading(false);
       return;
+    }
+
+    if (initialData) {
+      setProfile(initialData.profile ?? null);
+      setStats(initialData.stats ?? null);
+      setAppliedJobs(initialData.appliedJobs ?? []);
     }
 
     let active = true;
@@ -176,23 +186,23 @@ export function JobSeekerHomePage({
       try {
         setHomeDataError(null);
         const [profileRes, statsRes, jobsRes, appsRes] = await Promise.all([
-          fetch("/api/job-seeker/profile"),
-          fetch("/api/dashboard/stats"),
+          !initialData?.profile ? fetch("/api/job-seeker/profile") : Promise.resolve(null),
+          !initialData?.stats ? fetch("/api/dashboard/stats") : Promise.resolve(null),
           fetch(`/api/jobs/recommended?limit=${HOME_RECOMMENDED_JOB_COUNT}&sort=match`),
-          fetch("/api/applications?limit=5&page=1"),
+          !initialData?.appliedJobs ? fetch("/api/applications?limit=5&page=1") : Promise.resolve(null),
         ]);
 
         const [profileData, statsData, jobsData, appsData] = await Promise.all([
-          profileRes.ok ? profileRes.json() : null,
-          statsRes.ok ? statsRes.json() : null,
-          jobsRes.ok ? jobsRes.json() : null,
-          appsRes.ok ? appsRes.json() : null,
+          profileRes && profileRes.ok ? profileRes.json() : null,
+          statsRes && statsRes.ok ? statsRes.json() : null,
+          jobsRes && jobsRes.ok ? jobsRes.json() : null,
+          appsRes && appsRes.ok ? appsRes.json() : null,
         ]);
 
         if (!active) return;
-        setProfile(profileData);
-        setStats(statsData);
-        setJobs(jobsData?.jobs ?? []);
+        if (profileData) setProfile(profileData);
+        if (statsData) setStats(statsData);
+        if (jobsData?.jobs) setJobs(jobsData.jobs);
         const rawApps: Array<{
           jobId?: { _id?: string; title?: string; employer?: { companyName?: string; logo?: string } };
           status?: string;
@@ -296,6 +306,10 @@ export function JobSeekerHomePage({
     preferredSalary,
   ].filter((chip): chip is string => Boolean(chip));
 
+  const hasPreferences =
+    preferenceChips.length > 0 ||
+    Boolean(profile?.preferredRoles?.length || profile?.preferredCountries?.length || profile?.preferredJobType || profile?.preferredSalary?.min);
+
   const interviewCount = stats?.upcomingInterviews?.count ?? 0;
   const pendingOfferCount = stats?.pendingOffers?.count ?? 0;
   const unreadMessageCount = stats?.unreadMessages?.count ?? 0;
@@ -342,7 +356,7 @@ export function JobSeekerHomePage({
     <div className="page-container dashboard-overview-page">
       {/* Search first. This is a job board, so the page opens with the thing
           the seeker came to do rather than with statistics about them. */}
-      <section className="rounded-2xl border border-border/70 bg-background p-4 sm:p-5">
+      <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="heading-page text-foreground">
@@ -383,21 +397,21 @@ export function JobSeekerHomePage({
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder={t("search.placeholder")}
               aria-label={t("search.label")}
-              className="min-h-11 w-full rounded-xl border border-border/70 bg-background pe-3 ps-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="min-h-11 w-full rounded-xl border border-border/70 bg-muted/30 pe-3 ps-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/40"
             />
           </div>
-          <Button type="submit" className="min-h-11 shrink-0 rounded-xl px-5">
+          <Button type="submit" className="min-h-11 shrink-0 rounded-xl px-5 shadow-xs">
             {t("search.submit")}
           </Button>
         </form>
 
         {preferenceChips.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {preferenceChips.map((chip) => (
+            {preferenceChips.map((chip, idx) => (
               <Link
-                key={chip}
+                key={`${chip}-${idx}`}
                 href={`/${locale}/job-seeker/preferences`}
-                className="inline-flex items-center rounded-full border border-border/70 bg-muted/30 px-3 py-1 text-xs font-medium capitalize text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium capitalize text-muted-foreground transition-all hover:border-primary/40 hover:bg-card hover:text-foreground hover:shadow-xs"
               >
                 {chip}
               </Link>
@@ -418,6 +432,7 @@ export function JobSeekerHomePage({
           href={nextAction.href}
           icon={nextAction.icon}
           badge={nextAction.badge}
+          className="shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] border-border/80"
         />
       )}
 
@@ -449,9 +464,9 @@ export function JobSeekerHomePage({
           </div>
         ) : jobs.length > 0 ? (
           <div className="space-y-3">
-            {jobs.slice(0, HOME_RECOMMENDED_JOB_COUNT).map((job) => (
+            {jobs.slice(0, HOME_RECOMMENDED_JOB_COUNT).map((job, index) => (
               <JobSummaryCard
-                key={job._id}
+                key={job._id || `job-${index}`}
                 locale={locale}
                 job={{
                   _id: job._id,
@@ -478,13 +493,35 @@ export function JobSeekerHomePage({
               />
             ))}
           </div>
+        ) : hasPreferences ? (
+          <div className="rounded-2xl border border-dashed border-border/80 bg-card/80 px-4 py-8 text-center shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06)] sm:px-6 sm:py-12">
+            <div className="mx-auto mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+              <CheckCircle2 className="h-6 w-6" aria-hidden />
+            </div>
+            <div className="text-lg font-semibold">{t("recommendedJobs.noMatchesTitle")}</div>
+            <p className="mt-1.5 text-sm text-muted-foreground">{t("recommendedJobs.noMatchesBody")}</p>
+            <div className="mt-5 flex flex-col items-center justify-center gap-2">
+              <Button asChild className="min-h-11 rounded-full px-6 shadow-sm">
+                <Link href={`/${locale}/job-seeker/jobs`}>
+                  <Search className="me-2 h-4 w-4" aria-hidden />
+                  {t("recommendedJobs.browseJobsCta")}
+                </Link>
+              </Button>
+              <Link
+                href={`/${locale}/job-seeker/preferences`}
+                className="mt-1 text-xs text-muted-foreground hover:text-primary hover:underline"
+              >
+                {t("recommendedJobs.noMatchesCta")}
+              </Link>
+            </div>
+          </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center sm:px-6 sm:py-12">
+          <div className="rounded-2xl border border-dashed border-border/80 bg-card/80 px-4 py-8 text-center shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06)] sm:px-6 sm:py-12">
             <div className="text-lg font-semibold">{t("recommendedJobs.emptyTitle")}</div>
             <p className="mt-2 text-sm text-muted-foreground">{t("recommendedJobs.emptyBody")}</p>
             <Link
               href={`/${locale}/job-seeker/preferences`}
-              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm"
             >
               {t("recommendedJobs.emptyCta")}
               <ArrowRight className="h-4 w-4" aria-hidden />
@@ -510,7 +547,7 @@ export function JobSeekerHomePage({
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-border/70 bg-background">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)]">
             {appliedJobs.slice(0, 3).map((app, index) => {
               const appInitials = (app.companyName ?? app.title)
                 .trim()
@@ -538,7 +575,7 @@ export function JobSeekerHomePage({
                   : "text-muted-foreground bg-muted/30 border-border/60";
               return (
                 <Link
-                  key={app._id}
+                  key={`${app._id || "app"}-${index}`}
                   href={`/${locale}/job-seeker/applications`}
                   className={cn(
                     "flex min-h-14 items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/40 sm:px-4",

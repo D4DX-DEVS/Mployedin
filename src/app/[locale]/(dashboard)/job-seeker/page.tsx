@@ -7,7 +7,7 @@ import Interview from "@/models/Interview";
 import SavedJob from "@/models/SavedJob";
 import ProfileView from "@/models/ProfileView";
 import Job from "@/models/Job";
-import { calculateMatchScore, jobProfileFromDoc } from "@/lib/matchScore";
+import { calculateMatchScore, jobProfileFromDoc, skillsOverlap } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import {
   JobSeekerHomePage,
@@ -15,6 +15,9 @@ import {
 } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function JobSeekerPage({
   params,
@@ -41,6 +44,7 @@ export default async function JobSeekerPage({
     .lean();
 
   if (!seeker) {
+    console.log("[JobSeekerPage SSR] No seeker found for userId:", userId);
     return (
       <JobSeekerHomePage
         locale={locale}
@@ -88,7 +92,7 @@ export default async function JobSeekerPage({
       $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
     })
       .sort({ createdAt: -1 })
-      .limit(50)
+      .limit(100)
       .select("title salary location employerId tags createdAt requirements employmentType")
       .populate("employerId", "companyName logo")
       .lean(),
@@ -155,12 +159,17 @@ export default async function JobSeekerPage({
   const isRelevantJob = (job: Record<string, unknown>): boolean => {
     if (!hasRelevanceSignal) return true;
     const reqs = job.requirements as { skills?: string[] } | null;
-    const jobSkills = (reqs?.skills ?? []).map((s) => s.toLowerCase());
-    const skillOverlap = jobSkills.some((s) => seekerSkillSet.has(s));
+    const jobSkills = (reqs?.skills ?? []).map(String);
+    const skillOverlap =
+      jobSkills.some((s) => seekerSkillSet.has(s.toLowerCase())) ||
+      skillsOverlap(seekerProfile.skills, jobSkills);
     const titleLower = String(job.title ?? "").toLowerCase();
-    const roleMatch = seekerRoleList.some(
-      (role) => titleLower.includes(role) || role.includes(titleLower),
-    );
+    const titleWords = titleLower.split(/[^a-z0-9+#]+/).filter((w) => w.length >= 3);
+    const roleMatch = seekerRoleList.some((role) => {
+      if (titleLower.includes(role) || role.includes(titleLower)) return true;
+      const roleWords = role.split(/[^a-z0-9+#]+/).filter((w) => w.length >= 3);
+      return roleWords.length > 0 && roleWords.every((w) => titleWords.includes(w));
+    });
     return skillOverlap || roleMatch;
   };
 
@@ -206,6 +215,8 @@ export default async function JobSeekerPage({
     // jobs the client would drop.
     .slice(0, HOME_RECOMMENDED_JOB_COUNT);
 
+  console.log("[JobSeekerPage SSR] scoredJobs count:", scoredJobs.length, scoredJobs.map(j => j.title));
+
   const initialData: InitialHomeData = {
     profile: JSON.parse(JSON.stringify(seeker)),
     stats: {
@@ -240,7 +251,7 @@ export default async function JobSeekerPage({
   return (
     <JobSeekerHomePage
       locale={locale}
-      initialData={initialData}
+      initialData={JSON.parse(JSON.stringify(initialData))}
       userName={sessionUser.name ?? undefined}
       userImage={sessionUser.image ?? undefined}
     />

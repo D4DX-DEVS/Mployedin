@@ -177,7 +177,7 @@ export function JobSummaryCard({
     <article
       data-testid="job-summary-card"
       className={cn(
-        "group relative rounded-2xl border border-border/70 bg-background p-3 transition-all hover:border-primary/30 hover:shadow-[0_16px_32px_-24px_rgba(15,23,42,0.35)] sm:p-4",
+        "group relative rounded-2xl border border-border/80 bg-card p-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_24px_-4px_rgba(15,23,42,0.12),0_4px_8px_-2px_rgba(15,23,42,0.06)] sm:p-4",
         className
       )}
     >
