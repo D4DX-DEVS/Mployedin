@@ -151,6 +151,7 @@ export default function SuperAgentPlacementsPage() {
 
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [search, setSearchState] = useUrlFilter("search", "", { debounceMs: 400 });
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
 
@@ -205,6 +206,7 @@ export default function SuperAgentPlacementsPage() {
   /* -- Fetch placements -- */
   const fetchPlacements = useCallback(async () => {
     setLoading(true);
+    setError(false);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (filters.visaStatus) params.set("visaStatus", filters.visaStatus);
     if (search) params.set("search", search);
@@ -226,9 +228,14 @@ export default function SuperAgentPlacementsPage() {
         if (data.salaryByCurrency) setSalaryByCurrency(data.salaryByCurrency);
         setVisaCounts(data.visaCounts ?? {});
         setTotals(data.totals ?? { commissionPaid: 0, employers: 0, upcomingStarts: 0 });
+      } else {
+        setError(true);
       }
-    } catch { /* ignore */ }
-    setLoading(false);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [filters, search, page, limit, updateTotal]);
 
   useEffect(() => { fetchPlacements(); }, [fetchPlacements]);
@@ -354,6 +361,20 @@ export default function SuperAgentPlacementsPage() {
         title={t("sectionTitle")}
         description={t("sectionDescription")}
       >
+        {/* ---- Error State ---- */}
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{t("loadPlacementsError")}</p>
+            <button
+              type="button"
+              onClick={() => fetchPlacements()}
+              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+            >
+              {tc("tryAgain")}
+            </button>
+          </div>
+        )}
+
         {/* ---- Visa Status Strip ---- */}
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">

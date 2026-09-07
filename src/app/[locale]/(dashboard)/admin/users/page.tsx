@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Users } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +58,7 @@ export default function AdminUsersPage() {
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
@@ -101,6 +104,7 @@ export default function AdminUsersPage() {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set("search", search);
@@ -113,12 +117,16 @@ export default function AdminUsersPage() {
         setUsers(data.users);
         updateTotal(data.pagination.total);
       } else {
+        setError(t("toastFailedLoadUsers"));
         toast.error(t("toastFailedLoadUsers"));
       }
+    } catch {
+      setError(t("toastFailedLoadUsers"));
+      toast.error(t("toastFailedLoadUsers"));
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, activeFilter, page, limit]);
+  }, [search, roleFilter, activeFilter, page, limit, t]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300);
@@ -292,17 +300,17 @@ export default function AdminUsersPage() {
         description={t("userManagementDesc", { total: formatCount(total) })}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-1.5 border-b border-border/80 sm:gap-2 panel-head">
             <div className="relative min-w-0 flex-1 basis-full sm:basis-auto sm:flex-none">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder={t("searchPlaceholder")}
-                className="h-8 w-full rounded-lg pl-8 text-xs sm:w-52 sm:text-sm"
+                className="h-11 w-full rounded-lg ps-8 text-xs sm:h-9 sm:w-52 sm:text-sm"
               />
             </div>
             <div className="min-w-0 flex-1 sm:w-[130px] sm:flex-none">
@@ -374,11 +382,18 @@ export default function AdminUsersPage() {
           </div>
         )}
 
+        {error ? (
+          <div className="p-6">
+            <ErrorState onRetry={fetchUsers} />
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>
                 <Checkbox
+                  aria-label={t("selectAllUsers")}
+                  className="tap-target-box"
                   checked={selected.length === users.length && users.length > 0}
                   onCheckedChange={toggleAll}
                 />
@@ -395,11 +410,8 @@ export default function AdminUsersPage() {
               <TableBodySkeleton rows={8} cols={6} />
             ) : users.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">{t("noUsers")}</span>
-                  </div>
+                <TableCell colSpan={6} className="py-12">
+                  <EmptyState title={t("noUsers")} icon={Inbox} />
                 </TableCell>
               </TableRow>
             ) : users.map((user) => {
@@ -410,6 +422,8 @@ export default function AdminUsersPage() {
                 <TableRow key={user._id} className={selected.includes(user._id) ? "bg-primary/5" : ""}>
                   <TableCell>
                     <Checkbox
+                      aria-label={t("selectUser", { name: user.name || user.email })}
+                      className="tap-target-box"
                       checked={selected.includes(user._id)}
                       onCheckedChange={() => toggleSelect(user._id)}
                     />
@@ -501,6 +515,7 @@ export default function AdminUsersPage() {
             })}
           </TableBody>
         </Table>
+        )}
       </section>
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

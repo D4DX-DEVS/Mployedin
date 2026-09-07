@@ -5,20 +5,19 @@ import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { PageHero } from "@/components/shared/PageHero";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { usePagination } from "@/hooks/usePagination";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import {
-  Search, Building2, MapPin, Globe, Users, Briefcase,
-  RotateCcw, Inbox, CheckCircle2, Star,
+  Search, MapPin, Users, Briefcase,
+  RotateCcw, Inbox, CheckCircle2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -89,7 +88,11 @@ export default function CompaniesListPage() {
 
   return (
     <div className="page-container">
-      <PageHero icon={Building2} title={t("title")} description={t("description")} />
+      {/* PageHeader, not PageHero: the hero belongs to the staff roles' workspace
+          shell. Every other seeker route (applications, interviews, offers, CV,
+          preferences) opens with this header, and an icon-and-gradient banner on
+          two of them made those two read as a different product. */}
+      <PageHeader title={t("title")} description={t("description")} />
 
       <section className="workspace-panel-surface rounded-3xl space-y-3 panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -108,11 +111,11 @@ export default function CompaniesListPage() {
         </div>
         {industries.length > 0 && (
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-muted-foreground">{t("filterByIndustry") ?? "Industry"}</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("filterByIndustry")}</label>
             <Select value={industryFilter} onValueChange={(val) => { setIndustryFilter(val); pagination.resetPage(); }}>
-              <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder={t("allIndustries") ?? "All Industries"} /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder={t("allIndustries")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t("allIndustries") ?? "All Industries"}</SelectItem>
+                <SelectItem value="all">{t("allIndustries")}</SelectItem>
                 {industries.map((ind) => (
                   <SelectItem key={ind} value={ind}>{ind}</SelectItem>
                 ))}

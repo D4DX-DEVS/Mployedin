@@ -25,7 +25,7 @@ import {
   Users2,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
+import { DashboardNextAction } from "@/components/shared/DashboardOverview";
 import {
   SuperAgentPriorityQueue,
   type PriorityItem,
@@ -256,6 +256,12 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         icon={ShieldCheck}
         title={t("hero.title")}
         description={t("hero.description")}
+        metrics={signals.map((signal) => ({
+          label: signal.label,
+          value: signal.value,
+          icon: signal.icon,
+          href: signal.href,
+        }))}
       />
 
       <SuperAgentPriorityQueue
@@ -283,8 +289,6 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
           badge={nextAction.badge}
         />
       )}
-
-      <DashboardSignalStrip headingId="super-agent-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 
       <section className="order-2 workspace-panel-surface overflow-hidden rounded-2xl lg:order-1">
         <div className="panel-head justify-between">

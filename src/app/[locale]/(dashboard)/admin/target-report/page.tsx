@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -271,6 +272,13 @@ export default function AdminTargetReportPage() {
 
   if (!data) return null;
 
+  const headerMetrics = [
+    { label: t("csvHeaderEmployerTarget"), value: `${data.summary.employerAchieved} / ${data.summary.employerTarget}`, icon: Building2, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("csvHeaderEmployeeTarget"), value: `${data.summary.employeeAchieved} / ${data.summary.employeeTarget}`, icon: Users, iconSurfaceClassName: "workspace-tone-emerald" },
+    { label: t("businessVolumeTitle", { year: yearFilter }), value: formatCurrency(data.totalApprovedVolume), icon: CircleDollarSign, iconSurfaceClassName: "workspace-tone-amber" },
+    { label: t("avgPerformanceLabel"), value: `${data.summary.avgProgress}%`, icon: Activity, iconSurfaceClassName: "workspace-tone-violet" },
+  ];
+
   return (
     <div className="page-container print:space-y-4">
       <DashboardPageHeader
@@ -284,51 +292,8 @@ export default function AdminTargetReportPage() {
           value: t("profilesCoverage", { count: data.summary.profileCount }),
           note: t("profilesCount", { supervisors: data.supervisorProfiles.length, agents: data.agentProfiles.length, avgProgress: data.summary.avgProgress }),
         }}
+        metrics={headerMetrics}
       />
-
-      {/* ═══════ KPI Summary ═══════ */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("csvHeaderEmployerTarget")}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{data.summary.employerAchieved} <span className="text-base text-muted-foreground">/ {data.summary.employerTarget}</span></p>
-              <GrowthIndicator value={data.yearOverYear.growth.employerAchieved} />
-            </div>
-            <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("csvHeaderEmployeeTarget")}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{data.summary.employeeAchieved} <span className="text-base text-muted-foreground">/ {data.summary.employeeTarget}</span></p>
-              <GrowthIndicator value={data.yearOverYear.growth.employeeAchieved} />
-            </div>
-            <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("businessVolumeTitle", { year: yearFilter })}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{formatCurrency(data.totalApprovedVolume)}</p>
-              <p className="text-xs text-muted-foreground">of {formatCurrency(data.totalBusinessVolume)} total</p>
-            </div>
-            <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("avgPerformanceLabel")}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{data.summary.avgProgress}%</p>
-              <GrowthIndicator value={data.yearOverYear.growth.avgProgress} />
-            </div>
-            <div className="workspace-tone-violet rounded-2xl p-2.5"><Activity className="h-5 w-5" /></div>
-          </div>
-        </div>
-      </section>
 
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
@@ -336,7 +301,7 @@ export default function AdminTargetReportPage() {
         description={t("filterByQuarterCategoryRisk")}
         search={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search by name or email…"
+        searchPlaceholder={t("searchByNameOrEmail")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -358,7 +323,7 @@ export default function AdminTargetReportPage() {
               <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
             </div>
             <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Quarter" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allQuarters")}</SelectItem>
                 <SelectItem value="1">{t("q1Quarter")}</SelectItem>
@@ -368,7 +333,7 @@ export default function AdminTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allCategories")}</SelectItem>
                 <SelectItem value="employer">{t("categoryEmployer")}</SelectItem>
@@ -377,7 +342,7 @@ export default function AdminTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Risk" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allRisks")}</SelectItem>
                 <SelectItem value="high">{t("highRiskFilter")}</SelectItem>
@@ -386,7 +351,7 @@ export default function AdminTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Role" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("role")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allRoles")}</SelectItem>
                 <SelectItem value="supervisors">{t("supervisorsRole")}</SelectItem>
@@ -401,7 +366,7 @@ export default function AdminTargetReportPage() {
       />
 
       {/* ═══════ Monthly Trend ═══════ */}
-      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
+      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="heading-section font-semibold tracking-tight">{t("monthlyPerformanceTimeline")}</h2>
@@ -446,7 +411,7 @@ export default function AdminTargetReportPage() {
       </section>
 
       {/* ═══════ Business Volume ═══════ */}
-      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
+      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="heading-section font-semibold tracking-tight">{t("businessVolumeTitle", { year: yearFilter })}</h2>
@@ -484,7 +449,7 @@ export default function AdminTargetReportPage() {
       </section>
 
       {/* ═══════ Year-over-Year ═══════ */}
-      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
+      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="heading-section font-semibold tracking-tight">{t("yearOverYearComparison")}</h2>
@@ -511,7 +476,7 @@ export default function AdminTargetReportPage() {
       </section>
 
       {/* ═══════ Quarterly Breakdown ═══════ */}
-      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
+      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="heading-section font-semibold tracking-tight">{t("quarterlyBreakdownTitle")}</h2>
@@ -541,7 +506,7 @@ export default function AdminTargetReportPage() {
 
       {/* ═══════ Supervisor Table ═══════ */}
       {(roleFilter === "all" || roleFilter === "supervisors") && filteredProfiles.supervisors.length > 0 && (
-        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
+        <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("supervisorPerformance")}</h2>
@@ -564,6 +529,7 @@ export default function AdminTargetReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {filteredProfiles.supervisors.length > 0 && <TableRow><TableCell colSpan={8} className="py-3 px-4 text-xs text-muted-foreground text-center">{t("showingOf", { shown: Math.min(20, filteredProfiles.supervisors.length), total: filteredProfiles.supervisors.length })}</TableCell></TableRow>}
                 {filteredProfiles.supervisors.slice(0, 20).map((row, i) => (
                   <TableRow key={row._id}>
                     <TableCell className="text-sm font-bold tabular-nums">{i + 1}</TableCell>
@@ -589,9 +555,13 @@ export default function AdminTargetReportPage() {
         </section>
       )}
 
+      {(roleFilter === "all" || roleFilter === "supervisors") && filteredProfiles.supervisors.length === 0 && (
+        <EmptyState title={t("noSupervisorsFound")} description={t("adjustFiltersOrSearch")} icon={Users} />
+      )}
+
       {/* ═══════ Agent Table ═══════ */}
       {(roleFilter === "all" || roleFilter === "agents") && filteredProfiles.agents.length > 0 && (
-        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
+        <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("agentPerformance")}</h2>
@@ -613,6 +583,7 @@ export default function AdminTargetReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {filteredProfiles.agents.length > 0 && <TableRow><TableCell colSpan={7} className="py-3 px-4 text-xs text-muted-foreground text-center">{t("showingOf", { shown: Math.min(30, filteredProfiles.agents.length), total: filteredProfiles.agents.length })}</TableCell></TableRow>}
                 {filteredProfiles.agents.slice(0, 30).map((row, i) => (
                   <TableRow key={row._id}>
                     <TableCell className="text-sm font-bold tabular-nums">{i + 1}</TableCell>
@@ -635,6 +606,10 @@ export default function AdminTargetReportPage() {
             </Table>
           </div>
         </section>
+      )}
+
+      {(roleFilter === "all" || roleFilter === "agents") && filteredProfiles.agents.length === 0 && (
+        <EmptyState title={t("noAgentsFound")} description={t("adjustFiltersOrSearch")} icon={Users} />
       )}
     </div>
   );

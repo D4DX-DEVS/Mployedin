@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -56,6 +58,7 @@ export default function AdminEmployersPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
@@ -114,17 +117,27 @@ export default function AdminEmployersPage() {
 
   const fetchEmployers = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
     params.set("status", "all");
-    const res = await fetch(`/api/employers?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setEmployers(data.items ?? data.employers ?? []);
-      updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
+    try {
+      const res = await fetch(`/api/employers?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmployers(data.items ?? data.employers ?? []);
+        updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
+      } else {
+        setError(t("requestFailed"));
+        toast.error(t("requestFailed"));
+      }
+    } catch {
+      setError(t("requestFailed"));
+      toast.error(t("requestFailed"));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [search, page, limit]);
+  }, [search, page, limit, t]);
 
   useEffect(() => { fetchEmployers(); }, [fetchEmployers]);
 
@@ -253,17 +266,17 @@ export default function AdminEmployersPage() {
         description={t("pageDescription")}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 panel-head">
             <div className="relative toolbar-search-field">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder={t("searchPlaceholder")}
-                className="h-8 w-52 rounded-lg pl-8 text-sm"
+                className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
               />
             </div>
             <DropdownMenu>
@@ -286,6 +299,11 @@ export default function AdminEmployersPage() {
               </Button>
             )}
         </div>
+        {error ? (
+          <div className="p-6">
+            <ErrorState onRetry={fetchEmployers} />
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -303,11 +321,8 @@ export default function AdminEmployersPage() {
               <TableBodySkeleton rows={5} cols={5} />
             ) : employers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">{t("noEmployersFound")}</span>
-                  </div>
+                <TableCell colSpan={5} className="py-12">
+                  <EmptyState title={t("noEmployersFound")} icon={Inbox} />
                 </TableCell>
               </TableRow>
             ) : employers.map((emp) => (
@@ -374,6 +389,7 @@ export default function AdminEmployersPage() {
             ))}
           </TableBody>
         </Table>
+        )}
       </section>
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

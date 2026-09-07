@@ -22,9 +22,9 @@ export function AlertsCenter({ data }: Props) {
   return (
     <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" /> {t("alertsCenter")}
-        </h4>
+        </h2>
         {data.total > 0 && (
           <span className="text-xs font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
             {data.total} {t("active")}

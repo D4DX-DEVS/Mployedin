@@ -17,6 +17,8 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
 interface Resource {
@@ -55,17 +57,33 @@ export default function ResourceDownloadsPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [search, setSearch] = useState("");
   const [previewUrl, setPreviewUrl] = useState<{url: string; type: string} | null>(null);
+  const pagination = usePagination(25);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ sort: sortBy, limit: "50" });
+      const params = new URLSearchParams({
+        sort: sortBy,
+        page: String(pagination.page),
+        limit: String(pagination.limit),
+      });
       if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/resources?${params}`);
-      if (res.ok) { const data = await res.json(); setItems(data.items ?? []); }
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items ?? []);
+        pagination.updateTotal(data.total ?? 0);
+      }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
-  }, [categoryFilter, sortBy, search, t]);
+  // `usePagination` hands back a new object every render, so depending on the
+  // whole thing rebuilt this callback each time and the effect below refetched
+  // in a loop. Only the two values the request actually uses belong here.
+  }, [categoryFilter, sortBy, search, t, pagination.page, pagination.limit]);
+  useEffect(() => {
+    pagination.resetPage();
+  }, [categoryFilter, sortBy, search]);
+
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const trackDownload = async (item: Resource, file: ResourceFile) => {
@@ -89,7 +107,7 @@ export default function ResourceDownloadsPage() {
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
             <div className="relative min-w-52 flex-1 basis-full sm:basis-auto">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
+              <Input aria-label={t("searchPlaceholder")} placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
             </div>
             <div className="min-w-0 flex-1 basis-0 sm:flex-none">
               <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
@@ -120,11 +138,12 @@ export default function ResourceDownloadsPage() {
           </div>
         </section>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => {
-            const CatIcon = item.files?.[0]?.contentType?.startsWith("video/") ? Video : item.files?.[0]?.contentType?.startsWith("image/") ? Image : FileText;
-            return (
-              <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => {
+              const CatIcon = item.files?.[0]?.contentType?.startsWith("video/") ? Video : item.files?.[0]?.contentType?.startsWith("image/") ? Image : FileText;
+              return (
+                <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
                 <div className="p-3 sm:p-5 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="rounded-2xl ring-1 ring-inset ring-border/60 bg-background/80 shrink-0 chip-pad">
@@ -158,9 +177,9 @@ export default function ResourceDownloadsPage() {
                         <span className="truncate font-medium text-foreground">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
                         <div className="flex gap-1 shrink-0">
                           {(file.contentType?.startsWith("image/") || file.contentType === "application/pdf") && (
-                            <button onClick={() => setPreviewUrl({url: file.url, type: file.contentType})} className="p-1.5 rounded-lg hover:bg-card transition-colors"><Eye className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                            <button onClick={() => setPreviewUrl({url: file.url, type: file.contentType})} className="p-1.5 rounded-lg hover:bg-card transition-colors" aria-label={t("previewFileLabel", { fileName: file.fileName })}><Eye className="h-3.5 w-3.5 text-muted-foreground" /></button>
                           )}
-                          <button onClick={() => trackDownload(item, file)} className="p-1.5 rounded-lg hover:bg-card transition-colors text-primary"><Download className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => trackDownload(item, file)} className="p-1.5 rounded-lg hover:bg-card transition-colors text-primary" aria-label={t("downloadFileLabel", { fileName: file.fileName })}><Download className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
                     ))}
@@ -171,7 +190,18 @@ export default function ResourceDownloadsPage() {
               </article>
             );
           })}
-        </div>
+          </div>
+
+          {/* Pagination */}
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            limit={pagination.limit}
+            onPageChange={pagination.setPage}
+            onLimitChange={pagination.setLimit}
+          />
+        </>
       )}
 
       {/* Preview Dialog */}
@@ -180,7 +210,7 @@ export default function ResourceDownloadsPage() {
           <DialogHeader><DialogTitle>{t("preview")}</DialogTitle></DialogHeader>
           {previewUrl && (
             previewUrl.type.startsWith("image/")
-              ? <img src={previewUrl.url} alt="Preview" className="max-h-[65vh] w-full object-contain rounded-lg" />
+              ? <img src={previewUrl.url} alt={t("previewAlt")} className="max-h-[65vh] w-full object-contain rounded-lg" />
               : <embed src={previewUrl.url} type="application/pdf" className="w-full h-[65vh] rounded-lg" />
           )}
           {previewUrl && (

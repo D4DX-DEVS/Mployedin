@@ -11,9 +11,9 @@ export default function JobSeekerMessagesPage() {
       dashboardPrefix="job-seeker"
       title={t("title")}
       description={t("description")}
-      showNewChat={false}
+      showNewChat={true}
       showCustomerCare={true}
-      supportOnly={true}
+      supportOnly={false}
     />
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   ArrowRight,
   Clock,
@@ -29,7 +30,7 @@ const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "syste
 const fieldClassName =
   "w-full rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/60 focus:bg-background focus:ring-4 focus:ring-primary/20";
 const panelClassName =
-  "rounded-3xl border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur";
+  "rounded-2xl border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur";
 
 interface BroadcastForm {
   title: string;
@@ -313,7 +314,7 @@ export default function AdminCommunicationsPage() {
       />
 
       {/* ── Tab Navigation ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="flex gap-1 overflow-x-auto px-4 py-2">
           {TABS.map((tabOption) => {
             const active = tab === tabOption.key;
@@ -364,7 +365,7 @@ export default function AdminCommunicationsPage() {
                 <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {tr("titleLabel")} <span className="text-rose-500">*</span>
                 </label>
-                <input
+                <input aria-label={tr("titleLabel")}
                   value={form.title}
                   onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))}
                   required
@@ -377,7 +378,7 @@ export default function AdminCommunicationsPage() {
                 <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {tr("messageLabel")} <span className="text-rose-500">*</span>
                 </label>
-                <textarea
+                <textarea aria-label={tr("messageLabel")}
                   value={form.message}
                   onChange={(e) => setForm((current) => ({ ...current, message: e.target.value }))}
                   required
@@ -570,7 +571,7 @@ export default function AdminCommunicationsPage() {
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tr("nameLabel")} <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input aria-label={tr("nameLabel")}
                     required
                     value={templateForm.name}
                     onChange={(e) => setTemplateForm((current) => ({ ...current, name: e.target.value }))}
@@ -599,7 +600,7 @@ export default function AdminCommunicationsPage() {
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tr("subjectLabel")} <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input aria-label={tr("subjectLabel")}
                     required
                     value={templateForm.subject}
                     onChange={(e) => setTemplateForm((current) => ({ ...current, subject: e.target.value }))}
@@ -611,7 +612,7 @@ export default function AdminCommunicationsPage() {
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tr("bodyLabel")} <span className="text-rose-500">*</span>
                   </label>
-                  <textarea
+                  <textarea aria-label={tr("bodyLabel")}
                     required
                     rows={5}
                     value={templateForm.body}
@@ -642,10 +643,10 @@ export default function AdminCommunicationsPage() {
                 <div key={index} className="h-28 animate-pulse rounded-2xl bg-secondary" />
               ))
             ) : templates.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/60 px-4 py-14 text-center text-sm text-muted-foreground">
-                <FileText className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-                {tr("noTemplatesInLibrary")}
-              </div>
+              <EmptyState
+                icon={FileText}
+                title={tr("noTemplatesInLibrary")}
+              />
             ) : (
               templates.map((template) => (
                 <div key={template._id} className="rounded-3xl border border-border bg-muted/50 panel-body">
@@ -699,7 +700,7 @@ export default function AdminCommunicationsPage() {
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("nameLabel")}</label>
-                          <input
+                          <input aria-label={tr("nameLabel")}
                             required
                             value={templateForm.name}
                             onChange={(e) => setTemplateForm((current) => ({ ...current, name: e.target.value }))}
@@ -723,7 +724,7 @@ export default function AdminCommunicationsPage() {
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("subjectLabel")}</label>
-                          <input
+                          <input aria-label={tr("subjectLabel")}
                             required
                             value={templateForm.subject}
                             onChange={(e) => setTemplateForm((current) => ({ ...current, subject: e.target.value }))}
@@ -732,7 +733,7 @@ export default function AdminCommunicationsPage() {
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("bodyLabel")}</label>
-                          <textarea
+                          <textarea aria-label={tr("bodyLabel")}
                             required
                             rows={4}
                             value={templateForm.body}
@@ -774,8 +775,8 @@ export default function AdminCommunicationsPage() {
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input placeholder={tr("searchPlaceholder")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="pl-9 h-9 text-sm border-border bg-card" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input aria-label={tr("searchPlaceholder")} placeholder={tr("searchPlaceholder")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="ps-9 h-11 sm:h-9 text-sm border-border bg-card" />
           </div>
 
           {historyLoading ? (
@@ -783,10 +784,10 @@ export default function AdminCommunicationsPage() {
               <div key={index} className="h-24 animate-pulse rounded-2xl bg-secondary" />
             ))
           ) : history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/60 px-4 py-14 text-center text-sm text-muted-foreground">
-              <History className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-              {history.length === 0 ? tr("noBroadcastsSent") : tr("noSearchResults")}
-            </div>
+            <EmptyState
+              icon={History}
+              title={history.length === 0 ? tr("noBroadcastsSent") : tr("noSearchResults")}
+            />
           ) : (
             history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).map((record) => (
               <article key={record._id} className="rounded-3xl border border-border bg-muted/50 panel-body">

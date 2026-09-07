@@ -77,6 +77,7 @@ function countActiveFilters(f: Filters): number {
 export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const router = useRouter();
   const locale = useLocale();
 
@@ -158,6 +159,7 @@ export default function SuperAgentEmployersPage() {
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true" });
       if (filters.search) params.set("search", filters.search);
@@ -175,7 +177,11 @@ export default function SuperAgentEmployersPage() {
         updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? data.employers?.length ?? 0);
         if (data.stats) setServerStats(data.stats);
         if (data.facets) setFacets(data.facets);
+      } else {
+        setError(true);
       }
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -295,6 +301,20 @@ export default function SuperAgentEmployersPage() {
         title={t("sectionTitle")}
         description={t("sectionDescription")}
       >
+        {/* ---- Error State ---- */}
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{t("loadEmployersError")}</p>
+            <button
+              type="button"
+              onClick={() => loadEmployers()}
+              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+            >
+              {tc("tryAgain")}
+            </button>
+          </div>
+        )}
+
         {/* ── Search + Advanced Toggle via TableToolbar ── */}
         <TableToolbar
           search={filters.search}

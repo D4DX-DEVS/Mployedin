@@ -11,7 +11,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection,
+  SuperAgentPageIntro, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
   RotateCcw, Users, Briefcase, GraduationCap,
@@ -125,11 +125,16 @@ export default function SuperAgentJobSeekersPage() {
     pagination.resetPage();
   };
 
+  // These four read from the page header's own metric strip, the way the other
+  // 18 pages in this role do. They used to render as a second, standalone card
+  // grid under the header, which put a block between the header and the list
+  // that the layout rule does not allow, and duplicated the header's styling
+  // in a different visual language.
   const metricsItems = [
-    { label: t("totalCandidates"), value: totalStats.total, helper: t("inYourRegion"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: t("activeProfiles"), value: totalStats.active, helper: t("currentlySeeking"), icon: <Star className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: t("avgCompletion"), value: `${totalStats.avgCompletion}%`, helper: t("profileCompleteness"), icon: <GraduationCap className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
-    { label: t("experienced"), value: totalStats.withExperience, helper: t("experiencedHelper"), icon: <Briefcase className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+    { label: t("totalCandidates"), value: totalStats.total, note: t("inYourRegion"), icon: Users },
+    { label: t("activeProfiles"), value: totalStats.active, note: t("currentlySeeking"), icon: Star },
+    { label: t("avgCompletion"), value: `${totalStats.avgCompletion}%`, note: t("profileCompleteness"), icon: GraduationCap },
+    { label: t("experienced"), value: totalStats.withExperience, note: t("experiencedHelper"), icon: Briefcase },
   ];
 
   return (
@@ -137,8 +142,8 @@ export default function SuperAgentJobSeekersPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={metricsItems}
       />
-      <SuperAgentMetricsGrid items={metricsItems} />
 
       <TableToolbar
         title={t("browseRegionalCandidates")}

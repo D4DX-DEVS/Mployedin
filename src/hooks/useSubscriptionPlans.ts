@@ -25,6 +25,9 @@ export interface SubscriptionPlanItem {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  /** Subscriptions referencing this plan, any status. Server-supplied on the
+   *  list endpoint; a plan can only be hard-deleted while this is 0. */
+  subscriptionCount?: number;
 }
 
 export interface SubscriptionPlanPayload {
@@ -144,13 +147,20 @@ export function useUpdateSubscriptionPlan() {
   });
 }
 
+/**
+ * Deactivate a plan, or — with `hard` — destroy an already-deactivated one.
+ * The API refuses a hard delete unless the plan is inactive, is not the default
+ * for its audience, and no subscription of any status references it.
+ */
 export function useDeleteSubscriptionPlan() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/admin/subscription-plans/${id}`, {
-        method: "DELETE",
-      });
+    mutationFn: async (arg: string | { id: string; hard?: boolean }) => {
+      const { id, hard } = typeof arg === "string" ? { id: arg, hard: false } : arg;
+      const res = await fetch(
+        `/api/admin/subscription-plans/${id}${hard ? "?hard=true" : ""}`,
+        { method: "DELETE" },
+      );
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? "Failed to deactivate plan");

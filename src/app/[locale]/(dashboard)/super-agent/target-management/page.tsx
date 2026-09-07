@@ -7,18 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { PageHero } from "@/components/shared/PageHero";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -45,7 +39,7 @@ import {
   Search, AlertCircle, CheckCircle2,
   ClipboardList, TimerReset, Target, Info, MapPin,
   Eye, SlidersHorizontal, CircleDollarSign,
-  ChevronLeft, ChevronRight, BarChart3,
+  BarChart3,
 } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -97,6 +91,7 @@ interface TeamOverview {
   stageCounts: Record<CompletionStage, number>;
   territories: string[];
   currencyLabel: string;
+  currencyCount: number;
   attention: { behindEmployer: number; behindEmployee: number; behindFinance: number; highRisk: number };
   topPerformers: EnrichedProfile[];
   underPerformers: EnrichedProfile[];
@@ -137,13 +132,6 @@ interface DashboardMetricCardProps {
   icon: ReactNode;
   progress?: number;
   tone?: MetricTone;
-}
-
-interface SideListCardProps {
-  title: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  children: ReactNode;
 }
 
 // MONTHS_SHORT resolved in component with useTranslations hook, see below
@@ -268,28 +256,13 @@ function DashboardMetricCard({
   );
 }
 
-function SideListCard({ title, actionLabel, onAction, children }: SideListCardProps) {
-  return (
-    <aside className="workspace-glass-panel card-pad rounded-xl">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">{title}</h3>
-        {actionLabel && onAction ? (
-          <button type="button" onClick={onAction} className="text-xs font-semibold text-primary hover:text-primary/80">
-            {actionLabel}
-          </button>
-        ) : null}
-      </div>
-      <div className="mt-4 space-y-3">{children}</div>
-    </aside>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentTargetProfilesPage() {
   const t = useTranslations("targets");
+  const tc = useTranslations("common");
   const searchParams = useSearchParams();
   const currentYear = new Date().getFullYear();
 
@@ -349,6 +322,7 @@ export default function SuperAgentTargetProfilesPage() {
     stageCounts: { not_started: 0, in_progress: 0, completed: 0 },
     territories: [],
     currencyLabel: "AED",
+    currencyCount: 1,
     attention: { behindEmployer: 0, behindEmployee: 0, behindFinance: 0, highRisk: 0 },
     topPerformers: [],
     underPerformers: [],
@@ -358,6 +332,7 @@ export default function SuperAgentTargetProfilesPage() {
   });
   const [analytics, setAnalytics] = useState<SuperAgentTargetAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState(false);
   const [teamSearch, setTeamSearch] = useState("");
   const [teamRiskFilter, setTeamRiskFilter] = useState<"all" | "high" | "medium" | "low">("all");
   const [teamCompletionFilter, setTeamCompletionFilter] = useState<"all" | CompletionStage>("all");
@@ -423,13 +398,16 @@ export default function SuperAgentTargetProfilesPage() {
 
   const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
+    setAnalyticsError(false);
     try {
       const res = await fetch(`/api/super-agent/target-profiles/analytics?year=${yearFilter}`);
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
+      } else {
+        setAnalyticsError(true);
       }
-    } catch { /* ignore */ }
+    } catch { setAnalyticsError(true); }
     finally { setAnalyticsLoading(false); }
   }, [yearFilter]);
 
@@ -446,7 +424,11 @@ export default function SuperAgentTargetProfilesPage() {
     { value: "all", label: t("allTerritories") },
     ...teamOverview.territories.map((territory) => ({ value: territory, label: territory })),
   ];
-  const currencyLabel = teamOverview.currencyLabel;
+  // The API used to hand back a ready-made English phrase here. It now sends the
+  // count, so a mixed-currency team reads in the user's own language and plurals.
+  const currencyLabel = teamOverview.currencyCount === 1
+    ? teamOverview.currencyLabel
+    : t("currencyCount", { count: teamOverview.currencyCount });
   const filteredStageCounts = teamOverview.stageCounts;
   const filteredTotals = {
     agents: teamTotal,
@@ -549,6 +531,7 @@ export default function SuperAgentTargetProfilesPage() {
             <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="number"
+              aria-label={t("year")}
               value={yearInput}
               onChange={(e) => setYearInput(e.target.value)}
               onKeyDown={(e) => {
@@ -596,6 +579,7 @@ export default function SuperAgentTargetProfilesPage() {
               <div className="relative min-w-[220px] flex-1 basis-full sm:basis-auto">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                  aria-label={t("searchAgentsTerritory")}
                   value={teamSearch}
                   onChange={(e) => setTeamSearch(e.target.value)}
                   placeholder={t("searchAgentsTerritory")}
@@ -787,6 +771,17 @@ export default function SuperAgentTargetProfilesPage() {
                 </div>
               </SuperAgentSection>
             </>
+          ) : analyticsError ? (
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-8 text-center">
+              <p className="text-sm text-destructive">{t("failedLoadAnalytics")}</p>
+              <button
+                type="button"
+                onClick={() => fetchAnalytics()}
+                className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+              >
+                {tc("tryAgain")}
+              </button>
+            </div>
           ) : null}
 
           {loading ? (
@@ -874,8 +869,8 @@ export default function SuperAgentTargetProfilesPage() {
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
                   <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("stage")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Update</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Actions</TableHead>
+                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("colUpdate")}</TableHead>
+                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("colActions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -986,7 +981,7 @@ export default function SuperAgentTargetProfilesPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>View agent details</TooltipContent>
+                              <TooltipContent>{t("viewAgentDetails")}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                           <TooltipProvider>
@@ -996,13 +991,13 @@ export default function SuperAgentTargetProfilesPage() {
                                   variant="ghost"
                                   size="iconDense"
                                   className="rounded-lg"
-                                  aria-label={`Adjust target for ${agent.assigneeName}`}
+                                  aria-label={t("ariaAdjustTargetFor", { name: agent.assigneeName })}
                                   onClick={() => setShowDistribute(true)}
                                 >
                                   <SlidersHorizontal className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Adjust distribution</TooltipContent>
+                              <TooltipContent>{t("adjustDistribution")}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </div>
@@ -1015,34 +1010,21 @@ export default function SuperAgentTargetProfilesPage() {
           </div>
 
           {/* Pagination & Insights */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-card/80 px-4 py-2.5">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Showing {teamTotal === 0 ? 0 : ((teamPage - 1) * teamPageSize) + 1}–{Math.min(teamPage * teamPageSize, teamTotal)} of {teamTotal}</span>
-              <Select value={String(teamPageSize)} onValueChange={(val) => { setTeamPageSize(Number(val)); setTeamPage(1); }}>
-                <SelectTrigger className="w-auto rounded-md border border-border bg-background px-2 py-1 text-xs h-auto">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 / page</SelectItem>
-                  <SelectItem value="10">10 / page</SelectItem>
-                  <SelectItem value="20">20 / page</SelectItem>
-                  <SelectItem value="50">50 / page</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Button variant="outline" size="dense" className="gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
-                <BarChart3 className="h-3.5 w-3.5" /> Insights
-              </Button>
-              <div className="mx-2 h-5 w-px bg-border" />
-              <Button variant="outline" size="iconDense" className="" disabled={teamPage <= 1} onClick={() => setTeamPage((p) => p - 1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="min-w-[3rem] text-center text-xs font-medium">{teamPage} / {totalTeamPages}</span>
-              <Button variant="outline" size="iconDense" className="" disabled={teamPage >= totalTeamPages} onClick={() => setTeamPage((p) => p + 1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button variant="outline" size="dense" className="gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
+              <BarChart3 className="h-3.5 w-3.5" /> {t("insightsButton")}
+            </Button>
+            <PaginationControls
+              page={teamPage}
+              totalPages={totalTeamPages}
+              total={teamTotal}
+              limit={teamPageSize}
+              onPageChange={setTeamPage}
+              onLimitChange={(newLimit) => {
+                setTeamPageSize(newLimit);
+                setTeamPage(1);
+              }}
+            />
           </div>
         </div>
       )}
@@ -1052,7 +1034,7 @@ export default function SuperAgentTargetProfilesPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <BarChart3 className="h-5 w-5 text-primary" /> Team Insights
+              <BarChart3 className="h-5 w-5 text-primary" /> {t("teamInsightsTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-[70vh] space-y-3 sm:space-y-4 overflow-y-auto pr-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
@@ -1060,38 +1042,38 @@ export default function SuperAgentTargetProfilesPage() {
 
             {/* Target Progress Chart */}
             <div>
-              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Target Progress Overview</h4>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("targetProgressOverview")}</h4>
               <div className="h-44 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: "Employer", target: filteredTotals.employer.target, achieved: filteredTotals.employer.achieved },
-                    { name: "Employee", target: filteredTotals.employee.target, achieved: filteredTotals.employee.achieved },
-                    { name: "Revenue", target: filteredTotals.finance.target / 1000, achieved: filteredTotals.finance.achieved / 1000 },
+                    { name: t("metricEmployer"), target: filteredTotals.employer.target, achieved: filteredTotals.employer.achieved },
+                    { name: t("metricEmployee"), target: filteredTotals.employee.target, achieved: filteredTotals.employee.achieved },
+                    { name: t("metricRevenue"), target: filteredTotals.finance.target / 1000, achieved: filteredTotals.finance.achieved / 1000 },
                   ]} barGap={4}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <ReTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="target" fill="#94a3b8" name="Target" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="achieved" fill="#3b82f6" name="Achieved" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="target" fill="#94a3b8" name={t("chartSeriesTarget")} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="achieved" fill="#3b82f6" name={t("chartSeriesAchieved")} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <p className="mt-1 text-center text-[11px] text-muted-foreground">Revenue values shown in thousands (K)</p>
+              <p className="mt-1 text-center text-[11px] text-muted-foreground">{t("revenueInThousands")}</p>
             </div>
 
             {/* Risk Distribution */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Risk Distribution</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("riskDistribution")}</h4>
                 <div className="h-32 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={[
-                          { name: "High", value: teamTotals.riskBreakdown.high },
-                          { name: "Medium", value: teamTotals.riskBreakdown.medium },
-                          { name: "Low", value: teamTotals.riskBreakdown.low },
+                          { name: t("riskHighLabel"), value: teamTotals.riskBreakdown.high },
+                          { name: t("riskMediumLabel"), value: teamTotals.riskBreakdown.medium },
+                          { name: t("riskLowLabel"), value: teamTotals.riskBreakdown.low },
                         ].filter((d) => d.value > 0)}
                         cx="50%"
                         cy="50%"
@@ -1110,18 +1092,18 @@ export default function SuperAgentTargetProfilesPage() {
                 </div>
               </div>
               <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team Summary</h4>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("teamSummary")}</h4>
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">Total agents</span>
+                    <span className="text-xs text-muted-foreground">{t("totalAgentsLabel")}</span>
                     <span className="text-sm font-bold">{teamTotal}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">Avg performance</span>
+                    <span className="text-xs text-muted-foreground">{t("avgPerformanceLabel")}</span>
                     <span className="text-sm font-bold">{filteredTotals.avgPerformance}%</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">At risk</span>
+                    <span className="text-xs text-muted-foreground">{t("atRiskLabel")}</span>
                     <span className="text-sm font-bold text-red-500">{filteredTotals.riskHigh}</span>
                   </div>
                 </div>
@@ -1130,7 +1112,7 @@ export default function SuperAgentTargetProfilesPage() {
 
             {/* Attention Required */}
             <div>
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attention Required</h4>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("attentionRequired")}</h4>
               <div className="space-y-1.5">
                 {attentionItems.map((item) => (
                   <div key={item.label} className="flex items-start gap-2 text-sm text-foreground">
@@ -1143,7 +1125,7 @@ export default function SuperAgentTargetProfilesPage() {
 
             {/* Agent Performance Comparison */}
             <div>
-              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agent Performance Comparison</h4>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("agentPerformanceComparison")}</h4>
               <div className="h-40 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={teamProfiles.map((a) => ({
@@ -1156,9 +1138,9 @@ export default function SuperAgentTargetProfilesPage() {
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" />
                     <ReTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="employer" fill="#6366f1" name="Employer %" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="employee" fill="#06b6d4" name="Employee %" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="finance" fill="#f59e0b" name="Revenue %" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="employer" fill="#6366f1" name={t("chartSeriesEmployerPct")} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="employee" fill="#06b6d4" name={t("chartSeriesEmployeePct")} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="finance" fill="#f59e0b" name={t("chartSeriesRevenuePct")} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1167,9 +1149,9 @@ export default function SuperAgentTargetProfilesPage() {
             {/* Top & Under Performers */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Performers</h4>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("topPerformers")}</h4>
                 {topPerformers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No data yet.</p>
+                  <p className="text-sm text-muted-foreground">{t("noDataYet")}</p>
                 ) : (
                   <div className="space-y-2">
                     {topPerformers.map((agent, index) => (
@@ -1188,9 +1170,9 @@ export default function SuperAgentTargetProfilesPage() {
                 )}
               </div>
               <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Under Performers</h4>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("underPerformers")}</h4>
                 {underPerformers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No data yet.</p>
+                  <p className="text-sm text-muted-foreground">{t("noDataYet")}</p>
                 ) : (
                   <div className="space-y-2">
                     {underPerformers.map((agent) => (
@@ -1213,30 +1195,30 @@ export default function SuperAgentTargetProfilesPage() {
             {/* Pending & Deadlines */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending Approvals</h4>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("pendingApprovals")}</h4>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      <span>Approval queue</span>
+                      <span>{t("approvalQueue")}</span>
                     </div>
                     <span className="text-sm font-bold">{pendingApprovalsCount}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <SplitSquareVertical className="h-3.5 w-3.5 text-blue-600" />
-                      <span>Open distributions</span>
+                      <span>{t("openDistributions")}</span>
                     </div>
                     <span className="text-sm font-bold">{pendingActionsCount}</span>
                   </div>
                 </div>
               </div>
               <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deadlines</h4>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("deadlines")}</h4>
                 {deadlineAlerts.length === 0 ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                    <span>No deadline alerts</span>
+                    <span>{t("noDeadlineAlerts")}</span>
                   </div>
                 ) : (
                   <div className="space-y-2">

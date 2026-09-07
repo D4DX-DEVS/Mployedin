@@ -37,6 +37,8 @@ jest.mock("next-auth/react", () => ({
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, replace: replaceMock }),
   useParams: () => ({ locale: "en" }),
+  // The profile section nav marks the current entry active.
+  usePathname: () => "/en/job-seeker/profile",
 }));
 
 jest.mock("@/components/shared/PageHeader", () => ({

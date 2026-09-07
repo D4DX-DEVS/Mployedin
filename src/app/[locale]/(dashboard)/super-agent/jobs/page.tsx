@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, useId } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
@@ -157,8 +157,26 @@ export default function SuperAgentJobsPage() {
   const router = useRouter();
   const locale = (params?.locale as string) ?? "en";
 
+  /* Generate stable IDs for form controls */
+  const statusId = useId();
+  const employmentTypeId = useId();
+  const workModeId = useId();
+  const sortById = useId();
+  const orderByid = useId();
+  const countryId = useId();
+  const cityId = useId();
+  const skillsId = useId();
+  const currencyId = useId();
+  const salaryMinId = useId();
+  const salaryMaxId = useId();
+  const experienceMinId = useId();
+  const experienceMaxId = useId();
+  const dateFromId = useId();
+  const dateToId = useId();
+
   const [jobs, setJobs] = useState<RegionalJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   /* ── URL-based filters for status and search ── */
   const [jobStatus, setJobStatusState] = useUrlFilter("status", "all" as JobStatus);
@@ -261,6 +279,7 @@ export default function SuperAgentJobsPage() {
     async (overrides?: { search?: string; ai?: string }) => {
       if (overrides?.ai) setAiLoading(true);
       else setLoading(true);
+      setError(false);
 
       try {
         const p = buildParams(overrides);
@@ -271,7 +290,11 @@ export default function SuperAgentJobsPage() {
           if (data.counts) setCounts(data.counts);
           if (data.pagination) updateTotal(data.pagination.total ?? 0);
           if (data.aiParsed) setAiActive(true);
+        } else {
+          setError(true);
         }
+      } catch {
+        setError(true);
       } finally {
         setLoading(false);
         setAiLoading(false);
@@ -442,11 +465,26 @@ export default function SuperAgentJobsPage() {
       {/* ── Jobs Listing with Filters ──
           No section heading: the page title is directly above it. */}
       <SuperAgentSection>
+        {/* ---- Error State ---- */}
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{t("loadJobsError")}</p>
+            <button
+              type="button"
+              onClick={() => loadJobs()}
+              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+            >
+              {tc("tryAgain")}
+            </button>
+          </div>
+        )}
+
         {/* ── AI Search Row: one input with the submit inside it ── */}
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end">
           <div className="relative min-w-0 flex-1">
             <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
             <Input
+              aria-label={t("aiSearchPlaceholder")}
               value={aiQuery}
               onChange={(e) => setAiQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
@@ -560,9 +598,9 @@ export default function SuperAgentJobsPage() {
               {/* Row 1: Status / Employment Type / Work Mode / Sort */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{tc("status")}</label>
+                  <label htmlFor={statusId} className="text-xs font-medium text-muted-foreground mb-1 block">{tc("status")}</label>
                   <Select value={jobStatus} onValueChange={(v) => { setJobStatusState(v as JobStatus); resetPage(); }}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={tc("status")} /></SelectTrigger>
+                    <SelectTrigger id={statusId} className="h-9 text-sm"><SelectValue placeholder={tc("status")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t("allStatuses")}</SelectItem>
                       <SelectItem value="active">{tc("active")}</SelectItem>
@@ -574,9 +612,9 @@ export default function SuperAgentJobsPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("employmentTypeLabel")}</label>
+                  <label htmlFor={employmentTypeId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("employmentTypeLabel")}</label>
                   <Select value={employmentType} onValueChange={(v) => { setEmploymentType(v as EmploymentType); resetPage(); }}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("jobTypePlaceholder")} /></SelectTrigger>
+                    <SelectTrigger id={employmentTypeId} className="h-9 text-sm"><SelectValue placeholder={t("jobTypePlaceholder")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t("allTypes")}</SelectItem>
                       <SelectItem value="full_time">{t("fullTime")}</SelectItem>
@@ -588,9 +626,9 @@ export default function SuperAgentJobsPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("workModeLabel")}</label>
+                  <label htmlFor={workModeId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("workModeLabel")}</label>
                   <Select value={workMode} onValueChange={(v) => { setWorkMode(v as WorkMode); resetPage(); }}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("workModePlaceholder")} /></SelectTrigger>
+                    <SelectTrigger id={workModeId} className="h-9 text-sm"><SelectValue placeholder={t("workModePlaceholder")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t("allModes")}</SelectItem>
                       <SelectItem value="onsite">{t("onsite")}</SelectItem>
@@ -601,9 +639,9 @@ export default function SuperAgentJobsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("sortByLabel")}</label>
+                    <label htmlFor={sortById} className="text-xs font-medium text-muted-foreground mb-1 block">{t("sortByLabel")}</label>
                     <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortBy); resetPage(); }}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id={sortById} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="createdAt">{t("sortDateCreated")}</SelectItem>
                         <SelectItem value="title">{t("sortTitle")}</SelectItem>
@@ -614,9 +652,9 @@ export default function SuperAgentJobsPage() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("orderLabel")}</label>
+                    <label htmlFor={orderByid} className="text-xs font-medium text-muted-foreground mb-1 block">{t("orderLabel")}</label>
                     <Select value={sortOrder} onValueChange={(v) => { setSortOrder(v as SortOrder); resetPage(); }}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id={orderByid} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="desc">{t("newestFirst")}</SelectItem>
                         <SelectItem value="asc">{t("oldestFirst")}</SelectItem>
@@ -629,30 +667,30 @@ export default function SuperAgentJobsPage() {
               {/* Row 2: Advanced fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{tc("country")}</label>
+                  <label htmlFor={countryId} className="text-xs font-medium text-muted-foreground mb-1 block">{tc("country")}</label>
                   <div className="relative">
                     <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder={t("countryPlaceholder")} value={country} onChange={(e) => setCountry(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input id={countryId} placeholder={t("countryPlaceholder")} value={country} onChange={(e) => setCountry(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("cityLabel")}</label>
+                  <label htmlFor={cityId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("cityLabel")}</label>
                   <div className="relative">
                     <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder={t("cityPlaceholder")} value={city} onChange={(e) => setCity(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input id={cityId} placeholder={t("cityPlaceholder")} value={city} onChange={(e) => setCity(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("skillsLabel")}</label>
+                  <label htmlFor={skillsId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("skillsLabel")}</label>
                   <div className="relative">
                     <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder={t("skillsPlaceholder")} value={skills} onChange={(e) => setSkills(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input id={skillsId} placeholder={t("skillsPlaceholder")} value={skills} onChange={(e) => setSkills(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("currencyLabel")}</label>
+                  <label htmlFor={currencyId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("currencyLabel")}</label>
                   <Select value={currency || "any"} onValueChange={(v) => setCurrency(v === "any" ? "" : v)}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("anyCurrency")} /></SelectTrigger>
+                    <SelectTrigger id={currencyId} className="h-9 text-sm"><SelectValue placeholder={t("anyCurrency")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="any">{t("anyCurrency")}</SelectItem>
                       <SelectItem value="AED">AED</SelectItem>
@@ -673,31 +711,31 @@ export default function SuperAgentJobsPage() {
               {/* Row 3: Salary / Experience / Dates */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("salaryMinLabel")}</label>
+                  <label htmlFor={salaryMinId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("salaryMinLabel")}</label>
                   <div className="relative">
                     <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" placeholder={t("minSalaryPlaceholder")} value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input id={salaryMinId} type="number" placeholder={t("minSalaryPlaceholder")} value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("salaryMaxLabel")}</label>
+                  <label htmlFor={salaryMaxId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("salaryMaxLabel")}</label>
                   <div className="relative">
                     <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" placeholder={t("maxSalaryPlaceholder")} value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input id={salaryMaxId} type="number" placeholder={t("maxSalaryPlaceholder")} value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("experienceMinLabel")}</label>
+                  <label htmlFor={experienceMinId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("experienceMinLabel")}</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" placeholder="0" value={experienceMin} onChange={(e) => setExperienceMin(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
+                    <Input id={experienceMinId} type="number" placeholder="0" value={experienceMin} onChange={(e) => setExperienceMin(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("experienceMaxLabel")}</label>
+                  <label htmlFor={experienceMaxId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("experienceMaxLabel")}</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" placeholder="20" value={experienceMax} onChange={(e) => setExperienceMax(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
+                    <Input id={experienceMaxId} type="number" placeholder="20" value={experienceMax} onChange={(e) => setExperienceMax(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
                   </div>
                 </div>
               </div>
@@ -706,12 +744,12 @@ export default function SuperAgentJobsPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateFromLabel")}</label>
-                  <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} />
+                  <label htmlFor={dateFromId} className="text-xs text-muted-foreground whitespace-nowrap">{t("dateFromLabel")}</label>
+                  <DateTimePicker id={dateFromId} mode="date" value={dateFrom} onChange={setDateFrom} />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateToLabel")}</label>
-                  <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} />
+                  <label htmlFor={dateToId} className="text-xs text-muted-foreground whitespace-nowrap">{t("dateToLabel")}</label>
+                  <DateTimePicker id={dateToId} mode="date" value={dateTo} onChange={setDateTo} />
                 </div>
                 <Button variant="default" size="sm" className="gap-1.5 text-xs ml-auto" onClick={() => { resetPage(); loadJobs(); }}>
                   {t("applyFiltersButton")}
@@ -724,61 +762,61 @@ export default function SuperAgentJobsPage() {
                   {jobStatus !== "all" && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeStatusLabel")}: {jobStatus.replace("_", " ")}
-                      <button onClick={() => setJobStatusState("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => setJobStatusState("all")} className="ml-0.5" aria-label={t("removeStatusFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {employmentType !== "all" && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeTypeLabel")}: {formatEmploymentType(employmentType)}
-                      <button onClick={() => setEmploymentType("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => setEmploymentType("all")} className="ml-0.5" aria-label={t("removeTypeFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {workMode !== "all" && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeModeLabel")}: {workMode}
-                      <button onClick={() => setWorkMode("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => setWorkMode("all")} className="ml-0.5" aria-label={t("removeModeFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {country && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeCountryLabel")}: {country}
-                      <button onClick={() => setCountry("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => setCountry("")} className="ml-0.5" aria-label={t("removeCountryFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {city && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeCityLabel")}: {city}
-                      <button onClick={() => setCity("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => setCity("")} className="ml-0.5" aria-label={t("removeCityFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {skills && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeSkillsLabel")}: {skills}
-                      <button onClick={() => setSkills("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => setSkills("")} className="ml-0.5" aria-label={t("removeSkillsFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {(salaryMin || salaryMax) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeSalaryLabel")}: {salaryMin || "0"}–{salaryMax || "∞"} {currency}
-                      <button onClick={() => { setSalaryMin(""); setSalaryMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => { setSalaryMin(""); setSalaryMax(""); }} className="ml-0.5" aria-label={t("removeSalaryFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {(experienceMin || experienceMax) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeExperienceLabel")}: {experienceMin || "0"}–{experienceMax || "∞"} yrs
-                      <button onClick={() => { setExperienceMin(""); setExperienceMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => { setExperienceMin(""); setExperienceMax(""); }} className="ml-0.5" aria-label={t("removeExperienceFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {(dateFrom || dateTo) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeDateLabel")}: {dateFrom || "…"} → {dateTo || "…"}
-                      <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5" aria-label={t("removeDateFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                   {searchQuery && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeSearchLabel")}: &quot;{searchQuery}&quot;
-                      <button onClick={() => setSearchQueryState("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                      <button onClick={() => setSearchQueryState("")} className="ml-0.5" aria-label={t("removeSearchFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}
                 </div>

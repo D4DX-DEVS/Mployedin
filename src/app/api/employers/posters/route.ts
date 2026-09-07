@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import { Employer } from "@/models/Employer";
 import PosterGeneration from "@/models/PosterGeneration";
 import type { UserRole } from "@/models/User";
@@ -48,7 +49,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id");
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer not found" }, { status: 404 });
   }
@@ -57,16 +58,19 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "12", 10)));
   const skip = (page - 1) * limit;
+  const jobId = url.searchParams.get("jobId");
+  const filter: Record<string, unknown> = { employerId: employer._id };
+  if (jobId && isValidObjectId(jobId)) filter.jobId = jobId;
 
   const [posters, total] = await Promise.all([
-    PosterGeneration.find({ employerId: employer._id })
+    PosterGeneration.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       // Full job snapshot so My Posters can render the composed poster (not just the raw background).
       .populate("jobId", "title companyName logo location salary skills description responsibilities qualifications requirements employmentType")
       .lean(),
-    PosterGeneration.countDocuments({ employerId: employer._id }),
+    PosterGeneration.countDocuments(filter),
   ]);
 
   return NextResponse.json({
@@ -86,7 +90,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id");
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer not found" }, { status: 404 });
   }

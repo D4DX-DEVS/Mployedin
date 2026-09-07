@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -295,9 +297,14 @@ export default function AdminExhibitionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("adminExhibitions");
+  const ta = useTranslations("a11y");
   const { confirm } = useConfirm();
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [totalItems, setTotalItems] = useState(0);
+  // Was a hard-coded `const pageSize = 10` used only for the "showing x-y"
+  // caption while the request sent its own literal 10, so the shared
+  // paginator had no page size to change. One source of truth now.
+  const [pageSize, setPageSize] = useState(10);
   const [serverTotalPages, setServerTotalPages] = useState(1);
   const [countryOptions, setCountryOptions] = useState<string[]>([]);
   const [summary, setSummary] = useState({
@@ -379,7 +386,7 @@ export default function AdminExhibitionsPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "10" });
+      const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (priorityFilter !== "all") params.set("priority", priorityFilter);
       if (stageFilter !== "all") params.set("stage", stageFilter);
@@ -416,7 +423,7 @@ export default function AdminExhibitionsPage() {
      
   }, [statusFilter, priorityFilter, stageFilter, dateRange, countryFilter, budgetRange, reviewerFilter, search]);
 
-  const pageSize = 10;
+  
   const totalPages = serverTotalPages;
   const visibleItems = items;
   const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((item) => selectedIds.has(item._id));
@@ -667,7 +674,7 @@ export default function AdminExhibitionsPage() {
         }
       />
 
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+      <section className="workspace-panel-surface rounded-2xl panel-body">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("requestQueue")}</p>
@@ -692,7 +699,7 @@ export default function AdminExhibitionsPage() {
         <div className="mt-5 flex flex-col gap-2 rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.03] chip-pad xl:flex-row xl:items-center">
           <div className="relative min-w-0 flex-1 xl:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <Input aria-label={t("searchRequestsAgentsEvents")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("searchRequestsAgentsEvents")}
@@ -838,13 +845,10 @@ export default function AdminExhibitionsPage() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="workspace-empty-state flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
-              <div className="workspace-muted-pill rounded-3xl p-3">
-                <Inbox className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">{t("noExhibitionRequestsFound")}</p>
-              <p className="max-w-md text-sm text-muted-foreground">{t("adjustFiltersOrResetTheQueue")}</p>
-            </div>
+            <EmptyState
+              title={t("noExhibitionRequestsFound")}
+              description={t("adjustFiltersOrResetTheQueue")}
+            />
           ) : (
             <div className="workspace-panel-surface overflow-hidden rounded-2xl">
               {/* The column widths were 52px + (27+19+17+13+11+13)% + 112px, i.e.
@@ -958,22 +962,18 @@ export default function AdminExhibitionsPage() {
                 </table>
               </div>
 
-              <div className="flex flex-col gap-3 border-t bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {t("showing", { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, totalItems), total: totalItems })}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="iconDense" className="rounded-lg" disabled={page === 1} onClick={() => setPage(Math.max(1, page - 1))}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="rounded-lg border border-border/60 bg-background px-3 py-1 text-xs font-semibold">
-                    {page} / {totalPages}
-                  </span>
-                  <Button variant="outline" size="iconDense" className="rounded-lg" disabled={page === totalPages} onClick={() => setPage(Math.min(totalPages, page + 1))}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+              {/* Prev/next only, with a static "{page} / {n}" pill: reaching
+                  page 40 of a review queue took 39 clicks. The shared control
+                  adds first/last jumps, a windowed page list and a page-size
+                  select — 18 other admin pages already use it. */}
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                total={totalItems}
+                limit={pageSize}
+                onPageChange={setPage}
+                onLimitChange={(next) => { setPageSize(next); setPage(1); }}
+              />
             </div>
           )}
         </div>
@@ -1090,7 +1090,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn("h-9 rounded-lg text-sm", className)}>
+      <SelectTrigger aria-label={placeholder} className={cn("h-9 rounded-lg text-sm", className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

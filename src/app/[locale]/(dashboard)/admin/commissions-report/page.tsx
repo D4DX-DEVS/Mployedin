@@ -135,6 +135,7 @@ function DeltaChip({ value }: { value: number }) {
 
 export default function AdminCommissionsReportPage() {
   const t = useTranslations("adminCommissionsReport");
+  const ta = useTranslations("a11y");
   const currentYear = new Date().getFullYear();
   const [yearFilter, setYearFilter] = useState(currentYear);
   const [searchQuery, setSearchQuery] = useState("");
@@ -214,7 +215,7 @@ export default function AdminCommissionsReportPage() {
         actions={(
           <>
             <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
-              <SelectTrigger className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
+              <SelectTrigger aria-label={t("yearFilterLabel")} className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
                 <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
@@ -224,7 +225,7 @@ export default function AdminCommissionsReportPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="rounded-xl border-border/70 bg-background/90">
+            <Button aria-label={ta("refresh")} variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="rounded-xl border-border/70 bg-background/90">
               <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </>
@@ -240,7 +241,7 @@ export default function AdminCommissionsReportPage() {
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-2 workspace-panel-surface rounded-3xl panel-body">
+        <section className="lg:col-span-2 workspace-panel-surface rounded-2xl panel-body">
           <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -256,7 +257,7 @@ export default function AdminCommissionsReportPage() {
           </ResponsiveContainer>
         </section>
 
-        <section className="workspace-panel-surface rounded-3xl panel-body">
+        <section className="workspace-panel-surface rounded-2xl panel-body">
           <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("byTypeTitle")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
@@ -310,7 +311,7 @@ export default function AdminCommissionsReportPage() {
       )}
 
       {/* ── Agent Breakdown Table ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />

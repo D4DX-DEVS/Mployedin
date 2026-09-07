@@ -168,6 +168,7 @@ export default function CmsOverviewPage() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={t("searchPlaceholder")}
+                aria-label={t("searchPlaceholder")}
                 value={moduleSearch}
                 onChange={(e) => setModuleSearch(e.target.value)}
                 className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"

@@ -22,6 +22,16 @@ interface SidebarProps {
   filters: FeedFilters;
   onFiltersChange: (f: FeedFilters) => void;
   locale: string;
+  /**
+   * Drop the preferences panel and render only the filter groups.
+   *
+   * The phone's filter sheet is titled "Filters" but rendered this whole
+   * component, so it opened on a read-only "Your preferences" card and the
+   * seeker had to scroll past four rows they cannot change there to reach the
+   * checkboxes they came for. Preferences stay on the desktop rail, where
+   * there is room for both.
+   */
+  filtersOnly?: boolean;
 }
 
 interface SeekerProfile {
@@ -151,7 +161,7 @@ function FilterGroup({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProps) {
+export function JobFeedSidebar({ filters, onFiltersChange, locale, filtersOnly = false }: SidebarProps) {
   const t = useTranslations("jobFeed.sidebar");
   const { data: profile } = useQuery<SeekerProfile>({
     queryKey: ["seeker-profile-sidebar"],
@@ -189,8 +199,9 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
     filters.experienceLevels.length;
 
   return (
-    <div className="space-y-4">
+    <div className={filtersOnly ? "" : "space-y-4"}>
       {/* ── Preferences ── */}
+      {!filtersOnly && (
       <div className="card-base rounded-lg sm:rounded-3xl">
         <div className="mb-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("profileSignal")}</div>
@@ -228,14 +239,21 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
           setLabel={t("setSalary")}
         />
       </div>
+      )}
 
       {/* ── Filters ── */}
-      <div className="card-base rounded-lg sm:rounded-3xl">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("refineResults")}</div>
-            <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">{t("filters")}</h3>
-          </div>
+      <div className={filtersOnly ? "" : "card-base rounded-lg sm:rounded-3xl"}>
+        <div className={cn("flex items-center justify-between", filtersOnly ? "mb-2 empty:hidden" : "mb-4")}>
+          {/* The phone sheet is already titled "Filters"; repeating it here put
+              the same word twice in the first 60px of the panel. */}
+          {filtersOnly ? (
+            <span aria-hidden />
+          ) : (
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("refineResults")}</div>
+              <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">{t("filters")}</h3>
+            </div>
+          )}
           {activeFilterCount > 0 && (
             <button
               onClick={() => onFiltersChange({ workTypes: [], matchRanges: [], dateRanges: [], experienceLevels: [] })}

@@ -1,7 +1,7 @@
 "use client";
 import { useQueryFlag } from "@/hooks/useQueryFlag";
 
-import { useState, useCallback, Fragment, useEffect } from "react";
+import { useState, useCallback, Fragment, useEffect, useId } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
+import { useConfirm } from "@/hooks/useConfirm";
 import {
   useReferralLinks,
   useCreateReferralLink,
@@ -137,9 +138,35 @@ export default function SuperAgentReferralLinksPage() {
     sortOrder: sortOrder || undefined,
   };
 
-  const { data, isLoading } = useReferralLinks(filters);
+  const { data, isLoading, isError, refetch } = useReferralLinks(filters);
   const createMutation = useCreateReferralLink();
   const updateMutation = useUpdateReferralLink();
+  const { confirm, ConfirmDialogNode } = useConfirm();
+  const newLabelId = useId();
+  const newMaxUsesId = useId();
+  const newExpiryId = useId();
+  const aiSearchId = useId();
+  const statusFilterId = useId();
+  const creatorFilterId = useId();
+  const dateFromId = useId();
+  const dateToId = useId();
+  const sortByFilterId = useId();
+  const sortOrderFilterId = useId();
+  // Disabling breaks a link that may already be printed on material or shared
+  // with candidates, and every later signup through it is lost. Enabling is
+  // harmless and reversible, so only the disable edge asks.
+  const handleToggleActive = useCallback(async (link: ReferralLinkItem) => {
+    if (link.isActive) {
+      const ok = await confirm({
+        title: t("disableConfirmTitle"),
+        message: t("disableConfirmMessage", { code: link.code }),
+        confirmLabel: t("disableButton"),
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
+    updateMutation.mutate({ id: link._id, isActive: !link.isActive });
+  }, [confirm, t, updateMutation]);
 
   const links = data?.links ?? [];
   const total = data?.total ?? 0;
@@ -235,6 +262,7 @@ export default function SuperAgentReferralLinksPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <SuperAgentPageIntro
         eyebrow={t("eyebrow")}
         title={t("pageTitle")}
@@ -261,16 +289,16 @@ export default function SuperAgentReferralLinksPage() {
         <SuperAgentSection title="" className="mt-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("labelFieldLabel")}</label>
-              <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("labelFieldPlaceholder")} className="h-10 rounded-xl" />
+              <label htmlFor={newLabelId} className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("labelFieldLabel")}</label>
+              <Input id={newLabelId} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("labelFieldPlaceholder")} className="h-10 rounded-xl" />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("maxRegistrationsLabel")}</label>
-              <Input type="number" value={newMaxUses} onChange={(e) => setNewMaxUses(e.target.value)} placeholder="0" min={0} className="h-10 rounded-xl" />
+              <label htmlFor={newMaxUsesId} className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("maxRegistrationsLabel")}</label>
+              <Input id={newMaxUsesId} type="number" value={newMaxUses} onChange={(e) => setNewMaxUses(e.target.value)} placeholder="0" min={0} className="h-10 rounded-xl" />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("expiryDateLabel")}</label>
-              <DateTimePicker mode="date" value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
+              <label htmlFor={newExpiryId} className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("expiryDateLabel")}</label>
+              <DateTimePicker id={newExpiryId} mode="date" value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
             </div>
             <div className="sm:col-span-3 flex justify-end">
               <button
@@ -294,6 +322,7 @@ export default function SuperAgentReferralLinksPage() {
             <div className="relative flex-1 max-w-xl">
               <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
               <Input
+                aria-label={t("aiSearchPlaceholder")}
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
@@ -340,9 +369,9 @@ export default function SuperAgentReferralLinksPage() {
             filterContent={
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
+                  <label htmlFor={statusFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
                   <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as ReferralLinkStatus | ""); pagination.resetPage(); }}>
-                    <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectTrigger id={statusFilterId} className="h-9 w-full text-sm">
                       <SelectValue placeholder={t("filterAllStatuses")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -355,9 +384,9 @@ export default function SuperAgentReferralLinksPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterCreatorRole")}</label>
+                  <label htmlFor={creatorFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterCreatorRole")}</label>
                   <Select value={creatorRoleFilter} onValueChange={(v) => { setCreatorRoleFilter(v as ReferralCreatorRole | ""); pagination.resetPage(); }}>
-                    <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectTrigger id={creatorFilterId} className="h-9 w-full text-sm">
                       <SelectValue placeholder={t("filterAllRoles")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -368,17 +397,17 @@ export default function SuperAgentReferralLinksPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateFrom")}</label>
-                  <DateTimePicker mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); pagination.resetPage(); }} />
+                  <label htmlFor={dateFromId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateFrom")}</label>
+                  <DateTimePicker id={dateFromId} mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); pagination.resetPage(); }} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateTo")}</label>
-                  <DateTimePicker mode="date" value={dateTo} onChange={(v) => { setDateTo(v); pagination.resetPage(); }} />
+                  <label htmlFor={dateToId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateTo")}</label>
+                  <DateTimePicker id={dateToId} mode="date" value={dateTo} onChange={(v) => { setDateTo(v); pagination.resetPage(); }} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortBy")}</label>
+                  <label htmlFor={sortByFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortBy")}</label>
                   <Select value={sortBy || "newest"} onValueChange={(v) => { setSortBy(v === "newest" ? "" : (v as ReferralSortField)); pagination.resetPage(); }}>
-                    <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectTrigger id={sortByFilterId} className="h-9 w-full text-sm">
                       <SelectValue placeholder={t("sortNewestFirst")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -390,9 +419,9 @@ export default function SuperAgentReferralLinksPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortOrder")}</label>
+                  <label htmlFor={sortOrderFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortOrder")}</label>
                   <Select value={sortOrder || "default"} onValueChange={(v) => { setSortOrder(v === "default" ? "" : (v as "asc" | "desc")); pagination.resetPage(); }}>
-                    <SelectTrigger className="h-9 w-full text-sm">
+                    <SelectTrigger id={sortOrderFilterId} className="h-9 w-full text-sm">
                       <SelectValue placeholder={t("sortDefault")} />
                     </SelectTrigger>
                     <SelectContent>
@@ -435,6 +464,21 @@ export default function SuperAgentReferralLinksPage() {
               ))}
             </TableBody>
           </Table>
+        </div>
+      ) : isError ? (
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div>
+              <p className="text-sm text-destructive">{t("loadLinksError")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+            >
+              {tc("tryAgain")}
+            </button>
+          </div>
         </div>
       ) : links.length === 0 ? (
         <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
@@ -510,7 +554,7 @@ export default function SuperAgentReferralLinksPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateMutation.mutate({ id: link._id, isActive: !link.isActive });
+                              void handleToggleActive(link);
                             }}
                             disabled={updateMutation.isPending}
                             className={`inline-flex max-sm:min-h-11 h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"}`}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,7 @@ function InlineSearchSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = query
@@ -76,6 +77,37 @@ function InlineSearchSelect({
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
 
+  /* Same clamp as InlineSearchSelect: a 200px panel anchored left-0 under a
+     narrow trigger ran off the right edge of a phone, cutting off the option
+     labels. */
+  useLayoutEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const el = panelRef.current;
+      const host = containerRef.current;
+      if (!el || !host) return;
+      /* Measure the trigger, not the panel: the panel opens with a zoom/slide
+         animation, so its own rect is mid-transform on the first frame and the
+         correction landed as a visible sideways jump. `offsetWidth` is the
+         layout width and ignores the transform. */
+      const hostLeft = host.getBoundingClientRect().left;
+      const width = el.offsetWidth;
+      const margin = 8;
+      let dx = 0;
+      if (hostLeft + width > window.innerWidth - margin) {
+        dx = window.innerWidth - margin - (hostLeft + width);
+      }
+      if (hostLeft + dx < margin) dx = margin - hostLeft;
+      /* Written straight to the node rather than through state: a state update
+         here re-renders and the corrected position landed one paint late, which
+         showed as the panel sliding sideways just after it opened. */
+      el.style.left = `${dx}px`;
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open]);
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -97,7 +129,15 @@ function InlineSearchSelect({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full min-w-[200px] rounded-xl border border-border/50 bg-popover shadow-lg shadow-black/[0.08] animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-150">
+        <div
+          ref={panelRef}
+          data-select-panel=""
+          /* Something upstream puts `transition: all 150ms` on this panel, so
+             the clamp below animated `left` and the panel visibly slid sideways
+             on open. It has no transition of its own to lose. */
+          style={{ transitionProperty: "none" }}
+          className="absolute left-0 top-[calc(100%+4px)] z-50 w-full min-w-[200px] max-w-[calc(100vw-1rem)] rounded-xl border border-border/50 bg-popover shadow-lg shadow-black/[0.08] animate-in fade-in-0 slide-in-from-top-2 duration-150"
+        >
           <div className="flex items-center gap-2 border-b border-border/30 panel-head">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
             <input

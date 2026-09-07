@@ -82,6 +82,7 @@ const PosterGenerationSchema = new Schema<IPosterGeneration>(
 
 PosterGenerationSchema.index({ employerId: 1, createdAt: -1 });
 PosterGenerationSchema.index({ shareSlug: 1 });
+PosterGenerationSchema.index({ jobId: 1, createdAt: -1 });
 
 export default mongoose.models.PosterGeneration ??
   mongoose.model<IPosterGeneration>("PosterGeneration", PosterGenerationSchema);

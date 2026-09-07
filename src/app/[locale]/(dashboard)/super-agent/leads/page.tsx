@@ -472,7 +472,7 @@ export default function SuperAgentLeadsPage() {
                 className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50"
               >
                 {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">{t("aiButton")}</span>
+                <span className="sr-only sm:not-sr-only sm:inline">{t("aiButton")}</span>
               </button>
               {(activeFilterCount > 0 || filters.status || filters.search || aiSummary) && (
                 <button
@@ -481,7 +481,7 @@ export default function SuperAgentLeadsPage() {
                   className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("resetButton")}</span>
+                  <span className="sr-only sm:not-sr-only sm:inline">{t("resetButton")}</span>
                 </button>
               )}
             </>
@@ -496,7 +496,7 @@ export default function SuperAgentLeadsPage() {
                     <p>{aiSummary}</p>
                     {aiDegraded && <p className="mt-1 text-xs opacity-70">{t("aiDegradedMessage")}</p>}
                   </div>
-                  <button type="button" onClick={() => setAiSummary("")} className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+                  <button type="button" onClick={() => setAiSummary("")} className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 transition-opacity" aria-label={t("dismissAiSummary")}>
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -765,10 +765,11 @@ export default function SuperAgentLeadsPage() {
 /* ------------------------------------------------------------------ */
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  const t = useTranslations("superAgentLeads");
   return (
     <span className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
       {label}
-      <button type="button" onClick={onRemove} className="ml-0.5 rounded-full p-0.5 hover:bg-primary/15 transition-colors">
+      <button type="button" onClick={onRemove} className="ml-0.5 rounded-full p-0.5 hover:bg-primary/15 transition-colors" aria-label={t("removeFilterWithLabel", { label })}>
         <X className="h-3 w-3" />
       </button>
     </span>

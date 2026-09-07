@@ -72,9 +72,36 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   ];
 
   if (seeker.preferredCountries?.length) {
+    const countrySet = new Set<string>();
+    for (const c of seeker.preferredCountries) {
+      if (!c) continue;
+      countrySet.add(c);
+      const lower = c.trim().toLowerCase();
+      if (lower === "uae" || lower === "u.a.e" || lower === "united arab emirates") {
+        countrySet.add("UAE");
+        countrySet.add("United Arab Emirates");
+        countrySet.add("u.a.e");
+      } else if (lower === "india" || lower === "in") {
+        countrySet.add("India");
+        countrySet.add("IN");
+      } else if (lower === "saudi arabia" || lower === "ksa") {
+        countrySet.add("Saudi Arabia");
+        countrySet.add("KSA");
+      } else if (lower === "usa" || lower === "us" || lower === "united states") {
+        countrySet.add("USA");
+        countrySet.add("United States");
+        countrySet.add("US");
+      } else if (lower === "uk" || lower === "united kingdom") {
+        countrySet.add("UK");
+        countrySet.add("United Kingdom");
+      }
+    }
+    const countryPatterns = Array.from(countrySet).map(
+      (c) => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
+    );
     andConditions.push({
       $or: [
-        { "location.country": { $in: seeker.preferredCountries } },
+        { "location.country": { $in: countryPatterns } },
         { "location.isRemote": true },
       ],
     });

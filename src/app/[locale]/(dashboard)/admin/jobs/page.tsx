@@ -21,6 +21,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { CountCardGrid } from "@/components/shared/CountCardGrid";
 import type { ExportColumn } from "@/lib/export";
@@ -108,14 +109,6 @@ function getSourceLabel(job: Job, t: ReturnType<typeof useTranslations>) {
   if (agent) return agent;
   return t("employerLabel");
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
-  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
-  paused: "bg-sky-100 text-status-applied border-border",
-  closed: "bg-muted text-muted-foreground",
-  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
-};
 
 const JOB_SUMMARY_MAX_LENGTH = 180;
 
@@ -591,15 +584,14 @@ export default function AdminJobsPage() {
         onClearAll={resetFilters}
       />
 
-      {/* ─── Error ────────────────────────────────────────────────────── */}
-      {errorMessage && (
-        <div className="rounded-2xl border border-status-rejected/20 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm">
-          {errorMessage}
-        </div>
-      )}
-
       {/* ─── Job Cards ────────────────────────────────────────────────── */}
-      {loading ? (
+      {/* The error used to be a retry-less banner ABOVE the list, while the
+          list below still rendered the "No jobs yet" empty state — so a failed
+          load told the admin both that something broke and that there is
+          nothing here. It is one branch now, and it offers a retry. */}
+      {errorMessage && !loading ? (
+        <ErrorState description={errorMessage} onRetry={() => void fetchJobs()} />
+      ) : loading ? (
         <ListSkeleton count={5} itemClassName="h-40 rounded-3xl" className="space-y-4" />
       ) : jobs.length === 0 ? (
         <EmptyState
@@ -626,8 +618,13 @@ export default function AdminJobsPage() {
                   {/* Left: Job metadata */}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0 text-[11px] font-medium capitalize`}>{job.status}</Badge>
+                      <h2 className="heading-subsection font-semibold tracking-tight text-foreground">{job.title}</h2>
+                      {/* Was a local colour map printing the raw DB value with
+                          `capitalize`: "pending_approval" rendered as
+                          "Pending_approval", and stayed English in Arabic — while
+                          the drawer on this same page already used StatusBadge
+                          and showed the translated label. One job, two strings. */}
+                      <StatusBadge status={job.status} />
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {job.employerId?.companyName && (

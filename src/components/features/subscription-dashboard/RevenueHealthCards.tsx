@@ -25,9 +25,9 @@ export function RevenueHealthCards({ data }: Props) {
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card panel-body">
-      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
         <Sparkles className="h-4 w-4" /> {t("revenueHealth")}
-      </h4>
+      </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {cards.map((card) => (
           <div

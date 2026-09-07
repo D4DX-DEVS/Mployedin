@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import { Employer } from "@/models/Employer";
 import Application from "@/models/Application";
 import BackgroundCheck from "@/models/BackgroundCheck";
@@ -24,9 +25,13 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "20", 10)));
   const status = url.searchParams.get("status");
+  const jobId = url.searchParams.get("jobId");
+  const applicationId = url.searchParams.get("applicationId");
 
   const filter: Record<string, unknown> = { employerId: (emp as { _id: unknown })._id };
   if (status) filter.status = status;
+  if (jobId && isValidObjectId(jobId)) filter.jobId = jobId;
+  if (applicationId && isValidObjectId(applicationId)) filter.applicationId = applicationId;
 
   const [items, total] = await Promise.all([
     BackgroundCheck.find(filter)

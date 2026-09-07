@@ -163,7 +163,7 @@ export default function AdminTargetProfileDetailPage() {
               <Target className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">{profile.assigneeName}</h1>
+              <h1 className="page-header-title font-semibold tracking-tight">{profile.assigneeName}</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {profile.year} · {profile.assigneeRole === "super_agent" ? t("supervisorHeader") : t("agentDescription")} · {profile.assigneeEmail}
               </p>
@@ -264,18 +264,18 @@ export default function AdminTargetProfileDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Agent</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> Employer</div>
+                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {t("employer")}</div>
                   </TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Employee</div>
+                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {t("employee")}</div>
                   </TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Finance</div>
+                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> {t("finance")}</div>
                   </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Performance</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Risk</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("performance")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

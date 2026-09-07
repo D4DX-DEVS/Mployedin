@@ -30,6 +30,7 @@ const NotificationBell = dynamic(
 import PublicFooter from "@/components/shared/PublicFooter";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { WorkspaceBottomNav } from "@/components/shared/WorkspaceBottomNav";
+import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
 import type { NavGroup } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
@@ -101,8 +102,14 @@ export function DashboardShell({
   // components (PageHero, data-table-toolbar, <Table>), so they get the same
   // untuned-on-mobile problem the CSS below already fixes for admin.
   const isAdminWorkspace = userRole === "admin" || userRole === "agent" || userRole === "super_agent";
+  // A genuinely per-role hook. `dashboard-shell-admin` above is NOT admin-only
+  // — it covers agent and super-agent too — so it cannot scope a change to one
+  // role. Styling that must land on exactly one workspace keys off this.
+  const roleClass = `dashboard-role-${String(userRole ?? "").replace(/_/g, "-")}`;
   const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
-  const bottomNavTabConfigs = WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? [];
+  // The seeker runs the job-board shell (header tabs + its own phone tab bar,
+  // no sidebar) so the workspace tab bar is not built for that role.
+  const bottomNavTabConfigs = isJobSeeker ? [] : (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []);
   const bottomNavTabs = bottomNavTabConfigs.map((tab) => ({
     key: tab.key,
     href: tab.href,
@@ -118,7 +125,7 @@ export function DashboardShell({
   const tabBadgeKeys = new Set(
     bottomNavTabConfigs.map((tab) => tab.badgeKey).filter(Boolean) as NavBadgeKey[]
   );
-  const dashboardRoot = (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []).find((t) => t.exact)?.href;
+  const dashboardRoot = isJobSeeker ? "/job-seeker" : (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []).find((t) => t.exact)?.href;
   // The topbar inbox icon is the same kind of visible destination as a tab: if
   // it is showing, the unread count is already on screen and "More" would be
   // badging a drawer that has no inbox in it.
@@ -145,19 +152,22 @@ export function DashboardShell({
   useEffect(() => { setMounted(true); }, []);
 
   return (
-    <div className={`dashboard-shell bg-background ${usesModernWorkspaceShell ? "dashboard-shell-workspace" : ""} ${isAdminWorkspace ? "dashboard-shell-admin" : ""} flex h-screen overflow-hidden`}>
-      {/* Sidebar (desktop + mobile overlay handled inside) */}
-      <Sidebar
-        navGroups={navGroups}
-        locale={locale}
-        userRole={userRole}
-        mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
-        companyLogo={companyLogo}
-      />
+    <div className={`dashboard-shell bg-background ${usesModernWorkspaceShell ? "dashboard-shell-workspace" : ""} ${isAdminWorkspace ? "dashboard-shell-admin" : ""} ${roleClass} ${isJobSeeker ? "flex min-h-screen flex-col" : "flex h-screen overflow-hidden"}`}>
+      {/* Sidebar (desktop + mobile overlay handled inside). The seeker has no
+          rail: it navigates from header tabs like a job board. */}
+      {!isJobSeeker && (
+        <Sidebar
+          navGroups={navGroups}
+          locale={locale}
+          userRole={userRole}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+          companyLogo={companyLogo}
+        />
+      )}
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden">
+      <div className={`flex flex-1 flex-col min-w-0 ${isJobSeeker ? "" : "min-h-0 overflow-hidden"}`}>
         {/* Tenant view banner — shown at the top of the content area */}
         {tenantViewData && (
           <TenantViewBanner
@@ -169,11 +179,11 @@ export function DashboardShell({
         {/* Topbar */}
         <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16" : "h-14 sm:h-16"}`}>
           <div className="flex h-full items-center gap-1.5 px-3 sm:gap-2 sm:px-4 md:gap-3 lg:px-6">
-            {!hasBottomNav && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
+            {!isJobSeeker && !hasBottomNav && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
             {/* ponytail: the hamburger used to hold this slot on phones; the logo
                 fills it now so the topbar is not three controls floating right. */}
-            {hasBottomNav && (
+            {!isJobSeeker && hasBottomNav && (
               <Link
                 href={`/${locale}${dashboardRoot ?? ""}`}
                 className="shrink-0 lg:hidden"
@@ -189,6 +199,23 @@ export function DashboardShell({
                   priority
                 />
               </Link>
+            )}
+
+            {isJobSeeker && (
+              <>
+                <Link href={`/${locale}/job-seeker`} className="shrink-0" aria-label={tNav("a11yHome")}>
+                  <Image
+                    src="/logo.png"
+                    alt="Mployedin"
+                    width={100}
+                    height={34}
+                    className="h-auto w-[80px] object-contain min-[360px]:w-[88px] sm:w-[141px]"
+                    style={{ height: "auto" }}
+                    priority
+                  />
+                </Link>
+                <JobSeekerTopNav locale={locale} navGroups={navGroups} counts={navCounts} />
+              </>
             )}
 
             <div className="flex-1 min-w-0">
@@ -227,9 +254,18 @@ export function DashboardShell({
           </div>
         </header>
         {/* Page content */}
-          <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
-            {children}
-          </main>
+          {isJobSeeker ? (
+            <>
+              <main className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+                {children}
+              </main>
+              <JobSeekerBottomNav locale={locale} navGroups={navGroups} counts={navCounts} />
+            </>
+          ) : (
+            <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
+              {children}
+            </main>
+          )}
           {/* Workspace phones get a tab bar for each role's daily destinations;
               everything else stays one tap away behind the "More" tab. */}
           {bottomNavTabs.length > 0 && (

@@ -8,6 +8,7 @@ import {
   TrendingUp, AlertTriangle, Clock, BarChart3, RotateCcw, CheckCircle2,
   Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
@@ -140,13 +141,29 @@ const INTERVIEW_STATUS_OPTIONS = [
   "no_show",
 ] as const;
 
+type InterviewStatusOption = (typeof INTERVIEW_STATUS_OPTIONS)[number];
+
 export default function AdminInterviewOversightPage() {
   const t = useTranslations("adminInterviews");
+  /* Written out rather than `t(`status_${value}`)`: a key built from a template
+     literal is invisible to the key-parity check and to tsc, and next-intl
+     throws on an unknown key — one unmapped status would take the page down.
+     `Record<InterviewStatusOption, string>` makes a missing status a build
+     error instead. */
+  const statusLabel: Record<InterviewStatusOption, string> = {
+    scheduled: t("status_scheduled"),
+    confirmed: t("status_confirmed"),
+    rescheduled: t("status_rescheduled"),
+    completed: t("status_completed"),
+    cancelled: t("status_cancelled"),
+    no_show: t("status_no_show"),
+  };
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [serverNoShow, setServerNoShow] = useState<number | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -249,11 +266,16 @@ export default function AdminInterviewOversightPage() {
         setStatusCounts(data.statusCounts ?? {});
         setServerNoShow(typeof data.noShowCount === "number" ? data.noShowCount : null);
         updateTotal(data.total ?? 0);
+        setLoadFailed(false);
       } else {
         const err = await res.json().catch(() => ({}));
+        setLoadFailed(true);
         toast.error(err.error || t("failedToLoadInterviews"));
       }
     } catch (error) {
+      // Without this the table body just goes empty, which is indistinguishable
+      // from "no interviews" once the toast has gone.
+      setLoadFailed(true);
       toast.error(t("failedToLoadInterviews"));
     } finally {
       setLoading(false);
@@ -420,6 +442,7 @@ export default function AdminInterviewOversightPage() {
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder={t("searchCandidateOrCompany")}
+                aria-label={t("searchCandidateOrCompany")}
                 className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-4 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
               />
             </div>
@@ -504,7 +527,10 @@ export default function AdminInterviewOversightPage() {
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      {loadFailed && !loading ? (
+        <ErrorState onRetry={() => void load()} />
+      ) : (
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -571,7 +597,7 @@ export default function AdminInterviewOversightPage() {
                     <TableCell className="px-4 py-3 text-end">
                       <SearchableSelect
                         className="h-9 w-[150px] rounded-lg border-border bg-card text-xs"
-                        options={INTERVIEW_STATUS_OPTIONS.map((value) => ({ value, label: t(`status_${value}`) }))}
+                        options={INTERVIEW_STATUS_OPTIONS.map((value) => ({ value, label: statusLabel[value] }))}
                         value={iv.status}
                         onValueChange={(value) => {
                           if (value && value !== iv.status) void changeInterviewStatus(iv._id, value);
@@ -591,6 +617,7 @@ export default function AdminInterviewOversightPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
         </div>
       </section>
+      )}
     </div>
   );
 }

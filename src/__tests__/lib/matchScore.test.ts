@@ -289,6 +289,12 @@ describe("calculateMatchScore", () => {
       );
       expect(result).toBe(100);
     });
+
+    it("matches country aliases like UAE and United Arab Emirates", () => {
+      const uaeSeeker = { ...baseSeeker, location: "uae", locations: ["uae"] };
+      const uaeJob = { ...baseJob, location: "United Arab Emirates", remote: false };
+      expect(calculateMatchScore(uaeSeeker, uaeJob)).toBe(100);
+    });
   });
 
   describe("relevant vs raw experience", () => {
@@ -345,6 +351,28 @@ describe("calculateMatchScore", () => {
     expect(
       calculateMatchScore({ ...baseSeeker, educationLevel: 3 }, { ...baseJob, requiredEducationLevel: 0 })
     ).toBe(100);
+  });
+
+  it("scores Civil Engineering seeker accurately with related skill group and title bonus", () => {
+    const civilSeeker = {
+      ...baseSeeker,
+      skills: ["AutoCAD", "Civil Engineering", "Site Supervision"],
+      preferredRoles: ["Civil Engineer", "Site Engineer"],
+      location: "india",
+      salaryExpectation: 45000,
+      salaryCurrency: "INR",
+    };
+    const civilJob = {
+      ...baseJob,
+      title: "Civil Site Engineer",
+      skills: ["Revit", "Civil Eng"],
+      location: "india",
+      salaryMin: 35000,
+      salaryMax: 55000,
+      salaryCurrency: "INR",
+    };
+    const score = calculateMatchScore(civilSeeker, civilJob);
+    expect(score).toBeGreaterThanOrEqual(80);
   });
 });
 

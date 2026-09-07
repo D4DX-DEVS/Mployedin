@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -17,6 +18,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox,
   Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList, Download,
+  Clock, CheckCircle2, TrendingUp,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -200,6 +202,13 @@ export default function AdminInvoicesPage() {
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || typeFilter || searchTerm || dateFrom || dateTo);
   const fmt = (v: number) => `${displayCurrency} ${formatCount(v)}`;
 
+  const invoiceMetrics = analyticsData?.kpi ? [
+    { label: t("totalInvoicedLabel"), value: fmt(analyticsData.kpi.totalRevenue), icon: ReceiptText, iconSurfaceClassName: "bg-indigo-50", iconClassName: "text-indigo-600" },
+    { label: t("totalPaidLabel"), value: fmt(analyticsData.kpi.paidRevenue), icon: CheckCircle2, iconSurfaceClassName: "bg-emerald-50", iconClassName: "text-emerald-600" },
+    { label: t("outstandingLabel"), value: fmt(analyticsData.kpi.pendingRevenue), icon: Clock, iconSurfaceClassName: "bg-amber-50", iconClassName: "text-amber-600" },
+    { label: t("overallCollectionRateLabel"), value: analyticsData.kpi.totalRevenue > 0 ? `${Math.round((analyticsData.kpi.paidRevenue / analyticsData.kpi.totalRevenue) * 100)}%` : "0%", icon: TrendingUp, iconSurfaceClassName: "bg-violet-50", iconClassName: "text-violet-600" },
+  ] : [];
+
   // Export columns
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("exportHeaderInvoiceNumber"), key: "invoiceNumber" },
@@ -256,12 +265,8 @@ export default function AdminInvoicesPage() {
             </Button>
           </Link>
         }
+        metrics={invoiceMetrics}
       />
-
-      {/* KPI Cards */}
-      {analyticsData && (
-        <RevenueKPICards kpi={analyticsData.kpi} currency={displayCurrency} variant="admin" />
-      )}
 
       {/* Queue View — Uninvoiced Placements */}
       {activeView === "queue" && (
@@ -293,10 +298,10 @@ export default function AdminInvoicesPage() {
       {activeView === "table" && (
         <>
           {errorMessage && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
+            <ErrorState title={t("failedToLoadInvoices")} onRetry={fetchInvoices} />
           )}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl">
             {/* Toolbar: search, filters, export */}
             <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4 panel-head">
               <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
@@ -306,7 +311,7 @@ export default function AdminInvoicesPage() {
               </div>
               <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
                 <div className="relative flex-1 sm:flex-none sm:min-w-0 sm:w-52">
-                  <Input
+                  <Input aria-label={t("searchPlaceholder")}
                     value={searchTerm}
                     onChange={(v) => { setSearchTerm(v.target.value); resetPage(); }}
                     placeholder={t("searchPlaceholder")}
@@ -325,7 +330,7 @@ export default function AdminInvoicesPage() {
 
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="heading-subsection font-semibold text-foreground">{t("allInvoices")}</h3>
+                <h2 className="heading-subsection font-semibold text-foreground">{t("allInvoices")}</h2>
                 <p className="text-sm text-muted-foreground">{t("recordsCount", { shown: invoices.length, total: formatCount(total) })}</p>
               </div>
             </div>

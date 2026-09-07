@@ -957,7 +957,33 @@ export function Sidebar({
             <div className="space-y-1">
               <div id={submenuId} className="space-y-4">
                 {(() => {
-                  const children = activeMobileNestedItem?.children ?? activeMainItem.children!;
+                  const rawChildren = activeMobileNestedItem?.children ?? activeMainItem.children!;
+                  /**
+                   * The drawer drills into a child that has children of its own;
+                   * the desktop flyout has no drill-in, so it used to render such
+                   * a child as a single link to the parent's own href and its
+                   * grandchildren were unreachable from the rail entirely — 13
+                   * admin destinations, including /admin/analytics, whose only
+                   * in-app desktop route was the ReportTabs strip on another page.
+                   *
+                   * Desktop has the height for one flat panel, and the group
+                   * renderer below already draws headed sections, so a nested
+                   * child is promoted into a section headed by its own title.
+                   * Nothing is lost by dropping the parent link: every nested
+                   * parent's href is also one of its children (Insight ->
+                   * Platform Report, System -> Settings, and so on).
+                   */
+                  const children = mobileOpen
+                    ? rawChildren
+                    : rawChildren.flatMap((child) =>
+                        child.children?.length
+                          ? child.children.map((grandchild) => ({
+                              ...grandchild,
+                              group: grandchild.group ?? child.title,
+                              groupAr: grandchild.groupAr ?? child.titleAr,
+                            }))
+                          : [child]
+                      );
                   const allHrefs = children.map((entry) => entry.href);
                   const hasGroups = children.some((c) => c.group);
 

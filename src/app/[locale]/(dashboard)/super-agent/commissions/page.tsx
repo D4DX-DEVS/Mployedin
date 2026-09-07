@@ -56,6 +56,7 @@ export default function SuperAgentCommissionsPage() {
   // aggregate), so the KPI tiles don't describe only the visible page.
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [showOverrideInfo, setShowOverrideInfo] = useState(false);
 
   const [statusFilter, setStatusFilterState] = useUrlFilter("status", "");
@@ -87,6 +88,7 @@ export default function SuperAgentCommissionsPage() {
 
   const fetchCommissions = useCallback(async () => {
     setLoading(true);
+    setError(false);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (statusFilter) params.set("status", statusFilter);
     if (searchQuery.trim()) params.set("search", searchQuery.trim());
@@ -94,15 +96,22 @@ export default function SuperAgentCommissionsPage() {
     if (currencyFilter) params.set("currency", currencyFilter);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
-    const res = await fetch(`/api/commissions?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setCommissions(data.items ?? data.commissions ?? []);
-      // Record counts across the whole filtered set, not just this page.
-      setStatusCounts(data.summary?.counts ?? { pending: 0, approved: 0 });
-      updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
+    try {
+      const res = await fetch(`/api/commissions?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCommissions(data.items ?? data.commissions ?? []);
+        // Record counts across the whole filtered set, not just this page.
+        setStatusCounts(data.summary?.counts ?? { pending: 0, approved: 0 });
+        updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
+      } else {
+        setError(true);
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [statusFilter, searchQuery, typeFilter, currencyFilter, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchCommissions(); }, [fetchCommissions]);
@@ -179,6 +188,20 @@ export default function SuperAgentCommissionsPage() {
           override rate…" was three lines explaining a search box, some status
           pills and a read-only rate. */}
       <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
+        {/* ---- Error State ---- */}
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{t("loadCommissionsError")}</p>
+            <button
+              type="button"
+              onClick={() => fetchCommissions()}
+              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+            >
+              {tc("tryAgain")}
+            </button>
+          </div>
+        )}
+
         {/* Search + Quick Filters + Advanced row */}
         <TableToolbar
           search={searchQuery}

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { commonSchemas } from "./index";
+import { normalizeStageId } from "@/lib/hiring/pipeline";
 
 /** Contact form submission (public, no auth) */
 export const contactSchema = z.object({
@@ -17,7 +18,10 @@ export const workflowUpdateSchema = z.object({
   stages: z
     .array(
       z.object({
-        id: z.string().max(50),
+        id: z
+          .string()
+          .max(50)
+          .refine((id) => normalizeStageId(id) !== null, { message: "Unknown pipeline stage id" }),
         label: z.string().max(100),
         enabled: z.boolean(),
         autoProgress: z.boolean(),

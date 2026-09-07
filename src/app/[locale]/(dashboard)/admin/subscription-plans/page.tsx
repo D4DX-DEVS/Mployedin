@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp,
+  Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp, Power, RotateCcw,
   Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
@@ -28,6 +28,7 @@ import {
 import { AI_FEATURE_KEYS, type AIFeatureKey } from "@/types/subscription-plan";
 import { convertAndFormat } from "@/lib/currency";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ── Feature label key mapping (labels resolved at render) ──
 const AI_FEATURE_LABEL_KEYS: Record<AIFeatureKey, string> = {
@@ -187,7 +188,7 @@ function EnforcementToggleCard() {
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="heading-label font-semibold text-foreground">{t("subscriptionEnforcement")}</h3>
+            <h2 className="heading-label font-semibold text-foreground">{t("subscriptionEnforcement")}</h2>
             <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
               {enabled
                 ? t("enforcementEnabledDescription")
@@ -226,6 +227,8 @@ function EnforcementToggleCard() {
 // ── Page Component ─────────────────────────────────────────────────
 export default function AdminSubscriptionPlansPage() {
   const t = useTranslations("adminSubscriptionPlans");
+  const ta = useTranslations("a11y");
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [activeTab, setActiveTab] = useState<"employer" | "job_seeker">("employer");
   const { data: plans, isLoading } = useSubscriptionPlans({ targetRole: activeTab });
   const createMut = useCreateSubscriptionPlan();
@@ -297,16 +300,81 @@ export default function AdminSubscriptionPlansPage() {
         ? { employerLimits: form.employerLimits }
         : { jobSeekerLimits: form.jobSeekerLimits }),
     };
-    if (editId) {
-      await updateMut.mutateAsync({ id: editId, ...payload });
-    } else {
-      await createMut.mutateAsync(payload);
+    // The mutation hooks already report failures with a toast in `onError`.
+    // Without this catch the rejected `mutateAsync` promise is also unhandled,
+    // which trips the Next dev error overlay on top of the toast — an expected
+    // 409 ("this plan still has subscriptions") looked like a crash.
+    try {
+      if (editId) {
+        await updateMut.mutateAsync({ id: editId, ...payload });
+      } else {
+        await createMut.mutateAsync(payload);
+      }
+    } catch {
+      return; // keep the form open so the values can be corrected
     }
     closeForm();
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteMut.mutateAsync(id);
+  const handleDeactivate = async (id: string, name: string) => {
+    const ok = await confirmDialog({
+      title: t("deactivateConfirmTitle"),
+      message: t("deactivateConfirmMessage", { name }),
+      confirmLabel: t("deactivateConfirmAction"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    try {
+      await deleteMut.mutateAsync({ id });
+    } catch {
+      // Reported by the hook’s onError toast.
+    }
+  };
+
+  /**
+   * Reactivating was only ever possible by opening Edit, finding the "Active"
+   * switch at the bottom of the Basic tab and saving — so in practice a
+   * deactivated plan was a dead end. It is the same PATCH, given its own button.
+   */
+  const handleReactivate = async (id: string, name: string) => {
+    const ok = await confirmDialog({
+      title: t("reactivateConfirmTitle"),
+      message: t("reactivateConfirmMessage", { name }),
+      confirmLabel: t("reactivateConfirmAction"),
+    });
+    if (!ok) return;
+    try {
+      await updateMut.mutateAsync({ id, isActive: true });
+    } catch {
+      // Reported by the hook’s onError toast.
+    }
+  };
+
+  /** Mirrors the API's hard-delete guard so the button can say no first. */
+  const canDestroy = (p: SubscriptionPlanItem) =>
+    !p.isDefault && (p.subscriptionCount ?? 0) === 0;
+  const destroyLabel = (p: SubscriptionPlanItem) =>
+    p.isDefault
+      ? t("deleteBlockedDefault")
+      : (p.subscriptionCount ?? 0) > 0
+        ? t("deleteBlockedInUse", { count: p.subscriptionCount ?? 0 })
+        : t("deletePlanTooltip");
+
+  /** Destroys the row. Offered only on an already-inactive plan; the API
+   *  refuses if it is the default or any subscription still references it. */
+  const handleDestroy = async (id: string, name: string) => {
+    const ok = await confirmDialog({
+      title: t("deleteConfirmTitle"),
+      message: t("deleteConfirmMessage", { name }),
+      confirmLabel: t("deleteConfirmAction"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    try {
+      await deleteMut.mutateAsync({ id, hard: true });
+    } catch {
+      // Reported by the hook’s onError toast.
+    }
   };
 
   const updateAIFeature = (idx: number, key: keyof IAIFeatureLimit, value: unknown) => {
@@ -334,6 +402,7 @@ export default function AdminSubscriptionPlansPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <DashboardPageHeader
         compact
         title={t("pageTitle")}
@@ -377,10 +446,10 @@ export default function AdminSubscriptionPlansPage() {
       {showForm && (
         <section className="workspace-panel-surface rounded-3xl panel-body space-y-5">
           <div className="flex items-center justify-between">
-            <h3 className="heading-subsection font-semibold text-foreground">
+            <h2 className="heading-subsection font-semibold text-foreground">
               {editId ? t("editPlanTitle") : t("createNewPlanTitle")}
-            </h3>
-            <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
+            </h2>
+            <button aria-label={ta("close")} onClick={closeForm} className="text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -407,7 +476,7 @@ export default function AdminSubscriptionPlansPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("planNameLabel")}</label>
-                <Input
+                <Input aria-label={t("planNameLabel")}
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder={t("planNamePlaceholder")}
@@ -416,7 +485,7 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("tierLevelLabel")}</label>
-                <Input
+                <Input aria-label={t("tierLevelLabel")}
                   type="number"
                   value={form.tier}
                   onChange={(e) => setForm((f) => ({ ...f, tier: Number(e.target.value) }))}
@@ -428,7 +497,7 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("priceLabel")}</label>
-                <Input
+                <Input aria-label={t("priceLabel")}
                   type="text"
                   inputMode="decimal"
                   value={form.price === 0 ? "0" : String(form.price)}
@@ -441,7 +510,7 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("currencyLabel")}</label>
-                <Input
+                <Input aria-label={t("currencyLabel")}
                   value={form.currency}
                   onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value.toUpperCase() }))}
                   maxLength={3}
@@ -467,7 +536,7 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("sortOrderLabel")}</label>
-                <Input
+                <Input aria-label={t("sortOrderLabel")}
                   type="number"
                   value={form.sortOrder}
                   onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))}
@@ -477,27 +546,32 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium">{t("descriptionLabel")}</label>
-                <Input
+                <Input aria-label={t("descriptionLabel")}
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   placeholder={t("descriptionPlaceholder")}
                   className="rounded-xl"
                 />
               </div>
+              {/* `htmlFor` + `id`, not an adjacent span: a Radix Switch is a
+                  button, so a bare label beside it names nothing and the label
+                  is not a click target either. */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Switch
+                    id="plan-active"
                     checked={form.isActive}
                     onCheckedChange={(v) => setForm((f) => ({ ...f, isActive: v }))}
                   />
-                  <span className="text-sm">{t("activeToggleLabel")}</span>
+                  <label htmlFor="plan-active" className="text-sm">{t("activeToggleLabel")}</label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
+                    id="plan-default"
                     checked={form.isDefault}
                     onCheckedChange={(v) => setForm((f) => ({ ...f, isDefault: v }))}
                   />
-                  <span className="text-sm">{t("defaultPlanToggleLabel")}</span>
+                  <label htmlFor="plan-default" className="text-sm">{t("defaultPlanToggleLabel")}</label>
                 </div>
               </div>
             </div>
@@ -508,7 +582,7 @@ export default function AdminSubscriptionPlansPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("maxActiveJobsLabel")}</label>
-                <Input
+                <Input aria-label={t("maxActiveJobsLabel")}
                   type="number"
                   value={form.employerLimits.maxActiveJobs}
                   onChange={(e) =>
@@ -524,7 +598,7 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("maxApplicationsViewLabel")}</label>
-                <Input
+                <Input aria-label={t("maxApplicationsViewLabel")}
                   type="number"
                   value={form.employerLimits.maxApplicationsViewPerMonth}
                   onChange={(e) =>
@@ -540,7 +614,7 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("maxTeamMembersLabel")}</label>
-                <Input
+                <Input aria-label={t("maxTeamMembersLabel")}
                   type="number"
                   value={form.employerLimits.maxTeamMembers}
                   onChange={(e) =>
@@ -556,7 +630,7 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("featuredJobListingsLabel")}</label>
-                <Input
+                <Input aria-label={t("featuredJobListingsLabel")}
                   type="number"
                   value={form.employerLimits.featuredJobListings}
                   onChange={(e) =>
@@ -625,7 +699,7 @@ export default function AdminSubscriptionPlansPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("maxApplicationsJobSeekerLabel")}</label>
-                <Input
+                <Input aria-label={t("maxApplicationsJobSeekerLabel")}
                   type="number"
                   value={form.jobSeekerLimits.maxApplicationsPerMonth}
                   onChange={(e) =>
@@ -724,7 +798,7 @@ export default function AdminSubscriptionPlansPage() {
       {!plans?.length ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-center">
           <Crown className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <h3 className="heading-subsection font-semibold text-foreground">{t("noPlanEmptyState")}</h3>
+          <h2 className="heading-subsection font-semibold text-foreground">{t("noPlanEmptyState")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {t("noPlanEmptyDescription", {
               role: activeTab === "employer" ? t("noPlanEmptyDescriptionEmployer") : t("noPlanEmptyDescriptionJobSeeker")
@@ -754,7 +828,7 @@ export default function AdminSubscriptionPlansPage() {
                 <div className="flex items-center gap-4 p-5">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-base font-semibold text-foreground">{p.name}</h4>
+                      <h3 className="text-base font-semibold text-foreground">{p.name}</h3>
                       <Badge className={`text-xs ${TIER_COLORS[p.tier] ?? TIER_COLORS[0]}`}>
                         {t("tierBadge", { tier: p.tier })}
                       </Badge>
@@ -816,21 +890,65 @@ export default function AdminSubscriptionPlansPage() {
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(p._id)}
-                      disabled={deleteMut.isPending}
-                      className="h-8 w-8 p-0 rounded-lg text-destructive hover:text-destructive"
-                      title={t("deactivateTooltip")}
-                    >
-                      {deleteMut.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
+                    {/* An active plan can only be deactivated; an inactive one
+                        can be brought back or destroyed. Rendering the same red
+                        trash on both meant the button did nothing on a plan that
+                        was already off, and there was no way back at all. */}
+                    {p.isActive ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeactivate(p._id, p.name)}
+                        disabled={deleteMut.isPending}
+                        className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive"
+                        aria-label={t("deactivateTooltip")}
+                        title={t("deactivateTooltip")}
+                      >
+                        {deleteMut.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Power className="h-4 w-4" />
+                        )}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReactivate(p._id, p.name)}
+                          disabled={updateMut.isPending}
+                          className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-primary"
+                          aria-label={t("reactivateTooltip")}
+                          title={t("reactivateTooltip")}
+                        >
+                          {updateMut.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                        </Button>
+                        {/* A plan with any subscription history cannot be
+                            destroyed — billing records render its name. Say so
+                            on the disabled button rather than letting the admin
+                            confirm a permanent delete that then 409s. */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDestroy(p._id, p.name)}
+                          disabled={deleteMut.isPending || !canDestroy(p)}
+                          className="h-8 w-8 p-0 rounded-lg text-destructive hover:text-destructive disabled:opacity-40"
+                          aria-label={destroyLabel(p)}
+                          title={destroyLabel(p)}
+                        >
+                          {deleteMut.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </>
+                    )}
+                    <Button aria-label={isExpanded ? ta("collapse") : ta("expand")}
                       variant="ghost"
                       size="sm"
                       onClick={() => setExpandedId(isExpanded ? null : p._id)}

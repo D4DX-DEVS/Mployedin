@@ -140,6 +140,8 @@ export async function ensureIndexes() {
     { key: { employerId: 1, status: 1, appliedAt: -1 } },
     // Cron hot path: sla-alerts / nps-trigger scan terminal statuses by recency
     { key: { status: 1, updatedAt: -1 } },
+    // Job Workspace: "not yet reviewed" inbox count and filter
+    { key: { jobId: 1, viewedByEmployerAt: 1 } },
   ]);
 
   // ── Interviews ─────────────────────────────────────────────────────────────
@@ -152,6 +154,8 @@ export async function ensureIndexes() {
     { key: { status: 1 } },
     // Upcoming interviews by status, soonest first
     { key: { status: 1, scheduledAt: 1 } },
+    // Job Workspace: interviews tab + summary facets
+    { key: { jobId: 1, status: 1, scheduledAt: 1 } },
     // Prevent duplicate active rounds for the same application
     {
       key: { applicationId: 1, interviewRound: 1 },
@@ -169,6 +173,8 @@ export async function ensureIndexes() {
     { key: { employerId: 1 } },
     { key: { agentId: 1 } },
     { key: { placedAt: -1 } },
+    // Job Workspace: Hires tab
+    { key: { jobId: 1, status: 1 } },
   ]);
 
   // ── Leads ──────────────────────────────────────────────────────────────────
@@ -293,6 +299,8 @@ export async function ensureIndexes() {
     { key: { status: 1 } },
     // Compound index for filtering expired offers
     { key: { status: 1, expiresAt: 1 } },
+    // Job Workspace: offers tab + summary facets
+    { key: { jobId: 1, status: 1, expiresAt: 1 } },
   ]);
 
   // ── Job Attribute Master Data ──────────────────────────────────────────────

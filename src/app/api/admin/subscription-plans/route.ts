@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import SubscriptionPlan, { type ISubscriptionPlan } from "@/models/SubscriptionPlan";
+import Subscription from "@/models/Subscription";
 import { validateBody } from "@/lib/validators";
 import { subscriptionPlanCreateSchema } from "@/lib/validators/subscriptions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -35,7 +36,26 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .sort({ targetRole: 1, sortOrder: 1, tier: 1 })
     .lean();
 
-  return NextResponse.json({ plans });
+  /**
+   * How many subscriptions point at each plan, any status.
+   *
+   * The list needs this to know whether a plan can be destroyed: without it the
+   * UI offered "Delete permanently" on every inactive plan and only discovered
+   * it was impossible after the admin had confirmed a scary dialog. One grouped
+   * count is cheaper than a countDocuments per row.
+   */
+  const counts = await Subscription.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
+    { $match: { planId: { $in: plans.map((p) => p._id) } } },
+    { $group: { _id: "$planId", count: { $sum: 1 } } },
+  ]);
+  const countByPlan = new Map(counts.map((c) => [String(c._id), c.count]));
+
+  return NextResponse.json({
+    plans: plans.map((p) => ({
+      ...p,
+      subscriptionCount: countByPlan.get(String(p._id)) ?? 0,
+    })),
+  });
 }
 
 /** POST — create a new subscription plan */

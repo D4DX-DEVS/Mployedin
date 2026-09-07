@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import {
-  Bell, Plus, Trash2, Search, Inbox,
+  Bell, Plus, Trash2, Search, Inbox, RotateCcw,
   BellRing, Briefcase, MapPin, Clock, TrendingUp,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -31,7 +32,8 @@ interface SavedSearch {
     salary?: string;
   };
   emailAlert: boolean;
-  frequency: "daily" | "weekly" | "never";
+  /** Mirrors the SavedSearch model enum — "instant" is storable and had no label. */
+  frequency: "instant" | "daily" | "weekly" | "never";
   lastNotifiedAt?: string;
   resultCount?: number;
   createdAt: string;
@@ -43,8 +45,6 @@ interface SavedSearch {
 
 export default function SavedSearchesPage() {
   const t = useTranslations("jobSeekerExtra.savedSearches");
-  const locale = useLocale();
-  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const expLabel = (lvl?: string) =>
     lvl === "entry" ? t("experienceEntry")
       : lvl === "mid" ? t("experienceMid")
@@ -52,6 +52,7 @@ export default function SavedSearchesPage() {
           : "";
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [form, setForm] = useState({
@@ -61,13 +62,21 @@ export default function SavedSearchesPage() {
 
   const fetchSearches = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch("/api/user/saved-searches");
       if (res.ok) {
         const data = await res.json();
         setSearches(data.items ?? []);
+      } else {
+        // A failed request used to fall through to the empty state, so an
+        // outage told the seeker they had no alerts rather than that the page
+        // could not ask.
+        setLoadError(true);
+        toast.error(t("loadFailed"));
       }
     } catch {
+      setLoadError(true);
       toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
@@ -124,13 +133,28 @@ export default function SavedSearchesPage() {
     }
   };
 
-  const toggleAlert = async (id: string, enabled: boolean) => {
+  /**
+   * The bell used to flip `emailAlert` on its own. The alert cron only picks up
+   * a search whose frequency is instant/daily/weekly, so switching the bell on
+   * for a search saved with frequency "never" painted it green, said "Email
+   * alerts on", and then sent nothing — for ever. Enabling lifts the frequency
+   * too; disabling leaves it alone so the old cadence comes back.
+   */
+  const toggleAlert = async (search: SavedSearch, enabled: boolean) => {
+    const frequency = enabled && search.frequency === "never" ? "weekly" : search.frequency;
     try {
-      await csrfFetch(`/api/user/saved-searches/${id}`, {
+      const res = await csrfFetch(`/api/user/saved-searches/${search._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailAlert: enabled }),
+        body: JSON.stringify({
+          emailAlert: enabled,
+          ...(frequency !== search.frequency ? { frequency } : {}),
+        }),
       });
+      if (!res.ok) {
+        toast.error(t("updateFailed"));
+        return;
+      }
       toast.success(enabled ? t("alertEnabled") : t("alertDisabled"));
       fetchSearches();
     } catch {
@@ -138,11 +162,17 @@ export default function SavedSearchesPage() {
     }
   };
 
+  const visible = searches.filter((s) =>
+    s.name.toLowerCase().includes(searchTerm.trim().toLowerCase())
+  );
+
   return (
-    <div className="space-y-6">
-      <DashboardPageHeader
-        icon={Bell}
-        eyebrow={t("title")}
+    <div className="page-container">
+      {/* PageHeader, not the DashboardPageHeader hero: that banner — icon,
+          eyebrow, gradient and a strip of metric tiles — is the staff workspace
+          pattern, and its two tiles only counted rows the list underneath
+          already shows. Every other seeker route opens with this plain header. */}
+      <PageHeader
         title={t("title")}
         description={t("description")}
         actions={
@@ -150,10 +180,6 @@ export default function SavedSearchesPage() {
             <Plus className="me-1 h-4 w-4" /> {t("newAlert")}
           </Button>
         }
-        metrics={[
-          { label: t("title"), value: searches.length.toLocaleString(numberLocale), icon: Search },
-          { label: t("activeAlerts"), value: searches.filter((s) => s.emailAlert).length.toLocaleString(numberLocale), icon: BellRing },
-        ]}
       />
 
       {showForm && (
@@ -188,41 +214,48 @@ export default function SavedSearchesPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+      <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
         {searches.length > 0 && (
-          <div className="mb-4 flex gap-2">
-            <input
+          <div className="relative">
+            <label htmlFor="saved-search-filter" className="sr-only">{t("searchPlaceholder")}</label>
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="saved-search-filter"
               type="text"
-              placeholder={t("searchPlaceholder") ?? "Search saved searches..."}
+              placeholder={t("searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary chip-pad"
+              className="ps-9"
             />
           </div>
         )}
         {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel card-pad rounded-2xl space-y-3">
-                <Skeleton className="h-4 w-40" />
-                <div className="flex gap-2">
-                  <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <ListSkeleton count={4} />
+        ) : loadError ? (
+          <EmptyState
+            icon={Inbox}
+            title={t("loadFailed")}
+            action={
+              <Button variant="outline" size="sm" onClick={fetchSearches}>
+                <RotateCcw className="me-1 h-4 w-4" /> {t("retry")}
+              </Button>
+            }
+          />
         ) : searches.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("empty")}</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              {t("emptyDescription")}
-            </p>
-          </div>
+          <EmptyState icon={Inbox} title={t("empty")} description={t("emptyDescription")} />
+        ) : visible.length === 0 ? (
+          <EmptyState
+            icon={Search}
+            title={t("empty")}
+            action={
+              <Button variant="outline" size="sm" onClick={() => setSearchTerm("")}>
+                <RotateCcw className="me-1 h-4 w-4" /> {t("reset")}
+              </Button>
+            }
+          />
         ) : (
           <div className="space-y-3">
-            {searches.filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s) => (
+            {visible.map((s) => (
               <div key={s._id} className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -262,7 +295,7 @@ export default function SavedSearchesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toggleAlert(s._id, !s.emailAlert)}
+                      onClick={() => toggleAlert(s, !s.emailAlert)}
                       title={s.emailAlert ? t("disableAlert") : t("enableAlert")}
                     >
                       {s.emailAlert ? (

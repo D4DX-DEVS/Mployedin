@@ -8,14 +8,16 @@
  * Top Customers + Top Agents → Renewal Forecast + Activity → Invoice Health + Revenue by Country.
  */
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, TrendingUp, DollarSign, Users, Zap } from "lucide-react";
 import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useTranslations } from "next-intl";
 import { exportCSV } from "@/lib/export";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { SubscriptionDashboardData } from "@/components/features/subscription-dashboard/useSubscriptionDashboard";
 import { useSubscriptionDashboard } from "@/components/features/subscription-dashboard/useSubscriptionDashboard";
 import { SubscriptionHero } from "@/components/features/subscription-dashboard/SubscriptionHero";
-import { KpiCardsRow } from "@/components/features/subscription-dashboard/KpiCardsRow";
+import type { DashboardHeaderMetric } from "@/components/shared/DashboardPageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 import { RevenueTrendChart } from "@/components/features/subscription-dashboard/RevenueTrendChart";
 import { SubscriptionFunnel } from "@/components/features/subscription-dashboard/SubscriptionFunnel";
 import { PlanDistributionChart } from "@/components/features/subscription-dashboard/PlanDistributionChart";
@@ -83,20 +85,24 @@ export default function AdminSubscriptionDashboardPage() {
     return (
       <div className="page-container">
         <SubscriptionHero />
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 text-center panel-body">
-          <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">
-            {t("failedToLoadDashboardData")}
-          </p>
-        </div>
+        <ErrorState title={t("failedToLoadDashboardData")} onRetry={() => refetch()} />
       </div>
     );
   }
+
+  /* ── Build header metrics from KPI data ── */
+  const headerMetrics: readonly DashboardHeaderMetric[] = [
+    { label: t("mrrLabel"), value: `AED ${formatCount(data.overview.mrr)}`, icon: DollarSign, iconSurfaceClassName: "bg-indigo-50", iconClassName: "text-indigo-600" },
+    { label: t("activeSubscriptionsLabel"), value: formatCount(data.overview.active), icon: Users, iconSurfaceClassName: "bg-emerald-50", iconClassName: "text-emerald-600" },
+    { label: t("monthlyGrowthLabel"), value: `${data.kpiComparisons.mrrChange >= 0 ? "+" : ""}${data.kpiComparisons.mrrChange}%`, icon: TrendingUp, iconSurfaceClassName: "bg-blue-50", iconClassName: "text-blue-600" },
+    { label: t("churnRateLabel"), value: `${data.overview.churnRate}%`, icon: Zap, iconSurfaceClassName: "bg-amber-50", iconClassName: "text-amber-600" },
+  ];
 
   return (
     <div className="page-container">
       {/* ── Hero with Quick Actions ── */}
       <SubscriptionHero
+        metrics={headerMetrics}
         onRefresh={() => refetch()}
         isRefreshing={isFetching}
         onExport={() =>
@@ -110,9 +116,6 @@ export default function AdminSubscriptionDashboardPage() {
           )
         }
       />
-
-      {/* ── KPI Cards (4 main metrics) ── */}
-      <KpiCardsRow overview={data.overview} comparisons={data.kpiComparisons} revenueTrend={data.revenueTrend} />
 
       {/* ── Alerts Center (shown only if there are alerts) ── */}
       <AlertsCenter data={data.alerts} />

@@ -79,6 +79,7 @@ import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
+import { PIPELINE_STAGES, STAGE_LABEL_KEYS } from "@/lib/hiring/pipeline";
 
 interface Applicant {
   _id: string;
@@ -116,14 +117,10 @@ interface TimelineEntry {
 }
 
 function usePipelineStages() {
-  const t = useTranslations("employerApplications");
+  const tp = useTranslations("hiringPipeline");
   return [
-    { value: "applied", label: t("applied") },
-    { value: "shortlisted", label: t("shortlisted") },
-    { value: "interview_scheduled", label: t("interview") },
-    { value: "offer", label: t("offer") },
-    { value: "selected", label: t("selected") },
-    { value: "rejected", label: t("rejected") },
+    ...PIPELINE_STAGES.map((value) => ({ value, label: tp(STAGE_LABEL_KEYS[value]) })),
+    { value: "rejected", label: tp("rejected") },
   ];
 }
 

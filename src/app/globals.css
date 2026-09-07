@@ -1613,6 +1613,17 @@ input::placeholder {
     width: 44px;
     height: 44px;
     transform: translate(-50%, -50%);
+    /* 2026-09-07: without this the band was inert. It measured 44x44 in
+       getComputedStyle, so every static check passed, but `elementFromPoint`
+       at ±19px missed on all four sides — with auto z-index the pseudo-element
+       paints below later siblings, which answer the hit test instead. Same bug
+       the link rule below documents, and the same fix `.tap-target-box::after`
+       already carries. Verified on super-agent/settings at 390px: four-side
+       miss before, four-side hit after. Affects admin, agent and super-agent,
+       since all three carry `.dashboard-shell-admin`.
+       Re-verify with elementFromPoint, never getBoundingClientRect: the box
+       reads 44px either way. */
+    z-index: 1;
   }
 
   /* Text links that are the primary way into a list row. The 44px baseline
@@ -2350,7 +2361,11 @@ table.workspace-list-table tbody tr:focus-visible {
 
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:has([role="checkbox"]) {
     position: absolute;
-    top: 0.3125rem;
+    /* 0.875rem, not 0.3125rem: the row clips its own overflow, so at the old
+       offset the top of the checkbox's 44px touch band fell outside the card
+       and taps there hit nothing. This sits the control level with the name
+       line and lets the whole band land inside the card. */
+    top: 0.875rem;
     inset-inline-start: 0.5rem;
     z-index: 1;
     display: block;
@@ -2641,6 +2656,17 @@ table.workspace-list-table tbody tr:focus-visible {
     margin-inline-start: 0.25rem;
     font-size: 0.625rem;
   }
+
+  /* An option row inside a dropdown panel is also "svg first, label second"
+     (a leading tick), so the collapse above ate every option label and the
+     open filter list rendered as a column of blank rows. The panel is not a
+     toolbar control — it is the toolbar control's content. */
+  .dashboard-shell-admin [data-table-toolbar] [data-select-panel] :is(button, a),
+  .dashboard-shell-admin [data-table-toolbar] [data-select-panel] :is(button, a):has(> svg:first-child) {
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+    font-size: 0.875rem;
+  }
 }
 
 
@@ -2868,7 +2894,12 @@ table.workspace-list-table tbody tr:focus-visible {
     position: relative;
   }
 
-  .dashboard-shell-admin .dashboard-main :is([role="checkbox"], [role="radio"])::after {
+  /* `inset` overrides the top/left centring of the 44px band defined by
+     `.tap-target-box::after`, leaving the band centred 13px up and left of the
+     control — taps below it fell through to the card cell. Controls that opt
+     into the bigger box own their own geometry; everything else keeps this
+     modest +4px expansion. */
+  .dashboard-shell-admin .dashboard-main :is([role="checkbox"], [role="radio"]):not(.tap-target-box)::after {
     content: "";
     position: absolute;
     inset: -0.25rem;
@@ -3136,7 +3167,14 @@ table.workspace-list-table tbody tr:focus-visible {
    --text-page-title (24px), and they outrank a Tailwind `text-base` on the
    heading itself — so at 390px "Candidate Matching" rendered 24px in a 153px
    column and broke into "Candidate / Matching". Step it down here, where the
-   specificity actually lands. No effect from 640px up. */
+   specificity actually lands. No effect from 640px up.
+
+   2026-09-07: the floor was 1rem (16px) — body-text size, which inverted the
+   hierarchy on 46 admin pages and 7-8 super-agent pages, where a job title in
+   a card outranked the page title above it. `employer/candidates`, the page
+   this rule was written for, has since moved to `WorkspaceHeader` and no
+   longer passes `compact`, so the original 153px-column case is gone.
+   1.25rem (20px) is what `WorkspaceHeader` gives employer on a phone. */
 /* Two things are load-bearing here, both learned the hard way:
    1. Same @layer as the rules it overrides. Those set the size from inside
       `components`, and for !important declarations the layer cascade is
@@ -3151,7 +3189,7 @@ table.workspace-list-table tbody tr:focus-visible {
 @layer components {
   @media (max-width: 639px) {
     .dashboard-main [data-dashboard-page-header="component"][data-compact="true"][data-compact="true"] :is(h1, h2) {
-      font-size: 1rem !important;
+      font-size: 1.25rem !important;
       line-height: 1.35 !important;
     }
   }
@@ -3210,6 +3248,15 @@ table.workspace-list-table tbody tr:focus-visible {
 
   table.responsive-card-table > tbody > tr > td[data-mobile-primary] > :is(div, span) > * {
     min-width: 0;
+  }
+
+  /* …but an avatar pill centres its initials on purpose, and the blanket
+     flex-start above pushed the letters to the left edge of the circle ("N"
+     hugging the rim instead of sitting in the middle). Anything that asked for
+     centring in its own class list keeps it. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] :is(div, span)[class*="justify-center"] {
+    justify-content: center !important;
+    text-align: center;
   }
 }
 
@@ -3527,4 +3574,155 @@ table.workspace-list-table tbody tr:focus-visible {
 
 /* touch: force Turbopack to re-emit globals.css (see turbopack-css-stale) */
 
+/* rebuild r5 */
 
+/* rebuild r6 */
+
+/* rebuild r7 */
+
+/* rebuild r8 */
+
+/* rebuild r9 */
+
+/* rebuild r10 */
+
+/* rebuild r11 */
+
+/* rebuild r12 */
+
+/* rebuild r13 */
+
+/* ── Admin + super-agent page header adopt the employer workspace look ──────────────────
+   2026-09-07. Employer is the frozen UI reference. Its `WorkspaceHeader` and
+   the `DashboardPageHeader` the other workspaces use shared only their corner
+   radius and border colour: employer had a 180deg linear gradient, a neutral
+   shadow, a 24px title and metrics as separate icon-tile cards, while this
+   header had a corner-radial gradient, a blue-tinted 60px shadow, a 30px title
+   and metrics as one hairline-divided strip. Same page in two roles did not
+   read as the same product.
+
+   Scoped by explicit role class. `dashboard-shell-admin` is NOT admin-only —
+   it is also on agent and super-agent — so it could never scope this. Admin
+   landed first, super-agent followed once its audit was signed off. To add
+   `agent`, put `.dashboard-role-agent` in the `:is()` lists below; nothing
+   else needs to change.
+
+   Two pieces of cascade arithmetic are load-bearing:
+   1. `@layer components`, because the rules being overridden (the dashboard
+      page-title block) are `!important` from inside that layer, and for
+      important declarations the layer cascade is INVERTED — an unlayered rule
+      would lose.
+   2. The tripled attribute selector on the title, mirroring what
+      `[data-workspace-header]` already does for employer. The rule it fights,
+      `.dashboard-main .page-container > :nth-child(-n+3) > div > div > h1`,
+      is (0,3,3); two classes plus three attributes is (0,5,0) and wins.
+   `!important` elsewhere is not decoration: these elements carry Tailwind
+   utilities (`px-5`, `text-[11px]`, `border-y`), and the utilities layer beats
+   the components layer regardless of specificity. */
+@layer components {
+  /* 1 — surface: employer's linear gradient and soft neutral shadow. */
+  :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-dashboard-page-header] {
+    background: linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--surface-3) / 0.9));
+    box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
+    border-color: hsl(var(--border) / 0.78);
+    padding: var(--panel-pad-y) var(--panel-pad-x) !important;
+  }
+  @media (min-width: 640px) {
+    :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-dashboard-page-header] {
+      padding: 1rem var(--panel-pad-x) !important;
+    }
+  }
+
+  /* 2 — title: the same token employer's header reads, so the two can never
+     drift apart. 20px on phones, 24px from 768. */
+  :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main
+    [data-dashboard-page-header][data-dashboard-page-header][data-dashboard-page-header] :is(h1, h2) {
+    font-size: var(--text-workspace-title) !important;
+    line-height: 1.25 !important;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* 3 — description: employer's 13px context line. */
+  :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-dashboard-page-header] [data-header-description] {
+    font-size: 0.8125rem !important;
+    line-height: 1.25rem !important;
+  }
+
+  /* 4 — metric caption: 12px sentence case under the value, not 11px uppercase
+     above it. The 12px floor is the same one `.workspace-header-metric-label`
+     documents. Skipped on `compact` phones, whose strip already puts the value
+     over the label with its own `order` utilities — column-reverse there would
+     fight those and flip it back. */
+  :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main
+    [data-dashboard-page-header]:not([data-compact="true"]) [data-header-metric-body] {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metric-label] {
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    line-height: 1rem !important;
+  }
+  :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metric-value] {
+    margin-top: 0 !important;
+  }
+
+  /* 5 — from 640: the divided strip becomes employer's icon-tile cards, with
+     the icon leading. The per-metric note is dropped here: employer's card is
+     value plus one caption, and admin's notes were truncating mid-word
+     ("Unpublished jobs waiting on th…") in a cell that now has less room. */
+  @media (min-width: 640px) {
+    :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metrics] {
+      gap: 0.75rem;
+      padding-top: 0;
+      border-top-width: 0 !important;
+      border-bottom-width: 0 !important;
+    }
+    :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metric] {
+      gap: 0.75rem !important;
+      justify-content: flex-start !important;
+      padding: 0.5rem 0.75rem !important;
+      border: 1px solid hsl(var(--border) / 0.7) !important;
+      border-radius: var(--workspace-radius-card);
+      background: hsl(var(--card) / 0.85);
+    }
+    :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metric-icon] {
+      order: -1;
+      margin-inline-end: 0 !important;
+      width: 2.25rem !important;
+      height: 2.25rem !important;
+      border-radius: 0.625rem !important;
+    }
+    /* Unguarded from 640 up, unlike the phone rule above: the `compact` strip's
+       `order` utilities are `sm:order-none`, so there is nothing left to fight
+       here, and most admin list headers do pass `compact`. Guarding this the
+       same way left them with the label above the value. */
+    :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metric-body] {
+      display: flex !important;
+      flex-direction: column-reverse !important;
+      align-items: flex-start !important;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metric-value] > div:first-child {
+      font-size: 1.25rem !important;
+      line-height: 1.2 !important;
+    }
+    :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main [data-header-metric-value] > div:not(:first-child) {
+      display: none !important;
+    }
+  }
+}
+
+/* rebuild nudge 2026-09-07 admin-header */
+
+/* rebuild nudge 2026-09-07 admin-header r2 */
+
+/* rebuild nudge 2026-09-07 admin-header r3 */
+
+/* rebuild nudge 2026-09-07 sa-header */

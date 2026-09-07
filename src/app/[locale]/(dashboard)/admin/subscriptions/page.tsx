@@ -21,6 +21,7 @@ import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { useSubscriptionPlans, type SubscriptionPlanItem } from "@/hooks/useSubscriptionPlans";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -598,6 +599,7 @@ function ExpandableRow({
 
 function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
   const t = useTranslations("adminSubscriptions");
+  const ta = useTranslations("a11y");
   const userId = sub.userId?._id;
   const [activeSection, setActiveSection] = useState<"details" | "history" | "invoices">("details");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -713,24 +715,23 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
                     </tr>
                   </thead>
                   <tbody>
+                    {/* StatusBadge already maps paid / issued / overdue /
+                        partially_paid / cancelled and renders the *translated*
+                        label. The local ternary printed the raw DB value, so an
+                        Arabic admin read "overdue" in English. */}
                     {(invoices as InvoiceItem[]).map((inv) => {
-                      const invStatus = inv.status === "paid"
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                        : inv.status === "issued"
-                          ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
-                          : "bg-muted text-muted-foreground border-border/40";
                       return (
                         <tr key={inv._id} className="border-b border-border/20 hover:bg-sky-500/5">
                           <td className="px-3 py-2 font-mono text-xs">{inv.invoiceNumber}</td>
                           <td className="px-3 py-2 text-xs">{inv.planName ?? "—"}</td>
                           <td className="px-3 py-2 text-xs font-medium">{inv.amount} {inv.currency}</td>
                           <td className="px-3 py-2">
-                            <Badge className={`${invStatus} border text-[11px]`}>{inv.status}</Badge>
+                            <StatusBadge status={inv.status} />
                           </td>
                           <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.issuedAt)}</td>
                           <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.paidAt)}</td>
                           <td className="px-3 py-2">
-                            <Button
+                            <Button aria-label={ta("viewDetails")}
                               variant="ghost" size="sm" className="h-7 w-7 p-0"
                               onClick={(e) => { e.stopPropagation(); setSelectedInvoiceId(inv._id); }}
                             >
@@ -779,6 +780,7 @@ function UserSubscriptionPanel({
   onClear: () => void;
 }) {
   const t = useTranslations("adminSubscriptions");
+  const ta = useTranslations("a11y");
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [showChangeForm, setShowChangeForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -820,7 +822,7 @@ function UserSubscriptionPanel({
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClear}>
+          <Button aria-label={ta("clear")} variant="ghost" size="sm" onClick={onClear}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -1081,6 +1083,7 @@ function AssignPlanForm({
   assignMut: ReturnType<typeof useAssignSubscription>;
 }) {
   const t = useTranslations("adminSubscriptions");
+  const ta = useTranslations("a11y");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [autoRenew, setAutoRenew] = useState(false);
   const [notes, setNotes] = useState("");
@@ -1105,7 +1108,7 @@ function AssignPlanForm({
           <CreditCard className="h-4 w-4 text-sky-500" />
           {t("assignPlanTitle")}
         </h4>
-        <Button variant="ghost" size="sm" onClick={onClose}>
+        <Button aria-label={ta("close")} variant="ghost" size="sm" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -1135,7 +1138,7 @@ function AssignPlanForm({
         <div className="space-y-3 pt-3 border-t border-sky-500/20">
           <div className="flex items-center gap-3">
             <label className="text-sm text-muted-foreground">{t("autoRenewCheckLabel")}</label>
-            <input
+            <input aria-label={t("autoRenewCheckLabel")}
               type="checkbox"
               checked={autoRenew}
               onChange={(e) => setAutoRenew(e.target.checked)}
@@ -1227,7 +1230,7 @@ function ChangePlanForm({
             )}
           </Badge>
           <Input
-            placeholder="Reason (optional)..."
+            placeholder={t("reasonOptionalPlaceholder")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
@@ -1397,7 +1400,7 @@ function BulkAssignSection() {
             <label className="text-xs text-muted-foreground mb-1 block">
               {t("bulkUserIdsLabel")}
             </label>
-            <textarea
+            <textarea aria-label={t("bulkUserIdsLabel")}
               value={userIdsText}
               onChange={(e) => setUserIdsText(e.target.value)}
               rows={4}

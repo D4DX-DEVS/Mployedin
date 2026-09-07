@@ -16,6 +16,7 @@ import {
   Loader2,
   AlertTriangle,
   Crown,
+  UserRound,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -183,27 +184,35 @@ export function UserProfileDropdown({
 
           <DropdownMenuSeparator />
 
-          <div className="px-2 py-1.5">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Shield className="h-3.5 w-3.5" />
-              <span>{t("role")}</span>
-              <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                {t(roleKey)}
-              </span>
-            </div>
-          </div>
+          {/* Staff read these two rows constantly — which workspace am I in,
+              when was this account last used. A job seeker has exactly one role
+              and one session, so for them the menu opened on two lines of
+              nothing before the first thing they can act on. */}
+          {userRole !== "job_seeker" && (
+            <>
+              <div className="px-2 py-1.5">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>{t("role")}</span>
+                  <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                    {t(roleKey)}
+                  </span>
+                </div>
+              </div>
 
-          <div className="px-2 py-1.5">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
-              <span>{t("lastLogin")}</span>
-              <span className="ml-auto text-xs">
-                {formatLastLogin(lastLogin)}
-              </span>
-            </div>
-          </div>
+              <div className="px-2 py-1.5">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>{t("lastLogin")}</span>
+                  <span className="ml-auto text-xs">
+                    {formatLastLogin(lastLogin)}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
-          <DropdownMenuSeparator />
+          {userRole !== "job_seeker" && <DropdownMenuSeparator />}
 
           {/* Theme + locale live here on every breakpoint — three standalone
               controls crowded the topbar and left no room on phones.
@@ -229,6 +238,16 @@ export function UserProfileDropdown({
               Alerts", and listed My Subscription twice in one dropdown. The
               seeker now has the same sidebar, ⌘K palette and tab bar as every
               other role, so this account menu keeps only account-level items. */}
+
+          {userRole === "job_seeker" && (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+              onSelect={() => router.push(`/${locale}/job-seeker/profile`)}
+            >
+              <UserRound className="h-4 w-4" />
+              <span className="font-medium text-sm">{t("profile")}</span>
+            </DropdownMenuItem>
+          )}
 
           {(userRole === "job_seeker" || userRole === "employer" || userRole === "super_agent" || userRole === "agent") && (
             <DropdownMenuItem

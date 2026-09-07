@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -274,6 +275,13 @@ export default function AdminCommissionsPage() {
   const displayCurrency = currencyFilter || summaryCurrency;
   const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo || currencyFilter);
 
+  const commissionMetrics = [
+    { label: t("visibleRecordsLabel"), value: visibleCommissions, icon: WalletCards, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("pendingReviewLabel"), value: `${displayCurrency} ${formatCount(pendingAmount)}`, icon: Clock3, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("approvedLabel"), value: `${displayCurrency} ${formatCount(approvedAmount)}`, icon: CheckCircle2, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("paidOutLabel"), value: `${displayCurrency} ${formatCount(paidAmount)}`, icon: ReceiptText, iconSurfaceClassName: "workspace-tone-sky" },
+  ];
+
   const exportColumns: ExportColumn<Commission>[] = [
     { header: t("exportHeaderAgent"), key: "agentId" as keyof Commission, formatter: (_v, r) => { const c = r as unknown as Commission; return c.agentName ?? c.agentId?.fullName ?? "—"; } },
     { header: t("exportHeaderType"), key: "type", formatter: (v) => String(v ?? "—") },
@@ -304,6 +312,7 @@ export default function AdminCommissionsPage() {
           value: formatCount(total),
           note: `${formatCount(totalPages)} ${totalPages === 1 ? t("commissionRecordsPages") : t("commissionRecordsPages_plural")}`,
         }}
+        metrics={commissionMetrics}
       />
 
       <TableToolbar
@@ -415,68 +424,15 @@ export default function AdminCommissionsPage() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("visibleRecordsLabel")}</p>
-                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{visibleCommissions}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("visibleRecordsHint")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-                <WalletCards className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pendingReviewLabel")}</p>
-                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {formatCount(pendingAmount)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("pendingReviewHint")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-                <Clock3 className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("approvedLabel")}</p>
-                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {formatCount(approvedAmount)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("approvedHint")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("paidOutLabel")}</p>
-                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {formatCount(paidAmount)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("paidOutHint")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-                <ReceiptText className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-      </section>
-
       {errorMessage ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm">
-          {errorMessage}
-        </div>
+        <ErrorState title={t("failedLoadCommissions")} onRetry={fetchCommissions} />
       ) : null}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="heading-subsection font-semibold text-foreground">{t("commissionLedgerTitle")}</h3>
+            <h2 className="heading-subsection font-semibold text-foreground">{t("commissionLedgerTitle")}</h2>
             <p className="text-sm text-muted-foreground">{t("recordsShowing")} {formatCount(visibleCommissions)} {visibleCommissions === 1 ? t("record") : t("records")} {t("onThisPage")}</p>
           </div>
         </div>

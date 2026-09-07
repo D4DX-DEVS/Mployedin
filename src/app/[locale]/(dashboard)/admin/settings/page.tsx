@@ -37,6 +37,7 @@ interface SystemSettings {
 
 export default function AdminSettingsPage() {
   const t = useTranslations("adminSettings");
+  const ta = useTranslations("a11y");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -151,17 +152,19 @@ export default function AdminSettingsPage() {
       <section className="workspace-panel-surface rounded-3xl divide-y">
         {/* General */}
         <div className="panel-body space-y-4">
-          <h3 className="heading-section font-semibold text-foreground">{t("generalSectionTitle")}</h3>
+          <h2 className="heading-section font-semibold text-foreground">{t("generalSectionTitle")}</h2>
           <div className="space-y-1">
-            <label className="text-sm text-muted-foreground">{t("platformNameLabel")}</label>
+            <label htmlFor="admin-platform-name" className="text-sm text-muted-foreground">{t("platformNameLabel")}</label>
             <Input
+              id="admin-platform-name"
               value={settings.platformName}
               onChange={(e) => setSettings((s) => ({ ...s, platformName: e.target.value }))}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm text-muted-foreground">{t("supportEmailLabel")}</label>
+            <label htmlFor="admin-support-email" className="text-sm text-muted-foreground">{t("supportEmailLabel")}</label>
             <Input
+              id="admin-support-email"
               type="email"
               value={settings.supportEmail}
               onChange={(e) => setSettings((s) => ({ ...s, supportEmail: e.target.value }))}
@@ -172,6 +175,7 @@ export default function AdminSettingsPage() {
               <Globe className="h-3.5 w-3.5" /> {t("defaultCurrencyLabel")}
             </label>
             <CurrencySelect
+              ariaLabel={t("defaultCurrencyLabel")}
               value={settings.defaultCurrency}
               onValueChange={(v) => setSettings((s) => ({ ...s, defaultCurrency: v }))}
               placeholder={t("defaultCurrencyPlaceholder")}
@@ -200,10 +204,10 @@ export default function AdminSettingsPage() {
         <div className="panel-body space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="heading-section font-semibold text-foreground flex items-center gap-2">
+              <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
                 <Percent className="h-4 w-4 text-primary" />
                 {t("commissionOverridesTitle")}
-              </h3>
+              </h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {t("commissionOverridesDescription")}
               </p>
@@ -233,6 +237,7 @@ export default function AdminSettingsPage() {
               {settings.commissionOverrides.map((ov, idx) => (
                 <div key={idx} className="grid grid-cols-2 sm:grid-cols-[1fr_80px_1fr_40px] gap-2 items-center">
                   <Input
+                    aria-label={t("countryCodeHeader")}
                     placeholder={t("countryCodePlaceholder")}
                     value={ov.countryCode}
                     maxLength={2}
@@ -243,6 +248,7 @@ export default function AdminSettingsPage() {
                     }}
                   />
                   <Input
+                    aria-label={t("rateHeader")}
                     type="number"
                     min={0}
                     max={100}
@@ -255,6 +261,7 @@ export default function AdminSettingsPage() {
                     }}
                   />
                   <Input
+                    aria-label={t("labelHeader")}
                     placeholder={t("labelPlaceholder")}
                     value={ov.label}
                     onChange={(e) => {
@@ -263,7 +270,7 @@ export default function AdminSettingsPage() {
                       setSettings((s) => ({ ...s, commissionOverrides: updated }));
                     }}
                   />
-                  <Button
+                  <Button aria-label={ta("delete")}
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive p-1"
@@ -286,7 +293,7 @@ export default function AdminSettingsPage() {
 
         {/* GDPR */}
         <div className="panel-body space-y-2">
-          <h3 className="heading-section font-semibold text-foreground">{t("gdprSectionTitle")}</h3>
+          <h2 className="heading-section font-semibold text-foreground">{t("gdprSectionTitle")}</h2>
           <p className="text-sm text-muted-foreground">{t("gdprDescription")}</p>
           <a href="/api/gdpr" target="_blank" className="text-sm text-primary hover:underline">
             {t("gdprLink")}
@@ -297,7 +304,7 @@ export default function AdminSettingsPage() {
         <div className="panel-body space-y-4">
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-primary" />
-            <h3 className="heading-section font-semibold text-foreground">{t("emailConfigTitle")}</h3>
+            <h2 className="heading-section font-semibold text-foreground">{t("emailConfigTitle")}</h2>
           </div>
           <p className="text-sm text-muted-foreground">
             {t("emailConfigDescription")}
@@ -305,8 +312,9 @@ export default function AdminSettingsPage() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("smtpEmailLabel")}</label>
+              <label htmlFor="admin-smtp-email" className="text-sm text-muted-foreground">{t("smtpEmailLabel")}</label>
               <Input
+                id="admin-smtp-email"
                 type="email"
                 placeholder={t("smtpEmailPlaceholder")}
                 value={settings.smtp.smtpEmail}
@@ -314,16 +322,17 @@ export default function AdminSettingsPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("appPasswordLabel")}</label>
+              <label htmlFor="admin-smtp-password" className="text-sm text-muted-foreground">{t("appPasswordLabel")}</label>
               <div className="relative">
                 <Input
+                  id="admin-smtp-password"
                   type={showPassword ? "text" : "password"}
                   placeholder={t("appPasswordPlaceholder")}
                   value={settings.smtp.smtpAppPassword}
                   onChange={(e) => updateSmtp("smtpAppPassword", e.target.value)}
                   className="pr-10"
                 />
-                <button
+                <button aria-label={showPassword ? ta("hidePassword") : ta("showPassword")}
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -339,16 +348,18 @@ export default function AdminSettingsPage() {
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("smtpHostLabel")}</label>
+              <label htmlFor="admin-smtp-host" className="text-sm text-muted-foreground">{t("smtpHostLabel")}</label>
               <Input
+                id="admin-smtp-host"
                 placeholder={t("smtpHostPlaceholder")}
                 value={settings.smtp.smtpHost}
                 onChange={(e) => updateSmtp("smtpHost", e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">{t("smtpPortLabel")}</label>
+              <label htmlFor="admin-smtp-port" className="text-sm text-muted-foreground">{t("smtpPortLabel")}</label>
               <Input
+                id="admin-smtp-port"
                 type="number"
                 placeholder={t("smtpPortPlaceholder")}
                 value={settings.smtp.smtpPort}

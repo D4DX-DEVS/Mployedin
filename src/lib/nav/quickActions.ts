@@ -138,7 +138,9 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
       icon: "MessageSquare",
       labelKey: "newMessage",
       descriptionKey: "newMessageDesc",
-      create: true,
+      // No `create` flag: this opens the inbox, it does not create
+      // anything. The Create menu is for new objects only; the inbox is
+      // reachable from the sidebar and ⌘K.
     },
     {
       key: "reviewSupportTickets",
@@ -160,6 +162,38 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
       icon: "Activity",
       labelKey: "reviewFailingWebhooks",
       descriptionKey: "reviewFailingWebhooksDesc",
+    },
+    // The five reporting destinations are one sidebar row ("Reports") plus a
+    // tab strip at the destination, so four of them are no longer nav leaves
+    // and would otherwise have dropped out of ⌘K with the sidebar tree they
+    // came from. Listing them here keeps them searchable by name.
+    {
+      key: "openAiInsights",
+      href: "/admin/analytics",
+      icon: "Sparkles",
+      labelKey: "openAiInsights",
+      descriptionKey: "openAiInsightsDesc",
+    },
+    {
+      key: "openTargetReport",
+      href: "/admin/target-report",
+      icon: "FileText",
+      labelKey: "openTargetReport",
+      descriptionKey: "openTargetReportDesc",
+    },
+    {
+      key: "openCommissionReport",
+      href: "/admin/commissions-report",
+      icon: "BarChart2",
+      labelKey: "openCommissionReport",
+      descriptionKey: "openCommissionReportDesc",
+    },
+    {
+      key: "openSubscriptionDashboard",
+      href: "/admin/subscription-dashboard",
+      icon: "BarChart2",
+      labelKey: "openSubscriptionDashboard",
+      descriptionKey: "openSubscriptionDashboardDesc",
     },
     {
       key: "manageUsers",
@@ -267,14 +301,6 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
       icon: "FolderOpen",
       labelKey: "uploadDocument",
       descriptionKey: "uploadDocumentDesc",
-      create: true,
-    },
-    {
-      key: "addPortfolioItem",
-      href: "/job-seeker/portfolio",
-      icon: "FolderOpen",
-      labelKey: "addPortfolioItem",
-      descriptionKey: "addPortfolioItemDesc",
       create: true,
     },
     {

@@ -25,7 +25,9 @@ export default function SuperAgentError({
           <AlertTriangle className="w-6 h-6 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h3 className="heading-subsection font-semibold text-destructive">{t("title")}</h3>
+          {/* h1: an error boundary replaces the whole page, so this is the only
+              heading on it. As an h3 the page had no h1 and started at level 3. */}
+          <h1 className="heading-subsection font-semibold text-destructive">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("description")}
           </p>

@@ -72,13 +72,11 @@ export function SuperAgentPriorityQueue({
       aria-labelledby={headingId}
       className={cn("workspace-panel-surface overflow-hidden rounded-2xl", className)}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2 px-4 pb-2 pt-3 sm:px-5 sm:pb-3 sm:pt-4">
-        <div className="min-w-0">
-          <h2 id={headingId} className="heading-label font-semibold tracking-tight text-foreground">
-            {title}
-          </h2>
-          <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:text-sm">{description}</p>
-        </div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-4 pb-2 pt-2.5 sm:px-5 sm:pt-3">
+        <h2 id={headingId} className="heading-label font-semibold tracking-tight text-foreground">
+          {title}
+        </h2>
+        <p className="hidden text-xs leading-5 text-muted-foreground sm:block">{description}</p>
       </div>
 
       {items.length === 0 ? (
@@ -95,7 +93,7 @@ export function SuperAgentPriorityQueue({
               <li key={item.key} className="border-b border-border/50 last:border-0">
                 <Link
                   href={item.href}
-                  className="group relative flex min-h-14 items-center gap-3 py-3 ps-5 pe-4 transition-colors hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:ps-6 sm:pe-5"
+                  className="group relative flex min-h-11 items-center gap-3 py-2 ps-5 pe-4 transition-colors hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:ps-6 sm:pe-5"
                 >
                   <span
                     aria-hidden="true"
@@ -104,7 +102,7 @@ export function SuperAgentPriorityQueue({
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
                       styles.iconChip
                     )}
                   >
@@ -123,9 +121,9 @@ export function SuperAgentPriorityQueue({
                       >
                         {item.levelLabel}
                       </span>
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {item.actionLabel}
+                      <span className="text-xs text-muted-foreground">
+                        {item.actionLabel}
+                      </span>
                     </span>
                   </span>
                   <span

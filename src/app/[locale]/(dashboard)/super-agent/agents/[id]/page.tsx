@@ -208,6 +208,18 @@ export default function AgentDetailPage() {
   }, [data]);
 
   const handleEdit = async () => {
+    // Deactivating locks the agent out of the workspace, but it rides along in a
+    // general "Save changes" with every other field, so nothing told the user
+    // that is what they were about to do. Only asks on the true -> false edge.
+    if (data?.user.isActive && !editForm.isActive) {
+      const ok = await confirm({
+        title: t("deactivateConfirmTitle"),
+        message: t("deactivateConfirmMessage", { name: data.user.name || data.user.email }),
+        confirmLabel: t("deactivateConfirmAction"),
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
     setEditError("");
     setEditLoading(true);
     try {
@@ -596,10 +608,14 @@ export default function AgentDetailPage() {
                 <p className="text-[11px] text-muted-foreground">{t("formHintCommissionRate")}</p>
               </div>
               <div className="space-y-2">
-                <Label>{tc("status")}</Label>
+                <Label htmlFor="agent-active-status-switch">{tc("status")}</Label>
                 <div className="flex items-center gap-3 pt-2">
                   <button
+                    id="agent-active-status-switch"
                     type="button"
+                    role="switch"
+                    aria-checked={editForm.isActive}
+                    aria-label={t("toggleActiveStatusLabel")}
                     onClick={() => setEditForm((f) => ({ ...f, isActive: !f.isActive }))}
                     className={cn(
                       "relative h-6 w-11 rounded-full transition-colors",

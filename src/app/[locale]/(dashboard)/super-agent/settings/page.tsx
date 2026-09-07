@@ -25,7 +25,6 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   SuperAgentPageIntro,
-  SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
@@ -35,6 +34,7 @@ import {
   currencyForCountry,
 } from "@/lib/currency";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -151,7 +151,10 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe;
           <Icon className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
+          {/* h2: the settings page renders its h1 in the workspace header, and every
+              tab panel hangs directly off it, so section heads are level 2. Size is
+              set by `heading-label`, so this does not change the look. */}
+          <h2 className="heading-label font-semibold tracking-tight">{title}</h2>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
@@ -201,6 +204,7 @@ function ProfileTab() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
   // Profile fields
   const [name, setName] = useState("");
@@ -292,6 +296,16 @@ function ProfileTab() {
   }, [updateSession]);
 
   const handleRemove = useCallback(async () => {
+    // Deleting the photo is not reversible from here — the file is gone and the
+    // user has to re-upload. Every other destructive action in the workspace
+    // asks first; this one did not.
+    const ok = await confirmDialog({
+      title: t("avatarRemoveConfirmTitle"),
+      message: t("avatarRemoveConfirmMessage"),
+      confirmLabel: t("avatarRemoveConfirmAction"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setUploading(true);
     setError("");
     try {
@@ -309,7 +323,7 @@ function ProfileTab() {
     } finally {
       setUploading(false);
     }
-  }, [updateSession]);
+  }, [updateSession, confirmDialog, t]);
 
   const handleProfileSave = async () => {
     if (!name.trim()) return;
@@ -333,6 +347,7 @@ function ProfileTab() {
 
   return (
     <>
+      {ConfirmDialogNode}
       {/* Role Badge Hero */}
       <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-primary/[0.06] via-primary/[0.03] to-transparent">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/[0.04] rounded-full -translate-y-1/2 translate-x-1/2" />

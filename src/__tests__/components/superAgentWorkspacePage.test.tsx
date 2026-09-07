@@ -60,7 +60,10 @@ describe("SuperAgent workspace surfaces", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Lead Pipeline" }).closest("section")).toHaveClass("workspace-hero-surface");
-    expect(screen.getByText("Coverage").closest("div")).toHaveClass("workspace-glass-panel");
+    // Matches the panel by class rather than by "the div immediately above the
+    // label": the summary caption and its figure now share a flex wrapper, so a
+    // bare closest("div") stops one level short of the panel.
+    expect(screen.getByText("Coverage").closest("div.workspace-glass-panel")).not.toBeNull();
     expect(container.querySelector(".workspace-tone-amber")).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Review leads" }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(screen.getByText("Table shell").closest("div.workspace-panel-surface")).toBeInTheDocument();

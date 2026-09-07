@@ -67,7 +67,14 @@ describe("SuperAgentDashboard", () => {
     // heading directly below it.
     expect(screen.getByRole("heading", { name: /super agent dashboard/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /region at a glance/i })).toBeInTheDocument();
+    // The four region figures used to sit in their own "Region at a glance"
+    // panel under the header. They now render inside the page header's metric
+    // strip, so the heading is gone but every figure must still be on the page
+    // and still be a link to the list it summarises.
+    for (const label of [/active agents/i, /employers/i, /active jobs/i, /placements/i]) {
+      expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("heading", { name: /region at a glance/i })).not.toBeInTheDocument();
   });
 
   it("says nothing is waiting when no queue has work in it", async () => {

@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { Sparkles, type LucideIcon } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import {
+  DashboardPageHeader,
+  type DashboardHeaderMetric,
+} from "@/components/shared/DashboardPageHeader";
 
 interface PageHeroProps {
   /** Large page title. Also shown in the eyebrow badge unless `eyebrow` overrides it. */
@@ -15,6 +18,19 @@ interface PageHeroProps {
   icon?: LucideIcon;
   /** Right-aligned content (buttons, filters, stat pills). */
   actions?: ReactNode;
+  /**
+   * Totals rendered as a divided strip *inside* the header panel.
+   *
+   * `DashboardPageHeader` has supported this all along; PageHero did not
+   * forward it, so twelve admin pages rendered the hero card and then a second,
+   * separate grid of stat cards underneath — two disconnected blocks where
+   * employer's `WorkspaceHeader` shows one. Pass the page's totals here and
+   * delete the grid.
+   */
+  metrics?: readonly DashboardHeaderMetric[];
+  metricsClassName?: string;
+  /** Phones: single-row metric strip (value over label). See DashboardPageHeader. */
+  compactMetrics?: boolean;
   /** Phones only: title and actions share one row (see DashboardPageHeader). */
   compact?: boolean;
   /** Phones: drop the explanatory description (see DashboardPageHeader). */
@@ -33,8 +49,11 @@ export function PageHero({
   eyebrow,
   icon: Icon = Sparkles,
   actions,
+  metrics,
+  metricsClassName,
   compact = false,
   compactOnMobile = false,
+  compactMetrics = false,
   className,
 }: PageHeroProps) {
   return (
@@ -44,8 +63,11 @@ export function PageHero({
       description={description}
       icon={Icon}
       actions={actions}
+      metrics={metrics}
+      metricsClassName={metricsClassName}
       compact={compact}
       compactOnMobile={compactOnMobile}
+      compactMetrics={compactMetrics}
       className={className}
     />
   );

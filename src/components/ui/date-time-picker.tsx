@@ -31,6 +31,7 @@ interface DateTimePickerProps {
   minDate?: Date;
   className?: string;
   required?: boolean;
+  id?: string;
   /** "datetime" shows date+time; "date" shows date only; "time" shows time only */
   mode?: "datetime" | "date" | "time";
   container?: HTMLElement | null;
@@ -45,6 +46,7 @@ export function DateTimePicker({
   minDate,
   className,
   required,
+  id,
   mode = "datetime",
   container,
   modal = false,
@@ -157,6 +159,7 @@ export function DateTimePicker({
       <Popover open={open} onOpenChange={setOpen} modal={modal}>
         <PopoverTrigger asChild>
           <button
+            id={id}
             type="button"
             aria-label={label ?? resolvedPlaceholder}
             className={cn(

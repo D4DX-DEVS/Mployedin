@@ -102,7 +102,20 @@ async function patchHandler(
   return NextResponse.json({ plan });
 }
 
-/** DELETE — soft-delete a subscription plan (set isActive: false) */
+/**
+ * DELETE — deactivate a plan, or destroy one that was already deactivated.
+ *
+ * The default is still the soft path: `isActive: false`, refused while active
+ * subscriptions reference it. But soft-delete was the ONLY path, so a plan
+ * created by mistake could never leave the list — the trash icon promised a
+ * removal it could not perform, and test rows accumulated forever.
+ *
+ * `?hard=true` destroys the document. It is deliberately narrow: the plan must
+ * already be inactive (so destroying is always a second, separate decision),
+ * must not be the default plan for its audience, and must have no subscription
+ * of ANY status pointing at it — not just no active ones, because a cancelled
+ * or expired subscription still needs its plan to render billing history.
+ */
 async function deleteHandler(
   req: NextRequest,
   ctx: AuthCtx,
@@ -118,7 +131,47 @@ async function deleteHandler(
     return NextResponse.json({ error: "Plan not found" }, { status: 404 });
   }
 
-  // Prevent deletion if there are active subscriptions on this plan
+  const hard = new URL(req.url).searchParams.get("hard") === "true";
+
+  if (hard) {
+    if (plan.isActive) {
+      return NextResponse.json(
+        { error: "Deactivate the plan before deleting it" },
+        { status: 409 },
+      );
+    }
+    if (plan.isDefault) {
+      return NextResponse.json(
+        { error: "Cannot delete the default plan — make another plan the default first" },
+        { status: 409 },
+      );
+    }
+    // Any status, not just "active": billing history renders the plan name.
+    const referencing = await Subscription.countDocuments({ planId: plan._id });
+    if (referencing > 0) {
+      return NextResponse.json(
+        {
+          error: `Cannot delete plan — ${referencing} subscription(s) reference it. Leave it deactivated instead.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    await SubscriptionPlan.deleteOne({ _id: plan._id });
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "subscription_plan.destroy",
+      resource: "subscriptions",
+      resourceId: plan._id.toString(),
+      meta: { name: plan.name, tier: plan.tier, targetRole: plan.targetRole },
+      req,
+    });
+
+    return NextResponse.json({ message: "Plan deleted" });
+  }
+
+  // Prevent deactivation if there are active subscriptions on this plan
   const activeCount = await Subscription.countDocuments({
     planId: plan._id,
     status: "active",

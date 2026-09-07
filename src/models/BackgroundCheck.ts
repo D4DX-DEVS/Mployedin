@@ -111,6 +111,7 @@ const BackgroundCheckSchema = new Schema<IBackgroundCheck>(
 BackgroundCheckSchema.index({ employerId: 1, createdAt: -1 });
 BackgroundCheckSchema.index({ applicationId: 1 });
 BackgroundCheckSchema.index({ jobSeekerId: 1 });
+BackgroundCheckSchema.index({ jobId: 1, status: 1 });
 
 export const BackgroundCheck =
   mongoose.models.BackgroundCheck ||

@@ -178,7 +178,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     overview: {
       stageCounts,
       territories,
-      currencyLabel: currencies.length === 1 ? currencies[0] : `${currencies.length} currencies`,
+      currencyLabel: currencies.length === 1 ? currencies[0] : "",
+      currencyCount: currencies.length,
       attention: {
         behindEmployer: filteredRows.filter((row) => row.employerProgress < 40).length,
         behindEmployee: filteredRows.filter((row) => row.employeeProgress < 40).length,
