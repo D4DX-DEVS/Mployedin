@@ -18,12 +18,12 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
   return (
     <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-5">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Award className="h-4 w-4" /> {t("topSellingAgents")}
           <span className="text-[11px] text-muted-foreground font-normal normal-case tracking-normal">
             {t("thisMonth")}
           </span>
-        </h4>
+        </h2>
       </div>
 
       {data.length === 0 ? (

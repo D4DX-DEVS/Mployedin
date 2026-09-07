@@ -67,15 +67,27 @@ export function CreateMenu({ locale, userRole, variant = "topbar", className }: 
       </DropdownMenuTrigger>
       {/* The phone trigger sits in the middle of the tab bar, so the menu has to
           open centred over it — aligning to its end edge pushed the panel off to
-          one side and over the page content. */}
+          one side and over the page content.
+
+          On phones it then spans the width as an action sheet rather than a
+          17rem card floating over the middle of the page: a centred panel above
+          a centred trigger is already sheet-shaped, so widening it and rounding
+          only the reading edge is the whole change — no Sheet primitive, no
+          second positioning system. */}
       <DropdownMenuContent
         align={isBottomBar ? "center" : "end"}
         side={isBottomBar ? "top" : "bottom"}
         sideOffset={isBottomBar ? 12 : 6}
-        collisionPadding={12}
-        className="w-[min(17rem,calc(100vw-1.5rem))]"
+        collisionPadding={isBottomBar ? 8 : 12}
+        className={cn(
+          isBottomBar
+            ? "w-[calc(100vw-1rem)] rounded-2xl p-2 shadow-2xl shadow-black/15"
+            : "w-[min(17rem,calc(100vw-1.5rem))]"
+        )}
       >
-        <DropdownMenuLabel>{t("createMenu")}</DropdownMenuLabel>
+        <DropdownMenuLabel className={cn(isBottomBar && "px-2 pb-1 pt-1.5")}>
+          {t("createMenu")}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {actions.map((action) => {
           const Icon = getIcon(action.icon);
@@ -83,7 +95,7 @@ export function CreateMenu({ locale, userRole, variant = "topbar", className }: 
             <DropdownMenuItem
               key={action.key}
               onSelect={() => router.push(action.href)}
-              className="gap-2.5 py-2.5"
+              className={cn("gap-2.5 py-2.5", isBottomBar && "min-h-12 gap-3 px-2.5")}
             >
               <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="flex flex-col">

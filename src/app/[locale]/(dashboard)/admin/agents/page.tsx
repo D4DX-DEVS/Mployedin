@@ -6,6 +6,8 @@ import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -71,6 +73,7 @@ export default function AdminAgentsPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
@@ -143,19 +146,29 @@ export default function AdminAgentsPage() {
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
     if (statusFilter !== "all") params.set("status", statusFilter);
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
-    const res = await fetch(`/api/admin/agents?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setAgents(data.agents ?? []);
-      updateTotal(data.pagination?.total ?? 0);
+    try {
+      const res = await fetch(`/api/admin/agents?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAgents(data.agents ?? []);
+        updateTotal(data.pagination?.total ?? 0);
+      } else {
+        setError(tr("toastFailedLoadAgents"));
+        toast.error(tr("toastFailedLoadAgents"));
+      }
+    } catch {
+      setError(tr("toastFailedLoadAgents"));
+      toast.error(tr("toastFailedLoadAgents"));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [search, statusFilter, sortBy, sortOrder, page, limit, updateTotal]);
+  }, [search, statusFilter, sortBy, sortOrder, page, limit, updateTotal, tr]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
@@ -373,17 +386,17 @@ export default function AdminAgentsPage() {
         description={tr("heroDescription")}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 panel-head">
             <div className="relative toolbar-search-field">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label={tr("searchAgentPlaceholder")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder={tr("searchAgentPlaceholder")}
-                className="h-8 w-52 rounded-lg pl-8 text-sm"
+                className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
               />
             </div>
             <div className="w-[120px]">
@@ -418,6 +431,11 @@ export default function AdminAgentsPage() {
               </Button>
             )}
         </div>
+        {error ? (
+          <div className="p-6">
+            <ErrorState onRetry={fetchAgents} />
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -444,11 +462,8 @@ export default function AdminAgentsPage() {
               <TableBodySkeleton rows={5} cols={6} />
             ) : agents.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">{tr("noAgentsFound")}</span>
-                  </div>
+                <TableCell colSpan={6} className="py-12">
+                  <EmptyState title={tr("noAgentsFound")} icon={Inbox} />
                 </TableCell>
               </TableRow>
             ) : agents.map((agent) => (
@@ -513,6 +528,7 @@ export default function AdminAgentsPage() {
             ))}
           </TableBody>
         </Table>
+        )}
       </section>
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

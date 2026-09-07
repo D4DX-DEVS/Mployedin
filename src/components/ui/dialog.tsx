@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslations } from "next-intl";
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
@@ -36,7 +37,9 @@ const DialogContent = React.forwardRef<
     /** On mobile, render as bottom sheet sliding up from bottom; centered dialog on sm+. Default true; pass false for centered dialog on all screens. */
     mobileSheet?: boolean
   }
->(({ className, children, hideClose, mobileSheet = true, ...props }, ref) => (
+>(({ className, children, hideClose, mobileSheet = true, ...props }, ref) => {
+  const tCommon = useTranslations("common");
+  return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -52,14 +55,15 @@ const DialogContent = React.forwardRef<
     >
       {children}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute end-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background shadow-sm ring-offset-background transition-all duration-150 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring/50 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <DialogPrimitive.Close className="absolute end-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background shadow-sm ring-offset-background transition-all duration-150 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring/50 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:h-8 sm:w-8">
           <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{tCommon("close")}</span>
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>
   </DialogPortal>
-))
+  );
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({

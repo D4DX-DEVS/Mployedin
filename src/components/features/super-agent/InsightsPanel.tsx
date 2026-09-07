@@ -51,34 +51,34 @@ const typeIcon: Record<InsightType, React.ReactNode> = {
 
 const severityStyles: Record<
   InsightSeverity,
-  { border: string; badge: string; badgeText: string; iconChip: string }
+  { border: string; badge: string; badgeKey: string; iconChip: string }
 > = {
   critical: {
     border: "border-l-rose-500",
     badge: "bg-rose-100 text-rose-700",
-    badgeText: "Critical",
+    badgeKey: "severityCritical",
     iconChip: "bg-rose-100 text-rose-600",
   },
   warning: {
     border: "border-l-amber-400",
     badge: "bg-amber-100 text-amber-700",
-    badgeText: "Warning",
+    badgeKey: "severityWarning",
     iconChip: "bg-amber-100 text-amber-600",
   },
   info: {
     border: "border-l-emerald-400",
     badge: "bg-emerald-100 text-emerald-700",
-    badgeText: "Info",
+    badgeKey: "severityInfo",
     iconChip: "bg-emerald-100 text-emerald-600",
   },
 };
 
 // Confidence is a separate signal from severity, so it reads as a subtle
 // dot + label rather than a second colored pill competing with the badge.
-const confidenceStyles: Record<ConfidenceLevel, { dot: string; label: string }> = {
-  high: { dot: "bg-sky-500", label: "High" },
-  medium: { dot: "bg-violet-500", label: "Medium" },
-  low: { dot: "bg-zinc-400", label: "Low" },
+const confidenceStyles: Record<ConfidenceLevel, { dot: string; labelKey: string }> = {
+  high: { dot: "bg-sky-500", labelKey: "confidenceHigh" },
+  medium: { dot: "bg-violet-500", labelKey: "confidenceMedium" },
+  low: { dot: "bg-zinc-400", labelKey: "confidenceLow" },
 };
 
 /* ────────────────────────────────────────────────────────
@@ -193,9 +193,9 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
 
     if (insight.actionType === "assign_leads" && insight.actionPayload) {
       const ok = await confirm({
-        title: "Assign leads",
-        message: `Assign more leads to ${insight.actionPayload.targetAgentName}?`,
-        confirmLabel: "Assign leads",
+        title: t("assignLeadsTitle"),
+        message: t("assignLeadsMessage", { name: String(insight.actionPayload.targetAgentName ?? "") }),
+        confirmLabel: t("assignLeadsAction"),
         variant: "default",
       });
       if (!ok) return;
@@ -243,12 +243,12 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
       const names = insight.actionPayload.agentNames ?? [insight.actionPayload.agentName];
       const recipients = Array.isArray(names) ? (names as string[]) : [String(names)];
       const ok = await confirm({
-        title: "Send performance reminder",
+        title: t("sendReminderTitle"),
         message:
           recipients.length === 1
-            ? `Send a performance reminder to ${recipients[0]}?`
-            : `Send a performance reminder to ${recipients.length} agents (${recipients.join(", ")})?`,
-        confirmLabel: "Send reminder",
+            ? t("sendReminderMessageOne", { name: recipients[0] })
+            : t("sendReminderMessageMany", { count: recipients.length, names: recipients.join(", ") }),
+        confirmLabel: t("sendReminderAction"),
         variant: "default",
       });
       if (!ok) return;
@@ -265,7 +265,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
         });
         if (!res.ok) throw new Error();
         toast.success(
-          recipients.length === 1 ? "Reminder sent." : `Reminders sent to ${recipients.length} agents.`
+          recipients.length === 1 ? t("reminderSentOne") : t("reminderSentMany", { count: recipients.length })
         );
       } catch {
         // Rollback on failure
@@ -387,13 +387,13 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[13px] font-semibold leading-tight text-foreground">{insight.title}</span>
                     <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded-full", sev.badge)}>
-                      {sev.badgeText}
+                      {t(sev.badgeKey)}
                     </span>
                   </div>
                   {insight.confidence && (
                     <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
                       <span className={cn("h-1.5 w-1.5 rounded-full", confidenceStyles[insight.confidence].dot)} />
-                      {confidenceStyles[insight.confidence].label} confidence
+                      {t("confidenceLabel", { level: t(confidenceStyles[insight.confidence].labelKey) })}
                     </span>
                   )}
                   <p className="text-[11px] leading-relaxed text-muted-foreground mt-1">{insight.message}</p>
@@ -466,7 +466,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
   const severitySummary = (["critical", "warning", "info"] as InsightSeverity[])
     .map((sv) => [sv, visibleInsights.filter((i) => i.severity === sv).length] as const)
     .filter(([, n]) => n > 0)
-    .map(([sv, n]) => `${n} ${severityStyles[sv].badgeText.toLowerCase()}`)
+    .map(([sv, n]) => `${n} ${t(severityStyles[sv].badgeKey).toLowerCase()}`)
     .join(" · ");
 
   // Hero-button mode: one control, insights open in a dialog. Nothing on the
@@ -585,7 +585,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
             {(["critical", "warning", "info"] as InsightSeverity[])
               .map((sv) => [sv, visibleInsights.filter((i) => i.severity === sv).length] as const)
               .filter(([, n]) => n > 0)
-              .map(([sv, n]) => `${n} ${severityStyles[sv].badgeText.toLowerCase()}`)
+              .map(([sv, n]) => `${n} ${t(severityStyles[sv].badgeKey).toLowerCase()}`)
               .join(" · ")} ›
           </span>
         </button>

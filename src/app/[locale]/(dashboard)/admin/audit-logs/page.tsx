@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { toast } from "sonner";
-import { Search, Shield, Clock } from "lucide-react";
+import { Search, Clock } from "lucide-react";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -219,12 +220,11 @@ export default function AuditLogsPage() {
           ))}
         </div>
       ) : logs.length === 0 ? (
-        <div className="card-base text-center py-16">
-          <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">{t("noAuditLogEntriesFound")}</p>
-        </div>
+        <EmptyState
+          title={t("noAuditLogEntriesFound")}
+        />
       ) : (
-        <div className="rounded-xl border overflow-x-auto bg-background">
+        <div className="rounded-2xl border overflow-x-auto bg-background">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
               <tr>

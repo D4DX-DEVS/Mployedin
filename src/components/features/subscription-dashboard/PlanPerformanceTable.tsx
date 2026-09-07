@@ -26,9 +26,9 @@ export function PlanPerformanceTable({ data }: Props) {
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card panel-body">
-      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4">
         <BarChart3 className="h-4 w-4" /> {t("planPerformance")}
-      </h4>
+      </h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

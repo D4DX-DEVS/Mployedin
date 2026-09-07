@@ -33,9 +33,9 @@ export function SubscriptionFunnel({ employer, jobSeeker }: SubscriptionFunnelPr
   return (
     <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-6">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Filter className="h-4 w-4" /> {t("planSplit")}
-        </h4>
+        </h2>
         <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
           <button
             onClick={() => setTab("employer")}

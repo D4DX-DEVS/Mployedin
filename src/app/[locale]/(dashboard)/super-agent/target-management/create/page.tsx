@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useId } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -72,6 +72,8 @@ function generateEqualDistribution(annual: { employerTarget: number; employeeTar
 
 export default function SuperAgentCreateTargetPage() {
   const t = useTranslations("targets");
+  const yearFieldId = useId();
+  const nameFilterId = useId();
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
   const router = useRouter();
@@ -308,8 +310,9 @@ export default function SuperAgentCreateTargetPage() {
         description={t("assignAgentTargetsDesc")}
         actions={
             <div className="flex items-center gap-2">
-              <Label className="text-xs font-medium text-muted-foreground">Year</Label>
+              <Label htmlFor={yearFieldId} className="text-xs font-medium text-muted-foreground">{t("year")}</Label>
               <Input
+                id={yearFieldId}
                 type="number"
                 value={year}
                 onChange={(e) => setYear(parseInt(e.target.value) || currentYear)}
@@ -354,10 +357,11 @@ export default function SuperAgentCreateTargetPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {/* Name Search */}
               <div className="field">
-                <Label className="text-[11px] font-medium text-muted-foreground">{t("nameEmail")}</Label>
+                <Label htmlFor={nameFilterId} className="text-[11px] font-medium text-muted-foreground">{t("nameEmail")}</Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    id={nameFilterId}
                     value={filterName}
                     onChange={(e) => setFilterName(e.target.value)}
                     placeholder={t("searchByNameEmail")}
@@ -552,6 +556,7 @@ function AgentTargetRow({
           <Input
             type="number"
             min={0}
+            aria-label={t("ariaEmployerTargetFor", { name: agent.name })}
             value={row.employerTarget || ""}
             onChange={(e) => onUpdateTarget(agent.id, "employerTarget", parseInt(e.target.value) || 0)}
             placeholder="0"
@@ -564,6 +569,7 @@ function AgentTargetRow({
           <Input
             type="number"
             min={0}
+            aria-label={t("ariaEmployeeTargetFor", { name: agent.name })}
             value={row.employeeTarget || ""}
             onChange={(e) => onUpdateTarget(agent.id, "employeeTarget", parseInt(e.target.value) || 0)}
             placeholder="0"
@@ -577,6 +583,7 @@ function AgentTargetRow({
             <Input
               type="number"
               min={0}
+              aria-label={t("ariaRevenueTargetFor", { name: agent.name })}
               value={row.financeTarget || ""}
               onChange={(e) => onUpdateTarget(agent.id, "financeTarget", parseInt(e.target.value) || 0)}
               placeholder="0"
@@ -597,6 +604,7 @@ function AgentTargetRow({
             className="rounded-lg text-xs gap-1"
             onClick={() => onToggleMonthly(agent.id)}
             disabled={!hasTarget}
+            aria-label={t("toggleMonthly", { name: agent.name })}
           >
             <CalendarDays className="h-3.5 w-3.5" />
             {row.showMonthly ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -679,7 +687,7 @@ function MonthlyDistributionTable({
         <table className="w-full text-xs">
           <thead className="bg-muted/30">
             <tr>
-              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">Month</th>
+              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t("month")}</th>
               <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("tableHeaderEmployers")}</th>
               <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("tableHeaderEmployees")}</th>
               <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("tableHeaderRevenue")}</th>
@@ -693,6 +701,7 @@ function MonthlyDistributionTable({
                   <Input
                     type="number"
                     min={0}
+                    aria-label={t("ariaEmployerTargetForMonth", { month: monthsShort[m.month - 1] })}
                     value={m.employerTarget || ""}
                     onChange={(e) => onUpdate(agentId, m.month, "employerTarget", parseInt(e.target.value) || 0)}
                     className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
@@ -702,6 +711,7 @@ function MonthlyDistributionTable({
                   <Input
                     type="number"
                     min={0}
+                    aria-label={t("ariaEmployeeTargetForMonth", { month: monthsShort[m.month - 1] })}
                     value={m.employeeTarget || ""}
                     onChange={(e) => onUpdate(agentId, m.month, "employeeTarget", parseInt(e.target.value) || 0)}
                     className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
@@ -711,6 +721,7 @@ function MonthlyDistributionTable({
                   <Input
                     type="number"
                     min={0}
+                    aria-label={t("ariaRevenueTargetForMonth", { month: monthsShort[m.month - 1] })}
                     value={m.financeTarget || ""}
                     onChange={(e) => onUpdate(agentId, m.month, "financeTarget", parseInt(e.target.value) || 0)}
                     className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"

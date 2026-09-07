@@ -100,7 +100,11 @@ export default function SuperAgentApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, pagination.page, pagination.limit, t, pagination]);
+  // The bare `pagination` that used to close this list rebuilt the callback on
+  // every render, and the effect below re-ran with it — the page refetched in a
+  // loop for as long as it was open. The two values the request reads are
+  // already listed individually.
+  }, [filters, pagination.page, pagination.limit, t]);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
@@ -125,6 +129,7 @@ export default function SuperAgentApplicationsPage() {
         <div className="flex flex-wrap gap-2 mb-4">
           <input
             type="text"
+            aria-label={t("searchPlaceholder")}
             placeholder={t("searchPlaceholder")}
             value={filters.search}
             onChange={(e) => setFilter("search", e.target.value)}

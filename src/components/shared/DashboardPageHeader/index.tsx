@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,10 @@ export interface DashboardHeaderMetric {
   iconClassName?: string;
   iconSurfaceClassName?: string;
   onClick?: () => void;
+  /** Makes the whole cell a link. Preferred over `onClick` for navigation: it
+   *  keeps middle-click, open-in-new-tab and the browser's own link
+   *  affordances, which a button silently drops. */
+  href?: string;
   active?: boolean;
 }
 
@@ -87,7 +92,13 @@ export function DashboardPageHeader({
         inlineActions ? "flex-row items-start justify-between" : "flex-col",
         compact && "flex-row items-center justify-between gap-2 sm:gap-3"
       )}>
-        <div className="min-w-0 max-w-3xl">
+        {/* `basis-0 lg:min-w-[16rem]`: the summary+actions block beside this one
+            is `shrink-0`, so when the row overflowed every pixel of the shortfall
+            came out of the title. On super-agent/employers, whose `summary.note`
+            is a full sentence that never wraps, that squeezed "Employer
+            Relationships" into a ~100px column — one or two characters per line,
+            a 479px header. A floor here makes the row wrap instead of crushing. */}
+        <div data-header-text="" className="min-w-0 max-w-3xl flex-1 basis-0 lg:min-w-[16rem]">
           {eyebrow && (
             <div className="hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:flex">
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -107,7 +118,7 @@ export function DashboardPageHeader({
             {title}
           </Heading>
           {description && (
-            <p className={cn(
+            <p data-header-description="" className={cn(
               "mt-1 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm",
               compactOnMobile && "hidden sm:block"
             )}>
@@ -123,12 +134,21 @@ export function DashboardPageHeader({
                 "workspace-glass-panel min-w-0 border-s-2 border-primary/30 ps-3",
                 compactOnMobile && "hidden sm:block"
               )}>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  {summary.label}
-                </p>
-                <div className="mt-0.5 text-sm font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">{summary.value}</div>
+                {/* Caption and figure share a row. Stacked, this block spent three
+                    lines on two short values — the caption, the number, then the
+                    note — and was taller than the title beside it. */}
+                <div className="flex items-baseline gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {summary.label}
+                  </p>
+                  <div className="text-sm font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">{summary.value}</div>
+                </div>
+                {/* max-w caps the note: the wrapper sizes to content, so a
+                    `truncate` with nothing to truncate against laid the whole
+                    sentence out on one unbroken line and drove the overflow
+                    that crushed the title. */}
                 {summary.note && (
-                  <div className="hidden truncate text-xs text-muted-foreground sm:block">{summary.note}</div>
+                  <div className="hidden max-w-[22rem] truncate text-xs text-muted-foreground sm:block">{summary.note}</div>
                 )}
               </div>
             )}
@@ -143,6 +163,7 @@ export function DashboardPageHeader({
 
       {metrics && metrics.length > 0 && (
         <div
+          data-header-metrics=""
           className={cn(
             "mt-3 grid border-y border-border/60 sm:mt-4",
             metrics.length === 1 && "grid-cols-1",
@@ -158,25 +179,31 @@ export function DashboardPageHeader({
         >
           {metrics.map((metric, index) => {
             const MetricIcon = metric.icon;
-            const MetricContainer = metric.onClick ? "button" : "div";
+            const MetricContainer = metric.href ? Link : metric.onClick ? "button" : "div";
+            const containerProps = metric.href
+              ? { href: metric.href }
+              : metric.onClick
+                ? { type: "button" as const, onClick: metric.onClick }
+                : {};
             return (
               <MetricContainer
                 key={`${metric.label}-${index}`}
-                {...(metric.onClick ? { type: "button" as const, onClick: metric.onClick } : {})}
+                {...(containerProps as { href: string })}
+                data-header-metric=""
                 className={cn(
                   "flex min-w-0 items-center justify-between gap-1 px-1 py-2 text-start sm:gap-2 sm:px-3 sm:py-2.5",
                   // Compact phones: value over label, centred, so four cells fit
                   // an ~83px column without the label wrapping.
                   metricCompact && "justify-center px-0.5 py-1.5 text-center sm:justify-between sm:px-3 sm:py-2.5 sm:text-start",
                   "border-e border-border/60 last:border-e-0",
-                  metric.onClick && "transition-colors hover:bg-background/45",
+                  (metric.onClick || metric.href) && "transition-colors hover:bg-background/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500",
                   metric.active && "bg-primary/5 ring-1 ring-inset ring-primary/30"
                 )}
               >
-                <div className={cn("min-w-0", metricCompact && "flex flex-col items-center sm:block")}>
+                <div data-header-metric-body="" className={cn("min-w-0", metricCompact && "flex flex-col items-center sm:block")}>
                   {/* Word-wrap instead of truncate on label + value: long labels like
                       "Total Applications" rendered as "Total Applica…" on phones, which said nothing. */}
-                  <p className={cn(
+                  <p data-header-metric-label="" className={cn(
                     "line-clamp-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
                     // Label reads under the value on compact phones, and loses the
                     // 0.14em tracking that would push it past an 83px column.
@@ -184,7 +211,7 @@ export function DashboardPageHeader({
                   )}>
                     {metric.label}
                   </p>
-                  <div className={cn(
+                  <div data-header-metric-value="" className={cn(
                     "mt-1 flex min-w-0 items-baseline gap-2",
                     metricCompact && "order-1 mt-0 justify-center sm:order-none sm:mt-1 sm:justify-start"
                   )}>
@@ -205,6 +232,7 @@ export function DashboardPageHeader({
                   </div>
                 </div>
                 <span
+                  data-header-metric-icon=""
                   className={cn(
                     "me-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:flex",
                     metric.iconSurfaceClassName

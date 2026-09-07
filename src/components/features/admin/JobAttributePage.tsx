@@ -194,6 +194,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               id={`${category}-search`}
+              aria-label={`${t("search")} ${displayTitle.toLowerCase()}`}
               placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
               value={search}
               onChange={(e) => { setSearch(e.target.value); resetPage(); }}

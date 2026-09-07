@@ -16,6 +16,7 @@ export default function EditStaticPage() {
   const { id, locale } = useParams<{ id: string; locale: string }>();
   const router = useRouter();
   const t = useTranslations("adminCmsStaticPagesIdEdit");
+  const ta = useTranslations("a11y");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,7 +91,7 @@ export default function EditStaticPage() {
         title={t("editStaticPageTitle")}
         description={`${t("editingLabel")} ${slug || "..."}`}
         actions={(
-          <Button
+          <Button aria-label={ta("back")}
             variant="ghost"
             size="icon"
             onClick={() => router.push(`/${locale}/admin/cms/static-pages`)}
@@ -201,6 +202,7 @@ export default function EditStaticPage() {
             {bodyTab === "code" ? (
               <Textarea
                 id="body"
+                aria-label={t("bodyEnHeading")}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 required
@@ -252,6 +254,7 @@ export default function EditStaticPage() {
             {bodyArTab === "code" ? (
               <Textarea
                 id="bodyAr"
+                aria-label={t("bodyArHeading")}
                 value={bodyAr}
                 onChange={(e) => setBodyAr(e.target.value)}
                 placeholder={t("bodyArPlaceholder")}

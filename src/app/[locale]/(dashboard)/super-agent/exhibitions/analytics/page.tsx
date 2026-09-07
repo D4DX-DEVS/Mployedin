@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   Activity,
@@ -129,8 +129,10 @@ const DEFAULT_PERFORMANCE: PerformanceData = {
 
 export default function SuperAgentExhibitionAnalyticsPage() {
   const t = useTranslations("superAgentExhibitionsAnalytics");
+  const tc = useTranslations("common");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [currencyCode, setCurrencyCode] = useState("AED");
   // Starts false so the server render and the first client render agree; the
@@ -156,18 +158,23 @@ export default function SuperAgentExhibitionAnalyticsPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
+  const fetchAnalyticsData = useCallback(() => {
     setLoading(true);
+    setError(false);
     fetch(`/api/exhibitions/analytics?year=${year}`)
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
         if (payload) {
           setData(payload);
+        } else {
+          setError(true);
         }
       })
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [year]);
+
+  useEffect(() => { fetchAnalyticsData(); }, [fetchAnalyticsData]);
 
   const statusBreakdown = useMemo(() => {
     if (!data) {
@@ -203,8 +210,21 @@ export default function SuperAgentExhibitionAnalyticsPage() {
     );
   }
 
-  if (!data) {
-    return <div className="p-6 text-muted-foreground">{t("failedToLoadAnalytics")}</div>;
+  if (error || !data) {
+    return (
+      <div className="p-3 sm:p-4 lg:p-6">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-8 text-center">
+          <p className="text-sm text-destructive">{t("failedToLoadAnalytics")}</p>
+          <button
+            type="button"
+            onClick={() => fetchAnalyticsData()}
+            className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+          >
+            {tc("tryAgain")}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const { kpis, monthly, participation, performance = DEFAULT_PERFORMANCE, topAgents } = data;

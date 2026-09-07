@@ -10,6 +10,7 @@ import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notifyStatusChange } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { normalizeWorkflowStages } from "@/lib/hiring/pipeline";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
@@ -70,12 +71,16 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
-  const application = await Application.findById(params?.id).populate("jobId", "employerId title agentId");
+  const application = await Application.findById(params?.id).populate("jobId", "employerId title agentId workflow");
   if (!application) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
   // Ownership check for employers — capture emp for automation rules below
   let emp = null as EmpLean | null;
-  const jobDoc = application.jobId as unknown as { employerId: string; agentId?: unknown };
+  const jobDoc = application.jobId as unknown as {
+    employerId: string;
+    agentId?: unknown;
+    workflow?: { settings?: WorkflowSettings; stages?: WorkflowStage[] };
+  };
 
   if (ctx.role === "employer") {
     emp = (await Employer.findOne({ userId: ctx.userId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
@@ -132,7 +137,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // Auto-reject rule: if employer has autoRejectBelow threshold and aiMatchScore is being implicitly set
   // Also apply when aiMatchScore already exists and new status change would pass auto-reject threshold
-  const workflowSettings = emp?.workflow?.settings as WorkflowSettings | undefined;
+  const jobWorkflow = jobDoc?.workflow;
+  const workflowSettings = (jobWorkflow?.settings ?? emp?.workflow?.settings) as WorkflowSettings | undefined;
   const autoRejectBelow = workflowSettings?.autoRejectBelow;
   const notifyOnStageChange = workflowSettings?.notifyOnStageChange ?? true;
 
@@ -175,18 +181,21 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     });
   }
 
-  // AutoProgress: if the current stage has autoProgress enabled, advance to the next enabled stage
-  const workflowStages = emp?.workflow?.stages;
+  // AutoProgress: the job's own workflow wins; otherwise the employer default.
+  // Stage ids are normalised so legacy editor ids ("new", "offer_extended", …)
+  // can never be written into Application.status.
+  const rawStages = jobWorkflow?.stages?.length ? jobWorkflow.stages : emp?.workflow?.stages;
+  const workflowStages = Array.isArray(rawStages) ? normalizeWorkflowStages(rawStages) : [];
   if (
-    Array.isArray(workflowStages) &&
     workflowStages.length > 0 &&
     application.status !== "rejected" &&
     application.status !== "withdrawn"
   ) {
-    const sorted = [...workflowStages].sort((a, b) => a.order - b.order);
-    const currentIdx = sorted.findIndex((s) => s.id === application.status && s.enabled);
-    if (currentIdx >= 0 && sorted[currentIdx].autoProgress) {
-      const next = sorted.slice(currentIdx + 1).find((s) => s.enabled && s.id !== "rejected");
+    const currentIdx = workflowStages.findIndex((s) => s.id === application.status && s.enabled);
+    if (currentIdx >= 0 && workflowStages[currentIdx].autoProgress) {
+      const next = workflowStages
+        .slice(currentIdx + 1)
+        .find((s) => s.enabled && s.id !== "rejected" && s.id !== "withdrawn");
       if (next) {
         application.status = next.id;
         application.statusHistory.push({

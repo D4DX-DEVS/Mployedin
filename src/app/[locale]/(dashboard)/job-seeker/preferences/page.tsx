@@ -702,12 +702,6 @@ export default function JobPreferencesPage() {
 
         {/* ── Save controls ───────────────────────────────────────────── */}
         <div className="flex min-h-9 min-w-0 flex-wrap items-center justify-end gap-3">
-          {saving && (
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              {t("saving")}
-            </span>
-          )}
           {saveState === "saved" && !saving && !isDirty && (
             <span className="text-sm font-medium text-green-600 flex items-center gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5" />

@@ -13,13 +13,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  FolderOpen, Plus, Trash2, Edit, Search, Inbox,
+  FolderOpen, Plus, Trash2, Edit, Search,
   FileText, Image, Video, Upload, Download, Eye,
   Tag, Shield, History, BarChart2, Save, Users,
   Package, Activity,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
@@ -74,6 +75,7 @@ function formatFileSize(bytes: number): string {
 export default function AdminResourcesPage() {
   const t = useTranslations("resources");
   const tc = useTranslations("common");
+  const ta = useTranslations("a11y");
 
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -240,8 +242,8 @@ export default function AdminResourcesPage() {
         footer={
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
             <div className="relative min-w-52 flex-1">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
+              <Search className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label={t("searchPlaceholder")} placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 ps-9 text-sm sm:h-9" />
             </div>
             <SearchableSelect options={filterCategoryOptions} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("categories.all")} />
             <SearchableSelect options={sortOptions} value={sortBy} onValueChange={setSortBy} placeholder={t("sortByPlaceholder")} />
@@ -258,18 +260,15 @@ export default function AdminResourcesPage() {
           {[1, 2, 3, 4].map((i) => (<div key={i} className="h-48 animate-pulse rounded-2xl bg-background/70" />))}
         </div>
       ) : items.length === 0 ? (
-        <section className="workspace-panel-surface rounded-3xl p-10 sm:p-14 text-center">
-          <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel card-pad rounded-2xl mb-5">
-              <Inbox className="h-8 w-8 text-muted-foreground/50" />
-            </div>
-            <h3 className="heading-subsection font-semibold text-foreground">{t("noResources")}</h3>
-            <p className="mt-2 text-sm text-muted-foreground max-w-sm">{t("noResourcesHint")}</p>
-            <Button onClick={() => { resetForm(); setShowForm(true); }} variant="outline" className="mt-6 gap-2">
+        <EmptyState
+          title={t("noResources")}
+          description={t("noResourcesHint")}
+          action={
+            <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
               <Plus className="h-4 w-4" /> {t("addResource")}
             </Button>
-          </div>
-        </section>
+          }
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => {
@@ -316,9 +315,9 @@ export default function AdminResourcesPage() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-muted-foreground text-xs">{formatFileSize(f.size)}</span>
                         {f.contentType?.startsWith("image/") && (
-                          <button onClick={() => setPreviewUrl(f.url)} className="p-1 rounded-lg hover:bg-card transition-colors"><Eye className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                          <button aria-label={ta("preview")} onClick={() => setPreviewUrl(f.url)} className="p-1 rounded-lg hover:bg-card transition-colors"><Eye className="h-3.5 w-3.5 text-muted-foreground" /></button>
                         )}
-                        <button onClick={() => handleDownloadTrack(item, f)} className="p-1 rounded-lg hover:bg-card transition-colors"><Download className="h-3.5 w-3.5 text-primary" /></button>
+                        <button aria-label={ta("download")} onClick={() => handleDownloadTrack(item, f)} className="p-1 rounded-lg hover:bg-card transition-colors"><Download className="h-3.5 w-3.5 text-primary" /></button>
                       </div>
                     </div>
                   ))}
@@ -354,17 +353,17 @@ export default function AdminResourcesPage() {
               {detailItem.description && <p className="text-muted-foreground leading-relaxed">{detailItem.description}</p>}
               {detailItem.tags?.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">Tags</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">{t("tags")}</p>
                   <div className="flex flex-wrap gap-1.5">{detailItem.tags.map((tag) => (<Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>))}</div>
                 </div>
               )}
               <div className="grid grid-cols-3 gap-3">
-                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.downloadCount}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">Downloads</p></div>
-                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.files?.length}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">Files</p></div>
-                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.version}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">Version</p></div>
+                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.downloadCount}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">{t("downloads")}</p></div>
+                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.files?.length}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">{t("files")}</p></div>
+                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.version}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">{t("version")}</p></div>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">Files</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">{t("files")}</p>
                 <div className="space-y-2">
                   {detailItem.files?.map((f) => (
                     <div key={f.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 chip-pad">
@@ -399,7 +398,7 @@ export default function AdminResourcesPage() {
           <DialogHeader><DialogTitle>{t("previewTitle")}</DialogTitle></DialogHeader>
           {previewUrl && (
             previewUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)/i)
-              ? <img src={previewUrl} alt="Preview" className="max-h-[65vh] w-full object-contain rounded-lg" />
+              ? <img src={previewUrl} alt={t("preview")} className="max-h-[65vh] w-full object-contain rounded-lg" />
               : <embed src={previewUrl} type="application/pdf" className="w-full h-[65vh] rounded-lg" />
           )}
           <div className="flex justify-end"><Button variant="outline" size="sm" onClick={() => window.open(previewUrl!, '_blank')}>{t("openInNewTab")}</Button></div>
@@ -470,8 +469,8 @@ export default function AdminResourcesPage() {
                   <Label className="text-sm font-medium">{t("category")}</Label>
                   {showNewCategory ? (
                     <div className="flex gap-2">
-                      <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="New category name..." className="h-10 flex-1" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const slug = newCategoryName.trim().toLowerCase().replace(/\s+/g, '_'); if (slug && !allCategoryOptions.find(c => c.value === slug)) { setCustomCategories(prev => [...prev, { value: slug, label: newCategoryName.trim() }]); setFormCategory(slug); } setNewCategoryName(''); setShowNewCategory(false); }}} />
-                      <Button type="button" size="sm" className="h-10 px-3" onClick={() => { const slug = newCategoryName.trim().toLowerCase().replace(/\s+/g, '_'); if (slug && !allCategoryOptions.find(c => c.value === slug)) { setCustomCategories(prev => [...prev, { value: slug, label: newCategoryName.trim() }]); setFormCategory(slug); } setNewCategoryName(''); setShowNewCategory(false); }}><Plus className="h-4 w-4" /></Button>
+                      <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder={t("newCategoryPlaceholder")} className="h-10 flex-1" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const slug = newCategoryName.trim().toLowerCase().replace(/\s+/g, '_'); if (slug && !allCategoryOptions.find(c => c.value === slug)) { setCustomCategories(prev => [...prev, { value: slug, label: newCategoryName.trim() }]); setFormCategory(slug); } setNewCategoryName(''); setShowNewCategory(false); }}} />
+                      <Button aria-label={ta("addCategory")} type="button" size="sm" className="h-10 px-3" onClick={() => { const slug = newCategoryName.trim().toLowerCase().replace(/\s+/g, '_'); if (slug && !allCategoryOptions.find(c => c.value === slug)) { setCustomCategories(prev => [...prev, { value: slug, label: newCategoryName.trim() }]); setFormCategory(slug); } setNewCategoryName(''); setShowNewCategory(false); }}><Plus className="h-4 w-4" /></Button>
                       <Button type="button" variant="ghost" size="sm" className="h-10 px-3" onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}>&#x2715;</Button>
                     </div>
                   ) : (

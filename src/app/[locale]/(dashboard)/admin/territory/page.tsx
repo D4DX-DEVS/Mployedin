@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Inbox, Plus, X, Edit2, Trash2, UserCheck, MapPin } from "lucide-react";
+import { Search, Plus, X, Edit2, Trash2, UserCheck, MapPin } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
@@ -149,28 +150,31 @@ export default function AdminTerritoryPage() {
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <div className="relative w-full sm:w-56">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={tr("searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-10 w-full rounded-xl border-border/70 bg-background/90 pl-8 text-sm"
-              />
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setShowForm((v) => !v)}
-              className="h-10 w-full gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:w-auto"
-            >
-              {showForm ? <><X className="h-3.5 w-3.5" /> {tr("cancelButtonLabel")}</> : <><Plus className="h-3.5 w-3.5" /> {tr("newTerritoryButtonLabel")}</>}
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={() => setShowForm((v) => !v)}
+            className="h-10 w-full gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:w-auto"
+          >
+            {showForm ? <><X className="h-3.5 w-3.5" /> {tr("cancelButtonLabel")}</> : <><Plus className="h-3.5 w-3.5" /> {tr("newTerritoryButtonLabel")}</>}
+          </Button>
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {/* Search sits with the list it filters, not in the header: stacked with
+            the action button on a phone it made this header 187px — taller than
+            the same header on desktop. */}
+        <div className="border-b border-border/60 px-3 py-3 sm:px-4">
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input aria-label={tr("searchPlaceholder")}
+              placeholder={tr("searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-11 w-full rounded-xl border-border/70 bg-background/90 ps-8 text-sm sm:h-9"
+            />
+          </div>
+        </div>
         {/* Inline create form */}
         {showForm && (
           <div className="border-b border-border/60 bg-secondary/30 px-5 py-4">
@@ -178,7 +182,7 @@ export default function AdminTerritoryPage() {
               <h3 className="heading-label font-semibold text-foreground">{tr("createTerritoryFormHeading")}</h3>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">{tr("territoryNameLabel")} <span className="text-destructive">*</span></label>
-                <Input
+                <Input aria-label={tr("territoryNameLabel")}
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                   required
@@ -224,22 +228,21 @@ export default function AdminTerritoryPage() {
               ))}
             </div>
           ) : territories.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <Inbox className="h-6 w-6 text-muted-foreground/50" />
-              <p className="text-sm font-medium text-foreground">{tr("emptyStateTitle")}</p>
-              <p className="max-w-xs text-xs leading-5 text-muted-foreground">{tr("emptyStateDescription")}</p>
-              {/* Action lives inside the empty state — "use the button above"
-                  sent the user hunting back up the page. */}
-              {!showForm && (
-                <Button
-                  size="sm"
-                  onClick={() => setShowForm(true)}
-                  className="mt-2 h-10 gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                >
-                  <Plus className="h-3.5 w-3.5" /> {tr("createTerritoryFormHeading")}
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              title={tr("emptyStateTitle")}
+              description={tr("emptyStateDescription")}
+              action={
+                !showForm && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowForm(true)}
+                    className="h-10 gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> {tr("createTerritoryFormHeading")}
+                  </Button>
+                )
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {territories.map((t) => (
@@ -287,7 +290,7 @@ export default function AdminTerritoryPage() {
           <form onSubmit={handleEdit} className="space-y-4">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">{tr("nameLabel")}</label>
-              <Input value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} required className="h-9" />
+              <Input aria-label={tr("nameLabel")} value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} required className="h-9" />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">{tr("countriesLabel")}</label>

@@ -96,6 +96,7 @@ const STATUS_OPTIONS = [
 export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }: UninvoicedPlacementsQueueProps) {
   const t = useTranslations("uninvoicedPlacementsQueue");
   const tCommon = useTranslations("common");
+  const ta = useTranslations("a11y");
   const [placements, setPlacements] = useState<UninvoicedPlacement[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -271,7 +272,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="heading-subsection font-semibold text-foreground">{t("uninvoicedPlacements")}</h3>
+          <h2 className="heading-subsection font-semibold text-foreground">{t("uninvoicedPlacements")}</h2>
           <p className="text-xs text-muted-foreground">
             {t("placementsPending", { count: total })}
           </p>
@@ -281,6 +282,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-9 w-48 rounded-lg pl-8 text-sm"
+              aria-label={t("searchPlacements")}
               placeholder={t("searchPlacements")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -333,7 +335,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/60 hover:bg-secondary/60">
                 <TableHead className="w-12">
-                  <button onClick={toggleSelectAll} className="flex h-5 w-5 items-center justify-center rounded hover:bg-secondary">
+                  <button aria-label={selected.size === placements.length && placements.length > 0 ? ta("deselectAll") : ta("selectAll")} onClick={toggleSelectAll} className="flex h-5 w-5 items-center justify-center rounded hover:bg-secondary">
                     {selected.size === placements.length && placements.length > 0 ? (
                       <CheckSquare className="h-4 w-4 text-emerald-600" />
                     ) : (
@@ -391,7 +393,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                       onClick={() => toggleSelect(p._id)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => toggleSelect(p._id)} className="flex h-5 w-5 items-center justify-center rounded">
+                        <button aria-label={ta("selectRow")} onClick={() => toggleSelect(p._id)} className="flex h-5 w-5 items-center justify-center rounded">
                           {isSelected ? (
                             <CheckSquare className="h-4 w-4 text-emerald-600" />
                           ) : (
@@ -482,7 +484,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                             )}
                             Quick
                           </Button>
-                          <button
+                          <button aria-label={isExpanded ? ta("collapse") : ta("expand")}
                             onClick={() => toggleExpand(p._id)}
                             className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-secondary"
                           >

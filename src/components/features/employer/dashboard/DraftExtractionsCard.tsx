@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/useConfirm";
 import { relativeTime } from "@/lib/relativeTime";
+import { DraftRow } from "./DraftRow";
 
 interface DraftSummary {
   _id: string;
@@ -30,9 +31,10 @@ interface DraftExtractionsCardProps {
   /**
    * Visual variant — controls whether the component renders as a standalone
    * dashboard card (default) or as a slim banner for embedding on the jobs
-   * list page above filters.
+   * list page above filters. `rows` = bare list rows for the dashboard
+   * DraftsCard tabs (no wrapper/header).
    */
-  variant?: "card" | "banner";
+  variant?: "card" | "banner" | "rows";
   /** Reports draft count after each fetch/discard so a parent layout can react (e.g. hide or resize a shared grid). */
   onCountChange?: (count: number) => void;
 }
@@ -138,6 +140,37 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
           ))}
         </div>
       </div>
+    );
+  }
+
+  // ── Rows variant (employer dashboard DraftsCard tab) ────────────────────
+  if (variant === "rows") {
+    return (
+      <ul className="flex flex-1 flex-col divide-y divide-border/60 [&>li]:flex-1">
+        {ConfirmDialogNode}
+        {drafts.slice(0, 3).map((d) => (
+          <DraftRow
+            key={d._id}
+            href={continueHref(d._id)}
+            icon={FileText}
+            accent="text-violet-600"
+            title={d.fileName}
+            meta={
+              <>
+                <span>{t("jobsRemaining", { remaining: d.remainingCount, total: d.totalJobs })}</span>
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  {relativeTime(d.updatedAt, locale)}
+                </span>
+              </>
+            }
+            cta={t("continue")}
+            discardLabel={t("discardAriaLabel")}
+            discarding={discardingId === d._id}
+            onDiscard={() => handleDiscard(d)}
+          />
+        ))}
+      </ul>
     );
   }
 

@@ -5,14 +5,16 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Crown, Download, Settings, Plus, RefreshCw } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
+import type { DashboardHeaderMetric } from "@/components/shared/DashboardPageHeader";
 
 interface SubscriptionHeroProps {
   onRefresh?: () => void;
   onExport?: () => void;
   isRefreshing?: boolean;
+  metrics?: readonly DashboardHeaderMetric[];
 }
 
-export function SubscriptionHero({ onRefresh, onExport, isRefreshing }: SubscriptionHeroProps) {
+export function SubscriptionHero({ onRefresh, onExport, isRefreshing, metrics }: SubscriptionHeroProps) {
   const t = useTranslations("subscriptionHero");
   const { locale } = useParams<{ locale: string }>();
 
@@ -22,6 +24,7 @@ export function SubscriptionHero({ onRefresh, onExport, isRefreshing }: Subscrip
       eyebrow={t("eyebrow")}
       icon={Crown}
       description={t("pageDescription")}
+      metrics={metrics}
       actions={
         <>
           {onRefresh && (

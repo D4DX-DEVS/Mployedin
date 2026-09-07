@@ -16,6 +16,7 @@ export default function NewStaticPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const t = useTranslations("adminCmsStaticPagesNew");
+  const ta = useTranslations("a11y");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -59,7 +60,7 @@ export default function NewStaticPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={(
-          <Button
+          <Button aria-label={ta("back")}
             variant="ghost"
             size="icon"
             onClick={() => router.push(`/${locale}/admin/cms/static-pages`)}
@@ -170,6 +171,7 @@ export default function NewStaticPage() {
             {bodyTab === "code" ? (
               <Textarea
                 id="body"
+                aria-label={t("bodyEnglishHeading")}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 required
@@ -221,6 +223,7 @@ export default function NewStaticPage() {
             {bodyArTab === "code" ? (
               <Textarea
                 id="bodyAr"
+                aria-label={t("bodyArabicHeading")}
                 value={bodyAr}
                 onChange={(e) => setBodyAr(e.target.value)}
                 placeholder={t("bodyArabicPlaceholder")}

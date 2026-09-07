@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import { Sparkles } from "lucide-react";
 
-import { AIChatDraftsCard } from "./AIChatDraftsCard";
-import { DraftExtractionsCard } from "./DraftExtractionsCard";
-import { DraftJobsCard } from "./DraftJobsCard";
+import { DraftsCard } from "./DraftsCard";
 
 interface DashboardInsightsRowProps {
   locale: string;
@@ -13,28 +13,35 @@ interface DashboardInsightsRowProps {
 }
 
 /**
- * Two-column dashboard row: AI recommendations on the left, draft/resume cards
- * on the right. The draft cards self-hide when empty, so the column count is
- * driven by their reported counts — with nothing to resume the AI card takes
- * the full width instead of leaving a dead half-row.
+ * Two-column dashboard row: match estimates on the left, one tabbed
+ * "Drafts to resume" card on the right. The drafts card self-hides when
+ * empty, so with nothing to resume the match card takes the full width
+ * instead of leaving a dead half-row.
+ *
+ * Both cards are header + ≤3 list rows, so the grid's default stretch keeps
+ * their tops and bottoms level without opening a void in either. The
+ * assistive note about match estimates sits under the row as a caption
+ * rather than as a card footer — as a footer it was the thing being pushed
+ * to the bottom of a much taller stretched card.
  */
 export function DashboardInsightsRow({ locale, children }: DashboardInsightsRowProps) {
-  const [jobDrafts, setJobDrafts] = useState(0);
-  const [chatDrafts, setChatDrafts] = useState(0);
-  const [extractionDrafts, setExtractionDrafts] = useState(0);
-
-  const hasDrafts = jobDrafts + chatDrafts + extractionDrafts > 0;
+  const t = useTranslations("employerDashboard.aiRecommended");
+  const [draftCount, setDraftCount] = useState(0);
+  const hasDrafts = draftCount > 0;
 
   return (
-    <div className={`grid gap-3 sm:gap-4 ${hasDrafts ? "lg:grid-cols-2" : "grid-cols-1"}`}>
-      <div className="min-w-0">{children}</div>
-      {/* h-full on the cards + stretch alignment keeps both columns level. */}
-      {/* Stays mounted while empty so the cards can report their counts. */}
-      <div className={`min-w-0 flex-col gap-3 sm:gap-4 [&>section]:flex-1 ${hasDrafts ? "flex" : "hidden"}`}>
-        <DraftJobsCard locale={locale} onCountChange={setJobDrafts} />
-        <AIChatDraftsCard locale={locale} onCountChange={setChatDrafts} />
-        <DraftExtractionsCard locale={locale} onCountChange={setExtractionDrafts} />
+    <div>
+      <div className={`grid gap-3 sm:gap-4 ${hasDrafts ? "lg:grid-cols-2" : "grid-cols-1"}`}>
+        <div className="min-w-0">{children}</div>
+        {/* Stays mounted while empty so the card can report its count. */}
+        <div className={`min-w-0 ${hasDrafts ? "" : "hidden"}`}>
+          <DraftsCard locale={locale} onCountChange={setDraftCount} />
+        </div>
       </div>
+      <p className="mt-2 flex items-start gap-2 px-1 text-xs leading-5 text-muted-foreground">
+        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600" aria-hidden="true" />
+        <span>{t("assistiveNote")}</span>
+      </p>
     </div>
   );
 }

@@ -148,17 +148,18 @@ export default function AdminUserImpersonatePage() {
         compactOnMobile
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
+                aria-label={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("searchPlaceholder")}
-                className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-64"
+                className="h-11 w-48 rounded-lg border-border bg-secondary/65 ps-8 text-sm shadow-none sm:h-9 sm:w-64"
               />
             </div>
           </div>

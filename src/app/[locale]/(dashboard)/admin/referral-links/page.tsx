@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { DashboardPageHeader, type DashboardHeaderMetric } from "@/components/shared/DashboardPageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
@@ -27,6 +27,7 @@ import {
   ChevronUp,
   Copy,
   Link2,
+  TrendingUp,
 } from "lucide-react";
 
 function formatDate(d: string | undefined): string {
@@ -66,6 +67,7 @@ function creatorEmail(link: ReferralLinkItem): string {
 
 export default function AdminReferralLinksPage() {
   const t = useTranslations("adminReferralLinks");
+  const ta = useTranslations("a11y");
   const { locale } = useParams<{ locale: string }>();
   const { page, limit, setPage, setLimit, resetPage } = usePagination();
   const [search, setSearch] = useState("");
@@ -100,6 +102,13 @@ export default function AdminReferralLinksPage() {
   const activeLinks = data?.stats?.activeLinks ?? 0;
   const totalRegistrations = data?.stats?.totalRegistrations ?? 0;
 
+  const headerMetrics: readonly DashboardHeaderMetric[] = [
+    { label: t("totalLinks"), value: serverTotal, icon: Link2, iconSurfaceClassName: "bg-blue-50", iconClassName: "text-blue-600" },
+    { label: t("activeLinks"), value: activeLinks, icon: Check, iconSurfaceClassName: "bg-emerald-50", iconClassName: "text-emerald-600" },
+    { label: t("totalRegistrations"), value: totalRegistrations, icon: Building2, iconSurfaceClassName: "bg-indigo-50", iconClassName: "text-indigo-600" },
+    { label: t("avgRegistrationsPerLink"), value: serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0", icon: TrendingUp, iconSurfaceClassName: "bg-amber-50", iconClassName: "text-amber-600" },
+  ];
+
   const exportColumns: ExportColumn<ReferralLinkItem>[] = [
     { header: t("tableHeaderCode"), key: "code" as keyof ReferralLinkItem },
     { header: t("tableHeaderCreator"), key: "createdBy" as keyof ReferralLinkItem, formatter: (_v, r) => creatorName(r as unknown as ReferralLinkItem) },
@@ -119,27 +128,7 @@ export default function AdminReferralLinksPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compact compactOnMobile />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card card-pad">
-          <p className="text-xs font-medium text-muted-foreground">{t("totalLinks")}</p>
-          <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card card-pad">
-          <p className="text-xs font-medium text-muted-foreground">{t("activeLinks")}</p>
-          <p className="mt-1 text-xl sm:text-2xl font-bold text-green-600">{activeLinks}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card card-pad">
-          <p className="text-xs font-medium text-muted-foreground">{t("totalRegistrations")}</p>
-          <p className="mt-1 text-xl sm:text-2xl font-bold text-blue-600">{totalRegistrations}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card card-pad">
-          <p className="text-xs font-medium text-muted-foreground">{t("avgRegistrationsPerLink")}</p>
-          <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0"}</p>
-        </div>
-      </div>
+      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compact compactOnMobile metrics={headerMetrics} />
 
       {/* Search */}
       <TableToolbar
@@ -153,7 +142,7 @@ export default function AdminReferralLinksPage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="rounded-xl border border-border overflow-hidden">
+        <div className="workspace-panel-surface overflow-hidden rounded-2xl">
           <Table>
             <TableHeader>
               <TableRow>
@@ -188,7 +177,7 @@ export default function AdminReferralLinksPage() {
           <p className="text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden">
+        <div className="workspace-panel-surface overflow-hidden rounded-2xl">
           <Table>
             <TableHeader>
               <TableRow>
@@ -249,7 +238,7 @@ export default function AdminReferralLinksPage() {
                           >
                             {link.isActive ? t("buttonDisable") : t("buttonEnable")}
                           </Button>
-                          <Button
+                          <Button aria-label={isExpanded ? ta("collapse") : ta("expand")}
                             variant="ghost"
                             size="sm"
                             className="h-7 px-1.5"

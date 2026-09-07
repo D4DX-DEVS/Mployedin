@@ -6,4 +6,5 @@ export { AIRecommendedCandidatesCard } from "./AIRecommendedCandidatesCard";
 export { DraftExtractionsCard } from "./DraftExtractionsCard";
 export { DraftJobsCard } from "./DraftJobsCard";
 export { AIChatDraftsCard } from "./AIChatDraftsCard";
+export { DraftsCard } from "./DraftsCard";
 export { DashboardInsightsRow } from "./DashboardInsightsRow";

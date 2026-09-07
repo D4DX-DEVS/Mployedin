@@ -72,6 +72,10 @@ interface JobFormWizardProps {
   /** Dashboard segment this wizard is mounted under. Drives post-save redirects
    *  and, for "admin", the on-behalf-of employer picker the API requires. */
   basePath?: "employer" | "admin";
+  /** The wizard owns the only heading on employer/jobs/new, but admin/jobs/new
+   *  renders its own PageHeader above it — two h1s on one page. Callers that
+   *  already have an h1 pass 2. */
+  headingLevel?: 1 | 2;
 }
 
 interface EmployerOption {
@@ -139,7 +143,7 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
   };
 }
 
-export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employer" }: JobFormWizardProps) {
+export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employer", headingLevel = 1 }: JobFormWizardProps) {
   const router = useRouter();
   const isAdmin = basePath === "admin";
   const [employerOptions, setEmployerOptions] = useState<EmployerOption[]>([]);
@@ -519,6 +523,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     <div className="page-container">
       <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 shadow-sm card-pad">
         <PageHeader
+          headingLevel={headingLevel}
           title={t("title")}
           description={t("description")}
           className="pb-0"

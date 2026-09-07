@@ -11,7 +11,7 @@ import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerCreateSchema } from "@/lib/validators/offers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { escapeRegex } from "@/lib/security/sanitize";
+import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
@@ -96,6 +96,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   const jobId = searchParams.get("jobId") ?? "";
   if (jobId) query.jobId = jobId;
+
+  const applicationId = searchParams.get("applicationId") ?? "";
+  if (applicationId && isValidObjectId(applicationId)) query.applicationId = applicationId;
 
   // Search by candidate name or job title via populated lookup
   if (search) {

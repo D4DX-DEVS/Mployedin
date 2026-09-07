@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   type MatchingWeightTemplatePayload,
 } from "@/hooks/useMatchingWeightTemplates";
 import type { MatchingWeights } from "@/hooks/useMatchingWeights";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
   skills: 40,
@@ -59,6 +61,8 @@ function templateToForm(t: MatchingWeightTemplateItem): TemplateFormState {
 
 export default function AdminMatchingWeightTemplatesPage() {
   const tr = useTranslations("adminMatchingWeightTemplates");
+  const ta = useTranslations("a11y");
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const { data: templates, isLoading } = useAdminMatchingWeightTemplates();
   const createMut = useCreateAdminMatchingWeightTemplate();
   const updateMut = useUpdateAdminMatchingWeightTemplate();
@@ -116,7 +120,14 @@ export default function AdminMatchingWeightTemplatesPage() {
     closeForm();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, name: string) => {
+    const ok = await confirmDialog({
+      title: tr("deleteConfirmTitle"),
+      message: tr("deleteConfirmMessage", { name }),
+      confirmLabel: tr("deleteConfirmAction"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     await deleteMut.mutateAsync(id);
   };
 
@@ -152,6 +163,7 @@ export default function AdminMatchingWeightTemplatesPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <DashboardPageHeader
         compact
         title={tr("pageTitle")}
@@ -168,10 +180,10 @@ export default function AdminMatchingWeightTemplatesPage() {
       {showForm && (
         <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-5 panel-body">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="heading-subsection font-semibold text-foreground">
+            <h2 className="heading-subsection font-semibold text-foreground">
               {editId ? tr("editFormTitle") : tr("createFormTitle")}
-            </h3>
-            <button onClick={closeForm} className="shrink-0 text-muted-foreground hover:text-foreground">
+            </h2>
+            <button aria-label={ta("close")} onClick={closeForm} className="shrink-0 text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -179,7 +191,7 @@ export default function AdminMatchingWeightTemplatesPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">{tr("nameLabel")}</label>
-              <Input
+              <Input aria-label={tr("nameLabel")}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder={tr("namePlaceholder")}
@@ -188,7 +200,7 @@ export default function AdminMatchingWeightTemplatesPage() {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">{tr("descriptionLabel")}</label>
-              <Input
+              <Input aria-label={tr("descriptionLabel")}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder={tr("descriptionPlaceholder")}
@@ -204,7 +216,7 @@ export default function AdminMatchingWeightTemplatesPage() {
               {form.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="gap-1">
                   {tag}
-                  <button onClick={() => removeTag(tag)} className="ml-1 text-muted-foreground hover:text-foreground">
+                  <button aria-label={ta("removeTag")} onClick={() => removeTag(tag)} className="ml-1 text-muted-foreground hover:text-foreground">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -218,7 +230,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                   className="h-8 w-32"
                   maxLength={50}
                 />
-                <Button size="dense" variant="ghost" onClick={addTag} className="">
+                <Button aria-label={ta("addTag")} size="dense" variant="ghost" onClick={addTag} className="">
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -285,16 +297,16 @@ export default function AdminMatchingWeightTemplatesPage() {
 
       {/* ─── Template List ─── */}
       {!templates?.length && !showForm ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background/60 py-16 text-center">
-          <Scale className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">{tr("emptyStateTitle")}</p>
-          <p className="mb-4 mt-1 text-xs text-muted-foreground">
-            {tr("emptyStateDescription")}
-          </p>
-          <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> {tr("createFirstButton")}
-          </Button>
-        </div>
+        <EmptyState
+          icon={Scale}
+          title={tr("emptyStateTitle")}
+          description={tr("emptyStateDescription")}
+          action={
+            <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl">
+              <Plus className="h-3.5 w-3.5" /> {tr("createFirstButton")}
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {templates?.map((t) => {
@@ -310,7 +322,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <Scale className="h-4 w-4 text-sky-600" />
-                      <h4 className="text-sm font-semibold text-foreground">{t.name}</h4>
+                      <h2 className="text-sm font-semibold text-foreground">{t.name}</h2>
                       {t.isDefault && (
                         <Badge variant="secondary" className="gap-1 text-[11px]">
                           <Shield className="h-3 w-3" /> {tr("defaultBadge")}
@@ -335,7 +347,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
+                    <Button aria-label={isExpanded ? ta("collapse") : ta("expand")}
                       variant="ghost"
                       size="sm"
                       onClick={() => setExpandedId(isExpanded ? null : t._id)}
@@ -343,7 +355,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                     >
                       {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
-                    <Button
+                    <Button aria-label={ta("edit")}
                       variant="ghost"
                       size="sm"
                       onClick={() => openEdit(t)}
@@ -354,8 +366,9 @@ export default function AdminMatchingWeightTemplatesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(t._id)}
+                      onClick={() => handleDelete(t._id, t.name)}
                       disabled={deleteMut.isPending}
+                      aria-label={tr("deleteButtonLabel")}
                       className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />

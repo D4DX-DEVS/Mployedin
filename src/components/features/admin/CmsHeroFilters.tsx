@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ChevronDown, ChevronUp, Filter, RotateCcw, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type CmsFilterField =
   | {
@@ -50,6 +51,8 @@ interface CmsHeroFiltersProps {
   showFilters: boolean;
   onToggleFilters: () => void;
   searchPlaceholder?: string;
+  /** Render inside the list panel's toolbar rather than the page header. */
+  inToolbar?: boolean;
 }
 
 export function getDefaultCmsFilterValues(): CmsFilterValues {
@@ -105,6 +108,7 @@ export default function CmsHeroFilters({
   showFilters,
   onToggleFilters,
   searchPlaceholder = "Search...",
+  inToolbar = false,
 }: CmsHeroFiltersProps) {
   const t = useTranslations("cms");
   const hasSearch = fields.some((f) => f.type === "search");
@@ -121,7 +125,15 @@ export default function CmsHeroFilters({
 
   return (
     <>
-      <div className="mt-6 flex items-center justify-between border-t border-border/30 pt-5">
+      <div
+        className={cn(
+          "flex items-center justify-between",
+          // In the list toolbar it is the first thing in the panel, so it needs
+          // its own padding and no separator above it. In the header (legacy
+          // callers) it still hangs off the bottom of the hero.
+          inToolbar ? "px-3 pt-3 sm:px-4" : "mt-6 border-t border-border/30 pt-5"
+        )}
+      >
         <button
           type="button"
           onClick={onToggleFilters}
@@ -155,12 +167,20 @@ export default function CmsHeroFilters({
       </div>
 
       {showFilters && (
-        <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
+        <div
+          className={cn(
+            "space-y-3 border-border/30 bg-background/40 card-pad",
+            inToolbar
+              ? "mt-3 border-y sm:mx-4 sm:rounded-2xl sm:border"
+              : "mt-4 rounded-3xl border backdrop-blur-sm"
+          )}
+        >
           {hasSearch && (
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
                 value={values.search}
                 onChange={(e) => onChange({ ...values, search: e.target.value })}
                 className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"

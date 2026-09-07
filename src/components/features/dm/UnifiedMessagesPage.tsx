@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConversations, conversationKeys } from "@/hooks/useConversations";
 import type { Conversation } from "@/hooks/useConversations";
 
@@ -141,12 +143,15 @@ export function UnifiedMessagesPage({
     if (!ticketMessage.trim()) return;
     setTicketSubmitting(true);
     try {
-      const res = await fetch("/api/dm/customer-care", {
+      const res = await csrfFetch("/api/dm/customer-care", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category: ticketCategory, message: ticketMessage.trim() }),
       });
-      if (!res.ok) throw new Error("Failed to create ticket");
+      if (!res.ok) {
+        toast.error(t("ticketCreateFailed"));
+        return;
+      }
       const data = await res.json();
       const convId = data.conversation?._id;
       queryClient.invalidateQueries({ queryKey: ["customerCareConversations"] });
@@ -163,12 +168,15 @@ export function UnifiedMessagesPage({
   async function handleReopenTicket(conversationId: string) {
     setReopening(true);
     try {
-      const res = await fetch(`/api/dm/customer-care/${conversationId}/manage`, {
+      const res = await csrfFetch(`/api/dm/customer-care/${conversationId}/manage`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "open" }),
       });
-      if (!res.ok) throw new Error("Failed to re-open ticket");
+      if (!res.ok) {
+        toast.error(t("ticketReopenFailed"));
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["customerCareConversations"] });
     } finally {
       setReopening(false);
@@ -195,12 +203,18 @@ export function UnifiedMessagesPage({
   ) {
     setTicketUpdating(intent);
     try {
-      const res = await fetch(`/api/dm/customer-care/${conversationId}/manage`, {
+      const res = await csrfFetch(`/api/dm/customer-care/${conversationId}/manage`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
-      if (!res.ok) throw new Error("Failed to update ticket");
+      if (!res.ok) {
+        // Surfacing this as a toast rather than throwing: the throw escaped the
+        // handler (there was a `finally` but no `catch`) and Next rendered its
+        // full-screen error overlay, so a rejected request looked like a crash.
+        toast.error(t("ticketUpdateFailed"));
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["customerCareConversations"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "action-counts"] });
     } finally {

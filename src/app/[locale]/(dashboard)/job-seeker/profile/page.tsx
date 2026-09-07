@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { JobSeekerSectionNav, PROFILE_SECTION_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
@@ -96,7 +97,7 @@ type ChecklistStep = {
   icon: React.ElementType;
 };
 
-type ChecklistLabels = Record<"cv" | "skills" | "experience" | "education" | "personal" | "preferences" | "documents" | "portfolio", string>;
+type ChecklistLabels = Record<"cv" | "skills" | "experience" | "education" | "personal" | "preferences" | "documents", string>;
 
 function buildChecklist(profile: ProfileData | null, labels: ChecklistLabels): ChecklistStep[] {
   return [
@@ -105,7 +106,6 @@ function buildChecklist(profile: ProfileData | null, labels: ChecklistLabels): C
     { id: "experience",  label: labels.experience,  bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv",                    icon: Briefcase     },
     { id: "education",   label: labels.education,   bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv",                    icon: GraduationCap },
     { id: "documents",   label: labels.documents,   bonus: "+5%",  done: (profile?.documents?.length ?? 0) > 0,     href: "./documents",             icon: FileText      },
-    { id: "portfolio",   label: labels.portfolio,   bonus: "+5%",  done: (profile?.projects?.length ?? 0) > 0,       href: "./portfolio",             icon: FolderKanban   },
     { id: "personal",    label: labels.personal,    bonus: "+10%", done: !!(profile?.dateOfBirth || profile?.nationality), href: "./profile/personal-details", icon: UserCircle    },
     { id: "preferences", label: labels.preferences, bonus: "+15%", done: (profile?.preferredRoles?.length ?? 0) > 0,   href: "./preferences",           icon: Target        },
   ];
@@ -350,7 +350,6 @@ export default function JobSeekerProfilePage() {
     experience: t("checklist.experience"),
     education: t("checklist.education"),
     documents: t("checklist.documents"),
-    portfolio: t("checklist.portfolio"),
     personal: t("checklist.personal"),
     preferences: t("checklist.preferences"),
   });
@@ -465,6 +464,11 @@ export default function JobSeekerProfilePage() {
           </Button>
         }
       />
+
+      {/* CV, skills, documents, portfolio, personal details and preferences are
+          all parts of this profile. They used to be six separate entries in the
+          "More" menu, filed under a heading the seeker had to guess. */}
+      <JobSeekerSectionNav locale={locale} paths={PROFILE_SECTION_PATHS} />
 
       <div
         className="card-base border-primary/15 panel-body"

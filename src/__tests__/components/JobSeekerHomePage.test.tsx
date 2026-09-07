@@ -28,12 +28,27 @@ const translations: Record<string, unknown> = {
   defaults: {
     jobSeekerName: "باحث عن عمل",
   },
-  hero: {
-    addPreferredLocations: "أضف المواقع المفضلة",
-    setSalaryRange: "حدد نطاق الراتب",
-    browseMatchingJobs: "تصفح الوظائف المطابقة",
-    refine: "تحسين",
-    aiSuggestions: "اقتراحات الذكاء الاصطناعي",
+  greeting: {
+    hello: "مرحبًا، {name}",
+    morning: "صباح الخير، {name}",
+    afternoon: "مساء الخير، {name}",
+    evening: "مساء الخير، {name}",
+    subtitle: "لنجد فرصتك التالية.",
+    editPreferences: "تعديل التفضيلات",
+  },
+  search: {
+    placeholder: "ابحث عن وظائف",
+    submit: "بحث عن وظائف",
+    label: "البحث عن وظائف",
+  },
+  profileMini: {
+    title: "ملفك الشخصي",
+    improve: "تحسين الملف",
+    detailLeft: "أضف تفاصيل أخرى",
+  },
+  recentApplications: {
+    title: "التقديمات الأخيرة",
+    viewAll: "عرض كل الطلبات",
   },
   summary: {
     activeMatches: "0 تطابقات نشطة",
@@ -132,6 +147,11 @@ jest.mock("next/link", () => ({
   ),
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => "/ar/job-seeker",
+}));
+
 jest.mock("next-intl", () => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTranslations: () => (key: string) => getByPath(translations, key) ?? key,
@@ -165,19 +185,46 @@ describe("JobSeekerHomePage", () => {
     }) as unknown as typeof fetch;
   });
 
-  it("renders Arabic home labels and suggestions when locale is ar", async () => {
+  it("opens on the search, not on a status dashboard", async () => {
     render(
       <JobSeekerHomePage locale="ar" initialData={initialData} userName="Muhammed Ilyas MK" />
     );
 
-    expect(await screen.findByText("تصفح الوظائف المطابقة")).toBeInTheDocument();
-    expect(screen.getByText("اقتراحات الذكاء الاصطناعي")).toBeInTheDocument();
-    expect(screen.getAllByText("ارفع سيرتك الذاتية").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "نظرة سريعة" })).toBeInTheDocument();
-    expect(screen.queryByText("نظرة سريعة على بحثك عن وظيفة")).not.toBeInTheDocument();
+    // What the seeker came to do.
+    expect(await screen.findByRole("search")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "بحث عن وظائف" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "وظائف موصى بها" })).toBeInTheDocument();
 
+    // The panels that made this page a dashboard about the seeker.
+    expect(screen.queryByText("نظرة سريعة")).not.toBeInTheDocument();
+    expect(screen.queryByText("رؤى الذكاء الاصطناعي اليومية")).not.toBeInTheDocument();
+    expect(screen.queryByText("إجراءات ذات أولوية")).not.toBeInTheDocument();
+    expect(screen.queryByText("أهم المهارات في ملفك")).not.toBeInTheDocument();
+
+    // The daily-insight request went with the panel that displayed it.
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith("/api/ai/daily-insights?locale=ar");
+      expect(global.fetch).not.toHaveBeenCalledWith("/api/ai/daily-insights?locale=ar");
     });
+  });
+
+  it("shows a next step only when something is actually waiting", async () => {
+    const { unmount } = render(
+      <JobSeekerHomePage locale="ar" initialData={initialData} userName="Muhammed Ilyas MK" />
+    );
+    // initialData has no offers, interviews or unread messages.
+    expect(screen.queryByText("الخطوة التالية المقترحة")).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <JobSeekerHomePage
+        locale="ar"
+        userName="Muhammed Ilyas MK"
+        initialData={{
+          ...initialData,
+          stats: { ...initialData.stats, upcomingInterviews: { count: 2 } },
+        }}
+      />
+    );
+    expect(await screen.findByText("الخطوة التالية المقترحة")).toBeInTheDocument();
   });
 });

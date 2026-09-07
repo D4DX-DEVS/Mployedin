@@ -236,8 +236,8 @@ export default function AdminExhibitionAnalyticsPage() {
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-72 rounded-3xl" />
-          <Skeleton className="h-72 rounded-3xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
         </div>
       </div>
     );
@@ -288,7 +288,7 @@ export default function AdminExhibitionAnalyticsPage() {
           Submitted row of the pipeline panel further down — three prints of two
           numbers. Budget and outcome figures are grouped and labelled here so
           the hero carries only the headline trio. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body panel-stack">
+      <section className="workspace-panel-surface rounded-2xl panel-body panel-stack">
         <div className="panel-stack">
           <p className="heading-label">{t("budgetDeliveryGroupLabel")}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -322,7 +322,7 @@ export default function AdminExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="workspace-panel-surface min-w-0 rounded-3xl panel-body">
+        <div className="workspace-panel-surface min-w-0 rounded-2xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
@@ -350,7 +350,7 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
         </div>
 
-        <div className="workspace-panel-surface rounded-3xl panel-body">
+        <div className="workspace-panel-surface rounded-2xl panel-body">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
@@ -376,7 +376,7 @@ export default function AdminExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="workspace-panel-surface min-w-0 rounded-3xl panel-body">
+        <div className="workspace-panel-surface min-w-0 rounded-2xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("participationMixTitle")}</h2>
@@ -435,7 +435,7 @@ export default function AdminExhibitionAnalyticsPage() {
           )}
         </div>
 
-        <div className="workspace-panel-surface rounded-3xl panel-body">
+        <div className="workspace-panel-surface rounded-2xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("topAgentsTitle")}</h2>

@@ -156,6 +156,7 @@ function mergeById<T extends { _id: string }>(current: T[], incoming: T[]): T[] 
 
 export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AED", searchScope = "standard", role = "agent", mode = "dialog" }: InvoiceBuilderProps) {
   const t = useTranslations("invoiceBuilder");
+  const ta = useTranslations("a11y");
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const dialogContentRef = useRef<HTMLDivElement>(null);
@@ -872,7 +873,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const headerContent = (
     <>
       <div className="flex items-center justify-between">
-        <h1 className={mode === "page" ? "text-xl font-bold" : "text-lg font-semibold"}>{t("newInvoice")}</h1>
+        {/* Page mode owns the document title; in dialog mode the page already has its h1. */}
+        {mode === "page" ? (
+          <h1 className="page-header-title font-bold">{t("newInvoice")}</h1>
+        ) : (
+          <h2 className="text-lg font-semibold">{t("newInvoice")}</h2>
+        )}
       </div>
       {/* Step indicator */}
       <div className="mt-3 flex items-center gap-1">
@@ -1282,7 +1288,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                           </span>
                         )}
                       </div>
-                      <button
+                      <button aria-label={ta("clearSelection")}
                         type="button"
                         onClick={() => { setSelectedJobId(""); setJobSearch(""); }}
                         className="shrink-0 rounded-full p-0.5 text-emerald-600 hover:bg-emerald-200"
@@ -1338,7 +1344,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     <>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
+                        <Input aria-label={t("searchJobsPlaceholder")}
                           id="inv-job-search"
                           className="h-10 rounded-lg pl-9 pr-3 text-sm"
                           placeholder={t("searchJobsPlaceholder")}
@@ -1659,7 +1665,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                   <span className="text-sm font-semibold">{formatCount(itemTotal, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </td>
                                 <td className="px-2 py-2">
-                                  <Button variant="ghost" size="sm" onClick={() => removeLineItem(i)} disabled={lineItems.length <= 1} className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                  <Button aria-label={ta("removeLineItem")} variant="ghost" size="sm" onClick={() => removeLineItem(i)} disabled={lineItems.length <= 1} className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></Button>
                                 </td>
                               </tr>
                               );

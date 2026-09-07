@@ -24,6 +24,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ interface WebhookItem {
 
 export default function AdminWebhooksPage() {
   const t = useTranslations("webhooks");
+  const ta = useTranslations("a11y");
   const {
     page, limit, total, totalPages,
     setPage, setLimit, updateTotal, resetPage, paginationParams,
@@ -97,6 +99,7 @@ export default function AdminWebhooksPage() {
 
   // Test ping
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Confirm dialog
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -112,6 +115,7 @@ export default function AdminWebhooksPage() {
 
   const fetchWebhooks = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params = paginationParams();
       if (search.trim()) params.set("search", search.trim());
@@ -123,13 +127,15 @@ export default function AdminWebhooksPage() {
         setWebhooks(data.webhooks || []);
         setStats(data.stats ?? { active: 0, inactive: 0, failed: 0, healthy: 0 });
         updateTotal(data.total ?? 0);
+      } else {
+        setLoadError(t("loadFailed"));
       }
     } catch {
-      toast.error(t("loadFailed"));
+      setLoadError(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, eventFilter, page, limit, paginationParams, updateTotal]);
+  }, [search, statusFilter, eventFilter, page, limit, paginationParams, updateTotal, t]);
 
   useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
   useEffect(() => {
@@ -445,7 +451,7 @@ export default function AdminWebhooksPage() {
                       <code className="flex-1 text-xs break-all font-mono bg-card p-2 rounded">
                         {newSecret}
                       </code>
-                      <Button variant="ghost" size="sm" onClick={copySecret}>
+                      <Button aria-label={ta("copy")} variant="ghost" size="sm" onClick={copySecret}>
                         {copiedSecret ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
@@ -466,7 +472,7 @@ export default function AdminWebhooksPage() {
                       <Input
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        placeholder="e.g. QuickBooks Integration"
+                        placeholder={t("namePlaceholderExample")}
                       />
                     </div>
                     <div className="field">
@@ -523,7 +529,7 @@ export default function AdminWebhooksPage() {
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl panel-body">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl panel-body">
 
         {/* ─── Filter toggle bar ──────────────────────────────────────── */}
         <div className="mt-6 flex items-center justify-between">
@@ -555,12 +561,13 @@ export default function AdminWebhooksPage() {
         {showFilters && (
           <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("searchPlaceholder")}
-                className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-4 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="h-11 w-full rounded-xl border border-border bg-card ps-9 pr-4 text-sm"
               />
             </div>
 
@@ -594,44 +601,49 @@ export default function AdminWebhooksPage() {
       </section>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="min-w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("name")}</TableHead>
-                <TableHead className="min-w-[200px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("url")}</TableHead>
-                <TableHead className="min-w-[180px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("events")}</TableHead>
-                <TableHead className="min-w-[80px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("active")}</TableHead>
-                <TableHead className="min-w-[110px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("lastTriggered")}</TableHead>
-                <TableHead className="min-w-[180px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.12em]">{t("actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableBodySkeleton rows={3} cols={6} />
-              ) : filteredWebhooks.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="h-44 text-center">
-                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
-                        <Inbox className="h-7 w-7 opacity-40" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{t("noWebhooksFound")}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {activeFilterCount > 0 ? t("tryAdjustingFilters") : t("webhooksWillAppearWhenConfigured")}
-                        </p>
-                      </div>
-                      {activeFilterCount > 0 && (
-                        <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
-                          {t("clearFiltersButton")}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {loadError ? (
+          <div className="p-6">
+            <ErrorState onRetry={fetchWebhooks} />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="min-w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("name")}</TableHead>
+                  <TableHead className="min-w-[200px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("url")}</TableHead>
+                  <TableHead className="min-w-[180px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("events")}</TableHead>
+                  <TableHead className="min-w-[80px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("active")}</TableHead>
+                  <TableHead className="min-w-[110px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("lastTriggered")}</TableHead>
+                  <TableHead className="min-w-[180px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.12em]">{t("actions")}</TableHead>
                 </TableRow>
-              ) : filteredWebhooks.map((wh) => (
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableBodySkeleton rows={3} cols={6} />
+                ) : filteredWebhooks.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="h-44 text-center">
+                      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
+                          <Inbox className="h-7 w-7 opacity-40" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{t("noWebhooksFound")}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {activeFilterCount > 0 ? t("tryAdjustingFilters") : t("webhooksWillAppearWhenConfigured")}
+                          </p>
+                        </div>
+                        {activeFilterCount > 0 && (
+                          <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
+                            {t("clearFiltersButton")}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredWebhooks.map((wh) => (
                 <TableRow key={wh._id} className="group transition-colors">
                   <TableCell className="px-4 py-3 font-medium">{wh.name}</TableCell>
                   <TableCell className="max-w-[200px] truncate px-4 py-3 text-xs font-mono text-muted-foreground">
@@ -725,7 +737,7 @@ export default function AdminWebhooksPage() {
                       <Button variant="ghost" size="sm" onClick={() => openEdit(wh)} className="h-8 px-2 text-xs">
                         {t("edit")}
                       </Button>
-                      <Button
+                      <Button aria-label={ta("delete")}
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDelete(wh._id)}
@@ -737,9 +749,10 @@ export default function AdminWebhooksPage() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </section>
       <PaginationControls
         page={page}
@@ -770,7 +783,7 @@ export default function AdminWebhooksPage() {
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">{logWebhook?.name}</p>
                 <p className="truncate text-xs font-mono text-muted-foreground">{logWebhook?.url}</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setLogDrawerOpen(false)} className="h-8 w-8 shrink-0 rounded-lg p-0">
+              <Button aria-label={ta("close")} variant="ghost" size="sm" onClick={() => setLogDrawerOpen(false)} className="h-8 w-8 shrink-0 rounded-lg p-0">
                 <X className="h-4 w-4" />
               </Button>
             </div>

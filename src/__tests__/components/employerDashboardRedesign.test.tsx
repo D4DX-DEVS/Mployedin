@@ -7,6 +7,7 @@ import { PriorityActions } from "@/components/features/employer/dashboard/Priori
 import { DashboardStatCards } from "@/components/features/employer/dashboard/DashboardStatCards";
 import { InteractivePipeline } from "@/components/features/employer/dashboard/InteractivePipeline";
 import { AIRecommendedCandidatesCard } from "@/components/features/employer/dashboard/AIRecommendedCandidatesCard";
+import { DashboardInsightsRow } from "@/components/features/employer/dashboard/DashboardInsightsRow";
 
 const translations: Record<string, string> = {
   "employerDashboard.priorityActions.recommendedNext": "Recommended next",
@@ -65,6 +66,12 @@ const translations: Record<string, string> = {
   "employerDashboard.aiRecommended.assistiveNote": "Estimates do not replace human assessment.",
   "employerDashboard.aiRecommended.emptyTitle": "No match estimates yet",
   "employerDashboard.aiRecommended.emptyDescription": "Estimates appear after scoring.",
+  "employerDashboard.drafts.title": "Drafts to resume",
+  "employerDashboard.drafts.subtitle": "Pick up where you left off.",
+  "employerDashboard.drafts.tabsLabel": "Draft type",
+  "employerDashboard.drafts.tabJobs": "Jobs",
+  "employerDashboard.drafts.tabChats": "AI chats",
+  "employerDashboard.drafts.tabExtractions": "Extractions",
 };
 
 jest.mock("next-intl", () => ({
@@ -78,7 +85,13 @@ jest.mock("next-intl", () => ({
     },
 }));
 
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn() }) }));
+jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock("@/hooks/useConfirm", () => ({ useConfirm: () => ({ confirm: jest.fn(), ConfirmDialogNode: null }) }));
+
 beforeAll(() => {
+  // Draft cards fetch on mount; a non-ok response makes them report zero drafts.
+  global.fetch = jest.fn(() => Promise.resolve({ ok: false })) as unknown as typeof fetch;
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: () => ({ matches: true, addEventListener: jest.fn(), removeEventListener: jest.fn() }),
@@ -175,6 +188,21 @@ describe("Employer task-first dashboard", () => {
 
     expect(screen.getByRole("heading", { name: "Profile match estimates" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /notify/i })).not.toBeInTheDocument();
+    // The assistive note lives under the row (DashboardInsightsRow), not in the card footer.
+    expect(screen.queryByText("Estimates do not replace human assessment.")).not.toBeInTheDocument();
+  });
+
+  it("captions the insights row with the assistive note and hides drafts until something reports", () => {
+    render(
+      <DashboardInsightsRow locale="en">
+        <div data-testid="match-card" />
+      </DashboardInsightsRow>,
+    );
+
+    expect(screen.getByTestId("match-card")).toBeInTheDocument();
     expect(screen.getByText("Estimates do not replace human assessment.")).toBeInTheDocument();
+    // jsdom does not apply Tailwind, so assert on the utility class the layout hides with.
+    const draftsHeading = screen.getByRole("heading", { name: "Drafts to resume" });
+    expect(draftsHeading.closest("section")).toHaveClass("hidden");
   });
 });

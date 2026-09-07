@@ -139,6 +139,7 @@ export default function SuperAgentAgentsPage() {
   // page on screen. The API computes them before slicing.
   const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
@@ -158,6 +159,7 @@ export default function SuperAgentAgentsPage() {
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
+    setError(false);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (filters.search) params.set("search", filters.search);
     if (filters.performance) params.set("performance", filters.performance);
@@ -168,14 +170,21 @@ export default function SuperAgentAgentsPage() {
     if (filters.sortBy) params.set("sortBy", filters.sortBy);
     if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
 
-    const res = await fetch(`/api/super-agent/agents?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setAgents(data.items ?? []);
-      updateTotal(data.total ?? data.items?.length ?? 0);
-      setTotals(data.totals ?? { agents: data.total ?? 0, leads: 0, conversions: 0, placements: 0 });
+    try {
+      const res = await fetch(`/api/super-agent/agents?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAgents(data.items ?? []);
+        updateTotal(data.total ?? data.items?.length ?? 0);
+        setTotals(data.totals ?? { agents: data.total ?? 0, leads: 0, conversions: 0, placements: 0 });
+      } else {
+        setError(true);
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [filters, page, limit, updateTotal]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
@@ -355,6 +364,20 @@ export default function SuperAgentAgentsPage() {
       </SuperAgentPageIntro>
 
       <SuperAgentSection title={t("teamReviewTitle")} className="[&>div:first-child]:sr-only">
+        {/* ---- Error State ---- */}
+        {error && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+            <p className="text-sm text-destructive">{t("loadAgentsError")}</p>
+            <button
+              type="button"
+              onClick={() => fetchAgents()}
+              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+            >
+              {tc("tryAgain")}
+            </button>
+          </div>
+        )}
+
         {/* ── Search Row + Advanced Toggle ── */}
         <TableToolbar
           search={filters.search}

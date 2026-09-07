@@ -7,6 +7,7 @@ import {
   ArrowRight, ChevronDown, ChevronUp, Sparkles, Shield,
 } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   type WorkflowTemplatePayload,
 } from "@/hooks/useWorkflowTemplates";
 import type { WorkflowStage, WorkflowSettings } from "@/hooks/useWorkflow";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const DEFAULT_STAGES: WorkflowStage[] = [
   { id: "new", label: "New Application", enabled: true, autoProgress: false, order: 1 },
@@ -86,6 +88,8 @@ function templateToForm(t: WorkflowTemplateItem): TemplateFormState {
 
 export default function AdminWorkflowTemplatesPage() {
   const tr = useTranslations("adminWorkflowTemplates");
+  const ta = useTranslations("a11y");
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const stageLabel = (stage: WorkflowStage) =>
     DEFAULT_STAGE_LABEL_KEYS[stage.id] ? tr(DEFAULT_STAGE_LABEL_KEYS[stage.id]) : stage.label;
   const { data: templates, isLoading } = useAdminWorkflowTemplates();
@@ -134,7 +138,14 @@ export default function AdminWorkflowTemplatesPage() {
     closeForm();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, name: string) => {
+    const ok = await confirmDialog({
+      title: tr("deleteConfirmTitle"),
+      message: tr("deleteConfirmMessage", { name }),
+      confirmLabel: tr("deleteConfirmAction"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     await deleteMut.mutateAsync(id);
   };
 
@@ -185,6 +196,7 @@ export default function AdminWorkflowTemplatesPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHero
         compact
         compactOnMobile
@@ -202,10 +214,10 @@ export default function AdminWorkflowTemplatesPage() {
       {showForm && (
         <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-5 panel-body">
           <div className="flex items-center justify-between">
-            <h3 className="heading-subsection font-semibold text-foreground">
+            <h2 className="heading-subsection font-semibold text-foreground">
               {editId ? tr("editTemplateHeading") : tr("createNewTemplateHeading")}
-            </h3>
-            <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
+            </h2>
+            <button aria-label={ta("close")} onClick={closeForm} className="text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -213,7 +225,7 @@ export default function AdminWorkflowTemplatesPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">{tr("nameLabel")}</label>
-              <Input
+              <Input aria-label={tr("nameLabel")}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder={tr("namePlaceholder")}
@@ -222,7 +234,7 @@ export default function AdminWorkflowTemplatesPage() {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">{tr("descriptionLabel")}</label>
-              <Input
+              <Input aria-label={tr("descriptionLabel")}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder={tr("descriptionPlaceholder")}
@@ -238,7 +250,7 @@ export default function AdminWorkflowTemplatesPage() {
               {form.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="gap-1">
                   {tag}
-                  <button onClick={() => removeTag(tag)} className="ml-1 text-muted-foreground hover:text-foreground">
+                  <button aria-label={ta("removeTag")} onClick={() => removeTag(tag)} className="ml-1 text-muted-foreground hover:text-foreground">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -252,7 +264,7 @@ export default function AdminWorkflowTemplatesPage() {
                   className="h-8 w-32"
                   maxLength={50}
                 />
-                <Button size="dense" variant="ghost" onClick={addTag} className="">
+                <Button aria-label={ta("addTag")} size="dense" variant="ghost" onClick={addTag} className="">
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -283,7 +295,7 @@ export default function AdminWorkflowTemplatesPage() {
             </div>
             <div className="rounded-xl border border-border bg-background/80 chip-pad">
               <label className="text-xs text-muted-foreground">{tr("autoRejectBelowLabel")}</label>
-              <Input
+              <Input aria-label={tr("autoRejectBelowLabel")}
                 type="number"
                 value={form.settings.autoRejectBelow}
                 onChange={(e) =>
@@ -305,10 +317,10 @@ export default function AdminWorkflowTemplatesPage() {
             {[...form.stages].sort((a, b) => a.order - b.order).map((stage, i) => (
               <div key={stage.id} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 chip-pad">
                 <div className="flex flex-col gap-0.5 text-muted-foreground">
-                  <button onClick={() => moveStage(i, "up")} disabled={i === 0}>
+                  <button aria-label={ta("moveUp")} onClick={() => moveStage(i, "up")} disabled={i === 0}>
                     <ChevronUp className="h-3.5 w-3.5" />
                   </button>
-                  <button onClick={() => moveStage(i, "down")} disabled={i === form.stages.length - 1}>
+                  <button aria-label={ta("moveDown")} onClick={() => moveStage(i, "down")} disabled={i === form.stages.length - 1}>
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -352,16 +364,16 @@ export default function AdminWorkflowTemplatesPage() {
 
       {/* ─── Template List ─── */}
       {!templates?.length && !showForm ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background/60 py-16 text-center">
-          <GitBranch className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">{tr("noTemplatesEmptyStateTitle")}</p>
-          <p className="mb-4 mt-1 text-xs text-muted-foreground">
-            {tr("noTemplatesEmptyStateDescription")}
-          </p>
-          <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> {tr("createFirstTemplateButton")}
-          </Button>
-        </div>
+        <EmptyState
+          icon={GitBranch}
+          title={tr("noTemplatesEmptyStateTitle")}
+          description={tr("noTemplatesEmptyStateDescription")}
+          action={
+            <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl">
+              <Plus className="h-3.5 w-3.5" /> {tr("createFirstTemplateButton")}
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {templates?.map((t) => {
@@ -376,7 +388,7 @@ export default function AdminWorkflowTemplatesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <GitBranch className="h-4 w-4 text-sky-600" />
-                      <h4 className="text-sm font-semibold text-foreground">{t.name}</h4>
+                      <h2 className="text-sm font-semibold text-foreground">{t.name}</h2>
                       {t.isDefault && (
                         <Badge variant="secondary" className="gap-1 text-[11px]">
                           <Shield className="h-3 w-3" /> {tr("defaultBadge")}
@@ -401,7 +413,7 @@ export default function AdminWorkflowTemplatesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
+                    <Button aria-label={isExpanded ? ta("collapse") : ta("expand")}
                       variant="ghost"
                       size="sm"
                       onClick={() => setExpandedId(isExpanded ? null : t._id)}
@@ -409,7 +421,7 @@ export default function AdminWorkflowTemplatesPage() {
                     >
                       {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
-                    <Button
+                    <Button aria-label={ta("edit")}
                       variant="ghost"
                       size="sm"
                       onClick={() => openEdit(t)}
@@ -420,8 +432,9 @@ export default function AdminWorkflowTemplatesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(t._id)}
+                      onClick={() => handleDelete(t._id, t.name)}
                       disabled={deleteMut.isPending}
+                      aria-label={tr("deleteButtonLabel")}
                       className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />

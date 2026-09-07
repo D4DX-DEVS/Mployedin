@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { JobSeekerSectionNav, APPLICATION_JOURNEY_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
 
 interface ApplicationJob {
   _id: string;
@@ -226,6 +227,11 @@ export default function ApplicationsPage() {
                 <span><span className="text-foreground">{t("summary.view")}</span> {activeStatusLabel}</span>
               </div>
             </div>
+
+            {/* Interviews, offers and onboarding are later stages of the same
+                application, so they hang off this page instead of being three
+                more entries in a "More" menu. */}
+            <JobSeekerSectionNav locale={locale} paths={APPLICATION_JOURNEY_PATHS} />
 
             {/* Search + Filters share one row on phones instead of stacking. */}
             <div className="flex flex-row flex-wrap items-center gap-2 lg:gap-2.5">

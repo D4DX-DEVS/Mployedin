@@ -12,7 +12,6 @@ import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/feature
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
-import { SaveJobButton } from "@/components/features/job-seeker/SaveJobButton";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
@@ -247,7 +246,6 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                         {t("verifiedEmployer")}
                       </span>
                     )}
-                    <SaveJobButton jobId={String(job._id)} variant="icon" />
                     <ShareJob
                       jobId={String(job._id)}
                       jobTitle={job.title}

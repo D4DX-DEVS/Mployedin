@@ -17,6 +17,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
@@ -78,6 +79,7 @@ export default function AdminPlacementsPage() {
   const [totalValue, setTotalValue] = useState(0);
   const [salaryByCurrency, setSalaryByCurrency] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
@@ -118,11 +120,16 @@ export default function AdminPlacementsPage() {
         updateTotal(data.total ?? 0);
         setTotalValue(data.totalSalaryValue ?? 0);
         setSalaryByCurrency(data.salaryByCurrency ?? {});
+        setLoadFailed(false);
       } else {
         const err = await res.json().catch(() => ({}));
+        setLoadFailed(true);
         toast.error(err.error || t("toastLoadFailed"));
       }
     } catch (error) {
+      // A toast alone left the table body empty, which reads exactly like
+      // "no placements" once the toast has gone.
+      setLoadFailed(true);
       toast.error(t("toastLoadFailed"));
     } finally {
       setLoading(false);
@@ -340,6 +347,7 @@ export default function AdminPlacementsPage() {
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder={t("searchPlaceholder")}
+                aria-label={t("searchPlaceholder")}
                 className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
               />
             </div>
@@ -440,7 +448,10 @@ export default function AdminPlacementsPage() {
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      {loadFailed && !loading ? (
+        <ErrorState onRetry={() => void load()} />
+      ) : (
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -554,6 +565,7 @@ export default function AdminPlacementsPage() {
           />
         </div>
       </section>
+      )}
 
       <CrudModal
         open={!!editItem}

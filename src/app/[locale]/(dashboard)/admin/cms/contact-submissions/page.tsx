@@ -188,8 +188,11 @@ export default function ContactSubmissionsPage() {
           { label: t("statUnread"), value: unreadCount, note: t("awaitingReview"), icon: MessageSquare, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
           { label: t("statRead"), value: items.length - unreadCount, note: t("alreadyReviewed"), icon: MailOpen, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
         ]}
-      >
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <CmsHeroFilters
+          inToolbar
           fields={contactFilterFields}
           values={filterValues}
           onChange={handleFilterChange}
@@ -199,9 +202,6 @@ export default function ContactSubmissionsPage() {
           onToggleFilters={() => setShowFilters((v) => !v)}
           searchPlaceholder={t("searchPlaceholder")}
         />
-      </DashboardPageHeader>
-
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -235,9 +235,9 @@ export default function ContactSubmissionsPage() {
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {hasActiveFilters ? t("emptyStateNoMatchingLabel") : t("emptyStateNoMessagesLabel")}
                       </p>
-                      <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
+                      <h2 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
                         {hasActiveFilters ? t("emptyStateNoMatchingTitle") : t("emptyStateNoContactsTitle")}
-                      </h3>
+                      </h2>
                       <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
                         {hasActiveFilters
                           ? t("emptyStateNoMatchingDesc")

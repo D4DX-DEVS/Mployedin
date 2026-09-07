@@ -467,14 +467,14 @@ export default function AdminJobSeekersPage() {
 
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Sparkles className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
-            <Input
+            <Sparkles className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
+            <Input aria-label={tr("aiSearchPlaceholder")}
               ref={aiInputRef}
               value={aiQuery}
               onChange={(e) => setAiQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
               placeholder={tr("aiSearchPlaceholder")}
-              className="h-10 pl-10 text-sm rounded-lg"
+              className="h-11 ps-10 text-sm rounded-lg sm:h-10"
               disabled={aiLoading}
             />
           </div>
@@ -566,12 +566,12 @@ export default function AdminJobSeekersPage() {
               </Button>
               {/* Keyword search */}
               <div className="relative toolbar-search-field">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
+                <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input aria-label={tr("keywordSearchPlaceholder")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                   placeholder={tr("keywordSearchPlaceholder")}
-                  className="h-8 w-56 rounded-lg pl-8 text-sm"
+                  className="h-11 w-56 rounded-lg ps-8 text-sm sm:h-9"
                 />
               </div>
 
@@ -633,7 +633,7 @@ export default function AdminJobSeekersPage() {
               {/* Skills */}
               <div>
                 <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelSkills")}</label>
-                <Input
+                <Input aria-label={tr("filterLabelSkills")}
                   value={skillsFilter}
                   onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
                   placeholder={tr("filterPlaceholderSkills")}
@@ -643,7 +643,7 @@ export default function AdminJobSeekersPage() {
               {/* Location */}
               <div>
                 <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelLocation")}</label>
-                <Input
+                <Input aria-label={tr("filterLabelLocation")}
                   value={locationFilter}
                   onChange={(e) => { setLocationFilter(e.target.value); resetPage(); }}
                   placeholder={tr("filterPlaceholderLocation")}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import Placement from "@/models/Placement";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
@@ -40,6 +41,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const salaryMax = searchParams.get("salaryMax");
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
+  const jobIdParam = searchParams.get("jobId");
+  const applicationIdParam = searchParams.get("applicationId");
 
   const query: Record<string, unknown> = {};
 
@@ -83,6 +86,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (visaStatus && visaStatus !== "all") {
     query.visaStatus = visaStatus;
   }
+
+  // Filter: per-job / per-application scope (Job Workspace tabs, candidate journey).
+  if (jobIdParam && isValidObjectId(jobIdParam)) query.jobId = jobIdParam;
+  if (applicationIdParam && isValidObjectId(applicationIdParam)) query.applicationId = applicationIdParam;
 
   // Filter: commission paid
   if (commissionPaid === "true") query.commissionPaid = true;

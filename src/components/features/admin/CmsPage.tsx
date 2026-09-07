@@ -76,12 +76,14 @@ export default function CmsPage({
   searchPlaceholder,
 }: CmsPageProps) {
   const t = useTranslations("cmsPage");
+  const tCommon = useTranslations("common");
   const { can } = usePermissions();
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filterValues, setFilterValues] = useState<CmsFilterValues>(getDefaultCmsFilterValues);
   const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
@@ -90,10 +92,10 @@ export default function CmsPage({
 
   const filterFields = useMemo<CmsFilterField[]>(
     () => filterFieldsProp ?? [
-      { type: "search", placeholder: `Search ${title.toLowerCase()}…` },
+      { type: "search", placeholder: t("searchFallback", { title: title.toLowerCase() }) },
       { type: "status", options: DEFAULT_STATUS_OPTIONS },
     ],
-    [filterFieldsProp, title],
+    [filterFieldsProp, title, t],
   );
   const requestGeneration = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
@@ -117,6 +119,7 @@ export default function CmsPage({
         filterFields,
         new URLSearchParams({ page: String(page), limit: String(limit) })
       );
+      setLoadError(false);
       const r = await fetch(`${apiUrl}?${params}`, { signal: controller.signal });
       if (!r.ok) throw new Error(`Failed to load ${title}: HTTP ${r.status}`);
       const d = await r.json();
@@ -126,6 +129,12 @@ export default function CmsPage({
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch CMS items:", err);
+      /* Without this the catch only logged, so a failed fetch left the six CMS
+         pages showing an empty table — indistinguishable from "no records". */
+      if (generation === requestGeneration.current) {
+        setItems([]);
+        setLoadError(true);
+      }
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
     }
@@ -247,8 +256,16 @@ export default function CmsPage({
           { label: t("totalItems"), value: total, note: t("allRecords"), icon: Icon ?? Sparkles, iconClassName: iconColor },
           { label: t("activeThisPage"), value: activeOnPage, note: t("visibleOnSite"), icon: Sparkles },
         ]}
-      >
+      />
+
+      {/* The filter bar used to live inside DashboardPageHeader, which pushed
+          six CMS headers to 288px on desktop and 226px on a 390px phone — 27%
+          of the screen before the first record. The house layout is
+          header -> one list panel -> pagination, with filters in the list
+          toolbar. */}
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl sm:rounded-3xl">
         <CmsHeroFilters
+          inToolbar
           fields={filterFields}
           values={filterValues}
           onChange={handleFilterChange}
@@ -259,12 +276,9 @@ export default function CmsPage({
           searchPlaceholder={
             searchPlaceholder ??
             filterFields.find((f) => f.type === "search")?.placeholder ??
-            `Search ${title.toLowerCase()}…`
+            t("searchFallback", { title: title.toLowerCase() })
           }
         />
-      </DashboardPageHeader>
-
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl sm:rounded-3xl">
         <div className="overflow-x-auto" data-mobile-table="responsive">
           <Table className="responsive-card-table">
             <TableHeader>
@@ -289,6 +303,17 @@ export default function CmsPage({
                     </TableCell>
                   </TableRow>
                 ))
+              ) : loadError ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length + 1} className="px-4 py-8 text-center sm:px-6 sm:py-16">
+                    <div className="flex flex-col items-center gap-3">
+                      <p className="text-sm text-muted-foreground">{tCommon("somethingWentWrong")}</p>
+                      <Button variant="outline" size="sm" onClick={() => void fetchItems()}>
+                        {tCommon("tryAgain")}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length + 1} className="px-4 py-8 text-center sm:px-6 sm:py-16">
@@ -300,11 +325,11 @@ export default function CmsPage({
                       <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:block sm:text-[11px] sm:tracking-[0.18em]">
                         {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
                       </p>
-                      <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
+                      <h2 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
                         {hasActiveFilters
                           ? t("noItemsMatchFilters")
                           : t("noFoundTitle", { title: title.toLowerCase() })}
-                      </h3>
+                      </h2>
                       <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
                         {hasActiveFilters
                           ? t("adjustFiltersMsg")

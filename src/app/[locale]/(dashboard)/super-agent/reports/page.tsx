@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { BarChart3, Coins, Download, Loader2, Sparkles, Target, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 import {
@@ -53,6 +53,7 @@ export default function SuperAgentReportsPage() {
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [agentBreakdown, setAgentBreakdown] = useState<AgentBreakdown[]>([]);
   const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
@@ -72,7 +73,9 @@ export default function SuperAgentReportsPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
+  const fetchReports = useCallback(() => {
+    setLoading(true);
+    setError(false);
     fetch("/api/super-agent/reports")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
@@ -80,11 +83,15 @@ export default function SuperAgentReportsPage() {
           setStats(data);
           if (data.agentBreakdown) setAgentBreakdown(data.agentBreakdown);
           if (data.monthlyTrends) setMonthlyTrends(data.monthlyTrends);
+        } else {
+          setError(true);
         }
       })
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { fetchReports(); }, [fetchReports]);
 
   const generateAIReport = async (reportQuery?: string) => {
     const q = reportQuery ?? aiQuery;
@@ -156,6 +163,20 @@ export default function SuperAgentReportsPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
       />
+
+      {/* ---- Error State ---- */}
+      {error && !loading && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <p className="text-sm text-destructive">{t("loadReportsError")}</p>
+          <button
+            type="button"
+            onClick={() => fetchReports()}
+            className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+          >
+            {tc("tryAgain")}
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -289,6 +310,7 @@ export default function SuperAgentReportsPage() {
             <p className="text-sm font-semibold text-foreground">{t("customReport")}</p>
           </div>
           <textarea
+            aria-label={t("customReport")}
             value={aiQuery}
             onChange={(e) => setAiQuery(e.target.value)}
             rows={3}

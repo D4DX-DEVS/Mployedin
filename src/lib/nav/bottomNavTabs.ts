@@ -39,15 +39,20 @@ export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabCon
     // the wrong destination.
     { key: "hiring", href: "/employer/applications", icon: "FileText", labelKey: "applications" },
   ],
-  // An admin's phone work is monitoring, people and answering support — not
-  // browsing job posts, which stays one tap away behind "More" and in ⌘K. The
-  // inbox tab replaces Jobs because support tickets are assigned to a named
-  // admin and had no signal anywhere on mobile.
+  // Three tabs, for the same reason employer has three: a fourth pushed the bar
+  // to six slots, shoved the raised Create control right of centre and cramped
+  // every label.
+  //
+  // The three mirror the admin rail's own top level — Dashboard, then the two
+  // registries an admin administers. Applications and Inbox moved behind
+  // "More": Applications is a *child* of Recruitment, so promoting it taught a
+  // different hierarchy than the rail, and the unread and support-ticket counts
+  // are not lost — with no tab owning them they roll up onto the "More" badge
+  // (menuBadgeCount in DashboardShell).
   admin: [
     { key: "dashboard", href: "/admin", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },
-    { key: "applications", href: "/admin/applications", icon: "FileText", labelKey: "applications" },
+    { key: "jobs", href: "/admin/jobs", icon: "Briefcase", labelKey: "jobs" },
     { key: "users", href: "/admin/users", icon: "Users", labelKey: "users" },
-    { key: "messages", href: "/admin/messages", icon: "MessageSquare", labelKey: "inbox", badgeKey: "unreadMessages" },
   ],
   agent: [
     { key: "dashboard", href: "/agent", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },

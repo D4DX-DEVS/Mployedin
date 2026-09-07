@@ -286,7 +286,7 @@ export default function CreateTargetProfilePage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         const created = Number(data.created ?? 0);
-        toast.success(`${created} target profile${created !== 1 ? "s" : ""} created successfully`);
+        toast.success(t("profilesCreated", { count: created }));
         router.push(`/${locale}/admin/target-management?year=${year}`);
       } else {
         toast.error(data.error ?? t("failedToCreateProfiles"));
@@ -319,8 +319,9 @@ export default function CreateTargetProfilePage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Label className="text-xs font-medium text-muted-foreground">{t("yearLabel")}</Label>
+              <Label htmlFor="target-year" className="text-xs font-medium text-muted-foreground">{t("yearLabel")}</Label>
               <Input
+                id="target-year"
                 type="number"
                 value={year}
                 onChange={(e) => setYear(parseInt(e.target.value) || currentYear)}
@@ -368,12 +369,13 @@ export default function CreateTargetProfilePage() {
               <div className="field">
                 <Label className="text-[11px] font-medium text-muted-foreground">{t("nameEmailLabel")}</Label>
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    aria-label={t("searchByNameEmail")}
                     value={filterName}
                     onChange={(e) => setFilterName(e.target.value)}
                     placeholder={t("searchByNameEmail")}
-                    className="h-8 rounded-lg border-border bg-background pl-8 text-xs"
+                    className="h-11 rounded-lg border-border bg-background ps-8 text-xs sm:h-9"
                   />
                 </div>
               </div>
@@ -408,7 +410,7 @@ export default function CreateTargetProfilePage() {
                     { value: "large", label: t("largeTeam") },
                   ]}
                   placeholder={t("allSizes")}
-                  searchPlaceholder="Search sizes..."
+                  searchPlaceholder={t("searchSizes")}
                   className="h-8 text-xs"
                 />
               </div>
@@ -556,6 +558,8 @@ function SupervisorTargetRow({
   onToggleMonthly,
   onUpdateMonthly,
 }: SupervisorTargetRowProps) {
+  const ta = useTranslations("a11y");
+  const tt = useTranslations("targets");
   const hasTarget = row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0;
 
   return (
@@ -576,6 +580,7 @@ function SupervisorTargetRow({
         <td className="px-4 py-3">
           <Input
             type="number"
+            aria-label={tt("employerTarget")}
             min={0}
             value={row.employerTarget || ""}
             onChange={(e) => onUpdateTarget(supervisor.id, "employerTarget", parseInt(e.target.value) || 0)}
@@ -588,6 +593,7 @@ function SupervisorTargetRow({
         <td className="px-4 py-3">
           <Input
             type="number"
+            aria-label={tt("employeeTarget")}
             min={0}
             value={row.employeeTarget || ""}
             onChange={(e) => onUpdateTarget(supervisor.id, "employeeTarget", parseInt(e.target.value) || 0)}
@@ -601,6 +607,7 @@ function SupervisorTargetRow({
           <div className="relative">
             <Input
               type="number"
+              aria-label={tt("financeTarget")}
               min={0}
               value={row.financeTarget || ""}
               onChange={(e) => onUpdateTarget(supervisor.id, "financeTarget", parseInt(e.target.value) || 0)}
@@ -617,6 +624,7 @@ function SupervisorTargetRow({
         <td className="px-4 py-3 text-center">
           <Button
             type="button"
+            aria-label={ta("toggleBreakdown")}
             variant={row.showMonthly ? "default" : "outline"}
             size="dense"
             className="rounded-lg text-xs gap-1"
@@ -699,10 +707,10 @@ function MonthlyDistributionTable({
         <table className="w-full text-xs">
           <thead className="bg-muted/30">
             <tr>
-              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">Month</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Employers</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Employees</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Revenue</th>
+              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t("month")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employers")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employees")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("revenue")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -741,7 +749,7 @@ function MonthlyDistributionTable({
           </tbody>
           <tfoot className="bg-muted/20 border-t border-border">
             <tr>
-              <td className="px-2 py-1.5 font-semibold">Total</td>
+              <td className="px-2 py-1.5 font-semibold">{t("total")}</td>
               <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.employer !== annualTargets.employerTarget ? "text-red-500" : ""}`}>
                 {monthlySum.employer}
               </td>

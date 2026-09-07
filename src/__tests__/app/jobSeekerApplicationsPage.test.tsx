@@ -21,6 +21,8 @@ jest.mock("next/navigation", () => ({
   // The page seeds its search box from `?search=` so the ⌘K palette can deep
   // link into a filtered list.
   useSearchParams: () => new URLSearchParams(),
+  // The application-journey nav marks the current stage active.
+  usePathname: () => "/en/job-seeker/applications",
 }));
 
 jest.mock("framer-motion", () => ({

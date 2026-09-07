@@ -24,9 +24,9 @@ export function ConversionFunnelChart({ data }: Props) {
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card panel-body">
-      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
         <Filter className="h-4 w-4" /> {t("subscriptionConversionFunnel")}
-      </h4>
+      </h2>
       <div className="space-y-3">
         {stages.map((stage, idx) => {
           const widthPct = Math.max((stage.value / maxValue) * 100, 3);

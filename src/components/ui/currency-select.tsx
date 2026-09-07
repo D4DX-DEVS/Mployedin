@@ -12,6 +12,10 @@ interface CurrencySelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Accessible name for the trigger — the visible label sits outside this component. */
+  ariaLabel?: string;
+  /** Accessible name for the in-popover search box. */
+  searchLabel?: string;
 }
 
 export function CurrencySelect({
@@ -20,6 +24,8 @@ export function CurrencySelect({
   placeholder = "Select currency…",
   disabled = false,
   className,
+  ariaLabel,
+  searchLabel,
 }: CurrencySelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -51,6 +57,7 @@ export function CurrencySelect({
         <button
           type="button"
           role="combobox"
+          aria-label={ariaLabel}
           aria-expanded={open}
           disabled={disabled}
           className={cn(
@@ -84,6 +91,7 @@ export function CurrencySelect({
             ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label={searchLabel ?? "Search currency or country"}
             placeholder="Search currency or country…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
           />

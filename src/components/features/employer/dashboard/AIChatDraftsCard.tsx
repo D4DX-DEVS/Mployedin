@@ -9,6 +9,7 @@ import { Bot, RotateCcw, Trash2, ChevronRight, Loader2, Clock } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/useConfirm";
 import { relativeTime } from "@/lib/relativeTime";
+import { DraftRow } from "./DraftRow";
 
 interface ChatThreadSummary {
   _id: string;
@@ -21,7 +22,8 @@ interface ChatThreadSummary {
 
 interface AIChatDraftsCardProps {
   locale: string;
-  variant?: "card" | "banner";
+  /** `rows` = bare list rows for the dashboard DraftsCard tabs (no wrapper/header). */
+  variant?: "card" | "banner" | "rows";
   /** Reports the live draft count so a parent can lay out around an empty card. */
   onCountChange?: (count: number) => void;
 }
@@ -120,6 +122,41 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
           ))}
         </div>
       </div>
+    );
+  }
+
+  // ── Rows variant (employer dashboard DraftsCard tab) ────────────────────
+  if (variant === "rows") {
+    return (
+      <ul className="flex flex-1 flex-col divide-y divide-border/60 [&>li]:flex-1">
+        {ConfirmDialogNode}
+        {drafts.slice(0, 3).map((d) => (
+          <DraftRow
+            key={d._id}
+            href={continueHref(d._id)}
+            icon={Bot}
+            accent="text-sky-600"
+            title={d.title}
+            meta={
+              <>
+                {d.hasExtractedJob && (
+                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">
+                    {t("draftReady")}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  {relativeTime(d.updatedAt, locale)}
+                </span>
+              </>
+            }
+            cta={t("continueChat")}
+            discardLabel={t("discardAriaLabel")}
+            discarding={discardingId === d._id}
+            onDiscard={() => handleDiscard(d)}
+          />
+        ))}
+      </ul>
     );
   }
 

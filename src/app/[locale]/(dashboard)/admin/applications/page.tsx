@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -161,6 +162,7 @@ export default function AdminApplicationsPage() {
   // Data
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
 
@@ -278,13 +280,23 @@ export default function AdminApplicationsPage() {
     if (employers.length === 0) params.set("fetchEmployers", "true");
     if (!stats) params.set("fetchStats", "true");
 
-    const res = await fetch(`/api/applications?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setApplications(data.items ?? data.applications ?? []);
-      updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
-      if (data.allEmployers) setEmployers(data.allEmployers);
-      if (data.stats) setStats(data.stats);
+    // Previously: no catch and no else. A failed request left the last render
+    // on screen with no signal, and a network throw became an unhandled
+    // rejection that surfaced as a dev error overlay.
+    try {
+      const res = await fetch(`/api/applications?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setApplications(data.items ?? data.applications ?? []);
+        updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
+        if (data.allEmployers) setEmployers(data.allEmployers);
+        if (data.stats) setStats(data.stats);
+        setLoadFailed(false);
+      } else {
+        setLoadFailed(true);
+      }
+    } catch {
+      setLoadFailed(true);
     }
     setLoading(false);
   }, [jobIdFilter, search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, stale, page, limit, employers.length, stats, updateTotal]);
@@ -730,7 +742,11 @@ export default function AdminApplicationsPage() {
       </DashboardPageHeader>
 
       {/* ─── Application List ─────────────────────────────────────────── */}
-      {loading ? (
+      {/* Error first: an empty list and a failed load are different things, and
+          the empty branch below claims "No applications found". */}
+      {loadFailed && !loading ? (
+        <ErrorState onRetry={() => void fetchApplications()} />
+      ) : loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-3xl border border-border/60 bg-background/70" />
@@ -759,7 +775,7 @@ export default function AdminApplicationsPage() {
           )}
         </div>
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+        <section className="workspace-panel-surface overflow-hidden rounded-2xl">
           {/* List header with privacy notice */}
           <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-background/50 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
             <div className="flex items-center gap-1.5">

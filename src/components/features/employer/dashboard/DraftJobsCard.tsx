@@ -9,6 +9,7 @@ import { FilePenLine, RotateCcw, Trash2, ChevronRight, Loader2, Clock } from "lu
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/useConfirm";
 import { relativeTime } from "@/lib/relativeTime";
+import { DraftRow } from "./DraftRow";
 
 interface DraftJobSummary {
   _id: string;
@@ -19,7 +20,8 @@ interface DraftJobSummary {
 
 interface DraftJobsCardProps {
   locale: string;
-  variant?: "card" | "banner";
+  /** `rows` = bare list rows for the dashboard DraftsCard tabs (no wrapper/header). */
+  variant?: "card" | "banner" | "rows";
   /** Reports draft count after each fetch/discard so a parent layout can react (e.g. hide or resize a shared grid). */
   onCountChange?: (count: number) => void;
 }
@@ -36,8 +38,9 @@ interface DraftJobsCardProps {
  * to the dashboard.
  *
  * Two entry points:
- *   - employer dashboard → variant="card"   (top urgency slot under SmartHeader)
+ *   - employer dashboard → variant="rows"   (tab inside DraftsCard)
  *   - jobs list page     → variant="banner" (above filters)
+ *   - variant="card" is the standalone panel, kept for other surfaces
  * Self-hides client-side when no drafts exist (zero DOM cost otherwise).
  */
 export function DraftJobsCard({ locale, variant = "card", onCountChange }: DraftJobsCardProps) {
@@ -126,6 +129,37 @@ export function DraftJobsCard({ locale, variant = "card", onCountChange }: Draft
           ))}
         </div>
       </div>
+    );
+  }
+
+  // ── Rows variant (employer dashboard DraftsCard tab) ────────────────────
+  if (variant === "rows") {
+    return (
+      <ul className="flex flex-1 flex-col divide-y divide-border/60 [&>li]:flex-1">
+        {ConfirmDialogNode}
+        {drafts.slice(0, 3).map((d) => (
+          <DraftRow
+            key={d._id}
+            href={continueHref(d._id)}
+            icon={FilePenLine}
+            accent="text-amber-600"
+            title={d.title}
+            meta={
+              <>
+                {d.category && <span>{d.category}</span>}
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="h-3 w-3" aria-hidden="true" />
+                  {relativeTime(d.updatedAt, locale)}
+                </span>
+              </>
+            }
+            cta={t("continueEditing")}
+            discardLabel={t("discardAriaLabel")}
+            discarding={discardingId === d._id}
+            onDiscard={() => handleDiscard(d)}
+          />
+        ))}
+      </ul>
     );
   }
 

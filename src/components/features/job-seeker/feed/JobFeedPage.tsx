@@ -110,18 +110,6 @@ async function fetchAppliedJobIds(): Promise<string[]> {
 /**
  * Fetch the set of job IDs the seeker has saved/bookmarked.
  */
-async function fetchSavedJobIds(): Promise<string[]> {
-  // Same source the Saved Jobs page reads. `jobId` arrives populated, so the
-  // id has to be unwrapped the way applied ids are above.
-  const res = await fetch(`/api/saved-jobs?limit=100`);
-  if (!res.ok) return [];
-  const data = (await res.json()) as {
-    items?: Array<{ jobId?: string | { _id?: string } | null }>;
-  };
-  return (data.items ?? [])
-    .map((item) => (typeof item.jobId === "object" ? item.jobId?._id : item.jobId))
-    .filter((id): id is string => Boolean(id));
-}
 
 const SEARCH_PAGE_SIZE = 20;
 const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
@@ -222,7 +210,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   const [sortMode, setSortMode] = useState<SortMode>("match");
   const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [applyJob, setApplyJob] = useState<FeedJob | null>(null);
   const [poolPage, setPoolPage] = useState(1);
@@ -258,11 +245,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
     staleTime: 5 * 60_000,
   });
 
-  const { data: savedIdsData } = useQuery({
-    queryKey: ["saved-job-ids"],
-    queryFn: fetchSavedJobIds,
-    staleTime: 5 * 60_000,
-  });
 
   useEffect(() => {
     if (appliedIdsData?.length) {
@@ -270,11 +252,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
     }
   }, [appliedIdsData]);
 
-  useEffect(() => {
-    if (savedIdsData?.length) {
-      setSavedIds((s) => new Set([...s, ...savedIdsData]));
-    }
-  }, [savedIdsData]);
 
   const {
     data: searchData,
@@ -335,31 +312,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
     latest: t("sort.latest"),
     salary: t("sort.salary"),
   };
-
-  // ── Mutations ───────────────────────────────────────────────────────────────
-
-  const saveMutation = useMutation({
-    mutationFn: (jobId: string) =>
-      csrfFetch(`/api/jobs/${jobId}/save`, { method: "POST" }).then((r) => r.json()),
-    onMutate: (jobId) => {
-      setSavedIds((s) => {
-        const n = new Set(s);
-        n.has(jobId) ? n.delete(jobId) : n.add(jobId);
-        return n;
-      });
-    },
-    onSuccess: (data: { saved: boolean }, jobId) => {
-      toast.success(data.saved ? t("toast.jobSaved") : t("toast.jobUnsaved"));
-      data.saved
-        ? setSavedIds((s) => new Set([...s, jobId]))
-        : setSavedIds((s) => {
-            const n = new Set(s);
-            n.delete(jobId);
-            return n;
-          });
-    },
-    onError: () => toast.error(t("toast.savedUpdateFailed")),
-  });
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -503,11 +455,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </button>
                 <Link
                   href={`/${locale}/job-seeker/preferences`}
-                  aria-label={t("actions.refinePreferences")}
-                  className="inline-flex hidden min-[1024px]:h-11 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 sm:px-4 lg:inline-flex"
+                  className="hidden h-11 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 lg:inline-flex"
                 >
-                  <SlidersHorizontal className="h-4 w-4 sm:hidden" />
-                  <span className="hidden sm:inline">{t("actions.refinePreferences")}</span>
+                  {t("actions.refinePreferences")}
                 </Link>
               </div>
             </div>
@@ -592,10 +542,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     <JobFeedCard
                       key={job._id}
                       job={job}
-                      isSaved={savedIds.has(job._id)}
                       isApplied={appliedIds.has(job._id)}
-                      onSave={() => saveMutation.mutate(job._id)}
-                      savePending={saveMutation.isPending && saveMutation.variables === job._id}
                       onApply={() => handleApply(job)}
                       onHide={() => {
                         setHidden((s) => new Set([...s, job._id]));
@@ -707,10 +654,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   <JobFeedCard
                     key={job._id}
                     job={job}
-                    isSaved={savedIds.has(job._id)}
                     isApplied={appliedIds.has(job._id)}
-                    onSave={() => saveMutation.mutate(job._id)}
-                    savePending={saveMutation.isPending && saveMutation.variables === job._id}
                     onApply={() => handleApply(job)}
                     onHide={() => {
                       setHidden((s) => new Set([...s, job._id]));
@@ -815,14 +759,15 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
       <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
         <DialogContent mobileSheet className="gap-0 overflow-y-auto p-0">
-          <DialogHeader className="sticky top-0 z-10 border-b border-border/60 bg-background px-6 py-4">
+          <DialogHeader className="sticky top-0 z-10 border-b border-border/60 bg-background px-4 py-3.5 pe-16">
             <DialogTitle>{t("sidebar.filters")}</DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-4">
+          <div className="px-4 py-3">
             <JobFeedSidebar
               filters={filters}
               onFiltersChange={setFilters}
               locale={locale}
+              filtersOnly
             />
           </div>
         </DialogContent>

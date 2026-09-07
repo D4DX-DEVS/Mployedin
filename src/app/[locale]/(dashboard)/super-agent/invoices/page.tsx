@@ -234,7 +234,10 @@ export default function SuperAgentInvoicesPage() {
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ledgerLabel")}</p>
-              <h3 className="heading-subsection font-semibold text-foreground">{t("tableTitle")}</h3>
+              {/* h2, not h3: this is the page's first section heading and the header above
+                  it is the h1, so an h3 skipped a level. Size comes from the utility
+                  class, so the tag change is visually inert. */}
+              <h2 className="heading-subsection font-semibold text-foreground">{t("tableTitle")}</h2>
             </div>
             <InvoiceTable
               invoices={invoices}

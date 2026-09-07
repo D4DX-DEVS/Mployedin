@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/utils";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -72,6 +74,7 @@ export default function AdminSuperAgentsPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [superAgents, setSuperAgents] = useState<SuperAgent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
@@ -126,6 +129,7 @@ export default function AdminSuperAgentsPage() {
 
   const fetchSuperAgents = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
     if (statusFilter !== "all") params.set("status", statusFilter);
@@ -138,14 +142,16 @@ export default function AdminSuperAgentsPage() {
         setSuperAgents(data.superAgents ?? []);
         updateTotal(data.pagination?.total ?? 0);
       } else {
+        setError(t("toastFailedLoadSuperAgents"));
         toast.error(t("toastFailedLoadSuperAgents"));
       }
     } catch (error) {
+      setError(t("toastFailedLoadSuperAgents"));
       toast.error(t("toastFailedLoadSuperAgents"));
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, sortBy, sortOrder, page, limit, updateTotal]);
+  }, [search, statusFilter, sortBy, sortOrder, page, limit, updateTotal, t]);
 
   const toggleSort = (col: "name" | "createdAt") => {
     if (sortBy === col) {
@@ -384,19 +390,19 @@ export default function AdminSuperAgentsPage() {
         compactOnMobile
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           {/* data-table-toolbar + toolbar-search-field opt this hand-rolled
               header into the shared mobile toolbar rules — three rows on a
               phone before. */}
           <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2">
             <div className="relative toolbar-search-field">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder={t("searchPlaceholder")}
-                className="h-8 w-52 rounded-lg pl-8 text-sm"
+                className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
               />
             </div>
             <div className="w-[120px]">
@@ -432,6 +438,11 @@ export default function AdminSuperAgentsPage() {
             )}
           </div>
         </div>
+        {error ? (
+          <div className="p-6">
+            <ErrorState onRetry={fetchSuperAgents} />
+          </div>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -458,11 +469,8 @@ export default function AdminSuperAgentsPage() {
               <TableBodySkeleton rows={5} cols={6} />
             ) : superAgents.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">{t("noAgentsFound")}</span>
-                  </div>
+                <TableCell colSpan={6} className="py-12">
+                  <EmptyState title={t("noAgentsFound")} icon={Inbox} />
                 </TableCell>
               </TableRow>
             ) : superAgents.map((sa) => (
@@ -528,6 +536,7 @@ export default function AdminSuperAgentsPage() {
             ))}
           </TableBody>
         </Table>
+        )}
       </section>
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

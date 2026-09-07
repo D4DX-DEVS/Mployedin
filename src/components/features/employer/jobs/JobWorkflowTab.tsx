@@ -8,34 +8,26 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   useJobWorkflow, useSaveJobWorkflow,
   type WorkflowStage, type WorkflowSettings,
 } from "@/hooks/useJobWorkflow";
+import {
+  DEFAULT_WORKFLOW_STAGES,
+  DEFAULT_STAGE_LABELS,
+  STAGE_DOT_CLASS,
+  STAGE_LABEL_KEYS,
+  isApplicationStatus,
+} from "@/lib/hiring/pipeline";
 
-const DEFAULT_STAGES: WorkflowStage[] = [
-  { id: "new", label: "New Application", enabled: true, autoProgress: false, order: 1 },
-  { id: "screening", label: "AI Screening", enabled: true, autoProgress: true, order: 2 },
-  { id: "shortlisted", label: "Shortlisted", enabled: true, autoProgress: false, order: 3 },
-  { id: "interview_scheduled", label: "Interview Scheduled", enabled: true, autoProgress: true, order: 4 },
-  { id: "interview_completed", label: "Interview Completed", enabled: true, autoProgress: false, order: 5 },
-  { id: "offer_extended", label: "Offer Extended", enabled: true, autoProgress: false, order: 6 },
-  { id: "accepted", label: "Offer Accepted", enabled: true, autoProgress: false, order: 7 },
-  { id: "rejected", label: "Rejected", enabled: true, autoProgress: false, order: 8 },
-];
-
-const STAGE_COLORS: Record<string, string> = {
-  new: "bg-blue-500", screening: "bg-violet-500", shortlisted: "bg-amber-500",
-  interview_scheduled: "bg-purple-500", interview_completed: "bg-indigo-500",
-  offer_extended: "bg-emerald-500", accepted: "bg-green-500", rejected: "bg-red-500",
-};
+const DEFAULT_STAGES: WorkflowStage[] = DEFAULT_WORKFLOW_STAGES.map((s) => ({ ...s }));
 
 interface Props { jobId: string; }
 
 export function JobWorkflowTab({ jobId }: Props) {
   const t = useTranslations("jobWorkflowTab");
+  const tp = useTranslations("hiringPipeline");
   const { data: serverData, isLoading: loading, error: fetchError } = useJobWorkflow(jobId);
   const saveWorkflow = useSaveJobWorkflow(jobId);
 
@@ -45,10 +37,13 @@ export function JobWorkflowTab({ jobId }: Props) {
   const [autoRejectBelow, setAutoRejectBelow] = useState(40);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [addingStage, setAddingStage] = useState(false);
-  const [newStageLabel, setNewStageLabel] = useState("");
+  const [restoreId, setRestoreId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<"job" | "employer">("employer");
+
+  const stageLabel = (stage: WorkflowStage) =>
+    isApplicationStatus(stage.id) ? tp(STAGE_LABEL_KEYS[stage.id]) : stage.label;
+  const missingStages = DEFAULT_STAGES.filter((d) => !stages.some((s) => s.id === d.id));
 
   useEffect(() => {
     if (serverData) {
@@ -81,16 +76,11 @@ export function JobWorkflowTab({ jobId }: Props) {
     markDirty();
   };
 
-  const addStage = () => {
-    if (!newStageLabel.trim() || stages.length >= 20) return;
-    const id = newStageLabel.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    if (stages.some((s) => s.id === id)) return;
-    setStages((prev) => [
-      ...prev,
-      { id, label: newStageLabel.trim(), enabled: true, autoProgress: false, order: prev.length + 1 },
-    ]);
-    setNewStageLabel("");
-    setAddingStage(false);
+  const restoreStage = () => {
+    const template = DEFAULT_STAGES.find((s) => s.id === restoreId);
+    if (!template || stages.some((s) => s.id === template.id)) return;
+    setStages((prev) => [...prev, { ...template, label: DEFAULT_STAGE_LABELS[template.id as keyof typeof DEFAULT_STAGE_LABELS], order: prev.length + 1 }]);
+    setRestoreId("");
     markDirty();
   };
 
@@ -175,8 +165,8 @@ export function JobWorkflowTab({ jobId }: Props) {
             {activeStages.map((stage, index) => (
               <div key={stage.id} className="flex items-center gap-1.5">
                 <div className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-medium text-foreground">
-                  <span className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
-                  {stage.label}
+                  <span className={`h-2 w-2 rounded-full ${STAGE_DOT_CLASS[stage.id as keyof typeof STAGE_DOT_CLASS] ?? "bg-gray-400"}`} />
+                  {stageLabel(stage)}
                 </div>
                 {index < activeStages.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground" />}
               </div>
@@ -194,27 +184,29 @@ export function JobWorkflowTab({ jobId }: Props) {
             <h3 className="heading-label font-semibold text-foreground flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-sky-600" /> {t("pipelineStages")}
             </h3>
-            <Button variant="outline" size="sm" onClick={() => setAddingStage(!addingStage)} disabled={stages.length >= 20} className="gap-1.5 h-8">
-              <Plus className="h-3.5 w-3.5" /> {t("addStage")}
-            </Button>
-          </div>
-
-          {addingStage && (
-            <div className="flex flex-col items-stretch gap-2 rounded-xl border border-dashed border-sky-500/30 bg-sky-500/5 sm:flex-row sm:items-center chip-pad">
-              <Input
-                value={newStageLabel}
-                onChange={(e) => setNewStageLabel(e.target.value)}
-                placeholder={t("stageNamePlaceholder")}
-                className="h-9 flex-1"
-                maxLength={100}
-                onKeyDown={(e) => e.key === "Enter" && addStage()}
-              />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={addStage} disabled={!newStageLabel.trim()} className="bg-sky-600 text-white hover:bg-sky-700">{t("add")}</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setAddingStage(false); setNewStageLabel(""); }}>{t("cancel")}</Button>
-              </div>
+            <div className="flex items-center gap-2">
+              {missingStages.length > 0 ? (
+                <>
+                  <select
+                    aria-label={tp("restoreStage")}
+                    value={restoreId}
+                    onChange={(e) => setRestoreId(e.target.value)}
+                    className="h-8 rounded-lg border border-border bg-background px-2 text-sm"
+                  >
+                    <option value="">{tp("restoreStagePlaceholder")}</option>
+                    {missingStages.map((s) => (
+                      <option key={s.id} value={s.id}>{stageLabel(s)}</option>
+                    ))}
+                  </select>
+                  <Button variant="outline" size="sm" onClick={restoreStage} disabled={!restoreId} className="gap-1.5 h-8">
+                    <Plus className="h-3.5 w-3.5" /> {tp("restoreStage")}
+                  </Button>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">{tp("allStagesPresent")}</span>
+              )}
             </div>
-          )}
+          </div>
 
           {stages.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
@@ -250,8 +242,8 @@ export function JobWorkflowTab({ jobId }: Props) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
-                        <span className="truncate text-sm font-semibold text-foreground">{stage.label}</span>
+                        <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${STAGE_DOT_CLASS[stage.id as keyof typeof STAGE_DOT_CLASS] ?? "bg-gray-400"}`} />
+                        <span className="truncate text-sm font-semibold text-foreground">{stageLabel(stage)}</span>
                         <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {stage.enabled ? "On" : "Off"}
                         </span>

@@ -57,9 +57,9 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
   return (
     <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Activity className="h-4 w-4" /> {t("recentActivity")}
-        </h4>
+        </h2>
         <span className="text-xs text-primary cursor-pointer hover:underline">{tc("view")}</span>
       </div>
 
@@ -69,7 +69,9 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            /* text-xs, not text-[11px]: 11px is the token floor and these are
+               interactive filter labels, not metadata. */
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
               filter === f.key
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted/50"

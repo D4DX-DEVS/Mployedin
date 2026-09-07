@@ -9,7 +9,10 @@ import ProfileView from "@/models/ProfileView";
 import Job from "@/models/Job";
 import { calculateMatchScore, jobProfileFromDoc } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
-import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
+import {
+  JobSeekerHomePage,
+  HOME_RECOMMENDED_JOB_COUNT,
+} from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
 
@@ -86,11 +89,11 @@ export default async function JobSeekerPage({
     })
       .sort({ createdAt: -1 })
       .limit(50)
-      .select("title salary location employerId tags createdAt requirements")
+      .select("title salary location employerId tags createdAt requirements employmentType")
       .populate("employerId", "companyName logo")
       .lean(),
     Application.find({ jobSeekerId: seekerId })
-      .select("jobId status")
+      .select("jobId status createdAt")
       .populate({ path: "jobId", select: "title employerId", populate: { path: "employerId", select: "companyName logo" } })
       .sort({ createdAt: -1 })
       .limit(5)
@@ -165,15 +168,22 @@ export default async function JobSeekerPage({
     .filter((job) => !appliedJobIdSet.has(String(job._id)))
     .filter(isRelevantJob)
     .map((job) => {
-      const emp = job.employerId as { companyName?: string; logo?: string } | null;
+      const emp = job.employerId as { _id?: unknown; companyName?: string; logo?: string } | null;
       const loc = job.location as { city?: string; country?: string; isRemote?: boolean } | null;
       const sal = job.salary as { min?: number; max?: number; currency?: string } | null;
       const rawDate = job.createdAt instanceof Date ? job.createdAt : new Date(job.createdAt as string ?? 0);
+      const reqs = job.requirements as { skills?: string[] } | null;
+      const jobSkills = (reqs?.skills ?? []).map(String);
       return {
         _id: String(job._id),
         title: String(job.title ?? ""),
         createdAt: isNaN(rawDate.getTime()) ? new Date(0).toISOString() : rawDate.toISOString(),
         matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0])),
+        employmentType: job.employmentType ? String(job.employmentType) : undefined,
+        // The card shows three skills and marks the ones the seeker already
+        // has, so both the list and the overlap have to reach the client.
+        skills: jobSkills,
+        matchedSkills: jobSkills.filter((skill) => seekerSkillSet.has(skill.toLowerCase())),
         // Serialize nested objects to plain primitives only
         location: loc
           ? { city: loc.city ?? undefined, country: loc.country ?? undefined, isRemote: loc.isRemote ?? false }
@@ -182,13 +192,19 @@ export default async function JobSeekerPage({
           ? { min: sal.min ?? undefined, max: sal.max ?? undefined, currency: sal.currency ?? undefined }
           : undefined,
         employerId: emp
-          ? { companyName: emp.companyName ?? undefined, logo: emp.logo ?? undefined }
+          ? {
+              _id: (emp as { _id?: unknown })._id ? String((emp as { _id?: unknown })._id) : undefined,
+              companyName: emp.companyName ?? undefined,
+              logo: emp.logo ?? undefined,
+            }
           : undefined,
       };
     })
     .filter((j) => j.matchScore >= 30)
     .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, 6);
+    // The home page paints exactly this many cards — slicing wider only ships
+    // jobs the client would drop.
+    .slice(0, HOME_RECOMMENDED_JOB_COUNT);
 
   const initialData: InitialHomeData = {
     profile: JSON.parse(JSON.stringify(seeker)),
@@ -204,12 +220,14 @@ export default async function JobSeekerPage({
     appliedJobs: (appliedApps as Array<Record<string, unknown>>).map((app) => {
       const job = app.jobId as Record<string, unknown> | null;
       const emp = job?.employerId as { companyName?: string; logo?: string } | null;
+      const appliedDate = app.createdAt instanceof Date ? app.createdAt : new Date(String(app.createdAt ?? ""));
       return {
         _id: String(job?._id ?? ""),
         title: String(job?.title ?? ""),
         companyName: emp?.companyName ?? undefined,
         companyLogo: emp?.logo ?? undefined,
         status: String(app.status ?? "applied"),
+        appliedAt: isNaN(appliedDate.getTime()) ? undefined : appliedDate.toISOString(),
       };
     })
       .filter((a) => a._id)

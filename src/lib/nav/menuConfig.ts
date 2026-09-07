@@ -221,14 +221,9 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Assign & manage user subscriptions",
                 descriptionAr: "تعيين وإدارة اشتراكات المستخدمين",
               },
-              {
-                title: "Subscription Dashboard",
-                titleAr: "لوحة الاشتراكات",
-                href: p("/admin/subscription-dashboard"),
-                icon: "BarChart2",
-                description: "Overview, revenue & activity stats",
-                descriptionAr: "نظرة عامة والإيرادات وإحصائيات النشاط",
-              },
+              // Subscription Dashboard, Target Report and Commission Report
+              // used to sit here as well as inside the Reports tab strip. They
+              // now live only under Reports — see the "Reports" entry below.
               {
                 title: "Targets",
                 titleAr: "الأهداف",
@@ -236,22 +231,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Target",
                 description: "Enterprise target profiles & analytics",
                 descriptionAr: "ملفات الأهداف المتقدمة والتحليلات",
-              },
-              {
-                title: "Target Report",
-                titleAr: "تقرير الأهداف",
-                href: p("/admin/target-report"),
-                icon: "FileText",
-                description: "Consolidated target performance report",
-                descriptionAr: "تقرير أداء الأهداف الموحد",
-              },
-              {
-                title: "Commission Report",
-                titleAr: "تقرير العمولات",
-                href: p("/admin/commissions-report"),
-                icon: "BarChart2",
-                description: "Aggregated commission analytics across all agents",
-                descriptionAr: "تحليلات العمولات الموحدة لجميع الوكلاء",
               },
             ],
           },
@@ -362,45 +341,23 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "القطاعات والمهارات والتخصصات والمواقع",
           },
           {
-            title: "Insight",
-            titleAr: "التحليلات",
+            // Five reporting destinations, one sidebar row.
+            //
+            // They used to sit as leaves in two different groups — Platform
+            // Report and AI Insights under Insight, Target Report, Commission
+            // Report and Subscription Dashboard under Finance — *and* be
+            // repeated as a five-link ReportTabs strip on each of the five
+            // pages. Clicking a tab therefore moved the highlighted sidebar
+            // group, which read as being thrown to an unrelated page.
+            //
+            // Same shape as Platform Data above: one entry here, the tab bar at
+            // the destination, every original route still resolving.
+            title: "Reports",
+            titleAr: "التقارير",
             href: p("/admin/reports"),
             icon: "BarChart2",
-            description: "Platform report, AI insights and the audit trail",
-            descriptionAr: "تقرير المنصة ورؤى الذكاء الاصطناعي وسجل التدقيق",
-            children: [
-              {
-                // Platform performance: funnel, trends and the alert engine.
-                title: "Platform Report",
-                titleAr: "تقرير المنصة",
-                href: p("/admin/reports"),
-                icon: "BarChart2",
-                description: "Funnel, trends and alerts that need action",
-                descriptionAr: "المسار والاتجاهات والتنبيهات التي تحتاج إجراءً",
-              },
-              {
-                // An AI-written narrative over the same numbers — a different
-                // thing from the report above, and previously named as if it
-                // were the report itself.
-                title: "AI Insights",
-                titleAr: "رؤى الذكاء الاصطناعي",
-                href: p("/admin/analytics"),
-                icon: "Sparkles",
-                description: "AI-written summary of platform performance",
-                descriptionAr: "ملخص من الذكاء الاصطناعي لأداء المنصة",
-              },
-              {
-                // One page now: Activity Timeline read the same AuditLog
-                // collection with a filter set that neither contained nor was
-                // contained by this one.
-                title: "Audit Trail",
-                titleAr: "سجل التدقيق",
-                href: p("/admin/audit-logs"),
-                icon: "ClipboardList",
-                description: "Who did what, filtered by user, role, resource or date",
-                descriptionAr: "من فعل ماذا، مع التصفية حسب المستخدم أو الدور أو المورد أو التاريخ",
-              },
-            ],
+            description: "Platform, AI, targets, commissions and subscriptions",
+            descriptionAr: "المنصة والذكاء الاصطناعي والأهداف والعمولات والاشتراكات",
           },
           {
             title: "System",
@@ -470,6 +427,19 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "إدارة قوالب أوزان المطابقة",
                 group: "Automation",
                 groupAr: "الأتمتة",
+              },
+              {
+                // One page now: Activity Timeline read the same AuditLog
+                // collection with a filter set that neither contained nor was
+                // contained by this one.
+                title: "Audit Trail",
+                titleAr: "سجل التدقيق",
+                href: p("/admin/audit-logs"),
+                icon: "ClipboardList",
+                description: "Who did what, filtered by user, role, resource or date",
+                group: "Compliance",
+                groupAr: "الامتثال",
+                descriptionAr: "من فعل ماذا، مع التصفية حسب المستخدم أو الدور أو المورد أو التاريخ",
               },
               {
                 title: "GDPR / Data Privacy",
@@ -1300,14 +1270,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "ابحث وتصفح الوظائف المطابقة",
           },
           {
-            title: "Saved Jobs",
-            titleAr: "الوظائف المحفوظة",
-            href: p("/job-seeker/saved-jobs"),
-            icon: "Heart",
-            description: "Jobs you bookmarked",
-            descriptionAr: "الوظائف التي حفظتها",
-          },
-          {
             title: "Job Alerts",
             titleAr: "تنبيهات الوظائف",
             href: p("/job-seeker/saved-searches"),
@@ -1413,14 +1375,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "الشهادات والملفات الداعمة",
           },
           {
-            title: "Portfolio",
-            titleAr: "الأعمال",
-            href: p("/job-seeker/portfolio"),
-            icon: "FolderOpen",
-            description: "Showcase your projects and work",
-            descriptionAr: "اعرض مشاريعك وأعمالك",
-          },
-          {
             title: "Personal Details",
             titleAr: "البيانات الشخصية",
             href: p("/job-seeker/profile/personal-details"),
@@ -1436,44 +1390,12 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             description: "What you want matched to you",
             descriptionAr: "ما تريد أن يتم مطابقته معك",
           },
-          {
-            title: "Courses",
-            titleAr: "الدورات",
-            href: p("/job-seeker/courses"),
-            icon: "BookOpen",
-            description: "Learning and certification",
-            descriptionAr: "التعلم والشهادات",
-          },
         ],
       },
       {
         label: "Grow and account",
         labelAr: "النمو والحساب",
         items: [
-          {
-            title: "Profile Views",
-            titleAr: "من شاهد ملفك",
-            href: p("/job-seeker/profile-views"),
-            icon: "Eye",
-            description: "See who viewed your profile",
-            descriptionAr: "عرض من شاهد ملفك الشخصي",
-          },
-          {
-            title: "Profile Boost",
-            titleAr: "تعزيز الملف الشخصي",
-            href: p("/job-seeker/profile-boost"),
-            icon: "TrendingUp",
-            description: "Get noticed by more recruiters",
-            descriptionAr: "اجعل ملفك أكثر ظهورًا للمسؤولين عن التوظيف",
-          },
-          {
-            title: "Referral Program",
-            titleAr: "برنامج الإحالة",
-            href: p("/job-seeker/referral"),
-            icon: "Gift",
-            description: "Invite friends and earn rewards",
-            descriptionAr: "ادعُ أصدقاءك واكسب مكافآت",
-          },
           {
             title: "My Subscription",
             titleAr: "اشتراكي",

@@ -41,6 +41,10 @@ interface Band {
  * deep-links into the Applications page filtered by match score and sorted by
  * AI score descending.
  *
+ * The "estimates don't replace human review" note is rendered by
+ * DashboardInsightsRow as a caption under the row, not here — as a card
+ * footer it got pushed to the bottom of the stretched grid cell.
+ *
  * Data is sourced from `getEmployerDashboardStats` (cached 10s, single
  * aggregation reusing the indexed `aiMatchScore` field) — no extra queries.
  */
@@ -146,10 +150,6 @@ export function AIRecommendedCandidatesCard({
           </div>
         </div>
       )}
-      <div className="mt-auto flex items-start gap-2 border-t border-border/60 px-4 py-3 text-xs leading-5 text-muted-foreground sm:px-5">
-        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600" aria-hidden="true" />
-        <p>{t("assistiveNote")}</p>
-      </div>
     </DashboardSection>
   );
 }

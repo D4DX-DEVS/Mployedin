@@ -29,6 +29,8 @@ import {
   SuperAgentEmptyState,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -147,6 +149,7 @@ export default function SuperAgentTargetReportPage() {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ReportData | null>(null);
+  const pagination = usePagination(10);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -211,6 +214,20 @@ export default function SuperAgentTargetReportPage() {
     }
     return team;
   }, [data, riskFilter, searchQuery]);
+
+  // Paged in the browser, not on the server: the risk filter, the name search
+  // and all three exports read the whole team, so a server slice would quietly
+  // narrow them to whichever ten rows happened to be on screen.
+  const pagedTeam = useMemo(
+    () => filteredTeam.slice((pagination.page - 1) * pagination.limit, pagination.page * pagination.limit),
+    [filteredTeam, pagination.page, pagination.limit],
+  );
+
+  useEffect(() => {
+    // `pagination` is deliberately not a dependency: it is rebuilt every render
+    // and listing it here would loop.
+    pagination.updateTotal(filteredTeam.length);
+  }, [filteredTeam.length]);
 
   // Chart data
   const trendChartData = useMemo(() => {
@@ -303,10 +320,10 @@ export default function SuperAgentTargetReportPage() {
         title={t("targetReportTitle")}
         description={t("teamReportHeroDescription", { year: yearFilter })}
         metrics={[
-          { label: "Employer Target", value: `${data.summary.employerAchieved} / ${data.summary.employerTarget}`, icon: Building2 },
-          { label: "Employee Target", value: `${data.summary.employeeAchieved} / ${data.summary.employeeTarget}`, icon: Users },
-          { label: "Business Volume", value: formatCurrency(data.totalBusinessVolume, currency), icon: CircleDollarSign },
-          { label: "Avg Performance", value: `${data.summary.avgProgress}%`, icon: Activity },
+          { label: t("employerTarget"), value: `${data.summary.employerAchieved} / ${data.summary.employerTarget}`, icon: Building2 },
+          { label: t("employeeTarget"), value: `${data.summary.employeeAchieved} / ${data.summary.employeeTarget}`, icon: Users },
+          { label: t("businessVolumeShort"), value: formatCurrency(data.totalBusinessVolume, currency), icon: CircleDollarSign },
+          { label: t("avgPerformance"), value: `${data.summary.avgProgress}%`, icon: Activity },
         ]}
         compact
       />
@@ -317,10 +334,10 @@ export default function SuperAgentTargetReportPage() {
       <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <div className="flex items-center gap-1.5">
           <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-full sm:w-24 rounded-lg text-sm" />
+          <Input type="number" aria-label={t("year")} value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-full sm:w-24 rounded-lg text-sm" />
         </div>
         <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-          <SelectTrigger className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
+          <SelectTrigger aria-label={t("quarter")} className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("allQuarters")}</SelectItem>
             <SelectItem value="1">{t("q1")}</SelectItem>
@@ -330,7 +347,7 @@ export default function SuperAgentTargetReportPage() {
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="h-9 w-full sm:w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
+          <SelectTrigger aria-label={t("category")} className="h-9 w-full sm:w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("allCategories")}</SelectItem>
             <SelectItem value="employer">{t("metricEmployer")}</SelectItem>
@@ -339,7 +356,7 @@ export default function SuperAgentTargetReportPage() {
           </SelectContent>
         </Select>
         <Select value={riskFilter} onValueChange={setRiskFilter}>
-          <SelectTrigger className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
+          <SelectTrigger aria-label={t("risk")} className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("allRisks")}</SelectItem>
             <SelectItem value="high">{t("highRisk")}</SelectItem>
@@ -356,6 +373,7 @@ export default function SuperAgentTargetReportPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Input
           type="text"
+          aria-label={t("searchAgentName")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t("searchAgentName")}
@@ -518,9 +536,9 @@ export default function SuperAgentTargetReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTeam.map((row, i) => (
+                {pagedTeam.map((row, i) => (
                   <TableRow key={row._id}>
-                    <TableCell className="text-sm font-bold tabular-nums">{i + 1}</TableCell>
+                    <TableCell className="text-sm font-bold tabular-nums">{(pagination.page - 1) * pagination.limit + i + 1}</TableCell>
                     <TableCell><p className="font-medium">{row.assigneeName}</p></TableCell>
                     <TableCell className="text-center tabular-nums">{row.employerAchieved}/{row.employerTarget}</TableCell>
                     <TableCell className="text-center tabular-nums">{row.employeeAchieved}/{row.employeeTarget}</TableCell>
@@ -535,6 +553,16 @@ export default function SuperAgentTargetReportPage() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+          <div className="mt-4">
+            <PaginationControls
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              limit={pagination.limit}
+              total={pagination.total}
+              onPageChange={pagination.setPage}
+              onLimitChange={pagination.setLimit}
+            />
           </div>
         </section>
       )}

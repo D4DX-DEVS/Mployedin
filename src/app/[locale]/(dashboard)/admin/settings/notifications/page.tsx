@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import { PageHero } from "@/components/shared/PageHero";
 import {
   Bell, Mail, Clock, Users, Send, BarChart3, Shield, Loader2,
   CheckCircle2, AlertTriangle, Save, PowerOff, UserX, Pause, Zap,
-  Activity, TrendingUp, ChevronLeft, ChevronRight, RefreshCw,
+  Activity, TrendingUp, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -162,7 +163,7 @@ export default function AdminNotificationsPage() {
       />
 
       {/* ── Tab Navigation ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {/* shrink-0 on the tabs: without it flex squeezed five tabs into the
             row width and their nowrap labels overlapped each other. The row
             scrolls instead, like the employer filter-chip rows. */}
@@ -273,7 +274,7 @@ function CronJobsTab({
               <PowerOff className={`w-5 h-5 ${config?.globalDefaults.maintenanceMode ? "text-red-600" : "text-muted-foreground"}`} />
             </div>
             <div>
-              <h3 className="heading-label font-bold">{t("maintenanceModeKillSwitch")}</h3>
+              <h2 className="heading-label font-bold">{t("maintenanceModeKillSwitch")}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">{t("maintenanceModeDescription")}</p>
             </div>
           </div>
@@ -319,12 +320,16 @@ function CronJobsTab({
 
 function EmailLogsTab() {
   const t = useTranslations("adminSettingsNotifications");
+  const ta = useTranslations("a11y");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [logs, setLogs] = useState<EmailLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+  // The request hard-coded limit=30, so there was no page size to change.
+  const [limit, setLimit] = useState(30);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalLogs, setTotalLogs] = useState(0);
   const [statusFilter, setStatusFilter] = useState("__all__");
   const [sourceFilter, setSourceFilter] = useState("__all__");
   const [stats24h, setStats24h] = useState<Record<string, number>>({});
@@ -338,13 +343,13 @@ function EmailLogsTab() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "30" });
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (statusFilter && statusFilter !== "__all__") params.set("status", statusFilter);
     if (sourceFilter && sourceFilter !== "__all__") params.set("source", sourceFilter);
     try {
       const res = await fetch(`/api/admin/email-logs?${params}`);
       const data = await res.json();
-      if (data.success) { setLogs(data.logs); setTotalPages(data.pagination.totalPages); setStats24h(data.stats24h); }
+      if (data.success) { setLogs(data.logs); setTotalPages(data.pagination.totalPages); setTotalLogs(data.pagination.total ?? data.pagination.totalPages * limit); setStats24h(data.stats24h); }
     } catch {}
     setLoading(false);
   }, [page, statusFilter, sourceFilter]);
@@ -428,15 +433,17 @@ function EmailLogsTab() {
             </tbody>
           </table>
         </div>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-2 border-t border-border/30 bg-muted/20">
-            <span className="text-xs text-muted-foreground">{t("emailLogsPaginationLabel", { page: page, totalPages: totalPages })}</span>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="sm" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}><ChevronLeft className="w-3 h-3" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}><ChevronRight className="w-3 h-3" /></Button>
-            </div>
-          </div>
-        )}
+        {/* Prev/next only, no counts, no page size, and gated on
+            `totalPages > 1` so it vanished entirely on a single page instead of
+            showing a disabled state. */}
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={totalLogs}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(next) => { setLimit(next); setPage(1); }}
+        />
       </div>
     </div>
   );
@@ -579,7 +586,7 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: typ
     <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
       <div className="border-b border-border/40 flex items-center gap-2.5 panel-head">
         <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10"><Icon className="w-3.5 h-3.5 text-primary" /></div>
-        <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
+        <h2 className="heading-label font-semibold tracking-tight">{title}</h2>
       </div>
       {children}
     </div>

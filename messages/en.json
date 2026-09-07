@@ -42,6 +42,7 @@
     "more": "More",
     "openMoreMenu": "Open more menu",
     "employerMobileNavigation": "Employer mobile navigation",
+    "jobSeekerNavigation": "Job seeker navigation",
     "jobSeekerMobileNavigation": "Job seeker mobile navigation",
     "customerCare": "Customer Care",
     "employerWorkspace": "Employer workspace",
@@ -415,7 +416,10 @@
     "type": "Type",
     "allCategories": "All Categories",
     "verified": "✓ Verified",
-    "clear": "Clear"
+    "clear": "Clear",
+    "errorStateTitle": "We couldn't load this",
+    "errorStateDescription": "Please check your connection and try again.",
+    "errorStateRetry": "Try again"
   },
   "table": {
     "search": "Search...",
@@ -1285,17 +1289,20 @@
       "experienceEntry": "Entry level (0–2 yrs)",
       "experienceMid": "Mid level (3–5 yrs)",
       "experienceSenior": "Senior level (6+ yrs)",
+      "instant": "Instant",
       "daily": "Daily alerts",
       "weekly": "Weekly alerts",
       "never": "No alerts",
       "create": "Create",
       "cancel": "Cancel",
+      "reset": "Clear",
       "empty": "No saved searches",
       "emptyDescription": "Create a search alert to get notified about new job matches",
       "emailAlertsOn": "Email alerts on",
       "disableAlert": "Disable alert",
       "enableAlert": "Enable alert",
       "loadFailed": "We couldn't load saved searches",
+      "retry": "Retry",
       "required": "Name and search query are required",
       "created": "Saved search created",
       "duplicate": "You've already saved this search.",
@@ -2290,7 +2297,54 @@
         "placeholder": "e.g. English fluent, Arabic intermediate, Hindi native..."
       }
     },
-    "a11yRefreshInsights": "Refresh insights"
+    "a11yRefreshInsights": "Refresh insights",
+    "greeting": {
+      "hello": "Hi, {name} 👋",
+      "morning": "Good morning, {name} 👋",
+      "afternoon": "Good afternoon, {name} 👋",
+      "evening": "Good evening, {name} 👋",
+      "subtitle": "Let's find your next opportunity.",
+      "editPreferences": "Edit preferences"
+    },
+    "search": {
+      "placeholder": "Search jobs by title, skills, or company...",
+      "submit": "Search jobs",
+      "label": "Search jobs"
+    },
+    "signals": {
+      "title": "Your job search",
+      "thisWeek": "+{count} this week"
+    },
+    "recentApplications": {
+      "title": "Recently applied",
+      "viewAll": "View all applications",
+      "empty": "You have not applied to anything yet."
+    },
+    "profileMini": {
+      "title": "Your profile",
+      "complete": "complete",
+      "greatProgress": "Great progress!",
+      "allDone": "Your profile is complete.",
+      "detailLeft": "{count, plural, one {Add # more detail to get better matches.} other {Add # more details to get better matches.}}",
+      "improve": "Improve profile"
+    },
+    "quickLinks": {
+      "title": "Quick links",
+      "savedJobs": "Saved jobs",
+      "jobAlerts": "Job alerts",
+      "applicationTracker": "Application tracker",
+      "interviewPrep": "Interview preparation",
+      "jobPreferences": "Job preferences"
+    },
+    "coach": {
+      "title": "AI job coach",
+      "description": "Get personalized tips to improve your job search.",
+      "cta": "Ask AI coach",
+      "tipFallback": "Keep your profile current so recruiters can find you."
+    },
+    "encouragement": {
+      "cta": "Explore jobs"
+    }
   },
   "ai": {
     "bulkSuccess": "{count} jobs created successfully",
@@ -3543,6 +3597,14 @@
       "discardSuccess": "Extraction draft discarded.",
       "discardFailed": "Couldn't discard the draft. Please try again."
     },
+    "drafts": {
+      "title": "Drafts to resume",
+      "subtitle": "Pick up where you left off.",
+      "tabsLabel": "Draft type",
+      "tabJobs": "Jobs",
+      "tabChats": "AI chats",
+      "tabExtractions": "Extractions"
+    },
     "draftJobs": {
       "cardTitle": "Continue editing",
       "cardSubtitle": "Pick up the job you were working on.",
@@ -3802,7 +3864,8 @@
     "superAgent": "Super Agent",
     "agent": "Agent",
     "employer": "Employer",
-    "jobSeeker": "Job Seeker"
+    "jobSeeker": "Job Seeker",
+    "profile": "My profile"
   },
   "maintenance": {
     "title": "Under Maintenance",
@@ -4399,7 +4462,10 @@
         "clear": "We couldn't clear chat.",
         "delete": "We couldn't delete conversation."
       }
-    }
+    },
+    "ticketUpdateFailed": "We couldn't update this ticket. Please try again.",
+    "ticketCreateFailed": "We couldn't create this ticket. Please try again.",
+    "ticketReopenFailed": "We couldn't re-open this ticket. Please try again."
   },
   "posterCreate": {
     "title": "Create Job Poster",
@@ -5415,7 +5481,7 @@
     "funnel": {
       "leads": "Leads",
       "employers": "Employers",
-      "jobs": "Jobs",
+      "jobs": "Jobs posted",
       "applications": "Applications",
       "placements": "Placements",
       "placementRate": "Placement rate",
@@ -7590,7 +7656,8 @@
     "reviewRevisionNotesPlaceholder": "What needs to be revised...",
     "toastExhibitionApproved": "Exhibition approved",
     "toastExhibitionRevisionRequested": "Exhibition revision requested",
-    "toastExhibitionRejected": "Exhibition rejected"
+    "toastExhibitionRejected": "Exhibition rejected",
+    "moreActions": "More actions"
   },
   "resources": {
     "title": "Resource Management",
@@ -7706,7 +7773,13 @@
     "versionNotesPlaceholder": "What changed in this version?",
     "metricTotalResources": "Total Resources",
     "metricTotalDownloads": "Total Downloads",
-    "actionFailed": "We couldn't complete that. Please try again."
+    "actionFailed": "We couldn't complete that. Please try again.",
+    "downloads": "Downloads",
+    "version": "Version",
+    "newCategoryPlaceholder": "New category name…",
+    "previewFileLabel": "Preview {fileName}",
+    "downloadFileLabel": "Download {fileName}",
+    "previewAlt": "Resource preview"
   },
   "targets": {
     "reportEmptyTitle": "No target report to show",
@@ -8112,7 +8185,7 @@
     "tableHeaderRevenue": "Revenue",
     "tableHeaderMonthly": "Monthly",
     "noAgentsInTeam": "No agents in your team",
-    "totalAgents": "Total ({count} agent{plural})",
+    "totalAgents": "Total ({count, plural, one {# agent} other {# agents}})",
     "monthlyDistributionEditable": "Monthly Distribution (editable)",
     "sumMismatch": "Sum mismatch — adjust monthly values",
     "total": "Total",
@@ -8121,7 +8194,58 @@
     "metricEmployer": "Employer",
     "metricEmployee": "Employee",
     "metricRevenue": "Revenue",
-    "actionFailed": "We couldn't complete that. Please try again."
+    "actionFailed": "We couldn't complete that. Please try again.",
+    "employers": "Employers",
+    "employees": "Employees",
+    "revenue": "Revenue",
+    "searchSizes": "Search sizes…",
+    "searchByNameOrEmail": "Search by name or email…",
+    "profilesCreated": "{count, plural, one {# target profile created} other {# target profiles created}}",
+    "previousPageLabel": "Previous page",
+    "nextPageLabel": "Next page",
+    "toggleMonthly": "Toggle monthly distribution for {name}",
+    "failedLoadAnalytics": "We couldn't load analytics. Please try again.",
+    "businessVolumeShort": "Business Volume",
+    "ariaEmployerTargetFor": "Employer target for {name}",
+    "ariaEmployeeTargetFor": "Employee target for {name}",
+    "ariaRevenueTargetFor": "Revenue target for {name}",
+    "ariaEmployerTargetForMonth": "Employer target for {month}",
+    "ariaEmployeeTargetForMonth": "Employee target for {month}",
+    "ariaRevenueTargetForMonth": "Revenue target for {month}",
+    "colUpdate": "Update",
+    "colActions": "Actions",
+    "viewAgentDetails": "View agent details",
+    "adjustDistribution": "Adjust distribution",
+    "ariaAdjustTargetFor": "Adjust target for {name}",
+    "insightsButton": "Insights",
+    "teamInsightsTitle": "Team insights",
+    "targetProgressOverview": "Target progress overview",
+    "chartSeriesTarget": "Target",
+    "chartSeriesAchieved": "Achieved",
+    "revenueInThousands": "Revenue values shown in thousands (K)",
+    "riskDistribution": "Risk distribution",
+    "teamSummary": "Team summary",
+    "totalAgentsLabel": "Total agents",
+    "atRiskLabel": "At risk",
+    "attentionRequired": "Attention required",
+    "agentPerformanceComparison": "Agent performance comparison",
+    "chartSeriesEmployerPct": "Employer %",
+    "chartSeriesEmployeePct": "Employee %",
+    "chartSeriesRevenuePct": "Revenue %",
+    "underPerformers": "Under performers",
+    "noDataYet": "No data yet.",
+    "pendingApprovals": "Pending approvals",
+    "approvalQueue": "Approval queue",
+    "openDistributions": "Open distributions",
+    "deadlines": "Deadlines",
+    "noDeadlineAlerts": "No deadline alerts",
+    "riskHighLabel": "High",
+    "riskMediumLabel": "Medium",
+    "riskLowLabel": "Low",
+    "currencyCount": "{count, plural, =0 {No currencies} one {# currency} other {# currencies}}",
+    "noAgentsFound": "No agents found",
+    "adjustFiltersOrSearch": "Try adjusting your filters or search terms",
+    "showingOf": "Showing {shown} of {total}"
   },
   "webhooks": {
     "title": "Webhooks",
@@ -8206,7 +8330,8 @@
     "edit": "Edit",
     "redeliverSucceeded": "Replayed the failed {event} delivery",
     "redeliverFailed": "We couldn't replay the delivery. Please try again.",
-    "a11yRedeliver": "Replay the failed delivery"
+    "a11yRedeliver": "Replay the failed delivery",
+    "namePlaceholderExample": "e.g. QuickBooks Integration"
   },
   "notifications": {
     "frequencyInstant": "Instant",
@@ -9984,7 +10109,20 @@
     "aiSkillsSuggestLabel": "Skills Suggest",
     "aiProfileFillLabel": "Profile Fill",
     "aiEnhanceTextLabel": "Enhance Text",
-    "aiGenerateSummaryLabel": "Generate Summary"
+    "aiGenerateSummaryLabel": "Generate Summary",
+    "deactivateConfirmTitle": "Deactivate plan?",
+    "deactivateConfirmMessage": "The plan “{name}” will be deactivated and hidden from new subscribers.",
+    "deactivateConfirmAction": "Deactivate",
+    "reactivateTooltip": "Reactivate",
+    "reactivateConfirmTitle": "Reactivate plan?",
+    "reactivateConfirmMessage": "The plan “{name}” will be visible to new subscribers again.",
+    "reactivateConfirmAction": "Reactivate",
+    "deletePlanTooltip": "Delete permanently",
+    "deleteConfirmTitle": "Delete plan permanently?",
+    "deleteConfirmMessage": "The plan “{name}” will be removed for good. This cannot be undone. Only plans with no subscriptions can be deleted — otherwise leave the plan deactivated.",
+    "deleteConfirmAction": "Delete permanently",
+    "deleteBlockedDefault": "Default plans cannot be deleted",
+    "deleteBlockedInUse": "{count} subscription(s) reference this plan — it can only stay deactivated"
   },
   "adminCmsBanners": {
     "titleEnglish": "Title (English)",
@@ -10429,7 +10567,11 @@
   "adminSubscriptionDashboard": {
     "failedToLoadDashboardData": "We couldn't load dashboard data. Please try again.",
     "exportHeaderMetric": "Metric",
-    "exportHeaderValue": "Value"
+    "exportHeaderValue": "Value",
+    "mrrLabel": "Monthly Recurring",
+    "activeSubscriptionsLabel": "Active Subscriptions",
+    "monthlyGrowthLabel": "Monthly Growth",
+    "churnRateLabel": "Churn Rate"
   },
   "adminSystemHealth": {
     "pageTitle": "System Health",
@@ -10653,7 +10795,8 @@
     "exportHeaderPending": "Pending (AED)",
     "exportHeaderApproved": "Approved (AED)",
     "exportHeaderPaid": "Paid (AED)",
-    "exportHeaderAvgRate": "Avg Rate (%)"
+    "exportHeaderAvgRate": "Avg Rate (%)",
+    "yearFilterLabel": "Filter by year"
   },
   "adminEmployers": {
     "adminWorkspace": "Admin workspace",
@@ -10961,7 +11104,11 @@
     "exportHeaderBalance": "Balance",
     "exportHeaderCurrency": "Currency",
     "exportHeaderStatus": "Status",
-    "exportHeaderIssued": "Issued"
+    "exportHeaderIssued": "Issued",
+    "totalInvoicedLabel": "Total Invoiced",
+    "totalPaidLabel": "Total Paid",
+    "outstandingLabel": "Outstanding",
+    "overallCollectionRateLabel": "Collection Rate"
   },
   "adminMatchingWeightTemplates": {
     "pageTitle": "Matching Weight Templates",
@@ -10995,7 +11142,11 @@
     "defaultBadge": "Default",
     "systemBadge": "System",
     "topPriorityLabel": "Top priority: {weightLabel} ({percentage}%)",
-    "weightDistributionExpandedLabel": "Weight Distribution"
+    "weightDistributionExpandedLabel": "Weight Distribution",
+    "deleteConfirmTitle": "Delete template?",
+    "deleteConfirmMessage": "The template “{name}” will be permanently deleted. This cannot be undone.",
+    "deleteConfirmAction": "Delete",
+    "deleteButtonLabel": "Delete template"
   },
   "adminPlacements": {
     "recruitmentControl": "Recruitment Control",
@@ -11117,7 +11268,11 @@
     "stageInterviewCompleted": "Interview Completed",
     "stageOfferExtended": "Offer Extended",
     "stageOfferAccepted": "Offer Accepted",
-    "stageRejected": "Rejected"
+    "stageRejected": "Rejected",
+    "deleteConfirmTitle": "Delete workflow template?",
+    "deleteConfirmMessage": "The workflow template “{name}” will be permanently deleted. This cannot be undone.",
+    "deleteConfirmAction": "Delete",
+    "deleteButtonLabel": "Delete workflow template"
   },
   "adminAgents": {
     "adminWorkspace": "Admin workspace",
@@ -12141,7 +12296,8 @@
     "exportHeaderName": "Name",
     "exportHeaderEmail": "Email",
     "exportHeaderCompany": "Company",
-    "exportHeaderBillingCycle": "Billing Cycle"
+    "exportHeaderBillingCycle": "Billing Cycle",
+    "reasonOptionalPlaceholder": "Reason (optional)…"
   },
   "adminSuperAgents": {
     "pageTitle": "Super Agents",
@@ -12294,7 +12450,10 @@
     "deactivateConfirmMessage": "Deactivate {name}? They will be signed out and cannot sign in until reactivated.",
     "toastUserDeactivated": "{name} deactivated",
     "toastUserActivated": "{name} activated",
-    "toastFailedSavePermissions": "We couldn't save those permissions. Please try again."
+    "toastFailedSavePermissions": "We couldn't save those permissions. Please try again.",
+    "selectAllUsers": "Select all users",
+    "selectUser": "Select {name}",
+    "customPermissions": "Custom"
   },
   "superAgentSettings": {
     "profilePhoto": "Profile photo",
@@ -12468,7 +12627,10 @@
     "invoicePaymentNet60": "Net 60 days",
     "invoicePaymentNet90": "Net 90 days",
     "invoicePaymentCustom": "Custom",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "avatarRemoveConfirmTitle": "Remove profile photo?",
+    "avatarRemoveConfirmMessage": "Your profile photo will be removed and you will need to upload it again.",
+    "avatarRemoveConfirmAction": "Remove photo"
   },
   "superAgentJobs": {
     "totalJobsLabel": "Total Jobs",
@@ -12580,7 +12742,18 @@
     "filterBadgeExperienceLabel": "Exp",
     "filterBadgeDateLabel": "Date",
     "filterBadgeSearchLabel": "Search",
-    "exportTitle": "Regional Jobs"
+    "exportTitle": "Regional Jobs",
+    "removeStatusFilter": "Remove status filter",
+    "removeTypeFilter": "Remove employment type filter",
+    "removeModeFilter": "Remove work mode filter",
+    "removeCountryFilter": "Remove country filter",
+    "removeCityFilter": "Remove city filter",
+    "removeSkillsFilter": "Remove skills filter",
+    "removeSalaryFilter": "Remove salary filter",
+    "removeExperienceFilter": "Remove experience filter",
+    "removeDateFilter": "Remove date filter",
+    "removeSearchFilter": "Remove search filter",
+    "loadJobsError": "We couldn't load jobs. Please try again."
   },
   "superAgentLeads": {
     "columnActions": "Actions",
@@ -12670,7 +12843,9 @@
     "noLeadsFoundTitle": "No leads found",
     "noLeadsFoundMessage": "Try another search, adjust filters, or use AI search to explore your pipeline.",
     "badgeRouted": "Routed",
-    "labelOverdue": "overdue"
+    "labelOverdue": "overdue",
+    "dismissAiSummary": "Dismiss AI summary",
+    "removeFilterWithLabel": "Remove {label} filter"
   },
   "superAgentAgents": {
     "allAgents": "All agents",
@@ -12741,7 +12916,8 @@
     "toastAgentCreatedNoEmail": "Agent created, but welcome email could not be sent",
     "toastAgentCreatedSuccess": "Agent created successfully",
     "errorNetworkError": "Network error",
-    "avgResponseShort": "Avg Response (h)"
+    "avgResponseShort": "Avg Response (h)",
+    "loadAgentsError": "We couldn't load agents. Please try again."
   },
   "superAgentEmployers": {
     "pageTitle": "Employer Relationships",
@@ -12803,7 +12979,8 @@
     "exportFilename": "super-agent-employers",
     "switchError": "We couldn't switch to employer view",
     "networkError": "Network error — please try again",
-    "onboardError": "We couldn't onboard employer"
+    "onboardError": "We couldn't onboard this employer. Please try again.",
+    "loadEmployersError": "We couldn't load employers. Please try again."
   },
   "superAgentPlacements": {
     "pageTitle": "Placements",
@@ -12885,7 +13062,8 @@
     "exportStartDate": "Start Date",
     "exportPlacedAt": "Placed At",
     "currencyFilterAllLabel": "All currencies",
-    "exportTitle": "Placements"
+    "exportTitle": "Placements",
+    "loadPlacementsError": "We couldn't load placements. Please try again."
   },
   "superAgentAgentDetail": {
     "sendReminder": "Send reminder",
@@ -12971,7 +13149,11 @@
     "dayFriday": "Fri",
     "daySaturday": "Sat",
     "daySunday": "Sun",
-    "agentDetailError": "We couldn't load this agent. Check your connection and try again."
+    "agentDetailError": "We couldn't load this agent. Check your connection and try again.",
+    "toggleActiveStatusLabel": "Toggle active status",
+    "deactivateConfirmTitle": "Deactivate this agent?",
+    "deactivateConfirmMessage": "{name} will lose access to the workspace until you reactivate them.",
+    "deactivateConfirmAction": "Deactivate agent"
   },
   "superAgentReferralLinks": {
     "eyebrow": "Referral Links",
@@ -13046,7 +13228,10 @@
     "exportColumnCreated": "Created",
     "exportTitle": "Referral Links",
     "yesText": "Yes",
-    "noText": "No"
+    "noText": "No",
+    "loadLinksError": "We couldn't load referral links. Please try again.",
+    "disableConfirmTitle": "Disable this referral link?",
+    "disableConfirmMessage": "Link {code} will stop working immediately. Anyone who already has it will not be able to sign up through it, and you will not see who tried. You can enable it again later."
   },
   "superAgentInvoices": {
     "failedToLoad": "We couldn't load invoices",
@@ -13274,7 +13459,8 @@
     "status_disputed": "Disputed",
     "statusPaid": "Paid ✓",
     "actionApprove": "Approve",
-    "actionMarkPaid": "Mark Paid"
+    "actionMarkPaid": "Mark Paid",
+    "loadCommissionsError": "We couldn't load commissions. Please try again."
   },
   "superAgentJobSeekers": {
     "pageTitle": "Job Seekers",
@@ -13354,7 +13540,8 @@
     "customReportPlaceholder": "e.g. Which agents have the best lead-to-placement conversion rate this quarter?",
     "generateReport": "Generate Report",
     "reportGeneratedAt": "Report Generated at {time}",
-    "aiErrorMessage": "We couldn't generate this report. No report was saved. Try again."
+    "aiErrorMessage": "We couldn't generate this report. No report was saved. Try again.",
+    "loadReportsError": "We couldn't load your reports. Please try again."
   },
   "superAgentTerritory": {
     "pageTitle": "Territory Map",
@@ -13438,7 +13625,8 @@
     "monthSeptember": "Sep",
     "monthOctober": "Oct",
     "monthNovember": "Nov",
-    "monthDecember": "Dec"
+    "monthDecember": "Dec",
+    "refreshReport": "Refresh report"
   },
   "superAgentMarket": {
     "pageTitle": "AI Market Intelligence",
@@ -15220,7 +15408,8 @@
     "delete": "Delete",
     "addTitle": "Add {title}",
     "editTitle": "Edit {title}",
-    "deleteFailed": "We couldn't delete that item. Please try again."
+    "deleteFailed": "We couldn't delete that item. Please try again.",
+    "searchFallback": "Search {title}…"
   },
   "exhibitionHeroFilters": {
     "hideFilters": "Hide Filters",
@@ -15491,7 +15680,23 @@
     "leadsReassignedSuccessfully": "Leads reassigned successfully.",
     "failedToReassignLeads": "We couldn't reassign leads.",
     "failedToSendReminder": "We couldn't send reminder.",
-    "a11yDismiss": "Dismiss"
+    "a11yDismiss": "Dismiss",
+    "severityCritical": "Critical",
+    "severityWarning": "Warning",
+    "severityInfo": "Info",
+    "confidenceHigh": "High",
+    "confidenceMedium": "Medium",
+    "confidenceLow": "Low",
+    "confidenceLabel": "{level} confidence",
+    "assignLeadsTitle": "Assign leads",
+    "assignLeadsMessage": "Assign more leads to {name}?",
+    "assignLeadsAction": "Assign leads",
+    "sendReminderTitle": "Send performance reminder",
+    "sendReminderMessageOne": "Send a performance reminder to {name}?",
+    "sendReminderMessageMany": "Send a performance reminder to {count} agents ({names})?",
+    "sendReminderAction": "Send reminder",
+    "reminderSentOne": "Reminder sent.",
+    "reminderSentMany": "Reminders sent to {count} agents."
   },
   "jobSeekerRightPanel": {
     "recruiterViews": "Recruiter Views",
@@ -15625,7 +15830,15 @@
     "reviewNewCandidates": "Review new candidates",
     "reviewNewCandidatesDesc": "Applications nobody has looked at yet",
     "recordInterviewOutcomes": "Record interview outcomes",
-    "recordInterviewOutcomesDesc": "Interviews that happened with no result logged"
+    "recordInterviewOutcomesDesc": "Interviews that happened with no result logged",
+    "openAiInsights": "AI insights",
+    "openAiInsightsDesc": "AI-written summary of platform performance",
+    "openTargetReport": "Target report",
+    "openTargetReportDesc": "Consolidated target performance",
+    "openCommissionReport": "Commission report",
+    "openCommissionReportDesc": "Commission analytics across all agents",
+    "openSubscriptionDashboard": "Subscription dashboard",
+    "openSubscriptionDashboardDesc": "Revenue, plans and activity"
   },
   "jobSeekerRecentActivity": {
     "noRecentActivity": "No recent activity",
@@ -16127,5 +16340,76 @@
       "title": "Your queue is clear",
       "description": "No overdue follow-ups, tasks, outcomes or offers. Good time to work new leads."
     }
+  },
+  "a11y": {
+    "close": "Close",
+    "back": "Go back",
+    "edit": "Edit",
+    "delete": "Delete",
+    "expand": "Show details",
+    "collapse": "Hide details",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "copy": "Copy",
+    "download": "Download",
+    "preview": "Preview",
+    "viewDetails": "View details",
+    "refresh": "Refresh",
+    "addTag": "Add tag",
+    "removeTag": "Remove tag",
+    "addCategory": "Add category",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "clear": "Clear",
+    "toggleBreakdown": "Toggle monthly breakdown",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "selectRow": "Select row",
+    "clearSelection": "Clear selection",
+    "removeLineItem": "Remove line item"
+  },
+  "jobCard": {
+    "company": "Company",
+    "companyLogo": "{company} logo",
+    "viewCompany": "View {company}",
+    "matchPercent": "{score}% match",
+    "remote": "Remote",
+    "locationFlexible": "Location flexible",
+    "moreSkills": "+{count}",
+    "posted": "Posted {time}",
+    "save": "Save",
+    "saved": "Saved",
+    "unsave": "Unsave",
+    "viewJob": "View job",
+    "employment": {
+      "full_time": "Full-time",
+      "part_time": "Part-time",
+      "contract": "Contract",
+      "internship": "Internship",
+      "freelance": "Freelance",
+      "walk_in": "Walk-in"
+    },
+    "time": {
+      "justNow": "Just now",
+      "hoursAgo": "{value}h ago",
+      "daysAgo": "{value}d ago",
+      "weeksAgo": "{value}w ago",
+      "monthsAgo": "{value}mo ago"
+    }
+  },
+  "hiringPipeline": {
+    "applied": "Applied",
+    "shortlisted": "Shortlisted",
+    "interviewing": "Interviewing",
+    "selected": "Selected",
+    "offer": "Offer",
+    "hired": "Hired",
+    "rejected": "Rejected",
+    "withdrawn": "Withdrawn",
+    "restoreStage": "Add a stage back",
+    "restoreStagePlaceholder": "Choose a stage",
+    "allStagesPresent": "Every stage is already in your pipeline."
   }
 }
