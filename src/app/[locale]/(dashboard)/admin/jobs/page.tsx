@@ -770,7 +770,7 @@ export default function AdminJobsPage() {
                     {selectedJob.employmentType && <Fact icon={Clock} label={t("type")} value={selectedJob.employmentType.replace(/_/g, " ")} />}
                     {selectedJob.workMode && <Fact icon={Globe} label={t("workMode")} value={selectedJob.workMode.replace(/_/g, " ")} />}
                     {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label={t("vacancies")} value={String(selectedJob.vacancies)} />}
-                    <Fact icon={Calendar} label={t("posted")} value={formatDate(new Date(selectedJob.createdAt))} />
+                    <Fact icon={Calendar} label={t("postedLabel")} value={formatDate(new Date(selectedJob.createdAt))} />
                     <Fact icon={UserCheck} label={t("source")} value={getSourceLabel(selectedJob, t)} />
                   </div>
 

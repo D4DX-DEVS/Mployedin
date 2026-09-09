@@ -44,7 +44,11 @@ function buildAttentionItems(
     ["interviewsUpcoming", summary.interviews.upcoming, interviewsHref],
     ["offersExpiring", summary.offers.expiringSoon, offersHref],
     ["offersPending", summary.offers.pending, offersHref],
-    ["checksInProgress", summary.checks.inProgress, `${jobHref}/hires`],
+    // Background checks live on their own page, scoped by job. This used to
+    // point at the Hires tab, which only lists candidates who accepted an
+    // offer — so an in-progress check on a candidate who is not hired yet
+    // landed on an empty "No hires yet" screen.
+    ["checksInProgress", summary.checks.inProgress, `/${locale}/employer/background-checks?jobId=${id}`],
   ];
   return candidates
     .filter(([, count]) => count > 0)

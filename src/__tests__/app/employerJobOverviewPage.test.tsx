@@ -19,7 +19,8 @@ jest.mock("next/navigation", () => ({
   usePathname: () => "/en/employer/jobs/job1",
 }));
 jest.mock("@/hooks/useJobs", () => ({ useJobDetail: () => ({ data: mockJob }) }));
-jest.mock("@/hooks/useJobHiringSummary", () => ({ useJobHiringSummary: () => ({ data: undefined }) }));
+let mockSummary: Record<string, unknown> | undefined;
+jest.mock("@/hooks/useJobHiringSummary", () => ({ useJobHiringSummary: () => ({ data: mockSummary }) }));
 jest.mock("@/components/features/employer/jobs/HiringProgress", () => ({ HiringProgress: () => null }));
 
 const baseJob = {
@@ -36,6 +37,7 @@ const baseJob = {
 describe("employer job Overview", () => {
   beforeEach(() => {
     mockJob = { ...baseJob };
+    mockSummary = undefined;
   });
 
   it("hides the optional sections and facts the employer never filled in", () => {
@@ -90,5 +92,26 @@ describe("employer job Overview", () => {
     const attention = screen.getByRole("heading", { name: "Needs attention" }).closest("section");
     const facts = screen.getByRole("heading", { name: "Job facts" }).closest("section");
     expect(attention?.parentElement).toBe(facts?.parentElement);
+  });
+
+  /** Each Needs attention row must land where its records actually are. An
+      in-progress background check used to point at the Hires tab, which only
+      lists candidates who accepted an offer — so it opened "No hires yet". */
+  it("sends an in-progress background check to the background-checks page, not Hires", () => {
+    mockSummary = {
+      jobId: "job1", status: "active", vacancies: 1, views: 28, total: 3,
+      statusCounts: { applied: 0, shortlisted: 3, interview_scheduled: 0, selected: 0, offer: 0, hired: 0, rejected: 0, withdrawn: 0 },
+      unreviewed: 0,
+      interviews: { open: 0, interviewingCandidates: 0, upcoming: 0, awaitingOutcome: 0, rescheduleRequests: 0 },
+      offers: { pending: 0, expiringSoon: 0, accepted: 0 },
+      checks: { inProgress: 1, completed: 0 },
+      placements: { active: 0, completed: 0 },
+      posters: 0,
+    };
+
+    render(<JobOverviewPage />);
+
+    const link = screen.getByRole("link", { name: /background check/i });
+    expect(link).toHaveAttribute("href", "/en/employer/background-checks?jobId=job1");
   });
 });

@@ -256,6 +256,50 @@ describe("InterviewsWorkspace", () => {
     });
   });
 
+  describe("passed interview", () => {
+    /** Make Offer is the common terminal action after a pass, so it is the one
+        inline button; Next Round is the exception and lives in the row menu. */
+    function renderPassed() {
+      useInterviewsMock.mockReturnValue({
+        data: {
+          interviews: [
+            {
+              _id: "iv-1",
+              applicationId: "app-1",
+              jobId: { _id: "job-1", title: "Senior Developer" },
+              jobSeekerId: { _id: "candidate-1", fullName: "John Doe", email: "john@example.com", skills: [] },
+              status: "completed",
+              outcome: "passed",
+              type: "video",
+              scheduledAt: new Date().toISOString(),
+              interviewRound: 1,
+            },
+          ],
+          total: 1,
+          statusCounts: { scheduled: 0, confirmed: 0, completed: 1, cancelled: 0, rescheduled: 0 },
+        },
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      return render(<InterviewsWorkspace jobId="job-1" embedded />);
+    }
+
+    it("puts Make Offer inline and Next Round in the row menu", () => {
+      renderPassed();
+      expect(screen.getByRole("button", { name: "Make Offer" })).toBeInTheDocument();
+      expect(screen.getByRole("menuitem", { name: "Next Round" })).toBeInTheDocument();
+      expect(screen.queryByRole("menuitem", { name: "Make Offer" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Next Round" })).not.toBeInTheDocument();
+    });
+
+    it("opens the offer form from the inline Make Offer button", () => {
+      renderPassed();
+      fireEvent.click(screen.getByRole("button", { name: "Make Offer" }));
+      expect(screen.getByRole("button", { name: "Send Offer" })).toBeInTheDocument();
+    });
+  });
+
   describe("row menu actions", () => {
     it("Cancel asks for confirmation, then cancels the interview", async () => {
       confirmMock.mockResolvedValue(true);

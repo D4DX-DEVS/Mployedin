@@ -15,6 +15,7 @@ import {
   CalendarClock,
   FileText,
   GraduationCap,
+  Info,
   Languages as LanguagesIcon,
   MapPin,
   MessageSquare,
@@ -309,6 +310,19 @@ export function CandidateDetailPanel({
               <CalendarClock className="h-3 w-3" />
               {availabilityLabel}
             </span>
+            {/* Sourced-not-applied is the single fact an employer most often
+                gets wrong on this page: someone reached through talent search
+                has no application behind them. `applications` is already
+                scoped to this employer by the detail route. */}
+            {!isLoading && applications.length === 0 ? (
+              <span
+                className="mt-2 ms-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800"
+                title={t("notAppliedDesc")}
+              >
+                <Info className="h-3 w-3" aria-hidden="true" />
+                {t("notApplied")}
+              </span>
+            ) : null}
           </div>
           <ScoreRing
             value={score}

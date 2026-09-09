@@ -12,6 +12,9 @@ export interface JobHiringSummary {
   interviews: {
     /** Scheduled or confirmed, any date — what the Interviews tab counts. */
     open: number;
+    /** Distinct candidates in interview: at the stage, or holding an open
+     *  interview from another stage. What the Overview funnel counts. */
+    interviewingCandidates: number;
     upcoming: number;
     awaitingOutcome: number;
     rescheduleRequests: number;

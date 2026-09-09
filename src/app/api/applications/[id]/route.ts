@@ -10,7 +10,7 @@ import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notifyStatusChange } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
-import { normalizeWorkflowStages } from "@/lib/hiring/pipeline";
+import { normalizeWorkflowStages, isBackwardsStageMove } from "@/lib/hiring/pipeline";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
@@ -109,7 +109,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, applicationUpdateSchema);
-  const { status, note, rejectionReason, employerNotes, agentNotes, withdrawalReason, withdrawalNote, markViewed } = body;
+  const { status, note, rejectionReason, employerNotes, agentNotes, withdrawalReason, withdrawalNote, markViewed, acknowledgeOpenInterview } = body;
 
   if (ctx.role === "job_seeker" && status && status !== "withdrawn") {
     return NextResponse.json({ error: "Job seekers may only withdraw an application" }, { status: 403 });
@@ -143,6 +143,37 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const notifyOnStageChange = workflowSettings?.notifyOnStageChange ?? true;
 
   const prevStatus = application.status;
+
+  // A backwards stage move over a live interview is how the funnel silently
+  // desyncs from the Interviews tab: the candidate lands back at, say,
+  // shortlisted while a scheduled interview stays open, so Overview reads
+  // "Interviewing 0" beside "Interviews 1". Answer with 409 and the interview
+  // in question; the caller re-sends with acknowledgeOpenInterview once the
+  // person has seen it.
+  if (status && status !== application.status && !acknowledgeOpenInterview && isBackwardsStageMove(application.status, status)) {
+    const InterviewModel = (await import("@/models/Interview")).default;
+    const openInterview = await InterviewModel.findOne({
+      applicationId: application._id,
+      status: { $in: ["scheduled", "confirmed"] },
+    })
+      .select("scheduledAt interviewRound type status")
+      .sort({ scheduledAt: 1 })
+      .lean() as { _id: unknown; scheduledAt?: Date; interviewRound?: number; type?: string; status?: string } | null;
+
+    if (openInterview) {
+      return NextResponse.json({
+        error: "This candidate has an interview that is still open.",
+        code: "OPEN_INTERVIEW",
+        interview: {
+          _id: String(openInterview._id),
+          scheduledAt: openInterview.scheduledAt ?? null,
+          interviewRound: openInterview.interviewRound ?? 1,
+          type: openInterview.type ?? null,
+          status: openInterview.status ?? null,
+        },
+      }, { status: 409 });
+    }
+  }
 
   if (status && status !== application.status) {
     application.status = status;
@@ -274,7 +305,14 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
       select: "title location salary employerId agentId",
       populate: { path: "employerId", select: "companyName logo" },
     })
-    .populate("jobSeekerId", "name email phone skills")
+    // JobSeeker holds no `name`/`email` of its own — those live on the linked
+    // User — so the old "name email phone skills" select returned a seeker with
+    // no readable identity at all. Mirror the list endpoint's shape.
+    .populate({
+      path: "jobSeekerId",
+      select: "userId fullName phone skills currentLocation totalExperienceYears",
+      populate: { path: "userId", select: "name email avatar" },
+    })
     .lean();
 
   if (!application) return NextResponse.json({ error: "Not found" }, { status: 404 });

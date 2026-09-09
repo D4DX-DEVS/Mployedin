@@ -957,8 +957,9 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      {/* One primary action per state; Reschedule, Cancel, Make Offer
-                          and the AI tools sit behind the row menu. */}
+                      {/* One primary action per state — and after a pass that is
+                          Make Offer, the common terminal step. Reschedule, Cancel,
+                          Next Round and the AI tools sit behind the row menu. */}
                       <div className="flex items-center justify-end gap-1">
                         {canUpdate && isScheduled && (
                           <Button variant="ghost" size="sm"
@@ -979,9 +980,9 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                         {canUpdate && isPassed && (
                           <Button variant="ghost" size="sm"
                             className="h-8 rounded-lg px-2.5 text-[11px] font-semibold text-indigo-700 hover:bg-status-interview-bg"
-                            onClick={() => setModal({ kind: "next-round", interview: iv })}>
-                            <Forward className="me-1 h-3 w-3" />
-                            {t("nextRound")}
+                            onClick={() => setModal({ kind: "offer", interview: iv })}>
+                            <FileText className="me-1 h-3 w-3" />
+                            {t("makeOffer")}
                           </Button>
                         )}
                         <DropdownMenu>
@@ -1019,9 +1020,9 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                             {canUpdate && isPassed && (
                               <>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => setModal({ kind: "offer", interview: iv })}>
-                                  <FileText className="h-4 w-4" aria-hidden="true" />
-                                  {t("makeOffer")}
+                                <DropdownMenuItem onSelect={() => setModal({ kind: "next-round", interview: iv })}>
+                                  <Forward className="h-4 w-4" aria-hidden="true" />
+                                  {t("nextRound")}
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -1251,14 +1252,14 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                       {isPassed && (
                         <>
                           <Button size="sm" className="rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                            onClick={() => { setModal({ kind: "next-round", interview: iv }); setDetailInterview(null); }}>
-                            <Forward className="me-1.5 h-3.5 w-3.5" />
-                            {t("nextRound")}
-                          </Button>
-                          <Button variant="outline" size="sm" className="rounded-xl px-3 text-xs font-semibold"
                             onClick={() => { setModal({ kind: "offer", interview: iv }); setDetailInterview(null); }}>
                             <FileText className="me-1.5 h-3.5 w-3.5" />
                             {t("makeOffer")}
+                          </Button>
+                          <Button variant="outline" size="sm" className="rounded-xl px-3 text-xs font-semibold"
+                            onClick={() => { setModal({ kind: "next-round", interview: iv }); setDetailInterview(null); }}>
+                            <Forward className="me-1.5 h-3.5 w-3.5" />
+                            {t("nextRound")}
                           </Button>
                         </>
                       )}

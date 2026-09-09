@@ -25,7 +25,9 @@ import {
   ChevronDown,
   Clock,
   Columns3,
+  AlertTriangle,
   FolderPlus,
+  ShieldCheck,
   LayoutList,
   DollarSign,
   FileText,
@@ -57,6 +59,7 @@ import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { ViewToggle } from "@/components/shared/ViewToggle";
+import { useUpdateInterview } from "@/hooks/useInterviews";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
 import { ApplicationsBoard } from "./ApplicationsBoard";
 import { SavedViewsMenu } from "./SavedViewsMenu";
@@ -79,6 +82,8 @@ import {
   useCreateScorecard,
   useFetchInterviewForApp,
   useUpdateApplicationStatus,
+  OpenInterviewError,
+  type OpenInterviewConflict,
 } from "@/hooks/useApplications";
 import { buildJobFilterOptions } from "@/lib/jobs/duplicateJobLabels";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -88,7 +93,8 @@ import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
-import { PIPELINE_STAGES, STAGE_LABEL_KEYS } from "@/lib/hiring/pipeline";
+import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom } from "@/lib/hiring/pipeline";
+import type { ApplicationStatus } from "@/models/Application";
 import { CandidateJourney } from "@/components/features/employer/applications/CandidateJourney";
 
 export interface Applicant {
@@ -125,6 +131,9 @@ interface TimelineEntry {
   changes?: { before?: Record<string, unknown>; after?: Record<string, unknown> };
   createdAt: string;
 }
+
+/** Sentinel status filter meaning "shortlisted or any later stage". */
+const SHORTLIST_REACHED = "shortlisted+";
 
 function usePipelineStages() {
   const tp = useTranslations("hiringPipeline");
@@ -299,6 +308,15 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
     rejectionReason?: string;
   } | null>(null);
 
+  // ── Backwards stage move over a live interview ────────────────────
+  const [openInterviewWarning, setOpenInterviewWarning] = useState<{
+    app: Applicant;
+    nextStatus: string;
+    reason?: string;
+    interview: OpenInterviewConflict;
+  } | null>(null);
+  const [resolvingOpenInterview, setResolvingOpenInterview] = useState(false);
+
   // ── Shortlist confirmation & post-shortlist interview prompt ───────
   const [shortlistConfirm, setShortlistConfirm] = useState<{
     candidates: Applicant[];
@@ -401,10 +419,17 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
   const debouncedScoreRange = useDebounce(scoreRange, 500);
   const debouncedExperienceRange = useDebounce(experienceRange, 500);
 
+  // The shortlist chip means "shortlisted or further on", not "sitting at
+  // shortlisted" — advancing to Interviewing does not unpick a candidate. It
+  // travels as `stageFrom` so the dropdown's own stage values keep meaning
+  // exactly one stage.
+  const shortlistReached = statusFilter === SHORTLIST_REACHED;
+
   const applicationsQuery = useApplications({
     page,
     limit,
-    status: statusFilter !== "all" ? statusFilter : undefined,
+    status: statusFilter !== "all" && !shortlistReached ? statusFilter : undefined,
+    stageFrom: shortlistReached ? "shortlisted" : undefined,
     jobId: jobFilter || undefined,
     search: debouncedSearch.trim() || undefined,
     scoreMin: debouncedScoreRange[0] > 0 ? debouncedScoreRange[0] : undefined,
@@ -419,6 +444,7 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
     fetchCounts: true,
   });
   const updateStatus = useUpdateApplicationStatus();
+  const updateInterview = useUpdateInterview();
   const bulkAction = useBulkAction();
   const createScorecard = useCreateScorecard();
   const createInterview = useCreateInterviewFromApp();
@@ -503,8 +529,8 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
      
   }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, sortOption, unreviewedOnly]);
 
-  function updateApplicationStatus(id: string, status: string, reason?: string) {
-    return updateStatus.mutateAsync({ id, status, rejectionReason: reason });
+  function updateApplicationStatus(id: string, status: string, reason?: string, acknowledgeOpenInterview?: boolean) {
+    return updateStatus.mutateAsync({ id, status, rejectionReason: reason, acknowledgeOpenInterview });
   }
 
   async function handleGenerateAiMatch(app: Applicant) {
@@ -524,9 +550,20 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
   }
 
   /** Run AI match for all applications that don't have a score yet */
-  async function handleBulkAiMatch() {
+  /** Scores every unscored application in view. Like Shortlist Top, each dead
+   *  end names its reason — scoring also runs automatically on first load, so
+   *  by the time anyone reads the toolbar the button is usually inert and used
+   *  to say nothing about why. */
+  async function handleBulkAiMatch(explain = false) {
+    if (!applications.length) {
+      if (explain) toast.info(t("shortlistNoneInView"));
+      return;
+    }
     const unscored = applications.filter((app) => app.aiMatchScore == null);
-    if (!unscored.length) return;
+    if (!unscored.length) {
+      if (explain) toast.info(t("scoreAllAlreadyScored"));
+      return;
+    }
     const items = unscored
       .map((app) => {
         const jobId = app.jobId._id;
@@ -538,7 +575,11 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
       })
       .filter(Boolean) as { applicationId: string; jobId: string; jobSeekerId: string }[];
 
-    if (!items.length) return;
+    if (!items.length) {
+      // Unscored rows exist but carry no job or seeker id — nothing to send.
+      if (explain) toast.info(t("scoreAllMissingData"));
+      return;
+    }
     setBulkMatchProgress({ done: 0, total: items.length });
     try {
       await bulkAiMatch.mutateAsync({
@@ -576,12 +617,28 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
     }
   }
 
-  /** Show confirmation before auto-shortlisting top candidates */
+  /** Show confirmation before auto-shortlisting top candidates.
+   *  Every dead end names its own reason. The button used to be disabled with
+   *  no explanation (a disabled Button gets `pointer-events-none`, so not even
+   *  a tooltip could reach it) and the handler returned silently, so an
+   *  ineligible pipeline read as a broken feature. */
   function handleAutoShortlist() {
-    const scored = [...filteredApplications]
-      .filter((app) => app.aiMatchScore != null && app.status === "applied")
+    if (!filteredApplications.length) {
+      toast.info(t("shortlistNoneInView"));
+      return;
+    }
+    const atApplied = filteredApplications.filter((app) => app.status === "applied");
+    if (!atApplied.length) {
+      toast.info(t("shortlistAllPastApplied"));
+      return;
+    }
+    const scored = [...atApplied]
+      .filter((app) => app.aiMatchScore != null)
       .sort((a, b) => (b.aiMatchScore ?? 0) - (a.aiMatchScore ?? 0));
-    if (!scored.length) return;
+    if (!scored.length) {
+      toast.info(t("shortlistNeedsScores"));
+      return;
+    }
 
     // Show all eligible candidates sorted by score; user picks how many
     setShortlistConfirm({ candidates: scored, total: scored.length });
@@ -665,18 +722,34 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
         ...data,
       });
       if ((result.created ?? 0) < 1) {
-        throw new Error("Failed to schedule interview");
+        // The commonest reason by far: this candidate already has an interview
+        // in flight for this job, and the API refuses to double-book. Say so —
+        // "Couldn't schedule interview" left nothing to act on, while the panel
+        // behind the modal was already showing the interview in question.
+        const duplicate = (result.skipped ?? []).find(
+          (row) => row.applicationId === appId && row.reason === "existing_interview",
+        );
+        if (duplicate) {
+          setInterviewModal(null);
+          toast.error(t("interviewAlreadyScheduled"), {
+            action: {
+              label: t("viewInterviews"),
+              onClick: () => router.push(
+                jobId ? `/${locale}/employer/jobs/${jobId}/interviews` : `/${locale}/employer/interviews`,
+              ),
+            },
+          });
+          return;
+        }
+        throw new Error("Interview was not created");
       }
       setInterviewModal(null);
-      // Reflect the stage change on the open panel and stay put — reviewing other
-      // candidates continues; the toast links to the interview list instead.
       setDetailPanel((prev) => (prev && prev._id === appId ? { ...prev, status: "interview_scheduled" } : prev));
-      toast.success(t("interviewScheduledToast"), {
-        action: {
-          label: t("viewInterviews"),
-          onClick: () => router.push(`/${locale}/employer/interviews`),
-        },
-      });
+      toast.success(t("interviewScheduledToast"));
+      // Scheduling hands the candidate over to Interviews — that is where the
+      // record now lives and where the round is run from, so go there rather
+      // than leaving the user on a list the candidate has just left.
+      router.push(jobId ? `/${locale}/employer/jobs/${jobId}/interviews` : `/${locale}/employer/interviews`);
     } catch (err) {
       console.error("Failed to create interview:", err);
       toast.error(t("interviewScheduleFailed"));
@@ -916,15 +989,42 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
       return;
     }
 
+    await applyStageChange(app, nextStatus, reason);
+  }
+
+  /** The stage write itself, retried with `acknowledged` once the person has
+   *  seen the open interview a backwards move would leave behind. */
+  async function applyStageChange(app: Applicant, nextStatus: string, reason?: string, acknowledged?: boolean) {
     try {
-      await updateApplicationStatus(app._id, nextStatus, reason);
+      await updateApplicationStatus(app._id, nextStatus, reason, acknowledged);
       // Keep the open detail panel in sync — the list refetches, but the panel renders
       // from its own snapshot, so without this the stage change never shows.
       setDetailPanel((prev) => (prev && prev._id === app._id ? { ...prev, status: nextStatus } : prev));
       const stageLabel = pipelineStages.find((s) => s.value === nextStatus)?.label ?? nextStatus;
       toast.success(t("stageUpdatedTo", { stage: stageLabel }));
+      setOpenInterviewWarning(null);
     } catch (err) {
+      if (err instanceof OpenInterviewError) {
+        // Never silently strand the interview: show it and let them choose.
+        setOpenInterviewWarning({ app, nextStatus, reason, interview: err.interview });
+        return;
+      }
       toast.error(t("stageUpdateFailed"));
+    }
+  }
+
+  /** Cancel the stranded interview first, then complete the stage move. */
+  async function cancelInterviewAndMove() {
+    if (!openInterviewWarning) return;
+    const { app, nextStatus, reason, interview } = openInterviewWarning;
+    setResolvingOpenInterview(true);
+    try {
+      await updateInterview.mutateAsync({ id: interview._id, status: "cancelled" });
+      await applyStageChange(app, nextStatus, reason, true);
+    } catch {
+      toast.error(t("stageUpdateFailed"));
+    } finally {
+      setResolvingOpenInterview(false);
     }
   }
 
@@ -951,6 +1051,43 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
           ]}
         />
       )}
+
+      {/* Stage chips — one tap per stage, the same affordance the Interviews tab
+          has. Status used to live only inside the "All statuses" dropdown, which
+          is what made a separate Shortlist page feel missing: the shortlist is
+          this list, one click away. Tapping the active chip clears it. */}
+      {/* Only the shortlist gets a chip. The tab beside it already counts
+          everyone who applied, so an "Applied" chip repeated that number with a
+          different value and read as a bug; the other stages have their own
+          tabs. This is the one cut of the list that has no home elsewhere. */}
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("stageChipsLabel")}>
+        {pipelineStages.filter((stage) => stage.value === "shortlisted").map((stage) => {
+          const active = statusFilter === SHORTLIST_REACHED;
+          const stageCount = countOf(...stagesFrom("shortlisted"));
+          // A stage nobody is in gets no chip: it would offer a filter that
+          // opens an empty list, and its 0 would sit against the Overview
+          // funnel's progress count for the same stage. The active chip always
+          // stays, or clearing the filter becomes impossible once its last
+          // candidate moves on. Before the totals land, show them all rather
+          // than flickering the row in one stage at a time.
+          if (statusCounts && stageCount === 0 && !active) return null;
+          return (
+            <button
+              key={stage.value}
+              type="button"
+              onClick={() => { setStatusFilter(active ? "all" : SHORTLIST_REACHED); setPage(1); }}
+              aria-pressed={active}
+              className={`min-h-11 sm:min-h-9 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
+                active ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
+              }`}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${STAGE_DOT_CLASS[stage.value as ApplicationStatus] ?? "bg-muted-foreground"}`} aria-hidden="true" />
+              <span>{stage.label}</span>
+              <span className="tabular-nums">{metricValue(stageCount)}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* ── List toolbar — job, search, status, sort, Filters, High match, Export ──
           Phones: search on its own row, then job + Filters + Export; status,
@@ -1473,6 +1610,56 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
         </div>
       )}
 
+      {/* A backwards stage move would strand a live interview. Show which one,
+          then let them go ahead, cancel it first, or back out. */}
+      {openInterviewWarning && (
+        <div className="flex flex-col gap-3 rounded-3xl border border-amber-500/30 bg-amber-500/10 panel-body">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20">
+              <AlertTriangle className="h-5 w-5 text-amber-700" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                {t("openInterviewTitle", { name: getCandidateName(openInterviewWarning.app) })}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("openInterviewDetail", {
+                  round: openInterviewWarning.interview.interviewRound,
+                  when: openInterviewWarning.interview.scheduledAt
+                    ? new Date(openInterviewWarning.interview.scheduledAt).toLocaleString(locale)
+                    : t("openInterviewNoDate"),
+                })}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("openInterviewConsequence", {
+                  stage: pipelineStages.find((st) => st.value === openInterviewWarning.nextStatus)?.label ?? openInterviewWarning.nextStatus,
+                })}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button size="sm" variant="ghost" className="rounded-xl px-4"
+              disabled={resolvingOpenInterview}
+              onClick={() => setOpenInterviewWarning(null)}>
+              {t("cancel")}
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-xl px-4"
+              disabled={resolvingOpenInterview}
+              onClick={() => { void cancelInterviewAndMove(); }}>
+              {t("openInterviewCancelAndMove")}
+            </Button>
+            <Button size="sm" className="rounded-xl px-4"
+              disabled={resolvingOpenInterview}
+              onClick={() => {
+                const { app, nextStatus, reason } = openInterviewWarning;
+                void applyStageChange(app, nextStatus, reason, true);
+              }}>
+              {t("openInterviewMoveAnyway")}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Post-shortlist: prompt to schedule interviews */}
       {postShortlistPrompt && (
         <div className="flex flex-col gap-3 rounded-3xl border border-violet-500/20 bg-violet-500/10 panel-body">
@@ -1551,8 +1738,8 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
               size="sm"
               variant="outline"
               className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs sm:min-h-0 sm:flex-none sm:px-3"
-              disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
-              onClick={handleBulkAiMatch}
+              disabled={bulkAiMatch.isPending}
+              onClick={() => { void handleBulkAiMatch(true); }}
             >
               <Sparkles className={`me-2 hidden h-3.5 w-3.5 sm:block ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
               {bulkMatchProgress
@@ -1562,7 +1749,7 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
             <Button
               size="sm"
               className="min-h-11 flex-1 justify-center rounded-xl bg-emerald-700 px-2 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:flex-none sm:px-3"
-              disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
+              disabled={bulkAction.isPending}
               onClick={handleAutoShortlist}
             >
               <CheckCheck className="me-2 hidden h-3.5 w-3.5 sm:block" />
@@ -2132,11 +2319,15 @@ function ApplicationDetailsPanel({
   const [mounted, setMounted] = useState(false);
   const messageRecipientId =
     typeof app.jobSeekerId?.userId === "object" ? app.jobSeekerId.userId?._id ?? "" : "";
+  // Talent pools store the job-seeker profile, not the user account.
+  const candidateProfileId = app.jobSeekerId?._id ?? "";
   const [nextStage, setNextStage] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [statusPending, setStatusPending] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "resume" | "timeline" | "notes" | "messages" | "scorecard">("overview");
   const [stageMenuOpen, setStageMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [poolOpen, setPoolOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const t = useTranslations("employerApplications");
   const tc = useTranslations("employerCommon");
@@ -2162,6 +2353,15 @@ function ApplicationDetailsPanel({
   const stageOptions = pipelineStages
     .filter((stage) => stage.value !== app.status)
     .map((stage) => ({ value: stage.value, label: stage.label }));
+
+  // The stage that actually comes next, so the menu can lead with it. A flat
+  // list of six gave no hint which one was the obvious move. Everything else
+  // stays available underneath — including going back, which is how a mistaken
+  // stage change gets corrected.
+  const currentStageIndex = (PIPELINE_STAGES as readonly string[]).indexOf(app.status);
+  const nextStageValue = currentStageIndex > -1 ? PIPELINE_STAGES[currentStageIndex + 1] : undefined;
+  const nextStageOption = stageOptions.find((opt) => opt.value === nextStageValue);
+  const otherStageOptions = stageOptions.filter((opt) => opt.value !== nextStageOption?.value);
 
   const matchLabel = app.aiMatchScore == null
     ? t("aiScorePending")
@@ -2346,25 +2546,51 @@ function ApplicationDetailsPanel({
                 {stageMenuOpen ? (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setStageMenuOpen(false)} aria-hidden="true" />
-                    <div className="absolute start-0 top-full z-20 mt-1 w-52 rounded-xl border border-border bg-popover p-1 shadow-lg">
-                      {stageOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          className="flex w-full items-center rounded-lg px-3 py-2 text-start text-sm text-foreground transition hover:bg-muted"
-                          onClick={() => {
-                            setStageMenuOpen(false);
-                            if (opt.value === "rejected") {
-                              setNextStage("rejected");
-                              setActiveTab("overview");
-                            } else {
-                              handleQuickStageChange(opt.value);
-                            }
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                    <div role="menu" aria-label={t("moveStage")} className="absolute start-0 top-full z-20 mt-1 w-52 rounded-xl border border-border bg-popover p-1 shadow-lg">
+                      {(() => {
+                        const renderOption = (opt: { value: string; label: string }, emphasise: boolean) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            role="menuitem"
+                            className={`flex w-full items-center rounded-lg px-3 py-2 text-start text-sm transition hover:bg-muted ${
+                              emphasise ? "font-semibold text-primary" : "text-foreground"
+                            }`}
+                            onClick={() => {
+                              setStageMenuOpen(false);
+                              if (opt.value === "rejected") {
+                                setNextStage("rejected");
+                                setActiveTab("overview");
+                              } else {
+                                handleQuickStageChange(opt.value);
+                              }
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                        if (!nextStageOption) {
+                          // Already at the end of the funnel — nothing to lead with.
+                          return stageOptions.map((opt) => renderOption(opt, false));
+                        }
+                        return (
+                          <>
+                            <div role="group" aria-label={t("stageMenuNext")}>
+                              <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {t("stageMenuNext")}
+                              </p>
+                              {renderOption(nextStageOption, true)}
+                            </div>
+                            <div className="my-1 h-px bg-border" aria-hidden="true" />
+                            <div role="group" aria-label={t("stageMenuOther")}>
+                              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {t("stageMenuOther")}
+                              </p>
+                              {otherStageOptions.map((opt) => renderOption(opt, false))}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </>
                 ) : null}
@@ -2397,10 +2623,63 @@ function ApplicationDetailsPanel({
                 "follow_up_general"
               }
             />
-            <Button variant="outline" size="sm" className="h-9 w-9 rounded-lg border-border p-0" aria-label={t("moreActions")}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            {/* This used to be an icon with no handler at all — a button that
+                could never do anything. It now holds the two panel actions
+                that had no home: the Background Check tile below reports
+                status but had no way to request one, and saving a single
+                candidate to a pool was only reachable from bulk selection. */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-9 rounded-lg border-border p-0"
+                aria-label={t("moreActions")}
+                aria-haspopup="menu"
+                aria-expanded={moreMenuOpen}
+                onClick={() => setMoreMenuOpen((open) => !open)}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+              {moreMenuOpen ? (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMoreMenuOpen(false)} aria-hidden="true" />
+                  {/* Opens from the start edge like Move Stage above: the panel
+                      is `overflow-hidden`, so an end-anchored menu is clipped
+                      off the panel's left edge instead of overlaying it. */}
+                  <div role="menu" className="absolute start-0 top-full z-20 mt-1 w-56 rounded-xl border border-border bg-popover p-1 shadow-lg">
+                    <Link
+                      role="menuitem"
+                      href={`/${locale}/employer/background-checks?applicationId=${app._id}`}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm text-foreground transition hover:bg-muted"
+                      onClick={() => setMoreMenuOpen(false)}
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      {t("requestBackgroundCheck")}
+                    </Link>
+                    {candidateProfileId ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm text-foreground transition hover:bg-muted"
+                        onClick={() => { setMoreMenuOpen(false); setPoolOpen(true); }}
+                      >
+                        <FolderPlus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        {t("saveToPool")}
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
+
+          <SaveToPoolDialog
+            candidateId={poolOpen ? candidateProfileId : null}
+            candidateName={candidateName}
+            sourceApplicationId={app._id}
+            open={poolOpen}
+            onOpenChange={setPoolOpen}
+          />
 
           <StageStepper currentStatus={app.status} appliedDate={appliedDate} />
           <CandidateJourney applicationId={app._id} locale={locale} />

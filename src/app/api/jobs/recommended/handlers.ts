@@ -3,8 +3,15 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
-import { calculateMatchScore, jobProfileFromDoc, getMatchedSkills, skillsOverlap, educationRank, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
+import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
+import {
+  buildRecommendedJobQuery,
+  isRelevantJob,
+  rankRecommendedJobs,
+  RECOMMENDATION_POOL_SIZE,
+  RECOMMENDED_JOB_SELECT,
+} from "@/lib/jobRecommendations";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -23,7 +30,7 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
  *   pool_page  — macro page number (1-based), each pool holds up to POOL_SIZE jobs
  */
 
-const POOL_SIZE = 200;
+const POOL_SIZE = RECOMMENDATION_POOL_SIZE;
 
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "job_seeker") {
@@ -61,53 +68,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .lean()
     .then((apps) => apps.map((a) => a.jobId));
 
-  // Base filter
-  const jobQuery: Record<string, unknown> = {
-    status: "active",
-    _id: { $nin: appliedJobIds },
-  };
-
-  const andConditions: Record<string, unknown>[] = [
-    { $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }] },
-  ];
-
-  if (seeker.preferredCountries?.length) {
-    const countrySet = new Set<string>();
-    for (const c of seeker.preferredCountries) {
-      if (!c) continue;
-      countrySet.add(c);
-      const lower = c.trim().toLowerCase();
-      if (lower === "uae" || lower === "u.a.e" || lower === "united arab emirates") {
-        countrySet.add("UAE");
-        countrySet.add("United Arab Emirates");
-        countrySet.add("u.a.e");
-      } else if (lower === "india" || lower === "in") {
-        countrySet.add("India");
-        countrySet.add("IN");
-      } else if (lower === "saudi arabia" || lower === "ksa") {
-        countrySet.add("Saudi Arabia");
-        countrySet.add("KSA");
-      } else if (lower === "usa" || lower === "us" || lower === "united states") {
-        countrySet.add("USA");
-        countrySet.add("United States");
-        countrySet.add("US");
-      } else if (lower === "uk" || lower === "united kingdom") {
-        countrySet.add("UK");
-        countrySet.add("United Kingdom");
-      }
-    }
-    const countryPatterns = Array.from(countrySet).map(
-      (c) => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i")
-    );
-    andConditions.push({
-      $or: [
-        { "location.country": { $in: countryPatterns } },
-        { "location.isRemote": true },
-      ],
-    });
-  }
-
-  jobQuery.$and = andConditions;
+  // Candidate filter — shared with the seeker home page so both surfaces
+  // start from the same pool (live, unexpired, not applied to, in a preferred
+  // country or remote).
+  const jobQuery = buildRecommendedJobQuery({
+    preferredCountries: seeker.preferredCountries,
+    excludeJobIds: appliedJobIds,
+  });
 
   // Total matching jobs count (for pool page calculation)
   const totalMatchingJobs = await Job.countDocuments(jobQuery);
@@ -121,51 +88,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .sort({ createdAt: -1, _id: -1 })
     .skip(poolSkip)
     .limit(POOL_SIZE)
-    .select("title description requirements salary location employerId tags createdAt expiresAt views uniqueViews")
+    .select(RECOMMENDED_JOB_SELECT)
     .populate("employerId", "companyName logo")
     .lean();
 
-  // Score all candidates in this pool
-  const scoredAll = candidateJobs.map((job) => ({
-    ...job,
-    matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job)),
-    matchedSkills: getMatchedSkills(seekerProfile.skills, job.requirements?.skills ?? []),
-  }));
-
-  // Relevance filter: drop jobs completely unrelated to the seeker — no skill
-  // overlap AND no role-title relevance (e.g. "Sales support staff" for a
-  // MERN/UI-UX profile). Applied when the seeker has at least one signal
-  // (skills or preferred roles) to compare against. Jobs requiring a
-  // qualification two or more levels above the seeker's are also dropped.
-  const seekerRoleList = (seekerProfile.preferredRoles ?? []).map((r) => r.toLowerCase());
-  const hasSkillSignal = seekerProfile.skills.length > 0;
-  const hasRoleSignal = seekerRoleList.length > 0;
-  const seekerEduLevel = seekerProfile.educationLevel ?? 0;
-
-  const isRelevant = (job: (typeof scoredAll)[number]): boolean => {
-    // Hard qualification gate: e.g. job demands a master's, seeker has high school.
-    const reqLevel = educationRank(job.requirements?.education);
-    if (reqLevel > 0 && seekerEduLevel > 0 && reqLevel - seekerEduLevel >= 2) {
-      return false;
-    }
-    if (!hasSkillSignal && !hasRoleSignal) return true;
-    const jobSkills = job.requirements?.skills ?? [];
-    const overlap = hasSkillSignal && skillsOverlap(seekerProfile.skills, jobSkills);
-    const titleLower = (job.title ?? "").toLowerCase();
-    const roleMatch =
-      hasRoleSignal &&
-      seekerRoleList.some((role) => titleLower.includes(role) || role.includes(titleLower));
-    return overlap || roleMatch;
-  };
-
-  // Apply relevance as a soft RANKING penalty only — irrelevant jobs get a
-  // -20 point sortScore so they sink below high-match jobs but stay visible
-  // (LinkedIn / Indeed behaviour). The displayed matchScore is NOT altered so
-  // the feed shows the same percentage as the dashboard and other surfaces.
-  const scoredWithBoost = scoredAll.map((job) => ({
-    ...job,
-    sortScore: isRelevant(job) ? job.matchScore : Math.max(0, job.matchScore - 20),
-  }));
+  // Score and order the pool with the shared ranker: off-profile jobs take a
+  // fixed sort penalty so they sink below genuine matches but stay visible
+  // (LinkedIn / Indeed behaviour), and the displayed matchScore is never
+  // altered so the same job reads the same percentage on every surface.
+  const scoredWithBoost = rankRecommendedJobs(candidateJobs, seekerProfile);
 
   // Apply the minimum-score filter (defaults to 0, meaning all jobs show).
   let scored = scoredWithBoost.filter((j) => j.sortScore >= minScore);
@@ -173,13 +104,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     scored = [...scoredWithBoost].sort((a, b) => b.sortScore - a.sortScore);
   }
 
-  // Sort within pool
+  // Sort within pool (the shared ranker already ordered by sortScore)
   if (sort === "latest") {
     scored.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else if (sort === "salary") {
     scored.sort((a, b) => (b.salary?.max ?? 0) - (a.salary?.max ?? 0));
-  } else {
-    scored.sort((a, b) => b.sortScore - a.sortScore);
   }
 
   const poolTotal = scored.length;
@@ -189,10 +118,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // pool so they reflect genuine profile fit, not the raw active-job count).
   const WEEK_MS = 7 * 24 * 3600_000;
   const now = Date.now();
-  const matchedCount = scoredAll.filter(isRelevant).length;
+  const matchedCount = scoredWithBoost.filter((j) => isRelevantJob(j, seekerProfile)).length;
   const strongMatches = scoredWithBoost.filter((j) => j.matchScore >= 80).length;
-  const newThisWeek = scoredAll.filter(
-    (j) => now - new Date(j.createdAt).getTime() <= WEEK_MS,
+  const newThisWeek = scoredWithBoost.filter(
+    (j) => now - new Date(j.createdAt as string | Date).getTime() <= WEEK_MS,
   ).length;
 
   // Cursor-based pagination within the pool.

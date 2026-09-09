@@ -60,6 +60,9 @@ interface Step3Data {
   preferredSalary: string;
   salaryCurrency: string;
   gender: string;
+  /** Writes to the existing JobSeeker.profileVisibility — the single source of
+   *  truth also edited from the profile page. Not a second preference. */
+  discoverable: boolean;
 }
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -701,6 +704,7 @@ export default function JobSeekerOnboardingPage() {
     preferredSalary: "",
     salaryCurrency: "AED",
     gender: "",
+    discoverable: true,
   });
 
   // Scroll to top whenever step changes
@@ -817,6 +821,9 @@ export default function JobSeekerOnboardingPage() {
           ? { min: parseFloat(step3.preferredSalary), max: 0, currency: step3.salaryCurrency }
           : undefined,
         gender: step3.gender,
+        // The seeker's explicit answer, not the model default. Same field the
+        // profile page's visibility modal edits.
+        profileVisibility: step3.discoverable ? "visible" : "hidden",
         onboardingComplete: true,
       });
       // Refresh the JWT so middleware sees isOnboarded: true + updated name
@@ -1645,6 +1652,50 @@ export default function JobSeekerOnboardingPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Discoverability — asked once, here, before the profile can be
+                    found. It writes to JobSeeker.profileVisibility, the same
+                    field the profile page's visibility modal edits, so there is
+                    one setting with two entry points rather than two settings. */}
+                <fieldset className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                  <legend className="px-1 text-sm font-medium text-gray-800">{t("visibilityTitle")}</legend>
+                  <p className="text-xs leading-5 text-gray-600">{t("visibilityDesc")}</p>
+                  {/* Real radios, not ChipButton: a selected chip renders an
+                      "×" meaning "click to clear", which reads as "remove this
+                      answer" on a required either/or. */}
+                  <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+                    {([
+                      { value: true, label: t("visibilityOptIn") },
+                      { value: false, label: t("visibilityOptOut") },
+                    ] as const).map((option) => (
+                      <label
+                        key={String(option.value)}
+                        className={`flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all ${
+                          step3.discoverable === option.value
+                            ? "border-blue-600 bg-blue-50 font-medium text-blue-700"
+                            : "border-gray-300 bg-white text-gray-700 hover:border-blue-400"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="profile-discoverable"
+                          className="h-4 w-4 shrink-0 accent-blue-600"
+                          checked={step3.discoverable === option.value}
+                          onChange={() => setStep3((p) => ({ ...p, discoverable: option.value }))}
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                  <a
+                    href={`/${locale ?? "en"}/privacy`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block pt-1 text-xs text-primary hover:underline"
+                  >
+                    {t("visibilityPrivacyLink")}
+                  </a>
+                </fieldset>
               </div>
             )}
 
@@ -1674,7 +1725,10 @@ export default function JobSeekerOnboardingPage() {
                   onClick={async () => {
                     setSaving(true);
                     try {
-                      await saveStep({ onboardingComplete: true, profileCompletedLater: true });
+                      // Skipping means the discoverability question was never
+                      // answered. Defaulting to visible would make the profile
+                      // searchable on a choice the seeker never made.
+                      await saveStep({ onboardingComplete: true, profileCompletedLater: true, profileVisibility: "hidden" });
                       await updateSession({ isOnboarded: true });
                       router.push(`/${locale ?? "en"}/job-seeker`);
                     } catch {

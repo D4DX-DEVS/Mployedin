@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import EmployerApplicationsPage from "@/app/[locale]/(dashboard)/employer/applications/page";
 import { ApplicationsWorkspace } from "@/components/features/employer/applications/ApplicationsWorkspace";
@@ -17,6 +17,7 @@ const createOfferMutateAsyncMock = jest.fn();
 const fetchInterviewForAppMutateAsyncMock = jest.fn();
 const computeAiMatchMutateAsyncMock = jest.fn();
 const bulkAiMatchMutateAsyncMock = jest.fn();
+const updateInterviewMutateAsyncMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
@@ -84,6 +85,12 @@ jest.mock("@/hooks/useApplications", () => ({
   useBulkAiMatch: () => ({ mutateAsync: bulkAiMatchMutateAsyncMock, isPending: false }),
 }));
 
+// The stage-move conflict path cancels a stranded interview; useMutation here
+// would need a QueryClientProvider this suite does not set up.
+jest.mock("@/hooks/useInterviews", () => ({
+  useUpdateInterview: () => ({ mutateAsync: updateInterviewMutateAsyncMock, isPending: false }),
+}));
+
 jest.mock("@/hooks/useScorecards", () => ({
   useScorecardsByApplicationIds: () => ({ data: {} }),
 }));
@@ -119,6 +126,15 @@ jest.mock("@/components/ui/searchable-select", () => ({
   ),
 }));
 
+const toastInfoMock = jest.fn();
+jest.mock("sonner", () => ({
+  toast: {
+    error: jest.fn(),
+    success: jest.fn(),
+    info: (...args: unknown[]) => toastInfoMock(...args),
+  },
+}));
+
 jest.mock("@/components/shared/StatusBadge", () => ({
   StatusBadge: ({ status }: { status: string }) => <span>{status}</span>,
 }));
@@ -146,6 +162,8 @@ describe("EmployerApplicationsPage", () => {
     fetchInterviewForAppMutateAsyncMock.mockReset();
     computeAiMatchMutateAsyncMock.mockReset();
     bulkAiMatchMutateAsyncMock.mockReset();
+    toastInfoMock.mockReset();
+    updateInterviewMutateAsyncMock.mockReset();
 
     useApplicationsMock.mockReturnValue({
       data: {
@@ -277,5 +295,290 @@ describe("EmployerApplicationsPage", () => {
     expect(useApplicationsMock).toHaveBeenCalledWith(
       expect.objectContaining({ jobId: "job-1" })
     );
+  });
+
+  describe("Shortlist Top with nothing eligible", () => {
+    /** The default fixture is one shortlisted applicant — already past Applied,
+        so nothing is eligible. The button must still say why. */
+    it("stays clickable and names the reason instead of doing nothing", async () => {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      const button = screen.getByRole("button", { name: /shortlist top/i });
+      expect(button).not.toBeDisabled();
+
+      await user.click(button);
+
+      await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
+      expect(toastInfoMock.mock.calls[0][0]).toMatch(/already/i);
+      expect(bulkActionMutateAsyncMock).not.toHaveBeenCalled();
+    });
+
+    it("asks for scores first when applicants sit at Applied without a match score", async () => {
+      const user = userEvent.setup();
+      useApplicationsMock.mockReturnValue({
+        data: {
+          applications: [
+            {
+              _id: "app-2",
+              jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+              jobSeekerId: { _id: "candidate-2", userId: { _id: "user-2", name: "Bilal Khan" }, skills: [] },
+              status: "applied",
+              aiMatchScore: null,
+              appliedAt: "2026-04-08T00:00:00.000Z",
+            },
+          ],
+          pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+        isLoading: false,
+      });
+
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /shortlist top/i }));
+
+      await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
+      expect(toastInfoMock.mock.calls[0][0]).toMatch(/score all/i);
+      expect(bulkActionMutateAsyncMock).not.toHaveBeenCalled();
+    });
+
+    it("says the view is empty when no applicants are listed at all", async () => {
+      const user = userEvent.setup();
+      useApplicationsMock.mockReturnValue({
+        data: { applications: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } },
+        isLoading: false,
+      });
+
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /shortlist top/i }));
+
+      await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
+      expect(toastInfoMock.mock.calls[0][0]).toMatch(/no applicants/i);
+      expect(bulkActionMutateAsyncMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Score All with nothing to score", () => {
+    /** Scoring also runs automatically on first load, so the toolbar button is
+        usually inert by the time anyone reads it — it must say why. */
+    it("stays clickable and says every applicant is already scored", async () => {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      const button = screen.getByRole("button", { name: /score all/i });
+      expect(button).not.toBeDisabled();
+
+      await user.click(button);
+
+      await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
+      expect(toastInfoMock.mock.calls[0][0]).toMatch(/already has a match score/i);
+      expect(bulkAiMatchMutateAsyncMock).not.toHaveBeenCalled();
+    });
+
+    it("says the view is empty when no applicants are listed at all", async () => {
+      const user = userEvent.setup();
+      useApplicationsMock.mockReturnValue({
+        data: { applications: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } },
+        isLoading: false,
+      });
+
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /score all/i }));
+
+      await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
+      expect(toastInfoMock.mock.calls[0][0]).toMatch(/no applicants/i);
+      expect(bulkAiMatchMutateAsyncMock).not.toHaveBeenCalled();
+    });
+
+    it("still scores when unscored applicants are in view", async () => {
+      const user = userEvent.setup();
+      useApplicationsMock.mockReturnValue({
+        data: {
+          applications: [
+            {
+              _id: "app-3",
+              jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+              jobSeekerId: { _id: "candidate-3", userId: { _id: "user-3", name: "Sara Ali" }, skills: [] },
+              status: "applied",
+              aiMatchScore: null,
+              appliedAt: "2026-04-08T00:00:00.000Z",
+            },
+          ],
+          pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+        isLoading: false,
+      });
+
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      // The first-load effect already scores unscored rows; clear it, then
+      // assert the explicit click scores too and toasts no excuse.
+      await waitFor(() => expect(bulkAiMatchMutateAsyncMock).toHaveBeenCalled());
+      bulkAiMatchMutateAsyncMock.mockClear();
+
+      // While a pass is running the button reads "Scoring…"; wait for it back.
+      await user.click(await screen.findByRole("button", { name: /score all/i }));
+
+      await waitFor(() => expect(bulkAiMatchMutateAsyncMock).toHaveBeenCalledTimes(1));
+      expect(toastInfoMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("candidate panel overflow menu", () => {
+    /** The ⋯ button used to be a bare icon with no handler at all, and the
+        Background Check tile had no request affordance anywhere in the panel. */
+    async function openPanelMenu() {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByTestId("applicant-row-app-1"));
+      await screen.findByRole("dialog", { name: /candidate details for amina noor/i });
+      await user.click(screen.getByRole("button", { name: /more actions/i }));
+      return user;
+    }
+
+    it("opens a menu instead of doing nothing", async () => {
+      await openPanelMenu();
+      expect(screen.getByRole("menuitem", { name: /request background check/i })).toBeInTheDocument();
+      expect(screen.getByRole("menuitem", { name: /save to pool/i })).toBeInTheDocument();
+    });
+
+    it("deep links the background check request to this application", async () => {
+      await openPanelMenu();
+      const link = screen.getByRole("menuitem", { name: /request background check/i });
+      expect(link).toHaveAttribute("href", "/en/employer/background-checks?applicationId=app-1");
+    });
+  });
+
+  describe("shortlist chip", () => {
+    /** The Applications tab already IS everyone who applied, so an "Applied"
+        chip repeats the tab's own count and reads as a contradiction. The one
+        chip that adds something is the shortlist. */
+    function withCounts(shortlisted = 3, interviewing = 1) {
+      useApplicationsMock.mockReturnValue({
+        data: {
+          applications: [],
+          statusCounts: { applied: 3, shortlisted, interview_scheduled: interviewing, selected: 0, offer: 0, hired: 0, rejected: 2, withdrawn: 0 },
+          pagination: { total: 3, page: 1, limit: 10, totalPages: 1 },
+        },
+        isLoading: false,
+      });
+    }
+
+    it("offers the shortlist and nothing else", () => {
+      withCounts();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      const chips = screen.getByRole("group", { name: /filter by stage/i });
+      expect(within(chips).getAllByRole("button").map((b) => b.textContent?.trim())).toEqual(["Shortlisted4"]);
+      expect(within(chips).queryByRole("button", { name: /applied/i })).not.toBeInTheDocument();
+    });
+
+    /** Shortlisting is what sends someone to interview, so advancing must not
+        drop them out of the shortlist: 3 sitting at shortlisted + 1 who has
+        moved on to Interviewing = 4. */
+    it("keeps counting candidates who have since advanced", () => {
+      withCounts();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      expect(screen.getByRole("button", { name: /shortlisted 4/i })).toBeInTheDocument();
+    });
+
+    it("leaves out anyone rejected or still untriaged", () => {
+      useApplicationsMock.mockReturnValue({
+        data: {
+          applications: [],
+          statusCounts: { applied: 5, shortlisted: 1, interview_scheduled: 0, selected: 0, offer: 0, hired: 1, rejected: 4, withdrawn: 2 },
+          pagination: { total: 13, page: 1, limit: 10, totalPages: 2 },
+        },
+        isLoading: false,
+      });
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      // 1 shortlisted + 1 hired; applied, rejected and withdrawn are excluded.
+      expect(screen.getByRole("button", { name: /shortlisted 2/i })).toBeInTheDocument();
+    });
+
+    it("filters to the shortlist in one click, and back out again", async () => {
+      const user = userEvent.setup();
+      withCounts();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+      await waitFor(() => expect(useApplicationsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ status: undefined, stageFrom: "shortlisted" }),
+      ));
+      expect(screen.getByRole("button", { name: /shortlisted 4/i })).toHaveAttribute("aria-pressed", "true");
+
+      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+      await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: undefined, stageFrom: undefined }),
+      ));
+    });
+
+    it("drops the chip when nobody has been shortlisted", () => {
+      withCounts(0, 0);
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      expect(screen.queryByRole("button", { name: /shortlisted/i })).not.toBeInTheDocument();
+    });
+
+    /** Without this the chip vanishes the moment its last candidate moves on,
+        leaving the list filtered with no way to clear it. */
+    it("keeps the chip while it is the active filter, even at zero", async () => {
+      const user = userEvent.setup();
+      withCounts();
+      const { rerender } = render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+
+      withCounts(0, 0);
+      rerender(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      expect(screen.getByRole("button", { name: /shortlisted 0/i })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("shows a dash until the totals arrive", () => {
+      useApplicationsMock.mockReturnValue({
+        data: { applications: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } },
+        isLoading: true,
+      });
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      expect(screen.getByRole("button", { name: /shortlisted —/i })).toBeInTheDocument();
+    });
+  });
+  describe("Move Stage menu", () => {
+    /** All six stages listed flat gave no hint which one comes next. */
+    async function openStageMenu() {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByTestId("applicant-row-app-1"));
+      const panel = await screen.findByRole("dialog", { name: /candidate details for amina noor/i });
+      await user.click(within(panel).getByRole("button", { name: /move stage/i }));
+      return { user, panel };
+    }
+
+    it("leads with the next stage under its own heading", async () => {
+      const { panel } = await openStageMenu();
+
+      const menu = within(panel).getByRole("menu", { name: /move stage/i });
+      expect(within(menu).getByRole("group", { name: /next/i })).toBeInTheDocument();
+      // The fixture candidate is shortlisted, so Interviewing is the next step.
+      const items = within(menu).getAllByRole("menuitem").map((n) => n.textContent?.trim());
+      expect(items[0]).toBe("Interviewing");
+    });
+
+    it("keeps every other stage available below, backwards ones included", async () => {
+      const { panel } = await openStageMenu();
+
+      const menu = within(panel).getByRole("menu", { name: /move stage/i });
+      const items = within(menu).getAllByRole("menuitem").map((n) => n.textContent?.trim());
+      expect(items).toEqual(["Interviewing", "Applied", "Selected", "Offer", "Hired", "Rejected"]);
+      expect(within(menu).getByRole("group", { name: /move elsewhere/i })).toBeInTheDocument();
+    });
+
+    it("still moves the candidate when the next-stage item is chosen", async () => {
+      const { user, panel } = await openStageMenu();
+
+      const menu = within(panel).getByRole("menu", { name: /move stage/i });
+      await user.click(within(menu).getByRole("menuitem", { name: "Interviewing" }));
+
+      // Interviewing opens the scheduling modal rather than writing the stage.
+      await waitFor(() => expect(screen.getByText("Set up the interview details")).toBeInTheDocument());
+      expect(updateStatusMutateAsyncMock).not.toHaveBeenCalled();
+    });
   });
 });

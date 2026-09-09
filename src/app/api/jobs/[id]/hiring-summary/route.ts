@@ -56,6 +56,14 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
           { status: { $in: ["scheduled", "confirmed"] }, scheduledAt: { $lt: now } },
         ] } }, { $count: "n" }],
         rescheduleRequests: [{ $match: { status: { $in: ["scheduled", "confirmed"] }, candidateResponse: "reschedule_requested" } }, { $count: "n" }],
+        // Which applications have an interview in flight. The Overview funnel
+        // needs this because an application can sit at another stage while an
+        // interview is still open — someone moved the candidate back — and a
+        // stage-only count then reads "Interviewing 0" beside "Interviews 1".
+        openApplicationIds: [
+          { $match: { status: { $in: ["scheduled", "confirmed"] } } },
+          { $group: { _id: "$applicationId" } },
+        ],
       } },
     ]),
     Offer.aggregate([
@@ -89,6 +97,20 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
   const total = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
+  // Candidates actually in interview: those at the stage, plus anyone holding an
+  // open interview from another stage. Rejected and withdrawn are excluded —
+  // their interview is moot even if the document is still open.
+  const openInterviewAppIds = ((interviews?.openApplicationIds ?? []) as Array<{ _id: unknown }>)
+    .map((row) => row._id)
+    .filter(Boolean);
+  const interviewingElsewhere = openInterviewAppIds.length
+    ? await Application.countDocuments({
+        _id: { $in: openInterviewAppIds },
+        status: { $nin: ["interview_scheduled", "rejected", "withdrawn"] },
+      })
+    : 0;
+  const interviewingCandidates = statusCounts.interview_scheduled + interviewingElsewhere;
+
   return NextResponse.json({
     jobId: String(job._id),
     status: job.status,
@@ -99,6 +121,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     unreviewed: count(apps?.unreviewed),
     interviews: {
       open: count(interviews?.open),
+      interviewingCandidates,
       upcoming: count(interviews?.upcoming),
       awaitingOutcome: count(interviews?.awaitingOutcome),
       rescheduleRequests: count(interviews?.rescheduleRequests),

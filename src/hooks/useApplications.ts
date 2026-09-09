@@ -8,6 +8,9 @@ export interface ApplicationsFilters {
   page: number;
   limit: number;
   status?: string;
+  /** "Has reached at least this stage" — the shortlist keeps candidates who
+   *  have since advanced. Ignored when `status` is set. */
+  stageFrom?: string;
   jobId?: string;
   search?: string;
   scoreMin?: number;
@@ -50,6 +53,7 @@ function buildApplicationsParams(filters: ApplicationsFilters): URLSearchParams 
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  else if (filters.stageFrom) params.set("stageFrom", filters.stageFrom);
   if (filters.jobId) params.set("jobId", filters.jobId);
   if (filters.search) params.set("search", filters.search);
   if (filters.scoreMin != null && filters.scoreMin > 0) params.set("scoreMin", String(filters.scoreMin));
@@ -102,6 +106,29 @@ export function useInfiniteApplications(filters: InfiniteApplicationsFilters) {
   });
 }
 
+/** The open interview a backwards stage move would leave behind. */
+export interface OpenInterviewConflict {
+  _id: string;
+  scheduledAt: string | null;
+  interviewRound: number;
+  type: string | null;
+  status: string | null;
+}
+
+/**
+ * Thrown when the server refuses a backwards stage move because the candidate
+ * still has a scheduled interview. Callers show the interview, then re-send
+ * with `acknowledgeOpenInterview`.
+ */
+export class OpenInterviewError extends Error {
+  readonly interview: OpenInterviewConflict;
+  constructor(interview: OpenInterviewConflict) {
+    super("This candidate has an interview that is still open.");
+    this.name = "OpenInterviewError";
+    this.interview = interview;
+  }
+}
+
 /** Update a single application's status */
 export function useUpdateApplicationStatus() {
   const qc = useQueryClient();
@@ -110,17 +137,29 @@ export function useUpdateApplicationStatus() {
       id,
       status,
       rejectionReason,
+      acknowledgeOpenInterview,
     }: {
       id: string;
       status: string;
       rejectionReason?: string;
+      acknowledgeOpenInterview?: boolean;
     }) => {
       const res = await fetch(`/api/applications/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, ...(rejectionReason && { rejectionReason }) }),
+        body: JSON.stringify({
+          status,
+          ...(rejectionReason && { rejectionReason }),
+          ...(acknowledgeOpenInterview && { acknowledgeOpenInterview: true }),
+        }),
       });
-      if (!res.ok) throw new Error("Failed to update application status");
+      if (res.status === 409) {
+        const body = await res.json().catch(() => null);
+        if (body?.code === "OPEN_INTERVIEW" && body.interview) {
+          throw new OpenInterviewError(body.interview as OpenInterviewConflict);
+        }
+      }
+      if (!res.ok) throw new Error("Application status was not updated");
       return res.json();
     },
     onSuccess: () => {
@@ -196,6 +235,20 @@ export function useCreateScorecard() {
 }
 
 /** Create an interview from the applications page (supports staggered bulk scheduling) */
+/** Why a candidate in a bulk schedule produced no interview. */
+export interface SkippedInterview {
+  applicationId: string;
+  reason: "existing_interview";
+  interviewId: string;
+}
+
+export interface BulkInterviewResult {
+  created: number;
+  failed: number;
+  skipped?: SkippedInterview[];
+  ids?: string[];
+}
+
 export function useCreateInterviewFromApp() {
   const qc = useQueryClient();
   return useMutation({
@@ -220,9 +273,9 @@ export function useCreateInterviewFromApp() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || data?.message || "Failed to create interview");
+        throw new Error(data?.error || data?.message || "The interview was not created");
       }
-      return res.json();
+      return res.json() as Promise<BulkInterviewResult>;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });

@@ -22,7 +22,7 @@ interface AuthCtx {
   locale: string;
 }
 
-const EMPTY_STATS = { total: 0, pending: 0, accepted: 0, declined: 0 };
+const EMPTY_STATS = { total: 0, pending: 0, accepted: 0, declined: 0, expired: 0, countered: 0 };
 
 function offersListResponse({
   offers = [],
@@ -123,12 +123,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // Compute stats (without status filter)
   const statsQuery = { ...query };
   delete statsQuery.status;
-  const [totalCount, pendingCount, acceptedCount, declinedCount] = await Promise.all([
-    Offer.countDocuments(statsQuery),
-    Offer.countDocuments({ ...statsQuery, status: "pending" }),
-    Offer.countDocuments({ ...statsQuery, status: "accepted" }),
-    Offer.countDocuments({ ...statsQuery, status: "declined" }),
-  ]);
+  // One count per status tab the client can select, so a pill's number always
+  // describes the list that pill produces. countDocuments rather than a $group
+  // aggregate: this query can carry string ids, which $match would not cast.
+  const [totalCount, pendingCount, acceptedCount, declinedCount, expiredCount, counteredCount] =
+    await Promise.all([
+      Offer.countDocuments(statsQuery),
+      Offer.countDocuments({ ...statsQuery, status: "pending" }),
+      Offer.countDocuments({ ...statsQuery, status: "accepted" }),
+      Offer.countDocuments({ ...statsQuery, status: "declined" }),
+      Offer.countDocuments({ ...statsQuery, status: "expired" }),
+      Offer.countDocuments({ ...statsQuery, status: "countered" }),
+    ]);
 
   const skip = (page - 1) * limit;
   const [offers, total] = await Promise.all([
@@ -199,7 +205,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     total,
     page,
     limit,
-    stats: { total: totalCount, pending: pendingCount, accepted: acceptedCount, declined: declinedCount },
+    stats: {
+      total: totalCount,
+      pending: pendingCount,
+      accepted: acceptedCount,
+      declined: declinedCount,
+      expired: expiredCount,
+      countered: counteredCount,
+    },
   });
 }
 

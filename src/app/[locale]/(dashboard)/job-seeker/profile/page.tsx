@@ -1433,8 +1433,8 @@ export default function JobSeekerProfilePage() {
       <Dialog open={showVisibilityModal} onOpenChange={setShowVisibilityModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Profile Settings</DialogTitle>
-            <DialogDescription className="sr-only">Manage your profile visibility settings</DialogDescription>
+            <DialogTitle>{t("visibilityModalTitle")}</DialogTitle>
+            <DialogDescription className="sr-only">{t("visibilityModalDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <button
@@ -1447,16 +1447,17 @@ export default function JobSeekerProfilePage() {
               )}
             >
               {editVisibility === "visible" && (
-                <span className="inline-block text-[11px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full mb-2">Recommended</span>
+                <span className="inline-block text-[11px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full mb-2">{t("visibilityRecommended")}</span>
               )}
               <div className="flex items-start gap-3">
                 <Eye className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold">Employers can find you on Mployedin</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Employers can find your profile through Mployedin and contact you about jobs.
-                    We attempt to hide identifiable details until you respond to employers.
-                  </p>
+                  <p className="text-sm font-semibold">{t("visibilityVisibleTitle")}</p>
+                  {/* States exactly what talent search returns. The previous
+                      copy promised identifiable details were hidden, which the
+                      endpoint does not do — it returns name, location, headline,
+                      skills and experience. */}
+                  <p className="text-xs text-muted-foreground mt-1">{t("visibilityVisibleDesc")}</p>
                 </div>
                 <div className={cn(
                   "w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5",
@@ -1479,11 +1480,8 @@ export default function JobSeekerProfilePage() {
               <div className="flex items-start gap-3">
                 <EyeOff className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold">Employers can&apos;t find you on Mployedin</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Only employers you&apos;ve applied to can see you on Mployedin.
-                    Other employers can&apos;t find your profile or contact you about jobs.
-                  </p>
+                  <p className="text-sm font-semibold">{t("visibilityHiddenTitle")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("visibilityHiddenDesc")}</p>
                 </div>
                 <div className={cn(
                   "w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5",
@@ -1495,16 +1493,16 @@ export default function JobSeekerProfilePage() {
             </button>
 
             <a href="/privacy" target="_blank" className="text-xs text-primary hover:underline block mt-2">
-              Privacy Policy
+              {t("visibilityPrivacyLink")}
             </a>
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" size="sm">Cancel</Button>
+              <Button variant="outline" size="sm">{t("visibilityCancel")}</Button>
             </DialogClose>
             <Button size="sm" onClick={handleSaveVisibility} disabled={savingVisibility}>
               {savingVisibility ? <Loader2 className="w-4 h-4 animate-spin me-1.5" /> : null}
-              Save
+              {t("visibilitySave")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -68,6 +68,42 @@ export interface IDiversityInclusion {
   careerBreak?: { hasBreak: boolean; reason?: string; startDate?: Date; endDate?: Date };
 }
 
+export interface IJobSeekerSettings {
+  // A — Auto apply
+  autoApply?: boolean;
+  autoApplyFilters?: {
+    minScore?: number;
+    maxDistance?: string;
+    onlyVerifiedEmployers?: boolean;
+  };
+  applySpeed?: "safe" | "balanced" | "aggressive";
+  preferredJobTypes?: string[];
+  preferredLocations?: string[];
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
+  // B — Interview
+  instantBooking?: boolean;
+  timezone?: string;
+  timeBuffer?: number;
+  weeklyAvailability?: string[];
+  availableHours?: { day: string; startTime: string; endTime: string }[];
+  // C — Profile
+  showSalary?: boolean;
+  openToRelocation?: boolean;
+  // D — Resume & AI
+  defaultResumeId?: string;
+  autoGenerateCoverLetter?: boolean;
+  coverLetterTone?: "professional" | "friendly" | "bold";
+  autoAnswerScreening?: boolean;
+  // E — Notifications
+  notifications?: {
+    jobMatchAlerts?: boolean;
+    applicationSubmitted?: boolean;
+    interviewNotifications?: boolean;
+  };
+}
+
 export interface IJobSeeker extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
@@ -124,6 +160,9 @@ export interface IJobSeeker extends Document {
   // Profile Visibility
   profileVisibility: "visible" | "hidden"; // employers can/can't find you
   sectionVisibility?: Record<string, boolean>; // per-section visibility toggles
+  // Job-seeker settings page. Discoverability is deliberately NOT here — it is
+  // `profileVisibility` above, so there is one answer, not two.
+  settings?: IJobSeekerSettings;
   // Documents
   documents: {
     id: string;
@@ -262,6 +301,67 @@ const DiversityInclusionSchema = new Schema<IDiversityInclusion>({
   },
 }, { _id: false });
 
+/** Settings page payload. `_id: false` — it is a single embedded document, not
+ *  a collection member. `strict` still applies inside, so unknown keys sent by a
+ *  future client are dropped rather than stored unvalidated. */
+const SettingsSchema = new Schema(
+  {
+    autoApply: { type: Boolean, default: false },
+    autoApplyFilters: {
+      type: new Schema(
+        {
+          minScore: { type: Number, min: 0, max: 100, default: 70 },
+          maxDistance: { type: String, default: "same_country" },
+          onlyVerifiedEmployers: { type: Boolean, default: true },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
+    applySpeed: { type: String, enum: ["safe", "balanced", "aggressive"] },
+    preferredJobTypes: { type: [String], default: undefined },
+    preferredLocations: { type: [String], default: undefined },
+    salaryMin: { type: Number, min: 0 },
+    salaryMax: { type: Number, min: 0 },
+    salaryCurrency: { type: String },
+    instantBooking: { type: Boolean, default: true },
+    timezone: { type: String },
+    timeBuffer: { type: Number, min: 0, max: 120 },
+    weeklyAvailability: { type: [String], default: undefined },
+    availableHours: {
+      type: [
+        new Schema(
+          {
+            day: { type: String, enum: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], required: true },
+            startTime: { type: String, required: true },
+            endTime: { type: String, required: true },
+          },
+          { _id: false }
+        ),
+      ],
+      default: undefined,
+    },
+    showSalary: { type: Boolean, default: true },
+    openToRelocation: { type: Boolean, default: true },
+    defaultResumeId: { type: String },
+    autoGenerateCoverLetter: { type: Boolean, default: true },
+    coverLetterTone: { type: String, enum: ["professional", "friendly", "bold"], default: "professional" },
+    autoAnswerScreening: { type: Boolean, default: false },
+    notifications: {
+      type: new Schema(
+        {
+          jobMatchAlerts: { type: Boolean, default: true },
+          applicationSubmitted: { type: Boolean, default: true },
+          interviewNotifications: { type: Boolean, default: true },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
+  },
+  { _id: false }
+);
+
 const JobSeekerSchema = new Schema<IJobSeeker>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
@@ -313,6 +413,14 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       type: Map,
       of: Boolean,
       default: {},
+    },
+    // Job-seeker settings page (/api/job-seekers/settings). Without this path
+    // strict mode silently discarded `$set: { settings }`, so every switch on
+    // that page reported "saved" and persisted nothing. Keep the shape in step
+    // with `jobSeekerSettingsSchema` in lib/validators/job-seekers.ts.
+    settings: {
+      type: SettingsSchema,
+      default: undefined,
     },
     documents: [{
       id: { type: String, required: true },

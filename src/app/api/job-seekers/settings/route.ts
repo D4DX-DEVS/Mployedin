@@ -14,6 +14,8 @@ interface JobSeekerSettings {
     onlyVerifiedEmployers: boolean;
   };
   instantBooking: boolean;
+  /** Mirrors the root JobSeeker.profileVisibility; never stored under settings. */
+  profileVisibility?: "visible" | "hidden";
   showSalary: boolean;
   openToRelocation: boolean;
   timezone?: string;
@@ -48,8 +50,8 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
 
   await connectDB();
   const js = await (JobSeeker as unknown as {
-    findOne: (q: object) => { select: (s: string) => { lean: () => Promise<{ settings?: JobSeekerSettings; documents?: { id: string; name: string; category: string; url: string }[] } | null> } }
-  }).findOne({ userId: ctx.userId }).select("settings documents").lean();
+    findOne: (q: object) => { select: (s: string) => { lean: () => Promise<{ settings?: JobSeekerSettings; documents?: { id: string; name: string; category: string; url: string }[]; profileVisibility?: "visible" | "hidden" } | null> } }
+  }).findOne({ userId: ctx.userId }).select("settings documents profileVisibility").lean();
 
   const defaults: JobSeekerSettings = {
     autoApply: false,
@@ -73,7 +75,12 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
     .map((d) => ({ id: d.id, name: d.name, url: d.url }));
 
   return NextResponse.json({
-    settings: js?.settings ?? defaults,
+    // Surfaced alongside settings so the form has one shape to hydrate from,
+    // while the value itself still lives on the JobSeeker root.
+    settings: {
+      ...(js?.settings ?? defaults),
+      profileVisibility: js?.profileVisibility ?? "visible",
+    },
     resumes,
   });
 }
@@ -86,11 +93,35 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
   await connectDB();
   const { settings } = await validateBody(req, jobSeekerSettingsSchema);
 
+  // Discoverability is the root field, shared with onboarding and the profile
+  // modal. Strip it out so it is written once, in one place, and never shadowed
+  // by a stale copy under settings.
+  const { profileVisibility, ...settingsFields } = settings;
+
+  // Merge per key rather than `$set: { settings }`. Every field on the schema is
+  // optional and the settings form only carries a subset — a wholesale replace
+  // silently dropped `autoApply`, `autoApplyFilters` and `applySpeed` (owned by
+  // /api/user/autoapply) every time the seeker saved this page.
+  const update: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settingsFields)) {
+    if (value !== undefined) {
+      update[`settings.${key}`] = value;
+    }
+  }
+  if (profileVisibility) {
+    update.profileVisibility = profileVisibility;
+  }
+
+  // Nothing to write: an all-undefined body would otherwise upsert an empty doc.
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ success: true });
+  }
+
   await (JobSeeker as unknown as {
     findOneAndUpdate: (q: object, update: object, opts: object) => Promise<unknown>
   }).findOneAndUpdate(
     { userId: ctx.userId },
-    { $set: { settings } },
+    { $set: update },
     { upsert: true }
   );
 

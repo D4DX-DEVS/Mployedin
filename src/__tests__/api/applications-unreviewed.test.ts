@@ -117,6 +117,30 @@ describe("GET /api/applications — unreviewed filter", () => {
     expect(query.status).toBe("shortlisted");
   });
 
+  /** Shortlisting is what sends a candidate to interview, so the shortlist has
+      to keep them once they get there. `stageFrom` matches the stage and every
+      later one; rejected and withdrawn stay out. */
+  it("expands stageFrom into the stage and every later one", async () => {
+    await callHandler(makeReq(`/api/applications?jobId=${JOB_ID}&stageFrom=shortlisted&page=1&limit=10`));
+
+    const query = applicationQueries[0];
+    expect(query.status).toEqual({
+      $in: ["shortlisted", "interview_scheduled", "selected", "offer", "hired"],
+    });
+  });
+
+  it("lets an explicit status win over stageFrom", async () => {
+    await callHandler(makeReq(`/api/applications?jobId=${JOB_ID}&status=hired&stageFrom=shortlisted&page=1&limit=10`));
+
+    expect(applicationQueries[0].status).toBe("hired");
+  });
+
+  it("ignores a stageFrom that is not a pipeline stage", async () => {
+    await callHandler(makeReq(`/api/applications?jobId=${JOB_ID}&stageFrom=rejected&page=1&limit=10`));
+
+    expect(applicationQueries[0].status).toBeUndefined();
+  });
+
   it("does not add unreviewed filter when unreviewed is not true", async () => {
     await callHandler(
       makeReq(`/api/applications?jobId=${JOB_ID}&page=1&limit=10`)

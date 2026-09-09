@@ -66,6 +66,11 @@ export interface JobProfile {
   maxExp: number;
   /** Job title (lower-cased). Used for bonus. */
   title?: string;
+  /**
+   * How the job is worked. Compared against SeekerProfile.jobType. "" when the
+   * employer never stated one — an unknown mode is never penalised.
+   */
+  workMode?: "onsite" | "hybrid" | "remote" | "";
   /** Required education level (1-5, 0 = none/unspecified). See educationRank(). */
   requiredEducationLevel?: number;
 }
@@ -275,6 +280,17 @@ export function getMatchedSkills(seekerSkills: string[], jobSkills: string[]): s
 }
 
 /**
+ * The mirror of getMatchedSkills: the *job's* own skill strings the seeker can
+ * cover. Cards render the job's skill chips and mark the covered ones by exact
+ * string, so they need the job's wording ("React.js"), not the seeker's
+ * ("React") — feeding them the seeker-side list leaves every chip unmarked.
+ */
+export function getMatchedJobSkills(seekerSkills: string[], jobSkills: string[]): string[] {
+  const seekerSet = new Set(seekerSkills.flatMap(tokenizeSkill));
+  return jobSkills.filter((s) => tokenizeSkill(s).some((t) => seekerSet.has(t)));
+}
+
+/**
  * True when the seeker shares at least one skill (exact after normalization,
  * or via a related-skill group) with the job's required skills.
  */
@@ -300,6 +316,29 @@ export interface MatchScoreWeights {
   location?: number;   // fraction, typically 0.2
   experience?: number; // fraction, typically 0.2
   salary?: number;     // fraction, typically 0.2
+}
+
+/** Opposite modes cost this many points; a hybrid step costs the smaller one. */
+const WORK_MODE_OPPOSITE_PENALTY = 15;
+const WORK_MODE_ADJACENT_PENALTY = 6;
+
+/**
+ * Points to subtract when a job's work mode contradicts the seeker's preference.
+ * 0 when either side is unknown or the seeker said "any" — an unstated
+ * preference must never cost a job points.
+ */
+export function workModePenalty(
+  seekerJobType: string | undefined,
+  jobWorkMode: string | undefined,
+): number {
+  const pref = (seekerJobType ?? "").toLowerCase().trim();
+  const mode = (jobWorkMode ?? "").toLowerCase().trim();
+  if (!pref || pref === "any" || !mode) return 0;
+  if (pref === mode) return 0;
+  // "hybrid" sits between the other two, so either pairing with it is a
+  // half-step; remote against onsite is the only outright contradiction.
+  if (pref === "hybrid" || mode === "hybrid") return WORK_MODE_ADJACENT_PENALTY;
+  return WORK_MODE_OPPOSITE_PENALTY;
 }
 
 export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): number {
@@ -432,6 +471,14 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weig
     }
   }
 
+  // ── Work-mode penalty ────────────────────────────────────────────────
+  // The seeker's remote/hybrid/onsite preference was collected but never
+  // scored, so "remote only" ranked an onsite role exactly like a remote one.
+  // Applied as a ranking penalty rather than a weighted component so existing
+  // percentages only move for jobs that actually contradict the preference,
+  // and only when both sides stated a mode.
+  score = Math.max(0, score - workModePenalty(seeker.jobType, job.workMode));
+
   // ── Qualification penalty ─────────────────────────────────────────────
   // Push down jobs that demand a higher qualification than the seeker holds so
   // they don't surface as "suggested". Only applied when BOTH the job's required
@@ -544,7 +591,15 @@ export function jobProfileFromDoc(job: {
   salary?: { min?: number; max?: number; period?: "monthly" | "yearly" | "lpa"; currency?: string };
   location?: { country?: string; city?: string; isRemote?: boolean };
   title?: string;
+  workMode?: string | null;
 }): JobProfile {
+  // Older jobs predate the workMode field and only carry the isRemote flag.
+  const workMode = ((): JobProfile["workMode"] => {
+    const stated = (job.workMode ?? "").toLowerCase().trim();
+    if (stated === "onsite" || stated === "hybrid" || stated === "remote") return stated;
+    return job.location?.isRemote ? "remote" : "";
+  })();
+
   return {
     skills: job.requirements?.skills ?? [],
     preferredSkills: job.requirements?.preferredSkills ?? [],
@@ -558,6 +613,7 @@ export function jobProfileFromDoc(job: {
     minExp: job.requirements?.experienceMin ?? 0,
     maxExp: job.requirements?.experienceMax ?? 30,
     title: job.title?.toLowerCase() ?? "",
+    workMode,
     requiredEducationLevel: educationRank(job.requirements?.education),
   };
 }

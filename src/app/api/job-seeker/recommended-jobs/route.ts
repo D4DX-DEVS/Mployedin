@@ -4,13 +4,15 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
-import {
-  calculateMatchScore,
-  jobProfileFromDoc,
-  getMatchedSkills,
-  SEEKER_MATCH_FIELDS,
-} from "@/lib/matchScore";
+import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
+import {
+  buildRecommendedJobQuery,
+  isRelevantJob,
+  rankRecommendedJobs,
+  RECOMMENDATION_POOL_SIZE,
+  RECOMMENDED_JOB_SELECT,
+} from "@/lib/jobRecommendations";
 
 /**
  * GET /api/job-seeker/recommended-jobs
@@ -42,61 +44,31 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .lean()
     .then((apps) => apps.map((a) => a.jobId));
 
-  // Build query: active jobs NOT already applied to
-  const query: Record<string, unknown> = {
-    status: "active",
-    _id: { $nin: appliedJobIds },
-  };
+  // Same candidate filter, pool window and ranking as the home page and the
+  // feed — this route used to match countries by exact string and hard-drop
+  // anything off-profile, so the "matching jobs" count it feeds the skills page
+  // disagreed with the jobs the seeker could actually see.
+  const query = buildRecommendedJobQuery({
+    preferredCountries: seeker.preferredCountries,
+    excludeJobIds: appliedJobIds,
+  });
 
-  // Prefer jobs in preferred countries if set
-  if (seeker.preferredCountries?.length) {
-    query["location.country"] = { $in: seeker.preferredCountries };
-  }
-
-  // Fetch candidate jobs (more than needed, we'll score and rank)
   const candidateJobs = await Job.find(query)
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .select("title description requirements salary location status employerId tags createdAt")
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(RECOMMENDATION_POOL_SIZE)
+    .select(RECOMMENDED_JOB_SELECT)
     .populate("employerId", "companyName logo")
     .lean();
 
-  // Score each job using the shared match algorithm (single source of truth),
-  // including confirmed skills so the % matches the AI Matches feed.
+  // Score using the shared algorithm (single source of truth), including
+  // confirmed skills so the % matches every other surface.
   const seekerProfile = await effectiveSeekerProfile(ctx.userId, seeker);
-  const seekerSkillSet = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
-  const seekerRoles = new Set<string>(seekerProfile.preferredRoles ?? []);
+  const ranked = rankRecommendedJobs(candidateJobs, seekerProfile);
 
-  const scored = candidateJobs.map((job) => {
-    const jobSkills = (job.requirements?.skills ?? []).map((s: string) => s.toLowerCase());
-    const skillOverlap = jobSkills.filter((s: string) => seekerSkillSet.has(s)).length;
-
-    // Role title relevance check
-    const titleLower = job.title?.toLowerCase() ?? "";
-    let roleMatch = false;
-    for (const role of seekerRoles) {
-      if (titleLower.includes(role) || role.includes(titleLower)) {
-        roleMatch = true;
-        break;
-      }
-    }
-
-    // Filter out completely unrelated jobs (no skill overlap AND no role relevance)
-    // e.g. "HR Manager" surfaced for a "Frontend Developer".
-    if (seekerRoles.size > 0 && seekerSkillSet.size > 0 && !roleMatch && skillOverlap === 0) {
-      return { ...job, matchScore: 0, _filtered: true };
-    }
-
-    const matchScore = calculateMatchScore(seekerProfile, jobProfileFromDoc(job));
-    const matchedSkills = getMatchedSkills(seekerProfile.skills, job.requirements?.skills ?? []);
-    return { ...job, matchScore, matchedSkills };
-  });
-
-  // Remove filtered-out jobs, sort by score descending
-  const relevant = scored.filter((j) => !(j as Record<string, unknown>)._filtered);
-  relevant.sort((a, b) => b.matchScore - a.matchScore);
-  const totalMatches = relevant.length;
-  const items = relevant.slice(0, itemLimit);
+  // totalMatches drives the skills page's "jobs matching your profile" figure,
+  // so it counts on-profile jobs only — not the whole live pool.
+  const totalMatches = ranked.filter((job) => isRelevantJob(job, seekerProfile)).length;
+  const items = ranked.slice(0, itemLimit);
 
   return NextResponse.json({ items, totalMatches });
 });

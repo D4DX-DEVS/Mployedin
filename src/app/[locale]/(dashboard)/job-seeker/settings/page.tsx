@@ -61,6 +61,9 @@ const settingsFormSchema = z.object({
     startTime: z.string(),
     endTime: z.string(),
   })),
+  // Same JobSeeker.profileVisibility the onboarding step and the profile modal
+  // write. One field, three entry points — not three preferences.
+  profileVisibility: z.enum(["visible", "hidden"]),
   showSalary: z.boolean(),
   openToRelocation: z.boolean(),
   defaultResumeId: z.string(),
@@ -81,6 +84,8 @@ type SettingsForm = z.infer<typeof settingsFormSchema>;
 const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((c) => ({
   value: c.code,
   label: c.symbol !== c.code ? `${c.symbol} ${c.code} — ${c.label}` : `${c.code} — ${c.label}`,
+  // The trigger is w-28; the full name never fit and rendered as "₹ INR — I…".
+  triggerLabel: c.symbol !== c.code ? `${c.symbol} ${c.code}` : c.code,
 }));
 
 const JOB_TYPE_OPTIONS = ["Full-time", "Part-time", "Remote", "Contract", "Freelance"];
@@ -104,6 +109,7 @@ const DEFAULTS: SettingsForm = {
     { day: "Thu", startTime: "09:00", endTime: "17:00" },
     { day: "Fri", startTime: "09:00", endTime: "17:00" },
   ],
+  profileVisibility: "visible",
   showSalary: true,
   openToRelocation: true,
   defaultResumeId: "resume_v2",
@@ -705,6 +711,26 @@ export default function JobSeekerSettingsPage() {
               title={t("profileVisibility.title")}
               description={t("profileVisibility.description")}
             >
+              {/* Discoverability leads the card: it decides whether an employer
+                  ever reaches the profile at all, so the rows below it are
+                  meaningless until it is on. */}
+              <SettingRow
+                label={t("profileVisibility.discoverable")}
+                description={t("profileVisibility.discoverableDescription")}
+              >
+                <Controller
+                  control={control}
+                  name="profileVisibility"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value === "visible"}
+                      onCheckedChange={(checked) => field.onChange(checked ? "visible" : "hidden")}
+                      aria-label={t("profileVisibility.discoverable")}
+                    />
+                  )}
+                />
+              </SettingRow>
+
               <SettingRow
                 label={t("profileVisibility.showSalary")}
                 description={t("profileVisibility.showSalaryDescription")}

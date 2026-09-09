@@ -58,6 +58,9 @@ export const applicationUpdateSchema = z
     withdrawalNote: z.string().max(500).trim().optional(),
     // Employer opened the application — stamps viewedByEmployerAt (clears "New" badge)
     markViewed: z.boolean().optional(),
+    // Set once the caller has been told an open interview would be left behind
+    // by a backwards stage move and chose to go ahead anyway.
+    acknowledgeOpenInterview: z.boolean().optional(),
   })
   .refine(
     (data) => data.status !== "rejected" || !!data.rejectionReason,

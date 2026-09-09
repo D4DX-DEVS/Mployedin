@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
-import { ScoreRing, matchBandLabel } from "@/components/features/employer/candidates/ScoreRing";
+import { ScoreRing, matchBandLabel, matchBandTone } from "@/components/features/employer/candidates/ScoreRing";
 import { CandidateDetailPanel } from "@/components/features/employer/candidates/CandidateDetailPanel";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Button } from "@/components/ui/button";
@@ -282,6 +282,7 @@ function CandidateMatchCard({
   const tMatch = useTranslations("employerCompliance.match");
   const tp = useTranslations("talentPool");
   const currentRole = candidate.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? null;
+  const bandLabel = matchBandLabel(candidate.matchScore, tMatch);
   const matchedSkills = getMatchedSkills(candidate, selectedJobData);
   const missingSkills = getMissingSkills(candidate, selectedJobData);
   const requiredSkills = selectedJobData?.requirements?.skills ?? [];
@@ -392,6 +393,14 @@ function CandidateMatchCard({
               {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
               {availabilityLabel}
             </span>
+            {/* The band in words rides the meta line. It used to be crammed into
+                the score ring's hole at 6.6px, overlapping the arc; here it is
+                readable and costs the card no height. */}
+            {hasAnyScore && bandLabel ? (
+              <span className={`shrink-0 whitespace-nowrap text-[11px] font-semibold ${matchBandTone(candidate.matchScore)}`}>
+                {bandLabel}
+              </span>
+            ) : null}
           </div>
           {/* Wraps below sm: nowrap left each chip 14-34px, so skills rendered
               as "T…", "G…" and carried no information. */}
@@ -437,7 +446,7 @@ function CandidateMatchCard({
               value={candidate.matchScore}
               size={44}
               strokeWidth={5}
-              bandLabel={matchBandLabel(candidate.matchScore, tMatch)}
+              bandLabel={bandLabel}
             />
           ) : null}
           <Button
@@ -1275,6 +1284,9 @@ export default function EmployerCandidatesPage() {
   };
 
   const toggleReviewList = (id: string) => {
+    // Read before the updater runs: state updaters must stay pure, and under
+    // StrictMode React invokes them twice, which would double the toast.
+    const wasSaved = reviewListIds.has(id);
     setReviewListIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -1284,6 +1296,9 @@ export default function EmployerCandidatesPage() {
       }
       return next;
     });
+    // A 32px button changing colour is the only other signal, and the "Saved"
+    // chip beside the name is hidden below lg.
+    toast.success(wasSaved ? t("removedFromReviewToast") : t("savedForReviewToast"));
   };
 
   const toggleSelectAllVisible = () => {
@@ -1509,7 +1524,11 @@ export default function EmployerCandidatesPage() {
           </>
         }
         metrics={[
-          { label: t("statCandidates"), value: total, icon: Users, tone: "primary" },
+          // The count means two different things: applicants to the benchmark
+          // job, or people in the discoverable talent pool who have never
+          // applied. Labelling both "Candidates" made 216 sourceable profiles
+          // read as 216 applications.
+          { label: selectedJobData ? t("statApplicants") : t("statTalent"), value: total, icon: Users, tone: "primary" },
           { label: t("statScored"), value: scoredCount, icon: BarChart3, tone: "success" },
           { label: t("statHighMatch"), value: visibleHighMatchCount, icon: Trophy, tone: "info" },
           { label: t("statAvailable"), value: readyNowCount, icon: CheckCircle2, tone: "warning" },
@@ -1876,7 +1895,9 @@ export default function EmployerCandidatesPage() {
         }
         right={
           reviewCount === 0 && !loading && total > 0 ? (
-            <span className="text-sm tabular-nums text-muted-foreground">{t("listCount", { count: total })}</span>
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {selectedJobData ? t("listCountApplicants", { count: total }) : t("listCountTalent", { count: total })}
+            </span>
           ) : reviewCount > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
               <Button

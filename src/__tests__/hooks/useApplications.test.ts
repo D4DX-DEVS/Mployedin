@@ -13,6 +13,7 @@ import {
   useCreateInterviewFromApp,
   useCompareApplications,
   applicationKeys,
+  OpenInterviewError,
 } from "@/hooks/useApplications";
 import type { ApplicationsFilters } from "@/hooks/useApplications";
 
@@ -190,7 +191,38 @@ describe("useUpdateApplicationStatus", () => {
 
     await expect(
       act(() => result.current.mutateAsync({ id: "a1", status: "rejected" })),
-    ).rejects.toThrow("Failed to update application status");
+    ).rejects.toThrow("Application status was not updated");
+  });
+
+  it("surfaces a stranded open interview as a typed conflict", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        code: "OPEN_INTERVIEW",
+        interview: { _id: "iv-1", scheduledAt: "2026-05-03T09:00:00.000Z", interviewRound: 2, type: "video", status: "scheduled" },
+      }),
+    });
+
+    const { result } = renderHook(() => useUpdateApplicationStatus(), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(
+      act(() => result.current.mutateAsync({ id: "a1", status: "shortlisted" })),
+    ).rejects.toBeInstanceOf(OpenInterviewError);
+  });
+
+  it("sends the acknowledgement flag when the caller has confirmed", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ application: {} }) });
+
+    const { result } = renderHook(() => useUpdateApplicationStatus(), {
+      wrapper: createWrapper(),
+    });
+    await act(() => result.current.mutateAsync({ id: "a1", status: "shortlisted", acknowledgeOpenInterview: true }));
+
+    const body = JSON.parse(mockFetch.mock.calls[mockFetch.mock.calls.length - 1][1].body as string);
+    expect(body.acknowledgeOpenInterview).toBe(true);
   });
 });
 

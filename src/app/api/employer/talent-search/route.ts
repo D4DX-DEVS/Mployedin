@@ -66,8 +66,12 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   const [docs, total] = await Promise.all([
     JobSeeker.find(filter)
+      // No `cv` here on purpose. The CV route requires an application or talent
+      // pool membership, so a sourced-only employer could never open it — the
+      // URL only fed a "View CV" menu item that 403s, and shipped a private
+      // object's path to a browser that has no right to it.
       .select(
-        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience cv.originalUrl userId"
+        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience userId"
       )
       .populate({ path: "userId", select: "name avatar" })
       .sort({ profileCompleteness: -1, updatedAt: -1 })
@@ -89,7 +93,6 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       profileCompleteness: d.profileCompleteness,
       totalExperienceYears: d.totalExperienceYears,
       experience: d.experience,
-      cv: d.cv,
     };
   });
 

@@ -37,9 +37,25 @@ const appAggregate = jest.fn(async (..._args: unknown[]) => [{
   byStatus: [{ _id: "applied", count: 7 }, { _id: "shortlisted", count: 3 }, { _id: "hired", count: 1 }],
   unreviewed: [{ n: 4 }],
 }]);
-jest.mock("@/models/Application", () => ({ __esModule: true, default: { aggregate: (...a: unknown[]) => appAggregate(...a) } }));
+const appCountDocuments = jest.fn(async (..._args: unknown[]) => 0);
+jest.mock("@/models/Application", () => ({
+  __esModule: true,
+  default: {
+    aggregate: (...a: unknown[]) => appAggregate(...a),
+    countDocuments: (...a: unknown[]) => appCountDocuments(...a),
+  },
+}));
 
-const interviewAggregate = jest.fn(async (..._args: unknown[]) => [{ open: [{ n: 3 }], upcoming: [{ n: 2 }], awaitingOutcome: [{ n: 1 }], rescheduleRequests: [] }]);
+interface InterviewFacets {
+  open: Array<{ n: number }>;
+  upcoming: Array<{ n: number }>;
+  awaitingOutcome: Array<{ n: number }>;
+  rescheduleRequests: Array<{ n: number }>;
+  openApplicationIds?: Array<{ _id: string }>;
+}
+const interviewAggregate = jest.fn<Promise<InterviewFacets[]>, unknown[]>(async () => [
+  { open: [{ n: 3 }], upcoming: [{ n: 2 }], awaitingOutcome: [{ n: 1 }], rescheduleRequests: [] },
+]);
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { aggregate: (...a: unknown[]) => interviewAggregate(...a) } }));
 
 const offerAggregate = jest.fn(async (..._args: unknown[]) => [{ pending: [{ n: 1 }], expiringSoon: [{ n: 1 }], accepted: [{ n: 1 }] }]);
@@ -60,7 +76,45 @@ async function call() {
 }
 
 describe("GET /api/jobs/[id]/hiring-summary", () => {
-  beforeEach(() => { role = "employer"; });
+  beforeEach(() => {
+    role = "employer";
+    appCountDocuments.mockClear();
+    appCountDocuments.mockResolvedValue(0);
+    interviewAggregate.mockResolvedValue([{ open: [{ n: 3 }], upcoming: [{ n: 2 }], awaitingOutcome: [{ n: 1 }], rescheduleRequests: [] }]);
+    appAggregate.mockResolvedValue([{
+      byStatus: [{ _id: "applied", count: 7 }, { _id: "shortlisted", count: 3 }, { _id: "hired", count: 1 }],
+      unreviewed: [{ n: 4 }],
+    }]);
+  });
+
+  /** A candidate can hold an open interview while sitting at another stage —
+      someone moved them back — and a stage-only count then reads 0 beside an
+      Interviews tab reading 1. */
+  it("counts candidates with an open interview outside the interview stage", async () => {
+    appAggregate.mockResolvedValue([{
+      byStatus: [{ _id: "interview_scheduled", count: 2 }, { _id: "shortlisted", count: 1 }],
+      unreviewed: [],
+    }]);
+    interviewAggregate.mockResolvedValue([{
+      open: [{ n: 3 }], upcoming: [], awaitingOutcome: [], rescheduleRequests: [],
+      openApplicationIds: [{ _id: "app-a" }, { _id: "app-b" }, { _id: "app-c" }],
+    }]);
+    // Of those three, one sits outside the interview stage (and is not closed).
+    appCountDocuments.mockResolvedValue(1);
+
+    const body = await (await call()).json();
+    expect(body.interviews.interviewingCandidates).toBe(3);
+    expect(appCountDocuments).toHaveBeenCalledWith({
+      _id: { $in: ["app-a", "app-b", "app-c"] },
+      status: { $nin: ["interview_scheduled", "rejected", "withdrawn"] },
+    });
+  });
+
+  it("does not query applications when no interview is open", async () => {
+    const body = await (await call()).json();
+    expect(body.interviews.interviewingCandidates).toBe(0);
+    expect(appCountDocuments).not.toHaveBeenCalled();
+  });
 
   it("returns zero-filled status counts and the needs-attention signals for the job", async () => {
     const res = await call();
@@ -71,7 +125,7 @@ describe("GET /api/jobs/[id]/hiring-summary", () => {
       applied: 7, shortlisted: 3, interview_scheduled: 0, selected: 0, offer: 0, hired: 1, rejected: 0, withdrawn: 0,
     });
     expect(body.unreviewed).toBe(4);
-    expect(body.interviews).toEqual({ open: 3, upcoming: 2, awaitingOutcome: 1, rescheduleRequests: 0 });
+    expect(body.interviews).toEqual({ open: 3, upcoming: 2, awaitingOutcome: 1, rescheduleRequests: 0, interviewingCandidates: 0 });
     expect(body.offers).toEqual({ pending: 1, expiringSoon: 1, accepted: 1 });
     expect(body.checks).toEqual({ inProgress: 0, completed: 1 });
     expect(body.placements).toEqual({ active: 1, completed: 0 });

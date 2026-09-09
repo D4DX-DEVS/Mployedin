@@ -32,11 +32,18 @@ interface HiringProgressProps {
 
 /**
  * Overview "Hiring progress": total applicants plus one cell per canonical
- * stage, each opening the Applications tab filtered to that stage.
+ * stage, each opening the tab that actually holds those candidates.
  *
  * This is the only place the funnel is spelled out — the job header carries
- * just the job identity and the tabs carry their own counts, so "Applied 0"
- * never sits beside "Applications 3" without the explanation it needs.
+ * just the job identity and the tabs carry their own counts.
+ *
+ * Two cells deliberately do not report a raw stage count, because a raw stage
+ * count contradicted the tabs beside it:
+ *  - Applied shows every applicant, not just those still sitting at `applied`.
+ *    "Applied 0" next to "Applications 3" read as a bug, every time.
+ *  - Interviewing counts candidates with an interview in flight, so it can no
+ *    longer say 0 while the Interviews tab says 1 (which happens whenever
+ *    someone moves a candidate back over a scheduled interview).
  */
 export function HiringProgress({ summary, jobHref }: HiringProgressProps) {
   const t = useTranslations("employerJobWorkspace");
@@ -62,11 +69,25 @@ export function HiringProgress({ summary, jobHref }: HiringProgressProps) {
         {PIPELINE_STAGES.map((stage) => {
           const Icon = STAGE_ICON[stage];
           const label = tp(STAGE_LABEL_KEYS[stage]);
-          const count = counts ? counts[stage] ?? 0 : undefined;
+          const count = !summary || !counts
+            ? undefined
+            : stage === "applied"
+              ? summary.total
+              : stage === "interview_scheduled"
+                ? summary.interviews.interviewingCandidates
+                : counts[stage] ?? 0;
+          // Each cell opens where its candidates actually are: the whole list
+          // for Applied, the Interviews tab for Interviewing, a stage filter
+          // for the rest.
+          const href = stage === "applied"
+            ? `${jobHref}/applications`
+            : stage === "interview_scheduled"
+              ? `${jobHref}/interviews`
+              : `${jobHref}/applications?status=${stage}`;
           return (
             <li key={stage} className="min-w-0">
               <Link
-                href={`${jobHref}/applications?status=${stage}`}
+                href={href}
                 aria-label={count === undefined ? label : t("boardColumnLabel", { stage: label, count })}
                 className="flex min-h-11 flex-col items-center gap-1 rounded-xl border border-border/70 bg-background px-2 py-2 text-center transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >

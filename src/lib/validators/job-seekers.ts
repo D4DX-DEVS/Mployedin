@@ -107,6 +107,11 @@ export const jobSeekerSettingsSchema = z.object({
       .max(7)
       .optional(),
     // C — Profile
+    // Travels inside `settings` for the form's convenience, but the route
+    // lifts it out and writes JobSeeker.profileVisibility — the root field the
+    // onboarding step and the profile modal also write. It must never be
+    // persisted into the settings sub-document, or there would be two answers.
+    profileVisibility: z.enum(["visible", "hidden"]).optional(),
     showSalary: z.boolean().optional(),
     openToRelocation: z.boolean().optional(),
     // D — Resume & AI

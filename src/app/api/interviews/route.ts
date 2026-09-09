@@ -27,6 +27,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10", 10)));
   const status = searchParams.get("status") ?? "";
+  const fetchCounts = searchParams.get("fetchCounts") === "true";
   const applicationId = searchParams.get("applicationId") ?? "";
   const employerIdParam = searchParams.get("employerId") ?? "";
   const jobIdParam = searchParams.get("jobId") ?? "";
@@ -45,17 +46,17 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
 
   if (ctx.role === "job_seeker") {
     const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!seeker) return NextResponse.json({ interviews: [], total: 0, statusCounts: {} });
+    if (!seeker) return NextResponse.json({ interviews: [], total: 0, statusCounts: {}, ...(fetchCounts ? { counts: { upcoming: 0, past: 0 } } : {}) });
     query.jobSeekerId = seeker._id;
   } else if (ctx.role === "employer") {
     const { Employer } = await import("@/models/Employer");
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp) return NextResponse.json({ interviews: [], total: 0, statusCounts: {} });
+    if (!emp) return NextResponse.json({ interviews: [], total: 0, statusCounts: {}, ...(fetchCounts ? { counts: { upcoming: 0, past: 0 } } : {}) });
     query.employerId = emp._id;
   } else if (ctx.role === "agent") {
     const { Agent } = await import("@/models/Agent");
     const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
-    if (!agent) return NextResponse.json({ interviews: [], total: 0, statusCounts: {} });
+    if (!agent) return NextResponse.json({ interviews: [], total: 0, statusCounts: {}, ...(fetchCounts ? { counts: { upcoming: 0, past: 0 } } : {}) });
     scopedEmployerIds = agent.assignedEmployerIds ?? [];
     // Match interviews for assigned employers OR directly linked to this agent
     query.$or = [
@@ -67,7 +68,14 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     const scope = await getSuperAgentScope(ctx.userId);
     const agentDocIds = scope?.effectiveAgentIds ?? [];
     if (agentDocIds.length === 0) {
-      return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: {} });
+      return NextResponse.json({
+        interviews: [],
+        total: 0,
+        page,
+        limit,
+        statusCounts: {},
+        ...(fetchCounts ? { counts: { upcoming: 0, past: 0 } } : {}),
+      });
     }
     const { Agent } = await import("@/models/Agent");
     const agents = await Agent.find({ _id: { $in: agentDocIds } })
@@ -81,6 +89,17 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     ];
   }
   // admin: query stays {} — sees all
+
+  // The journey header's "N upcoming · M past" is computed on the role scope
+  // alone. The status chips, search and date filters must not move it, or it
+  // becomes another page-level number. Opt-in so every other caller's response
+  // stays byte-for-byte the same.
+  const scopeQuery = { ...query };
+  // agent/super_agent's $or is an array on `query`; the spread above only
+  // copies the reference, so clone it too — otherwise a later `query.$or.push(...)`
+  // would silently change what the journey counts scope to.
+  if (Array.isArray(scopeQuery.$or)) scopeQuery.$or = [...scopeQuery.$or];
+  const now = new Date();
 
   if (status) query.status = status;
   // Cast ids to ObjectId: `find` casts strings via the schema but the
@@ -102,7 +121,14 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       const inScope = scopedEmployerIds === null
         || scopedEmployerIds.some((id) => String(id) === employerIdParam);
       if (!inScope) {
-        return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: {} });
+        return NextResponse.json({
+          interviews: [],
+          total: 0,
+          page,
+          limit,
+          statusCounts: {},
+          ...(fetchCounts ? { counts: await journeyCounts(scopeQuery, now) } : {}),
+        });
       }
       delete query.$or;
       query.employerId = new Types.ObjectId(employerIdParam);
@@ -164,19 +190,29 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     }).select("_id").lean();
     const jobIds = matchingJobs.map((j) => j._id);
 
-    if (seekerIdFilter && jobIds.length > 0) {
-      query.$or = [
-        { jobSeekerId: { $in: seekerIdFilter } },
-        { jobId: { $in: jobIds } },
-      ];
-    } else if (seekerIdFilter) {
-      query.jobSeekerId = { $in: seekerIdFilter };
-    } else if (jobIds.length > 0) {
-      query.jobId = { $in: jobIds };
-    } else {
+    const searchClauses: Record<string, unknown>[] = [];
+    if (seekerIdFilter) searchClauses.push({ jobSeekerId: { $in: seekerIdFilter } });
+    if (jobIds.length > 0) searchClauses.push({ jobId: { $in: jobIds } });
+
+    if (searchClauses.length === 0) {
       // No matches found for search
-      return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: { scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, rescheduled: 0 } });
+      return NextResponse.json({
+        interviews: [],
+        total: 0,
+        page,
+        limit,
+        statusCounts: { scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, rescheduled: 0 },
+        ...(fetchCounts ? { counts: await journeyCounts(scopeQuery, now) } : {}),
+      });
     }
+
+    // SECURITY (IDOR): AND the search onto the caller's scope instead of
+    // assigning over it. `query.jobSeekerId = {$in: …}` replaced the seeker's
+    // own id, so searching another candidate's name — with no job-title match
+    // to push it down the `$or` branch — returned that candidate's interviews,
+    // meeting links included; `query.$or = …` did the same to the agent and
+    // super-agent scopes.
+    query.$and = [...((query.$and as Record<string, unknown>[] | undefined) ?? []), { $or: searchClauses }];
   }
 
   const skip = (page - 1) * limit;
@@ -186,7 +222,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   const baseQuery = { ...query };
   delete baseQuery.status;
 
-  const [interviews, total, statusAgg] = await Promise.all([
+  const [interviews, total, statusAgg, counts] = await Promise.all([
     Interview.find(query)
       .sort(sortObj)
       .skip(skip)
@@ -204,6 +240,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       { $match: baseQuery },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
+    fetchCounts ? journeyCounts(scopeQuery, now) : Promise.resolve(null),
   ]);
 
   const statusCounts: Record<string, number> = {};
@@ -254,7 +291,27 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     };
   });
 
-  return NextResponse.json({ interviews: enriched, total, page, limit, statusCounts });
+  return NextResponse.json({
+    interviews: enriched,
+    total,
+    page,
+    limit,
+    statusCounts,
+    ...(fetchCounts ? { counts: counts ?? { upcoming: 0, past: 0 } } : {}),
+  });
+}
+
+/**
+ * The journey header's counts: role scope only, every filter ignored.
+ * `rescheduled` rows are in neither bucket by design, so upcoming + past
+ * deliberately does not equal `total`.
+ */
+async function journeyCounts(scope: Record<string, unknown>, now: Date) {
+  const [upcoming, past] = await Promise.all([
+    Interview.countDocuments({ $and: [scope, { scheduledAt: { $gte: now } }, { status: { $nin: ["cancelled", "rescheduled"] } }] }),
+    Interview.countDocuments({ $and: [scope, { status: { $ne: "rescheduled" } }, { $or: [{ scheduledAt: { $lt: now } }, { status: "cancelled" }] }] }),
+  ]);
+  return { upcoming, past };
 }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
