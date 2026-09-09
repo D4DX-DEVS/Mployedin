@@ -226,6 +226,11 @@ describe("POST /api/interviews/bulk", () => {
     expect(data.created).toBe(0);
     expect(data.failed).toBe(1);
     expect(createdInterviews).toHaveLength(0);
+    // The count alone cannot tell a duplicate from a real failure, so the
+    // caller could only say "Couldn't schedule interview" with no reason.
+    expect(data.skipped).toEqual([
+      expect.objectContaining({ reason: "existing_interview" }),
+    ]);
     // Confirm findOne was called with the correct duplicate-check query
     expect(Interview.findOne).toHaveBeenCalledWith({
       applicationId: "app_001",

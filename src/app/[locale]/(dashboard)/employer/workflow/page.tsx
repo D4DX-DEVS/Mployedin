@@ -22,31 +22,20 @@ import {
   type WorkflowTemplateItem,
 } from "@/hooks/useWorkflowTemplates";
 
-const DEFAULT_STAGES: WorkflowStage[] = [
-  { id: "new", label: "New Application", enabled: true, autoProgress: false, order: 1 },
-  { id: "screening", label: "AI Screening", enabled: true, autoProgress: true, order: 2 },
-  { id: "shortlisted", label: "Shortlisted", enabled: true, autoProgress: false, order: 3 },
-  { id: "interview_scheduled", label: "Interview Scheduled", enabled: true, autoProgress: true, order: 4 },
-  { id: "interview_completed", label: "Interview Completed", enabled: true, autoProgress: false, order: 5 },
-  { id: "offer_extended", label: "Offer Extended", enabled: true, autoProgress: false, order: 6 },
-  { id: "accepted", label: "Offer Accepted", enabled: true, autoProgress: false, order: 7 },
-  { id: "rejected", label: "Rejected", enabled: true, autoProgress: false, order: 8 },
-];
+import {
+  DEFAULT_WORKFLOW_STAGES,
+  DEFAULT_STAGE_LABELS,
+  STAGE_DOT_CLASS,
+  STAGE_LABEL_KEYS,
+  isApplicationStatus,
+} from "@/lib/hiring/pipeline";
 
-const STAGE_COLORS: Record<string, string> = {
-  new: "bg-sky-500",
-  screening: "bg-indigo-500",
-  shortlisted: "bg-amber-500",
-  interview_scheduled: "bg-purple-500",
-  interview_completed: "bg-indigo-500",
-  offer_extended: "bg-emerald-500",
-  accepted: "bg-emerald-500",
-  rejected: "bg-red-500",
-};
+const DEFAULT_STAGES: WorkflowStage[] = DEFAULT_WORKFLOW_STAGES.map((s) => ({ ...s }));
 
 export default function EmployerWorkflowPage() {
   const t = useTranslations("employerWorkflow");
   const tc = useTranslations("employerCommon");
+  const tp = useTranslations("hiringPipeline");
   const { data: serverData, isLoading: loading, error: fetchError } = useWorkflow();
   const saveWorkflow = useSaveWorkflow();
   const { data: templates, isLoading: templatesLoading } = useEmployerWorkflowTemplates();
@@ -58,8 +47,7 @@ export default function EmployerWorkflowPage() {
   const [autoRejectBelow, setAutoRejectBelow] = useState(40);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [addingStage, setAddingStage] = useState(false);
-  const [newStageLabel, setNewStageLabel] = useState("");
+  const [restoreId, setRestoreId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
@@ -101,16 +89,11 @@ export default function EmployerWorkflowPage() {
     markDirty();
   };
 
-  const addStage = () => {
-    if (!newStageLabel.trim() || stages.length >= 20) return;
-    const id = newStageLabel.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-    if (stages.some((s) => s.id === id)) return;
-    setStages((prev) => [
-      ...prev,
-      { id, label: newStageLabel.trim(), enabled: true, autoProgress: false, order: prev.length + 1 },
-    ]);
-    setNewStageLabel("");
-    setAddingStage(false);
+  const restoreStage = () => {
+    const template = DEFAULT_STAGES.find((s) => s.id === restoreId);
+    if (!template || stages.some((s) => s.id === template.id)) return;
+    setStages((prev) => [...prev, { ...template, label: DEFAULT_STAGE_LABELS[template.id as keyof typeof DEFAULT_STAGE_LABELS], order: prev.length + 1 }]);
+    setRestoreId("");
     markDirty();
   };
 
@@ -178,19 +161,9 @@ export default function EmployerWorkflowPage() {
   const activeStages = stages.filter((s) => s.enabled);
   const sortedStages = [...stages].sort((a, b) => a.order - b.order);
   const automatedStages = activeStages.filter((stage) => stage.autoProgress).length;
-  const getStageLabel = (stage: WorkflowStage) => {
-    const labels: Record<string, string> = {
-      new: t("newApplication"),
-      screening: t("aiScreening"),
-      shortlisted: t("shortlisted"),
-      interview_scheduled: t("interview"),
-      interview_completed: t("interviewCompleted"),
-      offer_extended: t("offerExtended"),
-      accepted: t("accepted"),
-      rejected: t("rejected"),
-    };
-    return labels[stage.id] ?? stage.label;
-  };
+  const getStageLabel = (stage: WorkflowStage) =>
+    isApplicationStatus(stage.id) ? tp(STAGE_LABEL_KEYS[stage.id]) : stage.label;
+  const missingStages = DEFAULT_STAGES.filter((d) => !stages.some((s) => s.id === d.id));
   return (
     <FeatureGate feature="workflowCustomization">
     <div className="page-container">
@@ -367,48 +340,35 @@ export default function EmployerWorkflowPage() {
                 {notifyOnStageChange ? t("alertsEnabled") : t("alertsDisabled")}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAddingStage(!addingStage)}
-              disabled={stages.length >= 20}
-              className="w-auto shrink-0 gap-1.5 rounded-xl border-border bg-background/80 hover:bg-background"
-            >
-              <Plus className="h-3.5 w-3.5" /> {t("addStage")}
-            </Button>
-          </div>
-
-          {/* Add stage input */}
-          {addingStage && (
-            <div className="flex flex-col items-stretch gap-2 rounded-3xl border border-dashed border-sky-500/30 bg-sky-500/10 sm:flex-row sm:items-center card-pad">
-              <Input
-                value={newStageLabel}
-                onChange={(e) => setNewStageLabel(e.target.value)}
-                placeholder={t("stageNamePlaceholder")}
-                className="h-10 flex-1 border-border bg-background/80"
-                maxLength={100}
-                onKeyDown={(e) => e.key === "Enter" && addStage()}
-              />
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={addStage}
-                  disabled={!newStageLabel.trim()}
-                  className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 sm:flex-none"
-                >
-                  {t("add")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => { setAddingStage(false); setNewStageLabel(""); }}
-                  className="flex-1 rounded-xl text-muted-foreground hover:bg-background/70 sm:flex-none"
-                >
-                  {t("cancel")}
-                </Button>
-              </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              {missingStages.length > 0 ? (
+                <>
+                  <select
+                    aria-label={tp("restoreStage")}
+                    value={restoreId}
+                    onChange={(e) => setRestoreId(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-border bg-background/80 px-3 text-sm sm:h-9 sm:w-auto"
+                  >
+                    <option value="">{tp("restoreStagePlaceholder")}</option>
+                    {missingStages.map((s) => (
+                      <option key={s.id} value={s.id}>{getStageLabel(s)}</option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={restoreStage}
+                    disabled={!restoreId}
+                    className="h-11 w-full shrink-0 gap-1.5 rounded-xl border-border bg-background/80 hover:bg-background sm:h-9 sm:w-auto"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> {tp("restoreStage")}
+                  </Button>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">{tp("allStagesPresent")}</span>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Stages list */}
           {stages.length === 0 ? (
@@ -443,7 +403,7 @@ export default function EmployerWorkflowPage() {
                         {stage.order}
                       </div>
                       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${STAGE_DOT_CLASS[stage.id as keyof typeof STAGE_DOT_CLASS] ?? "bg-gray-400"}`} />
                         <span className="min-w-0 text-sm font-semibold text-foreground">{getStageLabel(stage)}</span>
                         <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-background/60 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                           {stage.enabled ? t("enabled") : t("paused")}

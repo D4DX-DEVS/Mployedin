@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { HOME_RECOMMENDED_JOB_COUNT } from "@/lib/jobRecommendations";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -64,7 +65,6 @@ type AppliedJobSnippet = {
 type DashboardStats = {
   applicationsSent?: { count: number };
   upcomingInterviews?: { count: number };
-  savedJobs?: { count: number };
   recruiterViews?: { total: number };
   pendingOffers?: { count: number };
   unreadMessages?: { count: number };
@@ -98,14 +98,6 @@ type NextActionItem = {
   badge: string;
 };
 
-/**
- * How many recommended jobs the home page shows.
- *
- * The server component slices its scored list to this number and the client
- * fetch fallback asks for the same count, so the page never ships jobs it will
- * not paint. Change it here and both sides follow.
- */
-export const HOME_RECOMMENDED_JOB_COUNT = 4;
 
 /** Typed bundle passed from the server component for zero-waterfall hydration. */
 export type InitialHomeData = {
@@ -164,20 +156,17 @@ export function JobSeekerHomePage({
   }, []);
 
   useEffect(() => {
-    // If SSR data provided recommendations, use them immediately
-    if (initialData?.jobs && initialData.jobs.length > 0) {
-      setProfile(initialData.profile ?? null);
-      setStats(initialData.stats ?? null);
-      setJobs(initialData.jobs);
-      setAppliedJobs(initialData.appliedJobs ?? []);
-      setLoading(false);
-      return;
-    }
-
+    // The server already ran the shared recommender for this seeker, so its
+    // answer is final — including an empty one. Re-fetching it here is what
+    // used to paint the "no recommendations yet" panel for a moment before the
+    // API's (then looser) answer replaced it.
     if (initialData) {
       setProfile(initialData.profile ?? null);
       setStats(initialData.stats ?? null);
+      setJobs(initialData.jobs ?? []);
       setAppliedJobs(initialData.appliedJobs ?? []);
+      setLoading(false);
+      return;
     }
 
     let active = true;
@@ -185,18 +174,20 @@ export function JobSeekerHomePage({
     async function load() {
       try {
         setHomeDataError(null);
+        // Reached only when the page rendered without SSR data (no seeker
+        // profile yet), so everything is fetched.
         const [profileRes, statsRes, jobsRes, appsRes] = await Promise.all([
-          !initialData?.profile ? fetch("/api/job-seeker/profile") : Promise.resolve(null),
-          !initialData?.stats ? fetch("/api/dashboard/stats") : Promise.resolve(null),
+          fetch("/api/job-seeker/profile"),
+          fetch("/api/dashboard/stats"),
           fetch(`/api/jobs/recommended?limit=${HOME_RECOMMENDED_JOB_COUNT}&sort=match`),
-          !initialData?.appliedJobs ? fetch("/api/applications?limit=5&page=1") : Promise.resolve(null),
+          fetch("/api/applications?limit=5&page=1"),
         ]);
 
         const [profileData, statsData, jobsData, appsData] = await Promise.all([
-          profileRes && profileRes.ok ? profileRes.json() : null,
-          statsRes && statsRes.ok ? statsRes.json() : null,
-          jobsRes && jobsRes.ok ? jobsRes.json() : null,
-          appsRes && appsRes.ok ? appsRes.json() : null,
+          profileRes.ok ? profileRes.json() : null,
+          statsRes.ok ? statsRes.json() : null,
+          jobsRes.ok ? jobsRes.json() : null,
+          appsRes.ok ? appsRes.json() : null,
         ]);
 
         if (!active) return;

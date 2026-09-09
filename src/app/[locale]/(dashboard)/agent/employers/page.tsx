@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -38,10 +40,10 @@ const getEmployerFields = (t: ReturnType<typeof useTranslations>): CrudField[] =
   { name: "location", label: t("fieldLocation"), type: "text" },
 ];
 
-const getOnboardFields = (t: ReturnType<typeof useTranslations>): CrudField[] => [
+const getOnboardFields = (t: ReturnType<typeof useTranslations>, tf: ReturnType<typeof useTranslations>): CrudField[] => [
   { name: "name", label: t("fieldContactName"), type: "text", required: true },
   { name: "email", label: t("fieldEmail"), type: "text", required: true },
-  { name: "password", label: t("fieldTemporaryPassword"), type: "password", required: true },
+  { name: "password", label: t("fieldTemporaryPassword"), type: "password", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
   { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
   { name: "industry", label: t("fieldIndustry"), type: "text" },
   { name: "phone", label: t("fieldPhone"), type: "text" },
@@ -52,9 +54,12 @@ export default function AgentEmployersPage() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("agentEmployers");
+  const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
+  const employerFields = useMemo(() => getEmployerFields(t), [t]);
+  const onboardFields = useMemo(() => getOnboardFields(t, tf), [t, tf]);
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const [employers, setEmployers] = useState<Employer[]>([]);
@@ -133,7 +138,7 @@ export default function AgentEmployersPage() {
       const res = await fetch(`/api/employers/${editEmployer._id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
       });
-      if (!res.ok) throw new Error("Failed to update employer");
+      if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: employerFields });
     }
     setEditEmployer(null);
     loadEmployers();
@@ -147,14 +152,15 @@ export default function AgentEmployersPage() {
   };
 
   const handleOnboard = async (values: Record<string, string>) => {
+    const passwordError = validatePasswordForForm(values.password ?? "", { locale, t: tf });
+    if (passwordError) throw new FormError(passwordError);
     const res = await fetch("/api/employers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
     });
     if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || "Failed to onboard employer");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: onboardFields, conflict: tf("emailInUse") });
     }
     setOnboardOpen(false);
     loadEmployers();
@@ -476,7 +482,7 @@ export default function AgentEmployersPage() {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditEmployer(null); }}
         title={t("modalEditEmployerTitle")}
-        fields={getEmployerFields(t)}
+        fields={employerFields}
         initialValues={editEmployer ? {
           companyName: editEmployer.companyName ?? "",
           industry: editEmployer.industry ?? "",
@@ -489,7 +495,7 @@ export default function AgentEmployersPage() {
         open={onboardOpen}
         onClose={() => setOnboardOpen(false)}
         title={t("modalOnboardEmployerTitle")}
-        fields={getOnboardFields(t)}
+        fields={onboardFields}
         onSubmit={handleOnboard}
       />
     </div>

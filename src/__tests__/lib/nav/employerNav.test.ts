@@ -33,7 +33,9 @@ const EMPLOYER_ROOT = path.join(
 const REACHED_ELSEWHERE: Record<string, string> = {
   "/employer/jobs/ai-create": "Create menu + ⌘K action + jobs list header",
   "/employer/jobs/ai-extract": "AI job creator offers the upload path",
-  "/employer/jobs/new": "Create menu + ⌘K action (?mode=manual); bare path redirects",
+  "/employer/jobs/new": "Create menu + ⌘K actions (?mode=manual, ?from=template); bare path is the chooser",
+  "/employer/job-templates": "Template picker's “Manage templates” link (jobs/new?from=template)",
+  "/employer/my-posters": "Each job's Posting tab (“Manage all posters”)",
   "/employer/interviews/bulk": "Interviews header + Create menu + ⌘K action",
   "/employer/calendar": "View toggle on the interviews page",
   "/employer/scorecards": "Interviews header link; one is filled while completing an interview",
@@ -164,13 +166,24 @@ describe("employer navigation", () => {
     // The sidebar row itself is a toggle (clicking Hiring from Offers must not
     // jump to Applications), but the group's href still names where the phone
     // tab bar and deep links land, so it has to be one of its own children.
-    for (const title of ["Jobs", "Hiring", "Talent"]) {
+    for (const title of ["Hiring", "Talent"]) {
       const item = topLevel.find((entry) => entry.title === title);
       expect({
         title,
         opensOwnPage: item?.children?.some((child) => child.href === item.href) ?? false,
       }).toEqual({ title, opensOwnPage: true });
     }
+  });
+
+  it("keeps Jobs a single row now that templates and posters live against the job", () => {
+    // Job Templates and Job Posters left the sidebar with the job workspace:
+    // templates are entered from "Post job from template", posters from the
+    // Posting tab. A child row here would put a second front door on each.
+    const jobs = topLevel.find((entry) => entry.title === "Jobs");
+    expect(jobs?.href.replace(/^\/en/, "")).toBe("/employer/jobs");
+    expect(jobs?.children).toBeUndefined();
+    expect(navHrefs.has("/employer/job-templates")).toBe(false);
+    expect(navHrefs.has("/employer/my-posters")).toBe(false);
   });
 
   it("keeps the phone tab bar at three tabs so Create sits centred", () => {

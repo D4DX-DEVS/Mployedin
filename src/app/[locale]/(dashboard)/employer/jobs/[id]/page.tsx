@@ -1,434 +1,309 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
-  Briefcase, DollarSign, Users, Eye, Calendar, Tag, Trash2,
-  GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, Image as ImageIcon,
-  Send,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { JobWorkflowTab } from "@/components/features/employer/jobs/JobWorkflowTab";
-import { JobMatchingWeightsTab } from "@/components/features/employer/jobs/JobMatchingWeightsTab";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/hooks/useJobs";
-import { useConfirm } from "@/hooks/useConfirm";
-import SocialShare from "@/components/features/public/SocialShare";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { AlertCircle, ArrowRight, Briefcase, CalendarRange, CheckCircle2, Clock, DollarSign, Eye, Gauge, Laptop, Tag, Users, type LucideIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useJobDetail } from "@/hooks/useJobs";
+import { useJobHiringSummary, type JobHiringSummary } from "@/hooks/useJobHiringSummary";
+import { HiringProgress } from "@/components/features/employer/jobs/HiringProgress";
 import { formatCount } from "@/lib/ui/intlFormat";
 
-interface Job {
-  _id: string;
-  title: string;
-  description: string;
-  category?: string;
-  location?: { country?: string; city?: string; isRemote?: boolean } | string;
-  requirements?: {
-    skills?: string[];
-    experienceMin?: number;
-    experienceMax?: number;
-    education?: string;
-    languages?: string[];
-  };
-  salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean };
-  qualifications?: string[];
-  responsibilities?: string[];
-  status: string;
-  workflowMode?: string;
-  vacancies?: number;
-  views?: number;
-  tags?: string[];
-  expiresAt?: string;
-  createdAt: string;
-  updatedAt?: string;
-  employerId?: { companyName?: string };
+interface AttentionItem {
+  key: string;
+  label: string;
+  href: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  draft: "bg-amber-100 text-amber-700 border-amber-200",
-  paused: "bg-sky-100 text-sky-700 border-sky-200",
-  closed: "bg-muted text-muted-foreground",
-  expired: "bg-red-100 text-red-700 border-red-200",
-};
+interface JobFact {
+  key: string;
+  label: string;
+  value: string;
+  hint?: string;
+  Icon: LucideIcon;
+}
 
-// Map job.status → translated status label key (no raw snake_case in UI).
-const STATUS_LABEL_KEYS: Record<string, string> = {
-  active: "statusActive",
-  draft: "statusDraft",
-  paused: "statusPaused",
-  closed: "statusClosed",
-  expired: "statusExpired",
-};
+function buildAttentionItems(
+  summary: JobHiringSummary | undefined,
+  t: (key: string, values?: Record<string, number>) => string,
+  locale: string,
+  id: string,
+): AttentionItem[] {
+  if (!summary) return [];
+  const jobHref = `/${locale}/employer/jobs/${id}`;
+  const interviewsHref = `${jobHref}/interviews`;
+  const offersHref = `${jobHref}/offers?status=pending`;
+  const candidates: Array<[string, number, string]> = [
+    ["unreviewed", summary.unreviewed, `${jobHref}/applications?unreviewed=1`],
+    ["interviewsAwaitingOutcome", summary.interviews.awaitingOutcome, interviewsHref],
+    ["rescheduleRequests", summary.interviews.rescheduleRequests, interviewsHref],
+    ["interviewsUpcoming", summary.interviews.upcoming, interviewsHref],
+    ["offersExpiring", summary.offers.expiringSoon, offersHref],
+    ["offersPending", summary.offers.pending, offersHref],
+    // Background checks live on their own page, scoped by job. This used to
+    // point at the Hires tab, which only lists candidates who accepted an
+    // offer — so an in-progress check on a candidate who is not hired yet
+    // landed on an empty "No hires yet" screen.
+    ["checksInProgress", summary.checks.inProgress, `/${locale}/employer/background-checks?jobId=${id}`],
+  ];
+  return candidates
+    .filter(([, count]) => count > 0)
+    .map(([key, count, href]) => ({ key, label: t(key, { count }), href }));
+}
 
-export default function JobDetailPage() {
-  const t = useTranslations("employerJobDetail");
-  const router = useRouter();
+function AttentionList({ items, onNavigate }: { items: AttentionItem[]; onNavigate?: () => void }) {
+  return (
+    <ul role="list" className="divide-y divide-border/60">
+      {items.map((item) => (
+        <li key={item.key}>
+          <Link
+            href={item.href}
+            onClick={onNavigate}
+            className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm text-foreground hover:text-primary"
+          >
+            <span className="inline-flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+              {item.label}
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" aria-hidden />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Overview tab: job copy, facts, and what needs attention right now. */
+export default function JobOverviewPage() {
   const { locale, id } = useParams<{ locale: string; id: string }>();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") ?? "overview";
-  const { can } = usePermissions();
-  const { data: job, isLoading: loading, isError, refetch } = useJobDetail(id);
-  const updateStatusMutation = useUpdateJobStatus();
-  const cloneMutation = useCloneJob();
-  const deleteMutation = useDeleteJob();
-  const [cloning, setCloning] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [posterOpen, setPosterOpen] = useState(false);
-  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+  const t = useTranslations("employerJobWorkspace");
+  // Employment-type / work-mode labels live with the form step that sets them
+  // (`employerJobForm.step1.employmentTypes.*` / `.workModes.*`).
+  const tf = useTranslations("employerJobForm.step1");
+  const { data: job } = useJobDetail(id);
+  const { data: summary } = useJobHiringSummary(id);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Auto-open poster dialog from ?poster=1 (e.g. after job creation)
+  const jobHref = `/${locale}/employer/jobs/${id}`;
+
+  // Legacy deep links from before the workspace: ?tab= and ?poster=1.
   useEffect(() => {
-    if (searchParams.get("poster") === "1" && job) {
-      setPosterOpen(true);
-    }
-  }, [searchParams, job]);
+    const tab = searchParams.get("tab");
+    if (tab === "workflow") router.replace(`${jobHref}/setup?section=workflow`);
+    else if (tab === "matching-weights") router.replace(`${jobHref}/setup?section=weights`);
+    else if (searchParams.get("poster") === "1") router.replace(`${jobHref}/posting?create=1`);
+  }, [searchParams, router, jobHref]);
 
-  async function updateStatus(status: string) {
-    if (status === "closed") {
-      const ok = await confirmDialog({ message: t("confirmCloseJob"), variant: "destructive" });
-      if (!ok) return;
-    }
-    try {
-      await updateStatusMutation.mutateAsync({ jobId: id, status });
-      toast.success(t("statusUpdateSuccess"));
-    } catch {
-      toast.error(t("statusUpdateFailed"));
-    }
-  }
-
-  async function handlePublish() {
-    const ok = await confirmDialog(t("confirmPublish"));
-    if (!ok) return;
-    setPublishing(true);
-    try {
-      await updateStatusMutation.mutateAsync({ jobId: id, status: "active" });
-    } catch {
-      setPublishing(false);
-    }
-  }
-
-  async function handleDelete() {
-    const ok = await confirmDialog(t("deleteConfirm"));
-    if (!ok) return;
-    setDeleting(true);
-    try {
-      await deleteMutation.mutateAsync(id);
-      router.push(`/${locale}/employer/jobs`);
-    } catch {
-      setDeleting(false);
-    }
-  }
-
-  async function cloneJob() {
-    setCloning(true);
-    try {
-      const data = await cloneMutation.mutateAsync(id);
-      router.push(`/${locale}/employer/jobs/${data.job._id}/edit`);
-    } finally {
-      setCloning(false);
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="page-container">
-        <div className="h-9 w-32 bg-muted animate-pulse rounded-lg" />
-        <div className="card-base h-52 animate-pulse bg-muted/40 panel-body" />
-        <div className="card-base h-36 animate-pulse bg-muted/40 panel-body" />
-        <div className="card-base h-28 animate-pulse bg-muted/40 panel-body" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="page-container">
-        <div className="card-base p-8 text-center py-20">
-          <h2 className="heading-section font-semibold mb-2">{t("loadError")}</h2>
-          <Button variant="outline" onClick={() => refetch()}>{t("retry")}</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!job) {
-    return (
-      <div className="page-container">
-        <div className="card-base p-8 text-center py-20">
-          <h2 className="heading-section font-semibold mb-2">{t("notFound")}</h2>
-          <p className="text-sm text-muted-foreground mb-5">{t("notFoundDesc")}</p>
-          <Button variant="outline" onClick={() => router.push(`/${locale}/employer/jobs`)}>
-            <ArrowLeft className="w-4 h-4 me-2" /> {t("backToJobs")}
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  if (!job) return null;
 
   const dateLocale = locale === "ar" ? "ar" : "en-US";
-  const loc = typeof job.location === "string"
-    ? job.location
-    : job.location
-      ? `${job.location.city ?? ""}${job.location.city && job.location.country ? ", " : ""}${job.location.country ?? ""}${job.location.isRemote ? t("remoteSuffix") : ""}`
-      : null;
-
-  const posted = new Date(job.createdAt).toLocaleDateString(dateLocale, {
-    month: "long", day: "numeric", year: "numeric",
-  });
   const expires = job.expiresAt
-    ? new Date(job.expiresAt).toLocaleDateString(dateLocale, { month: "long", day: "numeric", year: "numeric" })
+    ? new Date(job.expiresAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })
     : null;
+  // "20,000–20,000 INR" is a single figure, not a range; the period is part of the number.
+  const salaryMin = job.salary?.min || 0;
+  const salaryMax = job.salary?.max || 0;
+  let salary = "—";
+  if (salaryMin || salaryMax) {
+    const amount = salaryMin && salaryMax && salaryMin !== salaryMax
+      ? `${formatCount(salaryMin)}–${formatCount(salaryMax)}`
+      : formatCount(salaryMin || salaryMax);
+    const range = `${amount} ${job.salary?.currency ?? "USD"}`;
+    const period = job.salary?.period;
+    salary = period === "monthly" ? t("salaryMonthly", { range })
+      : period === "yearly" ? t("salaryYearly", { range })
+      : period === "lpa" ? t("salaryLpa", { range })
+      : range;
+  }
+  const salaryHint = [
+    job.salary?.isNegotiable ? t("negotiable") : null,
+    job.showSalary === false ? t("salaryHidden") : null,
+  ].filter(Boolean).join(" · ");
+  const items = buildAttentionItems(summary, t, locale, id);
+
+  // Facts render only when the employer set them — an empty "Duration —" cell
+  // reads as an unfinished product, not as information.
+  const facts: JobFact[] = [
+    { key: "vacancies", label: t("factsVacancies"), value: String(job.vacancies ?? 1), Icon: Users },
+    { key: "views", label: t("factsViews"), value: formatCount(job.views ?? 0), Icon: Eye },
+    { key: "salary", label: t("factsSalary"), value: salary, hint: salaryHint || undefined, Icon: DollarSign },
+    { key: "expires", label: t("factsExpires"), value: expires ?? t("noExpiry"), Icon: Clock },
+  ];
+  if (job.employmentType) facts.push({ key: "employmentType", label: t("factsEmploymentType"), value: tf(`employmentTypes.${job.employmentType}`), Icon: Briefcase });
+  if (job.workMode) facts.push({ key: "workMode", label: t("factsWorkMode"), value: tf(`workModes.${job.workMode}`), Icon: Laptop });
+  if (job.duration) facts.push({ key: "duration", label: t("factsDuration"), value: job.duration, Icon: CalendarRange });
+  if (job.maxApplicants) facts.push({ key: "maxApplicants", label: t("factsMaxApplicants"), value: formatCount(job.maxApplicants), Icon: Gauge });
+
+  const req = job.requirements;
+  const hasRequirements = Boolean(
+    req && ((req.skills?.length ?? 0) > 0 || req.experienceMin !== undefined || req.experienceMax !== undefined || req.education || (req.languages?.length ?? 0) > 0),
+  );
 
   return (
-    <div className="page-container">
-      {ConfirmDialogNode}
-      {/* Back + Actions */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => router.push(`/${locale}/employer/jobs`)}>
-          <ArrowLeft className="w-4 h-4" /> {t("backToJobs")}
-        </Button>
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/poster`)}>
-            <ImageIcon className="w-3.5 h-3.5" /> {t("createPoster")}
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={cloneJob} disabled={cloning}>
-            <Copy className="w-3.5 h-3.5" /> {cloning ? t("cloning") : t("clone")}
-          </Button>
-          <SocialShare
-            url={typeof window !== "undefined" ? `${window.location.origin}/${locale}/jobs/${id}` : ""}
-            title={job.title}
-            description={job.description?.slice(0, 120)}
-          />
-          {can("jobs", "update") && (
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => router.push(`/${locale}/employer/jobs/${id}/edit`)}>
-              <Edit2 className="w-3.5 h-3.5" /> {t("edit")}
-            </Button>
-          )}
-          {can("jobs", "update") && job.status === "draft" && (
-            <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { void handlePublish(); }} disabled={publishing}>
-              <Send className="w-3.5 h-3.5" /> {publishing ? t("publishing") : t("publish")}
-            </Button>
-          )}
-          {can("jobs", "delete") && job.status === "draft" && (
-            <Button size="sm" variant="outline" className="gap-1.5 border-destructive/20 text-destructive hover:bg-destructive/5"
-              onClick={() => { void handleDelete(); }} disabled={deleting}>
-              <Trash2 className="w-3.5 h-3.5" /> {deleting ? t("deleting") : t("deleteDraft")}
-            </Button>
-          )}
-          {can("jobs", "update") && job.status === "active" && (
-            <Button size="sm" variant="outline" className="gap-1.5 border-sky-200 text-sky-700 hover:bg-sky-50" onClick={() => updateStatus("paused")}>
-              <PauseCircle className="w-3.5 h-3.5" /> {t("pause")}
-            </Button>
-          )}
-          {can("jobs", "update") && job.status === "active" && (
-            <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => updateStatus("closed")}>
-              <XCircle className="w-3.5 h-3.5" /> {t("closeJob")}
-            </Button>
-          )}
-          {can("jobs", "update") && job.status === "paused" && (
-            <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
-              <PlayCircle className="w-3.5 h-3.5" /> {t("resume")}
-            </Button>
-          )}
-          {can("jobs", "update") && job.status === "paused" && (
-            <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => updateStatus("closed")}>
-              <XCircle className="w-3.5 h-3.5" /> {t("closeJob")}
-            </Button>
+    <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
+      {/* Side column. One grid cell, not two: as separate cells the copy column's
+          row-span split its height across both rows and stranded Job facts a
+          screen below Needs attention. */}
+      <div className="order-1 space-y-3 sm:space-y-4 lg:order-2 lg:col-start-2">
+      {/* Needs attention — phone: one line + bottom sheet; tablet/desktop: panel in the side column. */}
+      <section aria-labelledby="job-attention-heading">
+        <div className="card-base panel-body">
+          <h2 id="job-attention-heading" className="heading-section mb-1 font-semibold text-foreground">{t("needsAttentionTitle")}</h2>
+          {summary && items.length === 0 ? (
+            <p className="inline-flex items-center gap-2 py-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden /> {t("needsAttentionEmpty")}
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-3 sm:hidden">
+                <p className="text-sm text-muted-foreground">{t("needsAttentionSummary", { count: items.length })}</p>
+                {items.length > 0 && (
+                  <Button variant="outline" size="sm" className="min-h-11 shrink-0 rounded-xl" onClick={() => setSheetOpen(true)}>
+                    {t("needsAttentionView")}
+                  </Button>
+                )}
+              </div>
+              <div className="hidden sm:block">
+                {items.length > 0 ? <AttentionList items={items} /> : <div className="h-6 animate-pulse rounded bg-muted/50" />}
+              </div>
+            </>
           )}
         </div>
+        <Dialog open={sheetOpen} onOpenChange={setSheetOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t("needsAttentionTitle")}</DialogTitle>
+            </DialogHeader>
+            <AttentionList items={items} onNavigate={() => setSheetOpen(false)} />
+          </DialogContent>
+        </Dialog>
+      </section>
+
+      {/* Facts */}
+      <section aria-labelledby="job-facts-heading">
+        <div className="card-base panel-body">
+          <h2 id="job-facts-heading" className="heading-section mb-3 font-semibold text-foreground">{t("factsHeading")}</h2>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4 lg:grid-cols-2">
+            {facts.map(({ key, label, value, hint, Icon }) => (
+              <div key={key} className="min-w-0 rounded-xl bg-secondary/50 px-3 py-2">
+                <dt className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                  <Icon className="h-3 w-3" aria-hidden /> {label}
+                </dt>
+                <dd className="min-w-0">
+                  <span className="block truncate text-sm font-semibold tabular-nums text-foreground" title={value}>{value}</span>
+                  {hint ? <span className="block truncate text-xs text-muted-foreground" title={hint}>{hint}</span> : null}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
       </div>
 
-      {/* Header card */}
-      <div className="card-base panel-body">
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2">{job.title}</h1>
-            <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground">
-              {loc && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 shrink-0" /> {loc}
-                </span>
+      {/* Hiring progress + copy. The funnel lives here, not in the job header (A18). */}
+      <div className="order-2 space-y-3 sm:space-y-4 lg:order-1 lg:col-start-1">
+        <HiringProgress summary={summary} jobHref={`/${locale}/employer/jobs/${id}`} />
+        <section aria-labelledby="job-description-heading" className="card-base panel-body">
+          <h2 id="job-description-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewDescription")}</h2>
+          {job.description ? (
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">{job.description}</div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("overviewNoDescription")}</p>
+          )}
+        </section>
+
+        {job.responsibilities && job.responsibilities.length > 0 && (
+          <section aria-labelledby="job-responsibilities-heading" className="card-base panel-body">
+            <h2 id="job-responsibilities-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewResponsibilities")}</h2>
+            <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
+              {job.responsibilities.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </section>
+        )}
+
+        {job.qualifications && job.qualifications.length > 0 && (
+          <section aria-labelledby="job-qualifications-heading" className="card-base panel-body">
+            <h2 id="job-qualifications-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewQualifications")}</h2>
+            <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
+              {job.qualifications.map((q, i) => <li key={i}>{q}</li>)}
+            </ul>
+          </section>
+        )}
+
+        {/* Benefits and learning outcomes come from the edit form too; before
+            this they were stored and never shown. Absent when the employer
+            left them empty — the section, not a placeholder. */}
+        {job.benefits && job.benefits.length > 0 && (
+          <section aria-labelledby="job-benefits-heading" className="card-base panel-body">
+            <h2 id="job-benefits-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewBenefits")}</h2>
+            <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
+              {job.benefits.map((b, i) => <li key={i}>{b}</li>)}
+            </ul>
+          </section>
+        )}
+
+        {job.learningOutcomes && job.learningOutcomes.length > 0 && (
+          <section aria-labelledby="job-learning-heading" className="card-base panel-body">
+            <h2 id="job-learning-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewLearningOutcomes")}</h2>
+            <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
+              {job.learningOutcomes.map((o, i) => <li key={i}>{o}</li>)}
+            </ul>
+          </section>
+        )}
+
+        {hasRequirements && req && (
+          <section aria-labelledby="job-requirements-heading" className="card-base panel-body">
+            <h2 id="job-requirements-heading" className="heading-section mb-4 font-semibold text-foreground">{t("overviewRequirements")}</h2>
+            {req.skills && req.skills.length > 0 && (
+              <div className="mb-5">
+                <p className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("overviewSkills")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {req.skills.map((s) => (
+                    <Badge key={s} variant="secondary" className="border-0 bg-primary/8 px-2.5 py-1 text-xs font-medium text-primary">{s}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
+              {(req.experienceMin !== undefined || req.experienceMax !== undefined) && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("overviewExperience")}</p>
+                  <p className="text-sm font-semibold text-foreground">{t("overviewYearsRange", { min: req.experienceMin ?? 0, max: req.experienceMax ?? 30 })}</p>
+                </div>
               )}
-              {job.category && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5 shrink-0" /> {job.category}
-                  </span>
-                </>
+              {req.education && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("overviewEducation")}</p>
+                  <p className="text-sm font-semibold text-foreground">{req.education}</p>
+                </div>
               )}
-              <>
-                <span className="text-border">·</span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 shrink-0" /> {t("posted", { date: posted })}
-                </span>
-              </>
+              {req.languages && req.languages.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("overviewLanguages")}</p>
+                  <p className="text-sm font-semibold text-foreground">{req.languages.join(", ")}</p>
+                </div>
+              )}
             </div>
-          </div>
-          <Badge className={`${STATUS_COLORS[job.status] ?? ""} border text-xs font-semibold px-2.5 py-1 shrink-0`}>
-            {t(STATUS_LABEL_KEYS[job.status] ?? "statusDraft")}
-          </Badge>
-        </div>
+          </section>
+        )}
 
-        {/* Draft / In-review state hint — makes the unpublished status unambiguous */}
-        {job.status === "draft" ? (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-xs font-medium text-amber-800 chip-pad">
-            {t("statusDraftHint")}
-          </div>
-        ) : null}
-
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border/60 rounded-xl border border-border/60 bg-muted/30 overflow-hidden">
-          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
-            <div className="text-xl font-bold text-foreground">{job.vacancies ?? 1}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="w-3 h-3" /> {t("vacancies")}
+        {job.tags && job.tags.length > 0 && (
+          <section aria-labelledby="job-tags-heading" className="card-base panel-body">
+            <h2 id="job-tags-heading" className="heading-section mb-3 flex items-center gap-2 font-semibold text-foreground">
+              <Tag className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewTags")}
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {job.tags.map((tag) => <Badge key={tag} variant="outline" className="text-xs font-medium">{tag}</Badge>)}
             </div>
-          </div>
-          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
-            <div className="text-xl font-bold text-foreground">{job.views ?? 0}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Eye className="w-3 h-3" /> {t("views")}
-            </div>
-          </div>
-          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
-            <div className="text-xl font-bold text-foreground leading-tight">
-              {job.salary?.min && job.salary?.max
-                ? `${formatCount(job.salary.min)}–${formatCount(job.salary.max)}`
-                : "—"}
-            </div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <DollarSign className="w-3 h-3" /> {job.salary?.currency ?? "USD"}
-              {job.salary?.isNegotiable && ` (${t("negotiable")})`}
-            </div>
-          </div>
-          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
-            <div className="text-base font-bold text-foreground leading-tight text-center">{expires ?? t("noExpiry")}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {t("expires")}
-            </div>
-          </div>
-        </div>
+          </section>
+        )}
       </div>
-
-      {/* Tabs: Overview / Workflow / Matching Weights */}
-      <Tabs defaultValue={initialTab} className="space-y-3 sm:space-y-5">
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="overview" className="gap-1.5">
-            <Briefcase className="w-3.5 h-3.5" /> {t("tabOverview")}
-          </TabsTrigger>
-          <TabsTrigger value="workflow" className="gap-1.5">
-            <GitBranch className="w-3.5 h-3.5" /> {t("tabWorkflow")}
-          </TabsTrigger>
-          <TabsTrigger value="matching-weights" className="gap-1.5">
-            <SlidersHorizontal className="w-3.5 h-3.5" /> {t("tabMatchingWeights")}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-3 sm:space-y-5">
-      {/* Description */}
-      <div className="card-base panel-body">
-        <h2 className="heading-section font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
-        <div className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
-          {job.description}
-        </div>
-      </div>
-
-      {/* Responsibilities */}
-      {job.responsibilities && job.responsibilities.length > 0 && (
-        <div className="card-base panel-body">
-          <h2 className="heading-section font-semibold text-foreground mb-3">{t("responsibilities")}</h2>
-          <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
-            {job.responsibilities.map((r: string, i: number) => (
-              <li key={i}>{r}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Qualifications */}
-      {job.qualifications && job.qualifications.length > 0 && (
-        <div className="card-base panel-body">
-          <h2 className="heading-section font-semibold text-foreground mb-3">{t("qualifications")}</h2>
-          <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
-            {job.qualifications.map((q: string, i: number) => (
-              <li key={i}>{q}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Requirements */}
-      {job.requirements && (
-        <div className="card-base panel-body">
-          <h2 className="heading-section font-semibold text-foreground mb-4">{t("requirements")}</h2>
-
-          {job.requirements.skills && job.requirements.skills.length > 0 && (
-            <div className="mb-5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2.5">{t("skills")}</p>
-              <div className="flex flex-wrap gap-2">
-                {job.requirements.skills.map((s) => (
-                  <Badge key={s} variant="secondary" className="text-xs font-medium bg-primary/8 text-primary border-0 px-2.5 py-1">{s}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-            {(job.requirements.experienceMin !== undefined || job.requirements.experienceMax !== undefined) && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("experience")}</p>
-                <p className="text-sm font-semibold text-foreground">
-                  {t("yearsRange", { min: job.requirements.experienceMin ?? 0, max: job.requirements.experienceMax ?? 30 })}
-                </p>
-              </div>
-            )}
-            {job.requirements.education && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("educationLabel")}</p>
-                <p className="text-sm font-semibold text-foreground">{job.requirements.education}</p>
-              </div>
-            )}
-            {job.requirements.languages && job.requirements.languages.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("languagesLabel")}</p>
-                <p className="text-sm font-semibold text-foreground">{job.requirements.languages.join(", ")}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Tags */}
-      {job.tags && job.tags.length > 0 && (
-        <div className="card-base panel-body">
-          <h2 className="heading-section font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Tag className="w-4 h-4 text-muted-foreground" /> {t("tags")}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {job.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs font-medium">{tag}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
-        </TabsContent>
-
-        <TabsContent value="workflow">
-          <JobWorkflowTab jobId={id} />
-        </TabsContent>
-
-        <TabsContent value="matching-weights">
-          <JobMatchingWeightsTab jobId={id} />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

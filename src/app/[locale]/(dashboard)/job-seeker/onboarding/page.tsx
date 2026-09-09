@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
-  ArrowLeft, ClipboardList, Loader2, FileText, Upload, PenLine, CheckCircle2,
+  ClipboardList, Loader2, FileText, Upload, PenLine, CheckCircle2,
   Circle, Download, Building2, Calendar, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
+import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
 
 type OnboardingStatus = "not_started" | "in_progress" | "completed";
 type DocStatus = "requested" | "submitted" | "signed" | "approved";
@@ -70,6 +70,7 @@ function formatDate(value?: string | null): string {
 export default function JobSeekerOnboardingPage() {
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("jobSeekerOnboarding");
+  const tj = useTranslations("jobSeekerJourney");
 
   const [onboardings, setOnboardings] = useState<Onboarding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,23 +99,11 @@ export default function JobSeekerOnboardingPage() {
     load();
   }, [load]);
 
-  return (
-    <div className="page-container max-w-4xl">
-      <div className="flex flex-col gap-2">
-        <Link
-          href={`/${locale}/job-seeker/applications`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t("backToApplications")}
-        </Link>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-          <ClipboardList className="h-6 w-6 text-primary" />
-          {t("title")}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-      </div>
+  // The list is not paginated, so its length is the whole truth.
+  const contextLine = loading ? undefined : error ? null : tj("contextOnboarding", { count: onboardings.length });
 
+  return (
+    <ApplicationJourneyShell locale={locale} context={contextLine}>
       {loading ? (
         <div className="space-y-6">
           {Array.from({ length: 2 }).map((_, i) => (
@@ -149,7 +138,7 @@ export default function JobSeekerOnboardingPage() {
           ))}
         </div>
       )}
-    </div>
+    </ApplicationJourneyShell>
   );
 }
 

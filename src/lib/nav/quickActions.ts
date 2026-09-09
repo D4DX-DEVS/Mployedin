@@ -50,6 +50,18 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
       permission: { resource: "jobs", action: "create" },
     },
     {
+      // Third way in (workspace spec §3.10): templates left the sidebar, so
+      // this verb and the picker's "Manage templates" link are how a repeat
+      // poster reaches them.
+      key: "postJobTemplate",
+      href: "/employer/jobs/new?from=template",
+      icon: "LayoutTemplate",
+      labelKey: "postJobTemplate",
+      descriptionKey: "postJobTemplateDesc",
+      create: true,
+      permission: { resource: "jobs", action: "create" },
+    },
+    {
       key: "scheduleInterviews",
       href: "/employer/interviews/bulk",
       icon: "Calendar",

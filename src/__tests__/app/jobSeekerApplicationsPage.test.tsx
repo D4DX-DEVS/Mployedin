@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import ApplicationsPage from "@/app/[locale]/(dashboard)/job-seeker/applications/page";
@@ -14,6 +14,7 @@ const updateTotalMock = jest.fn();
 const setPageMock = jest.fn();
 const setLimitMock = jest.fn();
 const paginationParamsMock = jest.fn(() => new URLSearchParams({ page: "1", limit: "10" }));
+const countsQueryMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
@@ -24,6 +25,25 @@ jest.mock("next/navigation", () => ({
   // The application-journey nav marks the current stage active.
   usePathname: () => "/en/job-seeker/applications",
 }));
+
+jest.mock("next/link", () => ({
+  __esModule: true,
+  default: ({ children, href, prefetch: _prefetch, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; prefetch?: boolean }) => (
+    <a href={href} {...props}>{children}</a>
+  ),
+}));
+
+// The journey shell reads the account-wide counters; the page must never
+// derive a header number from the list it fetched.
+jest.mock("@/hooks/useJobSeekerActionCounts", () => {
+  const data = { pendingOffers: 1, interviewsAwaitingResponse: 2, upcomingInterviews: 0, totalApplications: 27, activeApplications: 8 };
+  return {
+    // Controllable per test so the `data`/`isError` combinations the page
+    // derives its context line from can each be exercised on their own.
+    useJobSeekerActionCountsQuery: () => countsQueryMock(),
+    useJobSeekerActionCounts: () => data,
+  };
+});
 
 jest.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -100,6 +120,12 @@ describe("ApplicationsPage", () => {
     setPageMock.mockReset();
     setLimitMock.mockReset();
     paginationParamsMock.mockClear();
+    countsQueryMock.mockReset();
+
+    countsQueryMock.mockReturnValue({
+      data: { pendingOffers: 1, interviewsAwaitingResponse: 2, upcomingInterviews: 0, totalApplications: 27, activeApplications: 8 },
+      isError: false,
+    });
 
     fetchMock.mockResolvedValue({
       ok: true,
@@ -135,7 +161,7 @@ describe("ApplicationsPage", () => {
     render(<ApplicationsPage />);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10");
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
     });
 
     await user.click(screen.getByRole("tab", { name: "Selected" }));
@@ -143,7 +169,7 @@ describe("ApplicationsPage", () => {
     expect(resetPageMock).toHaveBeenCalledTimes(1);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&status=selected");
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&status=selected&fetchCounts=true");
     });
 
     expect(screen.getByRole("tab", { name: "Selected" })).toHaveAttribute("aria-selected", "true");
@@ -174,5 +200,78 @@ describe("ApplicationsPage", () => {
       expect(detailToggle).toHaveAttribute("aria-expanded", "true");
     });
     expect(screen.getByText("Status updated to selected")).toBeInTheDocument();
+  });
+
+  it("wears the journey shell: shared title, truthful context, journey row, no page-level numbers", async () => {
+    render(<ApplicationsPage />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
+    });
+
+    expect(screen.getByRole("heading", { level: 1, name: "My Applications" })).toBeInTheDocument();
+    expect(screen.getByText("27 applications · 8 active")).toBeInTheDocument();
+
+    const journey = screen.getByRole("navigation", { name: "Application journey" });
+    const links = within(journey).getAllByRole("link");
+    expect(links).toHaveLength(4);
+    expect(links[0]).toHaveAttribute("aria-current", "page");
+    expect(within(journey).getByText("2")).toBeInTheDocument(); // interviews badge
+    expect(within(journey).getByText("1")).toBeInTheDocument(); // offers badge
+
+    expect(screen.queryByText(/Progress:/)).toBeNull();
+    expect(screen.queryByText(/View:/)).toBeNull();
+    expect(screen.queryByText(/Total:/)).toBeNull();
+    expect(screen.queryByText(/Active:/)).toBeNull();
+
+    expect(screen.getByRole("tablist", { name: "Application status filters" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filters/i })).toBeInTheDocument();
+  });
+
+  it("renders the context line once counts have loaded", async () => {
+    render(<ApplicationsPage />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
+    });
+
+    expect(screen.getByText("27 applications · 8 active")).toBeInTheDocument();
+  });
+
+  it("renders no context line when counts failed to load, but still renders the list", async () => {
+    countsQueryMock.mockReturnValue({ data: undefined, isError: true });
+
+    render(<ApplicationsPage />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
+    });
+
+    expect(screen.queryByTestId("journey-context-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByText(/applications? · \d+ active/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /senior full stack developer/i })).toBeInTheDocument();
+  });
+
+  it("shows the loading skeleton, not a line of text, while counts are still loading", async () => {
+    countsQueryMock.mockReturnValue({ data: undefined, isError: false });
+
+    render(<ApplicationsPage />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
+    });
+
+    expect(screen.getByTestId("journey-context-skeleton")).toBeInTheDocument();
+    expect(screen.queryByText(/applications? · \d+ active/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the context line when counts are present but a background refetch failed", async () => {
+    countsQueryMock.mockReturnValue({
+      data: { pendingOffers: 1, interviewsAwaitingResponse: 2, upcomingInterviews: 0, totalApplications: 27, activeApplications: 8 },
+      isError: true,
+    });
+
+    render(<ApplicationsPage />);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
+    });
+
+    expect(screen.getByText("27 applications · 8 active")).toBeInTheDocument();
   });
 });

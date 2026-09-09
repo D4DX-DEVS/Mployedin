@@ -158,10 +158,10 @@ describe.skip("EmployerJobsPage", () => {
 
     render(<EmployerJobsPage />);
 
-    await user.click(screen.getAllByRole("button", { name: /clone/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: /duplicate/i })[0]);
 
     await waitFor(() => expect(cloneMutateAsyncMock).toHaveBeenCalledWith("job-active"));
-    expect(toastLoadingMock).toHaveBeenCalledWith("Cloning job...");
+    expect(toastLoadingMock).toHaveBeenCalledWith("Duplicating job…");
     expect(toastSuccessMock).toHaveBeenCalledWith("Job cloned successfully", { id: "clone-toast" });
     expect(pushMock).toHaveBeenCalledWith("/en/employer/jobs/job-clone/edit");
   });
@@ -172,26 +172,26 @@ describe.skip("EmployerJobsPage", () => {
 
     render(<EmployerJobsPage />);
 
-    await user.click(screen.getAllByRole("button", { name: /clone/i })[0]);
+    await user.click(screen.getAllByRole("button", { name: /duplicate/i })[0]);
 
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("Failed to clone job", { id: "clone-toast" }));
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("shows deactivate for active jobs and delete only for drafts", async () => {
+  it("shows Close job for active jobs and delete only for drafts", async () => {
     const user = userEvent.setup();
     confirmMock.mockResolvedValue(true);
     updateStatusMutateAsyncMock.mockResolvedValue({});
 
     render(<EmployerJobsPage />);
 
-    expect(screen.getByRole("button", { name: /deactivate/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /close job/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /delete/i })).toHaveLength(1);
 
-    await user.click(screen.getByRole("button", { name: /deactivate/i }));
+    await user.click(screen.getByRole("button", { name: /close job/i }));
 
     await waitFor(() => expect(confirmMock).toHaveBeenCalledWith(
-      "Deactivate this job? It will stop accepting new applications, but existing applications stay available."
+      "Close this job? Candidates can no longer apply."
     ));
     expect(updateStatusMutateAsyncMock).toHaveBeenCalledWith({ jobId: "job-active", status: "closed" });
   });

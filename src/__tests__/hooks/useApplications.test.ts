@@ -6,12 +6,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import {
   useApplications,
+  useInfiniteApplications,
   useUpdateApplicationStatus,
   useBulkAction,
   useApplicationTimeline,
   useCreateInterviewFromApp,
   useCompareApplications,
   applicationKeys,
+  OpenInterviewError,
 } from "@/hooks/useApplications";
 import type { ApplicationsFilters } from "@/hooks/useApplications";
 
@@ -189,7 +191,38 @@ describe("useUpdateApplicationStatus", () => {
 
     await expect(
       act(() => result.current.mutateAsync({ id: "a1", status: "rejected" })),
-    ).rejects.toThrow("Failed to update application status");
+    ).rejects.toThrow("Application status was not updated");
+  });
+
+  it("surfaces a stranded open interview as a typed conflict", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        code: "OPEN_INTERVIEW",
+        interview: { _id: "iv-1", scheduledAt: "2026-05-03T09:00:00.000Z", interviewRound: 2, type: "video", status: "scheduled" },
+      }),
+    });
+
+    const { result } = renderHook(() => useUpdateApplicationStatus(), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(
+      act(() => result.current.mutateAsync({ id: "a1", status: "shortlisted" })),
+    ).rejects.toBeInstanceOf(OpenInterviewError);
+  });
+
+  it("sends the acknowledgement flag when the caller has confirmed", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ application: {} }) });
+
+    const { result } = renderHook(() => useUpdateApplicationStatus(), {
+      wrapper: createWrapper(),
+    });
+    await act(() => result.current.mutateAsync({ id: "a1", status: "shortlisted", acknowledgeOpenInterview: true }));
+
+    const body = JSON.parse(mockFetch.mock.calls[mockFetch.mock.calls.length - 1][1].body as string);
+    expect(body.acknowledgeOpenInterview).toBe(true);
   });
 });
 
@@ -355,5 +388,37 @@ describe("useCompareApplications", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+// ── useInfiniteApplications (board columns) ─────────────────────────
+
+describe("useInfiniteApplications", () => {
+  it("appends pages until the server total is reached", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      const page = Number(new URL(url, "http://localhost").searchParams.get("page"));
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ applications: [{ _id: `a${page}` }], pagination: { page, limit: 1, total: 2 } }),
+      });
+    });
+    const { result } = renderHook(
+      () => useInfiniteApplications({ limit: 1, status: "applied", jobId: "j1" }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(true);
+    expect(mockFetch.mock.calls[0][0]).toContain("page=1");
+
+    await act(async () => { await result.current.fetchNextPage(); });
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+    expect(result.current.hasNextPage).toBe(false);
+    expect(mockFetch.mock.calls[1][0]).toContain("page=2");
+    expect(mockFetch.mock.calls[1][0]).toContain("status=applied");
+  });
+
+  it("shares the list prefix so a status change invalidates it", () => {
+    const key = applicationKeys.infinite({ limit: 20, status: "applied" });
+    expect(key.slice(0, 2)).toEqual(applicationKeys.lists());
   });
 });

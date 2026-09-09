@@ -3,7 +3,7 @@
  *
  * MongoDB has no foreign keys, so deleting a User/Employer/JobSeeker/Agent
  * leaves dependent documents (Applications, Interviews, Offers, Placements,
- * Commissions, SavedJobs, Notifications, Leads, ...) pointing at a dead _id.
+ * Commissions, Notifications, Leads, ...) pointing at a dead _id.
  * These helpers remove or detach those dependents so we never leave dangling
  * references.
  *
@@ -11,7 +11,7 @@
  *  - Employer/JobSeeker/Agent/SuperAgent profiles ref User via `userId`.
  *  - Application/Interview/Offer/Placement ref the PROFILE _id
  *    (jobSeekerId → JobSeeker, employerId → Employer, agentId → Agent).
- *  - SavedJob.jobSeekerId / SavedSearch.userId / Notification.userId ref User._id.
+ *  - SavedSearch.userId / Notification.userId ref User._id.
  *  - Commission ref agentId/superAgentId/placementId (not employer/jobseeker).
  *
  * These run best-effort and non-transactionally (the app connects to a single
@@ -35,7 +35,6 @@ import Commission from "@/models/Commission";
 import Lead from "@/models/Lead";
 import Job from "@/models/Job";
 import JobTemplate from "@/models/JobTemplate";
-import SavedJob from "@/models/SavedJob";
 import Notification from "@/models/Notification";
 
 export type CascadeSummary = Record<string, number>;
@@ -157,7 +156,6 @@ export async function cascadeDeleteJobSeeker(
   }
 
   // These reference User._id directly.
-  await track(summary, "savedJobs", SavedJob.deleteMany({ jobSeekerId: jobSeekerUserId }));
   // SavedSearch is registered lazily (not a dedicated model file); only act if loaded.
   const SavedSearch = mongoose.models.SavedSearch;
   if (SavedSearch) {

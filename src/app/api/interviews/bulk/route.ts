@@ -114,6 +114,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   const created: string[] = [];
+  // Why a candidate produced no interview. `failed` is only a count, so a
+  // duplicate and a genuine error were indistinguishable to the caller — which
+  // is why scheduling over an existing interview surfaced as a bare
+  // "Couldn't schedule interview" with nothing to act on.
+  const skipped: Array<{ applicationId: string; reason: "existing_interview"; interviewId: string }> = [];
   const failed: string[] = [];
   const schedule: { applicationId: string; scheduledAt: string }[] = [];
 
@@ -181,6 +186,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
       if (existingInterview) {
         failed.push(candidate.applicationId);
+        skipped.push({
+          applicationId: String(candidate.applicationId),
+          reason: "existing_interview",
+          interviewId: String((existingInterview as { _id: unknown })._id),
+        });
         slotCursor = new Date(candidateTime.getTime() + (slotDuration + gapMinutes) * 60_000);
         continue;
       }
@@ -272,7 +282,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   return NextResponse.json({
     created: created.length,
+    // Duplicates stay counted here so existing callers keep their totals; the
+    // reason lives in `skipped` alongside it.
     failed: failed.length,
+    skipped,
     ids: created,
     schedule,
   });

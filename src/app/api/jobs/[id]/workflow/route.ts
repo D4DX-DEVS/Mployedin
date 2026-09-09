@@ -11,6 +11,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { workflowUpdateSchema } from "@/lib/validators/misc";
+import { normalizeWorkflowStages, type WorkflowStageLike } from "@/lib/hiring/pipeline";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -53,7 +54,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // If job has its own workflow, return it
   if (job.workflow?.stages && job.workflow.stages.length > 0) {
     return NextResponse.json({
-      stages: job.workflow.stages,
+      stages: normalizeWorkflowStages(job.workflow.stages as WorkflowStageLike[]),
       settings: job.workflow.settings ?? DEFAULT_SETTINGS,
       source: "job",
     });
@@ -61,10 +62,10 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   // Fall back to employer-level workflow
   const employer = await Employer.findById(job.employerId).select("workflow").lean();
-  const stages = employer?.workflow?.stages;
+  const stored = employer?.workflow?.stages;
 
   return NextResponse.json({
-    stages: Array.isArray(stages) && stages.length > 0 ? stages : null,
+    stages: Array.isArray(stored) && stored.length > 0 ? normalizeWorkflowStages(stored as WorkflowStageLike[]) : null,
     settings: employer?.workflow?.settings ?? DEFAULT_SETTINGS,
     source: "employer",
   });
@@ -109,7 +110,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const body = await validateBody(req, workflowUpdateSchema);
   const { stages, settings } = body;
 
-  job.workflow = { stages, settings: settings ?? DEFAULT_SETTINGS };
+  job.workflow = { stages: normalizeWorkflowStages(stages), settings: settings ?? DEFAULT_SETTINGS };
   await job.save();
 
   await logActivity({

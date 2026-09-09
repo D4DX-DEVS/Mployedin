@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,6 +133,7 @@ export default function SuperAgentAgentsPage() {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const t = useTranslations("superAgentAgents");
+  const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
@@ -196,14 +199,9 @@ export default function SuperAgentAgentsPage() {
       setCreateError(t("validateNameEmailPasswordRequired"));
       return;
     }
-    if (
-      createForm.password.length < 12 ||
-      !/[a-z]/.test(createForm.password) ||
-      !/[A-Z]/.test(createForm.password) ||
-      !/[0-9]/.test(createForm.password) ||
-      !/[^A-Za-z0-9]/.test(createForm.password)
-    ) {
-      setCreateError("Password must be 12+ characters and include upper-case, lower-case, numeric, and special characters");
+    const passwordError = validatePasswordForForm(createForm.password, { locale, t: tf });
+    if (passwordError) {
+      setCreateError(passwordError);
       return;
     }
     setCreateLoading(true);
@@ -221,8 +219,13 @@ export default function SuperAgentAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json();
-        setCreateError(e.error ?? t("errorFailedToCreateAgent"));
+        const { message } = await formErrorFromResponse(res, {
+          t: tf,
+          locale,
+          fieldLabels: { name: t("formLabelFullName"), email: tc("email"), password: t("formLabelPassword"), commissionRate: t("formLabelCommissionRate") },
+          conflict: tf("emailInUse"),
+        });
+        setCreateError(message);
         return;
       }
       const data = await res.json();
@@ -653,8 +656,10 @@ export default function SuperAgentAgentsPage() {
                   type="password"
                   value={createForm.password}
                   onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder={t("formPlaceholderPassword")}
+                  placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
+                  aria-describedby="create-agent-password-hint"
                 />
+                <p id="create-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
               </div>
               <div className="field">
                 <Label>{t("formLabelCommissionRate")}</Label>

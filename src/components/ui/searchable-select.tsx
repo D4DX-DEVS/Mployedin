@@ -16,6 +16,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 export interface SearchableSelectOption {
   value: string;
   label: string;
+  /** Shown on the closed trigger instead of `label`. For narrow triggers whose
+   *  list needs a descriptive name ("₹ INR — Indian Rupee") but whose button
+   *  only has room for the short form ("₹ INR"), which otherwise hard-truncates
+   *  to "₹ INR — I…". */
+  triggerLabel?: string;
   disabled?: boolean;
 }
 
@@ -78,8 +83,9 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [internalSearchValue, setInternalSearchValue] = React.useState("");
-  const selectedLabel = options.find((o) => o.value === value)?.label;
-  const triggerLabel = selectedLabel || placeholder;
+  const selectedOption = options.find((o) => o.value === value);
+  const selectedLabel = selectedOption?.label;
+  const triggerLabel = selectedOption?.triggerLabel || selectedLabel || placeholder;
   const isSearchControlled = searchValue !== undefined;
   const resolvedSearchValue = isSearchControlled ? searchValue : internalSearchValue;
   const showSearch = searchable ?? (isSearchControlled || options.length >= SEARCH_THRESHOLD);

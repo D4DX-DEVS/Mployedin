@@ -2,7 +2,6 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
-import SavedJob from "@/models/SavedJob";
 import User from "@/models/User";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
@@ -204,74 +203,6 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
   },
 };
 
-export const saveJobTool: CopilotTool<{ jobId: string }> = {
-  name: "save_job",
-  description: "Save/bookmark a job for the user to review later. Requires a real jobId from search_jobs.",
-  // Saving writes to the user's own saved list — gate on their profile-update
-  // permission, not a jobs read (a read action must never gate a write tool).
-  resource: "job_seekers",
-  action: "update",
-  roles: ["job_seeker"],
-  mutates: true,
-  parameters: {
-    jobId: { type: "string", description: "The MongoDB _id of the job to save", maxLength: 32 },
-  },
-  summarize: (args) => `Save job ${args.jobId}`,
-  execute: async (args, ctx) => {
-    await connectDB();
-    if (!isValidObjectId(args.jobId)) return { ok: false, message: "That doesn't look like a valid job ID." };
-    const job = await Job.findById(args.jobId).select("_id title").lean();
-    if (!job) return { ok: false, message: "Job not found." };
-    // SavedJob.jobSeekerId is the JobSeeker profile _id, not the User id — keying
-    // on ctx.userId never matched the existing row, so each save inserted a
-    // duplicate that the saved-jobs list could not see.
-    const seeker = await getSeeker(ctx.userId);
-    if (!seeker) return { ok: false, message: "Complete your profile before saving jobs." };
-    await SavedJob.findOneAndUpdate(
-      { jobSeekerId: seeker._id, jobId: job._id },
-      { $setOnInsert: { savedAt: new Date() } },
-      { upsert: true }
-    );
-    return { ok: true, message: `Saved "${job.title}" to your list.` };
-  },
-};
-
-export const mySavedJobsTool: CopilotTool<{ limit?: number }> = {
-  name: "my_saved_jobs",
-  description: "List the jobs the user has saved/bookmarked, newest first.",
-  resource: "jobs",
-  action: "read",
-  roles: ["job_seeker"],
-  mutates: false,
-  parameters: {
-    limit: { type: "number", description: "Max results (default 10)", optional: true, min: 1, max: 25 },
-  },
-  summarize: () => "List my saved jobs",
-  execute: async (args, ctx) => {
-    await connectDB();
-    // Same id space as saveJobTool above: the JobSeeker profile _id.
-    const seeker = await getSeeker(ctx.userId);
-    if (!seeker) return { ok: true, message: "You have 0 saved job(s).", data: [] };
-    const saved = await SavedJob.find({ jobSeekerId: seeker._id })
-      .sort({ savedAt: -1 })
-      .limit(Math.min(args.limit ?? 10, 25))
-      .populate("jobId", "title status location")
-      .lean();
-    const rows = saved.flatMap((s) => {
-      const job = s.jobId as unknown as { _id: unknown; title?: string; status?: string; location?: { city?: string; country?: string; isRemote?: boolean } } | null;
-      if (!job) return []; // job since deleted
-      return [{
-        jobId: String(job._id),
-        title: job.title,
-        stillActive: job.status === "active",
-        location: job.location?.isRemote ? "Remote" : `${job.location?.city ?? "?"}, ${job.location?.country ?? "?"}`,
-        savedAt: s.savedAt,
-      }];
-    });
-    return { ok: true, message: `You have ${rows.length} saved job(s).`, data: rows };
-  },
-};
-
 export const withdrawApplicationTool: CopilotTool<{ applicationId: string; withdrawalReason?: string; withdrawalNote?: string }> = {
   name: "withdraw_application",
   description: "Withdraw one of the user's own job applications. Requires a real applicationId from my_applications.",
@@ -319,4 +250,4 @@ export const withdrawApplicationTool: CopilotTool<{ applicationId: string; withd
   },
 };
 
-export const jobSeekerTools = [myProfileTool, searchJobsTool, myApplicationsTool, applyToJobTool, saveJobTool, mySavedJobsTool, withdrawApplicationTool];
+export const jobSeekerTools = [myProfileTool, searchJobsTool, myApplicationsTool, applyToJobTool, withdrawApplicationTool];

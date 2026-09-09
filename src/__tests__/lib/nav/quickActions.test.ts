@@ -71,6 +71,7 @@ describe("workspace quick actions", () => {
     expect(createKeys).toEqual([
       "postJobAi",
       "postJobManual",
+      "postJobTemplate",
       "scheduleInterviews",
       "newMessage",
     ]);

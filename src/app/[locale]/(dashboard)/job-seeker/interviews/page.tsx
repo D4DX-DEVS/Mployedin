@@ -8,13 +8,15 @@ import { Video, MapPin, Calendar, Clock, ExternalLink, CheckCircle, AlertCircle,
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
+import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
+import { StatusPillTabs } from "@/components/features/job-seeker/StatusPillTabs";
 import type { ExportColumn } from "@/lib/export";
 import type { CalendarEvent } from "@/components/shared/MployedinCalendar";
 
@@ -52,18 +54,24 @@ const STATUS_TABS = [
   "cancelled",
 ] as const;
 
+type InterviewStatusTab = (typeof STATUS_TABS)[number];
+type JourneyCounts = { upcoming: number; past: number };
+
 export default function InterviewsPage() {
   const t = useTranslations("jobSeekerInterviews");
+  const tj = useTranslations("jobSeekerJourney");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const searchParams = useSearchParams();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<InterviewStatusTab>("all");
   const [view, setView] = useState<"list" | "calendar">(
     (searchParams.get("view") as "list" | "calendar") || "list"
   );
+  // undefined = not loaded yet (skeleton); null = unavailable (nothing shown).
+  const [counts, setCounts] = useState<JourneyCounts | null | undefined>(undefined);
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
 
@@ -77,13 +85,19 @@ export default function InterviewsPage() {
       const params = pagination.paginationParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter !== "all") params.set("status", statusFilter);
+      // Account-wide upcoming/past for the header, computed server-side on the
+      // seeker's scope so the chips and search never move it.
+      params.set("fetchCounts", "true");
       const res = await fetch(`/api/interviews?${params}`);
       if (res.ok) {
         const data = await res.json();
         const items = data.interviews ?? data.items ?? [];
         setInterviews(items);
         pagination.updateTotal(data.total ?? items.length);
+        // A "no match" search short-circuits without counts; keep the last ones.
+        setCounts((prev) => data.counts ?? prev ?? null);
       } else {
+        setCounts((prev) => prev ?? null);
         toast.error(t("loadFailed"));
       }
     } finally {
@@ -129,15 +143,48 @@ export default function InterviewsPage() {
     title: t("export.title"),
   });
 
-  return (
-    <div className="page-container">
-      <PageHeader
-        title={t("title")}
-        description={t("summary", { upcoming: upcoming.length.toLocaleString(numberLocale), past: past.length.toLocaleString(numberLocale) })}
-      />
+  const contextLine =
+    counts === undefined
+      ? undefined
+      : counts === null
+        ? null
+        : tj("contextInterviews", {
+            upcoming: counts.upcoming,
+            past: counts.past,
+          });
 
-      {/* Toolbar with view toggle */}
-      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+  const viewToggle = (
+    <div className="flex items-center gap-1 rounded-lg border border-border/40 bg-muted/40 p-1">
+      <Button
+        variant={view === "list" ? "default" : "ghost"}
+        size="sm"
+        aria-pressed={view === "list"}
+        aria-label={t("view.list")}
+        onClick={() => setView("list")}
+        className="gap-1"
+      >
+        <List className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden sm:inline">{t("view.list")}</span>
+      </Button>
+      <Button
+        variant={view === "calendar" ? "default" : "ghost"}
+        size="sm"
+        aria-pressed={view === "calendar"}
+        aria-label={t("view.calendar")}
+        onClick={() => setView("calendar")}
+        className="gap-1"
+      >
+        <Calendar className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden sm:inline">{t("view.calendar")}</span>
+      </Button>
+    </div>
+  );
+
+  return (
+    <ApplicationJourneyShell
+      locale={locale}
+      context={contextLine}
+      toolbar={
         <TableToolbar
           search={searchTerm}
           onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
@@ -145,91 +192,72 @@ export default function InterviewsPage() {
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          className="flex-1"
+          right={viewToggle}
         />
-        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1 border border-border/40">
-          <Button
-            variant={view === "list" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setView("list")}
-            className="gap-1"
-          >
-            <List className="w-4 h-4" />
-            <span className="hidden sm:inline">List</span>
-          </Button>
-          <Button
-            variant={view === "calendar" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setView("calendar")}
-            className="gap-1"
-          >
-            <Calendar className="w-4 h-4" />
-            <span className="hidden sm:inline">Calendar</span>
-          </Button>
-        </div>
-      </div>
-
+      }
+      filters={
+        view === "list" ? (
+          <StatusPillTabs
+            tabs={STATUS_TABS}
+            active={statusFilter}
+            onChange={(status) => { setStatusFilter(status); pagination.resetPage(); }}
+            label={t("statusFiltersLabel")}
+            renderLabel={(status) => t(`status.${status}`)}
+            idPrefix="interviews"
+          />
+        ) : null
+      }
+      footer={
+        view === "list" ? (
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            limit={pagination.limit}
+            onPageChange={pagination.setPage}
+            onLimitChange={pagination.setLimit}
+          />
+        ) : undefined
+      }
+    >
       {view === "calendar" ? (
-        <>
-          {loading ? (
-            <CalendarSkeleton />
-          ) : (
-            <MployedinCalendar
-              events={interviews.map((i) => ({
-                _id: i._id,
-                title: i.jobTitle ?? t("interviewFallback"),
-                subtitle: i.companyName ?? "",
-                type: (i.type as CalendarEvent["type"]) ?? "video",
-                status: i.status,
-                scheduledAt: i.scheduledAt,
-                duration: i.duration,
-                meetLink: i.meetLink,
-                location: i.location,
-              }))}
-              loading={loading}
-              onMonthChange={() => {}}
-              renderEventExtra={(e) =>
-                e.subtitle ? (
-                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Building2 className="h-3 w-3 flex-shrink-0" />
-                    {e.subtitle}
-                  </p>
-                ) : null
-              }
-            />
-          )}
-        </>
+        loading ? (
+          <CalendarSkeleton />
+        ) : (
+          <MployedinCalendar
+            events={activeInterviews.map((i) => ({
+              _id: i._id,
+              title: i.jobTitle ?? t("interviewFallback"),
+              subtitle: i.companyName ?? "",
+              type: (i.type as CalendarEvent["type"]) ?? "video",
+              status: i.status,
+              scheduledAt: i.scheduledAt,
+              duration: i.duration,
+              meetLink: i.meetLink,
+              location: i.location,
+            }))}
+            loading={loading}
+            onMonthChange={() => {}}
+            renderEventExtra={(e) =>
+              e.subtitle ? (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Building2 className="h-3 w-3 flex-shrink-0" />
+                  {e.subtitle}
+                </p>
+              ) : null
+            }
+          />
+        )
       ) : (
-        <>
-          {/* Status filter tabs - only show in list view */}
-          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-            {STATUS_TABS.map((status) => (
-              <Button
-                key={status}
-                variant={statusFilter === status ? "default" : "outline"}
-                size="sm"
-                onClick={() => { setStatusFilter(status); pagination.resetPage(); }}
-                className="whitespace-nowrap"
-              >
-                {t(`status.${status}`)}
-              </Button>
-            ))}
-          </div>
-
+        <div id={`interviews-panel-${statusFilter}`} role="tabpanel" aria-labelledby={`interviews-tab-${statusFilter}`}>
           {loading ? (
             <div className="space-y-3 sm:space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="card-base animate-pulse h-24 sm:h-28" />
+                <div key={i} className="card-base h-24 animate-pulse sm:h-28" />
               ))}
             </div>
           ) : interviews.length === 0 ? (
-            <div className="card-base text-center py-10 sm:py-16">
-              <Video className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="font-semibold mb-1">{t("emptyTitle")}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("emptyDescription")}
-              </p>
-            </div>
+            <EmptyState icon={Video} title={t("emptyTitle")} description={t("emptyDescription")} />
           ) : (
             <>
               {upcoming.length > 0 && (
@@ -239,25 +267,16 @@ export default function InterviewsPage() {
                 </section>
               )}
               {past.length > 0 && (
-                <section className="space-y-3 mt-6">
+                <section className="mt-6 space-y-3">
                   <h2 className="heading-label font-semibold text-muted-foreground">{t("past")}</h2>
                   {past.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming={false} onRefresh={fetchInterviews} />)}
                 </section>
               )}
             </>
           )}
-
-          <PaginationControls
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            limit={pagination.limit}
-            onPageChange={pagination.setPage}
-            onLimitChange={pagination.setLimit}
-          />
-        </>
+        </div>
       )}
-    </div>
+    </ApplicationJourneyShell>
   );
 }
 

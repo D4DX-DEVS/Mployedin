@@ -3,13 +3,20 @@
 import { useTranslations } from "next-intl";
 
 import { useState, useEffect } from "react";
-import { Sliders, Save, RotateCcw, Loader2, CheckCircle, BookTemplate, Copy } from "lucide-react";
+import { Save, RotateCcw, Loader2, CheckCircle, BookTemplate, Copy } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { useMatchingWeights, useSaveMatchingWeights, type MatchingWeights } from "@/hooks/useMatchingWeights";
+import {
+  WEIGHT_LABEL_KEYS,
+  WeightBuilderHeader,
+  WeightDistributionPanel,
+  WeightSliderRow,
+  WeightTuningPanel,
+} from "@/components/features/employer/matching-weights/WeightBuilder";
 import {
   useEmployerMatchingWeightTemplates,
   useCreateEmployerMatchingWeightTemplate,
@@ -24,25 +31,8 @@ const DEFAULT_WEIGHTS: MatchingWeights = {
   preferredQualifications: 5,
 };
 
-const WEIGHT_LABEL_KEYS: Record<keyof MatchingWeights, string> = {
-  skills: "skillsMatch",
-  experience: "relevantExperience",
-  education: "educationCerts",
-  industryExperience: "industryExperience",
-  preferredQualifications: "preferredQualifications",
-};
-
-const WEIGHT_DESC_KEYS: Record<keyof MatchingWeights, string> = {
-  skills: "skillsMatchDesc",
-  experience: "relevantExperienceDesc",
-  education: "educationCertsDesc",
-  industryExperience: "industryExperienceDesc",
-  preferredQualifications: "preferredQualificationsDesc",
-};
-
 export default function EmployerMatchingWeightsPage() {
   const t = useTranslations("employerMatchingWeights");
-  const tc = useTranslations("employerCommon");
   const { data: serverWeights, isLoading: loading } = useMatchingWeights();
   const saveWeights = useSaveMatchingWeights();
   const { data: templates, isLoading: templatesLoading } = useEmployerMatchingWeightTemplates();
@@ -115,9 +105,6 @@ export default function EmployerMatchingWeightsPage() {
 
   const isTotalValid = total === 100;
   const weightKeys = Object.keys(weights) as Array<keyof MatchingWeights>;
-  const topPriority = weightKeys.reduce((highest, key) => (
-    weights[key] > weights[highest] ? key : highest
-  ), weightKeys[0]);
 
   if (loading) return (
     <div className="page-container">
@@ -253,57 +240,17 @@ export default function EmployerMatchingWeightsPage() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
         <section className="workspace-panel-surface space-y-5 rounded-3xl panel-body">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
-              <h2 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
-                <Sliders className="h-4 w-4 text-status-applied" /> {t("weightConfig")}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("adjustPercentages")}</p>
-              {/* Top priority as one line. It used to be a second full header
-                  whose three tiles restated the total and this same value. */}
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])} · {weights[topPriority]}%
-              </p>
-            </div>
-            {/* nowrap + shrink-0: at 375px this badge was breaking across two
-                lines and shoving itself into the description text. */}
-            <span className={`shrink-0 self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold sm:px-3 sm:text-sm ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-status-rejected"}`}>
-              {t("totalLabel")} {total}% {isTotalValid ? "✓" : t("need100")}
-            </span>
-          </div>
+          {/* Header, rows and the right-hand panels are shared with the job's
+              Setup tab (WeightBuilder.tsx) so the two screens stay identical. */}
+          <WeightBuilderHeader weights={weights} total={total} />
 
           {weightKeys.map((key) => (
-            <div key={key} className="rounded-2xl border border-border bg-background/60 p-3 sm:rounded-3xl sm:p-4">
-              <div className="max-w-2xl">
-                <label htmlFor={`weight-${key}`} className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
-              </div>
-              {/* Number box and slider share one row — stacked they burned a
-                  full extra line of height per weight, five times over. */}
-              <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:gap-3">
-                <Input
-                  id={`weight-${key}`}
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={weights[key]}
-                  onChange={(e) => updateWeight(key, parseInt(e.target.value) || 0)}
-                  className="h-9 w-16 shrink-0 border-border bg-background/80 text-center text-sm sm:h-10 sm:w-20"
-                />
-                <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">%</span>
-                <input
-                  type="range"
-                  aria-label={t(WEIGHT_LABEL_KEYS[key])}
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={weights[key]}
-                  onChange={(e) => updateWeight(key, parseInt(e.target.value))}
-                  className="h-1.5 min-w-0 flex-1 cursor-pointer accent-sky-600"
-                />
-              </div>
-            </div>
+            <WeightSliderRow
+              key={key}
+              weightKey={key}
+              value={weights[key]}
+              onChange={(value) => updateWeight(key, value)}
+            />
           ))}
 
           <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-2">
@@ -328,45 +275,8 @@ export default function EmployerMatchingWeightsPage() {
 
         {/* Visualization */}
         <div className="space-y-5">
-          <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>
-              <h2 className="heading-subsection mt-2 font-semibold text-foreground">{t("weightOverview")}</h2>
-            </div>
-            <div className="space-y-3">
-              {weightKeys.map((key) => (
-                <div key={key} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{t(WEIGHT_LABEL_KEYS[key])}</span>
-                    <span className="font-medium text-foreground">{weights[key]}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted/50">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${weights[key]}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className={`mt-4 rounded-2xl p-4 text-sm ${isTotalValid
-              ? "bg-emerald-500/10 text-emerald-700"
-              : "bg-amber-500/10 text-status-shortlisted"
-            }`}>
-              {isTotalValid
-                ? `✓ ${t("balancedCorrectly")}`
-                : `⚠ ${t("totalAdjustHint", { total })}`}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-border bg-background/60 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)] panel-body">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tuningGuidance")}</p>
-            <h2 className="heading-subsection mt-2 font-semibold text-foreground">{t("tuningTitle")}</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {t("tuningBody")}
-            </p>
-          </section>
+          <WeightDistributionPanel weights={weights} total={total} />
+          <WeightTuningPanel />
         </div>
       </div>
     </div>

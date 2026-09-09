@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
+import { StatusPillTabs } from "@/components/features/job-seeker/StatusPillTabs";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -54,8 +55,12 @@ const STATUS_TABS = [
   "countered",
 ] as const;
 
+type OfferStatusTab = (typeof STATUS_TABS)[number];
+type OfferStats = { total: number; pending: number; accepted: number; declined: number; expired: number; countered: number };
+
 export default function OffersPage() {
   const t = useTranslations("jobSeekerOffers");
+  const tj = useTranslations("jobSeekerJourney");
   const locale = useLocale();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +71,9 @@ export default function OffersPage() {
   const [signatureName, setSignatureName] = useState("");
   const [declineReason, setDeclineReason] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<OfferStatusTab>("all");
+  // undefined = not loaded yet (skeleton); null = unavailable (nothing shown).
+  const [stats, setStats] = useState<OfferStats | null | undefined>(undefined);
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
   const { paginationParams, updateTotal } = pagination;
@@ -92,9 +99,12 @@ export default function OffersPage() {
       const nextOffers = data.offers ?? [];
       setOffers(nextOffers);
       updateTotal(data.pagination?.total ?? data.total ?? nextOffers.length);
+      // `stats` is computed without the status filter server-side — account-wide.
+      setStats(data.stats ?? null);
     } catch (err) {
       setOffers([]);
       updateTotal(0);
+      setStats((prev) => prev ?? null);
       toast.error(t("errors.fetchFailed"));
     } finally {
       setLoading(false);
@@ -253,46 +263,67 @@ export default function OffersPage() {
     title: t("export.title"),
   });
 
+  const contextLine =
+    stats === undefined
+      ? undefined
+      : stats === null
+        ? null
+        : tj("contextOffers", {
+            pending: stats.pending,
+            accepted: stats.accepted,
+          });
+
   return (
-    <div className="page-container">
-      <PageHeader title={t("header.title")} description={t("header.description")} />
-
-      <TableToolbar
-        search={searchTerm}
-        onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
-        searchPlaceholder={t("searchPlaceholder")}
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        className="mb-4"
-      />
-
-      {/* Status filter tabs */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-        {STATUS_TABS.map((status) => (
-          <Button
-            key={status}
-            variant={statusFilter === status ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setStatusFilter(status); pagination.resetPage(); }}
-            className="whitespace-nowrap"
-          >
-            {t(`status.${status}`)}
-          </Button>
-        ))}
-      </div>
-
+    <ApplicationJourneyShell
+      locale={locale}
+      context={contextLine}
+      toolbar={
+        <TableToolbar
+          search={searchTerm}
+          onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
+          searchPlaceholder={t("searchPlaceholder")}
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+      }
+      filters={
+        <StatusPillTabs
+          tabs={STATUS_TABS}
+          active={statusFilter}
+          onChange={(status) => { setStatusFilter(status); pagination.resetPage(); }}
+          label={t("statusFiltersLabel")}
+          renderLabel={(status) => t(`status.${status}`)}
+          // "All" here counts every offer, including ones whose application has
+          // already moved on to Hired — the reason this list can hold more rows
+          // than the Applications tab's Offer stage does.
+          renderCount={(status) => (stats ? (status === "all" ? stats.total : stats[status]) : undefined)}
+          idPrefix="offers"
+        />
+      }
+      footer={
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
+      }
+    >
+      <div id={`offers-panel-${statusFilter}`} role="tabpanel" aria-labelledby={`offers-tab-${statusFilter}`}>
       {loading ? (
-        <ListSkeleton count={3} layout="list" itemClassName="h-32" className="space-y-3" />
+        <ListSkeleton count={3} layout="list" itemClassName="h-24" className="space-y-3" />
       ) : offers.length === 0 ? (
         <EmptyState
           icon={Inbox}
           title={t("empty")}
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {offers.map((offer) => (
-            <div key={offer._id} className="card-base space-y-3 sm:space-y-4 panel-body">
+            <div key={offer._id} className="card-base space-y-2.5">
               <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="flex-1 min-w-0">
                   <h3 className="heading-subsection font-semibold truncate">{offer.jobId.title}</h3>
@@ -305,50 +336,48 @@ export default function OffersPage() {
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-muted-foreground">{t("labels.salary")}</p>
-                    <p className="font-medium">
-                      {offer.salary.currency} {offer.salary.amount.toLocaleString(locale)} /{" "}
-                      {periodLabel(offer.salary.period)}
-                    </p>
-                  </div>
-                </div>
+              {/* One line, not four stacked label/value blocks: a card that
+                  says the same thing in a third of the height. */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span className="flex items-center gap-1.5">
+                  <DollarSign className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <span className="font-medium">
+                    {offer.salary.currency} {offer.salary.amount.toLocaleString(locale)} /{" "}
+                    {periodLabel(offer.salary.period)}
+                  </span>
+                </span>
 
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-muted-foreground">{t("labels.startDate")}</p>
-                    <p className="font-medium">
-                      {formatDate(offer.startDate)}
-                    </p>
-                  </div>
-                </div>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <span className="text-muted-foreground">{t("labels.startDate")}</span>
+                  <span className="font-medium">{formatDate(offer.startDate)}</span>
+                </span>
+
+                <span className="text-xs text-muted-foreground">
+                  {t("expiresOn", { date: formatDate(offer.expiresAt) })}
+                  {isExpired(offer) && ` ${t("expired")}`}
+                </span>
               </div>
 
-              {offer.benefits && (
-                <div>
-                  <p className="text-sm font-medium mb-1">{t("labels.benefits")}</p>
-                  <p className="text-sm text-muted-foreground">{offer.benefits}</p>
+              {(offer.benefits || offer.notes) && (
+                <div className="space-y-0.5 text-sm text-muted-foreground">
+                  {offer.benefits && (
+                    <p className="line-clamp-1">
+                      <span className="font-medium text-foreground">{t("labels.benefits")}: </span>
+                      {offer.benefits}
+                    </p>
+                  )}
+                  {offer.notes && (
+                    <p className="line-clamp-1">
+                      <span className="font-medium text-foreground">{t("labels.additionalNotes")}: </span>
+                      {offer.notes}
+                    </p>
+                  )}
                 </div>
               )}
-
-              {offer.notes && (
-                <div>
-                  <p className="text-sm font-medium mb-1">{t("labels.additionalNotes")}</p>
-                  <p className="text-sm text-muted-foreground">{offer.notes}</p>
-                </div>
-              )}
-
-              <div className="text-xs text-muted-foreground">
-                {t("expiresOn", { date: formatDate(offer.expiresAt) })}
-                {isExpired(offer) && ` ${t("expired")}`}
-              </div>
 
               {offer.status === "pending" && !isExpired(offer) && (
-                <div className="pt-2 border-t">
+                <div className="border-t pt-2.5">
                   {respondingId === offer._id ? (
                     <div className="space-y-3">
                       <div>
@@ -519,7 +548,7 @@ export default function OffersPage() {
               )}
 
               {offer.status === "accepted" && (
-                <div className="pt-2 border-t">
+                <div className="border-t pt-2.5">
                   <Button
                     size="sm"
                     variant="outline"
@@ -560,14 +589,7 @@ export default function OffersPage() {
         </div>
       )}
 
-      <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
-      />
-    </div>
+      </div>
+    </ApplicationJourneyShell>
   );
 }

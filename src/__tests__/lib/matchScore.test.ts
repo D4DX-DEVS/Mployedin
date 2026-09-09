@@ -1,7 +1,14 @@
 /**
  * @jest-environment node
  */
-import { calculateMatchScore, educationRank, skillsOverlap, getMatchedSkills } from "@/lib/matchScore";
+import {
+  calculateMatchScore,
+  educationRank,
+  skillsOverlap,
+  getMatchedSkills,
+  getMatchedJobSkills,
+  jobProfileFromDoc,
+} from "@/lib/matchScore";
 
 describe("calculateMatchScore", () => {
   const baseSeeker = {
@@ -405,3 +412,89 @@ describe("educationRank", () => {
   });
 });
 
+
+describe("work-mode preference", () => {
+  const seeker = {
+    skills: ["React", "TypeScript", "Node.js"],
+    location: "uae",
+    experienceYears: 3,
+    salaryExpectation: 10000,
+  };
+  const job = {
+    skills: ["React", "TypeScript", "Node.js"],
+    location: "uae",
+    remote: false,
+    salaryMin: 9000,
+    salaryMax: 11000,
+    minExp: 2,
+    maxExp: 5,
+  };
+
+  it("does not change the score when the seeker states no preference", () => {
+    expect(calculateMatchScore(seeker, { ...job, workMode: "onsite" })).toBe(100);
+    expect(calculateMatchScore({ ...seeker, jobType: "any" }, { ...job, workMode: "onsite" })).toBe(100);
+  });
+
+  it("does not change the score when the job never states a work mode", () => {
+    expect(calculateMatchScore({ ...seeker, jobType: "remote" }, job)).toBe(100);
+  });
+
+  it("leaves an exact work-mode match untouched", () => {
+    expect(calculateMatchScore({ ...seeker, jobType: "onsite" }, { ...job, workMode: "onsite" })).toBe(100);
+  });
+
+  it("penalizes the opposite work mode hardest", () => {
+    expect(calculateMatchScore({ ...seeker, jobType: "remote" }, { ...job, workMode: "onsite" })).toBe(85);
+    expect(calculateMatchScore({ ...seeker, jobType: "onsite" }, { ...job, workMode: "remote" })).toBe(85);
+  });
+
+  it("penalizes an adjacent hybrid mode only lightly", () => {
+    expect(calculateMatchScore({ ...seeker, jobType: "remote" }, { ...job, workMode: "hybrid" })).toBe(94);
+    expect(calculateMatchScore({ ...seeker, jobType: "hybrid" }, { ...job, workMode: "onsite" })).toBe(94);
+  });
+
+  it("treats a remote-flagged job with no workMode as remote", () => {
+    const remoteJob = jobProfileFromDoc({
+      title: "React Developer",
+      requirements: { skills: ["React"] },
+      location: { country: "UAE", city: "Dubai", isRemote: true },
+    });
+    expect(remoteJob.workMode).toBe("remote");
+    expect(calculateMatchScore({ ...seeker, jobType: "onsite" }, { ...job, workMode: remoteJob.workMode })).toBe(85);
+  });
+
+  it("reads workMode straight off the job document when present", () => {
+    expect(
+      jobProfileFromDoc({
+        title: "React Developer",
+        requirements: { skills: ["React"] },
+        location: { country: "UAE", city: "Dubai", isRemote: false },
+        workMode: "hybrid",
+      }).workMode
+    ).toBe("hybrid");
+  });
+
+  it("never pushes a score below zero", () => {
+    const score = calculateMatchScore(
+      { skills: [], location: "uae", experienceYears: 0, salaryExpectation: 0, jobType: "remote" },
+      { ...job, skills: [], workMode: "onsite", salaryMin: 0, salaryMax: 0, location: "usa", minExp: 20, maxExp: 30 }
+    );
+    expect(score).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("getMatchedJobSkills", () => {
+  it("returns the job-side skill names the seeker can cover", () => {
+    expect(getMatchedJobSkills(["React", "Node"], ["React.js", "GraphQL"])).toEqual(["React.js"]);
+  });
+
+  it("matches through compound job skill strings", () => {
+    expect(getMatchedJobSkills(["AWS"], ["Cloud Platforms (AWS/Azure)", "Figma"])).toEqual([
+      "Cloud Platforms (AWS/Azure)",
+    ]);
+  });
+
+  it("returns an empty list when nothing overlaps", () => {
+    expect(getMatchedJobSkills(["React"], ["AutoCAD"])).toEqual([]);
+  });
+});

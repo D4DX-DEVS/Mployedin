@@ -3726,3 +3726,31 @@ table.workspace-list-table tbody tr:focus-visible {
 /* rebuild nudge 2026-09-07 admin-header r3 */
 
 /* rebuild nudge 2026-09-07 sa-header */
+
+/* ── WorkspaceTabs (job workspace) — mobile-first, scroll-snap, logical props ── */
+.workspace-tabs { display: flex; gap: 0.25rem; max-width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; border-bottom: 1px solid hsl(var(--border) / 0.7); margin: 0; padding: 0; list-style: none; }
+.workspace-tabs::-webkit-scrollbar { display: none; }
+.workspace-tabs > li { flex-shrink: 0; scroll-snap-align: start; }
+.workspace-tab { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.75rem; padding-inline: 0.75rem; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; color: hsl(var(--muted-foreground)); white-space: nowrap; text-decoration: none; }
+.workspace-tab:hover { color: hsl(var(--foreground)); }
+.workspace-tab:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: -2px; border-radius: 0.375rem; }
+.workspace-tab[aria-current="page"] { color: hsl(var(--primary)); border-bottom-color: hsl(var(--primary)); font-weight: 600; }
+.workspace-tab-count { min-width: 1.25rem; padding-inline: 0.375rem; border-radius: 9999px; background: hsl(var(--secondary)); font-size: 0.75rem; line-height: 1.25rem; text-align: center; color: hsl(var(--foreground)); }
+.workspace-tab[aria-current="page"] .workspace-tab-count { background: hsl(var(--primary) / 0.12); color: hsl(var(--primary)); }
+@media (min-width: 640px) { .workspace-tab { min-height: 2.5rem; } }
+
+/* Job workspace header (2026-09-08): identity only — title, meta, status, actions. The funnel
+   moved to the Overview "Hiring progress" strip; tabs carry their own counts. */
+
+/* rebuild nudge 2026-09-08 job-workspace r2 */
+/* rebuild nudge 2026-09-08 job-workspace r4 (header compact) */
+
+/* Job workspace on phones: the title always owns its row (long titles must not be
+   squeezed beside the action buttons); the embedded applications toolbar keeps
+   search on the same row as the Filters / Export icons since the job selector is gone. */
+@media (max-width: 639.98px) {
+  .job-workspace-header .workspace-header-text { flex-basis: 100%; }
+  .workspace-toolbar.is-embedded .workspace-toolbar-search { flex: 1 1 8rem; }
+}
+
+/* rebuild nudge 2026-09-08 job-workspace r3 */

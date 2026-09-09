@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useParams, useSearchParams } from "next/navigation";
+import { JobScopeStrip } from "@/components/features/employer/jobs/JobScopeStrip";
 import { ShieldCheck, Plus, Trash2, UserCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,6 +81,10 @@ export default function BackgroundChecksPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useUrlFilter("q", "", { debounceMs: 400 });
+  // `?jobId=` scopes the page to one job (deep links from the job workspace).
+  const [jobFilter, setJobFilter] = useUrlFilter("jobId", "");
+  const { locale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const [dateFrom, setDateFrom] = useUrlFilter("from", "");
   const [dateTo, setDateTo] = useUrlFilter("to", "");
 
@@ -89,7 +95,7 @@ export default function BackgroundChecksPage() {
   const fetchChecks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/employer/background-checks?limit=50");
+      const res = await fetch(`/api/employer/background-checks?limit=50${jobFilter ? `&jobId=${encodeURIComponent(jobFilter)}` : ""}`);
       if (!res.ok) throw new Error("failed");
       const data = await res.json();
       setChecks(data.items ?? []);
@@ -99,14 +105,19 @@ export default function BackgroundChecksPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, jobFilter]);
 
   useEffect(() => {
     fetchChecks();
   }, [fetchChecks]);
 
-  async function openCreate() {
-    setApplicationId("");
+  /** `preselectId` comes from `?applicationId=` — a deep link from the
+   *  candidate panel, where the employer has already picked the person. That
+   *  candidate is injected into the options even if their stage keeps them out
+   *  of the general list below, so the link can never land on a form that
+   *  cannot select them. */
+  async function openCreate(preselectId?: string) {
+    setApplicationId(preselectId ?? "");
     setCheckType("reference");
     setRefs([{ name: "", relationship: "", company: "", email: "" }]);
     setNotes("");
@@ -136,11 +147,32 @@ export default function BackgroundChecksPage() {
           }
         }
       }
+      if (preselectId && !seen.has(preselectId)) {
+        try {
+          const r = await fetch(`/api/applications/${preselectId}`);
+          const d = r.ok ? await r.json() : null;
+          if (d?.application?._id) merged.unshift(d.application as ApplicationOption);
+        } catch {
+          /* the picker simply stays without it */
+        }
+      }
       setApplications(merged);
     } catch {
       setApplications([]);
     }
   }
+
+  // Open the request form straight away when arrived at by deep link.
+  const deepLinkedApplicationId = searchParams.get("applicationId") ?? "";
+  const deepLinkHandledRef = useRef("");
+  useEffect(() => {
+    if (!deepLinkedApplicationId || deepLinkHandledRef.current === deepLinkedApplicationId) return;
+    deepLinkHandledRef.current = deepLinkedApplicationId;
+    void openCreate(deepLinkedApplicationId);
+    // openCreate is a stable component-scoped function; re-running on its
+    // identity would reopen the dialog on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkedApplicationId]);
 
   function updateRef(i: number, patch: Partial<NewReferenceRow>) {
     setRefs((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -230,12 +262,13 @@ export default function BackgroundChecksPage() {
         title={t("title")}
         context={t("description")}
         actions={
-          <Button onClick={openCreate} aria-label={t("newCheck")} className="rounded-xl px-3 sm:px-4">
+          <Button onClick={() => { void openCreate(); }} aria-label={t("newCheck")} className="rounded-xl px-3 sm:px-4">
             <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
             <span className="hidden sm:inline">{t("newCheck")}</span>
           </Button>
         }
       />
+      {jobFilter && <JobScopeStrip jobId={jobFilter} locale={locale} onClear={() => setJobFilter("")} />}
 
       {loading ? (
         <div className="grid gap-3">

@@ -21,6 +21,35 @@ export const ALL_APPLICATION_STATUSES: readonly ApplicationStatus[] = [...PIPELI
 
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
+/**
+ * The given stage and every stage after it — "has reached at least here".
+ *
+ * Moving a candidate to Interviewing does not unpick them from the shortlist,
+ * so a shortlist that counts only the current stage loses people as they
+ * advance. Rejected and withdrawn are left out: they are out of the running,
+ * not further along it.
+ */
+export function isPipelineStage(id: string): id is PipelineStage {
+  return (PIPELINE_STAGES as readonly string[]).includes(id);
+}
+
+export function stagesFrom(stage: PipelineStage): PipelineStage[] {
+  const idx = PIPELINE_STAGES.indexOf(stage);
+  return idx < 0 ? [] : [...PIPELINE_STAGES.slice(idx)];
+}
+
+/**
+ * True when `to` sits earlier in the funnel than `from`.
+ *
+ * Only in-funnel stages count: rejected and withdrawn are decisions, not
+ * retreats, so moving to either is never "backwards".
+ */
+export function isBackwardsStageMove(from: string, to: string): boolean {
+  const fromIdx = (PIPELINE_STAGES as readonly string[]).indexOf(from);
+  const toIdx = (PIPELINE_STAGES as readonly string[]).indexOf(to);
+  return fromIdx > -1 && toIdx > -1 && toIdx < fromIdx;
+}
+
 /** i18n keys under the `hiringPipeline` namespace (messages/en.json, messages/ar.json). */
 export const STAGE_LABEL_KEYS: Record<ApplicationStatus, string> = {
   applied: "applied",
@@ -65,6 +94,7 @@ export const STAGE_DOT_CLASS: Record<ApplicationStatus, string> = {
 export const LEGACY_STAGE_IDS: Record<string, ApplicationStatus> = {
   new: "applied",
   screening: "shortlisted",
+  interview: "interview_scheduled",
   interview_completed: "selected",
   offer_extended: "offer",
   accepted: "hired",

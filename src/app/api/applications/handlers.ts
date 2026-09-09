@@ -18,8 +18,8 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
-import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hiring/pipeline";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
@@ -32,6 +32,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   const status = searchParams.get("status") ?? "";
+  // "Has reached at least this stage". A shortlist that matched only the
+  // current stage lost people the moment they advanced to Interviewing, even
+  // though shortlisting is exactly what put them there.
+  const stageFrom = searchParams.get("stageFrom") ?? "";
   const jobId = searchParams.get("jobId") ?? "";
   const search = searchParams.get("search")?.trim() ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
@@ -55,6 +59,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
      dashboard raises this as an alert; without the filter its link landed on an
      unfiltered list and the finding was lost on arrival. */
   const staleOnly = searchParams.get("stale") === "true";
+  const unreviewed = searchParams.get("unreviewed") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -133,7 +138,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.jobId = { $in: accessibleJobIds };
   }
 
-  if (status) query.status = status;
+  if (status) {
+    query.status = status;
+  } else if (stageFrom && isPipelineStage(stageFrom)) {
+    query.status = { $in: stagesFrom(stageFrom) };
+  }
+  // Unreviewed filter: applications not yet seen by employer
+  if (unreviewed) {
+    query.viewedByEmployerAt = null;
+    if (!status) query.status = "applied";
+  }
   // Validate jobId against accessible jobs to prevent unauthorized access
   if (jobId) {
     if (accessibleJobIds) {
@@ -464,6 +478,26 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
     statusCounts = Object.fromEntries(rows.map((r) => [String(r._id), r.count]));
+  } else if (fetchCounts && ctx.role === "job_seeker") {
+    /* The seeker's status pills sit directly above the list they filter, so
+       their counts follow every active filter except the status being chosen
+       — unlike the employer strip above, which reports job-wide totals.
+       countDocuments rather than aggregate: $match does no casting, and this
+       query can carry string ids and Date ranges. */
+    const countsQuery = { ...query };
+    delete countsQuery.status;
+    const [allCount, perStatus] = await Promise.all([
+      Application.countDocuments(countsQuery),
+      Promise.all(
+        ALL_APPLICATION_STATUSES.map((seekerStatus) =>
+          Application.countDocuments({ ...countsQuery, status: seekerStatus }),
+        ),
+      ),
+    ]);
+    statusCounts = {
+      all: allCount,
+      ...Object.fromEntries(ALL_APPLICATION_STATUSES.map((s, i) => [s, perStatus[i]])),
+    };
   }
 
   return NextResponse.json({

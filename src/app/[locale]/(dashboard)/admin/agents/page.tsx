@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
-import { apiErrorMessage } from "@/lib/utils";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -69,6 +70,17 @@ interface SuperAgentOption {
 
 export default function AdminAgentsPage() {
   const tr = useTranslations("adminAgents");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
+  // Field name → on-screen label, so a server rejection can say "Check these
+  // fields: Email" instead of echoing zod's English path/message.
+  const agentFieldLabels = {
+    name: tr("fullName"),
+    email: tr("email"),
+    password: tr("password"),
+    commissionRate: tr("commissionRate"),
+    superAgentId: tr("assignedSuperAgent"),
+  };
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -218,6 +230,11 @@ export default function AdminAgentsPage() {
       setAddError(tr("requiredFieldsError"));
       return;
     }
+    const passwordError = validatePasswordForForm(addForm.password, { locale, t: tf });
+    if (passwordError) {
+      setAddError(passwordError);
+      return;
+    }
     setAddLoading(true);
     try {
       const saProfile = superAgents.find((s) => s._id === addForm.superAgentId);
@@ -235,10 +252,9 @@ export default function AdminAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        const msg = apiErrorMessage(e, tr("createAgentFailed"));
-        setAddError(msg);
-        toast.error(msg);
+        const { message } = await formErrorFromResponse(res, { t: tf, locale, fieldLabels: agentFieldLabels, conflict: tf("emailInUse") });
+        setAddError(message);
+        toast.error(message);
         return;
       }
       setShowAdd(false);
@@ -300,10 +316,9 @@ export default function AdminAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        const msg = apiErrorMessage(e, tr("updateAgentFailed"));
-        setEditError(msg);
-        toast.error(msg);
+        const { message } = await formErrorFromResponse(res, { t: tf, locale, fieldLabels: agentFieldLabels, conflict: tf("emailInUse") });
+        setEditError(message);
+        toast.error(message);
         return;
       }
       setEditAgent(null);
@@ -559,7 +574,8 @@ export default function AdminAgentsPage() {
               </div>
               <div className="field">
                 <Label>{tr("password")} <span className="text-destructive">*</span></Label>
-                <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tr("passwordPlaceholder")} />
+                <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-agent-password-hint" />
+                <p id="add-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
               </div>
               <div className="field">
                 <Label>{tr("commissionRate")}</Label>

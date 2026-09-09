@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { interviewKeys } from "@/hooks/useInterviews";
+import { jobHiringSummaryKeys } from "@/hooks/useJobHiringSummary";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -7,6 +8,9 @@ export interface ApplicationsFilters {
   page: number;
   limit: number;
   status?: string;
+  /** "Has reached at least this stage" — the shortlist keeps candidates who
+   *  have since advanced. Ignored when `status` is set. */
+  stageFrom?: string;
   jobId?: string;
   search?: string;
   scoreMin?: number;
@@ -19,6 +23,17 @@ export interface ApplicationsFilters {
   fetchJobs?: boolean;
   /** Employer only: per-status totals for the whole job scope (header strip). */
   fetchCounts?: boolean;
+  /** Employer only: filter to unreviewed applications (viewedByEmployerAt: null). */
+  unreviewed?: boolean;
+}
+
+/** Filters for page-by-page loading; the page number is the query's own state. */
+export type InfiniteApplicationsFilters = Omit<ApplicationsFilters, "page">;
+
+/** One page of the applications list as the API returns it. */
+export interface ApplicationsPage {
+  applications: unknown[];
+  pagination?: { page: number; limit: number; total: number; pages?: number };
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -26,39 +41,92 @@ export const applicationKeys = {
   all: ["applications"] as const,
   lists: () => [...applicationKeys.all, "list"] as const,
   list: (filters: ApplicationsFilters) => [...applicationKeys.lists(), filters] as const,
+  infinite: (filters: InfiniteApplicationsFilters) => [...applicationKeys.lists(), "infinite", filters] as const,
   timeline: (id: string) => [...applicationKeys.all, "timeline", id] as const,
   compare: (ids: string[]) => [...applicationKeys.all, "compare", ids] as const,
 };
 
 // ── Hooks ──────────────────────────────────────────────────────────
 
+function buildApplicationsParams(filters: ApplicationsFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("page", String(filters.page));
+  params.set("limit", String(filters.limit));
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  else if (filters.stageFrom) params.set("stageFrom", filters.stageFrom);
+  if (filters.jobId) params.set("jobId", filters.jobId);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.scoreMin != null && filters.scoreMin > 0) params.set("scoreMin", String(filters.scoreMin));
+  if (filters.scoreMax != null && filters.scoreMax < 100) params.set("scoreMax", String(filters.scoreMax));
+  if (filters.experienceMin != null) params.set("experienceMin", String(filters.experienceMin));
+  if (filters.experienceMax != null) params.set("experienceMax", String(filters.experienceMax));
+  if (filters.skills?.length) params.set("skills", filters.skills.join(","));
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+  if (filters.fetchJobs) params.set("fetchJobs", "true");
+  if (filters.fetchCounts) params.set("fetchCounts", "true");
+  if (filters.unreviewed) params.set("unreviewed", "true");
+  return params;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the list payload also carries statusCounts/employerJobs/allEmployers; callers narrow it
+async function fetchApplicationsPage(filters: ApplicationsFilters): Promise<any> {
+  const res = await fetch(`/api/applications?${buildApplicationsParams(filters)}`);
+  if (!res.ok) throw new Error("Failed to fetch applications");
+  return res.json();
+}
+
 /** Fetch paginated, filtered applications list */
 export function useApplications(filters: ApplicationsFilters) {
   return useQuery({
     queryKey: applicationKeys.list(filters),
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("page", String(filters.page));
-      params.set("limit", String(filters.limit));
-      if (filters.status && filters.status !== "all") params.set("status", filters.status);
-      if (filters.jobId) params.set("jobId", filters.jobId);
-      if (filters.search) params.set("search", filters.search);
-      if (filters.scoreMin != null && filters.scoreMin > 0) params.set("scoreMin", String(filters.scoreMin));
-      if (filters.scoreMax != null && filters.scoreMax < 100) params.set("scoreMax", String(filters.scoreMax));
-      if (filters.experienceMin != null) params.set("experienceMin", String(filters.experienceMin));
-      if (filters.experienceMax != null) params.set("experienceMax", String(filters.experienceMax));
-      if (filters.skills?.length) params.set("skills", filters.skills.join(","));
-      if (filters.sortBy) params.set("sortBy", filters.sortBy);
-      if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
-      if (filters.fetchJobs) params.set("fetchJobs", "true");
-      if (filters.fetchCounts) params.set("fetchCounts", "true");
-      const res = await fetch(`/api/applications?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch applications");
-      return res.json();
-    },
+    queryFn: () => fetchApplicationsPage(filters),
     staleTime: 60 * 1000,
     placeholderData: (prev: unknown) => prev,
   });
+}
+
+/**
+ * Page-by-page loading for one board column: `limit` rows per page, the next
+ * page appended on demand, so a stage with 900 candidates renders 20 cards
+ * and a "Load more" — never 900 nodes. Keyed under `lists()` so a status
+ * change invalidates it together with the list.
+ */
+export function useInfiniteApplications(filters: InfiniteApplicationsFilters) {
+  return useInfiniteQuery({
+    queryKey: applicationKeys.infinite(filters),
+    queryFn: ({ pageParam }): Promise<ApplicationsPage> => fetchApplicationsPage({ ...filters, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => {
+      const p = last?.pagination;
+      if (!p || !p.total) return undefined;
+      return p.page * p.limit < p.total ? p.page + 1 : undefined;
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
+/** The open interview a backwards stage move would leave behind. */
+export interface OpenInterviewConflict {
+  _id: string;
+  scheduledAt: string | null;
+  interviewRound: number;
+  type: string | null;
+  status: string | null;
+}
+
+/**
+ * Thrown when the server refuses a backwards stage move because the candidate
+ * still has a scheduled interview. Callers show the interview, then re-send
+ * with `acknowledgeOpenInterview`.
+ */
+export class OpenInterviewError extends Error {
+  readonly interview: OpenInterviewConflict;
+  constructor(interview: OpenInterviewConflict) {
+    super("This candidate has an interview that is still open.");
+    this.name = "OpenInterviewError";
+    this.interview = interview;
+  }
 }
 
 /** Update a single application's status */
@@ -69,21 +137,34 @@ export function useUpdateApplicationStatus() {
       id,
       status,
       rejectionReason,
+      acknowledgeOpenInterview,
     }: {
       id: string;
       status: string;
       rejectionReason?: string;
+      acknowledgeOpenInterview?: boolean;
     }) => {
       const res = await fetch(`/api/applications/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, ...(rejectionReason && { rejectionReason }) }),
+        body: JSON.stringify({
+          status,
+          ...(rejectionReason && { rejectionReason }),
+          ...(acknowledgeOpenInterview && { acknowledgeOpenInterview: true }),
+        }),
       });
-      if (!res.ok) throw new Error("Failed to update application status");
+      if (res.status === 409) {
+        const body = await res.json().catch(() => null);
+        if (body?.code === "OPEN_INTERVIEW" && body.interview) {
+          throw new OpenInterviewError(body.interview as OpenInterviewConflict);
+        }
+      }
+      if (!res.ok) throw new Error("Application status was not updated");
       return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
     },
   });
 }
@@ -107,6 +188,7 @@ export function useBulkAction() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
     },
   });
 }
@@ -147,11 +229,26 @@ export function useCreateScorecard() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
     },
   });
 }
 
 /** Create an interview from the applications page (supports staggered bulk scheduling) */
+/** Why a candidate in a bulk schedule produced no interview. */
+export interface SkippedInterview {
+  applicationId: string;
+  reason: "existing_interview";
+  interviewId: string;
+}
+
+export interface BulkInterviewResult {
+  created: number;
+  failed: number;
+  skipped?: SkippedInterview[];
+  ids?: string[];
+}
+
 export function useCreateInterviewFromApp() {
   const qc = useQueryClient();
   return useMutation({
@@ -176,13 +273,14 @@ export function useCreateInterviewFromApp() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || data?.message || "Failed to create interview");
+        throw new Error(data?.error || data?.message || "The interview was not created");
       }
-      return res.json();
+      return res.json() as Promise<BulkInterviewResult>;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
       qc.invalidateQueries({ queryKey: interviewKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
     },
   });
 }
@@ -209,6 +307,7 @@ export function useCreateOfferFromApp() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
     },
   });
 }
@@ -252,6 +351,7 @@ export function useComputeAiMatch() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
     },
   });
 }
@@ -291,6 +391,7 @@ export function useBulkAiMatch() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
     },
   });
 }

@@ -273,12 +273,6 @@ export async function ensureIndexes() {
     { key: { conversationId: 1, createdAt: 1 } },
   ]);
 
-  // ── SavedJobs ──────────────────────────────────────────────────────────────
-  await safeCreateIndexes(db, "savedjobs", [
-    { key: { jobSeekerId: 1, jobId: 1 }, unique: true },
-    { key: { jobSeekerId: 1, savedAt: -1 } },
-  ]);
-
   // ── ImpersonationSessions ─────────────────────────────────────────────────
   await safeCreateIndexes(db, "impersonationsessions", [
     { key: { adminId: 1 } },

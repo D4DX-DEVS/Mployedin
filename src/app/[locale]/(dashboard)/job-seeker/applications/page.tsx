@@ -6,17 +6,17 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, Search, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
+import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { scoreTier } from "@/lib/ui/statusColors";
 import { usePagination } from "@/hooks/usePagination";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useJobSeekerActionCountsQuery } from "@/hooks/useJobSeekerActionCounts";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -26,7 +26,8 @@ import {
 import { cn } from "@/lib/utils";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
-import { JobSeekerSectionNav, APPLICATION_JOURNEY_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
+import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
+import { StatusPillTabs } from "@/components/features/job-seeker/StatusPillTabs";
 
 interface ApplicationJob {
   _id: string;
@@ -90,6 +91,8 @@ const STATUS_TABS = [
   "rejected",
 ] as const;
 
+type StatusTab = (typeof STATUS_TABS)[number];
+
 function formatApplicationSalary(salary: ApplicationJob["salary"] | undefined, numberLocale: string) {
   if (!salary?.min || !salary?.max || !salary.currency) return null;
 
@@ -110,14 +113,17 @@ function formatApplicationSalary(salary: ApplicationJob["salary"] | undefined, n
 export default function ApplicationsPage() {
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("jobSeekerApplications");
+  const tj = useTranslations("jobSeekerJourney");
   const router = useRouter();
   // The ⌘K palette deep-links here as `?search=<job title>`; without seeding
   // the box from the URL the link landed on an unfiltered list.
   const urlSearch = useSearchParams().get("search") ?? "";
   const [applications, setApplications] = useState<Application[]>([]);
+  // Per-status totals for the pills, keyed by status ("all" plus each stage).
+  // null = unavailable, so the pills fall back to labels only.
+  const [statusCounts, setStatusCounts] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("all");
-  const [overallTotal, setOverallTotal] = useState(0);
+  const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -127,6 +133,8 @@ export default function ApplicationsPage() {
   const { paginationParams, updateTotal, resetPage } = pagination;
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const formatNumber = (value: number) => value.toLocaleString(numberLocale);
+  // Account-wide, from the one request every seeker page already makes.
+  const { data: counts, isError: countsFailed } = useJobSeekerActionCountsQuery();
 
   useEffect(() => {
     document.title = t("documentTitle");
@@ -146,24 +154,27 @@ export default function ApplicationsPage() {
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      // Counts obey the search and date filters but not the selected status,
+      // so every pill reports the list it would produce.
+      params.set("fetchCounts", "true");
 
       const res = await fetch(`/api/applications?${params}`);
       if (res.ok) {
         const data = await res.json();
         setApplications(data.applications);
+        setStatusCounts(data.statusCounts ?? null);
         updateTotal(data.pagination?.total ?? 0);
-        if (activeTab === "all" && !debouncedSearch && !dateFrom && !dateTo) {
-          setOverallTotal(data.pagination?.total ?? 0);
-        }
       } else {
         // 4xx/5xx previously fell through silently — stale list, no feedback.
         setApplications([]);
+        setStatusCounts(null);
         toast.error(t("loadFailed"));
       }
     } catch {
       // Network failure previously surfaced as an unhandled rejection with an
       // unexplained empty screen.
       setApplications([]);
+      setStatusCounts(null);
       toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
@@ -174,7 +185,7 @@ export default function ApplicationsPage() {
     fetchApplications();
   }, [fetchApplications]);
 
-  function handleTabChange(val: string) {
+  function handleTabChange(val: StatusTab) {
     setActiveTab(val);
     resetPage();
   }
@@ -187,226 +198,145 @@ export default function ApplicationsPage() {
   }
 
   const hasActiveFilters = !!debouncedSearch || !!dateFrom || !!dateTo;
+  const activeStatusLabel = t(`status.${activeTab}`);
 
+  const contextLine = counts
+    ? tj("contextApplications", { total: counts.totalApplications, active: counts.activeApplications })
+    : countsFailed
+      ? null
+      : undefined;
 
-  const activeStatus = STATUS_TABS.includes(activeTab as (typeof STATUS_TABS)[number]) ? activeTab : STATUS_TABS[0];
-  const activeStatusLabel = t(`status.${activeStatus}`);
-  const pageSummary = pagination.totalPages > 0
-    ? `${formatNumber(pagination.page)}/${formatNumber(pagination.totalPages)}`
-    : formatNumber(pagination.page);
-  const activeApplicationsCount = applications.filter((application) => !TERMINAL_STATUSES.includes(application.status)).length;
+  const toolbar = (
+    <>
+      <TableToolbar
+        search={searchTerm}
+        onSearchChange={(value) => { setSearchTerm(value); resetPage(); }}
+        searchPlaceholder={t("searchPlaceholder")}
+        right={
+          <Button
+            variant="outline"
+            size="sm"
+            aria-expanded={showFilters}
+            aria-controls="applications-date-filters"
+            className={cn(
+              "h-11 gap-1.5 rounded-xl px-3 text-sm sm:h-9 sm:rounded-lg",
+              hasActiveFilters && "border-primary/40 bg-primary/5 text-primary"
+            )}
+            onClick={() => setShowFilters((open) => !open)}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            {t("filters")}
+            {hasActiveFilters && (
+              <span aria-hidden="true" className="ms-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-primary-foreground">
+                {formatNumber([searchTerm, dateFrom, dateTo].filter(Boolean).length)}
+              </span>
+            )}
+          </Button>
+        }
+      />
 
-  return (
-    /* The `max-sm:px-0` that used to sit here compensated for the job-seeker
-       role layout double-padding this page. That layout now yields its gutter
-       to `.page-container` (see globals.css "Job-seeker route frame"), so the
-       compensation would leave phones with no gutter at all.
-       The max-w-[1240px] that also sat here is gone: it was the only 1240px
-       frame in the app, while every other list route (employer/applications,
-       admin/applications, the agent lists) runs to the shared 1400px. */
-    <div className="page-container">
-      {/* Flattened below sm — the outer shell around a list of cards read as a
-          box-in-box on phones and ate horizontal room from every row. */}
-      <section className="card-base overflow-hidden rounded-3xl border border-border/70 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none panel-body">
-        <div className="border-b border-border/60 px-3.5 py-3 max-sm:px-0 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
-          <div className="flex flex-col gap-2.5">
-            <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
-              <PageHeader
-                title={t("title")}
-              />
-
-              {/* Counters are reference info, not navigation — kept off phones
-                  where they pushed the actual list below the fold. */}
-              <div className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground sm:flex sm:text-sm">
-                <span><span className="text-foreground">{t("summary.total")}</span> {formatNumber(overallTotal)}</span>
-                <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">|</span>
-                <span><span className="text-foreground">{t("summary.active")}</span> {formatNumber(activeApplicationsCount)}</span>
-                <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">|</span>
-                <span><span className="text-foreground">{t("summary.progress")}</span> {pageSummary}</span>
-                <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">|</span>
-                <span><span className="text-foreground">{t("summary.view")}</span> {activeStatusLabel}</span>
-              </div>
-            </div>
-
-            {/* Interviews, offers and onboarding are later stages of the same
-                application, so they hang off this page instead of being three
-                more entries in a "More" menu. */}
-            <JobSeekerSectionNav locale={locale} paths={APPLICATION_JOURNEY_PATHS} />
-
-            {/* Search + Filters share one row on phones instead of stacking. */}
-            <div className="flex flex-row flex-wrap items-center gap-2 lg:gap-2.5">
-              <div className="relative min-w-0 flex-1 lg:max-w-[420px] xl:max-w-[520px]">
-                <label htmlFor="applications-search" className="sr-only">{t("searchLabel")}</label>
-                <Search className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="applications-search"
-                  type="text"
-                  placeholder={t("searchPlaceholder")}
-                  value={searchTerm}
-                  onChange={(e) => { setSearchTerm(e.target.value); resetPage(); }}
-                  className="h-9 rounded-full border-border/70 bg-background/95 ps-8 pe-8 text-sm shadow-sm"
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => { setSearchTerm(""); resetPage(); }}
-                    className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-9 shrink-0 gap-1.5 rounded-full px-3.5 text-sm",
-                  hasActiveFilters && "border-primary/40 bg-primary/5 text-primary"
-                )}
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                {t("filters")}
-                {hasActiveFilters && (
-                  <span aria-hidden="true" className="ms-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
-                    {formatNumber([searchTerm, dateFrom, dateTo].filter(Boolean).length)}
-                  </span>
-                )}
-              </Button>
-
-              {/* Phones: no enclosing pill — the closed border made the cut-off
-                  last tab read as a broken control. Free-standing chips that run
-                  past the edge read as a scrollable carousel instead. The pill
-                  frame + fade mask return at sm+, where most tabs fit. */}
-              <div className="relative w-full min-w-0 lg:w-auto lg:flex-1">
-                <div
-                  role="tablist"
-                  aria-label={t("statusFiltersLabel")}
-                  className="scrollbar-none flex snap-x snap-proximity items-center gap-1.5 overflow-x-auto sm:gap-1 sm:rounded-full sm:border sm:border-border/70 sm:bg-muted/20 sm:p-1 sm:[mask-image:linear-gradient(to_right,black_92%,transparent)] sm:rtl:[mask-image:linear-gradient(to_left,black_92%,transparent)] lg:[mask-image:none] lg:rtl:[mask-image:none]"
-                >
-                  {STATUS_TABS.map((tab) => {
-                    const isActive = tab === activeTab;
-
-                    return (
-                      <button
-                        key={tab}
-                        id={`applications-tab-${tab}`}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        aria-controls={`applications-panel-${tab}`}
-                        onClick={() => handleTabChange(tab)}
-                        className={cn(
-                          "relative shrink-0 snap-start rounded-full border px-3 py-2 text-xs font-medium transition-colors duration-200 sm:border-0 sm:px-3.5 sm:py-1.5 sm:text-sm sm:shadow-none",
-                          isActive
-                            ? "border-transparent text-primary-foreground"
-                            : "border-border/60 bg-background text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground sm:bg-transparent"
-                        )}
-                      >
-                        {isActive && (
-                          <motion.span
-                            layoutId="applications-status-pill"
-                            className="absolute inset-0 rounded-full bg-primary shadow-[0_10px_22px_rgba(37,99,235,0.24)]"
-                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                          />
-                        )}
-                        <span className="relative z-10">{t(`status.${tab}`)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+      {showFilters && (
+        <div id="applications-date-filters" className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background shadow-sm sm:flex-row sm:items-end chip-pad">
+          <div className="flex-1 space-y-1.5">
+            <label htmlFor="applications-date-from" className="text-xs font-medium text-muted-foreground">{t("appliedFrom")}</label>
+            <DateTimePicker
+              mode="date"
+              value={dateFrom}
+              onChange={(val) => { setDateFrom(val); resetPage(); }}
+              className="h-[34px]"
+            />
           </div>
-
-          {/* Date Filters Panel */}
-          {showFilters && (
-            <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-border/60 bg-background shadow-sm sm:flex-row sm:items-end chip-pad">
-              <div className="flex-1 space-y-1.5">
-                <label htmlFor="applications-date-from" className="text-xs font-medium text-muted-foreground">{t("appliedFrom")}</label>
-                <DateTimePicker
-                  mode="date"
-                  value={dateFrom}
-                  onChange={(val) => { setDateFrom(val); resetPage(); }}
-                  className="h-[34px]"
-                />
-              </div>
-              <div className="flex-1 space-y-1.5">
-                <label htmlFor="applications-date-to" className="text-xs font-medium text-muted-foreground">{t("appliedTo")}</label>
-                <DateTimePicker
-                  mode="date"
-                  value={dateTo}
-                  onChange={(val) => { setDateTo(val); resetPage(); }}
-                  className="h-[34px]"
-                />
-              </div>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-[34px] shrink-0 gap-1 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={clearFilters}
-                >
-                  <X className="h-3.5 w-3.5" /> {t("clearAll")}
-                </Button>
-              )}
-            </div>
+          <div className="flex-1 space-y-1.5">
+            <label htmlFor="applications-date-to" className="text-xs font-medium text-muted-foreground">{t("appliedTo")}</label>
+            <DateTimePicker
+              mode="date"
+              value={dateTo}
+              onChange={(val) => { setDateTo(val); resetPage(); }}
+              className="h-[34px]"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-[34px] shrink-0 gap-1 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={clearFilters}
+            >
+              <X className="h-3.5 w-3.5" /> {t("clearAll")}
+            </Button>
           )}
         </div>
+      )}
+    </>
+  );
 
-        <div className="px-3.5 py-3 max-sm:px-0 max-sm:pt-2 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeTab}
-              id={`applications-panel-${activeTab}`}
-              role="tabpanel"
-              aria-labelledby={`applications-tab-${activeTab}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-            >
-              {loading ? (
-                <ListSkeleton count={5} layout="list" itemClassName="h-20" className="space-y-2.5" />
-              ) : applications.length === 0 ? (
-                <EmptyState
-                  icon={FileText}
-                  title={t("emptyTitle")}
-                  description={
-                    activeTab === "all"
-                      ? t("emptyAll")
-                      : t("emptyStatus", { status: activeStatusLabel.toLowerCase() })
-                  }
-                  action={
-                    <Button size="sm" onClick={() => router.push(`/${locale}/job-seeker/jobs`)}>
-                      {t("browseJobs")}
-                    </Button>
-                  }
-                />
-              ) : (
-                <div className="space-y-2.5">
-                  {applications.map((app) => (
-                    <ApplicationCard key={app._id} app={app} locale={locale} onWithdrawn={fetchApplications} />
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        <div className="border-t border-border/60 bg-muted/10 px-3.5 py-3 max-sm:bg-transparent max-sm:px-0 sm:px-4 sm:py-3.5 lg:px-5">
-          <PaginationControls
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            limit={pagination.limit}
-            onPageChange={pagination.setPage}
-            onLimitChange={pagination.setLimit}
-          />
-        </div>
-      </section>
-    </div>
+  return (
+    <ApplicationJourneyShell
+      locale={locale}
+      context={contextLine}
+      toolbar={toolbar}
+      filters={
+        <StatusPillTabs
+          tabs={STATUS_TABS}
+          active={activeTab}
+          onChange={handleTabChange}
+          label={t("statusFiltersLabel")}
+          renderLabel={(tab) => t(`status.${tab}`)}
+          // An accepted offer moves its application to Hired, so Offer counts
+          // offers still awaiting a decision — not every offer ever sent.
+          renderCount={(tab) => statusCounts?.[tab]}
+          idPrefix="applications"
+        />
+      }
+      footer={
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
+      }
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={activeTab}
+          id={`applications-panel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`applications-tab-${activeTab}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          {loading ? (
+            <ListSkeleton count={5} layout="list" itemClassName="h-20" className="space-y-2.5" />
+          ) : applications.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title={t("emptyTitle")}
+              description={
+                activeTab === "all"
+                  ? t("emptyAll")
+                  : t("emptyStatus", { status: activeStatusLabel.toLowerCase() })
+              }
+              action={
+                <Button size="sm" onClick={() => router.push(`/${locale}/job-seeker/jobs`)}>
+                  {t("browseJobs")}
+                </Button>
+              }
+            />
+          ) : (
+            <div className="space-y-2.5">
+              {applications.map((app) => (
+                <ApplicationCard key={app._id} app={app} locale={locale} onWithdrawn={fetchApplications} />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </ApplicationJourneyShell>
   );
 }
 

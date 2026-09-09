@@ -262,7 +262,6 @@ function CronJobsTab({
     reEngagement: { label: t("reEngagementEmailsLabel"), schedule: t("reEngagementSchedule"), desc: t("reEngagementDesc") },
     profileCompletion: { label: t("profileCompletionLabel"), schedule: t("profileCompletionSchedule"), desc: t("profileCompletionDesc") },
     weeklyDigest: { label: t("weeklyDigestLabel"), schedule: t("weeklyDigestSchedule"), desc: t("weeklyDigestDesc") },
-    jobExpiryAlerts: { label: t("jobExpiryAlertsLabel"), schedule: t("jobExpirySchedule"), desc: t("jobExpiryDesc") },
   };
 
   return (

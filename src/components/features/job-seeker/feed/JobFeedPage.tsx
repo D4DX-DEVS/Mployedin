@@ -107,10 +107,6 @@ async function fetchAppliedJobIds(): Promise<string[]> {
     .filter((id): id is string => Boolean(id));
 }
 
-/**
- * Fetch the set of job IDs the seeker has saved/bookmarked.
- */
-
 const SEARCH_PAGE_SIZE = 20;
 const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
 
@@ -237,7 +233,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
   // A saved search needs a text query; hide the action in employer-only browse.
   const canSaveSearch = debouncedSearch.trim().length > 0;
 
-  // Hydrate already-applied and saved job IDs so the "Applied" and "Saved" states show on first load,
+  // Hydrate already-applied job IDs so the "Applied" state shows on first load,
   // including for jobs surfaced through search (not just the recommended feed).
   const { data: appliedIdsData } = useQuery({
     queryKey: ["applied-job-ids"],
@@ -352,8 +348,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
   return (
     <div className="space-y-5">
       <section className="overflow-hidden rounded-xl sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] shadow-[0_20px_60px_rgba(15,23,42,0.06)] panel-body">
-        <div className="space-y-3 sm:space-y-5">
-            <div className="space-y-2 sm:space-y-3">
+        <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-2">
               {/* Badge is decorative — dropped on phones so the hero is title +
                   stats + search instead of five stacked bands. */}
               <div className="hidden items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:inline-flex">
@@ -364,7 +360,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 <h1 className="heading-page text-foreground">
                   {t("hero.title")}
                 </h1>
-                <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block sm:text-[15px]">
+                <p className="mt-1 hidden max-w-3xl text-sm leading-5 text-muted-foreground sm:block sm:text-[15px]">
                   {t("hero.description")}
                 </p>
               </div>
@@ -373,36 +369,36 @@ export function JobFeedPage({ locale }: { locale: string }) {
             {/* Three side-by-side tiles on phones — stacked full-width blocks pushed
                 the actual job list a full screen down. Hints hide below sm. */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-2.5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.liveMatches")}
                 </div>
-                <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
+                <div className="mt-0.5 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                   {isSearchMode ? searchData?.total ?? 0 : matchedCount}
                 </div>
-                <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
+                <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                   {isSearchMode ? t("stats.searchReturned") : t("stats.profileAligned")}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-2.5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.strongMatches")}
                 </div>
-                <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
+                <div className="mt-0.5 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                   {strongMatches}
                 </div>
-                <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
+                <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                   {t("stats.strongMatchesHint")}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-2.5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.newThisWeek")}
                 </div>
-                <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
+                <div className="mt-0.5 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                   {newThisWeek}
                 </div>
-                <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
+                <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
                   {t("stats.newThisWeekHint")}
                 </p>
               </div>
@@ -423,7 +419,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   placeholder={t("search.placeholder")}
                   aria-label={t("search.ariaLabel")}
                   style={{ paddingInlineStart: "2.75rem", paddingInlineEnd: "3rem" }}
-                  className="input-field h-11 w-full rounded-2xl border-border/70 bg-background/95 text-sm shadow-none sm:h-12"
+                  className="input-field h-11 w-full rounded-2xl border-border/70 bg-background/95 text-sm shadow-none"
                 />
                 {searchQuery && (
                   <button
@@ -443,7 +439,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 <button
                   onClick={() => setFiltersOpen(true)}
                   aria-label={t("actions.mobileFilters")}
-                  className="inline-flex lg:hidden h-11 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-background/90 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 sm:px-4"
+                  className="inline-flex lg:hidden h-11 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-background/90 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:px-4"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   <span className="hidden min-[420px]:inline">{t("actions.filters")}</span>
@@ -455,7 +451,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </button>
                 <Link
                   href={`/${locale}/job-seeker/preferences`}
-                  className="hidden h-11 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 lg:inline-flex"
+                  className="hidden h-11 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary lg:inline-flex"
                 >
                   {t("actions.refinePreferences")}
                 </Link>

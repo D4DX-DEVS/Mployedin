@@ -47,12 +47,23 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     Interview.aggregate([
       { $match: { jobId } },
       { $facet: {
+        // Every interview still to be held or closed out, overdue ones included —
+        // the tab count, so it matches the "Scheduled" chip on the Interviews tab.
+        open: [{ $match: { status: { $in: ["scheduled", "confirmed"] } } }, { $count: "n" }],
         upcoming: [{ $match: { status: { $in: ["scheduled", "confirmed"] }, scheduledAt: { $gte: now } } }, { $count: "n" }],
         awaitingOutcome: [{ $match: { $or: [
           { status: "completed", outcome: { $in: [null, undefined] } },
           { status: { $in: ["scheduled", "confirmed"] }, scheduledAt: { $lt: now } },
         ] } }, { $count: "n" }],
         rescheduleRequests: [{ $match: { status: { $in: ["scheduled", "confirmed"] }, candidateResponse: "reschedule_requested" } }, { $count: "n" }],
+        // Which applications have an interview in flight. The Overview funnel
+        // needs this because an application can sit at another stage while an
+        // interview is still open — someone moved the candidate back — and a
+        // stage-only count then reads "Interviewing 0" beside "Interviews 1".
+        openApplicationIds: [
+          { $match: { status: { $in: ["scheduled", "confirmed"] } } },
+          { $group: { _id: "$applicationId" } },
+        ],
       } },
     ]),
     Offer.aggregate([
@@ -86,6 +97,20 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
   const total = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
+  // Candidates actually in interview: those at the stage, plus anyone holding an
+  // open interview from another stage. Rejected and withdrawn are excluded —
+  // their interview is moot even if the document is still open.
+  const openInterviewAppIds = ((interviews?.openApplicationIds ?? []) as Array<{ _id: unknown }>)
+    .map((row) => row._id)
+    .filter(Boolean);
+  const interviewingElsewhere = openInterviewAppIds.length
+    ? await Application.countDocuments({
+        _id: { $in: openInterviewAppIds },
+        status: { $nin: ["interview_scheduled", "rejected", "withdrawn"] },
+      })
+    : 0;
+  const interviewingCandidates = statusCounts.interview_scheduled + interviewingElsewhere;
+
   return NextResponse.json({
     jobId: String(job._id),
     status: job.status,
@@ -95,6 +120,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     statusCounts,
     unreviewed: count(apps?.unreviewed),
     interviews: {
+      open: count(interviews?.open),
+      interviewingCandidates,
       upcoming: count(interviews?.upcoming),
       awaitingOutcome: count(interviews?.awaitingOutcome),
       rescheduleRequests: count(interviews?.rescheduleRequests),

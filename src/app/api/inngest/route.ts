@@ -5,7 +5,6 @@ import { dailyRecommendationsCron } from "@/lib/inngest/dailyRecommendations";
 import { dailyDigestWorker } from "@/lib/inngest/dailyDigestWorker";
 import { reEngagementCron, profileCompletionCron } from "@/lib/inngest/reEngagement";
 import { weeklyDigestCron } from "@/lib/inngest/weeklyDigest";
-import { jobExpiryAlertsCron } from "@/lib/inngest/jobExpiryAlerts";
 import { similarJobsAfterApply } from "@/lib/inngest/similarJobsEmail";
 import { aiScreenApplication } from "@/lib/inngest/aiScreenApplication";
 import { emailSequenceSenderCron } from "@/lib/inngest/emailSequenceSender";
@@ -28,7 +27,6 @@ export const { GET, POST, PUT } = serve({
     reEngagementCron,
     profileCompletionCron,
     weeklyDigestCron,
-    jobExpiryAlertsCron,
     similarJobsAfterApply,
     aiScreenApplication,
     emailSequenceSenderCron,

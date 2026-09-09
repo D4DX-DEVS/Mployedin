@@ -52,7 +52,7 @@ function getPageWindow(current: number, total: number): (number | "…")[] {
   return out;
 }
 
-export function MyPostersPage() {
+export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; embedded?: boolean } = {}) {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,9 +71,15 @@ export function MyPostersPage() {
   const [limit, setLimit] = useState(12);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["employer-posters", page, limit],
+    queryKey: ["employer-posters", jobId ?? "all", page, limit],
     queryFn: async () => {
-      const res = await fetch(`/api/employers/posters?page=${page}&limit=${limit}`);
+      const url = new URL("/api/employers/posters", window.location.origin);
+      url.searchParams.set("page", String(page));
+      url.searchParams.set("limit", String(limit));
+      if (jobId) {
+        url.searchParams.set("jobId", jobId);
+      }
+      const res = await fetch(url.toString());
       if (!res.ok) throw new Error("Failed to fetch posters");
       return res.json() as Promise<{ posters: PosterItem[]; pagination: { page: number; pages: number; total: number } }>;
     },
@@ -88,33 +94,37 @@ export function MyPostersPage() {
     onError: () => toast.error(t("deleteError")),
   });
 
+  const wrapperClass = embedded ? "space-y-4" : "page-container";
+
   return (
-    <div className="page-container">
+    <div className={wrapperClass}>
       {ConfirmDialogNode}
       {/* Pattern A (compact workspace): title, one context line (the eyebrow
           on phones, the description from sm), credits + the create action. */}
-      <WorkspaceHeader
-        title={t("title")}
-        context={
-          <>
-            <span className="sm:hidden">{t("posterCount", { count: data?.posters?.length ?? 0 })}</span>
-            <span className="hidden sm:inline">{t("description")}</span>
-          </>
-        }
-        actions={
-          <>
-            <CreditsBadge credits={credits} />
-            <Link
-              href={`/${locale}/employer/jobs`}
-              aria-label={t("createCta")}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90 sm:px-4"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">{t("createCta")}</span>
-            </Link>
-          </>
-        }
-      />
+      {!embedded && (
+        <WorkspaceHeader
+          title={t("title")}
+          context={
+            <>
+              <span className="sm:hidden">{t("posterCount", { count: data?.posters?.length ?? 0 })}</span>
+              <span className="hidden sm:inline">{t("description")}</span>
+            </>
+          }
+          actions={
+            <>
+              <CreditsBadge credits={credits} />
+              <Link
+                href={`/${locale}/employer/jobs`}
+                aria-label={t("createCta")}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90 sm:px-4"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("createCta")}</span>
+              </Link>
+            </>
+          }
+        />
+      )}
 
       {/* Grid */}
       {isLoading ? (

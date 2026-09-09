@@ -94,7 +94,10 @@ describe("per-job / per-application scoping params", () => {
   it("GET /api/placements honours jobId and applicationId", async () => {
     const { GET } = await import("@/app/api/placements/route");
     await GET(get(`http://localhost:3000/api/placements?jobId=${JOB_ID}&applicationId=${APPLICATION_ID}`), {} as any);
-    expect(placementFind).toHaveBeenCalledWith(expect.objectContaining({ jobId: JOB_ID, applicationId: APPLICATION_ID }));
+    // ids are cast to ObjectId so the stats aggregate $match sees the same rows as find()
+    const q = placementFind.mock.calls[0][0];
+    expect(String(q.jobId)).toBe(JOB_ID);
+    expect(String(q.applicationId)).toBe(APPLICATION_ID);
   });
 
   it("GET /api/placements ignores an invalid jobId", async () => {

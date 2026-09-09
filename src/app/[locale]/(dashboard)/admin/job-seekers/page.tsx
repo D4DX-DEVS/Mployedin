@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageHero } from "@/components/shared/PageHero";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -80,6 +81,8 @@ interface AiFilters {
 
 export default function AdminJobSeekersPage() {
   const tr = useTranslations("adminJobSeekers");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const { can } = usePermissions();
 
   // Translation maps
@@ -400,7 +403,7 @@ export default function AdminJobSeekersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+    if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: editFields });
     setEditItem(null);
     fetchJobSeekers();
   };

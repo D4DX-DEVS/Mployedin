@@ -24,6 +24,7 @@ describe("hiring pipeline", () => {
     expect(normalizeStageId("interview_completed")).toBe("selected");
     expect(normalizeStageId("offer_extended")).toBe("offer");
     expect(normalizeStageId("accepted")).toBe("hired");
+    expect(normalizeStageId("interview")).toBe("interview_scheduled");
     expect(normalizeStageId("applied")).toBe("applied");
     expect(normalizeStageId("phone_screen")).toBeNull();
   });

@@ -42,6 +42,9 @@ export interface Job {
   description?: string;
   responsibilities?: string[];
   qualifications?: string[];
+  benefits?: string[];
+  learningOutcomes?: string[];
+  duration?: string;
   workflowMode?: string;
   updatedAt?: string;
   employerId?: { companyName?: string; logo?: string; industry?: string };
@@ -111,6 +114,7 @@ export function useJobs(filters: JobsFilters) {
     queryFn: () => fetchJobs(filters),
     staleTime: 5 * 60 * 1000, // 5 min — match global default; avoids HMR refetch storms
     placeholderData: (prev) => prev,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -129,6 +133,8 @@ export function useUpdateJobStatus() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: jobKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobKeys.details() });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
   });
 }
@@ -144,6 +150,8 @@ export function useCloneJob() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: jobKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobKeys.details() });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
   });
 }
@@ -209,6 +217,7 @@ export interface JobTemplateDetail {
   tags?: string[];
   vacancies?: number;
   applicationMode?: "auto" | "manual";
+  usageCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -332,6 +341,7 @@ export function useDeleteJob() {
     onSuccess: () => {
       // optimistic update already removed the job — just sync details cache
       qc.invalidateQueries({ queryKey: jobKeys.details() });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
     onError: (_err, _jobId, context) => {
       // roll back optimistic update
@@ -357,6 +367,7 @@ export function useJobDetail(id: string) {
     },
     staleTime: 30 * 1000,
     enabled: !!id,
+    refetchOnWindowFocus: true,
   });
 }
 

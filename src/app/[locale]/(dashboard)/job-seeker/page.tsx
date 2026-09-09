@@ -4,15 +4,17 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
-import SavedJob from "@/models/SavedJob";
 import ProfileView from "@/models/ProfileView";
 import Job from "@/models/Job";
-import { calculateMatchScore, jobProfileFromDoc, skillsOverlap } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import {
-  JobSeekerHomePage,
+  buildRecommendedJobQuery,
+  rankRecommendedJobs,
   HOME_RECOMMENDED_JOB_COUNT,
-} from "@/components/features/job-seeker/home/JobSeekerHomePage";
+  RECOMMENDATION_POOL_SIZE,
+  RECOMMENDED_JOB_SELECT,
+} from "@/lib/jobRecommendations";
+import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
 
@@ -44,7 +46,6 @@ export default async function JobSeekerPage({
     .lean();
 
   if (!seeker) {
-    console.log("[JobSeekerPage SSR] No seeker found for userId:", userId);
     return (
       <JobSeekerHomePage
         locale={locale}
@@ -71,7 +72,17 @@ export default async function JobSeekerPage({
     Conversation = null;
   }
 
-  // Fetch applied job IDs and snippets in parallel with other counts
+  // The candidate pool excludes applied jobs in the query itself (same as
+  // /api/jobs/recommended), so this small, indexed lookup has to resolve first.
+  // Withdrawn applications don't count — those jobs stay recommendable.
+  const appliedJobIds = await Application.find({
+    jobSeekerId: seekerId,
+    status: { $ne: "withdrawn" },
+  })
+    .select("jobId")
+    .lean()
+    .then((apps) => apps.map((a) => a.jobId));
+
   const countPromises: Promise<unknown>[] = [
     Application.countDocuments({ jobSeekerId: seekerId }),
     Interview.countDocuments({
@@ -79,7 +90,6 @@ export default async function JobSeekerPage({
       scheduledAt: { $gte: now },
       status: { $nin: ["cancelled"] },
     }),
-    SavedJob.countDocuments({ jobSeekerId: seekerId }),
     // ProfileView.jobSeekerId holds the User id (that is what
     // GET /api/job-seekers/[id] writes), not the JobSeeker profile _id — the
     // sibling counters correctly use seekerId, this one must not.
@@ -87,13 +97,18 @@ export default async function JobSeekerPage({
       jobSeekerId: seeker.userId,
       viewedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
     }),
-    Job.find({
-      status: "active",
-      $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
-    })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .select("title salary location employerId tags createdAt requirements employmentType")
+    Job.find(
+      buildRecommendedJobQuery({
+        preferredCountries: seeker.preferredCountries,
+        excludeJobIds: appliedJobIds,
+        now,
+      })
+    )
+      // Same pool window and tiebreaker as the feed, so the four cards here are
+      // the first four of the feed's page one.
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(RECOMMENDATION_POOL_SIZE)
+      .select(RECOMMENDED_JOB_SELECT)
       .populate("employerId", "companyName logo")
       .lean(),
     Application.find({ jobSeekerId: seekerId })
@@ -101,12 +116,6 @@ export default async function JobSeekerPage({
       .populate({ path: "jobId", select: "title employerId", populate: { path: "employerId", select: "companyName logo" } })
       .sort({ createdAt: -1 })
       .limit(5)
-      .lean(),
-    // ALL non-withdrawn applications — the exclusion set must cover every
-    // applied job (the 5-item list above is for display only), and withdrawn
-    // jobs must stay recommendable (parity with /api/jobs/recommended).
-    Application.find({ jobSeekerId: seekerId, status: { $ne: "withdrawn" } })
-      .select("jobId")
       .lean(),
   ];
 
@@ -139,61 +148,39 @@ export default async function JobSeekerPage({
     countPromises.push(Promise.resolve(0));
   }
 
-  const [appCount, interviewCount, savedCount, viewCount, recentJobs, appliedApps, allActiveApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
+  const [appCount, interviewCount, viewCount, recentJobs, appliedApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
 
-  // Build a Set of applied job IDs for fast exclusion
-  const appliedJobIdSet = new Set(
-    (allActiveApps as Array<{ jobId?: unknown }>).map((a) => String(a.jobId))
-  );
-
-  // Score and rank recommended jobs server-side, excluding already-applied ones
-  // Fully serialize to plain primitives — populated subdocs still carry Mongoose ObjectIds
   const seekerProfile = await effectiveSeekerProfile(userId, seeker);
 
-  // Relevance signal: drop jobs completely unrelated to the seeker — no skill
-  // overlap AND no role-title match (e.g. "Sales support staff" for a MERN/UI-UX
-  // profile). Only applied when the seeker has both skills and preferred roles.
-  const seekerSkillSet = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
-  const seekerRoleList = (seekerProfile.preferredRoles ?? []).map((r) => r.toLowerCase());
-  const hasRelevanceSignal = seekerSkillSet.size > 0 && seekerRoleList.length > 0;
-  const isRelevantJob = (job: Record<string, unknown>): boolean => {
-    if (!hasRelevanceSignal) return true;
-    const reqs = job.requirements as { skills?: string[] } | null;
-    const jobSkills = (reqs?.skills ?? []).map(String);
-    const skillOverlap =
-      jobSkills.some((s) => seekerSkillSet.has(s.toLowerCase())) ||
-      skillsOverlap(seekerProfile.skills, jobSkills);
-    const titleLower = String(job.title ?? "").toLowerCase();
-    const titleWords = titleLower.split(/[^a-z0-9+#]+/).filter((w) => w.length >= 3);
-    const roleMatch = seekerRoleList.some((role) => {
-      if (titleLower.includes(role) || role.includes(titleLower)) return true;
-      const roleWords = role.split(/[^a-z0-9+#]+/).filter((w) => w.length >= 3);
-      return roleWords.length > 0 && roleWords.every((w) => titleWords.includes(w));
-    });
-    return skillOverlap || roleMatch;
-  };
-
-  const scoredJobs = (recentJobs as Array<Record<string, unknown>>)
-    .filter((job) => !appliedJobIdSet.has(String(job._id)))
-    .filter(isRelevantJob)
+  // One ranking, shared with /api/jobs/recommended and the feed: score the
+  // pool, sink off-profile jobs by a fixed penalty instead of dropping them,
+  // and cut to the number of cards the page paints. The page used to run its
+  // own stricter rules (hard relevance drop, score >= 30) and ship an empty
+  // list the client then replaced with the API's answer — which is what made
+  // the "no recommendations yet" panel flash before the cards appeared.
+  const scoredJobs = rankRecommendedJobs(
+    recentJobs as Array<Record<string, unknown>>,
+    seekerProfile
+  )
+    .slice(0, HOME_RECOMMENDED_JOB_COUNT)
+    // Fully serialize to plain primitives — populated subdocs still carry
+    // Mongoose ObjectIds, which cannot cross the server/client boundary.
     .map((job) => {
       const emp = job.employerId as { _id?: unknown; companyName?: string; logo?: string } | null;
       const loc = job.location as { city?: string; country?: string; isRemote?: boolean } | null;
       const sal = job.salary as { min?: number; max?: number; currency?: string } | null;
-      const rawDate = job.createdAt instanceof Date ? job.createdAt : new Date(job.createdAt as string ?? 0);
+      const rawDate = job.createdAt instanceof Date ? job.createdAt : new Date((job.createdAt as string) ?? 0);
       const reqs = job.requirements as { skills?: string[] } | null;
-      const jobSkills = (reqs?.skills ?? []).map(String);
       return {
         _id: String(job._id),
         title: String(job.title ?? ""),
         createdAt: isNaN(rawDate.getTime()) ? new Date(0).toISOString() : rawDate.toISOString(),
-        matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0])),
+        matchScore: job.matchScore,
         employmentType: job.employmentType ? String(job.employmentType) : undefined,
         // The card shows three skills and marks the ones the seeker already
         // has, so both the list and the overlap have to reach the client.
-        skills: jobSkills,
-        matchedSkills: jobSkills.filter((skill) => seekerSkillSet.has(skill.toLowerCase())),
-        // Serialize nested objects to plain primitives only
+        skills: (reqs?.skills ?? []).map(String),
+        matchedSkills: job.matchedSkills,
         location: loc
           ? { city: loc.city ?? undefined, country: loc.country ?? undefined, isRemote: loc.isRemote ?? false }
           : undefined,
@@ -202,27 +189,19 @@ export default async function JobSeekerPage({
           : undefined,
         employerId: emp
           ? {
-              _id: (emp as { _id?: unknown })._id ? String((emp as { _id?: unknown })._id) : undefined,
+              _id: emp._id ? String(emp._id) : undefined,
               companyName: emp.companyName ?? undefined,
               logo: emp.logo ?? undefined,
             }
           : undefined,
       };
-    })
-    .filter((j) => j.matchScore >= 30)
-    .sort((a, b) => b.matchScore - a.matchScore)
-    // The home page paints exactly this many cards — slicing wider only ships
-    // jobs the client would drop.
-    .slice(0, HOME_RECOMMENDED_JOB_COUNT);
-
-  console.log("[JobSeekerPage SSR] scoredJobs count:", scoredJobs.length, scoredJobs.map(j => j.title));
+    });
 
   const initialData: InitialHomeData = {
     profile: JSON.parse(JSON.stringify(seeker)),
     stats: {
       applicationsSent: { count: appCount as number },
       upcomingInterviews: { count: interviewCount as number },
-      savedJobs: { count: savedCount as number },
       recruiterViews: { total: viewCount as number },
       pendingOffers: { count: Math.max(0, Number(pendingOfferCount) || 0) },
       unreadMessages: { count: Math.max(0, Number(unreadMessageCount) || 0) },
