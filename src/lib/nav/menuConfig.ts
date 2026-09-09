@@ -977,38 +977,17 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "أولويات اليوم وخط التوظيف",
           },
           {
+            // A single row since the job workspace (2026-09-08): templates are
+            // reached from "Post job from template" (Create menu / ⌘K) and
+            // the picker's "Manage templates" link, posters from each job's
+            // Posting tab. Both pages still exist; they are no longer
+            // destinations of their own.
             title: "Jobs",
             titleAr: "الوظائف",
             href: p("/employer/jobs"),
             icon: "Briefcase",
             description: "Post, edit and publish roles",
             descriptionAr: "نشر الوظائف وتحريرها",
-            children: [
-              {
-                title: "All Jobs",
-                titleAr: "كل الوظائف",
-                href: p("/employer/jobs"),
-                icon: "Briefcase",
-                description: "Live, draft and paused roles",
-                descriptionAr: "الوظائف النشطة والمسودات والمتوقفة",
-              },
-              {
-                title: "Job Templates",
-                titleAr: "قوالب الوظائف",
-                href: p("/employer/job-templates"),
-                icon: "LayoutTemplate",
-                description: "Reuse a role you posted before",
-                descriptionAr: "إعادة استخدام وظيفة نشرتها سابقًا",
-              },
-              {
-                title: "Job Posters",
-                titleAr: "ملصقات الوظائف",
-                href: p("/employer/my-posters"),
-                icon: "Image",
-                description: "Shareable graphics for your roles",
-                descriptionAr: "تصاميم قابلة للمشاركة لوظائفك",
-              },
-            ],
           },
           {
             // "Pipeline" named the mechanism; "Hiring" names what the employer

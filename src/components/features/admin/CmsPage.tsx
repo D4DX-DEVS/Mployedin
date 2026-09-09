@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { useParams, useRouter } from "next/navigation";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -76,6 +77,7 @@ export default function CmsPage({
   searchPlaceholder,
 }: CmsPageProps) {
   const t = useTranslations("cmsPage");
+  const tf = useTranslations("formErrors");
   const tCommon = useTranslations("common");
   const { can } = usePermissions();
   const { locale } = useParams<{ locale: string }>();
@@ -156,18 +158,6 @@ export default function CmsPage({
 
   // The API returns per-field zod issues in `details`; showing only `error`
   // left admins with a bare "Validation failed" and no idea which field broke.
-  const readError = async (r: Response, fallback: string): Promise<string> => {
-    const err = (await r.json().catch(() => ({}))) as {
-      error?: string;
-      details?: { path?: string; message?: string }[];
-    };
-    const detail = err.details
-      ?.map((d) => [d.path, d.message].filter(Boolean).join(": "))
-      .filter(Boolean)
-      .join(" • ");
-    return [err.error ?? fallback, detail].filter(Boolean).join(" — ");
-  };
-
   const handleFilterChange = (next: CmsFilterValues) => {
     setFilterValues(next);
     resetPage();
@@ -181,7 +171,7 @@ export default function CmsPage({
       body: JSON.stringify(payload),
     });
     if (!r.ok) {
-      throw new Error(await readError(r, "Failed to create"));
+      throw await formErrorFromResponse(r, { t: tf, locale, fieldLabels: fields });
     }
     await fetchItems();
   };
@@ -195,7 +185,7 @@ export default function CmsPage({
       body: JSON.stringify(payload),
     });
     if (!r.ok) {
-      throw new Error(await readError(r, "Failed to update"));
+      throw await formErrorFromResponse(r, { t: tf, locale, fieldLabels: fields });
     }
     setEditItem(null);
     await fetchItems();

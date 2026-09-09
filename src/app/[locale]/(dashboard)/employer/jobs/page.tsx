@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send, MapPin, CalendarDays } from "lucide-react";
+import { Plus, Edit2, Eye, FileText, Trash2, Copy, Users, BriefcaseBusiness, Search, Sparkles, ArrowRight, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Send, MapPin, CalendarDays, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import { DraftExtractionsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTemplate, useJobTemplates, type Job } from "@/hooks/useJobs";
+import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, type Job } from "@/hooks/useJobs";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
 import { toUserFacingError } from "@/lib/errors/user-facing";
@@ -61,7 +61,7 @@ const STATUS_TONES: Record<string, string> = {
   expired: "workspace-tone-rose",
 };
 
-type PendingJobAction = "activate" | "deactivate" | "pause" | "delete" | "publish";
+type PendingJobAction = "activate" | "pause" | "delete" | "publish" | "close";
 type ExportJobRecord = Record<string, unknown> & {
   location?: string | { city?: string; country?: string; isRemote?: boolean };
   salary?: { min?: number; max?: number; currency?: string };
@@ -156,13 +156,6 @@ export default function EmployerJobsPage() {
   const updateStatus = useUpdateJobStatus();
   const cloneJob = useCloneJob();
   const deleteJob = useDeleteJob();
-  const saveAsTemplate = useSaveAsTemplate();
-  const { data: jobTemplates = [] } = useJobTemplates();
-  const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
-
-  const savedTemplateIds = new Set(
-    jobTemplates.filter((t) => t.sourceJobId).map((t) => t.sourceJobId as string)
-  );
 
   const activeJobs = data?.statusCounts?.active ?? jobs.filter((job) => job.status === "active").length;
   const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
@@ -187,6 +180,13 @@ export default function EmployerJobsPage() {
   });
 
   async function handleCloneJob(job: Job) {
+    const ok = await confirmDialog({
+      title: t("cloneButton"),
+      message: t("confirmDuplicate", { title: job.title }),
+      confirmLabel: t("duplicateConfirmLabel"),
+      variant: "default",
+    });
+    if (!ok) return;
     setCloningJobId(job._id);
     const loadingToastId = toast.loading(t("toastCloningJob"));
 
@@ -207,29 +207,17 @@ export default function EmployerJobsPage() {
     }
   }
 
-  async function handleSaveAsTemplate(job: Job) {
-    setSavingTemplateId(job._id);
-    try {
-      await saveAsTemplate.mutateAsync(job);
-      toast.success(`"${job.title}" ${t("toastSavedAsTemplate")}`);
-    } catch {
-      toast.error(t("toastFailedTemplate"));
-    } finally {
-      setSavingTemplateId(null);
-    }
-  }
-
-  async function handleDeactivateJob(job: Job) {
-    const ok = await confirmDialog(t("confirmDeactivate"));
+  async function handleCloseJob(job: Job) {
+    const ok = await confirmDialog(t("confirmCloseJob"));
     if (!ok) return;
 
-    setPendingJobAction({ jobId: job._id, action: "deactivate" });
+    setPendingJobAction({ jobId: job._id, action: "close" });
 
     try {
       await updateStatus.mutateAsync({ jobId: job._id, status: "closed" });
-      toast.success(t("toastJobDeactivated"));
+      toast.success(t("toastJobClosed"));
     } catch (error: unknown) {
-      toast.error(toUserFacingError(error, { fallback: t("toastFailedDeactivate") }).message);
+      toast.error(toUserFacingError(error, { fallback: t("toastFailedClose") }).message);
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -645,10 +633,10 @@ export default function EmployerJobsPage() {
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
             const isActivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "activate";
-            const isDeactivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "deactivate";
             const isPausing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "pause";
             const isDeleting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "delete";
             const isPublishing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "publish";
+            const isClosing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "close";
             const isUnpublished = job.status === "draft";
             const jobHref = `/${locale}/employer/jobs/${job._id}`;
             const applicants = getFilledSlots(job);
@@ -657,8 +645,8 @@ export default function EmployerJobsPage() {
               : job.status === "paused"
                 ? { label: isActivating ? t("resumingButton") : t("resumeJobButton"), onClick: () => { void handleResumeJob(job); }, Icon: PlayCircle }
                 : applicants > 0
-                  ? { label: t("reviewApplicantsButton", { count: applicants }), href: `/${locale}/employer/applications?jobId=${job._id}`, Icon: Users }
-                  : { label: t("viewJobButton"), href: jobHref, Icon: Eye };
+                  ? { label: t("reviewApplicantsButton", { count: applicants }), href: `${jobHref}/applications`, Icon: Users }
+                  : { label: t("openJobButton"), href: jobHref, Icon: Eye };
             const primaryActionAria = t("primaryActionForJob", { action: primaryAction.label, title: job.title });
             const statusLabel = t(getStatusLabelKey(job.status));
 
@@ -753,9 +741,6 @@ export default function EmployerJobsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onClick={() => router.push(jobHref)}>
-                        <Eye className="h-4 w-4" /> {t("viewButton")}
-                      </DropdownMenuItem>
                       {can("jobs", "update") && (
                         <DropdownMenuItem onClick={() => router.push(`${jobHref}/edit`)}>
                           <Edit2 className="h-4 w-4" /> {t("editButton")}
@@ -776,46 +761,24 @@ export default function EmployerJobsPage() {
                           <PlayCircle className="h-4 w-4" /> {isActivating ? t("resumingButton") : t("resumeButton")}
                         </DropdownMenuItem>
                       )}
-                      {can("jobs", "update") && (job.status === "active" || job.status === "paused") && (
-                        <DropdownMenuItem onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
-                          <Clock className="h-4 w-4" /> {isDeactivating ? t("deactivatingButton") : t("deactivateButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "update") && !isUnpublished && (
-                        <DropdownMenuItem onClick={() => router.push(`${jobHref}?tab=workflow`)}>
-                          <GitBranch className="h-4 w-4" /> {t("workflowButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "update") && !isUnpublished && (
-                        <DropdownMenuItem onClick={() => router.push(`${jobHref}?tab=matching-weights`)}>
-                          <SlidersHorizontal className="h-4 w-4" /> {t("weightsButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "create") && (
-                        <DropdownMenuItem onClick={() => router.push(`${jobHref}/poster`)}>
-                          <ImageIcon className="h-4 w-4" /> {t("posterButton")}
-                        </DropdownMenuItem>
-                      )}
                       {can("jobs", "create") && (
                         <DropdownMenuItem onClick={() => { void handleCloneJob(job); }} disabled={cloningJobId === job._id}>
                           <Copy className="h-4 w-4" /> {cloningJobId === job._id ? t("cloningButton") : t("cloneButton")}
                         </DropdownMenuItem>
                       )}
-                      {can("jobs", "create") && (
-                        <DropdownMenuItem
-                          onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
-                          disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}
-                        >
-                          {savedTemplateIds.has(job._id) ? (
-                            <><CheckCircle className="h-4 w-4 text-status-selected" /> {t("templateSavedButton")}</>
-                          ) : savingTemplateId === job._id ? (
-                            <><BookTemplate className="h-4 w-4" /> {t("templateSavingButton")}</>
-                          ) : (
-                            <><BookTemplate className="h-4 w-4" /> {t("templateButton")}</>
-                          )}
-                        </DropdownMenuItem>
+                      {can("jobs", "update") && (job.status === "active" || job.status === "paused") && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => { void handleCloseJob(job); }}
+                            disabled={isClosing}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <XCircle className="h-4 w-4" /> {isClosing ? t("closingButton") : t("closeJobButton")}
+                          </DropdownMenuItem>
+                        </>
                       )}
-                      {can("jobs", "delete") && ["draft", "paused", "closed", "expired"].includes(job.status) && (
+                      {can("jobs", "delete") && job.status === "draft" && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

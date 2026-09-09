@@ -109,6 +109,9 @@ export function useUpdateInterview() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: interviewKeys.lists() });
+      // Interview changes move the application stage and the job header counts.
+      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
   });
 }
@@ -140,6 +143,9 @@ export function useScheduleNextRound() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: interviewKeys.lists() });
+      // Interview changes move the application stage and the job header counts.
+      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
   });
 }
@@ -182,6 +188,9 @@ export function useBulkScheduleInterviews() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: interviewKeys.lists() });
+      // Interview changes move the application stage and the job header counts.
+      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
   });
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -455,6 +456,8 @@ function DroppableKanbanColumn({
 
 export default function AgentLeadsPage() {
   const t = useTranslations("agentLeads");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
@@ -579,11 +582,7 @@ export default function AgentLeadsPage() {
     else delete payload.expectedRevenue;
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      const detail = Array.isArray(err?.details) && err.details.length
-        ? `${err.details[0].path}: ${err.details[0].message}`
-        : null;
-      throw new Error(detail ?? err?.error ?? "Failed to save lead");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: leadFields, conflict: tf("emailInUse") });
     }
     setEditLead(null);
     fetchLeads();

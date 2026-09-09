@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, Globe } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface CountryItem {
@@ -40,6 +41,8 @@ interface CountryItem {
 
 export default function CountriesPage() {
   const t = useTranslations("adminLocationData");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const { can } = usePermissions();
 
   const CREATE_FIELDS: CrudField[] = [
@@ -115,8 +118,7 @@ export default function CountriesPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? "Failed to create");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
     fetchItems();
   };
@@ -142,8 +144,7 @@ export default function CountriesPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? "Failed to update");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
     setEditItem(null);
     fetchItems();

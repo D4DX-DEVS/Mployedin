@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 // ── Types ──────────────────────────────────────────────────────────
 export interface Placement {
   _id: string;
+  applicationId?: string;
+  jobSeekerId?: string;
+  placedAt?: string;
   jobTitle?: string;
   candidateName?: string;
   candidateEmail?: string;
@@ -26,6 +29,10 @@ export interface PlacementsFilters {
   limit: number;
   status?: string;
   visaStatus?: string;
+  /** Scope to one job (job workspace Hires tab). */
+  jobId?: string;
+  /** Scope to one application (candidate journey). */
+  applicationId?: string;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -42,6 +49,8 @@ async function fetchPlacements(filters: PlacementsFilters): Promise<{ placements
   params.set("limit", String(filters.limit));
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
   if (filters.visaStatus && filters.visaStatus !== "all") params.set("visaStatus", filters.visaStatus);
+  if (filters.jobId) params.set("jobId", filters.jobId);
+  if (filters.applicationId) params.set("applicationId", filters.applicationId);
 
   const res = await fetch(`/api/placements?${params}`);
   if (!res.ok) throw new Error("Failed to fetch placements");

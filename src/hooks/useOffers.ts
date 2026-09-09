@@ -75,6 +75,9 @@ export function useWithdrawOffer() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: offerKeys.lists() });
+      // Offers move the application stage and the job header counts.
+      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
   });
 }
@@ -103,6 +106,9 @@ export function useCreateOffer() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: offerKeys.lists() });
+      // Offers move the application stage and the job header counts.
+      qc.invalidateQueries({ queryKey: ["applications"] });
+      qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });
     },
   });
 }

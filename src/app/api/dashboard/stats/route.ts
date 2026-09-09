@@ -3,7 +3,6 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
-import SavedJob from "@/models/SavedJob";
 import ProfileView from "@/models/ProfileView";
 import JobSeeker from "@/models/JobSeeker";
 
@@ -45,9 +44,6 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     interviewsTotal,
     interviewsCurrWeek,
     interviewsPrevWeek,
-    savedTotal,
-    savedCurrWeek,
-    savedPrevWeek,
     matchScoreAgg,
     viewsTotal,
     viewsCurrWeek,
@@ -60,9 +56,6 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     Interview.countDocuments({ jobSeekerId: seekerObjId, status: { $nin: ["cancelled"] }, scheduledAt: { $gte: now } }),
     Interview.countDocuments({ jobSeekerId: seekerObjId, status: { $nin: ["cancelled"] }, scheduledAt: { $gte: startOfWeek } }),
     Interview.countDocuments({ jobSeekerId: seekerObjId, status: { $nin: ["cancelled"] }, scheduledAt: { $gte: startOfPrevWeek, $lt: startOfWeek } }),
-    SavedJob.countDocuments({ jobSeekerId: seekerObjId }),
-    SavedJob.countDocuments({ jobSeekerId: seekerObjId, savedAt: { $gte: startOfWeek } }),
-    SavedJob.countDocuments({ jobSeekerId: seekerObjId, savedAt: { $gte: startOfPrevWeek, $lt: startOfWeek } }),
     Application.aggregate([
       { $match: { jobSeekerId: seekerObjId, aiMatchScore: { $exists: true, $ne: null } } },
       { $group: { _id: null, avg: { $avg: "$aiMatchScore" } } },
@@ -102,7 +95,6 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   return NextResponse.json({
     applicationsSent: { count: appsTotal, delta: appsCurrWeek - appsPrevWeek },
     upcomingInterviews: { count: interviewsTotal, delta: interviewsCurrWeek - interviewsPrevWeek },
-    savedJobs: { count: savedTotal, delta: savedCurrWeek - savedPrevWeek },
     avgMatchScore: { value: avgMatchScore, delta: 0 },
     recruiterViews: {
       total: viewsTotal,

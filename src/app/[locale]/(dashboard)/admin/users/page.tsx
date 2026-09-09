@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Users } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -55,6 +57,8 @@ const ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"];
 
 export default function AdminUsersPage() {
   const t = useTranslations("adminUsers");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,6 +218,11 @@ export default function AdminUsersPage() {
       setCreateError(t("allFieldsRequired"));
       return;
     }
+    const passwordError = validatePasswordForForm(createForm.password, { locale, t: tf });
+    if (passwordError) {
+      setCreateError(passwordError);
+      return;
+    }
     setCreateLoading(true);
     try {
       const payload: Record<string, unknown> = {
@@ -229,14 +238,13 @@ export default function AdminUsersPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const e = await res.json();
-        const details = Array.isArray(e.details)
-          ? (e.details as { path?: string; message?: string }[])
-              .map((d) => (d.path ? `${d.path}: ${d.message}` : d.message))
-              .filter(Boolean)
-              .join("; ")
-          : "";
-        setCreateError(details || e.error || t("failedToCreateUser"));
+        const { message } = await formErrorFromResponse(res, {
+          t: tf,
+          locale,
+          fieldLabels: { name: t("fullName"), email: t("email"), password: t("password"), role: t("role") },
+          conflict: tf("emailInUse"),
+        });
+        setCreateError(message);
         return;
       }
       setShowCreate(false);
@@ -563,8 +571,10 @@ export default function AdminUsersPage() {
                   type="text"
                   value={createForm.password}
                   onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder={t("passwordHint")}
+                  placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
+                  aria-describedby="create-password-hint"
                 />
+                <p id="create-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="create-role">{t("role")} <span className="text-destructive">*</span></Label>

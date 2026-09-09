@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
@@ -82,7 +83,13 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   // admin: query stays {} — sees all
 
   if (status) query.status = status;
-  if (applicationId) query.applicationId = applicationId;
+  // Cast ids to ObjectId: `find` casts strings via the schema but the
+  // statusCounts `aggregate` below does not, so string ids silently returned
+  // empty counts for job/application-scoped requests.
+  if (applicationId) {
+    const { isValidObjectId } = await import("@/lib/security/sanitize");
+    if (isValidObjectId(applicationId)) query.applicationId = new Types.ObjectId(applicationId);
+  }
 
   // Employer sub-filter (must be within scope)
   if (employerIdParam) {
@@ -98,7 +105,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
         return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: {} });
       }
       delete query.$or;
-      query.employerId = employerIdParam;
+      query.employerId = new Types.ObjectId(employerIdParam);
     }
   }
 
@@ -106,7 +113,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   if (jobIdParam) {
     const { isValidObjectId } = await import("@/lib/security/sanitize");
     if (isValidObjectId(jobIdParam)) {
-      query.jobId = jobIdParam;
+      query.jobId = new Types.ObjectId(jobIdParam);
     }
   }
 

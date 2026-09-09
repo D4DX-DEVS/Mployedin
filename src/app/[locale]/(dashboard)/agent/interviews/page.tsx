@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -94,6 +95,8 @@ const selectClass = "h-10 w-full rounded-xl border border-border bg-background/7
 
 export default function AgentInterviewsPage() {
   const t = useTranslations("agentInterviews");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const tc = useTranslations("common");
   const ttable = useTranslations("table");
   const { can } = usePermissions();
@@ -221,7 +224,7 @@ export default function AgentInterviewsPage() {
     const res = await fetch(`/api/interviews/${editInterview._id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
     });
-    if (!res.ok) throw new Error("Failed to update interview");
+    if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: INTERVIEW_FIELDS });
     setEditInterview(null);
     fetchInterviews();
   };

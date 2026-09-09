@@ -76,7 +76,6 @@ export default function AuditLogsPage() {
     { value: "agents", label: t("resourceAgents") },
     { value: "super_agents", label: t("resourceSuperAgents") },
     { value: "leads", label: t("resourceLeads") },
-    { value: "saved_jobs", label: t("resourceSavedJobs") },
     { value: "messages", label: t("resourceMessages") },
     { value: "conversation_threads", label: t("resourceConversationThreads") },
     { value: "settings", label: t("resourceSettings") },

@@ -6,6 +6,7 @@ import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { workflowUpdateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { normalizeWorkflowStages, type WorkflowStageLike } from "@/lib/hiring/pipeline";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; }
@@ -16,10 +17,13 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   }
   await connectDB();
   const employer = await Employer.findOne({ userId: ctx.userId }).select("workflow").lean();
-  const stages = employer?.workflow?.stages;
+  const stored = employer?.workflow?.stages;
+  const stages = Array.isArray(stored) && stored.length > 0
+    ? normalizeWorkflowStages(stored as WorkflowStageLike[])
+    : null;
 
   return NextResponse.json({
-    stages: Array.isArray(stages) && stages.length > 0 ? stages : null,
+    stages,
     settings: employer?.workflow?.settings ?? { aiAutoScreen: true, notifyOnStageChange: true, autoRejectBelow: 40 },
   });
 }
@@ -30,10 +34,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
   await connectDB();
   const { stages, settings } = await validateBody(req, workflowUpdateSchema);
+  const normalizedStages = normalizeWorkflowStages(stages);
 
   await Employer.findOneAndUpdate(
     { userId: ctx.userId },
-    { $set: { workflow: { stages, settings } } },
+    { $set: { workflow: { stages: normalizedStages, settings } } },
     { upsert: true }
   );
 

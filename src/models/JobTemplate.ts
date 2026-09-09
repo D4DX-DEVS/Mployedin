@@ -5,6 +5,7 @@ export interface IJobTemplate extends Document {
   employerId: mongoose.Types.ObjectId;
   sourceJobId?: mongoose.Types.ObjectId;
   name: string; // template name e.g. "Senior Dev Template"
+  usageCount?: number;
   // core job fields (all optional, whatever was saved)
   title?: string;
   description?: string;
@@ -30,6 +31,8 @@ const JobTemplateSchema = new Schema<IJobTemplate>(
     employerId: { type: Schema.Types.ObjectId, ref: "Employer", required: true },
     sourceJobId: { type: Schema.Types.ObjectId, ref: "Job", index: true },
     name: { type: String, required: true, trim: true, maxlength: 100 },
+    // Incremented by the /use route; without a schema path strict mode dropped the $inc.
+    usageCount: { type: Number, default: 0 },
     title: { type: String, trim: true },
     description: String,
     category: String,

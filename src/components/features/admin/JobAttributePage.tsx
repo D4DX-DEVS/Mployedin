@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { PlatformDataTabs } from "@/components/features/admin/PlatformDataTabs";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -39,6 +40,8 @@ interface JobAttributePageProps {
 
 export default function JobAttributePage({ category }: JobAttributePageProps) {
   const t = useTranslations("adminJobAttributes");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   /* Heading copy is derived from the category rather than passed in per page.
      The five callers used to hand over title/titleAr/description/descriptionAr
      as literals, which meant each leaf route imported the whole of en.json and
@@ -109,8 +112,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? "Failed to create");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
     fetchItems();
   };
@@ -130,8 +132,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? "Failed to update");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
     setEditItem(null);
     fetchItems();

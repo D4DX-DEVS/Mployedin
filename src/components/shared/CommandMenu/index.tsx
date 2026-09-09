@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { Fragment, useEffect, useState, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
@@ -204,18 +204,31 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
           <CommandGroup heading={t("jobsFound")}>
             {hits.jobs.map((job) => {
               const Icon = getIcon("Briefcase");
+              const AppsIcon = getIcon("Users");
+              const applicationsHref = entityRoutes.jobApplications?.(job.id);
               return (
-                <CommandItem
-                  key={`job-${job.id}`}
-                  value={`${job.title} ${trimmedQuery}`}
-                  onSelect={() => handleSelect(`/${locale}${entityRoutes.job(job.id)}`)}
-                >
-                  <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="flex flex-col">
-                    <span>{job.title}</span>
-                    <span className="text-xs text-muted-foreground">{job.status}</span>
-                  </div>
-                </CommandItem>
+                <Fragment key={`job-${job.id}`}>
+                  <CommandItem
+                    value={`${job.title} ${trimmedQuery}`}
+                    onSelect={() => handleSelect(`/${locale}${entityRoutes.job(job.id)}`)}
+                  >
+                    <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span>{job.title}</span>
+                      <span className="text-xs text-muted-foreground">{job.status}</span>
+                    </div>
+                  </CommandItem>
+                  {/* Employer job workspace: jump straight into this job's inbox. */}
+                  {applicationsHref && (
+                    <CommandItem
+                      value={`${t("applicationsForJob", { title: job.title })} ${trimmedQuery}`}
+                      onSelect={() => handleSelect(`/${locale}${applicationsHref}`)}
+                    >
+                      <AppsIcon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{t("applicationsForJob", { title: job.title })}</span>
+                    </CommandItem>
+                  )}
+                </Fragment>
               );
             })}
           </CommandGroup>

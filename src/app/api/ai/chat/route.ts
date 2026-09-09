@@ -19,7 +19,6 @@ import Lead from "@/models/Lead";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Placement from "@/models/Placement";
-import SavedJob from "@/models/SavedJob";
 import Offer from "@/models/Offer";
 import ProfileView from "@/models/ProfileView";
 import Commission from "@/models/Commission";
@@ -140,9 +139,9 @@ export async function POST(req: NextRequest) {
             profileContext = `\n\n## User Profile (use this to personalize responses — do NOT ask for info already available here)\n${parts.join("\n")}`;
           }
 
-          // Application history + interviews + saved jobs — so AI can exclude
-          // applied jobs and answer "what did I apply to / any interviews?"
-          const [appliedJobIds, recentApps, upcomingInterviews, savedJobIds, pendingOffers, profileViewsThisWeek] = await Promise.all([
+          // Application history + interviews — so AI can exclude applied jobs
+          // and answer "what did I apply to / any interviews?"
+          const [appliedJobIds, recentApps, upcomingInterviews, pendingOffers, profileViewsThisWeek] = await Promise.all([
             Application.find({ jobSeekerId: profile._id }).distinct("jobId"),
             Application.find({ jobSeekerId: profile._id })
               .select("jobId status aiMatchScore matchGaps appliedAt")
@@ -160,9 +159,6 @@ export async function POST(req: NextRequest) {
               .limit(5)
               .populate("jobId", "title")
               .lean(),
-            // Saved jobs are keyed by the JobSeeker profile _id, like the sibling
-            // queries above — session.user.id is a User id and matched nothing.
-            SavedJob.find({ jobSeekerId: profile._id }).distinct("jobId"),
             Offer.find({
               jobSeekerId: profile._id,
               status: { $in: ["pending", "countered"] },
@@ -251,7 +247,6 @@ export async function POST(req: NextRequest) {
             ? { "requirements.skills": { $in: skillRegexes } }
             : {};
 
-          const savedSet = new Set(savedJobIds.map(String));
           const candidateJobs = await Job.find({
             status: "active",
             _id: { $nin: appliedJobIds },
@@ -292,8 +287,7 @@ export async function POST(req: NextRequest) {
               const skills = j.requirements?.skills?.slice(0, 5).join(", ") ?? "";
               const locale = currentPage?.match(/^\/(en|ar)\//)?.[1] ?? "en";
               const link = `/${locale}/job-seeker/jobs/${j._id}`;
-              const saved = savedSet.has(String(j._id)) ? " | (user saved this job)" : "";
-              return `- [${j.title}](${link}) | ${loc}${sal} | Skills: ${skills}${saved}`;
+              return `- [${j.title}](${link}) | ${loc}${sal} | Skills: ${skills}`;
             });
             jobsContext = `\n\n## Live Jobs on MPLOYEDIN (ONLY reference these — never invent jobs)\n${jobLines.join("\n")}\n\nFormat EVERY job recommendation as a markdown link exactly like: [Job Title](/en/job-seeker/jobs/ID). CRITICAL: Use ONLY the relative URLs provided above (starting with /). NEVER prepend a domain like https://mployedin.com or https://www.mployedin.com. Never show raw IDs. Always copy the link EXACTLY as provided in the list above so users can click to view the job. Tell the user they can click the job title to view and apply. Do NOT mention any job not in this list.`;
           } else {

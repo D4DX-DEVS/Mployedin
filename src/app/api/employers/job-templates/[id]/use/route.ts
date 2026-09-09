@@ -37,8 +37,11 @@ async function useHandler(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Create a draft job from template fields
-  const job = await Job.create({
+  // Create a draft job from template fields. Drafts may be incomplete — a
+  // template saved without a description or city must still open in the
+  // editor, so validation waits until the job leaves draft (same rule as the
+  // POST /api/jobs and PATCH handlers). Job.create() validated and answered 500.
+  const job = new Job({
     employerId: employer._id,
     title: template.title ?? "Untitled Job",
     description: template.description ?? "",
@@ -51,6 +54,7 @@ async function useHandler(
     workflowMode: template.applicationMode === "auto" ? "auto" : "manual",
     status: "draft",
   });
+  await job.save({ validateBeforeSave: false });
 
   // Increment usageCount on the template
   await JobTemplate.updateOne({ _id: template._id }, { $inc: { usageCount: 1 } });

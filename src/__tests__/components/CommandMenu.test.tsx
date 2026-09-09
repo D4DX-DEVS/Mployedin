@@ -93,4 +93,23 @@ describe("CommandMenu", () => {
     fireEvent.click(dialogScope.getByText("Write a job myself"));
     expect(pushMock).toHaveBeenCalledWith("/en/employer/jobs/new?mode=manual");
   });
+
+  it("offers the job and its applications inbox for every employer job hit", async () => {
+    (global.fetch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ ok: true, json: async () => ({ jobs: [{ id: "j1", title: "QA Engineer", status: "active" }], candidates: [] }) })
+    );
+    render(
+      <CommandMenu navGroups={getNavGroups("employer", "en")} locale="en" userRole="employer" />
+    );
+    fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+    const dialog = await screen.findByRole("dialog");
+    const dialogScope = within(dialog);
+    fireEvent.change(dialogScope.getByRole("combobox"), { target: { value: "QA" } });
+
+    const inbox = await dialogScope.findByText("Applications for QA Engineer");
+    expect(dialogScope.getByText("QA Engineer")).toBeInTheDocument();
+    fireEvent.click(inbox);
+    expect(pushMock).toHaveBeenCalledWith("/en/employer/jobs/j1/applications");
+  });
 });
+

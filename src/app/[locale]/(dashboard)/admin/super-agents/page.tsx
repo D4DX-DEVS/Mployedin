@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { apiErrorMessage } from "@/lib/utils";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -70,6 +71,16 @@ interface AgentOption {
 
 export default function AdminSuperAgentsPage() {
   const t = useTranslations("adminSuperAgents");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
+  // Field name → on-screen label for "Check these fields: …" copy.
+  const superAgentFieldLabels = {
+    name: t("fullNameLabel"),
+    email: t("emailLabel"),
+    password: t("passwordLabel"),
+    overrideCommissionRate: t("overrideCommissionRateLabel"),
+    defaultAgentCommissionRate: t("defaultAgentCommissionRateLabel"),
+  };
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [superAgents, setSuperAgents] = useState<SuperAgent[]>([]);
@@ -185,6 +196,11 @@ export default function AdminSuperAgentsPage() {
       setAddError(t("validationNameEmailPasswordRequired"));
       return;
     }
+    const passwordError = validatePasswordForForm(addForm.password, { locale, t: tf });
+    if (passwordError) {
+      setAddError(passwordError);
+      return;
+    }
     setAddLoading(true);
     try {
       const res = await fetch("/api/admin/super-agents", {
@@ -202,12 +218,9 @@ export default function AdminSuperAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        const errorMsg = apiErrorMessage(e, "Failed to create super agent");
-        setAddError(errorMsg);
-        // Field-level validation detail lives in the inline banner only — the
-        // duplicate toast with the same raw string was noise.
-        if (!Array.isArray((e as { details?: unknown[] }).details)) toast.error(errorMsg);
+        // Inline banner only — a toast repeating the same sentence was noise.
+        const { message } = await formErrorFromResponse(res, { t: tf, locale, fieldLabels: superAgentFieldLabels, conflict: tf("emailInUse") });
+        setAddError(message);
         return;
       }
       setShowAdd(false);
@@ -262,10 +275,8 @@ export default function AdminSuperAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        const errorMsg = apiErrorMessage(e, "Failed to update super agent");
-        setEditError(errorMsg);
-        if (!Array.isArray((e as { details?: unknown[] }).details)) toast.error(errorMsg);
+        const { message } = await formErrorFromResponse(res, { t: tf, locale, fieldLabels: superAgentFieldLabels, conflict: tf("emailInUse") });
+        setEditError(message);
         return;
       }
       setEditSA(null);
@@ -570,7 +581,8 @@ export default function AdminSuperAgentsPage() {
               </div>
               <div className="field">
                 <Label>{t("passwordLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
-                <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={t("passwordPlaceholder")} />
+                <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-super-agent-password-hint" />
+                <p id="add-super-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
               </div>
               <div className="field">
                 <Label>{t("overrideCommissionRateLabel")}</Label>

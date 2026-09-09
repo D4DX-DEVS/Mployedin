@@ -25,6 +25,14 @@ export interface INotificationPrefs {
   inAppAll?: boolean;
 }
 
+export interface ISavedView {
+  _id: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  name: string;
+  query: string;
+  createdAt: Date;
+}
+
 export interface IEmployer extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
@@ -77,6 +85,8 @@ export interface IEmployer extends Document {
   };
   // Related
   jobIds: mongoose.Types.ObjectId[];
+  // Saved Views
+  savedViews?: ISavedView[];
   // Payment
   paymentStatus: "active" | "pending" | "overdue";
   subscriptionType?: "basic" | "premium";
@@ -190,6 +200,12 @@ const EmployerSchema = new Schema<IEmployer>(
       limit: { type: Number, default: 5 },
       resetDate: { type: Date },
     },
+    savedViews: [{
+      userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+      name: { type: String, required: true, trim: true, maxlength: 40 },
+      query: { type: String, default: "", maxlength: 500 },
+      createdAt: { type: Date, default: Date.now },
+    }],
   },
   { timestamps: true }
 );

@@ -47,6 +47,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     Interview.aggregate([
       { $match: { jobId } },
       { $facet: {
+        // Every interview still to be held or closed out, overdue ones included —
+        // the tab count, so it matches the "Scheduled" chip on the Interviews tab.
+        open: [{ $match: { status: { $in: ["scheduled", "confirmed"] } } }, { $count: "n" }],
         upcoming: [{ $match: { status: { $in: ["scheduled", "confirmed"] }, scheduledAt: { $gte: now } } }, { $count: "n" }],
         awaitingOutcome: [{ $match: { $or: [
           { status: "completed", outcome: { $in: [null, undefined] } },
@@ -95,6 +98,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     statusCounts,
     unreviewed: count(apps?.unreviewed),
     interviews: {
+      open: count(interviews?.open),
       upcoming: count(interviews?.upcoming),
       awaitingOutcome: count(interviews?.awaitingOutcome),
       rescheduleRequests: count(interviews?.rescheduleRequests),

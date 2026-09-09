@@ -107,10 +107,6 @@ async function fetchAppliedJobIds(): Promise<string[]> {
     .filter((id): id is string => Boolean(id));
 }
 
-/**
- * Fetch the set of job IDs the seeker has saved/bookmarked.
- */
-
 const SEARCH_PAGE_SIZE = 20;
 const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
 
@@ -237,7 +233,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
   // A saved search needs a text query; hide the action in employer-only browse.
   const canSaveSearch = debouncedSearch.trim().length > 0;
 
-  // Hydrate already-applied and saved job IDs so the "Applied" and "Saved" states show on first load,
+  // Hydrate already-applied job IDs so the "Applied" state shows on first load,
   // including for jobs surfaced through search (not just the recommended feed).
   const { data: appliedIdsData } = useQuery({
     queryKey: ["applied-job-ids"],

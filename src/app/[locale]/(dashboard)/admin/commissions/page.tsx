@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
@@ -49,6 +50,8 @@ interface Commission {
 
 export default function AdminCommissionsPage() {
   const t = useTranslations("adminCommissions");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -150,7 +153,7 @@ export default function AdminCommissionsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...values, amount: Number(values.amount), rate: values.rate ? Number(values.rate) : undefined }),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? t("failedLoadCommissions")); }
+    if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: ADD_FIELDS });
     await fetchCommissions();
   };
 
@@ -164,7 +167,7 @@ export default function AdminCommissionsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...values, amount: Number(values.amount), rate: values.rate ? Number(values.rate) : undefined }),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? t("failedLoadCommissions")); }
+    if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: ADD_FIELDS });
     setEditItem(null);
     await fetchCommissions();
   };

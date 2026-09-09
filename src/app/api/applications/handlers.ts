@@ -18,7 +18,6 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
-import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +54,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
      dashboard raises this as an alert; without the filter its link landed on an
      unfiltered list and the finding was lost on arrival. */
   const staleOnly = searchParams.get("stale") === "true";
+  const unreviewed = searchParams.get("unreviewed") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -134,6 +134,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (status) query.status = status;
+  // Unreviewed filter: applications not yet seen by employer
+  if (unreviewed) {
+    query.viewedByEmployerAt = null;
+    if (!status) query.status = "applied";
+  }
   // Validate jobId against accessible jobs to prevent unauthorized access
   if (jobId) {
     if (accessibleJobIds) {

@@ -9,6 +9,7 @@ import { validateBody } from "@/lib/validators";
 import { jobUpdateSchema } from "@/lib/validators/jobs";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
+import { canTransitionJobStatus, expiryExtended } from "@/lib/jobs/statusTransitions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -67,6 +68,25 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, jobUpdateSchema);
+
+  // Status moves are guarded for every role, admin included: the five statuses
+  // form a small state machine (draft → live → paused/closed, closed is final)
+  // and a client that skips a step gets 409, not a silently accepted write.
+  const nextStatus = body.status;
+  if (nextStatus && nextStatus !== job.status) {
+    if (!canTransitionJobStatus(job.status, nextStatus)) {
+      return NextResponse.json(
+        { error: "INVALID_STATUS_TRANSITION", from: job.status, to: nextStatus },
+        { status: 409 },
+      );
+    }
+    if (job.status === "expired" && !expiryExtended((body as { expiresAt?: unknown }).expiresAt)) {
+      return NextResponse.json(
+        { error: "EXPIRES_AT_REQUIRED", from: job.status, to: nextStatus },
+        { status: 409 },
+      );
+    }
+  }
 
   // Everyone can update their own job; a few fields stay admin-only.
   const allowedFields = [
@@ -131,13 +151,15 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Soft delete: mark as deleted instead of removing from DB
+  // Soft delete: mark as deleted instead of removing from DB.
+  // Skip schema validation: drafts are allowed to be incomplete (empty
+  // description / location), and a delete must never be blocked by that.
   job.deletedAt = new Date();
   if (job.status === "active" || job.status === "paused") {
     job.preDeletionStatus = job.status;
     job.status = "closed";
   }
-  await job.save();
+  await job.save({ validateBeforeSave: false });
 
   await logActivity({
     ...actorFromCtx(ctx),

@@ -64,7 +64,6 @@ type AppliedJobSnippet = {
 type DashboardStats = {
   applicationsSent?: { count: number };
   upcomingInterviews?: { count: number };
-  savedJobs?: { count: number };
   recruiterViews?: { total: number };
   pendingOffers?: { count: number };
   unreadMessages?: { count: number };

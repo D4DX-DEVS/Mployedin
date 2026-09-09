@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useParams } from "next/navigation";
+import { JobScopeStrip } from "@/components/features/employer/jobs/JobScopeStrip";
 import { ShieldCheck, Plus, Trash2, UserCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,6 +81,9 @@ export default function BackgroundChecksPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useUrlFilter("q", "", { debounceMs: 400 });
+  // `?jobId=` scopes the page to one job (deep links from the job workspace).
+  const [jobFilter, setJobFilter] = useUrlFilter("jobId", "");
+  const { locale } = useParams<{ locale: string }>();
   const [dateFrom, setDateFrom] = useUrlFilter("from", "");
   const [dateTo, setDateTo] = useUrlFilter("to", "");
 
@@ -89,7 +94,7 @@ export default function BackgroundChecksPage() {
   const fetchChecks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/employer/background-checks?limit=50");
+      const res = await fetch(`/api/employer/background-checks?limit=50${jobFilter ? `&jobId=${encodeURIComponent(jobFilter)}` : ""}`);
       if (!res.ok) throw new Error("failed");
       const data = await res.json();
       setChecks(data.items ?? []);
@@ -99,7 +104,7 @@ export default function BackgroundChecksPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, jobFilter]);
 
   useEffect(() => {
     fetchChecks();
@@ -236,6 +241,7 @@ export default function BackgroundChecksPage() {
           </Button>
         }
       />
+      {jobFilter && <JobScopeStrip jobId={jobFilter} locale={locale} onClear={() => setJobFilter("")} />}
 
       {loading ? (
         <div className="grid gap-3">

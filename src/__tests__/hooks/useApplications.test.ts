@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import {
   useApplications,
+  useInfiniteApplications,
   useUpdateApplicationStatus,
   useBulkAction,
   useApplicationTimeline,
@@ -355,5 +356,37 @@ describe("useCompareApplications", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+// ── useInfiniteApplications (board columns) ─────────────────────────
+
+describe("useInfiniteApplications", () => {
+  it("appends pages until the server total is reached", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      const page = Number(new URL(url, "http://localhost").searchParams.get("page"));
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ applications: [{ _id: `a${page}` }], pagination: { page, limit: 1, total: 2 } }),
+      });
+    });
+    const { result } = renderHook(
+      () => useInfiniteApplications({ limit: 1, status: "applied", jobId: "j1" }),
+      { wrapper: createWrapper() },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(true);
+    expect(mockFetch.mock.calls[0][0]).toContain("page=1");
+
+    await act(async () => { await result.current.fetchNextPage(); });
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+    expect(result.current.hasNextPage).toBe(false);
+    expect(mockFetch.mock.calls[1][0]).toContain("page=2");
+    expect(mockFetch.mock.calls[1][0]).toContain("status=applied");
+  });
+
+  it("shares the list prefix so a status change invalidates it", () => {
+    const key = applicationKeys.infinite({ limit: 20, status: "applied" });
+    expect(key.slice(0, 2)).toEqual(applicationKeys.lists());
   });
 });

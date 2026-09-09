@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
@@ -47,6 +48,8 @@ function getCurrentTitle(s: JobSeeker): string | undefined {
 
 export default function AgentJobSeekersPage() {
   const t = useTranslations("agentJobSeekers");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const { can } = usePermissions();
@@ -157,11 +160,7 @@ export default function AgentJobSeekersPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      const detail = Array.isArray(err?.details) && err.details.length
-        ? `${err.details[0].path}: ${err.details[0].message}`
-        : null;
-      throw new Error(detail ?? err?.error ?? "Failed to update job seeker");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: EDIT_FIELDS });
     }
     setEditSeeker(null);
     fetchSeekers();

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
@@ -88,8 +89,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // Filter: per-job / per-application scope (Job Workspace tabs, candidate journey).
-  if (jobIdParam && isValidObjectId(jobIdParam)) query.jobId = jobIdParam;
-  if (applicationIdParam && isValidObjectId(applicationIdParam)) query.applicationId = applicationIdParam;
+  // ObjectId casts: `find` casts strings, the stats `aggregate` $match below does not.
+  if (jobIdParam && isValidObjectId(jobIdParam)) query.jobId = new Types.ObjectId(jobIdParam);
+  if (applicationIdParam && isValidObjectId(applicationIdParam)) query.applicationId = new Types.ObjectId(applicationIdParam);
 
   // Filter: commission paid
   if (commissionPaid === "true") query.commissionPaid = true;
@@ -214,6 +216,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const agt = p.agentId as { userId?: { name?: string } } | null;
     return {
       _id: p._id,
+      applicationId: p.applicationId ? String(p.applicationId) : undefined,
+      jobSeekerId: seeker && typeof seeker === "object" && "_id" in seeker ? String((seeker as { _id: unknown })._id) : p.jobSeekerId ? String(p.jobSeekerId) : undefined,
       jobTitle: job?.title,
       candidateName: seeker?.userId?.name,
       candidateEmail: seeker?.userId?.email,

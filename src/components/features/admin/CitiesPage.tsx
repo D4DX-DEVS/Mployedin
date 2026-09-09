@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, MapPin } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface CountryOption {
@@ -47,6 +48,8 @@ interface CityItem {
 
 export default function CitiesPage() {
   const t = useTranslations("adminLocationData");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<CityItem[]>([]);
@@ -189,8 +192,7 @@ export default function CitiesPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? "Failed to create");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: getFields() });
     }
     fetchItems();
   };
@@ -211,8 +213,7 @@ export default function CitiesPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? "Failed to update");
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: getFields() });
     }
     setEditItem(null);
     fetchItems();

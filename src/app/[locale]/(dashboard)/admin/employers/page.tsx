@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
+import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { PageHero } from "@/components/shared/PageHero";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -55,6 +57,8 @@ export default function AdminEmployersPage() {
   const { can } = usePermissions();
   const router = useRouter();
   const t = useTranslations("adminEmployers");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,41 +145,27 @@ export default function AdminEmployersPage() {
 
   useEffect(() => { fetchEmployers(); }, [fetchEmployers]);
 
-  const parseApiError = async (res: Response) => {
-    let body: any;
-    try {
-      body = await res.json();
-    } catch {
-      // Never surface raw HTTP status text — "Unprocessable Entity" is not
-      // something an admin can act on, and it is English in an Arabic UI.
-      return t("requestFailed");
-    }
-
-    if (body?.details?.length) {
-      return `${body.error}: ${body.details.map((issue: { path?: string; message: string }) =>
-        issue.path ? `${issue.path}: ${issue.message}` : issue.message
-      ).join("; ")}`;
-    }
-
-    return body?.error || t("requestFailed");
-  };
-
-  const validateAdminPassword = (password: string) => {
-    const trimmed = password.trim();
-    if (trimmed.length < 12) return "Password must be at least 12 characters long.";
-    if (!/[a-z]/.test(trimmed)) return "Password must include a lowercase letter.";
-    if (!/[A-Z]/.test(trimmed)) return "Password must include an uppercase letter.";
-    if (!/[0-9]/.test(trimmed)) return "Password must include a number.";
-    if (!/[^A-Za-z0-9]/.test(trimmed)) return "Password must include a special character.";
-    const commonPasswords = ["password123!", "admin@1234", "qwerty123!", "welcome123!", "letmein123!"];
-    if (commonPasswords.includes(trimmed.toLowerCase())) return "Choose a less common password.";
-    return null;
-  };
+  /* Hoisted (not rebuilt in JSX) so the same array feeds both the modal and
+     the field-label map that names rejected fields in error copy. */
+  const fields: CrudField[] = useMemo(() => [
+    { name: "name", label: t("fieldContactName"), type: "text", required: true },
+    { name: "email", label: t("fieldEmail"), type: "email", required: true },
+    { name: "password", label: t("fieldPassword"), type: "text", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
+    { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
+    { name: "industry", label: t("fieldIndustry"), type: "text" },
+    { name: "location", label: t("fieldLocation"), type: "text" },
+    { name: "phone", label: t("fieldPhone"), type: "text" },
+  ], [t, tf]);
+  const editFields = useMemo(() => fields.filter((f) => f.name !== "password"), [fields]);
 
   const handleCreate = async (values: Record<string, string>) => {
-    const passwordError = values.password ? validateAdminPassword(values.password) : "Password is required.";
+    /* Same rules the API enforces (strongPasswordSchema), explained in the
+       admin's language and all at once — "at least 12 characters, this one
+       has 8, and it needs an uppercase letter and a symbol" — instead of one
+       English rule per attempt. The server still re-validates. */
+    const passwordError = validatePasswordForForm(values.password ?? "", { locale, t: tf });
     if (passwordError) {
-      throw new Error(passwordError);
+      throw new FormError(passwordError);
     }
 
     const res = await fetch("/api/employers", {
@@ -184,8 +174,7 @@ export default function AdminEmployersPage() {
       body: JSON.stringify(values),
     });
     if (!res.ok) {
-      const message = await parseApiError(res);
-      throw new Error(message);
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: fields, conflict: tf("emailInUse") });
     }
     fetchEmployers();
   };
@@ -197,8 +186,7 @@ export default function AdminEmployersPage() {
       body: JSON.stringify(values),
     });
     if (!res.ok) {
-      const message = await parseApiError(res);
-      throw new Error(message);
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: editFields, conflict: tf("emailInUse") });
     }
     setEditItem(null);
     fetchEmployers();
@@ -394,27 +382,10 @@ export default function AdminEmployersPage() {
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
-      {(() => {
-        const fields: CrudField[] = [
-          { name: "name", label: t("fieldContactName"), type: "text", required: true },
-          { name: "email", label: t("fieldEmail"), type: "email", required: true },
-          { name: "password", label: t("fieldPassword"), type: "text", required: true, placeholder: t("fieldPasswordPlaceholder") },
-          { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
-          { name: "industry", label: t("fieldIndustry"), type: "text" },
-          { name: "location", label: t("fieldLocation"), type: "text" },
-          { name: "phone", label: t("fieldPhone"), type: "text" },
-        ];
-        const editFields: CrudField[] = fields.filter(f => f.name !== "password");
-
-        return (
-          <>
-            <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title={t("addEmployerTitle")} fields={fields} onSubmit={handleCreate} />
-            <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={t("editEmployerTitle")} fields={editFields}
-              initialValues={editItem ? { name: editItem.name ?? "", email: editItem.email ?? editItem.contactEmail ?? "", companyName: editItem.companyName ?? "", industry: editItem.industry ?? "", location: editItem.location ?? "", phone: editItem.phone ?? "" } : undefined}
-              onSubmit={handleEdit} />
-          </>
-        );
-      })()}
+      <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title={t("addEmployerTitle")} fields={fields} onSubmit={handleCreate} />
+      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={t("editEmployerTitle")} fields={editFields}
+        initialValues={editItem ? { name: editItem.name ?? "", email: editItem.email ?? editItem.contactEmail ?? "", companyName: editItem.companyName ?? "", industry: editItem.industry ?? "", location: editItem.location ?? "", phone: editItem.phone ?? "" } : undefined}
+        onSubmit={handleEdit} />
 
       {/* Verification Modal */}
       <Dialog open={!!verifyItem} onOpenChange={(open) => { if (!open) { setVerifyItem(null); setVerifyError(null); setVerifyOverride(false); setVerifyReason(""); } }}>

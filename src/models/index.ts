@@ -48,7 +48,6 @@ export { WorkflowTemplate } from "./WorkflowTemplate";
 export { MatchingWeightTemplate } from "./MatchingWeightTemplate";
 
 // ── Job Seeker Dashboard ──────────────────────────────────────────────────────
-export { SavedJob } from "./SavedJob";
 export { ProfileView } from "./ProfileView";
 
 // ── Subscription ─────────────────────────────────────────────────────────────

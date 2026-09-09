@@ -23,31 +23,11 @@ import {
 import type { WorkflowStage, WorkflowSettings } from "@/hooks/useWorkflow";
 import { useConfirm } from "@/hooks/useConfirm";
 
-const DEFAULT_STAGES: WorkflowStage[] = [
-  { id: "new", label: "New Application", enabled: true, autoProgress: false, order: 1 },
-  { id: "screening", label: "AI Screening", enabled: true, autoProgress: true, order: 2 },
-  { id: "shortlisted", label: "Shortlisted", enabled: true, autoProgress: false, order: 3 },
-  { id: "interview_scheduled", label: "Interview Scheduled", enabled: true, autoProgress: true, order: 4 },
-  { id: "interview_completed", label: "Interview Completed", enabled: true, autoProgress: false, order: 5 },
-  { id: "offer_extended", label: "Offer Extended", enabled: true, autoProgress: false, order: 6 },
-  { id: "accepted", label: "Offer Accepted", enabled: true, autoProgress: false, order: 7 },
-  { id: "rejected", label: "Rejected", enabled: true, autoProgress: false, order: 8 },
-];
+import { DEFAULT_WORKFLOW_STAGES, STAGE_LABEL_KEYS, isApplicationStatus } from "@/lib/hiring/pipeline";
 
-/* The `label` on a stage is persisted with the template, so DEFAULT_STAGES keeps its
-   English strings — writing the admin's own locale into stored data would make the
-   record locale-dependent. Display is translated by id instead; a stage id that isn't
-   one of these built-ins falls back to whatever label was stored. */
-const DEFAULT_STAGE_LABEL_KEYS: Record<string, string> = {
-  new: "stageNewApplication",
-  screening: "stageAiScreening",
-  shortlisted: "stageShortlisted",
-  interview_scheduled: "stageInterviewScheduled",
-  interview_completed: "stageInterviewCompleted",
-  offer_extended: "stageOfferExtended",
-  accepted: "stageOfferAccepted",
-  rejected: "stageRejected",
-};
+/* Stage ids are application statuses; display labels come from the shared
+   `hiringPipeline` namespace so stored templates stay locale-independent. */
+const DEFAULT_STAGES: WorkflowStage[] = DEFAULT_WORKFLOW_STAGES.map((s) => ({ ...s }));
 
 const DEFAULT_SETTINGS: WorkflowSettings = {
   aiAutoScreen: true,
@@ -90,8 +70,9 @@ export default function AdminWorkflowTemplatesPage() {
   const tr = useTranslations("adminWorkflowTemplates");
   const ta = useTranslations("a11y");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+  const tp = useTranslations("hiringPipeline");
   const stageLabel = (stage: WorkflowStage) =>
-    DEFAULT_STAGE_LABEL_KEYS[stage.id] ? tr(DEFAULT_STAGE_LABEL_KEYS[stage.id]) : stage.label;
+    isApplicationStatus(stage.id) ? tp(STAGE_LABEL_KEYS[stage.id]) : stage.label;
   const { data: templates, isLoading } = useAdminWorkflowTemplates();
   const createMut = useCreateAdminWorkflowTemplate();
   const updateMut = useUpdateAdminWorkflowTemplate();

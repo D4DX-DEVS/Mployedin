@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, Map } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface CountryOption {
@@ -44,6 +45,8 @@ export default function StatesPage() {
   const { can } = usePermissions();
   const tc = useTranslations("common");
   const t = useTranslations("adminLocationData");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<StateItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,8 +132,7 @@ export default function StatesPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? tc("failedToCreate"));
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: getFields() });
     }
     fetchItems();
   };
@@ -151,8 +153,7 @@ export default function StatesPage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error ?? tc("failedToUpdate"));
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: getFields() });
     }
     setEditItem(null);
     fetchItems();

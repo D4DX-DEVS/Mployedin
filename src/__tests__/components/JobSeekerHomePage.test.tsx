@@ -53,7 +53,6 @@ const translations: Record<string, unknown> = {
   summary: {
     activeMatches: "0 تطابقات نشطة",
     applications: "طلبات التقديم",
-    savedJobs: "وظائف محفوظة",
     interviews: "مقابلات",
     profileViews: "مشاهدات الملف",
     nextStepsQueued: "5 خطوات تالية بانتظارك",
@@ -90,7 +89,6 @@ const translations: Record<string, unknown> = {
     title: "نظرة سريعة على بحثك عن وظيفة",
     applications: "الطلبات",
     interviews: "المقابلات",
-    savedJobs: "الوظائف المحفوظة",
     profileViews: "مشاهدات الملف",
     managePreferences: "إدارة تفضيلات الوظائف",
   },
@@ -175,7 +173,6 @@ describe("JobSeekerHomePage", () => {
     stats: {
       applicationsSent: { count: 3 },
       upcomingInterviews: { count: 0 },
-      savedJobs: { count: 1 },
       recruiterViews: { total: 0 },
     },
     jobs: [],

@@ -2,11 +2,13 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import EmployerApplicationsPage from "@/app/[locale]/(dashboard)/employer/applications/page";
+import { ApplicationsWorkspace } from "@/components/features/employer/applications/ApplicationsWorkspace";
 
 const useApplicationsMock = jest.fn();
+const replaceMock = jest.fn();
 const updateStatusMutateAsyncMock = jest.fn();
 const bulkActionMutateAsyncMock = jest.fn();
 const createScorecardMutateAsyncMock = jest.fn();
@@ -18,9 +20,17 @@ const bulkAiMatchMutateAsyncMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
-  useSearchParams: () => ({ get: () => null }),
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  usePathname: () => "/en/employer/applications",
+  useSearchParams: () => ({ get: () => null, toString: () => "" }),
+  useRouter: () => ({ push: jest.fn(), replace: (...args: unknown[]) => replaceMock(...args) }),
 }));
+
+// Phase 3 leaves: saved views fetch through react-query and the pool dialog
+// reads talent pools — neither is what this suite asserts on.
+jest.mock("@/hooks/useSavedViews", () => ({
+  useSavedViews: () => ({ views: [], isLoading: false, create: { mutateAsync: jest.fn() }, remove: { mutateAsync: jest.fn() } }),
+}));
+jest.mock("@/components/features/employer/SaveToPoolDialog", () => ({ SaveToPoolDialog: () => null }));
 
 // Every data hook is already mocked, so the page only needs useQueryClient to
 // exist — a real provider would add nothing this suite asserts on.
@@ -46,6 +56,11 @@ jest.mock("@tanstack/react-query", () => {
 jest.mock("@/hooks/useCandidates", () => ({
   ...jest.requireActual("@/hooks/useCandidates"),
   useStartConversation: () => ({ mutateAsync: jest.fn() }),
+}));
+
+// The drawer's candidate journey fans out four queries; no provider here, so stub it.
+jest.mock("@/hooks/useCandidateJourney", () => ({
+  useCandidateJourney: () => ({ data: { interviews: [], offer: undefined, check: undefined, placement: undefined }, isLoading: false, isError: false }),
 }));
 
 jest.mock("@/hooks/usePermissions", () => ({
@@ -209,5 +224,58 @@ describe("EmployerApplicationsPage", () => {
 
     expect(await screen.findByRole("dialog", { name: /candidate details for amina noor/i })).toBeInTheDocument();
     expect(screen.getByText("Strengths")).toBeInTheDocument();
+  });
+
+  it("keeps the Needs review deep link in the URL after the filter reset (A26)", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationsWorkspace jobId="job-1" embedded />);
+    replaceMock.mockClear();
+    await user.click(screen.getByRole("button", { name: /needs review/i }));
+    // The chip writes ?unreviewed=1, then the filter-reset effect writes page=1
+    // away; the last write must still carry the chip's query.
+    await waitFor(() => expect(replaceMock).toHaveBeenCalled());
+    const last = replaceMock.mock.calls[replaceMock.mock.calls.length - 1][0] as string;
+    expect(last).toContain("unreviewed=1");
+    expect(last).not.toContain("page=");
+  });
+
+  it("renders embedded mode without workspace header or job selector", () => {
+    useApplicationsMock.mockReturnValue({
+      data: {
+        applications: [
+          {
+            _id: "app-1",
+            jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+            jobSeekerId: {
+              _id: "candidate-1",
+              userId: { _id: "user-1", name: "Amina Noor" },
+              skills: ["React", "Node.js", "TypeScript", "GraphQL"],
+              currentLocation: "Dubai",
+              totalExperienceYears: 6,
+              experience: [{ jobTitle: "Senior Web Developer", company: "Acme", isCurrent: true }],
+              cv: { originalUrl: "https://example.com/cv.pdf" },
+            },
+            status: "shortlisted",
+            aiMatchScore: 84,
+            appliedAt: "2026-04-08T00:00:00.000Z",
+            coverLetter: "Delivers production-ready React features across global teams.",
+            matchBreakdown: { skills: 88, experience: 80, overall: 84 },
+            matchStrengths: ["Leadership in cross-functional delivery"],
+            matchGaps: ["Needs deeper fintech domain context"],
+            otherApplicationsCount: 1,
+          },
+        ],
+        pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+      },
+      isLoading: false,
+    });
+
+    render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+    expect(screen.queryByRole("heading", { name: /applications/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /select job/i })).not.toBeInTheDocument();
+    expect(useApplicationsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ jobId: "job-1" })
+    );
   });
 });

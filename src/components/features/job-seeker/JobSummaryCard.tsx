@@ -43,7 +43,7 @@ export interface JobSummary {
 interface JobSummaryCardProps {
   job: JobSummary;
   locale: string;
-  /** Buttons for this surface (apply/hide/save, or just save/view). */
+  /** Buttons for this surface (apply/hide, or just view). */
   actions?: ReactNode;
   /** Hide the match chip where no score is meaningful (plain search results). */
   showMatchScore?: boolean;

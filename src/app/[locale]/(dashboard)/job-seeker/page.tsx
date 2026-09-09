@@ -4,7 +4,6 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
-import SavedJob from "@/models/SavedJob";
 import ProfileView from "@/models/ProfileView";
 import Job from "@/models/Job";
 import { calculateMatchScore, jobProfileFromDoc, skillsOverlap } from "@/lib/matchScore";
@@ -79,7 +78,6 @@ export default async function JobSeekerPage({
       scheduledAt: { $gte: now },
       status: { $nin: ["cancelled"] },
     }),
-    SavedJob.countDocuments({ jobSeekerId: seekerId }),
     // ProfileView.jobSeekerId holds the User id (that is what
     // GET /api/job-seekers/[id] writes), not the JobSeeker profile _id — the
     // sibling counters correctly use seekerId, this one must not.
@@ -139,7 +137,7 @@ export default async function JobSeekerPage({
     countPromises.push(Promise.resolve(0));
   }
 
-  const [appCount, interviewCount, savedCount, viewCount, recentJobs, appliedApps, allActiveApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
+  const [appCount, interviewCount, viewCount, recentJobs, appliedApps, allActiveApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
 
   // Build a Set of applied job IDs for fast exclusion
   const appliedJobIdSet = new Set(
@@ -222,7 +220,6 @@ export default async function JobSeekerPage({
     stats: {
       applicationsSent: { count: appCount as number },
       upcomingInterviews: { count: interviewCount as number },
-      savedJobs: { count: savedCount as number },
       recruiterViews: { total: viewCount as number },
       pendingOffers: { count: Math.max(0, Number(pendingOfferCount) || 0) },
       unreadMessages: { count: Math.max(0, Number(unreadMessageCount) || 0) },

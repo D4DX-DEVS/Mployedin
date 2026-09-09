@@ -4,6 +4,8 @@ import { useQueryFlag } from "@/hooks/useQueryFlag";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -86,6 +88,7 @@ export default function SuperAgentEmployersPage() {
     { debounceKeys: ["search"], debounceMs: 400 }
   );
   const t = useTranslations("superAgentEmployers");
+  const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
 
@@ -151,11 +154,11 @@ export default function SuperAgentEmployersPage() {
   const onboardFields: CrudField[] = useMemo(() => [
     { name: "name", label: t("contactNameLabel"), type: "text", required: true },
     { name: "email", label: tc("email"), type: "text", required: true },
-    { name: "password", label: t("tempPasswordLabel"), type: "text", required: true },
+    { name: "password", label: t("tempPasswordLabel"), type: "text", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
     { name: "companyName", label: t("companyNameLabel"), type: "text", required: true },
     { name: "industry", label: t("industryLabel"), type: "text" },
     { name: "phone", label: tc("phone"), type: "text" },
-  ], [t, tc]);
+  ], [t, tc, tf]);
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
@@ -227,14 +230,15 @@ export default function SuperAgentEmployersPage() {
   }), [employers, serverStats]);
 
   const handleOnboard = async (values: Record<string, string>) => {
+    const passwordError = validatePasswordForForm(values.password ?? "", { locale, t: tf });
+    if (passwordError) throw new FormError(passwordError);
     const res = await fetch("/api/employers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
     });
     if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || t("onboardError"));
+      throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: onboardFields, conflict: tf("emailInUse") });
     }
     setOnboardOpen(false);
     loadEmployers();

@@ -16,6 +16,8 @@ import type { UserRole } from "@/types/user";
  */
 export interface EntitySearchRoutes {
   job: (id: string) => string;
+  /** Optional second hit per job: its applications inbox (employer job workspace). */
+  jobApplications?: (id: string) => string;
   candidate: (name: string) => string;
   /** Key into the "commandMenu" namespace for the second group's heading. */
   candidateHeadingKey?: string;
@@ -39,6 +41,7 @@ export const ENTITY_SEARCH_ROUTES: Partial<Record<UserRole, EntitySearchRoutes>>
   },
   employer: {
     job: (id) => `/employer/jobs/${id}`,
+    jobApplications: (id) => `/employer/jobs/${id}/applications`,
     candidate: (name) => `/employer/applications?search=${encodeURIComponent(name)}`,
   },
   job_seeker: {

@@ -65,6 +65,7 @@ export const STAGE_DOT_CLASS: Record<ApplicationStatus, string> = {
 export const LEGACY_STAGE_IDS: Record<string, ApplicationStatus> = {
   new: "applied",
   screening: "shortlisted",
+  interview: "interview_scheduled",
   interview_completed: "selected",
   offer_extended: "offer",
   accepted: "hired",

@@ -641,17 +641,6 @@ const notifications = {
   ]
 };
 
-// ============ SAVED JOBS ============
-const savedJobs = {
-  name: 'Saved Jobs',
-  description: 'Job seeker saved/bookmarked jobs',
-  item: [
-    req('List Saved Jobs', 'GET', '/api/saved-jobs?page=1&limit=20', null, 'List saved/bookmarked jobs'),
-    req('Save Job', 'POST', '/api/saved-jobs', { jobId: '{{jobId}}', notes: 'Great opportunity - apply next week' }, 'Bookmark a job'),
-    req('Remove Saved Job', 'DELETE', '/api/saved-jobs/{{savedJobId}}', null, 'Remove job from bookmarks'),
-  ]
-};
-
 // ============ USERS ============
 const users = {
   name: 'Users',
@@ -761,7 +750,7 @@ collection.item = [
   auth, admin, ai, agent, superAgent, applications, employers, jobs,
   jobSeekers, interviews, subscriptions, messages, leads, offers,
   placements, commissions, invoices, scorecards, tasks, notifications,
-  savedJobs, users, userSelf, referrals, publicRoutes, misc, cron
+  users, userSelf, referrals, publicRoutes, misc, cron
 ];
 
 // Write file

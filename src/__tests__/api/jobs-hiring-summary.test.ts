@@ -33,25 +33,25 @@ jest.mock("@/models/Employer", () => ({
 }));
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: jest.fn(() => chain(null)), findById: jest.fn(() => chain(null)) } }));
 
-const appAggregate = jest.fn(async () => [{
+const appAggregate = jest.fn(async (..._args: unknown[]) => [{
   byStatus: [{ _id: "applied", count: 7 }, { _id: "shortlisted", count: 3 }, { _id: "hired", count: 1 }],
   unreviewed: [{ n: 4 }],
 }]);
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { aggregate: (...a: unknown[]) => appAggregate(...a) } }));
 
-const interviewAggregate = jest.fn(async () => [{ upcoming: [{ n: 2 }], awaitingOutcome: [{ n: 1 }], rescheduleRequests: [] }]);
+const interviewAggregate = jest.fn(async (..._args: unknown[]) => [{ open: [{ n: 3 }], upcoming: [{ n: 2 }], awaitingOutcome: [{ n: 1 }], rescheduleRequests: [] }]);
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { aggregate: (...a: unknown[]) => interviewAggregate(...a) } }));
 
-const offerAggregate = jest.fn(async () => [{ pending: [{ n: 1 }], expiringSoon: [{ n: 1 }], accepted: [{ n: 1 }] }]);
+const offerAggregate = jest.fn(async (..._args: unknown[]) => [{ pending: [{ n: 1 }], expiringSoon: [{ n: 1 }], accepted: [{ n: 1 }] }]);
 jest.mock("@/models/Offer", () => ({ __esModule: true, default: { aggregate: (...a: unknown[]) => offerAggregate(...a) } }));
 
-const checkAggregate = jest.fn(async () => [{ inProgress: [], completed: [{ n: 1 }] }]);
+const checkAggregate = jest.fn(async (..._args: unknown[]) => [{ inProgress: [], completed: [{ n: 1 }] }]);
 jest.mock("@/models/BackgroundCheck", () => ({ __esModule: true, default: { aggregate: (...a: unknown[]) => checkAggregate(...a) } }));
 
-const placementAggregate = jest.fn(async () => [{ active: [{ n: 1 }], completed: [] }]);
+const placementAggregate = jest.fn(async (..._args: unknown[]) => [{ active: [{ n: 1 }], completed: [] }]);
 jest.mock("@/models/Placement", () => ({ __esModule: true, default: { aggregate: (...a: unknown[]) => placementAggregate(...a) } }));
 
-const posterCount = jest.fn(async () => 2);
+const posterCount = jest.fn(async (..._args: unknown[]) => 2);
 jest.mock("@/models/PosterGeneration", () => ({ __esModule: true, default: { countDocuments: (...a: unknown[]) => posterCount(...a) } }));
 
 async function call() {
@@ -71,7 +71,7 @@ describe("GET /api/jobs/[id]/hiring-summary", () => {
       applied: 7, shortlisted: 3, interview_scheduled: 0, selected: 0, offer: 0, hired: 1, rejected: 0, withdrawn: 0,
     });
     expect(body.unreviewed).toBe(4);
-    expect(body.interviews).toEqual({ upcoming: 2, awaitingOutcome: 1, rescheduleRequests: 0 });
+    expect(body.interviews).toEqual({ open: 3, upcoming: 2, awaitingOutcome: 1, rescheduleRequests: 0 });
     expect(body.offers).toEqual({ pending: 1, expiringSoon: 1, accepted: 1 });
     expect(body.checks).toEqual({ inProgress: 0, completed: 1 });
     expect(body.placements).toEqual({ active: 1, completed: 0 });
@@ -84,7 +84,7 @@ describe("GET /api/jobs/[id]/hiring-summary", () => {
   it("scopes every aggregation to the job", async () => {
     await call();
     for (const agg of [appAggregate, interviewAggregate, offerAggregate, checkAggregate, placementAggregate]) {
-      const pipeline = agg.mock.calls[0][0] as Array<Record<string, unknown>>;
+      const pipeline = (agg.mock.calls[0] as unknown[])[0] as Array<Record<string, unknown>>;
       expect(String((pipeline[0].$match as { jobId: unknown }).jobId)).toBe(JOB_ID);
     }
     expect(posterCount).toHaveBeenCalledWith(expect.objectContaining({ jobId: expect.anything() }));

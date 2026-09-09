@@ -51,20 +51,47 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     effectiveAgentId = agent._id;
   }
 
-  const clone = await Job.create({
+  // Everything the poster authored travels with the copy; what belongs to the
+  // original's life (applicants, views, poster, expiry, featuring, status)
+  // stays behind. Draft sources may lack required fields, so validation waits
+  // for publish — same as a template-made draft.
+  const clone = new Job({
     employerId: source.employerId,
     agentId: effectiveAgentId,
-    title: source.title,
     clonedFrom: source._id,
+    title: source.title,
+    titleAr: source.titleAr,
     description: source.description,
+    descriptionAr: source.descriptionAr,
+    responsibilities: source.responsibilities,
+    responsibilitiesAr: source.responsibilitiesAr,
+    qualifications: source.qualifications,
+    qualificationsAr: source.qualificationsAr,
+    benefits: source.benefits,
+    benefitsAr: source.benefitsAr,
+    learningOutcomes: source.learningOutcomes,
     requirements: source.requirements,
     salary: source.salary,
+    showSalary: source.showSalary,
     location: source.location,
+    locations: source.locations,
+    isWalkIn: source.isWalkIn,
+    walkInDetails: source.walkInDetails,
+    employmentType: source.employmentType,
+    workMode: source.workMode,
+    duration: source.duration,
+    category: source.category,
     tags: source.tags,
+    visibility: source.visibility,
     vacancies: source.vacancies,
+    maxApplicants: source.maxApplicants,
     workflowMode: source.workflowMode,
+    workflow: source.workflow,
+    matchingWeights: source.matchingWeights,
+    screeningQuestions: source.screeningQuestions,
     status: "draft",
   });
+  await clone.save({ validateBeforeSave: false });
 
   await logActivity({
     ...actorFromCtx(ctx),

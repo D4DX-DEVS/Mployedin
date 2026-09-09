@@ -7,6 +7,7 @@
  * stored list in line with src/lib/hiring/pipeline.ts:
  *   new                  -> applied
  *   screening            -> shortlisted
+ *   interview            -> interview_scheduled
  *   interview_completed  -> selected
  *   offer_extended       -> offer
  *   accepted             -> hired
@@ -31,7 +32,7 @@ if (!MONGODB_URI) {
 const APPLY = process.argv.includes("--apply");
 
 const CANONICAL = new Set(["applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected", "withdrawn"]);
-const LEGACY = { new: "applied", screening: "shortlisted", interview_completed: "selected", offer_extended: "offer", accepted: "hired" };
+const LEGACY = { new: "applied", screening: "shortlisted", interview: "interview_scheduled", interview_completed: "selected", offer_extended: "offer", accepted: "hired" };
 
 function normalize(stages) {
   const seen = new Set();
