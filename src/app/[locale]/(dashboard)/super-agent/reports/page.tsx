@@ -7,7 +7,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -126,35 +125,14 @@ export default function SuperAgentReportsPage() {
     URL.revokeObjectURL(url);
   };
 
+  // Hero strip, matching every other super-agent listing. As a separate card
+  // grid these four figures pushed the agent breakdown — the actual report —
+  // below the fold.
   const kpis = [
-    {
-      label: t("agentsManaged"),
-      value: stats?.totalAgents ?? 0,
-      helper: t("agentsManagedHelper"),
-      icon: <Users2 className="h-5 w-5" />,
-      toneClassName: "workspace-tone-sky",
-    },
-    {
-      label: t("totalLeads"),
-      value: stats?.totalLeads ?? 0,
-      helper: t("totalLeadsHelper"),
-      icon: <Target className="h-5 w-5" />,
-      toneClassName: "workspace-tone-indigo",
-    },
-    {
-      label: t("placements"),
-      value: stats?.totalPlacements ?? 0,
-      helper: t("placementsHelper"),
-      icon: <BarChart3 className="h-5 w-5" />,
-      toneClassName: "workspace-tone-emerald",
-    },
-    {
-      label: t("commissions"),
-      value: formatCurrency(stats?.totalCommissions ?? 0, currencyCode),
-      helper: t("commissionsHelper"),
-      icon: <Coins className="h-5 w-5" />,
-      toneClassName: "workspace-tone-amber",
-    },
+    { label: t("agentsManaged"), value: stats?.totalAgents ?? 0, note: t("agentsManagedHelper"), icon: Users2 },
+    { label: t("totalLeads"), value: stats?.totalLeads ?? 0, note: t("totalLeadsHelper"), icon: Target },
+    { label: t("placements"), value: stats?.totalPlacements ?? 0, note: t("placementsHelper"), icon: BarChart3 },
+    { label: t("commissions"), value: formatCurrency(stats?.totalCommissions ?? 0, currencyCode), note: t("commissionsHelper"), icon: Coins },
   ];
 
   return (
@@ -162,6 +140,8 @@ export default function SuperAgentReportsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={loading ? undefined : kpis}
+        compactMetrics
       />
 
       {/* ---- Error State ---- */}
@@ -178,14 +158,10 @@ export default function SuperAgentReportsPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-40 animate-pulse rounded-3xl border border-border/70 bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)]" />
-          ))}
-        </div>
-      ) : (
-        <SuperAgentMetricsGrid items={kpis} />
+      {/* Skeleton shaped like the strip the figures land in, not like the card
+          grid they used to occupy. */}
+      {loading && (
+        <div className="h-16 animate-pulse rounded-2xl border border-border/70 bg-card/90" />
       )}
 
       {/* Agent Comparison */}

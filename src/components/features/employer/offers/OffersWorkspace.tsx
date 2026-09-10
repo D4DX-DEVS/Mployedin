@@ -312,7 +312,7 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
               {t("noOffersDesc")}
             </p>
             <Button size="lg" asChild className="mt-6 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-              <Link href={jobId ? `/${locale}/employer/jobs/${jobId}/applications` : `/${locale}/employer/applications`}>{t("openPipeline")}</Link>
+              <Link href={jobId ? `/${locale}/employer/jobs/${jobId}/applications` : `/${locale}/employer/applications`}>{t("chooseCandidate")}</Link>
             </Button>
           </div>
         ) : (

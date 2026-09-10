@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/companyRoles";
 
 // ── Types ──────────────────────────────────────────────────────────
 export type CompanyRole = "owner" | "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer";
@@ -10,16 +11,11 @@ export interface TeamMember {
   companyRole: CompanyRole;
   companyRoles: CompanyRole[];
   jobAccess: string[];
-  permissions: {
-    canCreateJobs: boolean;
-    canManageTeam: boolean;
-    canViewAnalytics: boolean;
-    canExportData: boolean;
-    canManageBilling: boolean;
-    canViewReports: boolean;
-    canApproveInvoices: boolean;
-    canViewCommissions: boolean;
-  };
+  // Sourced from the model rather than hand-copied: the local copy had drifted
+  // and was missing every function flag added since it was written.
+  permissions: ICompanyUserPermissions;
+  /** The employer's manual ticks on top of the roles. */
+  permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
   status: MemberStatus;
   invitedAt: string;
   acceptedAt?: string;
@@ -71,7 +67,12 @@ export function useTeam(params: { page: number; limit: number; search: string })
 export function useInviteTeamMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (inviteData: { email: string; companyRoles: CompanyRole[]; jobAccess?: string[] }) => {
+    mutationFn: async (inviteData: {
+      email: string;
+      companyRoles: CompanyRole[];
+      jobAccess?: string[];
+      permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
+    }) => {
       const res = await fetch("/api/employers/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,7 +94,13 @@ export function useInviteTeamMember() {
 export function useUpdateTeamMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { memberId: string; companyRole?: CompanyRole; jobAccess?: string[] }) => {
+    mutationFn: async (payload: {
+      memberId: string;
+      companyRole?: CompanyRole;
+      companyRoles?: CompanyRole[];
+      jobAccess?: string[];
+      permissionOverrides?: Record<string, boolean>;
+    }) => {
       const { memberId, ...body } = payload;
       const res = await fetch(`/api/employers/team/${memberId}`, {
         method: "PATCH",

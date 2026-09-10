@@ -29,14 +29,13 @@ import {
   Loader2,
   Search,
   Star,
-  Users,
   X,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ApplicationItem {
@@ -300,12 +299,9 @@ export default function AgentCandidatesPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={Users}
+      <WorkspaceHeader
         title={t("candidatesPipeline")}
-        description={t("pipelineDescription")}
-        summary={{ label: t("pipeline"), value: `${pagination.total} ${t("application", { count: pagination.total })}` }}
-        compactOnMobile
+        context={`${pagination.total} ${t("application", { count: pagination.total })}`}
       />
 
       {/* One panel: search + export inline, status pills below, table under

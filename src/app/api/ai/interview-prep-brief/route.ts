@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       };
       applicationId?: {
         aiMatchScore?: number;
-        matchBreakdown?: { skills: number; experience: number; location: number; language: number };
+        matchBreakdown?: { skills: number; experience: number; location: number; salary: number };
         strengths?: string[];
         gaps?: string[];
         coverLetter?: string;

@@ -17,7 +17,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface Placement {
@@ -120,18 +120,15 @@ export default function AgentPlacementsPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={UserCheck}
+      <WorkspaceHeader
         title={t("pageTitle")}
-        description={t("pageDescription")}
-        summary={{ label: t("placementBook"), value: `${pagination.total} ${t("records")}` }}
+        context={`${pagination.total} ${t("records")}`}
         metrics={[
-          { label: t("statCompleted"), value: completedPlacements, icon: UserCheck },
-          { label: t("statOfferStage"), value: signedOffers, icon: BriefcaseBusiness },
-          { label: t("statStartDates"), value: startedCount, icon: ArrowRight },
-          { label: t("statSalaryValue"), value: formatCount(totalCompensation), icon: CircleDollarSign },
+          { label: t("statCompleted"), value: completedPlacements, icon: UserCheck, tone: "success" },
+          { label: t("statOfferStage"), value: signedOffers, icon: BriefcaseBusiness, tone: "primary" },
+          { label: t("statStartDates"), value: startedCount, icon: ArrowRight, tone: "info" },
+          { label: t("statSalaryValue"), value: formatCount(totalCompensation), icon: CircleDollarSign, tone: "warning" },
         ]}
-        compactOnMobile
       />
 
       {/* One panel: search, status and dates inline on the list header, table

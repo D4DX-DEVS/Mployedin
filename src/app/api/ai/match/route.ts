@@ -13,7 +13,7 @@ import { aiMatchSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, type MatchScoreWeights } from "@/lib/matchScore";
+import { calculateMatchDetail, seekerProfileFromDoc, jobProfileFromDoc, type MatchScoreWeights } from "@/lib/matchScore";
 
 function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
   const cleaned = (values ?? [])
@@ -108,7 +108,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     salary: weights?.salary,
   };
 
-  const deterministicScore = calculateMatchScore(seekerProfile, jobProfile, scoreWeights);
+  const deterministicDetail = calculateMatchDetail(seekerProfile, jobProfile, scoreWeights);
+  const deterministicScore = deterministicDetail.overall;
 
   // Safely extract nested fields for LLM narrative (optional)
   const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
@@ -180,11 +181,14 @@ Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no m
 
   const matchData = {
     score: deterministicScore,
+    // Real per-component scores. These used to be hardcoded zeroes, so every
+    // application panel showed "Skills 0% / Experience 0%" next to a healthy
+    // overall score.
     breakdown: {
-      skills: 0,
-      experience: 0,
-      location: 0,
-      language: 0,
+      skills: deterministicDetail.skills,
+      experience: deterministicDetail.experience,
+      location: deterministicDetail.location,
+      salary: deterministicDetail.salary,
     },
     strengths,
     gaps,
@@ -203,9 +207,11 @@ Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no m
       aiMatchScore: matchData.score,
       scoredVia: 'deterministic',
       matchBreakdown: {
-        skills: matchData.breakdown?.skills ?? 0,
-        experience: matchData.breakdown?.experience ?? 0,
-        overall: matchData.score,
+        skills: deterministicDetail.skills,
+        experience: deterministicDetail.experience,
+        location: deterministicDetail.location,
+        salary: deterministicDetail.salary,
+        overall: deterministicDetail.overall,
       },
       matchStrengths: matchData.strengths ?? [],
       matchGaps: matchData.gaps ?? [],

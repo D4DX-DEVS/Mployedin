@@ -14,9 +14,10 @@ import {
 } from "recharts";
 import {
   CircleDollarSign, Clock, CheckCircle2, Wallet,
-  CalendarDays, RotateCcw, TrendingUp,
+  CalendarDays, RotateCcw,
 } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -121,73 +122,39 @@ export default function AgentCommissionsReportPage() {
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="page-container">
       <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
-      {/* ── Header ── */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
-          <p className="text-sm text-muted-foreground">{t("pageSubtitle", { year: yearFilter })}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
-            <SelectTrigger className="w-28">
-              <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {yearOptions.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading}>
-            <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Single-Row Metrics Strip ── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 rounded-lg border bg-card card-pad">
-        {[
-          {
-            label: t("totalEarned", { year: yearFilter }),
-            value: ytd ? fmt(ytd.totalAmount, ytd.currency) : "—",
-            icon: CircleDollarSign,
-            color: "text-indigo-600 bg-indigo-50",
-          },
-          {
-            label: t("statusPending"),
-            value: ytd ? fmt(ytd.pendingAmount, ytd.currency) : "—",
-            icon: Clock,
-            color: "text-amber-600 bg-amber-50",
-          },
-          {
-            label: t("statusApproved"),
-            value: ytd ? fmt(ytd.approvedAmount, ytd.currency) : "—",
-            icon: CheckCircle2,
-            color: "text-blue-600 bg-blue-50",
-          },
-          {
-            label: t("statusPaidOut"),
-            value: ytd ? fmt(ytd.paidAmount, ytd.currency) : "—",
-            icon: Wallet,
-            color: "text-emerald-600 bg-emerald-50",
-          },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="flex flex-col items-start gap-1">
-            <div className="flex items-center gap-1.5 w-full">
-              <span className={`rounded-full p-1 ${color} flex-shrink-0`}>
-                <Icon className="h-3 w-3" />
-              </span>
-              <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
-            </div>
-            <p className="text-lg font-bold">
-              {loading ? <span className="h-5 w-20 animate-pulse rounded bg-muted inline-block" /> : value}
-            </p>
-          </div>
-        ))}
-      </div>
+      {/* The page used to open with a bare h1 and then a second card of four
+          figures. One header now carries both, on the shape every other agent
+          page uses. */}
+      <WorkspaceHeader
+        title={t("pageTitle")}
+        context={t("pageSubtitle", { year: yearFilter })}
+        actions={
+          <>
+            <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
+              <SelectTrigger className="h-11 w-28 rounded-xl">
+                <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} aria-label={t("pageTitle")} className="h-11 w-11 rounded-xl">
+              <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </>
+        }
+        metrics={[
+          { label: t("totalEarned", { year: yearFilter }), value: ytd ? fmt(ytd.totalAmount, ytd.currency) : "—", icon: CircleDollarSign, tone: "primary" },
+          { label: t("statusPending"), value: ytd ? fmt(ytd.pendingAmount, ytd.currency) : "—", icon: Clock, tone: "warning" },
+          { label: t("statusApproved"), value: ytd ? fmt(ytd.approvedAmount, ytd.currency) : "—", icon: CheckCircle2, tone: "info" },
+          { label: t("statusPaidOut"), value: ytd ? fmt(ytd.paidAmount, ytd.currency) : "—", icon: Wallet, tone: "success" },
+        ]}
+      />
 
       {/* ── Est. Next Payment Caption ── */}
       <div className="text-xs text-muted-foreground px-1">

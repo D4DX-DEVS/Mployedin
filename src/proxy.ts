@@ -34,6 +34,7 @@ const AUTH_ROUTES = [
   "/reset-password",
   "/verify-email",
   "/onboarding",
+  "/join-team",
 ];
 
 /** Role → allowed dashboard path prefixes */

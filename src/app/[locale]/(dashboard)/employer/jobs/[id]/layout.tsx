@@ -28,6 +28,7 @@ import {
   useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob, type Job,
 } from "@/hooks/useJobs";
 import { useJobHiringSummary } from "@/hooks/useJobHiringSummary";
+import { stagesFrom } from "@/lib/hiring/pipeline";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 
 /* Routes under /jobs/[id] that keep their own full-page UI. */
@@ -170,14 +171,26 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
   const context = [location, job.category].filter(Boolean).join(" · ");
   const statusLabel = tj(jobStatusLabelKey(job.status));
   const counts = summary?.statusCounts;
+  const shortlistedReached = counts
+    ? stagesFrom("shortlisted").reduce((n, stage) => n + (counts[stage] ?? 0), 0)
+    : undefined;
 
   const countOrNone = (n: number | undefined) => (n && n > 0 ? n : undefined);
   const tabs: WorkspaceTab[] = [
     { key: "overview", label: t("tabOverview"), href: jobHref, exact: true },
     { key: "applications", label: t("tabApplications"), href: `${jobHref}/applications`, count: countOrNone(summary?.total) },
+    // The tabs run in pipeline order, so Shortlist sits between Applications and
+    // Interviews. Its count is everyone who has reached the shortlist, not only
+    // those parked there — moving on does not unpick a candidate.
+    { key: "shortlist", label: t("tabShortlist"), href: `${jobHref}/shortlist`, count: countOrNone(shortlistedReached) },
     { key: "interviews", label: t("tabInterviews"), href: `${jobHref}/interviews`, count: countOrNone(summary?.interviews.open) },
     { key: "offers", label: t("tabOffers"), href: `${jobHref}/offers`, count: countOrNone(summary?.offers.pending) },
     { key: "hires", label: t("tabHires"), href: `${jobHref}/hires`, count: countOrNone(counts?.hired) },
+    // A supporting process, not a pipeline stage — employers run checks before
+    // an offer, after a conditional one, or never — so it sits after the funnel
+    // tabs alongside Posting and Setup rather than between Interviews and
+    // Offers. Count is the checks still open.
+    { key: "background-checks", label: t("tabChecks"), href: `${jobHref}/background-checks`, count: countOrNone(summary?.checks.inProgress) },
     { key: "posting", label: t("tabPosting"), href: `${jobHref}/posting` },
     { key: "setup", label: t("tabSetup"), href: `${jobHref}/setup`, hideOnPhone: true },
   ];

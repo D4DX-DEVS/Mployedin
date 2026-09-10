@@ -21,7 +21,7 @@ import { ArrowRight, BriefcaseBusiness, ChevronDown, ChevronUp, Edit2, FileText,
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
@@ -196,17 +196,14 @@ export default function AgentJobSeekersPage() {
   return (
     <div className="page-container">
       {/* Hero */}
-      <DashboardPageHeader
-        icon={UserRoundSearch}
+      <WorkspaceHeader
         title={t("heroTitle")}
-        description={t("heroDescription")}
-        summary={{ label: t("talentPoolLabel"), value: `${pagination.total} ${t("talentPoolProfiles")}` }}
+        context={`${pagination.total} ${t("talentPoolProfiles")}`}
         metrics={[
-          { label: t("cardCompleteLabel"), value: completeProfiles, icon: UserRoundSearch },
-          { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, icon: ArrowRight },
-          { label: t("cardWithTitlesLabel"), value: withTitles, icon: BriefcaseBusiness },
+          { label: t("cardCompleteLabel"), value: completeProfiles, icon: UserRoundSearch, tone: "primary" },
+          { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, icon: ArrowRight, tone: "info" },
+          { label: t("cardWithTitlesLabel"), value: withTitles, icon: BriefcaseBusiness, tone: "success" },
         ]}
-        compactMetrics
       />
 
       {/* One panel: privacy notice, search, filters and the table together.

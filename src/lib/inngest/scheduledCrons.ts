@@ -121,13 +121,6 @@ export const subscriptionExpiryCron = makeScheduledCron({
   path: "/api/cron/subscription-expiry",
 });
 
-export const jobAlertsCron = makeScheduledCron({
-  id: "scheduled-job-alerts",
-  name: "Job Alerts (07:00)",
-  cron: "0 7 * * *",
-  path: "/api/cron/job-alerts",
-});
-
 export const leadFollowupReminderCron = makeScheduledCron({
   id: "scheduled-lead-followup-reminder",
   name: "Lead Follow-up Reminder (08:00)",
@@ -183,6 +176,13 @@ export const slaAlertsCron = makeScheduledCron({
   path: "/api/cron/sla-alerts",
 });
 
+export const strongCandidateAlertsCron = makeScheduledCron({
+  id: "scheduled-strong-candidate-alerts",
+  name: "Strong Candidate Alerts (hourly)",
+  cron: "0 * * * *",
+  path: "/api/cron/strong-candidate-alerts",
+});
+
 export const subscriptionReminderCron = makeScheduledCron({
   id: "scheduled-subscription-reminder",
   name: "Subscription Reminder (daily)",
@@ -198,7 +198,6 @@ export const scheduledCronFunctions = [
   offerExpiryCron,
   jobExpiryCron,
   subscriptionExpiryCron,
-  jobAlertsCron,
   leadFollowupReminderCron,
   invoiceOverdueReminderCron,
   targetRiskCheckCron,
@@ -206,5 +205,6 @@ export const scheduledCronFunctions = [
   invoiceOverdueCron,
   npsTriggerCron,
   slaAlertsCron,
+  strongCandidateAlertsCron,
   subscriptionReminderCron,
 ];

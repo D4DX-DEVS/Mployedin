@@ -161,6 +161,33 @@ describe("Invoices API", () => {
     );
   });
 
+  it("resolves the agent's name through the linked User and flattens it for the client", async () => {
+    // Invoice.agentId refs the Agent PROFILE, which stores no name or email.
+    // A one-level populate handed the client { _id, userId } and the super-agent
+    // invoice table's AGENT column rendered "—" on every row.
+    auth.mockResolvedValue({ user: { id: "admin_001", role: "admin", locale: "en" } });
+    invoiceChain.lean.mockResolvedValueOnce([
+      { _id: "inv_001", agentId: { _id: "agent_001", userId: { name: "Agent Ahmed", email: "ahmed@example.com" } } },
+      { _id: "inv_002", agentId: null },
+    ]);
+
+    const { GET } = await import("@/app/api/invoices/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/invoices"), { params: Promise.resolve({}) });
+    const body = await res.json();
+
+    expect(invoiceChain.populate).toHaveBeenCalledWith({
+      path: "agentId",
+      select: "userId",
+      populate: { path: "userId", select: "name email" },
+    });
+    expect(body.invoices[0].agentId).toEqual({
+      _id: "agent_001",
+      name: "Agent Ahmed",
+      email: "ahmed@example.com",
+    });
+    expect(body.invoices[1].agentId).toBeNull();
+  });
+
   it("skips cross-collection expansion for one-character searches", async () => {
     auth.mockResolvedValue({ user: { id: "admin_001", role: "admin", locale: "en" } });
 

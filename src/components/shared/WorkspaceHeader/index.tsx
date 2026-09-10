@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,10 @@ export interface WorkspaceMetric {
   tone?: "primary" | "success" | "info" | "warning";
   /** Makes the metric a toggle (e.g. filter the list by this status). */
   onClick?: () => void;
+  /** Makes the metric a link into the list it counts. Ignored when `onClick` is set. */
+  href?: string;
+  /** Accessible name for a linked metric ("Active accounts: 23"). */
+  ariaLabel?: string;
   /** Pressed state of a clickable metric. */
   active?: boolean;
 }
@@ -59,7 +64,7 @@ export function WorkspaceHeader({
 }: WorkspaceHeaderProps) {
   const Heading = headingLevel === 2 ? "h2" : "h1";
   const hasMetrics = Boolean(metrics && metrics.length > 0);
-  const interactive = Boolean(metrics?.some((m) => m.onClick));
+  const interactive = Boolean(metrics?.some((m) => m.onClick || m.href));
 
   return (
     <section data-workspace-header="" className={cn("workspace-header", className)}>
@@ -102,6 +107,19 @@ export function WorkspaceHeader({
                 {Icon && <Icon className="workspace-header-metric-icon" aria-hidden="true" />}
               </>
             );
+            if (!metric.onClick && metric.href) {
+              return (
+                <Link
+                  key={metric.label}
+                  href={metric.href}
+                  aria-label={metric.ariaLabel}
+                  className="workspace-header-metric is-clickable"
+                  data-tone={metric.tone ?? "primary"}
+                >
+                  {body}
+                </Link>
+              );
+            }
             if (metric.onClick) {
               return (
                 <button

@@ -10,7 +10,8 @@ import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notifyStatusChange } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
-import { normalizeWorkflowStages, isBackwardsStageMove } from "@/lib/hiring/pipeline";
+import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
+import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
@@ -46,25 +47,10 @@ async function verifyAgentScopeForApplication(
   return null;
 }
 
-interface WorkflowSettings {
-  aiAutoScreen?: boolean;
-  notifyOnStageChange?: boolean;
-  autoRejectBelow?: number;
-}
-
-interface WorkflowStage {
-  id: string;
-  label: string;
-  enabled: boolean;
-  autoProgress: boolean;
-  order: number;
-}
-
-interface EmpLean {
+interface EmpLean extends WorkflowSettingsCarrier {
   _id: unknown;
   userId?: unknown;
   companyName?: string;
-  workflow?: { settings?: WorkflowSettings; stages?: WorkflowStage[] };
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
@@ -76,10 +62,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // Ownership check for employers — capture emp for automation rules below
   let emp = null as EmpLean | null;
-  const jobDoc = application.jobId as unknown as {
+  const jobDoc = application.jobId as unknown as WorkflowSettingsCarrier & {
     employerId: string;
     agentId?: unknown;
-    workflow?: { settings?: WorkflowSettings; stages?: WorkflowStage[] };
   };
 
   if (ctx.role === "employer") {
@@ -100,7 +85,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       const scopeErr = await verifyAgentScopeForApplication(jobDoc?.employerId, jobDoc?.agentId, ctx);
       if (scopeErr) return scopeErr;
     }
-    // Fetch employer so workflow automation (autoProgress, notifications) fires for these roles too
+    // Fetch employer so the notification rule and the employer alert apply for these roles too
     if (jobDoc?.employerId) {
       emp = (await Employer.findOne({ _id: jobDoc.employerId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
     }
@@ -120,8 +105,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     application.viewedByEmployerAt = new Date();
   }
 
-  // A pure view-stamp must not run workflow automation (auto-reject/auto-progress
-  // below would otherwise fire from merely opening the detail panel).
+  // A pure view-stamp is not an edit: skip the audit + notification path below.
   const onlyMarkViewed =
     markViewed &&
     !status &&
@@ -135,12 +119,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     return NextResponse.json({ application });
   }
 
-  // Auto-reject rule: if employer has autoRejectBelow threshold and aiMatchScore is being implicitly set
-  // Also apply when aiMatchScore already exists and new status change would pass auto-reject threshold
-  const jobWorkflow = jobDoc?.workflow;
-  const workflowSettings = (jobWorkflow?.settings ?? emp?.workflow?.settings) as WorkflowSettings | undefined;
-  const autoRejectBelow = workflowSettings?.autoRejectBelow;
-  const notifyOnStageChange = workflowSettings?.notifyOnStageChange ?? true;
+  // Hiring rules are consulted only for the candidate-notification switch.
+  // Automation (opt-in auto-reject) lives in the screening worker; an employer
+  // edit never moves a candidate on its own.
+  const { notifyOnStageChange } = resolveHiringRulesForJob(jobDoc, emp);
 
   const prevStatus = application.status;
 
@@ -194,49 +176,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (isStaff && agentNotes !== undefined) application.agentNotes = agentNotes;
   if (withdrawalReason !== undefined) application.withdrawalReason = withdrawalReason;
   if (withdrawalNote !== undefined) application.withdrawalNote = withdrawalNote;
-
-  // Automation: auto-reject if aiMatchScore is below threshold
-  if (
-    autoRejectBelow !== undefined &&
-    application.aiMatchScore !== undefined &&
-    application.aiMatchScore < autoRejectBelow &&
-    application.status !== "rejected" &&
-    !status // only auto-reject if no explicit status override
-  ) {
-    application.status = "rejected";
-    application.rejectionReason = application.rejectionReason ?? `AI match score (${application.aiMatchScore}) below threshold (${autoRejectBelow})`;
-    application.statusHistory.push({
-      status: "rejected",
-      changedAt: new Date(),
-      note: `Auto-rejected: AI match score ${application.aiMatchScore} < threshold ${autoRejectBelow}`,
-    });
-  }
-
-  // AutoProgress: the job's own workflow wins; otherwise the employer default.
-  // Stage ids are normalised so legacy editor ids ("new", "offer_extended", …)
-  // can never be written into Application.status.
-  const rawStages = jobWorkflow?.stages?.length ? jobWorkflow.stages : emp?.workflow?.stages;
-  const workflowStages = Array.isArray(rawStages) ? normalizeWorkflowStages(rawStages) : [];
-  if (
-    workflowStages.length > 0 &&
-    application.status !== "rejected" &&
-    application.status !== "withdrawn"
-  ) {
-    const currentIdx = workflowStages.findIndex((s) => s.id === application.status && s.enabled);
-    if (currentIdx >= 0 && workflowStages[currentIdx].autoProgress) {
-      const next = workflowStages
-        .slice(currentIdx + 1)
-        .find((s) => s.enabled && s.id !== "rejected" && s.id !== "withdrawn");
-      if (next) {
-        application.status = next.id;
-        application.statusHistory.push({
-          status: next.id,
-          changedAt: new Date(),
-          note: "Auto-progressed by workflow rule",
-        });
-      }
-    }
-  }
 
   await application.save();
 

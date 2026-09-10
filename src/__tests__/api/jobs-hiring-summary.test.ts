@@ -87,10 +87,11 @@ describe("GET /api/jobs/[id]/hiring-summary", () => {
     }]);
   });
 
-  /** A candidate can hold an open interview while sitting at another stage —
+  /** A candidate can hold an open interview while sitting at an *earlier* stage —
       someone moved them back — and a stage-only count then reads 0 beside an
-      Interviews tab reading 1. */
-  it("counts candidates with an open interview outside the interview stage", async () => {
+      Interviews tab reading 1. Candidates who have moved on (selected, offer,
+      hired) are finished with interviewing and must not be counted again. */
+  it("counts candidates moved back from the interview stage, not those past it", async () => {
     appAggregate.mockResolvedValue([{
       byStatus: [{ _id: "interview_scheduled", count: 2 }, { _id: "shortlisted", count: 1 }],
       unreviewed: [],
@@ -106,7 +107,7 @@ describe("GET /api/jobs/[id]/hiring-summary", () => {
     expect(body.interviews.interviewingCandidates).toBe(3);
     expect(appCountDocuments).toHaveBeenCalledWith({
       _id: { $in: ["app-a", "app-b", "app-c"] },
-      status: { $nin: ["interview_scheduled", "rejected", "withdrawn"] },
+      status: { $in: ["applied", "shortlisted"] },
     });
   });
 

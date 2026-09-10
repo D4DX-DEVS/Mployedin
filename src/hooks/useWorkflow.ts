@@ -9,10 +9,14 @@ export interface WorkflowStage {
   order: number;
 }
 
+/** Mirrors HiringRules in src/lib/hiring/workflowSettings.ts (kept here so the hook stays client-only). */
 export interface WorkflowSettings {
-  aiAutoScreen: boolean;
-  notifyOnStageChange: boolean;
+  /** @deprecated Ignored at runtime since 2026-09-10; only stored workflow templates still carry it. */
+  aiAutoScreen?: boolean;
+  autoRejectEnabled: boolean;
   autoRejectBelow: number;
+  notifyOnStageChange: boolean;
+  shortlistTarget: number;
 }
 
 interface WorkflowResponse {
@@ -21,8 +25,9 @@ interface WorkflowResponse {
 }
 
 export interface WorkflowPayload {
-  stages: WorkflowStage[];
-  settings: WorkflowSettings;
+  /** Optional since 2026-09-10 — the builder saves rules only. */
+  stages?: WorkflowStage[];
+  settings: Partial<WorkflowSettings>;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────

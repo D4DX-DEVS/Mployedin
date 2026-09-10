@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useJobDetail } from "@/hooks/useJobs";
 import { useJobHiringSummary, type JobHiringSummary } from "@/hooks/useJobHiringSummary";
-import { HiringProgress } from "@/components/features/employer/jobs/HiringProgress";
 import { formatCount } from "@/lib/ui/intlFormat";
 
 interface AttentionItem {
@@ -206,9 +205,10 @@ export default function JobOverviewPage() {
       </section>
       </div>
 
-      {/* Hiring progress + copy. The funnel lives here, not in the job header (A18). */}
+      {/* Job copy. The funnel that used to sit above this is gone: the tab strip
+          already carries a count per stage, so the panel restated those numbers
+          under different counting rules and read as a contradiction. */}
       <div className="order-2 space-y-3 sm:space-y-4 lg:order-1 lg:col-start-1">
-        <HiringProgress summary={summary} jobHref={`/${locale}/employer/jobs/${id}`} />
         <section aria-labelledby="job-description-heading" className="card-base panel-body">
           <h2 id="job-description-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewDescription")}</h2>
           {job.description ? (

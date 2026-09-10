@@ -7,6 +7,7 @@ import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Offer from "@/models/Offer";
 import Placement from "@/models/Placement";
+import BackgroundCheck from "@/models/BackgroundCheck";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
@@ -16,6 +17,7 @@ import { validateBody } from "@/lib/validators";
 import { applicationCreateSchema } from "@/lib/validators/applications";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
+import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import logger from "@/lib/logger";
@@ -400,6 +402,32 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   let interviewMap: Record<string, unknown> = {};
   let offerMap: Record<string, unknown> = {};
   let placementMap: Record<string, unknown> = {};
+  // Employer-side: the verification state travels with the candidate, so the
+  // list and the drawer can show it without a second round trip per row.
+  const checkMap: Record<string, unknown> = {};
+
+  if (ctx.role !== "job_seeker" && applications.length > 0) {
+    const checks = await BackgroundCheck.find({ applicationId: { $in: applications.map((a) => a._id) } })
+      .select("applicationId status outcome checkType requestedAt references.status")
+      .sort({ requestedAt: -1 })
+      .lean();
+    for (const check of checks) {
+      const key = String(check.applicationId);
+      if (checkMap[key]) continue; // most recent wins
+      const references = (check.references ?? []) as Array<{ status?: string }>;
+      checkMap[key] = {
+        _id: String(check._id),
+        status: check.status,
+        outcome: check.outcome,
+        checkType: check.checkType,
+        requestedAt: check.requestedAt,
+        references: {
+          responded: references.filter((r) => r.status === "responded").length,
+          total: references.length,
+        },
+      };
+    }
+  }
 
   if (ctx.role === "job_seeker" && applications.length > 0) {
     const appIds = applications.map((a) => a._id);
@@ -472,12 +500,22 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   let statusCounts: Record<string, number> | null = null;
+  // Reported beside the funnel, so it has to span the whole scope like the
+  // funnel does — the client used to count the page it had in hand.
+  let highMatchCount: number | null = null;
   if (fetchCounts && ctx.role === "employer") {
-    const rows = await Application.aggregate<{ _id: string; count: number }>([
-      { $match: scopeQuery },
-      { $group: { _id: "$status", count: { $sum: 1 } } },
+    const [rows, highRows] = await Promise.all([
+      Application.aggregate<{ _id: string; count: number }>([
+        { $match: scopeQuery },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      Application.aggregate<{ _id: null; count: number }>([
+        { $match: { ...scopeQuery, aiMatchScore: { $gte: AI_MATCH_HIGH_THRESHOLD } } },
+        { $count: "count" },
+      ]),
     ]);
     statusCounts = Object.fromEntries(rows.map((r) => [String(r._id), r.count]));
+    highMatchCount = highRows[0]?.count ?? 0;
   } else if (fetchCounts && ctx.role === "job_seeker") {
     /* The seeker's status pills sit directly above the list they filter, so
        their counts follow every active filter except the status being chosen
@@ -507,12 +545,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       ...(interviewMap[String(app._id)] ? { latestInterview: interviewMap[String(app._id)] } : {}),
       ...(offerMap[String(app._id)] ? { latestOffer: offerMap[String(app._id)] } : {}),
       ...(placementMap[String(app._id)] ? { placement: placementMap[String(app._id)] } : {}),
+      ...(checkMap[String(app._id)] ? { latestCheck: checkMap[String(app._id)] } : {}),
     })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     ...(fetchJobs ? { employerJobs } : {}),
     ...(fetchEmployers ? { allEmployers } : {}),
     ...(fetchStats ? { stats } : {}),
     ...(statusCounts ? { statusCounts } : {}),
+    ...(highMatchCount !== null ? { highMatchCount } : {}),
   });
 }
 
@@ -586,14 +626,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Check employer's autoRejectBelow threshold for newly scored applications
-  // (score would be set by a separate scoring step; we set initial status here)
   // Job.employerId references the Employer collection directly, so look it up by _id.
   const empRecord = await Employer.findById(job.employerId)
-    .select("workflow companyName")
-    .lean() as { companyName?: string; workflow?: { settings?: { autoRejectBelow?: number; aiAutoScreen?: boolean } } } | null;
-  const autoRejectBelow = empRecord?.workflow?.settings?.autoRejectBelow;
-  const aiAutoScreen = empRecord?.workflow?.settings?.aiAutoScreen ?? false;
+    .select("companyName")
+    .lean() as { companyName?: string } | null;
 
   const seekerDoc = seeker as {
     _id: unknown;
@@ -701,17 +737,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     { $addToSet: { applicantIds: seeker._id } }
   );
 
-  // FG-3: AI match scoring runs automatically on every application via Inngest so
-  // the seeker's apply request never blocks on an LLM round-trip. Auto-REJECT stays
-  // opt-in: the autoRejectBelow threshold is only forwarded when the employer has
-  // explicitly enabled aiAutoScreen, so enabling automatic scoring never silently
-  // rejects candidates for employers who have not configured a cutoff.
+  // AI match scoring runs automatically on every application via Inngest so the
+  // seeker's apply request never blocks on an LLM round-trip. The worker resolves
+  // the employer's opt-in auto-reject rule itself (src/lib/hiring/workflowSettings.ts);
+  // nothing about rejection travels on this event.
   inngest.send({
     name: "application/ai-screen",
-    data: {
-      applicationId: String(application._id),
-      ...(aiAutoScreen && autoRejectBelow !== undefined ? { autoRejectBelow } : {}),
-    },
+    data: { applicationId: String(application._id) },
   }).catch((err) => { logger.error({ err, applicationId: String(application._id) }, "Failed to dispatch application/ai-screen event for AI scoring"); });
 
   await logActivity({

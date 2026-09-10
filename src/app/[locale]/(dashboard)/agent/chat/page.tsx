@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { AgentSectionTabs, AGENT_INBOX_TABS } from "@/components/features/agent/AgentSectionTabs";
 import { ChevronLeft, Hash, Loader2, Send, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 interface Message {
   _id: string;
@@ -95,14 +95,9 @@ export default function AgentChatPage() {
   return (
     <div className="page-container flex flex-col">
       <AgentSectionTabs tabs={AGENT_INBOX_TABS} ariaLabelKey="inboxTabsLabel" />
-      <DashboardPageHeader
-        icon={Users}
+      <WorkspaceHeader
         title={t("teamChannelsHeading")}
-        summary={{
-          label: t("presenceLabel"),
-          value: t("onlineCount", { count: online }),
-          note: t("presenceDescription"),
-        }}
+        context={t("onlineCount", { count: online })}
       />
 
       <div className="workspace-panel-surface flex sm:min-h-96 flex-1 gap-0 overflow-hidden rounded-3xl max-sm:flex-none">

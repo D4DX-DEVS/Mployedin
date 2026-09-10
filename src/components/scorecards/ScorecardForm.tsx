@@ -24,6 +24,10 @@ interface ScorecardFormProps {
   }) => Promise<void>;
   onCancel?: () => void;
   isLoading?: boolean;
+  /** Set when a dialog already names the form in its own header: drops the
+      built-in title/subtitle and the card border so the form does not read as
+      a second panel with a repeated heading inside the dialog. */
+  embedded?: boolean;
   existingScorecard?: {
     scores: Score;
     recommendation: string;
@@ -54,6 +58,7 @@ export function ScorecardForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  embedded = false,
   existingScorecard,
 }: ScorecardFormProps) {
   const t = useTranslations("scorecard");
@@ -110,14 +115,19 @@ export function ScorecardForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-card border border-border rounded-lg panel-body">
-      {/* Header */}
-      <div>
-        <h3 className="heading-subsection font-semibold">{t("title")}</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          {t("subtitle")}
-        </p>
-      </div>
+    <form
+      onSubmit={handleSubmit}
+      className={embedded ? "space-y-6" : "space-y-6 bg-card border border-border rounded-lg panel-body"}
+    >
+      {/* Header — the host dialog supplies it when embedded */}
+      {!embedded && (
+        <div>
+          <h3 className="heading-subsection font-semibold">{t("title")}</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("subtitle")}
+          </p>
+        </div>
+      )}
 
       {/* Score Criteria */}
       <div className="space-y-4">

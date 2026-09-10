@@ -1,42 +1,42 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { COMPANY_FUNCTIONS } from "@/lib/permissions/companyRoles";
+
+/**
+ * The employer's manual ticks on top of the roles they chose.
+ *
+ * Only the eleven grantable functions are accepted. The effective `permissions`
+ * object is always recomputed server-side from roles plus these ticks, never
+ * written straight from the request, so a caller cannot invent a flag or set
+ * one the role system does not know about.
+ */
+const COMPANY_FUNCTION_NAMES = new Set<string>(COMPANY_FUNCTIONS);
+
+const companyFunctionOverrides = z
+  // Keyed by plain string, then narrowed by hand. `z.record` over an enum makes
+  // the record exhaustive, which rejected every partial selection — and a
+  // partial selection is the entire point of the fine-tune checklist.
+  .record(z.string(), z.boolean())
+  .refine((v) => Object.keys(v).every((k) => COMPANY_FUNCTION_NAMES.has(k)), {
+    message: "Unknown permission",
+  })
+  .optional();
 
 export const teamInviteSchema = z.object({
   email: commonSchemas.email,
   companyRole: z.enum(["admin", "hiring_manager", "accounting", "finance_viewer", "viewer"]).optional(),
   companyRoles: z.array(z.enum(["admin", "hiring_manager", "accounting", "finance_viewer", "viewer"])).min(1).max(5).optional(),
   jobAccess: z.array(commonSchemas.objectId).max(50).optional(),
-  permissions: z
-    .object({
-      canCreateJobs: z.boolean().optional(),
-      canManageTeam: z.boolean().optional(),
-      canViewAnalytics: z.boolean().optional(),
-      canExportData: z.boolean().optional(),
-      canManageBilling: z.boolean().optional(),
-      canViewReports: z.boolean().optional(),
-      canApproveInvoices: z.boolean().optional(),
-      canViewCommissions: z.boolean().optional(),
-    })
-    .optional(),
+  permissionOverrides: companyFunctionOverrides,
 }).refine((data) => data.companyRole || (data.companyRoles && data.companyRoles.length > 0), {
   message: "Either companyRole or companyRoles must be provided",
 });
 
 export const teamUpdateSchema = z.object({
   companyRole: z.enum(["admin", "hiring_manager", "accounting", "finance_viewer", "viewer"]).optional(),
+  companyRoles: z.array(z.enum(["admin", "hiring_manager", "accounting", "finance_viewer", "viewer"])).min(1).max(5).optional(),
   jobAccess: z.array(commonSchemas.objectId).max(50).optional(),
-  permissions: z
-    .object({
-      canCreateJobs: z.boolean().optional(),
-      canManageTeam: z.boolean().optional(),
-      canViewAnalytics: z.boolean().optional(),
-      canExportData: z.boolean().optional(),
-      canManageBilling: z.boolean().optional(),
-      canViewReports: z.boolean().optional(),
-      canApproveInvoices: z.boolean().optional(),
-      canViewCommissions: z.boolean().optional(),
-    })
-    .optional(),
+  permissionOverrides: companyFunctionOverrides,
 });
 
 export const teamAcceptSchema = z.object({

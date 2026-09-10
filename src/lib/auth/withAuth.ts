@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { canAccess } from "@/lib/permissions/matrix";
+import { memberCanAccessPath } from "@/lib/permissions/companyFunctions";
 import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import TenantViewSession from "@/models/TenantViewSession";
@@ -8,7 +9,7 @@ import { verifyTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCoo
 import { logActivity } from "@/lib/audit/log";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
-import type { CompanyRole } from "@/models/CompanyUser";
+import type { CompanyRole, ICompanyUserPermissions } from "@/models/CompanyUser";
 
 type Resource = Parameters<typeof canAccess>[1];
 type Action = Parameters<typeof canAccess>[2];
@@ -63,6 +64,19 @@ export interface AuthContext {
     actorId: string;
     actorRole: UserRole;
     employerId: string;
+  };
+  /**
+   * Set when the caller is a colleague borrowing the owner's workspace.
+   * `userId` above has already been swapped to the owner so that every
+   * `Employer.findOne({ userId: ctx.userId })` lookup resolves the company.
+   * `member.actorId` is the real human, for audit and for "assigned to me".
+   */
+  member?: {
+    actorId: string;
+    companyId: string;
+    companyRoles: CompanyRole[];
+    permissions: ICompanyUserPermissions;
+    jobAccess: string[];
   };
   [key: string]: unknown;
 }
@@ -121,6 +135,42 @@ export function withAuth(
     const customPermissions = (session.user as unknown as { customPermissions?: CustomPermissions }).customPermissions;
     const companyUserRole = (session.user as unknown as { companyUserRole?: CompanyRole }).companyUserRole;
     const companyId = (session.user as unknown as { companyId?: string }).companyId;
+
+    const companyOwnerUserId = (session.user as unknown as { companyOwnerUserId?: string })
+      .companyOwnerUserId;
+    const companyRoles = ((session.user as unknown as { companyRoles?: CompanyRole[] })
+      .companyRoles ?? []) as CompanyRole[];
+    const companyPermissions = (session.user as unknown as {
+      companyPermissions?: ICompanyUserPermissions;
+    }).companyPermissions;
+    const jobAccess = (session.user as unknown as { jobAccess?: string[] }).jobAccess ?? [];
+
+    // A colleague of an employer: they hold role "employer" but own no Employer
+    // document, so the session resolved the owner's user id for them. Swap it in
+    // so every employer lookup resolves the company, and gate which paths they
+    // may reach. Inert for an owner, whose companyOwnerUserId is their own id.
+    let memberCtx: AuthContext["member"];
+    if (
+      role === "employer" &&
+      companyOwnerUserId &&
+      companyId &&
+      companyPermissions &&
+      companyOwnerUserId !== userId
+    ) {
+      if (!memberCanAccessPath(req.nextUrl.pathname, companyPermissions)) {
+        return NextResponse.json(
+          { error: "Forbidden — your account does not have access to this area" },
+          { status: 403 }
+        );
+      }
+      memberCtx = {
+        actorId: userId,
+        companyId,
+        companyRoles,
+        permissions: companyPermissions,
+        jobAccess,
+      };
+    }
 
     // ── Tenant view: validate the tenant-view cookie to transparently proxy
     // the request as the employer user.
@@ -334,7 +384,20 @@ export function withAuth(
         const quota = await enforceDailyAiQuota(userId, role);
         if (quota) return quota;
       }
-      return await handler(req, { userId, role, locale, permissionMode, customPermissions, companyUserRole, companyId }, resolvedParams);
+      return await handler(
+        req,
+        {
+          userId: memberCtx ? (companyOwnerUserId as string) : userId,
+          role,
+          locale,
+          permissionMode,
+          customPermissions,
+          companyUserRole,
+          companyId,
+          member: memberCtx,
+        },
+        resolvedParams
+      );
     } catch (err) {
       // validateBody() throws a NextResponse on validation failure — surface it directly
       if (err instanceof NextResponse) return err;

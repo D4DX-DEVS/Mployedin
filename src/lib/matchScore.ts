@@ -9,7 +9,7 @@
  * All inputs are plain primitives — no Mongoose documents.
  */
 
-import { COUNTRY_REGION_CODES } from "@/lib/i18n/locations";
+import { countryKey } from "@/lib/i18n/locations";
 
 export interface SeekerProfile {
   skills: string[];
@@ -341,7 +341,27 @@ export function workModePenalty(
   return WORK_MODE_OPPOSITE_PENALTY;
 }
 
-export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): number {
+/**
+ * Per-component match scores, 0-100. The four components are the weighted
+ * inputs to `overall`; `overall` is the final figure after the role-title
+ * bonus and the work-mode / qualification penalties, so it is NOT simply the
+ * weighted average of the other four.
+ */
+export interface MatchBreakdown {
+  skills: number;
+  location: number;
+  experience: number;
+  salary: number;
+  overall: number;
+}
+
+/**
+ * Full match result. `calculateMatchScore` is the thin wrapper that keeps the
+ * old number-only contract; anything that wants to *show* the reasoning (the
+ * employer application panel) uses this instead, because a breakdown that is
+ * computed and then discarded renders as a row of zeroes.
+ */
+export function calculateMatchDetail(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): MatchBreakdown {
   // Defaults match industry standard (e.g., LinkedIn)
   const skillsWeight = weights?.skills ?? 0.4;
   const locationWeight = weights?.location ?? 0.2;
@@ -391,11 +411,12 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weig
       .map((l) => l.toLowerCase().trim())
       .filter(Boolean);
     if (seekerLocations.length === 0) return 0.5; // partial when unknown
-    const jobLocation = job.location.toLowerCase().trim();
-    const normalizeCountry = (c: string) => COUNTRY_REGION_CODES[c] ?? c;
-    const seekerNormalized = seekerLocations.map(normalizeCountry);
-    const jobNormalized = normalizeCountry(jobLocation);
-    if (!seekerNormalized.includes(jobNormalized) && !seekerLocations.includes(jobLocation)) return 0;
+    // Both sides go through countryKey: preferences and job records carry city
+    // qualifiers ("Oman (Muscat)"), padding and bare region codes ("IN"), and a
+    // raw string compare scored all of those as the wrong country.
+    const seekerNormalized = seekerLocations.map(countryKey).filter(Boolean);
+    const jobNormalized = countryKey(job.location);
+    if (!jobNormalized || !seekerNormalized.includes(jobNormalized)) return 0;
 
     // Right country — refine by city when both sides actually stated one, so an
     // onsite role 2000km away stops scoring the same as one down the road.
@@ -490,7 +511,17 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weig
     score = Math.max(0, score - (gap === 1 ? 8 : 18));
   }
 
-  return score;
+  return {
+    skills: Math.round(skillsScore * 100),
+    location: Math.round(locationScore * 100),
+    experience: Math.round(experienceScore * 100),
+    salary: Math.round(salaryScore * 100),
+    overall: score,
+  };
+}
+
+export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): number {
+  return calculateMatchDetail(seeker, job, weights).overall;
 }
 
 /**

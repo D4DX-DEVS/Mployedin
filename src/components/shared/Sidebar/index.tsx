@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -153,8 +153,8 @@ export function Sidebar({
   // The agent drawer used to be re-grouped here by hand — Hiring, Accounts,
   // Tasks, Messages, More — because the real nav was two parents and a
   // twelve-child "Tools" junk drawer that no phone could present. menuConfig
-  // now groups the agent workspace properly (Pipeline / Earnings / Performance
-  // plus top-level Tasks and Calendar), so the drawer renders the same tree as
+  // now groups the agent workspace properly (Today / Work / Track sections,
+  // Hiring mirroring the employer's), so the drawer renders the same tree as
   // the desktop rail. Re-deriving it here would only be able to go stale again.
 
   const superOverview = rootItem("Overview")?.children ?? [];
@@ -634,8 +634,9 @@ export function Sidebar({
               <div
                 key={`group-${groupLabel}`}
                 className={cn(
-                  "px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] first:pt-1",
-                  usesDualTierLayout ? "text-white/40" : "text-muted-foreground/70"
+                  // The dual-tier rail is light (data-sidebar-tone="theme-aware"),
+                  // so the white heading it used to get was invisible on it.
+                  "px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70 first:pt-1"
                 )}
               >
                 {groupLabel}
@@ -685,45 +686,53 @@ export function Sidebar({
                used to open Applications on click because its href matched its
                first child; from Offers or Interviews that tap jumped the user
                to Applications when all they wanted was the list of siblings. */
+            /* The group heading (NavGroup.label) used to be computed for this
+               branch and then dropped on the floor — only the inline layouts
+               printed it, so a dual-tier rail authored in sections rendered as
+               one flat list. */
             if (hasChildren) {
               return (
-                <button
-                  key={item.title}
-                  type="button"
-                  onClick={() => {
-                    if (activeMainTitle === item.title) {
-                      setSubmenuExpanded((prev) => !prev);
-                    } else {
-                      setActiveMainTitle(item.title);
-                      setSubmenuExpanded(true);
-                    }
-                  }}
-                  aria-controls={itemSubmenuId}
-                  aria-expanded={isSelected && submenuExpanded}
-                  title={dualTierLabel}
-                  className={dualTierClass}
-                >
-                  {dualTierContent}
-                </button>
+                <Fragment key={item.title}>
+                  {groupHeading}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeMainTitle === item.title) {
+                        setSubmenuExpanded((prev) => !prev);
+                      } else {
+                        setActiveMainTitle(item.title);
+                        setSubmenuExpanded(true);
+                      }
+                    }}
+                    aria-controls={itemSubmenuId}
+                    aria-expanded={isSelected && submenuExpanded}
+                    title={dualTierLabel}
+                    className={dualTierClass}
+                  >
+                    {dualTierContent}
+                  </button>
+                </Fragment>
               );
             }
 
             return (
-              <Link
-                key={item.title}
-                href={item.href}
-                aria-current={isSelected ? "page" : undefined}
-                prefetch={false}
-                onClick={() => {
-                  setActiveMainTitle(item.title);
-                  setSubmenuExpanded(false);
-                  onMobileClose?.();
-                }}
-                title={dualTierLabel}
-                className={dualTierClass}
-              >
-                {dualTierContent}
-              </Link>
+              <Fragment key={item.title}>
+                {groupHeading}
+                <Link
+                  href={item.href}
+                  aria-current={isSelected ? "page" : undefined}
+                  prefetch={false}
+                  onClick={() => {
+                    setActiveMainTitle(item.title);
+                    setSubmenuExpanded(false);
+                    onMobileClose?.();
+                  }}
+                  title={dualTierLabel}
+                  className={dualTierClass}
+                >
+                  {dualTierContent}
+                </Link>
+              </Fragment>
             );
           }
 

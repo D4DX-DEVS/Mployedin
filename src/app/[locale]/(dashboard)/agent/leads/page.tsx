@@ -9,6 +9,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useQueryFlag } from "@/hooks/useQueryFlag";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,23 +18,24 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  AlertCircle, AlertTriangle, Building2, Calendar,
-  Edit2, Eye, Flame, Gauge, GripVertical, Inbox, LayoutGrid, List,
+  AlertCircle, AlertTriangle, Building2, Calendar, Check, Copy,
+  Edit2, Flame, Gauge, GripVertical, Inbox, LayoutGrid, List,
   Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Search,
-  Sparkles, Target, Trash2, TrendingUp, User, XCircle,
+  Sparkles, Target, Trash2, TrendingUp, XCircle,
 } from "lucide-react";
 import {
-  DndContext, DragOverlay, closestCorners, useSensor, useSensors, PointerSensor,
-  type DragStartEvent, type DragEndEvent, type DragOverEvent,
+  DndContext, DragOverlay, closestCorners, useSensor, useSensors,
+  MouseSensor, TouchSensor, KeyboardSensor,
+  type DragStartEvent, type DragEndEvent,
 } from "@dnd-kit/core";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -67,6 +69,18 @@ interface Lead {
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 
 const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
+
+/* How many cards a board column holds before it asks. The board used to pull
+   `limit=200` in one request and drop the lot into six columns, so a busy
+   pipeline buried the page and the column counts were capped at whatever that
+   one page happened to contain. Each column now pages its own stage. */
+const BOARD_PAGE_SIZE = 10;
+type StageBucket = { items: Lead[]; total: number; page: number; loadingMore: boolean };
+const emptyStageBuckets = (): Record<LeadStatus, StageBucket> =>
+  STAGES.reduce((acc, st) => {
+    acc[st] = { items: [], total: 0, page: 1, loadingMore: false };
+    return acc;
+  }, {} as Record<LeadStatus, StageBucket>);
 
 function getStageConfig(t: ReturnType<typeof useTranslations>): Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode; description: string }> {
   return {
@@ -157,6 +171,40 @@ function getLeadFields(t: ReturnType<typeof useTranslations>, stageConfig: Recor
   ];
 }
 
+const FORWARD_STAGES: LeadStatus[] = STAGES.filter((st) => st !== "lost");
+
+/* ─── Stage progress ────────────────────────────────────────────────────── */
+
+/** Where a lead stands on the pipeline, under the stage picker in the table. */
+function StageProgress({
+  stage,
+  stageConfig,
+  t,
+}: {
+  stage: LeadStatus;
+  stageConfig: ReturnType<typeof getStageConfig>;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const idx = FORWARD_STAGES.indexOf(stage);
+  const isLost = stage === "lost";
+  const label = isLost
+    ? stageConfig.lost.label
+    : `${t("pipelineProgress")} — ${t("stageStep", { step: idx + 1, total: FORWARD_STAGES.length })}`;
+
+  return (
+    <div className="flex items-center gap-0.5" role="img" aria-label={label} title={label}>
+      {FORWARD_STAGES.map((st, i) => (
+        <span
+          key={st}
+          className={`h-1 w-4 rounded-full ${
+            isLost ? "bg-status-rejected/40" : i <= idx ? "bg-status-selected" : "bg-border/60"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 /* ─── Lead Card (Kanban) ────────────────────────────────────────────────── */
 
 function DraggableLeadCard({
@@ -187,22 +235,47 @@ function DraggableLeadCard({
     data: { lead },
   });
 
-  const style = transform
-    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, opacity: isDragging ? 0.5 : 1 }
-    : undefined;
+  // The pointerup that ends a real drag still fires a click on the card, which
+  // opened the edit modal on every drop. Swallow clicks for a beat after a drag.
+  const wasDraggingRef = useRef(false);
+  const dragEndedAtRef = useRef(0);
+  useEffect(() => {
+    if (isDragging) { wasDraggingRef.current = true; return; }
+    if (wasDraggingRef.current) {
+      wasDraggingRef.current = false;
+      dragEndedAtRef.current = Date.now();
+    }
+  }, [isDragging]);
+
+  const handleEdit = useCallback((l: Lead) => {
+    if (Date.now() - dragEndedAtRef.current < 250) return;
+    onEdit(l);
+  }, [onEdit]);
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        opacity: isDragging ? 0.35 : 1,
+        // Touch drag runs off TouchSensor's long-press, so the column keeps its
+        // own vertical scroll; `none` here would have killed it.
+        touchAction: "manipulation",
+      }}
+      className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      {...attributes}
+      {...listeners}
+    >
       <LeadCard
         lead={lead}
-        onEdit={onEdit}
+        onEdit={handleEdit}
         onScore={onScore}
         onConvert={onConvert}
         onStatusChange={onStatusChange}
         scoring={scoring}
         converting={converting}
         exhibitions={exhibitions}
-        dragListeners={listeners}
+        draggable
         t={t}
         stageConfig={stageConfig}
       />
@@ -219,7 +292,7 @@ function LeadCard({
   scoring,
   converting,
   exhibitions,
-  dragListeners,
+  draggable,
   t,
   stageConfig,
 }: {
@@ -231,7 +304,7 @@ function LeadCard({
   scoring: boolean;
   converting: boolean;
   exhibitions: { _id: string; eventName: string }[];
-  dragListeners?: Record<string, unknown>;
+  draggable?: boolean;
   t: ReturnType<typeof useTranslations>;
   stageConfig: ReturnType<typeof getStageConfig>;
 }) {
@@ -239,113 +312,97 @@ function LeadCard({
   const exhibition = lead.exhibitionId ? exhibitions.find((e) => e._id === lead.exhibitionId) : null;
   const stageIdx = STAGES.indexOf(lead.status);
   const nextStage = stageIdx >= 0 && stageIdx < STAGES.length - 2 ? STAGES[stageIdx + 1] : null;
+  const hasRevenue = lead.expectedRevenue != null && lead.expectedRevenue > 0;
+  const canConvert = lead.status !== "converted" && lead.status !== "lost" && Boolean(lead.contactEmail);
+  // Location and industry ride one clipped line instead of a wrapping icon
+  // grid — the old card ran ~130px tall, mostly on a wrapped email address.
+  const place = [lead.country, lead.industry].filter(Boolean).join(" · ");
 
   return (
     <div
-      className="group relative cursor-pointer rounded-2xl border border-border/60 bg-background shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-border hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] card-pad"
+      className={`group relative rounded-xl border border-border/60 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:border-border chip-pad ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
       onClick={() => onEdit(lead)}
     >
-      {/* Drag handle */}
-      {dragListeners && (
-        <div
-          {...dragListeners}
-          className="absolute left-1 top-1/2 -translate-y-1/2 cursor-grab rounded p-1 text-muted-foreground/30 opacity-0 transition group-hover:opacity-100 hover:text-muted-foreground active:cursor-grabbing"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical className="h-4 w-4" />
-        </div>
-      )}
-      {/* Top: Company + Score */}
-      <div className="flex items-start justify-between gap-2">
+      {/* Company + score. The grip is a cue only — the whole card is the
+          drag activator, so it must not swallow the pointer. */}
+      <div className="flex items-start gap-1.5">
+        {draggable && (
+          <GripVertical className="pointer-events-none mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/25 transition group-hover:text-muted-foreground/60" />
+        )}
         <div className="min-w-0 flex-1">
-          <h4 className="truncate text-sm font-semibold text-foreground">{lead.companyName}</h4>
-          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <User className="h-3 w-3 shrink-0" />
-            <span className="truncate">{lead.contactPerson}</span>
-          </div>
+          <h4 className="truncate text-[13px] font-semibold leading-tight text-foreground" title={lead.companyName}>{lead.companyName}</h4>
         </div>
         {lead.score != null && (
-          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
-            <Gauge className="h-2.5 w-2.5" />
+          <span className={`shrink-0 rounded-full border px-1.5 py-0 text-[10px] font-bold leading-5 ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
+            <Gauge className="mr-0.5 inline h-2.5 w-2.5 align-[-1px]" />
             {lead.score}
           </span>
         )}
       </div>
 
-      {/* Meta row */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-        {lead.country && (
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="h-3 w-3" />{lead.country}
-          </span>
-        )}
-        {lead.industry && (
-          <span className="inline-flex items-center gap-1">
-            <Building2 className="h-3 w-3" />{lead.industry}
-          </span>
-        )}
-        {lead.contactEmail && (
-          <span className="inline-flex items-center gap-1">
-            <Mail className="h-3 w-3" /><span className="break-all">{lead.contactEmail}</span>
-          </span>
-        )}
-      </div>
+      {/* Contact, country and industry share one clipped line — three stacked
+          rows with an icon each is what made the old card 130px tall. */}
+      <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground">
+        {lead.contactPerson}
+        {place && <><span className="mx-1 opacity-40">·</span><MapPin className="mr-0.5 inline h-2.5 w-2.5 align-[-1px]" />{place}</>}
+      </p>
 
-      {/* Bottom row */}
-      <div className="mt-3 flex items-center gap-2">
-        {lead.followUpAt && (
-          <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${
-            isOverdue
-              ? "bg-status-rejected-bg text-rose-700"
-              : "bg-muted text-muted-foreground"
-          }`}>
-            <Calendar className="h-3 w-3" />
-            {formatDate(new Date(lead.followUpAt), { month: "short", day: "numeric" })}
-            {isOverdue && <span className="font-bold"> overdue</span>}
-          </span>
-        )}
-        {exhibition && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
-            {exhibition.eventName}
-          </span>
-        )}
-        {lead.expectedRevenue != null && lead.expectedRevenue > 0 && (
-          <span className="ml-auto text-[11px] font-semibold text-status-selected">
-            {lead.expectedRevenueCurrency ?? "AED"} {formatCount(lead.expectedRevenue)}
-          </span>
-        )}
-      </div>
-
-      {/* Hover actions */}
-      <div className="absolute -bottom-px left-0 right-0 hidden items-center justify-between rounded-b-2xl border-t border-border/40 bg-muted/80 px-3 py-2 backdrop-blur-sm group-hover:flex" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onScore(lead._id)}
-            disabled={scoring}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600"
-            title={t("aiScore")}
-          >
-            {scoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
-          </button>
-          {lead.status !== "converted" && lead.status !== "lost" && lead.contactEmail && (
-            <button
-              onClick={() => onConvert(lead)}
-              disabled={converting}
-              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-selected-bg hover:text-status-selected"
-              title={t("convertToEmployer")}
-            >
-              {converting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Building2 className="h-3.5 w-3.5" />}
-            </button>
+      {(lead.followUpAt || exhibition || hasRevenue) && (
+        <div className="mt-1.5 flex items-center gap-1 overflow-hidden text-[10px] font-medium">
+          {lead.followUpAt && (
+            <span className={`shrink-0 rounded px-1.5 py-0.5 ${isOverdue ? "bg-status-rejected-bg text-rose-700" : "bg-muted text-muted-foreground"}`}>
+              <Calendar className="mr-0.5 inline h-2.5 w-2.5 align-[-1px]" />
+              {formatDate(new Date(lead.followUpAt), { month: "short", day: "numeric" })}
+            </span>
+          )}
+          {exhibition && (
+            <span className="min-w-0 truncate rounded bg-primary/5 px-1.5 py-0.5 text-primary">{exhibition.eventName}</span>
+          )}
+          {hasRevenue && (
+            <span className="ml-auto shrink-0 font-semibold text-status-selected">
+              {lead.expectedRevenueCurrency ?? "AED"} {formatCount(lead.expectedRevenue!)}
+            </span>
           )}
         </div>
+      )}
+
+      {/* Actions float over the card corner. The old bar sat on the bottom
+          edge and, on a card this short, covered the content it belonged to. */}
+      <div
+        className="absolute end-1 top-1 hidden items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm group-hover:flex group-focus-within:flex"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => onScore(lead._id)}
+          disabled={scoring}
+          className="rounded-md p-1 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600"
+          title={t("aiScore")}
+          aria-label={t("aiScore")}
+        >
+          {scoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
+        </button>
+        {canConvert && (
+          <button
+            type="button"
+            onClick={() => onConvert(lead)}
+            disabled={converting}
+            className="rounded-md p-1 text-muted-foreground transition hover:bg-status-selected-bg hover:text-status-selected"
+            title={t("convertToEmployer")}
+            aria-label={t("convertToEmployer")}
+          >
+            {converting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Building2 className="h-3.5 w-3.5" />}
+          </button>
+        )}
         {nextStage && (
           <button
+            type="button"
             onClick={() => onStatusChange(lead._id, nextStage)}
-            className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/20"
+            className="rounded-md p-1 text-primary transition hover:bg-primary/10"
             title={t("moveToStage", { stage: stageConfig[nextStage].label })}
+            aria-label={t("moveToStage", { stage: stageConfig[nextStage].label })}
           >
-            {t("moveTo")} {stageConfig[nextStage].label}
-            <TrendingUp className="h-3 w-3" />
+            <TrendingUp className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
@@ -358,6 +415,9 @@ function LeadCard({
 function DroppableKanbanColumn({
   stage,
   leads,
+  total,
+  loadingMore,
+  onLoadMore,
   onEdit,
   onScore,
   onConvert,
@@ -372,6 +432,9 @@ function DroppableKanbanColumn({
 }: {
   stage: LeadStatus;
   leads: Lead[];
+  total: number;
+  loadingMore: boolean;
+  onLoadMore: (stage: LeadStatus) => void;
   onEdit: (lead: Lead) => void;
   onScore: (id: string) => void;
   onConvert: (lead: Lead) => void;
@@ -393,42 +456,47 @@ function DroppableKanbanColumn({
   const pipelineCurrency = revenueCurrencies.length === 1 ? revenueCurrencies[0] : null;
 
   return (
-    <div className={`flex h-full w-full min-w-0 flex-col rounded-2xl border bg-muted/30 transition-colors sm:w-[300px] sm:min-w-[300px] ${isOver ? "border-primary/50 bg-primary/5" : "border-border/50"}`}>
+    /* The droppable is the whole column, not just the card list — a card
+       released over the header used to snap back with nothing happening. */
+    <div
+      ref={setNodeRef}
+      className={`flex h-full w-full min-w-0 flex-col rounded-xl border bg-muted/30 transition-colors sm:w-auto sm:min-w-[140px] sm:flex-1 sm:basis-0 ${isOver ? "border-primary bg-primary/5 ring-1 ring-primary/40" : "border-border/50"}`}
+    >
       {/* Column Header */}
-      <div className={`flex items-center gap-3 rounded-t-2xl border-b px-4 py-3 ${config.bgColor} ${config.borderColor}`}>
-        <span className={config.color}>{config.icon}</span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className={`text-sm font-semibold ${config.color}`}>{config.label}</h3>
-            <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${config.bgColor} ${config.color} border ${config.borderColor}`}>
-              {leads.length}
-            </span>
-          </div>
-          {totalRevenue > 0 && pipelineCurrency && (
-            <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-              {pipelineCurrency} {formatCount(totalRevenue)} pipeline
-            </p>
+      <div className={`rounded-t-xl border-b px-2.5 py-1.5 ${config.bgColor} ${config.borderColor}`}>
+        <div className="flex items-center gap-1.5">
+          <span className={`shrink-0 ${config.color} [&_svg]:h-3.5 [&_svg]:w-3.5`}>{config.icon}</span>
+          <h3 className={`min-w-0 truncate text-xs font-semibold ${config.color}`} title={config.label}>{config.label}</h3>
+          {/* The stage's own server-side total, not how many cards are loaded. */}
+          <span className={`shrink-0 rounded-full border px-1.5 text-[10px] font-bold leading-4 ${config.bgColor} ${config.color} ${config.borderColor}`}>
+            {total}
+          </span>
+          {stage === "new" && canCreate && (
+            <button
+              onClick={onAdd}
+              className="tap-target-box ms-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-background hover:text-foreground"
+              title={t("addNewLead")}
+              aria-label={t("addNewLead")}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           )}
         </div>
-        {stage === "new" && canCreate && (
-          <button
-            onClick={onAdd}
-            className="inline-flex items-center justify-center rounded-lg min-h-11 min-w-11 text-muted-foreground transition hover:bg-background hover:text-foreground"
-            title={t("addNewLead")}
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+        {totalRevenue > 0 && pipelineCurrency && (
+          <p className="truncate text-[10px] font-medium leading-tight text-muted-foreground">
+            {pipelineCurrency} {formatCount(totalRevenue)}
+          </p>
         )}
       </div>
 
       {/* Cards */}
-      <div ref={setNodeRef} className="flex-1 space-y-3 overflow-y-auto p-3" style={{ maxHeight: "calc(100vh - 340px)" }}>
+      <div className="flex-1 space-y-1 overflow-y-auto p-1.5" style={{ maxHeight: "calc(100vh - 236px)" }}>
         {leads.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <div className={`rounded-full p-3 ${config.bgColor}`}>
-              <Inbox className={`h-5 w-5 ${config.color}`} />
+          <div className={`flex flex-col items-center gap-1.5 rounded-lg border border-dashed py-5 text-center transition-colors ${isOver ? "border-primary/60 bg-primary/5" : "border-transparent"}`}>
+            <div className={`rounded-full p-2 ${config.bgColor}`}>
+              <Inbox className={`h-4 w-4 ${config.color}`} />
             </div>
-            <p className="text-xs text-muted-foreground">{config.description}</p>
+            <p className="px-2 text-[11px] leading-tight text-muted-foreground">{config.description}</p>
           </div>
         ) : (
           leads.map((lead) => (
@@ -447,6 +515,18 @@ function DroppableKanbanColumn({
             />
           ))
         )}
+
+        {leads.length > 0 && leads.length < total && (
+          <button
+            type="button"
+            onClick={() => onLoadMore(stage)}
+            disabled={loadingMore}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/70 py-1.5 text-[11px] font-semibold text-muted-foreground transition hover:border-border hover:text-foreground disabled:opacity-60"
+          >
+            {loadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
+            {t("loadMoreLeads", { count: total - leads.length })}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -461,7 +541,6 @@ export default function AgentLeadsPage() {
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
-  const router = useRouter();
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
@@ -474,24 +553,51 @@ export default function AgentLeadsPage() {
   const [exhibitionFilter, setExhibitionFilter] = useUrlFilter("exhibitionId", "all");
   const [followUpFilter, setFollowUpFilter] = useUrlFilter("followUp", "all");
   const [updating, setUpdating] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  // `?new=1` gives the create dialog an address, so the Create menu, the
+  // command palette and /agent/leads/new all open this one form.
+  const [modalOpen, setModalOpen] = useQueryFlag("new");
   const [editLead, setEditLead] = useState<Lead | null>(null);
-  const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [scoringLeadId, setScoringLeadId] = useState<string | null>(null);
   const [scoreResult, setScoreResult] = useState<LeadScoreResult | null>(null);
   const [convertingLeadId, setConvertingLeadId] = useState<string | null>(null);
+  /**
+   * The sign-in details a conversion just produced.
+   *
+   * The password is returned by the API exactly once and is never stored in
+   * readable form, so this dialog is the only chance to copy it. The same
+   * details are emailed to the employer at the same moment.
+   */
+  const [credentials, setCredentials] = useState<{ company: string; email: string; password: string; emailSent: boolean } | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyValue = async (field: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField((current) => (current === field ? null : current)), 2000);
+    } catch {
+      toast.error(t("copyFailed"));
+    }
+  };
   const [exhibitions, setExhibitions] = useState<{ _id: string; eventName: string }[]>([]);
   const [duplicates, setDuplicates] = useState<{ _id: string; companyName: string; contactEmail?: string; contactPhone?: string; matchType: string; confidence: string; status: string }[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("board");
   const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
-  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  // The board keeps one bucket per stage, each paged on its own; the table keeps
+  // using `leads` with the shared page controls.
+  const [stageBuckets, setStageBuckets] = useState<Record<LeadStatus, StageBucket>>(emptyStageBuckets);
   const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const STAGE_CONFIG = useMemo(() => getStageConfig(t), [t]);
 
-  // DnD sensors — require 8px drag distance to avoid accidental drags
+  // One PointerSensor could not serve both inputs: the distance constraint it
+  // needs on a mouse makes every touch-scroll of a column start a drag. Split
+  // them — mouse drags after 6px, touch after a 220ms press, keyboard on
+  // space/enter + arrows.
   const dndSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -504,22 +610,69 @@ export default function AgentLeadsPage() {
     const { active, over } = event;
     if (!over) return;
     const overId = String(over.id);
-    if (!overId.startsWith("column-")) return;
-    const newStatus = overId.replace("column-", "") as LeadStatus;
-    const leadId = String(active.id);
-    const lead = leads.find((l) => l._id === leadId);
-    if (!lead || lead.status === newStatus) return;
-    // Optimistic update
+    // The dragged card travels on the event itself. Reading it out of `leads`
+    // was wrong once the board switched to per-stage buckets: that array is
+    // only filled for the table, so every drop silently did nothing.
+    const lead = (active.data.current as { lead?: Lead } | undefined)?.lead;
+    if (!lead) return;
+    // A release over another card resolves to that card's column, so a drop
+    // does not have to land on empty column space to count.
+    const allLoaded = STAGES.flatMap((st) => stageBuckets[st]?.items ?? []);
+    const newStatus = overId.startsWith("column-")
+      ? (overId.replace("column-", "") as LeadStatus)
+      : allLoaded.find((l) => l._id === overId)?.status;
+    if (!newStatus || lead.status === newStatus) return;
+    const leadId = lead._id;
+    const from = lead.status;
+    // Optimistic update — the card jumps columns now, and each stage's total
+    // follows it so the header counts do not drift from what is on screen.
     setLeads((prev) => prev.map((l) => l._id === leadId ? { ...l, status: newStatus } : l));
+    setStageBuckets((prev) => ({
+      ...prev,
+      [from]: {
+        ...prev[from],
+        items: prev[from].items.filter((l) => l._id !== leadId),
+        total: Math.max(0, prev[from].total - 1),
+      },
+      [newStatus]: {
+        ...prev[newStatus],
+        items: [{ ...lead, status: newStatus }, ...prev[newStatus].items],
+        total: prev[newStatus].total + 1,
+      },
+    }));
+    const revert = () => {
+      setLeads((prev) => prev.map((l) => l._id === leadId ? { ...l, status: from } : l));
+      setStageBuckets((prev) => ({
+        ...prev,
+        [newStatus]: {
+          ...prev[newStatus],
+          items: prev[newStatus].items.filter((l) => l._id !== leadId),
+          total: Math.max(0, prev[newStatus].total - 1),
+        },
+        [from]: {
+          ...prev[from],
+          items: [lead, ...prev[from].items.filter((l) => l._id !== leadId)],
+          total: prev[from].total + 1,
+        },
+      }));
+    };
     // Persist to API (fire-and-forget, fetchLeads will re-sync)
     fetch(`/api/leads/${leadId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     }).then((res) => {
-      if (!res.ok) toast.error(t("failedToMoveLead"));
-    }).catch(() => toast.error(t("failedToMoveLead")));
-  }, [leads]);
+      if (!res.ok) {
+        toast.error(t("failedToMoveLead"));
+        revert(); // the optimistic move was a lie
+        return;
+      }
+      toast.success(t("leadMovedToStage", { stage: STAGE_CONFIG[newStatus].label }));
+    }).catch(() => {
+      toast.error(t("failedToMoveLead"));
+      revert();
+    });
+  }, [stageBuckets, t, STAGE_CONFIG]);
 
   useEffect(() => {
     fetch("/api/exhibitions?limit=200")
@@ -534,40 +687,107 @@ export default function AgentLeadsPage() {
     return baseFields.map((f) => f.name === "exhibitionId" ? { ...f, options: exOpts } : f);
   }, [exhibitions, t, STAGE_CONFIG]);
 
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
+  // Filters every request carries, whichever view is asking.
+  const sharedParams = useCallback(() => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
-    if (viewMode === "board") {
-      params.set("limit", "200");
-      params.set("page", "1");
-    } else {
-      const pp = pagination.paginationParams();
-      pp.forEach((v, k) => params.set(k, v));
-    }
-    if (statusFilter !== "all") params.set("status", statusFilter);
     if (exhibitionFilter !== "all") params.set("exhibitionId", exhibitionFilter);
     if (followUpFilter !== "all") params.set("followUp", followUpFilter);
+    return params;
+  }, [search, exhibitionFilter, followUpFilter]);
+
+  const visibleStages = useMemo(
+    () => STAGES.filter((st) => statusFilter === "all" || st === statusFilter),
+    [statusFilter],
+  );
+
+  const fetchStage = useCallback(async (stage: LeadStatus, page: number) => {
+    const params = sharedParams();
+    params.set("status", stage);
+    params.set("limit", String(BOARD_PAGE_SIZE));
+    params.set("page", String(page));
+    const res = await fetch(`/api/leads?${params}`);
+    if (!res.ok) return { items: [] as Lead[], total: 0 };
+    const data = await res.json();
+    return { items: (data.items ?? []) as Lead[], total: (data.total ?? 0) as number };
+  }, [sharedParams]);
+
+  const fetchBoard = useCallback(async () => {
+    setLoading(true);
+    const results = await Promise.all(visibleStages.map((st) => fetchStage(st, 1)));
+    setStageBuckets(() => {
+      const next = emptyStageBuckets();
+      visibleStages.forEach((st, i) => {
+        next[st] = { items: results[i].items, total: results[i].total, page: 1, loadingMore: false };
+      });
+      return next;
+    });
+    setLoading(false);
+  }, [visibleStages, fetchStage]);
+
+  // A column asks for its own next page; the others are untouched.
+  const loadMoreStage = useCallback(async (stage: LeadStatus) => {
+    const bucket = stageBuckets[stage];
+    if (!bucket || bucket.loadingMore || bucket.items.length >= bucket.total) return;
+    const nextPage = bucket.page + 1;
+    setStageBuckets((prev) => ({ ...prev, [stage]: { ...prev[stage], loadingMore: true } }));
+    const { items, total } = await fetchStage(stage, nextPage);
+    setStageBuckets((prev) => {
+      const seen = new Set(prev[stage].items.map((l) => l._id));
+      return {
+        ...prev,
+        [stage]: {
+          items: [...prev[stage].items, ...items.filter((l) => !seen.has(l._id))],
+          total: total || prev[stage].total,
+          page: nextPage,
+          loadingMore: false,
+        },
+      };
+    });
+  }, [stageBuckets, fetchStage]);
+
+  const fetchLeads = useCallback(async () => {
+    setLoading(true);
+    const params = sharedParams();
+    const pp = pagination.paginationParams();
+    pp.forEach((v, k) => params.set(k, v));
+    if (statusFilter !== "all") params.set("status", statusFilter);
 
     const res = await fetch(`/api/leads?${params}`);
     const data = await res.json();
     setLeads(data.items ?? []);
     pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     setLoading(false);
-  }, [search, statusFilter, exhibitionFilter, followUpFilter, pagination.page, pagination.limit, viewMode]);
+  }, [sharedParams, statusFilter, pagination.page, pagination.limit]);
 
-  useEffect(() => { fetchLeads(); }, [fetchLeads]);
+  const refreshData = useCallback(() => {
+    return viewMode === "board" ? fetchBoard() : fetchLeads();
+  }, [viewMode, fetchBoard, fetchLeads]);
+
+  useEffect(() => {
+    if (viewMode === "board") { fetchBoard(); } else { fetchLeads(); }
+  }, [viewMode, fetchBoard, fetchLeads]);
   useEffect(() => { pagination.resetPage(); }, [search, statusFilter, exhibitionFilter, followUpFilter]);
 
   const updateStatus = async (id: string, status: LeadStatus) => {
     setUpdating(id);
-    await fetch(`/api/leads/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    await fetchLeads();
-    setUpdating(null);
+    try {
+      const res = await fetch(`/api/leads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        toast.error(t("failedToMoveLead"));
+        return;
+      }
+      toast.success(t("leadMovedToStage", { stage: STAGE_CONFIG[status].label }));
+      await refreshData();
+    } catch {
+      toast.error(t("failedToMoveLead"));
+    } finally {
+      setUpdating(null);
+    }
   };
 
   const handleSave = async (values: Record<string, string>) => {
@@ -585,7 +805,7 @@ export default function AgentLeadsPage() {
       throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: leadFields, conflict: tf("emailInUse") });
     }
     setEditLead(null);
-    fetchLeads();
+    refreshData();
   };
 
   const handleDelete = async (id: string) => {
@@ -598,7 +818,7 @@ export default function AgentLeadsPage() {
       toast.error(t("failedToDeleteLead"));
       return;
     }
-    fetchLeads();
+    refreshData();
   };
 
   const openEdit = (lead: Lead) => { setEditLead(lead); setDuplicates([]); setModalOpen(true); };
@@ -627,6 +847,26 @@ export default function AgentLeadsPage() {
     filename: t("exportFilename"),
     title: t("pageTitle"),
   });
+
+  // On the board there is no single `leads` page to hand the exporter — each
+  // column holds its own slice — so an export re-reads the whole filtered set
+  // rather than shipping only the cards that happen to be loaded.
+  const exportBoard = useCallback(async (kind: "csv" | "excel" | "pdf") => {
+    const params = sharedParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    params.set("page", "1");
+    params.set("limit", "500");
+    const res = await fetch(`/api/leads?${params}`);
+    if (!res.ok) { toast.error(t("exportFailed")); return; }
+    const data = await res.json();
+    const rows = (data.items ?? []) as unknown as Record<string, unknown>[];
+    const cols = exportColumns as unknown as ExportColumn<Record<string, unknown>>[];
+    const name = t("exportFilename");
+    const mod = await import("@/lib/export");
+    if (kind === "csv") mod.exportCSV(rows, cols, `${name}.csv`);
+    else if (kind === "excel") await mod.exportExcel(rows, cols, `${name}.xls`, t("pageTitle"));
+    else await mod.exportPdf(rows, cols, `${name}.pdf`, t("pageTitle"));
+  }, [sharedParams, statusFilter, exportColumns, t]);
 
   const scoreLead = async (leadId: string) => {
     setScoringLeadId(leadId);
@@ -666,12 +906,20 @@ export default function AgentLeadsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      const data = await res.json().catch(() => ({ error: t("conversionFailed") }));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: t("conversionFailed") }));
         throw new Error(data.error ?? t("failedToConvertLead"));
       }
       toast.success(t("leadConvertedSuccess", { company: lead.companyName }));
-      fetchLeads();
+      if (data.credentials?.password) {
+        setCredentials({
+          company: lead.companyName,
+          email: data.credentials.email,
+          password: data.credentials.password,
+          emailSent: data.credentials.emailSent !== false,
+        });
+      }
+      refreshData();
     } catch (err) {
       toast.error(t("leadConversionFailed"));
     } finally {
@@ -679,45 +927,19 @@ export default function AgentLeadsPage() {
     }
   };
 
-  // Group leads by stage for Kanban view
-  const leadsByStage = useMemo(() => {
-    const grouped: Record<LeadStatus, Lead[]> = { new: [], contacted: [], interested: [], negotiating: [], converted: [], lost: [] };
-    for (const lead of leads) {
-      if (grouped[lead.status]) grouped[lead.status].push(lead);
-    }
-    return grouped;
-  }, [leads]);
-
-  const stageCounts = useMemo(() => {
-    return STAGES.reduce((acc, s) => {
-      acc[s] = leadsByStage[s].length;
-      return acc;
-    }, {} as Record<LeadStatus, number>);
-  }, [leadsByStage]);
-
-  const totalPipelineValue = useMemo(() => {
-    return leads
-      .filter((l) => !["converted", "lost"].includes(l.status))
-      .reduce((sum, l) => sum + (l.expectedRevenue ?? 0), 0);
-  }, [leads]);
-
   return (
     <div className="page-container">
       {ConfirmDialogNode}
 
-      {/* ──── Hero Header ──── */}
-      <DashboardPageHeader
-        icon={Target}
+      <WorkspaceHeader
         title={t("pageTitle")}
-        description={t("heroDescription")}
+        context={t("heroDescription")}
         actions={can("leads", "create") ? (
-          <Button size="lg" onClick={openAdd} className="rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
-            <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
+          <Button onClick={openAdd} aria-label={t("newLead")} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("newLead")}</span>
           </Button>
         ) : null}
-        metrics={[
-          { label: t("kpiTotal"), value: pagination.total, icon: Target },
-        ]}
       />
 
       {/* ──── Toolbar ──── */}
@@ -725,7 +947,7 @@ export default function AgentLeadsPage() {
         {/* Opt into the shared mobile toolbar rules (see globals.css). Scoped to
             this row, not the whole section — the stage pills below carry leading
             icons too, and the icon-only rule would strip their labels. */}
-        <div className="flex flex-wrap items-center gap-3" data-table-toolbar="simple">
+        <div className="flex flex-wrap items-center gap-2" data-table-toolbar="simple">
           {/* View toggle */}
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
             <button
@@ -746,7 +968,7 @@ export default function AgentLeadsPage() {
               wrapper made these wrap inside themselves on phones, which left
               the search box stranded on a line of its own. */}
           <>
-            <div className="relative toolbar-search-field min-w-[200px] flex-1 max-w-[320px]">
+            <div className="relative toolbar-search-field min-w-[180px] flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
@@ -757,7 +979,7 @@ export default function AgentLeadsPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
+              <SelectTrigger className="h-10 w-auto min-w-[132px] shrink-0 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -768,7 +990,7 @@ export default function AgentLeadsPage() {
               </SelectContent>
             </Select>
             <Select value={exhibitionFilter} onValueChange={setExhibitionFilter}>
-              <SelectTrigger className="h-10 max-w-[180px] truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
+              <SelectTrigger className="h-10 w-auto min-w-[132px] max-w-[180px] shrink-0 truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -797,15 +1019,20 @@ export default function AgentLeadsPage() {
           </>
 
           {/* Export */}
+          <div className="ms-auto flex items-center">
           <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
+            onExportCsv={viewMode === "board" ? () => exportBoard("csv") : handleExportCsv}
+            onExportExcel={viewMode === "board" ? () => exportBoard("excel") : handleExportExcel}
+            onExportPdf={viewMode === "board" ? () => exportBoard("pdf") : handleExportPdf}
           />
+          </div>
         </div>
 
-        {/* Stage pill filters */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* Stage pill filters — the board's own column headers already carry
+            every label and count, so on the board these were a second copy of
+            the same six numbers above the thing displaying them. */}
+        {viewMode === "table" && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {STAGES.map((s) => {
             const config = STAGE_CONFIG[s];
             return (
@@ -820,23 +1047,21 @@ export default function AgentLeadsPage() {
               >
                 {config.icon}
                 <span>{config.label}</span>
-                <span className={`rounded-full px-1 py-0 text-[9px] sm:px-1.5 sm:py-0.5 sm:text-[11px] ${statusFilter === s ? "bg-background/50" : "bg-muted"}`}>
-                  {stageCounts[s]}
-                </span>
               </button>
             );
           })}
         </div>
+        )}
       </section>
 
       {/* ──── Content Area ──── */}
       {loading ? (
-        <section className="flex gap-4 overflow-x-auto pb-4">
-          {Array.from({ length: 4 }).map((_, c) => (
-            <div key={c} className="w-72 shrink-0 space-y-3">
-              <Skeleton className="h-8 w-full rounded-xl" />
+        <section className="flex gap-2.5 overflow-x-auto pb-2">
+          {Array.from({ length: 5 }).map((_, c) => (
+            <div key={c} className="w-[252px] shrink-0 space-y-1.5">
+              <Skeleton className="h-7 w-full rounded-xl" />
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+                <Skeleton key={i} className="h-16 w-full rounded-xl" />
               ))}
             </div>
           ))}
@@ -851,13 +1076,19 @@ export default function AgentLeadsPage() {
         >
           {/* Phones stack the stages; sideways scrolling hid every column but
               the first and fought the page's own vertical scroll. */}
-          <section className="pb-4 sm:overflow-x-auto">
-            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:[min-width:fit-content]">
-              {STAGES.filter((s) => statusFilter === "all" || s === statusFilter).map((stage) => (
+          {/* Six columns divide the row rather than running off it — the board
+              only falls back to sideways scrolling when they hit their 168px
+              floor. Phones keep stacking them. */}
+          <section className="pb-2 sm:overflow-x-auto">
+            <div className="flex flex-col gap-2 sm:w-full sm:flex-row sm:gap-2">
+              {visibleStages.map((stage) => (
                 <DroppableKanbanColumn
                   key={stage}
                   stage={stage}
-                  leads={leadsByStage[stage]}
+                  leads={stageBuckets[stage].items}
+                  total={stageBuckets[stage].total}
+                  loadingMore={stageBuckets[stage].loadingMore}
+                  onLoadMore={loadMoreStage}
                   onEdit={openEdit}
                   onScore={scoreLead}
                   onConvert={convertLead}
@@ -875,9 +1106,9 @@ export default function AgentLeadsPage() {
           </section>
           <DragOverlay>
             {activeDragLead ? (
-              <div className="w-[280px] rotate-2 rounded-2xl border border-primary/50 bg-background shadow-xl card-pad">
-                <h4 className="truncate text-sm font-semibold text-foreground">{activeDragLead.companyName}</h4>
-                <p className="mt-1 text-xs text-muted-foreground">{activeDragLead.contactPerson}</p>
+              <div className="w-[240px] rotate-2 cursor-grabbing rounded-xl border border-primary/60 bg-background shadow-xl chip-pad">
+                <h4 className="truncate text-[13px] font-semibold leading-tight text-foreground">{activeDragLead.companyName}</h4>
+                <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground">{activeDragLead.contactPerson}</p>
               </div>
             ) : null}
           </DragOverlay>
@@ -912,7 +1143,6 @@ export default function AgentLeadsPage() {
                     {leads.map((lead) => {
                       const config = STAGE_CONFIG[lead.status];
                       const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
-                      const stageIdx = STAGES.indexOf(lead.status);
                       return (
                         <TableRow
                           key={lead._id}
@@ -921,12 +1151,15 @@ export default function AgentLeadsPage() {
                           {/* Company */}
                           <TableCell className="pl-5">
                             <div className="flex items-center gap-2.5">
-                              <div
-                                className="h-8 w-1 shrink-0 rounded-full"
-                                style={{ backgroundColor: config.color.includes('sky') ? '#0ea5e9' : config.color.includes('indigo') ? '#6366f1' : config.color.includes('amber') ? '#f59e0b' : config.color.includes('purple') ? '#a855f7' : config.color.includes('emerald') ? '#10b981' : '#f43f5e' }}
-                              />
+                              <div className={`h-8 w-1 shrink-0 rounded-full bg-current ${config.color}`} />
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-foreground">{lead.companyName}</p>
+                                <Link
+                                  href={`/${locale}/agent/leads/${lead._id}`}
+                                  className="block truncate text-sm font-semibold text-foreground underline-offset-2 hover:text-primary hover:underline"
+                                  title={lead.companyName}
+                                >
+                                  {lead.companyName}
+                                </Link>
                                 {lead.industry && (
                                   <span className="mt-0.5 inline-block rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                                     {lead.industry}
@@ -937,39 +1170,62 @@ export default function AgentLeadsPage() {
                           </TableCell>
 
                           {/* Contact */}
-                          <TableCell>
-                            <p className="text-sm font-medium text-foreground">{lead.contactPerson}</p>
-                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                              {lead.contactEmail && (
-                                <span className="inline-flex items-center gap-1 truncate">
-                                  <Mail className="h-3 w-3 shrink-0" />{lead.contactEmail}
-                                </span>
-                              )}
-                              {lead.contactPhone && (
-                                <span className="hidden items-center gap-1 xl:inline-flex">
-                                  <Phone className="h-3 w-3 shrink-0" />{lead.contactPhone}
-                                </span>
-                              )}
-                            </div>
+                          <TableCell className="max-w-[240px]">
+                            <p className="truncate text-sm font-medium text-foreground">{lead.contactPerson}</p>
+                            {lead.contactEmail && (
+                              <p className="mt-0.5 truncate text-xs text-muted-foreground" title={lead.contactEmail}>
+                                <Mail className="me-1 inline h-3 w-3 align-[-2px]" />{lead.contactEmail}
+                              </p>
+                            )}
+                            {lead.contactPhone && (
+                              <p className="mt-0.5 hidden truncate whitespace-nowrap text-xs text-muted-foreground xl:block">
+                                <Phone className="me-1 inline h-3 w-3 align-[-2px]" />{lead.contactPhone}
+                              </p>
+                            )}
                           </TableCell>
 
                           {/* Location */}
-                          <TableCell className="hidden md:table-cell">
+                          <TableCell className="hidden max-w-[140px] md:table-cell">
                             {lead.country ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                <MapPin className="h-3 w-3" />{lead.country}
-                              </span>
+                              <p className="truncate text-xs text-muted-foreground" title={lead.country}>
+                                <MapPin className="me-1 inline h-3 w-3 align-[-2px]" />{lead.country}
+                              </p>
                             ) : (
                               <span className="text-xs text-muted-foreground/40">&mdash;</span>
                             )}
                           </TableCell>
 
-                          {/* Stage */}
+                          {/* Stage — pick it here, and see how far along it is */}
                           <TableCell>
-                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${config.bgColor} ${config.borderColor} ${config.color}`}>
-                              {config.icon}
-                              {config.label}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <Select
+                                value={lead.status}
+                                onValueChange={(v) => updateStatus(lead._id, v as LeadStatus)}
+                                disabled={updating === lead._id || !can("leads", "update")}
+                              >
+                                <SelectTrigger
+                                  aria-label={t("currentStage", { stage: config.label })}
+                                  title={t("currentStage", { stage: config.label })}
+                                  className={`h-7 w-[140px] gap-1 rounded-full border px-2.5 text-[11px] font-semibold shadow-none ${config.bgColor} ${config.borderColor} ${config.color}`}
+                                >
+                                  <span className="flex min-w-0 items-center gap-1.5 [&_svg]:h-3 [&_svg]:w-3">
+                                    {updating === lead._id ? <Loader2 className="h-3 w-3 animate-spin" /> : config.icon}
+                                    <span className="truncate">{config.label}</span>
+                                  </span>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {STAGES.map((st) => (
+                                    <SelectItem key={st} value={st} className="text-xs">
+                                      <span className="flex items-center gap-1.5 [&_svg]:h-3 [&_svg]:w-3">
+                                        <span className={STAGE_CONFIG[st].color}>{STAGE_CONFIG[st].icon}</span>
+                                        {STAGE_CONFIG[st].label}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <StageProgress stage={lead.status} stageConfig={STAGE_CONFIG} t={t} />
+                            </div>
                           </TableCell>
 
                           {/* Score */}
@@ -1003,13 +1259,6 @@ export default function AgentLeadsPage() {
                           {/* Actions */}
                           <TableCell className="pr-5 text-right">
                             <div className="inline-flex items-center gap-0.5">
-                              <button
-                                onClick={() => router.push(`leads/${lead._id}`)}
-                                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-                                title={tc("view")}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
                               <button
                                 onClick={() => scoreLead(lead._id)}
                                 disabled={scoringLeadId === lead._id}
@@ -1067,123 +1316,72 @@ export default function AgentLeadsPage() {
         </>
       )}
 
-      {/* ──── Detail Dialog ──── */}
-      <Dialog open={!!detailLead} onOpenChange={() => setDetailLead(null)}>
-        <DialogContent className="max-w-2xl">
+      {/* ──── Sign-in details, shown once after a conversion ──── */}
+      <Dialog open={Boolean(credentials)} onOpenChange={(open) => { if (!open) setCredentials(null); }}>
+        <DialogContent className="max-w-md" mobileSheet>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <Building2 className="h-5 w-5 text-primary" />
-              {detailLead?.companyName}
+              <Building2 className="h-5 w-5 text-status-selected" />
+              {t("credentialsTitle")}
             </DialogTitle>
           </DialogHeader>
-          {detailLead && (() => {
-            const dConfig = STAGE_CONFIG[detailLead.status];
-            const dStageIdx = STAGES.indexOf(detailLead.status);
-            const exhibition = detailLead.exhibitionId ? exhibitions.find((e) => e._id === detailLead.exhibitionId) : null;
-            return (
-              <div className="space-y-5">
-                {/* Contact info */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailContact")}</span>
-                    <p className="mt-1 font-medium text-foreground">{detailLead.contactPerson}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("email")}</span>
-                    <p className="mt-1 text-foreground">{detailLead.contactEmail || "\u2014"}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("phone")}</span>
-                    <p className="mt-1 text-foreground">{detailLead.contactPhone || "\u2014"}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailLocation")}</span>
-                    <p className="mt-1 text-foreground">{detailLead.country || "\u2014"}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailIndustry")}</span>
-                    <p className="mt-1 text-foreground">{detailLead.industry || "\u2014"}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailSource")}</span>
-                    <p className="mt-1 text-foreground">{detailLead.source || "\u2014"}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailRevenue")}</span>
-                    <p className="mt-1 font-semibold text-status-selected">
-                      {detailLead.expectedRevenue ? `${detailLead.expectedRevenueCurrency ?? "AED"} ${formatCount(detailLead.expectedRevenue)}` : "\u2014"}
-                    </p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailExhibition")}</span>
-                    <p className="mt-1 text-foreground">{exhibition?.eventName || "\u2014"}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailFollowUp")}</span>
-                    <p className="mt-1 text-foreground">{detailLead.followUpAt ? formatDate(new Date(detailLead.followUpAt), { month: "short", day: "numeric", year: "numeric" }) : "\u2014"}</p>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailCreated")}</span>
-                    <p className="mt-1 text-foreground">{formatDate(new Date(detailLead.createdAt), { month: "short", day: "numeric", year: "numeric" })}</p>
+          {credentials && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {t("credentialsIntro", { company: credentials.company })}
+              </p>
+
+              {[
+                { field: "email", label: t("credentialsEmail"), value: credentials.email },
+                { field: "password", label: t("credentialsPassword"), value: credentials.password },
+              ].map(({ field, label, value }) => (
+                <div key={field} className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+                  <div className="flex items-center gap-2">
+                    <code className="min-w-0 flex-1 truncate rounded-lg border border-border bg-secondary/60 px-3 py-2 font-mono text-sm text-foreground">
+                      {value}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => copyValue(field, value)}
+                      aria-label={t("credentialsCopy", { label })}
+                      className="h-10 shrink-0 gap-1.5 rounded-lg px-3 text-xs font-semibold"
+                    >
+                      {copiedField === field ? <Check className="h-3.5 w-3.5 text-status-selected" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedField === field ? t("credentialsCopied") : t("credentialsCopyAction")}
+                    </Button>
                   </div>
                 </div>
+              ))}
 
-                {/* Notes */}
-                {detailLead.notes && (
-                  <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailNotes")}</span>
-                    <p className="mt-1 rounded-lg bg-muted/50 p-3 text-sm text-foreground">{detailLead.notes}</p>
-                  </div>
-                )}
-
-                {/* Pipeline progression */}
-                <div>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("pipelineProgress")}</span>
-                  <div className="mt-2 flex items-center gap-1">
-                    {STAGES.filter((s) => s !== "lost").map((s, i) => {
-                      const sConfig = STAGE_CONFIG[s];
-                      const sIdx = STAGES.indexOf(s);
-                      const isActive = s === detailLead.status;
-                      const isPast = sIdx < dStageIdx;
-                      return (
-                        <div key={s} className="flex items-center">
-                          <button
-                            onClick={() => { if (!isActive) { updateStatus(detailLead._id, s); setDetailLead({ ...detailLead, status: s }); } }}
-                            disabled={isActive || updating === detailLead._id}
-                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition ${
-                              isActive
-                                ? `${sConfig.bgColor} ${sConfig.borderColor} ${sConfig.color} border shadow-sm`
-                                : isPast
-                                  ? "bg-status-selected-bg text-status-selected"
-                                  : "border border-border/50 text-muted-foreground/50 hover:border-border hover:text-muted-foreground"
-                            }`}
-                            title={isActive ? t("currentStage", { stage: sConfig.label }) : t("moveToStage", { stage: sConfig.label })}
-                          >
-                            {sConfig.icon}
-                            {sConfig.label}
-                          </button>
-                          {i < 4 && (
-                            <div className={`mx-1 h-px w-4 ${isPast ? "bg-status-selected" : "bg-border/40"}`} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div className="flex items-start gap-2 rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg chip-pad text-sm text-status-shortlisted">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold">{t("credentialsOnceWarning")}</p>
+                  <p className="text-xs">
+                    {credentials.emailSent ? t("credentialsEmailSent") : t("credentialsEmailFailed")}
+                  </p>
+                  <p className="text-xs">{t("credentialsChangeLater")}</p>
                 </div>
-
-                {/* Score */}
-                {detailLead.score != null && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("aiScoreLabel")}</span>
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${TEMP_STYLES[detailLead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
-                      <Gauge className="h-3.5 w-3.5" />{detailLead.score}
-                    </span>
-                    <span className="text-xs capitalize text-muted-foreground">{detailLead.qualificationLevel ?? "cold"}</span>
-                  </div>
-                )}
               </div>
-            );
-          })()}
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => copyValue("both", `${t("credentialsEmail")}: ${credentials.email}\n${t("credentialsPassword")}: ${credentials.password}`)}
+                  className="h-11 gap-1.5 rounded-xl text-sm font-semibold"
+                >
+                  {copiedField === "both" ? <Check className="h-4 w-4 text-status-selected" /> : <Copy className="h-4 w-4" />}
+                  {t("credentialsCopyBoth")}
+                </Button>
+                <Button type="button" onClick={() => setCredentials(null)} className="h-11 rounded-xl text-sm font-semibold">
+                  {t("credentialsDone")}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

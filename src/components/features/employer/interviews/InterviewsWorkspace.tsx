@@ -1529,19 +1529,23 @@ function InterviewActionModal({
 
   const isScheduleForm = modal.kind === "reschedule" || modal.kind === "next-round";
 
+  const subject = `${iv.jobSeekerId?.fullName ?? t("candidate")} · ${iv.jobId?.title ?? t("role")} · ${t("round")} ${iv.interviewRound ?? 1}`;
+
+  /* Both steps render through the shared Dialog. The previous hand-rolled
+     `fixed z-50` overlay lived inside `<main class="isolate">`, whose stacking
+     context sits under the sidebar (z-40) and top bar (z-30), so the shell
+     painted over the backdrop. The portal puts the overlay on <body>. */
+
   // FG-8: scorecard capture step shown after a completion is saved.
   if (showScorecard) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 py-8 backdrop-blur-sm"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="mx-4 w-full max-w-2xl rounded-2xl border border-border bg-background shadow-2xl">
-          <div className="border-b border-border px-6 py-4">
-            <h3 className="heading-subsection font-semibold text-foreground">{t("scorecardStepTitle")}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {iv.jobSeekerId?.fullName ?? t("candidate")} · {iv.jobId?.title ?? t("role")} · {t("round")} {iv.interviewRound ?? 1}
-            </p>
-          </div>
-          <div className="max-h-[calc(100vh-220px)] overflow-y-auto px-6 py-4">
+      <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent className="max-w-2xl gap-0 p-0">
+          <DialogHeader className="border-b border-border px-6 py-4">
+            <DialogTitle className="heading-subsection font-semibold text-foreground">{t("scorecardStepTitle")}</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">{subject}</DialogDescription>
+          </DialogHeader>
+          <div className="px-6 py-4">
             <FeatureGate
               feature="scorecardEvaluations"
               fallback={
@@ -1556,24 +1560,22 @@ function InterviewActionModal({
                 onSubmit={handleScorecardSubmit}
                 onCancel={onClose}
                 isLoading={createScorecard.isPending}
+                embedded
               />
             </FeatureGate>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg rounded-2xl border border-border bg-background shadow-2xl panel-body">
-        <div className="mb-5">
-          <h3 className="heading-subsection font-semibold text-foreground">{title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {iv.jobSeekerId?.fullName ?? t("candidate")} · {iv.jobId?.title ?? t("role")} · {t("round")} {iv.interviewRound ?? 1}
-          </p>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader className="mb-1">
+          <DialogTitle className="heading-subsection font-semibold text-foreground">{title}</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">{subject}</DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-4">
           {/* Complete: Outcome selection */}
@@ -1763,7 +1765,7 @@ function InterviewActionModal({
              t("sendOffer")}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

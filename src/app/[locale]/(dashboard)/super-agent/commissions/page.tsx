@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -154,21 +153,12 @@ export default function SuperAgentCommissionsPage() {
   // current results page", and it rendered as "—" whenever the page was empty,
   // which read as unfinished UI. Dropped "Override rate" too: it is a config
   // value, not a payout metric, and it is already stated in the row below.
+  // Header strip, not a separate card grid: every other super-agent page states
+  // its figures inside the hero, and two full-height cards for two counts was
+  // the loudest thing on the page.
   const kpis = [
-    {
-      label: t("kpiPending"),
-      value: statusCounts.pending ?? 0,
-      helper: t("kpiPendingHelper"),
-      icon: <ReceiptText className="h-5 w-5" />,
-      toneClassName: "workspace-tone-amber",
-    },
-    {
-      label: t("kpiApproved"),
-      value: statusCounts.approved ?? 0,
-      helper: t("kpiApprovedHelper"),
-      icon: <CheckCircle2 className="h-5 w-5" />,
-      toneClassName: "workspace-tone-emerald",
-    },
+    { label: t("kpiPending"), value: statusCounts.pending ?? 0, note: t("kpiPendingHelper"), icon: ReceiptText },
+    { label: t("kpiApproved"), value: statusCounts.approved ?? 0, note: t("kpiApprovedHelper"), icon: CheckCircle2 },
   ];
 
   return (
@@ -179,9 +169,9 @@ export default function SuperAgentCommissionsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={kpis}
+        compactMetrics
       />
-
-      <SuperAgentMetricsGrid items={kpis} />
 
       {/* No eyebrow/title/description on this section: "CONTROLS / Configure the
           regional override and filter payout status / Adjust the commission

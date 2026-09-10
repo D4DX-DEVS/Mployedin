@@ -1,4 +1,5 @@
 import type { UserRole } from "@/models/User";
+import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/companyRoles";
 import type { IconName } from "./iconRegistry";
 
 /** Resources in the system */
@@ -35,6 +36,14 @@ export interface NavItem {
   /** Optional group label for grouping children in the submenu panel */
   group?: string;
   groupAr?: string;
+  /**
+   * Which granted company function this row needs. Employer rows only.
+   *
+   * An employer who owns their company holds every flag, so their rail is
+   * unchanged. A colleague invited into the workspace holds only what they
+   * were granted, and never sees a row they cannot use.
+   */
+  companyFunction?: PermissionFlag;
   children?: NavItem[];
 }
 
@@ -759,23 +768,28 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
       },
     ],
 
-    // Ten rows, not two parents and a junk drawer. "Tools" held twelve
-    // unrelated leaves — CRM, money, performance and daily work behind one word
-    // no recruiter uses — and its own href opened Employers, so tapping the
-    // category landed on an arbitrary child. The pipeline is now one parent in
-    // the order an agent works it, money is its own pair, the four reporting
-    // pages are one tabbed destination, and the two things an agent opens every
-    // morning (Tasks, Calendar) are top-level rather than three taps down.
+    // Nine rows, shaped like the employer rail (Home / Jobs / Hiring / Talent
+    // / Settings) because the two roles do the same hiring work from opposite
+    // sides of the table. The previous "Pipeline" parent hid eight pages
+    // behind one word and three sales-course headings ("Win the account",
+    // "Fill the vacancy", "Close the deal") that no recruiter uses; the stage
+    // pages now sit under Hiring exactly as they do for an employer, the CRM
+    // pages under Accounts, and the outreach material under Marketing. Tasks
+    // and Calendar stay top-level: they are the two things an agent opens
+    // every morning. Messages left the rail for the topbar indicator (see
+    // MessagesIndicator) and the phone tab bar, as it did for employer.
     agent: [
       {
+        label: "Today",
+        labelAr: "اليوم",
         items: [
           {
-            title: "Today",
-            titleAr: "اليوم",
+            title: "Home",
+            titleAr: "الرئيسية",
             href: p("/agent"),
             icon: "LayoutDashboard",
-            description: "Your queue, then the numbers",
-            descriptionAr: "قائمة عملك، ثم الأرقام",
+            description: "What needs you today, then the numbers",
+            descriptionAr: "ما يحتاج إليك اليوم، ثم الأرقام",
           },
           {
             title: "Tasks",
@@ -794,13 +808,19 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             description: "Interviews, task due dates & follow-ups",
             descriptionAr: "المقابلات ومواعيد المهام والمتابعات",
           },
+        ],
+      },
+      {
+        label: "Work",
+        labelAr: "العمل",
+        items: [
           {
-            title: "Pipeline",
-            titleAr: "خط العمل",
+            title: "Accounts",
+            titleAr: "الحسابات",
             href: p("/agent/leads"),
-            icon: "Target",
-            description: "Lead to placement, in order",
-            descriptionAr: "من العميل المحتمل إلى التوظيف",
+            icon: "Building2",
+            description: "Prospects and the employers you manage",
+            descriptionAr: "العملاء المحتملون وأصحاب العمل الذين تديرهم",
             children: [
               {
                 title: "Leads",
@@ -809,8 +829,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Target",
                 description: "Prospect pipeline & follow-ups",
                 descriptionAr: "خط العملاء المحتملين والمتابعات",
-                group: "Win the account",
-                groupAr: "كسب الحساب",
                 badgeKey: "dueFollowUps",
               },
               {
@@ -820,38 +838,33 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Building2",
                 description: "Your assigned company accounts",
                 descriptionAr: "حسابات الشركات المسندة إليك",
-                group: "Win the account",
-                groupAr: "كسب الحساب",
               },
-              {
-                title: "Jobs",
-                titleAr: "الوظائف",
-                href: p("/agent/jobs"),
-                icon: "Briefcase",
-                description: "Vacancies you are filling",
-                descriptionAr: "الوظائف التي تعمل على شغلها",
-                group: "Fill the vacancy",
-                groupAr: "شغل الوظيفة",
-              },
+            ],
+          },
+          {
+            title: "Jobs",
+            titleAr: "الوظائف",
+            href: p("/agent/jobs"),
+            icon: "Briefcase",
+            description: "Vacancies you are filling",
+            descriptionAr: "الوظائف التي تعمل على شغلها",
+          },
+          {
+            // Same four stages, same order, as the employer's Hiring group.
+            title: "Hiring",
+            titleAr: "التوظيف",
+            href: p("/agent/candidates"),
+            icon: "FileText",
+            description: "Every candidate, applied to hired",
+            descriptionAr: "كل مرشح من التقديم حتى التعيين",
+            children: [
               {
                 title: "Candidates",
                 titleAr: "المرشحون",
                 href: p("/agent/candidates"),
-                icon: "Users",
+                icon: "FileText",
                 description: "Applications with AI match scores",
                 descriptionAr: "الطلبات مع درجات المطابقة",
-                group: "Fill the vacancy",
-                groupAr: "شغل الوظيفة",
-              },
-              {
-                title: "Job Seekers",
-                titleAr: "الباحثون عن عمل",
-                href: p("/agent/job-seekers"),
-                icon: "UserSearch",
-                description: "Browse the candidate database",
-                descriptionAr: "تصفح قاعدة بيانات المرشحين",
-                group: "Fill the vacancy",
-                groupAr: "شغل الوظيفة",
               },
               {
                 title: "Interviews",
@@ -860,18 +873,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Calendar",
                 description: "Schedule & record outcomes",
                 descriptionAr: "الجدولة وتسجيل النتائج",
-                group: "Close the deal",
-                groupAr: "إتمام الصفقة",
               },
               {
                 title: "Offers",
                 titleAr: "العروض",
                 href: p("/agent/offers"),
-                icon: "Gift",
+                icon: "ScrollText",
                 description: "Offers out & responses",
                 descriptionAr: "العروض المرسلة والردود",
-                group: "Close the deal",
-                groupAr: "إتمام الصفقة",
               },
               {
                 title: "Placements",
@@ -880,8 +889,64 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "UserCheck",
                 description: "Confirmed hires",
                 descriptionAr: "التعيينات المؤكدة",
-                group: "Close the deal",
-                groupAr: "إتمام الصفقة",
+              },
+            ],
+          },
+          {
+            title: "Job Seekers",
+            titleAr: "الباحثون عن عمل",
+            href: p("/agent/job-seekers"),
+            icon: "UserSearch",
+            description: "Source candidates before they apply",
+            descriptionAr: "ابحث عن مرشحين قبل أن يتقدموا",
+          },
+        ],
+      },
+      {
+        label: "Track",
+        labelAr: "المتابعة",
+        items: [
+          {
+            // Targets, the target report and the commission report are tabs
+            // on this page (AgentSectionTabs), not destinations of their own.
+            title: "Performance",
+            titleAr: "الأداء",
+            href: p("/agent/reports"),
+            icon: "BarChart2",
+            description: "Activity, targets & commission analytics",
+            descriptionAr: "النشاط والأهداف وتحليلات العمولات",
+          },
+          {
+            title: "Marketing",
+            titleAr: "التسويق",
+            href: p("/agent/referral-links"),
+            icon: "Globe",
+            description: "Referral links, exhibitions & sales material",
+            descriptionAr: "روابط الإحالة والمعارض ومواد البيع",
+            children: [
+              {
+                title: "Referral Links",
+                titleAr: "روابط الإحالة",
+                href: p("/agent/referral-links"),
+                icon: "Link2",
+                description: "Share links & track sign-ups",
+                descriptionAr: "شارك الروابط وتتبع التسجيلات",
+              },
+              {
+                title: "Exhibition Requests",
+                titleAr: "طلبات المعارض",
+                href: p("/agent/exhibitions"),
+                icon: "Globe",
+                description: "Request & track exhibition participation",
+                descriptionAr: "طلب وتتبع المشاركة في المعارض",
+              },
+              {
+                title: "Resource Downloads",
+                titleAr: "تحميل الموارد",
+                href: p("/agent/resources"),
+                icon: "BookOpen",
+                description: "Brochures, decks & sales material",
+                descriptionAr: "الكتيبات والعروض ومواد البيع",
               },
             ],
           },
@@ -910,50 +975,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "الفواتير الصادرة على حساباتك",
               },
             ],
-          },
-          {
-            // Was four sibling destinations — Reports, Targets, Target Report
-            // and Commission Report — all reporting on the same agent. One
-            // destination now; the other three are tabs on it.
-            title: "Performance",
-            titleAr: "الأداء",
-            href: p("/agent/reports"),
-            icon: "BarChart2",
-            description: "Activity, targets & commission analytics",
-            descriptionAr: "النشاط والأهداف وتحليلات العمولات",
-          },
-          {
-            title: "Messages",
-            titleAr: "الرسائل",
-            href: p("/agent/messages"),
-            icon: "MessageSquare",
-            description: "Direct messages & team channels",
-            descriptionAr: "الرسائل المباشرة وقنوات الفريق",
-            badgeKey: "unreadMessages",
-          },
-          {
-            title: "Referral Links",
-            titleAr: "روابط الإحالة",
-            href: p("/agent/referral-links"),
-            icon: "Link2",
-            description: "Share links & track sign-ups",
-            descriptionAr: "شارك الروابط وتتبع التسجيلات",
-          },
-          {
-            title: "Exhibition Requests",
-            titleAr: "طلبات المعارض",
-            href: p("/agent/exhibitions"),
-            icon: "Globe",
-            description: "Request & track exhibition participation",
-            descriptionAr: "طلب وتتبع المشاركة في المعارض",
-          },
-          {
-            title: "Resource Downloads",
-            titleAr: "تحميل الموارد",
-            href: p("/agent/resources"),
-            icon: "BookOpen",
-            description: "Brochures, decks & sales material",
-            descriptionAr: "الكتيبات والعروض ومواد البيع",
           },
         ],
       },
@@ -985,6 +1006,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             title: "Jobs",
             titleAr: "الوظائف",
             href: p("/employer/jobs"),
+            companyFunction: "canCreateJobs",
             icon: "Briefcase",
             description: "Post, edit and publish roles",
             descriptionAr: "نشر الوظائف وتحريرها",
@@ -1005,6 +1027,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Applications",
                 titleAr: "الطلبات",
                 href: p("/employer/applications"),
+                companyFunction: "canReviewApplicants",
                 icon: "FileText",
                 description: "Review, shortlist and reject",
                 descriptionAr: "المراجعة والاختيار والرفض",
@@ -1013,6 +1036,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Interviews",
                 titleAr: "المقابلات",
                 href: p("/employer/interviews"),
+                companyFunction: "canScheduleInterviews",
                 icon: "Calendar",
                 description: "Schedule, complete and score",
                 descriptionAr: "الجدولة والإكمال والتقييم",
@@ -1021,6 +1045,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Offers",
                 titleAr: "العروض",
                 href: p("/employer/offers"),
+                companyFunction: "canSendOffers",
                 icon: "ScrollText",
                 description: "Offers sent and accepted",
                 descriptionAr: "العروض المرسلة والمقبولة",
@@ -1029,6 +1054,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Placements",
                 titleAr: "التعيينات",
                 href: p("/employer/placements"),
+                companyFunction: "canOnboardPlacements",
                 icon: "UserCheck",
                 description: "Confirmed hires and onboarding",
                 descriptionAr: "التعيينات المؤكدة والانضمام",
@@ -1037,6 +1063,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Background Checks",
                 titleAr: "التحقق من الخلفية",
                 href: p("/employer/background-checks"),
+                companyFunction: "canRunScreening",
                 icon: "ShieldCheck",
                 description: "Verification before a start date",
                 descriptionAr: "التحقق قبل تاريخ المباشرة",
@@ -1055,6 +1082,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Candidates",
                 titleAr: "المرشحون",
                 href: p("/employer/candidates"),
+                companyFunction: "canManageTalentPools",
                 icon: "UserSearch",
                 description: "Search and score the talent pool",
                 descriptionAr: "البحث في قاعدة المرشحين وتقييمهم",
@@ -1063,6 +1091,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Talent Pools",
                 titleAr: "مجموعات المواهب",
                 href: p("/employer/talent-pools"),
+                companyFunction: "canManageTalentPools",
                 icon: "FolderOpen",
                 description: "Saved shortlists you can reuse",
                 descriptionAr: "قوائم محفوظة يمكن إعادة استخدامها",
@@ -1081,6 +1110,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Hiring Analytics",
                 titleAr: "تحليلات التوظيف",
                 href: p("/employer/analytics"),
+                companyFunction: "canViewAnalytics",
                 icon: "BarChart2",
                 description: "Pipeline, time to hire, offers",
                 descriptionAr: "المسار ومدة التعيين والعروض",
@@ -1089,6 +1119,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Screening Answers",
                 titleAr: "إجابات الفرز",
                 href: p("/employer/screening-analytics"),
+                companyFunction: "canRunScreening",
                 icon: "ClipboardList",
                 description: "How candidates answer each question",
                 descriptionAr: "كيف يجيب المرشحون عن كل سؤال",
@@ -1107,6 +1138,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Company Profile",
                 titleAr: "ملف الشركة",
                 href: p("/employer/settings"),
+                companyFunction: "canManageCompanySettings",
                 icon: "Building2",
                 description: "Details, verification and notifications",
                 descriptionAr: "البيانات والتحقق والإشعارات",
@@ -1114,9 +1146,24 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 groupAr: "الشركة",
               },
               {
+                // Restored 2026-09-09 with member management. The row was
+                // pulled while invites were parked, which left the page
+                // reachable only from a button on the activity-logs screen.
+                title: "Team",
+                titleAr: "الفريق",
+                href: p("/employer/team"),
+                companyFunction: "canManageTeam",
+                icon: "Users",
+                description: "Invite colleagues and set what they can do",
+                descriptionAr: "ادعُ زملاءك وحدد ما يمكنهم فعله",
+                group: "Company",
+                groupAr: "الشركة",
+              },
+              {
                 title: "Team Activity",
                 titleAr: "نشاط الفريق",
                 href: p("/employer/team/activity-logs"),
+                companyFunction: "canManageTeam",
                 icon: "Activity",
                 description: "What your colleagues did",
                 descriptionAr: "ما قام به زملاؤك",
@@ -1127,6 +1174,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Actions On Your Behalf",
                 titleAr: "الإجراءات نيابة عنك",
                 href: p("/employer/activity-history"),
+                companyFunction: "canManageTeam",
                 icon: "History",
                 description: "What agents and admins did for you",
                 descriptionAr: "ما قام به الوكلاء والمسؤولون لحسابك",
@@ -1137,6 +1185,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Subscription",
                 titleAr: "الاشتراك",
                 href: p("/employer/subscription"),
+                companyFunction: "canManageBilling",
                 icon: "Crown",
                 description: "Plan, usage and limits",
                 descriptionAr: "الخطة والاستخدام والحدود",
@@ -1147,6 +1196,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Invoices",
                 titleAr: "الفواتير",
                 href: p("/employer/invoices"),
+                companyFunction: "canManageBilling",
                 icon: "ReceiptText",
                 description: "Invoices and payment history",
                 descriptionAr: "الفواتير وسجل الدفعات",
@@ -1157,6 +1207,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Payment Setup",
                 titleAr: "إعداد الدفع",
                 href: p("/employer/payment-setup"),
+                companyFunction: "canManageBilling",
                 icon: "CreditCard",
                 description: "Configure your payment gateway",
                 descriptionAr: "إعداد بوابة الدفع",
@@ -1167,6 +1218,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "Hiring Workflows",
                 titleAr: "مسارات التوظيف",
                 href: p("/employer/workflow"),
+                companyFunction: "canOnboardPlacements",
                 icon: "GitBranch",
                 description: "Stages every candidate moves through",
                 descriptionAr: "المراحل التي يمر بها كل مرشح",
@@ -1177,19 +1229,10 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 title: "AI Matching",
                 titleAr: "المطابقة الذكية",
                 href: p("/employer/matching-weights"),
+                companyFunction: "canViewAnalytics",
                 icon: "SlidersHorizontal",
                 description: "What the match score weighs",
                 descriptionAr: "ما الذي تعتمد عليه درجة التطابق",
-                group: "Hiring setup",
-                groupAr: "إعداد التوظيف",
-              },
-              {
-                title: "Assessments",
-                titleAr: "الاختبارات",
-                href: p("/employer/assessments"),
-                icon: "ClipboardCheck",
-                description: "Skill tests you send to candidates",
-                descriptionAr: "اختبارات المهارات التي ترسلها للمرشحين",
                 group: "Hiring setup",
                 groupAr: "إعداد التوظيف",
               },
@@ -1249,12 +1292,15 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "ابحث وتصفح الوظائف المطابقة",
           },
           {
-            title: "Job Alerts",
-            titleAr: "تنبيهات الوظائف",
+            // Named for what it holds, not for the alerts it can send: the
+            // profile-wide job alert is driven by Preferences, and calling this
+            // "Job Alerts" sent seekers here to switch that one off.
+            title: "Saved Searches",
+            titleAr: "عمليات البحث المحفوظة",
             href: p("/job-seeker/saved-searches"),
             icon: "Bell",
-            description: "Saved searches that notify you",
-            descriptionAr: "عمليات البحث المحفوظة التي تنبهك",
+            description: "Email me when a saved search gets new matches",
+            descriptionAr: "راسلني عند ظهور نتائج جديدة لعملية بحث محفوظة",
           },
           {
             title: "Companies",
@@ -1397,13 +1443,60 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
   };
 }
 
-export function getNavGroups(role: UserRole, locale = "en"): NavGroup[] {
-  return buildNav(locale)[role] ?? [];
+/**
+ * Drop the rows a company member was not granted.
+ *
+ * Two rules beyond the obvious one. A parent that had children and lost all of
+ * them is a dead row — it would open an empty panel — so it goes too. And a
+ * surviving parent whose own href points at a child that was filtered away
+ * would be a link straight into a refusal, so it is repointed at its first
+ * remaining child.
+ */
+function filterByCompanyFunction(
+  items: NavItem[],
+  permissions: ICompanyUserPermissions
+): NavItem[] {
+  const kept: NavItem[] = [];
+  for (const item of items) {
+    if (item.companyFunction && permissions[item.companyFunction] !== true) continue;
+
+    if (!item.children || item.children.length === 0) {
+      kept.push(item);
+      continue;
+    }
+
+    const children = filterByCompanyFunction(item.children, permissions);
+    if (children.length === 0) continue;
+
+    const hrefStillReachable = children.some((c) => c.href === item.href);
+    kept.push({
+      ...item,
+      href: hrefStillReachable ? item.href : children[0].href,
+      children,
+    });
+  }
+  return kept;
+}
+
+export function getNavGroups(
+  role: UserRole,
+  locale = "en",
+  companyPermissions?: ICompanyUserPermissions | null
+): NavGroup[] {
+  const groups = buildNav(locale)[role] ?? [];
+  if (role !== "employer" || !companyPermissions) return groups;
+  return groups
+    .map((g) => ({ ...g, items: filterByCompanyFunction(g.items, companyPermissions) }))
+    .filter((g) => g.items.length > 0);
 }
 
 /** Flat items for CommandMenu */
-export function getAllNavItems(role: UserRole, locale = "en"): NavItem[] {
-  const groups = getNavGroups(role, locale);
+export function getAllNavItems(
+  role: UserRole,
+  locale = "en",
+  companyPermissions?: ICompanyUserPermissions | null
+): NavItem[] {
+  const groups = getNavGroups(role, locale, companyPermissions);
   return groups.flatMap((g) =>
     g.items.flatMap((item) => [item, ...(item.children ?? [])])
   );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth/withAuth";
+import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import BackgroundCheck from "@/models/BackgroundCheck";
@@ -9,7 +9,13 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+interface AuthCtx {
+  userId: string;
+  role: UserRole;
+  locale: string;
+  /** Present when the caller is a colleague borrowing the owner's workspace. */
+  member?: AuthContext["member"];
+}
 
 /**
  * GET /api/employer/background-checks/[id] (FG-7) — single check detail.
@@ -50,6 +56,39 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const body = await validateBody(req, backgroundCheckUpdateSchema);
 
+  // ctx.userId is the company owner even when a colleague is calling, so the
+  // real person is ctx.member.actorId when a member context is present.
+  const actorId = ctx.member?.actorId ?? ctx.userId;
+  const canManage = !ctx.member || ctx.member.permissions.canManageTeam === true;
+
+  if (body.assignedTo !== undefined) {
+    if (!canManage) {
+      return NextResponse.json(
+        { error: "Only the account owner or a team manager can assign a check." },
+        { status: 403 }
+      );
+    }
+    check.assignedTo = (body.assignedTo || undefined) as typeof check.assignedTo;
+    check.assignedBy = actorId as unknown as typeof check.assignedBy;
+    check.assignedAt = new Date();
+  }
+
+  if (body.verify === true) {
+    // The verdict belongs to whoever holds the check. A manager can always
+    // record one, and an unassigned check is open to anyone who got this far.
+    const assigned = check.assignedTo ? String(check.assignedTo) : null;
+    if (assigned !== null && assigned !== String(actorId) && !canManage) {
+      return NextResponse.json(
+        { error: "This check is assigned to somebody else." },
+        { status: 403 }
+      );
+    }
+    check.status = "completed";
+    if (!check.completedAt) check.completedAt = new Date();
+    check.verifiedBy = actorId as unknown as typeof check.verifiedBy;
+    check.verifiedAt = new Date();
+  }
+
   if (body.status) {
     check.status = body.status;
     if (body.status === "completed" && !check.completedAt) check.completedAt = new Date();
@@ -73,7 +112,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   await logActivity({
     ...actorFromCtx(ctx),
-    action: "background_check.update",
+    action:
+      body.verify === true
+        ? "background_check.verify"
+        : body.assignedTo !== undefined
+          ? "background_check.assign"
+          : "background_check.update",
     resource: "applications",
     resourceId: String(check._id),
     req,
@@ -83,6 +127,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const populated = await BackgroundCheck.findById(check._id)
     .populate({ path: "jobSeekerId", select: "fullName userId", populate: { path: "userId", select: "name" } })
     .populate({ path: "jobId", select: "title" })
+    .populate({ path: "assignedTo", select: "name email" })
+    .populate({ path: "verifiedBy", select: "name email" })
     .lean();
 
   return NextResponse.json({ check: populated ?? check });

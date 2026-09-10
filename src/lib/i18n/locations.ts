@@ -58,6 +58,31 @@ function uniqueParts(parts: string[]): string[] {
   });
 }
 
+const REGION_CODES = new Set(Object.values(COUNTRY_REGION_CODES));
+
+/**
+ * Reduce a stored country string to the country it names. Real records — on the
+ * seeker's preference side and the job's side alike — carry padding and
+ * qualifiers ("Oman ", "Oman (Muscat)", "Saudi Arabia (Transferable Iqama)"),
+ * none of which is a different country.
+ */
+export function canonicalCountry(value: string | null | undefined): string {
+  return normalizeLocationValue((value ?? "").split("(")[0]);
+}
+
+/**
+ * The single key two country strings must share to be the same country, however
+ * each side was spelled. Jobs are filed as "IN" as often as "India", so both
+ * collapse onto the region code; anything unrecognised falls back to its
+ * canonical name so unknown countries still compare against themselves.
+ */
+export function countryKey(value: string | null | undefined): string {
+  const base = canonicalCountry(value);
+  if (!base) return "";
+  const code = COUNTRY_REGION_CODES[base] ?? (REGION_CODES.has(base.toUpperCase()) ? base.toUpperCase() : null);
+  return code ? code.toLowerCase() : base;
+}
+
 export function getRegionCodeForCountryName(countryName?: string | null): string | null {
   if (!countryName) return null;
   return COUNTRY_REGION_CODES[normalizeLocationValue(countryName)] ?? null;

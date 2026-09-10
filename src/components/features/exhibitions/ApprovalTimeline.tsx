@@ -92,12 +92,15 @@ export function ApprovalTimeline({ entries }: ApprovalTimelineProps) {
     <ol className="relative space-y-0">
       {entries.map((entry, i) => {
         const isLast = i === entries.length - 1;
-        const actorName =
+        // An unpopulated `changedBy` arrives as a raw ObjectId string. Printing
+        // it reads as garbage in the timeline, so fall back to the role badge.
+        const rawActor =
           entry.changedBy && typeof entry.changedBy === "object"
             ? entry.changedBy.name
             : typeof entry.changedBy === "string"
             ? entry.changedBy
             : null;
+        const actorName = rawActor && /^[a-f0-9]{24}$/i.test(rawActor) ? null : rawActor;
         const role = entry.approverRole ?? "system";
         const reason = (entry.statusReason ?? entry.note ?? "").trim() || null;
 

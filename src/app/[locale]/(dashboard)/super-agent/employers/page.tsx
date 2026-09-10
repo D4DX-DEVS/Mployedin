@@ -300,11 +300,11 @@ export default function SuperAgentEmployersPage() {
         </div>
       </SuperAgentPageIntro>
 
-      <SuperAgentSection
-        eyebrow={t("sectionEyebrow")}
-        title={t("sectionTitle")}
-        description={t("sectionDescription")}
-      >
+      {/* Heading kept for screen readers only, the same convention agents,
+          commissions and leads already use: this is the page's one list
+          section, sitting directly under the h1, and the visible eyebrow +
+          title + sentence only narrated the toolbar below it. */}
+      <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Error State ---- */}
         {error && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">

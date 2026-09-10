@@ -19,7 +19,7 @@ import { formatCurrency } from "@/lib/currency";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Commission {
@@ -161,22 +161,19 @@ export default function AgentCommissionsPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={DollarSign}
+      <WorkspaceHeader
         title={t("pageTitle")}
-        description={t("pageDescription")}
-        summary={{ label: t("ledgerLabel"), value: `${pagination.total} ${t("commissionRecords")}` }}
-        compactMetrics
+        context={`${pagination.total} ${t("commissionRecords")}`}
         // Each cell filters to the status it totals, so "Pending 4,200" is the
         // way into those commissions rather than a number to read and re-find.
         metrics={summary ? [
-          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), icon: Clock,
+          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), icon: Clock, tone: "warning",
             onClick: () => setFilter(filter === "pending" ? "all" : "pending"), active: filter === "pending" },
-          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), icon: TrendingUp,
+          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), icon: TrendingUp, tone: "info",
             onClick: () => setFilter(filter === "approved" ? "all" : "approved"), active: filter === "approved" },
-          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode), icon: DollarSign,
+          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode), icon: DollarSign, tone: "success",
             onClick: () => setFilter(filter === "paid" ? "all" : "paid"), active: filter === "paid" },
-          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode), icon: X,
+          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode), icon: X, tone: "primary",
             onClick: () => setFilter(filter === "disputed" ? "all" : "disputed"), active: filter === "disputed" },
         ] : undefined}
       />

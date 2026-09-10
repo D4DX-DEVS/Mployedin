@@ -24,16 +24,16 @@ describe("withoutBottomTabItems", () => {
   it("keeps a parent that shares a tab href while it still has non-tab children", () => {
     const kept = withoutBottomTabItems(
       [
-        item("Hiring", "/en/agent/jobs", [
-          item("Jobs", "/en/agent/jobs"),
-          item("Job Templates", "/en/agent/job-templates"),
+        item("Hiring", "/en/agent/candidates", [
+          item("Candidates", "/en/agent/candidates"),
+          item("Interviews", "/en/agent/interviews"),
         ]),
       ],
       "agent",
       "en"
     );
     expect(kept).toHaveLength(1);
-    expect(kept[0].children?.map((c) => c.title)).toEqual(["Job Templates"]);
+    expect(kept[0].children?.map((c) => c.title)).toEqual(["Interviews"]);
   });
 
   it("prunes tab-linked children inside groups and drops a group left empty", () => {

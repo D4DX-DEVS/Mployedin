@@ -3,7 +3,6 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
-import Job from "@/models/Job";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -54,7 +53,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const applications = await Application.find({ _id: { $in: ids } })
-    .populate("jobSeekerId", "name profilePicture skills experience preferredSalary profileCompleteness")
+    // A job seeker carries `fullName`; the account name lives on the User. The old
+    // select asked for a `name` field that does not exist, so every column read "Unknown".
+    .populate({
+      path: "jobSeekerId",
+      select: "fullName profilePicture skills experience preferredSalary profileCompleteness userId",
+      populate: { path: "userId", select: "name avatar" },
+    })
     .populate("jobId", "title salaryRange agentId")
     .lean();
 
@@ -78,7 +83,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // Compute years of experience from populated jobSeekerId
   const candidates = applications.map((app) => {
     const seeker = app.jobSeekerId as unknown as {
-      name?: string;
+      fullName?: string;
+      userId?: { name?: string; avatar?: string } | null;
       profilePicture?: string;
       skills?: string[];
       experience?: { startDate?: Date; endDate?: Date }[];
@@ -110,8 +116,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       aiMatchScore: app.aiMatchScore ?? null,
       matchBreakdown: app.matchBreakdown ?? null,
       candidate: {
-        name: seeker?.name ?? "Unknown",
-        profilePicture: seeker?.profilePicture ?? null,
+        name: seeker?.fullName ?? seeker?.userId?.name ?? "Unknown",
+        profilePicture: seeker?.profilePicture ?? seeker?.userId?.avatar ?? null,
         skills: seeker?.skills ?? [],
         yearsOfExperience: Math.round(yearsOfExperience * 10) / 10,
         preferredSalary: seeker?.preferredSalary ?? null,

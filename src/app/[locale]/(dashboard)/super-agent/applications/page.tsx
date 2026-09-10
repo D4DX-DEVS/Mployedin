@@ -126,42 +126,42 @@ export default function SuperAgentApplicationsPage() {
 
       {/* No section heading: it repeated the page title directly under the header. */}
       <SuperAgentSection>
-        <div className="flex flex-wrap gap-2 mb-4">
+        {/* Search and both selects share one row from `sm` up. Split over two
+            rows, the search sat alone on a full-width line above its own
+            filters and read as two unrelated control groups. */}
+        <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-3">
           <input
             type="text"
             aria-label={t("searchPlaceholder")}
             placeholder={t("searchPlaceholder")}
             value={filters.search}
             onChange={(e) => setFilter("search", e.target.value)}
-            className="flex-1 min-w-0 h-9 px-3 rounded-lg border border-border bg-card text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-11 w-full min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-auto sm:min-w-[220px]"
           />
-          {(filters.search || filters.status !== "all" || filters.agent !== "all") && (
-            <button
-              type="button"
-              onClick={() => { resetFilters(); pagination.resetPage(); }}
-              className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all max-sm:min-h-11"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              {t("resetButton")}
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 mb-4">
           <SearchableSelect
             options={getStatusOptions(t)}
             value={filters.status}
             onValueChange={(v) => { setFilter("status", v); pagination.resetPage(); }}
             placeholder={t("statusPlaceholder")}
-            className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
+            className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:w-[180px]"
           />
           <SearchableSelect
             options={agentOptions}
             value={filters.agent}
             onValueChange={(v) => { setFilter("agent", v); pagination.resetPage(); }}
             placeholder={t("allAgentsPlaceholder")}
-            className="h-11 w-full sm:w-[180px] rounded-xl border-border bg-card"
+            className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:w-[180px]"
           />
+          {(filters.search || filters.status !== "all" || filters.agent !== "all") && (
+            <button
+              type="button"
+              onClick={() => { resetFilters(); pagination.resetPage(); }}
+              className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-border/70 bg-card px-3 text-sm text-muted-foreground transition-all hover:bg-secondary/80"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              {t("resetButton")}
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto rounded-3xl border border-border/60">

@@ -11,7 +11,7 @@
  * ranking here, so they can only ever disagree about page size.
  */
 
-import { COUNTRY_REGION_CODES } from "@/lib/i18n/locations";
+import { COUNTRY_REGION_CODES, canonicalCountry } from "@/lib/i18n/locations";
 import {
   calculateMatchScore,
   educationRank,
@@ -68,15 +68,6 @@ const NAMES_BY_REGION_CODE: Map<string, string[]> = (() => {
 const REGION_CODES = new Set(Object.values(COUNTRY_REGION_CODES));
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/**
- * Reduce a stored preference to the country it names. Real data carries
- * trailing spaces and qualifiers — "Oman ", "Oman (Muscat)", "Saudi Arabia
- * (Transferable Iqama)" — none of which is a different country.
- */
-function canonicalCountry(value: string): string {
-  return value.split("(")[0].replace(/ +/g, " ").trim().toLowerCase();
-}
 
 /** "Remote / Global" is a work-mode wish, not a country; the query's remote clause already covers it. */
 function isRemotePreference(value: string): boolean {

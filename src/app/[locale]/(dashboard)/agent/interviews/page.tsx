@@ -20,7 +20,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -281,18 +281,15 @@ export default function AgentInterviewsPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={CalendarCheck2}
+      <WorkspaceHeader
         title={t("pageTitle")}
-        description={t("pageSubtitle")}
-        summary={{ label: t("labelCalendar"), value: `${totalAll} ${t("labelInterviews")}` }}
+        context={`${totalAll} ${t("labelInterviews")}`}
         metrics={[
-          { label: t("kpiScheduled"), value: scheduledCount, icon: CalendarCheck2, active: status === "scheduled", onClick: () => setStatus(status === "scheduled" ? "" : "scheduled") },
-          { label: t("kpiCompleted"), value: completedCount, icon: CheckCircle, active: status === "completed", onClick: () => setStatus(status === "completed" ? "" : "completed") },
-          { label: t("kpiCancelled"), value: cancelledCount, icon: XCircle, active: status === "cancelled", onClick: () => setStatus(status === "cancelled" ? "" : "cancelled") },
-          { label: t("kpiRescheduled"), value: rescheduledCount, icon: RotateCcw, active: status === "rescheduled", onClick: () => setStatus(status === "rescheduled" ? "" : "rescheduled") },
+          { label: t("kpiScheduled"), value: scheduledCount, icon: CalendarCheck2, tone: "primary", active: status === "scheduled", onClick: () => setStatus(status === "scheduled" ? "" : "scheduled") },
+          { label: t("kpiCompleted"), value: completedCount, icon: CheckCircle, tone: "success", active: status === "completed", onClick: () => setStatus(status === "completed" ? "" : "completed") },
+          { label: t("kpiCancelled"), value: cancelledCount, icon: XCircle, tone: "warning", active: status === "cancelled", onClick: () => setStatus(status === "cancelled" ? "" : "cancelled") },
+          { label: t("kpiRescheduled"), value: rescheduledCount, icon: RotateCcw, tone: "info", active: status === "rescheduled", onClick: () => setStatus(status === "rescheduled" ? "" : "rescheduled") },
         ]}
-        compactOnMobile
       />
 
       {/* One panel: search, filter toggle and export inline; the filter grid

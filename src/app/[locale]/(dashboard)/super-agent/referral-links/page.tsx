@@ -263,8 +263,9 @@ export default function SuperAgentReferralLinksPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
+      {/* No eyebrow: "Referral Links" over "Referral Link Management" is the
+          title twice, and it cost the header a whole row. */}
       <SuperAgentPageIntro
-        eyebrow={t("eyebrow")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         metrics={[

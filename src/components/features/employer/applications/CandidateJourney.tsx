@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { CalendarDays, ChevronDown, FileText, ShieldCheck, UserCheck, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCandidateJourney } from "@/hooks/useCandidateJourney";
@@ -49,10 +50,34 @@ export function CandidateJourney({ applicationId, locale }: CandidateJourneyProp
     ? [label(PLACEMENT_KEY, data.placement.status ?? "active"), data.placement.startDate ? t("hiresStart", { date: fmt(data.placement.startDate) }) : null].filter(Boolean).join(" · ")
     : t("journeyNoPlacement");
 
-  const cells: { key: string; Icon: LucideIcon; title: string; lines: { id: string; text: string }[]; done: boolean }[] = [
+  // The check tile used to be a dead label: it reported "not requested" with no
+  // way to request one, while the only entry point sat in an overflow menu.
+  // Two different destinations behind one tile: with a check on record, open
+  // that record (`checkId`); without one, open the request form preselected to
+  // this candidate (`applicationId`). Sending "View check" to `applicationId`
+  // would open the create form instead — offering to raise a second check.
+  const checkHref = data?.check
+    ? `/${locale}/employer/background-checks?checkId=${data.check._id}`
+    : `/${locale}/employer/background-checks?applicationId=${applicationId}`;
+
+  const cells: {
+    key: string;
+    Icon: LucideIcon;
+    title: string;
+    lines: { id: string; text: string }[];
+    done: boolean;
+    action?: { href: string; label: string };
+  }[] = [
     { key: "interviews", Icon: CalendarDays, title: t("journeyInterviews"), lines: interviewLines.length ? interviewLines : [{ id: "none", text: t("journeyNoInterviews") }], done: interviewLines.length > 0 },
     { key: "offer", Icon: FileText, title: t("journeyOffer"), lines: [{ id: "offer", text: offerText }], done: Boolean(data?.offer) },
-    { key: "check", Icon: ShieldCheck, title: t("journeyCheck"), lines: [{ id: "check", text: checkText }], done: Boolean(data?.check) },
+    {
+      key: "check",
+      Icon: ShieldCheck,
+      title: t("journeyCheck"),
+      lines: [{ id: "check", text: checkText }],
+      done: Boolean(data?.check),
+      action: { href: checkHref, label: data?.check ? t("journeyCheckView") : t("journeyCheckRequest") },
+    },
     { key: "placement", Icon: UserCheck, title: t("journeyPlacement"), lines: [{ id: "placement", text: placementText }], done: Boolean(data?.placement) },
   ];
 
@@ -68,7 +93,7 @@ export function CandidateJourney({ applicationId, locale }: CandidateJourneyProp
         <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} aria-hidden />
       </button>
       <div className={cn("grid grid-cols-2 gap-2", !open && "hidden md:grid")} aria-busy={isLoading || undefined}>
-        {cells.map(({ key, Icon, title, lines, done }) => (
+        {cells.map(({ key, Icon, title, lines, done, action }) => (
           <div key={key} className={cn("min-w-0 rounded-xl border px-3 py-2", done ? "border-border bg-background" : "border-dashed border-border/70 bg-muted/20")}>
             <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               <Icon className={cn("h-3.5 w-3.5", done ? "text-status-selected" : "text-muted-foreground")} aria-hidden /> {title}
@@ -76,9 +101,19 @@ export function CandidateJourney({ applicationId, locale }: CandidateJourneyProp
             {isLoading ? (
               <div className="mt-1 h-4 w-3/4 animate-pulse rounded bg-muted/60" />
             ) : (
-              <ul className="mt-0.5 space-y-0.5 text-xs text-foreground">
-                {lines.map((line) => <li key={line.id} className="truncate">{line.text}</li>)}
-              </ul>
+              <>
+                <ul className="mt-0.5 space-y-0.5 text-xs text-foreground">
+                  {lines.map((line) => <li key={line.id} className="truncate">{line.text}</li>)}
+                </ul>
+                {action ? (
+                  <Link
+                    href={action.href}
+                    className="mt-1 inline-flex min-h-11 items-center text-xs font-medium text-primary underline-offset-2 hover:underline sm:min-h-0"
+                  >
+                    {action.label}
+                  </Link>
+                ) : null}
+              </>
             )}
           </div>
         ))}

@@ -6,8 +6,6 @@ import { z } from "zod";
 import connectDB from "@/lib/db/mongoose";
 import { User } from "@/models/User";
 import type { UserRole } from "@/models/User";
-import { Employer } from "@/models/Employer";
-import { CompanyUser } from "@/models/CompanyUser";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
@@ -19,7 +17,7 @@ import { fetchLinkedInExtras } from "@/lib/auth/linkedin-profile";
 import { encrypt, decrypt } from "@/lib/security/encryption";
 import { verifyTotp, hashRecoveryCode } from "@/lib/security/totp";
 import { checkRateLimit } from "@/lib/security/rateLimit";
-import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
+import { resolveCompanyContext } from "@/lib/auth/companyContext";
 import { getClientIp } from "@/lib/security/clientIp";
 
 const credentialsSchema = z.object({
@@ -737,27 +735,20 @@ export const authConfig: NextAuthConfig = {
         }
       }
 
-      // Resolve companyUserRole for employers — only when not already cached
+      // Resolve the company workspace for employers — only when not already cached.
+      // Covers both an owner and a colleague who is an active member of somebody
+      // else's company. See src/lib/auth/companyContext.ts.
       const resolvedRole = (token.role as string) ?? "";
       if (resolvedRole === "employer" && token.id && !token.companyId) {
         try {
-          await connectDB();
-          const emp = await Employer.findOne({ userId: token.id as string }).select("_id companyEmail").lean();
-          if (emp) {
-            const member = await ensureEmployerOwnerMembership({
-              companyId: emp._id,
-              userId: token.id as string,
-              email: emp.companyEmail,
-            });
-            token.companyUserRole = member?.companyRole;
-            token.companyId = String(emp._id);
-          } else {
-            // Check for CompanyUser records if no primary Employer found (team member access)
-            const companyUser = await CompanyUser.findOne({ userId: token.id as string }).lean();
-            if (companyUser) {
-              token.companyUserRole = companyUser.companyRole;
-              token.companyId = String(companyUser.companyId);
-            }
+          const company = await resolveCompanyContext(token.id as string);
+          if (company) {
+            token.companyId = company.companyId;
+            token.companyOwnerUserId = company.companyOwnerUserId;
+            token.companyUserRole = company.companyUserRole;
+            token.companyRoles = company.companyRoles;
+            token.companyPermissions = company.permissions;
+            token.jobAccess = company.jobAccess;
           }
         } catch {
           // Non-critical — default to no company role
@@ -794,6 +785,14 @@ export const authConfig: NextAuthConfig = {
         if (token.companyId) {
           (session.user as unknown as { companyId: string }).companyId = token.companyId as string;
         }
+        (session.user as unknown as { companyOwnerUserId?: string }).companyOwnerUserId =
+          token.companyOwnerUserId as string | undefined;
+        (session.user as unknown as { companyRoles?: string[] }).companyRoles =
+          token.companyRoles as string[] | undefined;
+        (session.user as unknown as { companyPermissions?: Record<string, boolean> }).companyPermissions =
+          token.companyPermissions as Record<string, boolean> | undefined;
+        (session.user as unknown as { jobAccess?: string[] }).jobAccess =
+          token.jobAccess as string[] | undefined;
       }
       return session;
     },

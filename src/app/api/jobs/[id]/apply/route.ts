@@ -94,11 +94,8 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   // Resolve employer info for ActivityEvent metadata and email notification
-  const employer = await Employer.findById(job.employerId).select("companyName userId notificationPrefs workflow").lean();
+  const employer = await Employer.findById(job.employerId).select("companyName userId notificationPrefs").lean();
   const company = employer?.companyName ?? "";
-  const workflowSettings = (employer as { workflow?: { settings?: { autoRejectBelow?: number; aiAutoScreen?: boolean } } } | null)?.workflow?.settings;
-  const aiAutoScreen = workflowSettings?.aiAutoScreen ?? false;
-  const autoRejectBelow = workflowSettings?.autoRejectBelow;
 
   // Attach the seeker's CV so the employer always receives one — parity with
   // POST /api/applications: resume-category profile documents first, then the
@@ -186,19 +183,14 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // Track applicant on the job document for accurate applicant counts (parity with full apply)
   await Job.updateOne({ _id: jobId }, { $addToSet: { applicantIds: seeker._id } });
 
-  // aiAutoScreen: parity with POST /api/applications. Compute the AI match score
-  // (and apply the auto-reject threshold) asynchronously via Inngest so the easy
-  // apply request never blocks on an LLM round-trip. Without this, easy-apply
-  // candidates would stay permanently "AI pending" until a recruiter scored them.
-  if (aiAutoScreen) {
-    inngest.send({
-      name: "application/ai-screen",
-      data: {
-        applicationId: String(application._id),
-        ...(autoRejectBelow !== undefined ? { autoRejectBelow } : {}),
-      },
-    }).catch((err) => { logger.error({ err, applicationId: String(application._id) }, "failed to dispatch ai-screen event for easy-apply"); });
-  }
+  // Parity with POST /api/applications: every application is scored via Inngest
+  // so easy-apply candidates never sit "AI pending" until a recruiter scores them.
+  // The worker resolves the opt-in auto-reject rule itself; nothing about
+  // rejection travels on this event.
+  inngest.send({
+    name: "application/ai-screen",
+    data: { applicationId: String(application._id) },
+  }).catch((err) => { logger.error({ err, applicationId: String(application._id) }, "failed to dispatch ai-screen event for easy-apply"); });
 
   // Send emails (non-blocking — don't fail the response if email errors)
   const seekerName = (seeker as { fullName?: string }).fullName ?? seekerUser?.name ?? "Applicant";

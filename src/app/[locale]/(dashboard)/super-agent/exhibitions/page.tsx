@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   CalendarDays, Clock, Inbox,
-  MapPin, ThumbsUp, ThumbsDown, Eye,
+  ThumbsUp, ThumbsDown, Eye,
   RotateCcw, MoreHorizontal,
 } from "lucide-react";
 import {
@@ -227,6 +227,7 @@ export default function SuperAgentExhibitionsPage() {
   const tc = useTranslations("common");
   const locale = useLocale();
   const statusLabels = getStatusLabels(t);
+  const priorityLabels = getPriorityLabels(t);
   const categoryLabels = getCategoryLabels(t);
   const objectiveLabels = getObjectiveLabels(t);
   const resourceLabels = getResourceLabels(t);
@@ -373,16 +374,10 @@ export default function SuperAgentExhibitionsPage() {
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/25">
                     <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderEvent")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderAgent")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">{t("tableHeaderLocation")}</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderDates")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground 2xl:table-cell">{t("tableHeaderParticipation")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderBudgetReq")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground 2xl:table-cell">{t("tableHeaderBudgetAppr")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground 2xl:table-cell">{t("tableHeaderObjective")}</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderStatus")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderPriority")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground 2xl:table-cell">{t("tableHeaderResources")}</th>
+                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderAgent")}</th>
+                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">{t("tableHeaderDates")}</th>
+                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">{t("tableHeaderBudget")}</th>
                     <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderActions")}</th>
                   </tr>
                 </thead>
@@ -390,48 +385,55 @@ export default function SuperAgentExhibitionsPage() {
                   {items.map((item, idx) => {
                     const days = dayCount(item.eventStartDate, item.eventEndDate);
                     return (
-                      <tr key={item._id} className={`transition-colors hover:bg-primary/[0.03] ${idx % 2 === 0 ? "bg-background" : "bg-muted/15"}`}>
+                      <tr
+                        key={item._id}
+                        onClick={(event) => {
+                          // Below 640px the shared table enhancer turns each row
+                          // into a collapsible card and the row's own tap toggles
+                          // it. Opening the dialog there would fire both, so the
+                          // eye button stays the phone entry point.
+                          const cardMode =
+                            event.currentTarget.hasAttribute("data-mobile-collapsible") &&
+                            (typeof window.matchMedia !== "function" || window.matchMedia("(max-width: 639px)").matches);
+                          if (cardMode) return;
+                          setDetailItem(item);
+                        }}
+                        className={`transition-colors hover:bg-primary/[0.04] sm:cursor-pointer ${idx % 2 === 0 ? "bg-background" : "bg-muted/15"}`}
+                      >
                         <td className="px-3 py-2.5">
                           {/* The name is user-entered and often long. Capped at two
                               lines so one verbose title cannot set the height of
                               every row in the queue. */}
-                          <button type="button" onClick={() => setDetailItem(item)} className="line-clamp-2 text-start text-sm font-semibold leading-5 text-foreground hover:text-primary hover:underline">{item.eventName}</button>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{categoryLabels[item.eventCategory] ?? item.eventCategory}</p>
-                        </td>
-                        <td className="hidden px-3 py-2.5 md:table-cell">
-                          <p className="truncate text-sm font-medium leading-5">{item.agentId?.name}</p>
-                          <p className="truncate text-xs leading-4 text-muted-foreground">{item.agentId?.email}</p>
-                        </td>
-                        <td className="hidden px-3 py-2.5 lg:table-cell">
-                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary/60" /> {item.eventLocation}</span>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2.5">
-                          <p className="text-xs font-medium">{fmtDate(item.eventStartDate)} – {fmtDate(item.eventEndDate)}</p>
-                          {days ? <p className="mt-0.5 text-[11px] text-muted-foreground">{days} days</p> : null}
-                        </td>
-                        <td className="hidden px-3 py-2.5 2xl:table-cell">
-                          <div className="flex flex-wrap gap-1">
-                            {(item.participationTypes ?? []).slice(0, 2).map((pt) => (<Badge key={pt} variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-[11px] font-medium">{participationLabels[pt] ?? pt}</Badge>))}
-                            {(item.participationTypes?.length ?? 0) > 2 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.participationTypes.length - 2}</Badge>}
-                          </div>
-                        </td>
-                        <td className="hidden whitespace-nowrap px-3 py-2.5 font-medium md:table-cell">{item.budgetCurrency} {formatCount(item.estimatedBudget)}</td>
-                        <td className="hidden whitespace-nowrap px-3 py-2.5 2xl:table-cell">{item.approvedBudget ? <span className="font-medium text-emerald-600">{item.budgetCurrency} {formatCount(item.approvedBudget)}</span> : <span className="text-muted-foreground">—</span>}</td>
-                        <td className="hidden px-3 py-2.5 2xl:table-cell">
-                          <div className="flex flex-wrap gap-1">
-                            {(item.objectives ?? []).slice(0, 1).map((o) => (<Badge key={o} variant="outline" className="rounded-md text-[11px]">{objectiveLabels[o] ?? o}</Badge>))}
-                            {(item.objectives?.length ?? 0) > 1 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.objectives.length - 1}</Badge>}
-                          </div>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }} className="line-clamp-2 text-start text-sm font-semibold leading-5 text-foreground hover:text-primary hover:underline">{item.eventName}</button>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {categoryLabels[item.eventCategory] ?? item.eventCategory}
+                            {item.eventLocation ? ` · ${item.eventLocation}` : ""}
+                          </p>
                         </td>
                         <td className="px-3 py-2.5">
                           {/* `whitespace-nowrap`: in a narrow column "Under Review"
                               broke onto two lines and the reviewer's name onto two
                               more, which made the status the tallest cell in the row. */}
-                          <Badge className={`${STATUS_COLORS[item.status]} whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{statusLabels[item.status] ?? item.status}</Badge>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge className={`${STATUS_COLORS[item.status]} whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{statusLabels[item.status] ?? item.status}</Badge>
+                            <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{priorityLabels[item.priority] ?? item.priority}</Badge>
+                          </div>
                           {item.reviewedBy && <p className="mt-0.5 truncate text-[11px] leading-4 text-muted-foreground">{item.reviewedBy.name}</p>}
                         </td>
-                        <td className="hidden px-3 py-2.5 md:table-cell"><Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge></td>
-                        <td className="hidden px-3 py-2.5 2xl:table-cell"><span className="text-xs text-muted-foreground">{item.requiredResources?.length ?? 0} items</span></td>
+                        <td className="hidden px-3 py-2.5 md:table-cell">
+                          <p className="truncate text-sm font-medium leading-5">{item.agentId?.name}</p>
+                          <p className="truncate text-xs leading-4 text-muted-foreground">{item.agentId?.email}</p>
+                        </td>
+                        <td className="hidden whitespace-nowrap px-3 py-2.5 sm:table-cell">
+                          <p className="text-xs font-medium">{fmtDate(item.eventStartDate)} – {fmtDate(item.eventEndDate)}</p>
+                          {days ? <p className="mt-0.5 text-[11px] text-muted-foreground">{t("tableDayCount", { count: days })}</p> : null}
+                        </td>
+                        <td className="hidden whitespace-nowrap px-3 py-2.5 lg:table-cell">
+                          <p className="text-sm font-medium">{item.budgetCurrency} {formatCount(item.estimatedBudget)}</p>
+                          {item.approvedBudget ? (
+                            <p className="mt-0.5 text-[11px] font-medium text-emerald-600">{t("tableBudgetApprovedShort")} {item.budgetCurrency} {formatCount(item.approvedBudget)}</p>
+                          ) : null}
+                        </td>
                         <td className="px-3 py-2.5 text-right">
                           {/* One primary action plus an overflow menu, on a single
                               nowrap line. Approve/Revise/Reject as three side-by-side
@@ -439,7 +441,7 @@ export default function SuperAgentExhibitionsPage() {
                               three-high stack that set the height of the whole row —
                               the single biggest cost in the queue. Revise and Reject
                               are the rarer choices, so they move behind the menu. */}
-                          <div className="flex flex-nowrap items-center justify-end gap-1">
+                          <div className="flex flex-nowrap items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="ghost"
                               size="iconDense"
@@ -497,30 +499,39 @@ export default function SuperAgentExhibitionsPage() {
 
       {/* Detail Modal */}
       <Dialog open={!!detailItem} onOpenChange={() => setDetailItem(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {detailItem && (<>
             <DialogHeader className="pe-10">
-              <DialogTitle className="flex flex-wrap items-center gap-2">{detailItem.eventName}<Badge className={STATUS_COLORS[detailItem.status]}>{statusLabels[detailItem.status]}</Badge><Badge className={PRIORITY_COLORS[detailItem.priority]}>{detailItem.priority}</Badge></DialogTitle>
+              <DialogTitle className="flex flex-wrap items-center gap-2">{detailItem.eventName}<Badge className={STATUS_COLORS[detailItem.status]}>{statusLabels[detailItem.status]}</Badge><Badge className={PRIORITY_COLORS[detailItem.priority] ?? PRIORITY_COLORS.medium}>{priorityLabels[detailItem.priority] ?? detailItem.priority}</Badge></DialogTitle>
               <DialogDescription>{categoryLabels[detailItem.eventCategory]} · {detailItem.eventLocation} {detailItem.country ? `· ${detailItem.country}` : ""}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">{t("detailAgent")}:</span> <strong>{detailItem.agentId?.name}</strong></div>
+              {/* Everything the queue row no longer shows lives here: the
+                  table was 12 columns wide and scrolled sideways, so it now
+                  carries only what a reviewer scans, and this panel carries
+                  the full request. */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div><span className="text-muted-foreground">{t("detailAgent")}:</span> <strong>{detailItem.agentId?.name}</strong>{detailItem.agentId?.email ? <span className="block text-xs text-muted-foreground">{detailItem.agentId.email}</span> : null}</div>
+                <div><span className="text-muted-foreground">{t("tableHeaderLocation")}:</span> {[detailItem.eventLocation, detailItem.country].filter(Boolean).join(` · `) || "—"}</div>
                 <div><span className="text-muted-foreground">{t("detailVenue")}:</span> {detailItem.venue ?? "—"}</div>
-              <div><span className="text-muted-foreground">{t("detailDates")}:</span> {fmtDate(detailItem.eventStartDate)}{detailItem.eventEndDate ? ` – ${fmtDate(detailItem.eventEndDate)}` : ""}{dayCount(detailItem.eventStartDate, detailItem.eventEndDate) ? ` (${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)` : ""}</div>
                 <div><span className="text-muted-foreground">{t("detailOrganizer")}:</span> {detailItem.organizerName ?? "—"}</div>
+                <div><span className="text-muted-foreground">{t("detailDates")}:</span> {fmtDate(detailItem.eventStartDate)}{detailItem.eventEndDate ? ` – ${fmtDate(detailItem.eventEndDate)}` : ""}{dayCount(detailItem.eventStartDate, detailItem.eventEndDate) ? ` (${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)` : ""}</div>
+                <div><span className="text-muted-foreground">{t("detailSubmitted")}:</span> {fmtDate(detailItem.createdAt)}</div>
                 <div><span className="text-muted-foreground">{t("detailBudgetRequested")}:</span> {detailItem.budgetCurrency} {formatCount(detailItem.estimatedBudget)}</div>
                 <div><span className="text-muted-foreground">{t("detailBudgetApproved")}:</span> {detailItem.approvedBudget ? `${detailItem.budgetCurrency} ${formatCount(detailItem.approvedBudget)}` : "—"}</div>
                 <div><span className="text-muted-foreground">{t("detailExpectedLeads")}:</span> {detailItem.expectedLeads ?? "—"}</div>
+                <div><span className="text-muted-foreground">{t("detailReviewedBy")}:</span> {detailItem.reviewedBy?.name ?? "—"}{detailItem.reviewedAt ? ` · ${fmtDate(detailItem.reviewedAt)}` : ""}</div>
               </div>
 
-              {detailItem.participationTypes?.length > 0 && (<div><p className="text-muted-foreground mb-1">{t("detailParticipation")}:</p><div className="flex flex-wrap gap-1">{detailItem.participationTypes.map((pt) => (<Badge key={pt} variant="outline">{participationLabels[pt] ?? pt}</Badge>))}</div></div>)}
+              {detailItem.participationTypes?.length > 0 && (<div><p className="text-muted-foreground mb-1">{t("detailParticipation")}:</p><div className="flex flex-wrap gap-1">{detailItem.participationTypes.map((pt) => (<Badge key={pt} variant="outline">{participationLabels[pt] ?? pt}</Badge>))}</div>{detailItem.participationDetails ? <p className="mt-1 whitespace-pre-line text-sm">{detailItem.participationDetails}</p> : null}</div>)}
               {detailItem.objectives?.length > 0 && (<div><p className="text-muted-foreground mb-1">{t("detailObjectives")}:</p><div className="flex flex-wrap gap-1">{detailItem.objectives.map((o) => (<Badge key={o} variant="outline">{objectiveLabels[o] ?? o}</Badge>))}</div></div>)}
               {detailItem.requiredResources?.length > 0 && (<div><p className="text-muted-foreground mb-1">{t("detailRequiredResources")}:</p><div className="flex flex-wrap gap-1">{detailItem.requiredResources.map((r) => (<Badge key={r} variant="outline">{resourceLabels[r] ?? r}</Badge>))}</div></div>)}
               {detailItem.budgetBreakdown && (<div><p className="text-muted-foreground mb-1">{t("detailBudgetBreakdown")}:</p><div className="grid grid-cols-3 gap-2">{Object.entries(detailItem.budgetBreakdown).map(([k, v]) => (<div key={k} className="rounded border p-2 text-center"><p className="text-xs text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1")}</p><p className="font-semibold">{detailItem.budgetCurrency} {formatCount(v as number)}</p></div>))}</div></div>)}
-              {detailItem.description && <div><p className="text-muted-foreground">{t("detailDescription")}:</p><p>{detailItem.description}</p></div>}
-              {detailItem.executionPlan && <div><p className="text-muted-foreground">{t("detailExecutionPlan")}:</p><p>{detailItem.executionPlan}</p></div>}
-              {detailItem.expectedOutcome && <div><p className="text-muted-foreground">{t("detailExpectedOutcome")}:</p><p>{detailItem.expectedOutcome}</p></div>}
+              {detailItem.description && <div><p className="text-muted-foreground">{t("detailDescription")}:</p><p className="whitespace-pre-line">{detailItem.description}</p></div>}
+              {detailItem.executionPlan && <div><p className="text-muted-foreground">{t("detailExecutionPlan")}:</p><p className="whitespace-pre-line">{detailItem.executionPlan}</p></div>}
+              {detailItem.expectedOutcome && <div><p className="text-muted-foreground">{t("detailExpectedOutcome")}:</p><p className="whitespace-pre-line">{detailItem.expectedOutcome}</p></div>}
+
+              {detailItem.reviewNote && <div><p className="text-muted-foreground">{t("detailReviewNote")}:</p><p className="whitespace-pre-line">{detailItem.reviewNote}</p></div>}
 
               {/* Approval History */}
               {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (

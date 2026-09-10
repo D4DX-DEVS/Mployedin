@@ -13,8 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   ArrowRight,
-  BriefcaseBusiness,
-  Building2,
+    Building2,
   ChevronDown,
   Eye,
   Filter,
@@ -34,7 +33,7 @@ import type { ExportColumn } from "@/lib/export";
 import { useTranslations } from "next-intl";
 import { TableActionLink } from "@/components/shared/TableActionLink";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { StatusFilterStrip } from "@/components/shared/StatusFilterStrip";
 
 /* ------------------------------------------------------------------ */
@@ -250,17 +249,16 @@ export default function AgentJobsPage() {
     <div className="page-container">
       {/* ──────── HERO ──────── */}
       {/* ──────── HERO + UNIFIED FILTERS ──────── */}
-      <DashboardPageHeader
-        icon={BriefcaseBusiness}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
         actions={
-            <Link href={`/${locale}/agent/jobs/new`}>
-              <Button size="lg" className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4" />
-                {t("postJob")}
-              </Button>
-            </Link>
+          <Link href={`/${locale}/agent/jobs/new`}>
+            <Button aria-label={t("postJob")} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("postJob")}</span>
+            </Button>
+          </Link>
         }
       />
 

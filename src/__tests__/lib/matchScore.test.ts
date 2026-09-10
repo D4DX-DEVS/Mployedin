@@ -498,3 +498,54 @@ describe("getMatchedJobSkills", () => {
     expect(getMatchedJobSkills(["React"], ["AutoCAD"])).toEqual([]);
   });
 });
+
+describe("location scoring — real preference data is messy", () => {
+  const seeker = {
+    skills: ["React"],
+    location: "",
+    experienceYears: 3,
+    salaryExpectation: 0,
+  };
+  const job = {
+    skills: ["React"],
+    location: "oman",
+    remote: false,
+    salaryMin: 0,
+    salaryMax: 0,
+    minExp: 2,
+    maxExp: 5,
+  };
+
+  /** Location is 20% of the score; full credit vs none is a 20-point gap. */
+  const scoreFor = (seekerCountries: string[], jobCountry: string) =>
+    calculateMatchScore(
+      { ...seeker, locations: seekerCountries, location: seekerCountries[0] ?? "" },
+      { ...job, location: jobCountry }
+    );
+
+  it("credits a preference carrying a city qualifier", () => {
+    expect(scoreFor(["oman (muscat)"], "oman")).toBe(scoreFor(["oman"], "oman"));
+  });
+
+  it("credits a job filed with a city qualifier", () => {
+    expect(scoreFor(["oman"], "oman (muscat)")).toBe(scoreFor(["oman"], "oman"));
+  });
+
+  it("credits a preference stored as a region code against the country name", () => {
+    expect(scoreFor(["in"], "india")).toBe(scoreFor(["india"], "india"));
+  });
+
+  it("credits a job filed as a region code against a named preference", () => {
+    expect(scoreFor(["india"], "in")).toBe(scoreFor(["india"], "india"));
+  });
+
+  it("tolerates the padding real records carry", () => {
+    expect(scoreFor(["  saudi arabia "], "saudi arabia")).toBe(
+      scoreFor(["saudi arabia"], "saudi arabia")
+    );
+  });
+
+  it("still scores an unrelated country at zero", () => {
+    expect(scoreFor(["oman"], "india")).toBeLessThan(scoreFor(["oman"], "oman"));
+  });
+});

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { commonSchemas } from "./index";
 import { normalizeStageId } from "@/lib/hiring/pipeline";
+import { SHORTLIST_TARGET_MAX, SHORTLIST_TARGET_MIN } from "@/lib/hiring/workflowSettings";
 
 /** Contact form submission (public, no auth) */
 export const contactSchema = z.object({
@@ -13,7 +14,20 @@ export const contactSchema = z.object({
   captchaToken: z.string().max(2000).optional(),
 });
 
-/** Employer workflow pipeline stages & settings */
+/** The three hiring rules. `aiAutoScreen` is retired but still accepted from old clients. */
+const hiringRulesSchema = z.object({
+  aiAutoScreen: z.boolean().optional(),
+  notifyOnStageChange: z.boolean().optional(),
+  autoRejectBelow: z.number().int().min(0).max(100).optional(),
+  autoRejectEnabled: z.boolean().optional(),
+  shortlistTarget: z.number().int().min(SHORTLIST_TARGET_MIN).max(SHORTLIST_TARGET_MAX).optional(),
+});
+
+/**
+ * Employer workflow settings (+ optional pipeline stages).
+ * The builder saves rules only since 2026-09-10; `stages` stays accepted so
+ * stored lists and older clients keep round-tripping.
+ */
 export const workflowUpdateSchema = z.object({
   stages: z
     .array(
@@ -28,14 +42,9 @@ export const workflowUpdateSchema = z.object({
         order: z.number().int().min(0),
       })
     )
-    .max(20),
-  settings: z
-    .object({
-      aiAutoScreen: z.boolean().optional(),
-      notifyOnStageChange: z.boolean().optional(),
-      autoRejectBelow: z.number().int().min(0).max(100).optional(),
-    })
+    .max(20)
     .optional(),
+  settings: hiringRulesSchema.optional(),
 });
 
 /** Employer matching weights (must total 100) */
@@ -59,11 +68,7 @@ const workflowStageTemplateSchema = z.object({
   order: z.number().int().min(0),
 });
 
-const workflowSettingsTemplateSchema = z.object({
-  aiAutoScreen: z.boolean().optional(),
-  notifyOnStageChange: z.boolean().optional(),
-  autoRejectBelow: z.number().int().min(0).max(100).optional(),
-});
+const workflowSettingsTemplateSchema = hiringRulesSchema;
 
 /** Create/Update a workflow template */
 export const workflowTemplateSchema = z.object({

@@ -28,7 +28,7 @@ import {
   Search, RotateCcw, Gift, Clock, CheckCircle2, XCircle,
   Inbox, Eye, X, FileDown, Pencil, Send, History, ArrowLeftRight,
 } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -304,20 +304,19 @@ export default function AgentOffersPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={Gift}
+      <WorkspaceHeader
         title={t("header.title")}
-        description={t("header.description")}
+        context={t("header.description")}
         // Each status cell is the filter it totals; "Pending 7" is how the agent
         // gets to the seven offers still waiting on a candidate.
         metrics={[
-          { label: t("metrics.total"), value: stats.total, icon: Gift,
+          { label: t("metrics.total"), value: stats.total, icon: Gift, tone: "primary",
             onClick: () => updateFilter("status", "all"), active: filters.status === "all" },
-          { label: t("status.pending"), value: stats.pending, icon: Clock,
+          { label: t("status.pending"), value: stats.pending, icon: Clock, tone: "warning",
             onClick: () => updateFilter("status", filters.status === "pending" ? "all" : "pending"), active: filters.status === "pending" },
-          { label: t("status.accepted"), value: stats.accepted, icon: CheckCircle2,
+          { label: t("status.accepted"), value: stats.accepted, icon: CheckCircle2, tone: "success",
             onClick: () => updateFilter("status", filters.status === "accepted" ? "all" : "accepted"), active: filters.status === "accepted" },
-          { label: t("status.declined"), value: stats.declined, icon: XCircle,
+          { label: t("status.declined"), value: stats.declined, icon: XCircle, tone: "info",
             onClick: () => updateFilter("status", filters.status === "declined" ? "all" : "declined"), active: filters.status === "declined" },
         ]}
       />

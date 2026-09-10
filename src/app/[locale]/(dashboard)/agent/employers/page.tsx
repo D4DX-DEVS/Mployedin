@@ -21,7 +21,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 interface Employer {
   _id: string;
@@ -248,35 +248,29 @@ export default function AgentEmployersPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      <DashboardPageHeader
-        icon={Building2}
+      <WorkspaceHeader
         title={t("heroTitle")}
-        description={t("heroDescription")}
-        summary={{ label: t("portfolioLabel"), value: `${pagination.total} ${t("employerAccounts")}`, note: t("portfolioDescription") }}
+        context={`${totalEmployers} ${t("employerAccounts")}`}
         actions={
-          <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setOnboardOpen(true)}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                <UserPlus className="h-4 w-4" />
-                {t("onboardEmployerButton")}
-              </button>
-              <button
-                onClick={handleGetReferralLink}
-                disabled={referralLoading}
-                className="inline-flex h-9 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary disabled:opacity-50"
-              >
-                {referralLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-                {referralLoading ? tc("loading") : t("getReferralLinkButton")}
-              </button>
-          </div>
+          <>
+            <button
+              onClick={handleGetReferralLink}
+              disabled={referralLoading}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary disabled:opacity-50"
+            >
+              {referralLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+              <span className="hidden sm:inline">{referralLoading ? tc("loading") : t("getReferralLinkButton")}</span>
+            </button>
+            <button
+              onClick={() => setOnboardOpen(true)}
+              aria-label={t("onboardEmployerButton")}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("onboardEmployerButton")}</span>
+            </button>
+          </>
         }
-        metrics={[
-          { label: tc("total"), value: totalEmployers, icon: Building2 },
-        ]}
-        compactMetrics
-        compactOnMobile
       />
 
       {/* Referral link display — immediately visible after clicking "Get Referral Link" */}

@@ -96,12 +96,9 @@ export interface IJobSeekerSettings {
   autoGenerateCoverLetter?: boolean;
   coverLetterTone?: "professional" | "friendly" | "bold";
   autoAnswerScreening?: boolean;
-  // E — Notifications
-  notifications?: {
-    jobMatchAlerts?: boolean;
-    applicationSubmitted?: boolean;
-    interviewNotifications?: boolean;
-  };
+  // E — Notifications live on NotificationPreference (categories jobs /
+  // applications / interviews), which every delivery path already reads. A copy
+  // here was written by the Settings page and read by nothing.
 }
 
 export interface IJobSeeker extends Document {
@@ -347,17 +344,6 @@ const SettingsSchema = new Schema(
     autoGenerateCoverLetter: { type: Boolean, default: true },
     coverLetterTone: { type: String, enum: ["professional", "friendly", "bold"], default: "professional" },
     autoAnswerScreening: { type: Boolean, default: false },
-    notifications: {
-      type: new Schema(
-        {
-          jobMatchAlerts: { type: Boolean, default: true },
-          applicationSubmitted: { type: Boolean, default: true },
-          interviewNotifications: { type: Boolean, default: true },
-        },
-        { _id: false }
-      ),
-      default: undefined,
-    },
   },
   { _id: false }
 );

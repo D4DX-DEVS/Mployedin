@@ -22,8 +22,11 @@ export interface INote {
 export interface IAIMatchBreakdown {
   skills: number;
   experience: number;
-  education: number;
-  availability: number;
+  location: number;
+  salary: number;
+  /** Legacy components — no scorer writes these any more. */
+  education?: number;
+  availability?: number;
   overall: number;
 }
 
@@ -81,6 +84,7 @@ export interface IApplication extends Document {
     note?: string;
   }[];
   slaAlertSentAt?: Date;
+  strongAlertSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,6 +128,8 @@ const ApplicationSchema = new Schema<IApplication>(
     matchBreakdown: {
       skills: Number,
       experience: Number,
+      location: Number,
+      salary: Number,
       education: Number,
       availability: Number,
       overall: Number,
@@ -190,6 +196,7 @@ const ApplicationSchema = new Schema<IApplication>(
       },
     ],
     slaAlertSentAt: Date,
+    strongAlertSentAt: Date,
   },
   { timestamps: true }
 );

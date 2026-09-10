@@ -685,6 +685,8 @@ export default function AgentDetailPage() {
               selectedCityIds={editCityIds}
               selectedStateIds={editStateIds}
               onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
+              locationsEndpoint="/api/super-agent/territory/locations"
+              emptyMessage={tc("noTerritoryAssigned")}
               label={t("formLabelUpdateRegion")}
             />
 

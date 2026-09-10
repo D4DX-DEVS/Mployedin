@@ -54,11 +54,16 @@ export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabCon
     { key: "jobs", href: "/admin/jobs", icon: "Briefcase", labelKey: "jobs" },
     { key: "users", href: "/admin/users", icon: "Users", labelKey: "users" },
   ],
+  // Three tabs + Create + More = five slots, as employer. The three are the
+  // agent's daily destinations in the order they use them — the queue, the
+  // task board and the candidate pipeline. Jobs, Leads and Messages left the
+  // bar: Messages is the topbar indicator at every width, Leads' follow-up
+  // count rolls onto "More" (menuBadgeCount), and Jobs is one tap inside it.
   agent: [
-    { key: "dashboard", href: "/agent", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },
-    { key: "jobs", href: "/agent/jobs", icon: "Briefcase", labelKey: "jobs" },
-    { key: "leads", href: "/agent/leads", icon: "Target", labelKey: "leads", badgeKey: "dueFollowUps" },
-    { key: "messages", href: "/agent/messages", icon: "MessageSquare", labelKey: "messages", badgeKey: "unreadMessages" },
+    { key: "dashboard", href: "/agent", icon: "LayoutDashboard", labelKey: "home", exact: true },
+    { key: "tasks", href: "/agent/tasks", icon: "CheckSquare", labelKey: "tasksTab", badgeKey: "overdueTasks" },
+    // Labelled for the page it opens (Candidates), not the sidebar group.
+    { key: "hiring", href: "/agent/candidates", icon: "FileText", labelKey: "candidates" },
   ],
   job_seeker: [
     { key: "home", href: "/job-seeker", icon: "LayoutDashboard", labelKey: "home", exact: true },

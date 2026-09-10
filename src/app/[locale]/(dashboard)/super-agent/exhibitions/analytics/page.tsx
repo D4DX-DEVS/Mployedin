@@ -45,11 +45,18 @@ import { formatCurrency } from "@/lib/currency";
 interface KPIs {
   totalRequests: number;
   submitted: number;
+  /** Cleared approval, completed included — the approval-rate numerator. */
   approved: number;
+  /** Approved but not yet completed — the pipeline row, so completed is not counted twice. */
+  approvedInProgress: number;
   rejected: number;
   completed: number;
   underReview: number;
+  /** Draft / revision requested / archived, so the pipeline buckets sum to totalRequests. */
+  other: number;
   approvalRate: number;
+  /** approved + rejected — what approvalRate is a percentage of. */
+  decided: number;
   totalEstimatedBudget: number;
   totalApprovedBudget: number;
   totalActualSpend: number;
@@ -87,6 +94,9 @@ interface TopAgent {
   name: string;
   total: number;
   approved: number;
+  rejected: number;
+  /** approved + rejected — the denominator behind approvalRate, matching the headline card. */
+  decided: number;
   approvalRate: number;
   totalBudget: number;
 }
@@ -181,20 +191,25 @@ export default function SuperAgentExhibitionAnalyticsPage() {
       return [];
     }
 
+    // These bars divide by totalRequests, so they have to partition it. The
+    // approved row uses approvedInProgress (completed excluded) and the "other"
+    // row carries draft / revision requested / archived — without it the bars
+    // summed to a fraction of the total printed above them.
     return [
       { key: "submitted", label: t("statusSubmitted"), value: data.kpis.submitted, color: "bg-sky-500" },
       { key: "underReview", label: t("statusUnderReview"), value: data.kpis.underReview, color: "bg-amber-500" },
-      { key: "approved", label: t("statusApproved"), value: data.kpis.approved, color: "bg-emerald-500" },
+      { key: "approved", label: t("statusApproved"), value: data.kpis.approvedInProgress, color: "bg-emerald-500" },
       { key: "completed", label: t("statusCompleted"), value: data.kpis.completed, color: "bg-teal-500" },
       { key: "rejected", label: t("statusRejected"), value: data.kpis.rejected, color: "bg-rose-500" },
+      { key: "other", label: t("statusOther"), value: data.kpis.other, color: "bg-slate-400" },
     ];
   }, [data, t]);
 
   if (loading) {
     return (
-      <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 lg:p-6">
+      <div className="page-container">
         <DashboardPageHeader icon={BarChart3} eyebrow={t("superAgentAnalytics")} title={t("heroTitle")} description={t("heroDescription")} />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-2xl border border-border/60 bg-card space-y-2 panel-body">
               <Skeleton className="h-3 w-20" />
@@ -202,7 +217,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             </div>
           ))}
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
           <Skeleton className="h-72 w-full rounded-2xl" />
           <Skeleton className="h-72 w-full rounded-2xl" />
         </div>
@@ -212,7 +227,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
   if (error || !data) {
     return (
-      <div className="p-3 sm:p-4 lg:p-6">
+      <div className="page-container">
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-8 text-center">
           <p className="text-sm text-destructive">{t("failedToLoadAnalytics")}</p>
           <button
@@ -228,14 +243,27 @@ export default function SuperAgentExhibitionAnalyticsPage() {
   }
 
   const { kpis, monthly, participation, performance = DEFAULT_PERFORMANCE, topAgents } = data;
+  // Style selections, not requests: participation is a multi-select, so one
+  // request can appear in several slices and the total here is deliberately
+  // unrelated to kpis.totalRequests. Requests that picked no style arrive as
+  // the "unspecified" bucket rather than being dropped.
   const totalParticipation = participation.reduce((sum, item) => sum + item.count, 0);
+  const participationLabel = (type: string) =>
+    type === "unspecified" ? t("participationUnspecified") : type.replace(/_/g, " ");
   const strongestMonth = [...monthly].sort((left, right) => right.total - left.total)[0];
 
   // Show last 6 months on mobile, all 12 on desktop
   const displayedMonthly = isMobile ? monthly.slice(-6) : monthly;
+  // allowDecimals={false} alone made recharts widen the domain to 0-4 so it
+  // could still draw its default five integer ticks against a max of 1. Tick
+  // count follows the data instead, so the axis stops where the bars do.
+  const monthlyPeak = displayedMonthly.reduce(
+    (peak, point) => Math.max(peak, point.submitted, point.approved, point.completed, point.rejected),
+    0
+  );
 
   return (
-    <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 lg:p-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={BarChart3}
         eyebrow={t("superAgentAnalytics")}
@@ -258,14 +286,17 @@ export default function SuperAgentExhibitionAnalyticsPage() {
            actual spend, and the summary above already shows both halves. */
         metrics={[
           { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("busiestMonthSub", { month: strongestMonth.month }) : t("noMonthlyData"), icon: CalendarDays },
-          { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent },
+          { label: t("approvalRateLabel"), value: kpis.decided > 0 ? `${kpis.approvalRate}%` : "—", note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent },
           { label: t("avgRequestBudgetLabel"), value: formatCurrency(kpis.avgBudget, currencyCode), note: t("estimatedTotalSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) }), icon: DollarSign },
           { label: t("completionRateLabel"), value: `${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`, note: t("completedExhibitionsSub", { count: kpis.completed }), icon: CheckCircle2 },
         ]}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-3xl border bg-card shadow-sm card-pad">
+      {/* No items-start: it let each panel keep its natural height, so the 457px
+         chart sat beside a 637px pipeline with 180px of dead space under it.
+         Default stretch + flex-1 on the plot area fills the taller column. */}
+      <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+        <div className="flex flex-col rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
@@ -273,12 +304,12 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             </div>
             <Badge variant="outline">{t("monthsBadge")}</Badge>
           </div>
-          <div className="h-[22rem]">
+          <div className="min-h-[18rem] flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={displayedMonthly} margin={{ top: 8, right: 40, left: -12, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
                 <XAxis dataKey="month" axisLine={false} tickLine={false} className="text-xs" />
-                <YAxis axisLine={false} tickLine={false} className="text-xs" />
+                <YAxis axisLine={false} tickLine={false} allowDecimals={false} tickCount={Math.min(5, Math.max(2, monthlyPeak + 1))} className="text-xs" />
                 <Tooltip
                   cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
                   contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)" }}
@@ -293,7 +324,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border bg-card shadow-sm card-pad">
+        <div className="flex flex-col rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
@@ -301,9 +332,9 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             </div>
             <Activity className="h-5 w-5 text-primary" />
           </div>
-          <div className="space-y-4">
+          <div className="flex flex-1 flex-col justify-between gap-4">
             {statusBreakdown.map((item) => (
-              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 card-pad">
+              <div key={item.key} className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
@@ -318,7 +349,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -328,12 +359,12 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             <Target className="h-5 w-5 shrink-0 text-primary" />
           </div>
           {participation.length > 0 ? (
-            <>
+            <div className="grid gap-4 sm:grid-cols-2 sm:items-center">
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={participation.map((item) => ({ name: item.type.replace(/_/g, " "), value: item.count }))}
+                      data={participation.map((item) => ({ name: participationLabel(item.type), value: item.count }))}
                       dataKey="value"
                       nameKey="name"
                       innerRadius={58}
@@ -344,20 +375,20 @@ export default function SuperAgentExhibitionAnalyticsPage() {
                         <Cell key={item.type} fill={PARTICIPATION_COLORS[index % PARTICIPATION_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [Number(value ?? 0), t("tooltipRequests")]} />
+                    <Tooltip formatter={(value) => [Number(value ?? 0), t("tooltipSelections")]} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="mt-4 space-y-3">
+              <div className="space-y-3">
                 {participation.map((item, index) => (
-                  <div key={item.type} className="rounded-2xl border bg-muted/20 chip-pad">
+                  <div key={item.type}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: PARTICIPATION_COLORS[index % PARTICIPATION_COLORS.length] }}
                         />
-                        <span className="font-medium capitalize">{item.type.replace(/_/g, " ")}</span>
+                        <span className="font-medium capitalize">{participationLabel(item.type)}</span>
                       </div>
                       <span className="text-sm font-semibold">{item.count}</span>
                     </div>
@@ -370,7 +401,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           ) : (
             <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
               {t("noParticipationData")}
@@ -405,13 +436,15 @@ export default function SuperAgentExhibitionAnalyticsPage() {
                       </div>
                       <div>
                         <p className="font-medium">{agent.name}</p>
-                        <p className="text-xs text-muted-foreground">{t("agentApprovedCount", { count: agent.approved })}</p>
+                        <p className="text-xs text-muted-foreground">{t("agentApprovedOfDecided", { approved: agent.approved, decided: agent.decided })}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-center font-medium">{agent.total}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant="outline">{agent.approvalRate}%</Badge>
+                    <Badge variant="outline" title={t("approvalRateExplainer")}>
+                      {agent.decided > 0 ? `${agent.approvalRate}%` : "—"}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(agent.totalBudget, currencyCode)}
@@ -427,31 +460,40 @@ export default function SuperAgentExhibitionAnalyticsPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+      </section>
 
-          {/* ROI sits with revenue and cost because it is computed from them.
-              In the hero it was an outcome metric stranded among process ones. */}
-          <div className="mt-5 grid gap-3 grid-cols-2 lg:grid-cols-4">
-            <MiniSummaryCard
-              label={t("revenueLabel")}
-              value={formatCurrency(performance.totalRevenue, currencyCode)}
-              icon={<DollarSign className="h-4 w-4" />}
-            />
-            <MiniSummaryCard
-              label={t("costLabel")}
-              value={formatCurrency(performance.totalCost, currencyCode)}
-              icon={<Percent className="h-4 w-4" />}
-            />
-            <MiniSummaryCard
-              label={t("roiLabel")}
-              value={`${performance.roi}%`}
-              icon={<TrendingUp className="h-4 w-4" />}
-            />
-            <MiniSummaryCard
-              label={t("teamReachLabel")}
-              value={performance.totalEmployers + performance.totalCandidates}
-              icon={<Users className="h-4 w-4" />}
-            />
-          </div>
+      {/* ROI still sits with revenue and cost because it is computed from them,
+          and all four are outcomes rather than request process. They used to be
+          a four-up crammed into the 601px agents column — 133px per tile, with
+          "Team reach" wrapping — while 430px of dead space sat directly below
+          that panel. Full width, own section, tiles get room. */}
+      <section className="rounded-3xl border bg-card shadow-sm card-pad">
+        <div className="mb-4">
+          <h2 className="heading-section font-semibold tracking-tight">{t("outcomesTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("outcomesDescription")}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <MiniSummaryCard
+            label={t("revenueLabel")}
+            value={formatCurrency(performance.totalRevenue, currencyCode)}
+            icon={<DollarSign className="h-4 w-4" />}
+          />
+          <MiniSummaryCard
+            label={t("costLabel")}
+            value={formatCurrency(performance.totalCost, currencyCode)}
+            icon={<Percent className="h-4 w-4" />}
+          />
+          <MiniSummaryCard
+            label={t("roiLabel")}
+            value={`${performance.roi}%`}
+            icon={<TrendingUp className="h-4 w-4" />}
+          />
+          <MiniSummaryCard
+            label={t("teamReachLabel")}
+            value={performance.totalEmployers + performance.totalCandidates}
+            icon={<Users className="h-4 w-4" />}
+          />
         </div>
       </section>
     </div>
@@ -469,12 +511,16 @@ function MiniSummaryCard({
 }) {
   return (
     <div className="rounded-2xl border bg-muted/20 card-pad">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      {/* The grid already makes these four tiles equal height, but a label that
+          wraps to two lines ("Team reach") pushed its value below the other
+          three. Pin the value to the bottom so the row of numbers lines up
+          whatever the label length. */}
+      <div className="flex h-full items-stretch justify-between gap-3">
+        <div className="flex min-w-0 flex-col justify-between">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
           <p className="mt-2 text-lg font-semibold">{value}</p>
         </div>
-        <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
+        <div className="h-fit rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
       </div>
     </div>
   );

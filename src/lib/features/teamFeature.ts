@@ -1,13 +1,14 @@
 /**
- * Team membership (invite a colleague into the employer workspace) is parked.
+ * Team membership (invite a colleague into the employer workspace).
  *
- * `POST /api/employers/team` answers 501 because an accepted invite never
- * reaches the invitee's session, so the ACLs behind it are dead code
- * (EMPLOYER-FIX-PLAN E6, Option A). The page still renders — it is reachable by
- * bookmark and from the activity-logs screen — so the UI has to read the same
- * flag the endpoint does, or it shows a working-looking invite button that
- * fails on submit.
+ * Un-parked 2026-09-09. Previously `POST /api/employers/team` answered 501
+ * because an accepted invite never reached the invitee's session, so the ACLs
+ * behind it were dead code (EMPLOYER-FIX-PLAN E6, Option A).
  *
- * Flip this to `true` together with re-enabling `postHandler` in that route.
+ * That gap is now closed: a colleague holds no Employer document of their own,
+ * the session resolves their active CompanyUser membership plus the owning
+ * employer's user id, and `withAuth` swaps that id in so every employer lookup
+ * resolves the company. See
+ * docs/superpowers/specs/2026-09-09-employer-team-members-design.md.
  */
-export const TEAM_INVITE_ENABLED = false;
+export const TEAM_INVITE_ENABLED = true;

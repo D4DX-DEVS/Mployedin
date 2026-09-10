@@ -32,7 +32,9 @@ const DEFAULT_STAGES: WorkflowStage[] = DEFAULT_WORKFLOW_STAGES.map((s) => ({ ..
 const DEFAULT_SETTINGS: WorkflowSettings = {
   aiAutoScreen: true,
   notifyOnStageChange: true,
+  autoRejectEnabled: false,
   autoRejectBelow: 40,
+  shortlistTarget: 50,
 };
 
 interface TemplateFormState {

@@ -12,10 +12,20 @@ import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { workflowUpdateSchema } from "@/lib/validators/misc";
 import { normalizeWorkflowStages, type WorkflowStageLike } from "@/lib/hiring/pipeline";
+import {
+  isJobWorkflowCustomized,
+  pickHiringRuleFields,
+  resolveHiringRulesForJob,
+  type WorkflowSettingsCarrier,
+} from "@/lib/hiring/workflowSettings";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-const DEFAULT_SETTINGS = { aiAutoScreen: true, notifyOnStageChange: true, autoRejectBelow: 40 };
+interface StoredWorkflow {
+  stages?: unknown;
+  settings?: Record<string, unknown>;
+  customizedAt?: Date | string | null;
+}
 
 // GET /api/jobs/[id]/workflow — get per-job workflow (falls back to employer default)
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
@@ -51,23 +61,22 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // If job has its own workflow, return it
-  if (job.workflow?.stages && job.workflow.stages.length > 0) {
-    return NextResponse.json({
-      stages: normalizeWorkflowStages(job.workflow.stages as WorkflowStageLike[]),
-      settings: job.workflow.settings ?? DEFAULT_SETTINGS,
-      source: "job",
-    });
-  }
-
-  // Fall back to employer-level workflow
-  const employer = await Employer.findById(job.employerId).select("workflow").lean();
-  const stored = employer?.workflow?.stages;
+  // Rules: saved per-job override → employer rules → defaults. A job that was
+  // never customised follows the employer even if Mongoose once persisted
+  // default settings on it (see src/lib/hiring/workflowSettings.ts).
+  const employer = (await Employer.findById(job.employerId).select("workflow").lean()) as
+    | (WorkflowSettingsCarrier & { workflow?: StoredWorkflow })
+    | null;
+  const customized = isJobWorkflowCustomized(job as WorkflowSettingsCarrier);
+  const jobStages = (job.workflow as StoredWorkflow | undefined)?.stages;
+  const stored = customized && Array.isArray(jobStages) && jobStages.length > 0
+    ? jobStages
+    : employer?.workflow?.stages;
 
   return NextResponse.json({
     stages: Array.isArray(stored) && stored.length > 0 ? normalizeWorkflowStages(stored as WorkflowStageLike[]) : null,
-    settings: employer?.workflow?.settings ?? DEFAULT_SETTINGS,
-    source: "employer",
+    settings: resolveHiringRulesForJob(job as WorkflowSettingsCarrier, employer),
+    source: customized ? "job" : "employer",
   });
 }
 
@@ -110,7 +119,15 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const body = await validateBody(req, workflowUpdateSchema);
   const { stages, settings } = body;
 
-  job.workflow = { stages: normalizeWorkflowStages(stages), settings: settings ?? DEFAULT_SETTINGS };
+  // Merge over what is stored (a rules-only save keeps the stage list) and
+  // stamp customizedAt: from now on this job's rules override the employer's.
+  const currentWorkflow = ((typeof job.toObject === "function" ? job.toObject().workflow : job.workflow) ?? {}) as StoredWorkflow;
+  const currentStages = Array.isArray(currentWorkflow.stages) ? (currentWorkflow.stages as WorkflowStageLike[]) : [];
+  job.workflow = {
+    stages: stages ? normalizeWorkflowStages(stages) : currentStages,
+    settings: { ...pickHiringRuleFields(currentWorkflow.settings), ...pickHiringRuleFields(settings) },
+    customizedAt: new Date(),
+  };
   await job.save();
 
   await logActivity({

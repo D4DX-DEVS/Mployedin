@@ -14,7 +14,7 @@ export type BackgroundCheckStatus =
   | "in_progress"
   | "completed"
   | "cancelled";
-export type BackgroundCheckOutcome = "clear" | "flagged" | "failed" | "pending";
+export type BackgroundCheckOutcome = "clear" | "flagged" | "failed" | "unable_to_verify" | "pending";
 export type ReferenceStatus = "pending" | "requested" | "responded" | "declined";
 
 export interface IReferenceContact {
@@ -43,6 +43,13 @@ export interface IBackgroundCheck extends Document {
   requestedAt: Date;
   completedAt?: Date;
   createdBy?: mongoose.Types.ObjectId;
+  /** The colleague who must run this check. Empty means nobody holds it yet. */
+  assignedTo?: mongoose.Types.ObjectId;
+  assignedBy?: mongoose.Types.ObjectId;
+  assignedAt?: Date;
+  /** Who recorded the verdict, and when. */
+  verifiedBy?: mongoose.Types.ObjectId;
+  verifiedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -95,7 +102,7 @@ const BackgroundCheckSchema = new Schema<IBackgroundCheck>(
     },
     outcome: {
       type: String,
-      enum: ["clear", "flagged", "failed", "pending"],
+      enum: ["clear", "flagged", "failed", "unable_to_verify", "pending"],
       default: "pending",
     },
     references: { type: [ReferenceContactSchema], default: [] },
@@ -104,6 +111,11 @@ const BackgroundCheckSchema = new Schema<IBackgroundCheck>(
     requestedAt: { type: Date, default: Date.now },
     completedAt: Date,
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    assignedTo: { type: Schema.Types.ObjectId, ref: "User" },
+    assignedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    assignedAt: Date,
+    verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    verifiedAt: Date,
   },
   { timestamps: true }
 );
@@ -112,6 +124,8 @@ BackgroundCheckSchema.index({ employerId: 1, createdAt: -1 });
 BackgroundCheckSchema.index({ applicationId: 1 });
 BackgroundCheckSchema.index({ jobSeekerId: 1 });
 BackgroundCheckSchema.index({ jobId: 1, status: 1 });
+// Drives the colleague's "Assigned to me" queue.
+BackgroundCheckSchema.index({ assignedTo: 1, status: 1 });
 
 export const BackgroundCheck =
   mongoose.models.BackgroundCheck ||

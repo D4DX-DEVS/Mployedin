@@ -3,7 +3,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { teamUpdateSchema } from "@/lib/validators/team";
-import { CompanyUser } from "@/models/CompanyUser";
+import { CompanyUser, computeEffectivePermissions, getPrimaryRole } from "@/models/CompanyUser";
+import type { CompanyRole, PermissionFlag } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { canManageTeam, canModifyRole } from "@/lib/permissions/team";
@@ -55,22 +56,52 @@ async function patchHandler(
   }
 
   // Check if caller can modify target's role
-  const { companyRole, jobAccess, permissions } = body as {
-    companyRole?: string;
+  const { companyRole, companyRoles, jobAccess, permissionOverrides } = body as {
+    companyRole?: CompanyRole;
+    companyRoles?: CompanyRole[];
     jobAccess?: string[];
-    permissions?: Record<string, boolean>;
+    permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
   };
 
-  if (companyRole && !canModifyRole(callerMember.companyRole, companyRole as "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer")) {
-    return NextResponse.json({ error: "Cannot assign this role" }, { status: 403 });
+  // Both shapes are accepted: the checklist sends the full roles array, older
+  // callers send one role.
+  const resolvedRoles: CompanyRole[] | undefined =
+    companyRoles && companyRoles.length > 0
+      ? companyRoles
+      : companyRole
+        ? [companyRole]
+        : undefined;
+
+  if (resolvedRoles) {
+    for (const role of resolvedRoles) {
+      if (!canModifyRole(callerMember.companyRole, role as "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer")) {
+        return NextResponse.json({ error: "Cannot assign this role" }, { status: 403 });
+      }
+    }
   }
 
-  const before = { companyRole: target.companyRole, jobAccess: target.jobAccess };
+  const before = {
+    companyRole: target.companyRole,
+    companyRoles: target.companyRoles,
+    jobAccess: target.jobAccess,
+  };
 
-  if (companyRole) target.companyRole = companyRole as typeof target.companyRole;
+  if (resolvedRoles) {
+    target.companyRole = getPrimaryRole(resolvedRoles);
+    target.companyRoles = resolvedRoles;
+  }
   if (jobAccess !== undefined) target.jobAccess = jobAccess as unknown as typeof target.jobAccess;
-  if (permissions) {
-    target.permissions = { ...target.permissions, ...permissions } as typeof target.permissions;
+  if (permissionOverrides !== undefined) {
+    target.permissionOverrides = permissionOverrides;
+  }
+
+  // The stored permission set is always recomputed from roles plus the
+  // employer's manual ticks, never written straight from the request. A caller
+  // cannot hand us a permission set the role system never agreed to, and a role
+  // change can never leave stale permissions behind.
+  if (resolvedRoles || permissionOverrides !== undefined) {
+    const rolesForCompute = (target.companyRoles?.length ? target.companyRoles : [target.companyRole]) as CompanyRole[];
+    target.permissions = computeEffectivePermissions(rolesForCompute, target.permissionOverrides);
   }
 
   await target.save();

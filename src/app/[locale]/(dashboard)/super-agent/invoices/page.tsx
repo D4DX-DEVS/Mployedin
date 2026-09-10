@@ -74,7 +74,13 @@ export default function SuperAgentInvoicesPage() {
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
-  const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
+  // Nothing converts between currencies, so these figures are scoped to one
+  // currency at a time and labelled with THAT currency — not with the viewer's
+  // display preference, which used to print "INR 25,322" over a table of AED
+  // invoices. `undefined` lets the API pick the team's largest currency.
+  const [analyticsCurrency, setAnalyticsCurrency] = useState<string | undefined>(undefined);
+  const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod, analyticsCurrency);
+  const metricCurrency = analyticsData?.currency ?? displayCurrency;
 
   const [search, setSearchState] = useUrlFilter("search", "", { debounceMs: 400 });
 
@@ -154,7 +160,7 @@ export default function SuperAgentInvoicesPage() {
     { value: "consulting", label: t("categoryConsulting") },
   ];
 
-  const fmt = (v: number) => `${displayCurrency} ${formatCount(v, { maximumFractionDigits: 0 })}`;
+  const fmt = (v: number) => `${metricCurrency} ${formatCount(v, { maximumFractionDigits: 0 })}`;
 
 
   return (
@@ -218,10 +224,26 @@ export default function SuperAgentInvoicesPage() {
               {(["7d", "30d", "90d", "1y"] as const).map(p => (
                 <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("periodOneYear") : p}</button>
               ))}
+              {/* Only worth showing when the team actually bills in more than
+                  one currency — the figures cannot be added together. */}
+              {(analyticsData?.currencies?.length ?? 0) > 1 && (
+                <div className="ml-2 inline-flex items-center gap-1 border-l border-border/70 pl-2">
+                  {analyticsData?.currencies.map(code => (
+                    <button
+                      key={code}
+                      onClick={() => setAnalyticsCurrency(code)}
+                      aria-pressed={metricCurrency === code}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${metricCurrency === code ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <Button variant="outline" size="dense" onClick={refreshAnalytics} className="gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refresh")}</Button>
           </div>
-          {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
+          {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={analyticsData.currency} />}
           {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}
         </div>
       )}
@@ -232,13 +254,6 @@ export default function SuperAgentInvoicesPage() {
           {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
 
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
-            <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ledgerLabel")}</p>
-              {/* h2, not h3: this is the page's first section heading and the header above
-                  it is the h1, so an h3 skipped a level. Size comes from the utility
-                  class, so the tag change is visually inert. */}
-              <h2 className="heading-subsection font-semibold text-foreground">{t("tableTitle")}</h2>
-            </div>
             <InvoiceTable
               invoices={invoices}
               loading={loading}

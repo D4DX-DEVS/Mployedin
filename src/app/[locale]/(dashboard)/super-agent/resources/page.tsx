@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -10,12 +9,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  FolderOpen, Search, Inbox, FileText, Image, Video,
+  Inbox, FileText, Image, Video,
   Download, Eye, Tag, History,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { SuperAgentPageIntro } from "@/components/features/super-agent/WorkspacePage";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -99,24 +99,31 @@ export default function ResourceDownloadsPage() {
 
   return (
     <div className="page-container">
-      <DashboardPageHeader
-        icon={FolderOpen}
+      {/* This was the last page in the role still calling DashboardPageHeader
+          directly, and the only one that hid its search and filters in the
+          header's `footer` slot. Both now match every other listing: the shared
+          super-agent hero, then a TableToolbar for the controls. */}
+      <SuperAgentPageIntro
         title={t("downloadsTitle")}
         description={t("downloadsSubtitle")}
-        footer={
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
-            <div className="relative min-w-52 flex-1 basis-full sm:basis-auto">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input aria-label={t("searchPlaceholder")} placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
-            </div>
-            <div className="min-w-0 flex-1 basis-0 sm:flex-none">
-              <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
-            </div>
-            <div className="min-w-0 flex-1 basis-0 sm:flex-none">
-              <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
-            </div>
-            {categoryFilter !== "all" && <button onClick={() => setCategoryFilter("all")} className="text-xs text-muted-foreground underline">{t("clear")}</button>}
-          </div>
+      />
+
+      <TableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("searchPlaceholder")}
+        hasActiveFilters={categoryFilter !== "all"}
+        actions={
+          <>
+            {/* Explicit widths: with none, SearchableSelect fills its flex line
+                and the two selects stack under the search box instead of
+                sitting beside it. */}
+            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-[170px]" />
+            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-[150px]" />
+            {categoryFilter !== "all" && (
+              <button onClick={() => setCategoryFilter("all")} className="text-xs text-muted-foreground underline">{t("clear")}</button>
+            )}
+          </>
         }
       />
 

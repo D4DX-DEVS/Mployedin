@@ -45,7 +45,7 @@ import {
 } from "@/lib/exhibitions/agent-request";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ApprovalTimeline, type TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 interface ExhibitionRequest {
   _id: string;
@@ -324,6 +324,15 @@ export default function AgentExhibitionsPage() {
     updateForm("budgetCurrency", budgetCurrency);
   };
 
+  const toggleParticipationType = (value: string) => {
+    setForm((previous) => ({
+      ...previous,
+      participationTypes: previous.participationTypes.includes(value)
+        ? previous.participationTypes.filter((entry) => entry !== value)
+        : [...previous.participationTypes, value],
+    }));
+  };
+
   const validateForm = () => {
     if (!form.eventName.trim()) {
       toast.error(t("enterExhibitionTitle"));
@@ -363,6 +372,11 @@ export default function AgentExhibitionsPage() {
         estimatedBudget: Number.isFinite(parsedBudget) ? parsedBudget : 0,
         budgetCurrency: form.budgetCurrency,
         description: form.description.trim() || undefined,
+        // The wizard collected this into form state and the detail dialog read
+        // it back, but the payload never sent it — so every request created
+        // here stored an empty array and the super-agent participation-mix
+        // chart had nothing to plot.
+        participationTypes: form.participationTypes,
         priority: form.priority || "medium",
         status: asDraft ? "draft" : "submitted",
       };
@@ -487,22 +501,25 @@ export default function AgentExhibitionsPage() {
     <div className="page-container">
       {ConfirmDialogNode}
 
-      <DashboardPageHeader
-        icon={CalendarDays}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("subtitle")}
+        context={t("subtitle")}
         actions={
-          <Button onClick={openNewRequest} size="lg" className="shrink-0 rounded-xl px-5 shadow-sm">
-            <Plus className="mr-2 h-4 w-4" /> {t("newRequest")}
+          <Button onClick={openNewRequest} aria-label={t("newRequest")} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("newRequest")}</span>
           </Button>
         }
         metrics={!loading && total > 0 ? [
-          { label: tc("total"), value: total, icon: CalendarDays },
-          { label: t("statusSubmitted"), value: summary.pendingReview, icon: Send },
-          { label: t("approved"), value: summary.approved, icon: Save },
-          { label: t("statusRevision"), value: summary.rejected, icon: AlertTriangle },
+          { label: tc("total"), value: total, icon: CalendarDays, tone: "primary" },
+          { label: t("statusSubmitted"), value: summary.pendingReview, icon: Send, tone: "info" },
+          { label: t("approved"), value: summary.approved, icon: Save, tone: "success" },
+          { label: t("statusRevision"), value: summary.rejected, icon: AlertTriangle, tone: "warning" },
         ] : undefined}
-      >
+      />
+
+      {/* Search and filters belong to the list, not the header (Pattern A). */}
+      <div className="workspace-toolbar">
         <ExhibitionHeroFilters
           search={search}
           onSearchChange={setSearch}
@@ -514,7 +531,7 @@ export default function AgentExhibitionsPage() {
           categoryOptions={CATEGORY_FILTER_OPTIONS}
           searchPlaceholder={t("searchPlaceholder")}
         />
-      </DashboardPageHeader>
+      </div>
 
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
@@ -630,7 +647,7 @@ export default function AgentExhibitionsPage() {
             <>
               <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pr-12 pt-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <DialogTitle className="text-2xl font-semibold tracking-tight">{detailItem.eventName}</DialogTitle>
                       <Badge className={STATUS_COLORS[detailItem.status]}>{STATUS_LABELS[detailItem.status]}</Badge>
@@ -652,7 +669,10 @@ export default function AgentExhibitionsPage() {
                   </div>
                 </div>
               </DialogHeader>
-              <div className="max-h-[68vh] space-y-6 overflow-y-auto px-6 py-5 text-sm">
+              {/* Scrolls on both axes: the dialog itself is `overflow-hidden`,
+                  so without `overflow-x-auto` anything wider than the panel is
+                  clipped with no way to scroll to it. */}
+              <div className="max-h-[68vh] space-y-6 overflow-x-auto overflow-y-auto px-6 py-5 text-sm">
                 {detailItem.status === "revision_requested" && detailItem.reviewNote && (
                   <div className="rounded-lg border border-orange-200 bg-orange-50 chip-pad">
                     <p className="mb-1 flex items-center gap-1 font-medium text-orange-800">
@@ -661,7 +681,7 @@ export default function AgentExhibitionsPage() {
                     <p className="text-orange-700">{detailItem.reviewNote}</p>
                   </div>
                 )}
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {[
                     { label: "Venue", value: detailItem.venue ?? "-" },
                     { label: "Country", value: detailItem.country ?? "-" },
@@ -883,6 +903,35 @@ export default function AgentExhibitionsPage() {
                   container={dialogContainer}
                   modal
                 />
+              </div>
+            </div>
+
+            {/* Participation styles. The request model has carried this field
+                all along and the super-agent participation-mix chart reports on
+                it, but the wizard never offered a way to pick one. */}
+            <div>
+              <Label id="participation-types-label">
+                Participation Style <span className="text-muted-foreground text-xs">(optional, pick any)</span>
+              </Label>
+              <div role="group" aria-labelledby="participation-types-label" className="mt-2 flex flex-wrap gap-2">
+                {PARTICIPATION_TYPES.map((participationType) => {
+                  const selected = form.participationTypes.includes(participationType.value);
+                  return (
+                    <button
+                      key={participationType.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleParticipationType(participationType.value)}
+                      className={`min-h-11 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors sm:min-h-0 ${
+                        selected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {participationType.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

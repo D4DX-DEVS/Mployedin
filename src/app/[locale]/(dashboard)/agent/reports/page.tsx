@@ -8,7 +8,7 @@ import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatTime } from "@/lib/ui/intlFormat";
 
 /* ─── AI Report Templates ─── */
@@ -116,16 +116,14 @@ export default function AgentReportsPage() {
   return (
     <div className="page-container">
       <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
-      <DashboardPageHeader
-        icon={BarChart3}
+      <WorkspaceHeader
         title={t("reportsAnalytics")}
-        description={t("pageDescription")}
+        context={t("pageDescription")}
         metrics={analytics ? [
-          { label: t("kpiLeads30d"), value: analytics.trends.leads.current.toString(), icon: Target },
-          { label: t("kpiApplications30d"), value: analytics.trends.applications.current.toString(), icon: Users },
-          { label: t("kpiPlacements30d"), value: analytics.trends.placements.current.toString(), icon: TrendingUp },
+          { label: t("kpiLeads30d"), value: analytics.trends.leads.current.toString(), icon: Target, tone: "primary" },
+          { label: t("kpiApplications30d"), value: analytics.trends.applications.current.toString(), icon: Users, tone: "info" },
+          { label: t("kpiPlacements30d"), value: analytics.trends.placements.current.toString(), icon: TrendingUp, tone: "success" },
         ] : undefined}
-        compactMetrics
       />
 
       {/* ─── KPI Cards with Trends ─── */}

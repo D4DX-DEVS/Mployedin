@@ -11,9 +11,12 @@ export interface IWorkflowStageTemplate {
 }
 
 export interface IWorkflowSettingsTemplate {
-  aiAutoScreen: boolean;
+  /** Retired 2026-09-10 — scoring always runs. */
+  aiAutoScreen?: boolean;
   notifyOnStageChange: boolean;
   autoRejectBelow: number;
+  autoRejectEnabled?: boolean;
+  shortlistTarget?: number;
 }
 
 export interface IWorkflowTemplate extends Document {
@@ -62,6 +65,8 @@ const WorkflowTemplateSchema = new Schema<IWorkflowTemplate>(
       aiAutoScreen: { type: Boolean, default: true },
       notifyOnStageChange: { type: Boolean, default: true },
       autoRejectBelow: { type: Number, default: 40, min: 0, max: 100 },
+      autoRejectEnabled: { type: Boolean, default: false },
+      shortlistTarget: { type: Number, default: 50, min: 5, max: 100 },
     },
     tags: [{ type: String, maxlength: 50 }],
     isDefault: { type: Boolean, default: false },
