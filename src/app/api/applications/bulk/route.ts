@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
+import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
@@ -197,6 +198,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           app.rejectionReason = params.rejectionReason;
         }
         await app.save();
+
+        // Same rule the single-application PATCH applies: once a candidate is
+        // past interviewing, a slot still on the books is settled rather than
+        // left to inflate the Interviews tab and fire reminders.
+        if (advancesPastInterviewing(newStatus)) {
+          await closeOpenInterviewsForAdvance(app._id, { now });
+        }
 
         // Send notification + email based on new status (both follow the notify rule)
         if (seekerUserId && notifyCandidate) {

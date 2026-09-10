@@ -2165,7 +2165,7 @@ function TableView({
                       event.stopPropagation();
                       onToggle(app._id);
                     }}
-                    className="-m-1 p-1 text-muted-foreground transition hover:text-foreground"
+                    className="tap-target-box-any -m-1 p-1 text-muted-foreground transition hover:text-foreground"
                   >
                     {isSelected ? <CheckSquare className="h-5 w-5 text-status-applied" /> : <Square className="h-5 w-5" />}
                   </button>
@@ -2299,7 +2299,7 @@ function TableView({
                   <Button
                     variant="ghost"
                     size="dense"
-                    className="w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                    className="h-10 w-10 rounded-lg p-0 text-muted-foreground hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       onOpenDetails?.(app, event.currentTarget);
@@ -2313,7 +2313,7 @@ function TableView({
                   <Button
                     variant="ghost"
                     size="dense"
-                    className="w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                    className="h-10 w-10 rounded-lg p-0 text-muted-foreground hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       onViewCv(app);
