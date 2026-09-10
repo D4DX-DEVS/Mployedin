@@ -21,7 +21,6 @@ jest.mock("next/navigation", () => ({
 jest.mock("@/hooks/useJobs", () => ({ useJobDetail: () => ({ data: mockJob }) }));
 let mockSummary: Record<string, unknown> | undefined;
 jest.mock("@/hooks/useJobHiringSummary", () => ({ useJobHiringSummary: () => ({ data: mockSummary }) }));
-jest.mock("@/components/features/employer/jobs/HiringProgress", () => ({ HiringProgress: () => null }));
 
 const baseJob = {
   _id: "job1",

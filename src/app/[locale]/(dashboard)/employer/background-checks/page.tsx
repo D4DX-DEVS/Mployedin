@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useParams, useSearchParams } from "next/navigation";
 import { JobScopeStrip } from "@/components/features/employer/jobs/JobScopeStrip";
-import { ShieldCheck, Plus, Trash2, UserCheck, Loader2 } from "lucide-react";
+import { ShieldCheck, Plus, Trash2, UserCheck, Loader2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -124,34 +124,22 @@ export default function BackgroundChecksPage() {
     setCreateOpen(true);
     try {
       // Candidates eligible for a background / reference check: anyone who has
-      // advanced to the interview stage or beyond (interview → offer → hired).
-      const statuses = ["interview_scheduled", "interviewed", "offer", "selected", "hired"];
-      const results = await Promise.all(
-        statuses.map(async (s) => {
-          try {
-            const r = await fetch(`/api/applications?limit=50&status=${s}`);
-            const d = r.ok ? await r.json() : { applications: [] };
-            return (d.applications ?? []) as ApplicationOption[];
-          } catch {
-            return [] as ApplicationOption[];
-          }
-        }),
-      );
-      const seen = new Set<string>();
-      const merged: ApplicationOption[] = [];
-      for (const list of results) {
-        for (const app of list) {
-          if (app?._id && !seen.has(app._id)) {
-            seen.add(app._id);
-            merged.push(app);
-          }
-        }
-      }
+      // advanced to the interview stage or beyond. `stageFrom` says exactly
+      // that in one request — the five parallel `status=` calls it replaces
+      // included "interviewed", which is not an application status and always
+      // came back empty, and none of them carried the job scope, so a page
+      // headed "Showing this job only" offered candidates from other jobs.
+      const params = new URLSearchParams({ limit: "50", stageFrom: "interview_scheduled" });
+      if (jobFilter) params.set("jobId", jobFilter);
+      const r = await fetch(`/api/applications?${params.toString()}`);
+      const d = r.ok ? await r.json() : { applications: [] };
+      const merged = (d.applications ?? []) as ApplicationOption[];
+      const seen = new Set(merged.map((app) => app._id));
       if (preselectId && !seen.has(preselectId)) {
         try {
-          const r = await fetch(`/api/applications/${preselectId}`);
-          const d = r.ok ? await r.json() : null;
-          if (d?.application?._id) merged.unshift(d.application as ApplicationOption);
+          const preselectRes = await fetch(`/api/applications/${preselectId}`);
+          const preselectBody = preselectRes.ok ? await preselectRes.json() : null;
+          if (preselectBody?.application?._id) merged.unshift(preselectBody.application as ApplicationOption);
         } catch {
           /* the picker simply stays without it */
         }
@@ -163,16 +151,34 @@ export default function BackgroundChecksPage() {
   }
 
   // Open the request form straight away when arrived at by deep link.
+  // `?applicationId=` preselects a candidate (from the candidate drawer);
+  // `?new=1` just opens the form (from the job's Background Checks tab, which
+  // already carries `?jobId=`, so the picker arrives scoped to that job).
   const deepLinkedApplicationId = searchParams.get("applicationId") ?? "";
+  const wantsNew = searchParams.get("new") === "1";
   const deepLinkHandledRef = useRef("");
   useEffect(() => {
-    if (!deepLinkedApplicationId || deepLinkHandledRef.current === deepLinkedApplicationId) return;
-    deepLinkHandledRef.current = deepLinkedApplicationId;
-    void openCreate(deepLinkedApplicationId);
+    const token = deepLinkedApplicationId || (wantsNew ? "new" : "");
+    if (!token || deepLinkHandledRef.current === token) return;
+    deepLinkHandledRef.current = token;
+    void openCreate(deepLinkedApplicationId || undefined);
     // openCreate is a stable component-scoped function; re-running on its
     // identity would reopen the dialog on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deepLinkedApplicationId]);
+     
+  }, [deepLinkedApplicationId, wantsNew]);
+
+  // A `checkId` param opens that one check straight into its detail dialog. The job
+  // workspace's "Manage" link lands here, so it must open that record rather
+  // than dropping the employer on a list to hunt through.
+  const deepLinkedCheckId = searchParams.get("checkId") ?? "";
+  const detailLinkHandledRef = useRef("");
+  useEffect(() => {
+    if (!deepLinkedCheckId || detailLinkHandledRef.current === deepLinkedCheckId) return;
+    const match = checks.find((c) => c._id === deepLinkedCheckId);
+    if (!match) return; // list still loading — retry once it arrives
+    detailLinkHandledRef.current = deepLinkedCheckId;
+    setDetail(match);
+  }, [deepLinkedCheckId, checks]);
 
   function updateRef(i: number, patch: Partial<NewReferenceRow>) {
     setRefs((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -348,6 +354,12 @@ export default function BackgroundChecksPage() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className={statusColor(c.status)}>{t(`status.${c.status}`)}</Badge>
                 <Badge variant="outline" className={outcomeColor(c.outcome)}>{t(`outcome.${c.outcome}`)}</Badge>
+                {/* The whole row is the control, but two badges alone read as
+                    output, not as something to press — name the action. */}
+                <span className="ms-1 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                  {t("openCheck")}
+                  <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden />
+                </span>
               </div>
             </button>
           ))}

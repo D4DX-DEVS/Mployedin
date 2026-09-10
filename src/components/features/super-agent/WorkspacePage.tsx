@@ -47,6 +47,7 @@ interface SuperAgentPageIntroProps {
   /** Title and actions share one row at every width. Only for one or two
    *  short actions — wide button groups squeeze the title. */
   inlineActions?: boolean;
+  className?: string;
   children?: ReactNode;
 }
 
@@ -92,6 +93,7 @@ export function SuperAgentPageIntro({
   compactMetrics,
   metricsClassName,
   inlineActions,
+  className,
   children,
 }: SuperAgentPageIntroProps) {
   const headerSummary = summary ?? (summaryTitle || summaryDescription ? {
@@ -110,6 +112,14 @@ export function SuperAgentPageIntro({
       metrics={metrics}
       compact={compact}
       compactMetrics={compactMetrics}
+      // Do NOT try to shrink this header with padding utilities. globals.css
+      // restyles every admin/super-agent header to match employer's, and it
+      // does so with `!important` inside @layer components (utilities beat that
+      // layer on their own, so the rules had to escalate). Header padding and
+      // per-metric-cell padding are both pinned there — a `sm:py-3` here reads
+      // as a change and measures as nothing. Header height comes down by
+      // shortening the description to one line, not by trimming chrome.
+      className={className}
       metricsClassName={metricsClassName}
       inlineActions={inlineActions}
       compactOnMobile
@@ -136,7 +146,10 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
       )}
     >
       {items.map((item) => (
-        <div key={item.label} className="workspace-glass-panel rounded-lg sm:rounded-2xl card-pad">
+        // Tighter than `card-pad`: a tile holding one number and one short
+        // sentence does not need the full card rhythm, and at 16px padding plus
+        // a 30px value these ran ~150px tall in a row of four or five.
+        <div key={item.label} className="workspace-glass-panel rounded-lg p-2.5 sm:rounded-2xl sm:p-3.5">
           {/* Phones get label + value only; the helper sentence is desktop-only. */}
           <div className="flex flex-col items-start gap-0.5 sm:hidden">
             <p className="line-clamp-2 w-full text-[11px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground">{item.label}</p>
@@ -144,12 +157,12 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
           </div>
 
           <div className="hidden sm:flex sm:items-start sm:justify-between sm:gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{item.value}</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.helper}</p>
+              <p className="mt-1 text-2xl font-semibold leading-tight tracking-tight text-foreground">{item.value}</p>
+              <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{item.helper}</p>
             </div>
-            <div className={cn("rounded-2xl p-2.5", getToneClassName(item.toneClassName))}>
+            <div className={cn("shrink-0 rounded-xl p-2", getToneClassName(item.toneClassName))}>
               {item.icon}
             </div>
           </div>

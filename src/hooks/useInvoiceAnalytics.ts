@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 
 export interface InvoiceAnalytics {
+  /** The currency every amount in this payload is denominated in. Nothing converts between currencies, so this is the only safe label for them. */
+  currency: string;
+  /** Every currency the viewer has invoices in, largest first. */
+  currencies: string[];
   kpi: {
     totalRevenue: number;
     paidRevenue: number;
@@ -24,7 +28,7 @@ export interface InvoiceAnalytics {
   commissionSummary: Record<string, { count: number; amount: number }>;
 }
 
-export function useInvoiceAnalytics(period = "30d") {
+export function useInvoiceAnalytics(period = "30d", currency?: string) {
   const [data, setData] = useState<InvoiceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +37,9 @@ export function useInvoiceAnalytics(period = "30d") {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/invoices/analytics?period=${period}`);
+      const params = new URLSearchParams({ period });
+      if (currency) params.set("currency", currency);
+      const res = await fetch(`/api/invoices/analytics?${params}`);
       if (!res.ok) throw new Error("Failed to load analytics");
       const json = await res.json();
       setData(json);
@@ -42,7 +48,7 @@ export function useInvoiceAnalytics(period = "30d") {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, currency]);
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 

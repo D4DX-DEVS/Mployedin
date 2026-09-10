@@ -16,7 +16,7 @@ import {
   Building2, Users,
   CalendarDays, RotateCcw, FileText, X, Target,
   CircleDollarSign, Activity,
-  ArrowUpRight, ArrowDownRight, Minus,
+  ArrowUpRight, ArrowDownRight, Minus, TrendingUp, Trophy,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
@@ -26,7 +26,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   ProgressRing, TargetSummaryCard,
 } from "@/components/features/targets/TargetComponents";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
@@ -238,10 +238,9 @@ export default function AgentTargetReportPage() {
   if (!data || !data.ownProfile) {
     return (
       <div className="page-container">
-        <DashboardPageHeader
-          icon={Target}
+        <WorkspaceHeader
           title={t("myTargetReport")}
-          description={t("reportHeroDescription", { year: yearFilter })}
+          context={t("reportHeroDescription", { year: yearFilter })}
         />
         <div className="flex flex-col items-center justify-center min-h-[68vh] text-center">
           <Target className="h-12 w-12 text-muted-foreground/40 mb-4" />
@@ -259,15 +258,14 @@ export default function AgentTargetReportPage() {
     <div className="page-container print:space-y-4">
       <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
       {/* ═══════ HERO ═══════ */}
-      <DashboardPageHeader
-        icon={Target}
+      <WorkspaceHeader
         title={t("myTargetReport")}
-        description={t("reportHeroDescription", { year: yearFilter })}
-        summary={{
-          label: "Performance",
-          value: `${profile.overallProgress}% overall`,
-          note: `Risk: ${profile.riskScore} · Tier: ${profile.incentiveTier}`,
-        }}
+        context={t("reportHeroDescription", { year: yearFilter })}
+        metrics={[
+          { label: t("overallProgress"), value: `${profile.overallProgress}%`, icon: Target, tone: "primary" },
+          { label: t("riskLabel"), value: profile.riskScore, icon: TrendingUp, tone: "warning" },
+          { label: t("exportHeaderIncentiveTier"), value: profile.incentiveTier, icon: Trophy, tone: "success" },
+        ]}
       />
 
       {/* ═══════ KPI Cards ═══════ */}

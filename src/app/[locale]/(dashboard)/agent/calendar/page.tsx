@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { type CalendarEvent } from "@/components/shared/MployedinCalendar";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
 import { Users } from "lucide-react";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 // Distinguishes the two non-interview sources at a glance; the calendar
 // takes an accent override per event.
@@ -115,9 +115,9 @@ export default function AgentCalendarPage() {
   return (
     <div className="page-container">
       {/* Hero */}
-      <PageHero
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
+        context={t("description")}
       />
 
       <MployedinCalendar

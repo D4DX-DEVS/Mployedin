@@ -200,7 +200,10 @@ export default function AdminInvoicesPage() {
   };
 
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || typeFilter || searchTerm || dateFrom || dateTo);
-  const fmt = (v: number) => `${displayCurrency} ${formatCount(v)}`;
+  // Analytics is scoped to one currency at a time (nothing converts between
+  // them), so label these with the currency the figures are actually in — not
+  // the platform default, which had no relationship to the numbers.
+  const fmt = (v: number) => `${analyticsData?.currency ?? displayCurrency} ${formatCount(v)}`;
 
   const invoiceMetrics = analyticsData?.kpi ? [
     { label: t("totalInvoicedLabel"), value: fmt(analyticsData.kpi.totalRevenue), icon: ReceiptText, iconSurfaceClassName: "bg-indigo-50", iconClassName: "text-indigo-600" },
@@ -289,7 +292,7 @@ export default function AdminInvoicesPage() {
               <RefreshCw className="h-3.5 w-3.5" /> {t("refreshAnalytics")}
             </Button>
           </div>
-          {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
+          {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={analyticsData.currency} />}
           {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{t("loadingAnalytics")}</div>}
         </div>
       )}

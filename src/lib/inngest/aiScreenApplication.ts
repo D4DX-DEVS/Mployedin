@@ -2,9 +2,12 @@
  * AI Application Screening — Inngest Function
  *
  * Triggered right after an application is submitted. Computes the AI match score
- * automatically for every application, and applies the employer's auto-reject
- * threshold only when one was configured (aiAutoScreen). Runs asynchronously so the
- * seeker's apply request never blocks on (or fails because of) an LLM call.
+ * for every application, then — and only here — applies the employer's opt-in
+ * auto-reject rule. The rule is resolved from the job's and the employer's
+ * stored hiring rules (see src/lib/hiring/workflowSettings.ts); the event
+ * payload carries nothing but the application id, so no caller can smuggle a
+ * threshold in. Runs asynchronously so the seeker's apply request never blocks
+ * on (or fails because of) an LLM call.
  */
 
 import { inngest } from "./client";
@@ -12,9 +15,11 @@ import { connectDB } from "@/lib/db/mongoose";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
+import { Employer } from "@/models/Employer";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, type MatchScoreWeights } from "@/lib/matchScore";
+import { calculateMatchDetail, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
+import { resolveHiringRulesForJob, shouldAutoReject, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 
 function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
   const cleaned = (values ?? [])
@@ -36,11 +41,11 @@ export const aiScreenApplication = inngest.createFunction(
     event,
     step,
   }: {
-    event: { data: { applicationId: string; autoRejectBelow?: number } };
+    event: { data: { applicationId: string } };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     step: any;
   }) => {
-    const { applicationId, autoRejectBelow } = event.data;
+    const { applicationId } = event.data;
 
     await connectDB();
 
@@ -51,7 +56,7 @@ export const aiScreenApplication = inngest.createFunction(
 
       const [job, seeker] = await Promise.all([
         Job.findById(application.jobId)
-          .select("title description requirements location salary")
+          .select("title description requirements location salary employerId workflow")
           .lean(),
         JobSeeker.findById(application.jobSeekerId)
           .select("skills languages experience totalExperienceYears preferredCountries preferredSalary currentLocation education cv")
@@ -59,10 +64,18 @@ export const aiScreenApplication = inngest.createFunction(
       ]);
       if (!job || !seeker) return { skipped: true, reason: "job or seeker not found" };
 
+      // The reject rule is read here, at screening time, from what the employer
+      // has actually saved — never from the event.
+      const employer = job.employerId
+        ? ((await Employer.findById(job.employerId).select("workflow").lean()) as WorkflowSettingsCarrier | null)
+        : null;
+      const rules = resolveHiringRulesForJob(job as WorkflowSettingsCarrier, employer);
+
       // Compute deterministic score using feature-based engine
       const seekerProfile = seekerProfileFromDoc(seeker as Parameters<typeof seekerProfileFromDoc>[0]);
       const jobProfile = jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0]);
-      const deterministicScore = calculateMatchScore(seekerProfile, jobProfile);
+      const deterministicDetail = calculateMatchDetail(seekerProfile, jobProfile);
+      const deterministicScore = deterministicDetail.overall;
 
       // LLM call for narrative fields only (optional — failures don't block score)
       const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
@@ -98,10 +111,14 @@ Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"streng
       // Use deterministic score (LLM optional for narrative)
       application.aiMatchScore = deterministicScore;
       application.scoredVia = 'deterministic';
+      // Real component scores — these were hardcoded to 0, which is what the
+      // employer panel rendered under a perfectly good overall score.
       application.matchBreakdown = {
-        skills: 0,
-        experience: 0,
-        overall: deterministicScore,
+        skills: deterministicDetail.skills,
+        experience: deterministicDetail.experience,
+        location: deterministicDetail.location,
+        salary: deterministicDetail.salary,
+        overall: deterministicDetail.overall,
       };
 
       // Try to get narrative from LLM, but failure doesn't block the score
@@ -122,15 +139,11 @@ Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"streng
         ? narrativeData.gaps.map(String).filter(Boolean)
         : [];
 
-      // Auto-reject only applications still in "applied" — never override a
-      // status the employer has already moved forward.
-      if (
-        autoRejectBelow !== undefined &&
-        application.aiMatchScore < autoRejectBelow &&
-        application.status === "applied"
-      ) {
+      // Opt-in auto-reject, on arrival only: applications still in "applied" —
+      // never override a status the employer has already moved forward.
+      if (application.status === "applied" && shouldAutoReject(rules, application.aiMatchScore)) {
         application.status = "rejected";
-        application.rejectionReason = `AI match score (${application.aiMatchScore}) below threshold (${autoRejectBelow})`;
+        application.rejectionReason = `AI match score (${application.aiMatchScore}) below threshold (${rules.autoRejectBelow})`;
         application.statusHistory.push({
           status: "rejected",
           changedAt: new Date(),

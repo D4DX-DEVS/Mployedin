@@ -37,7 +37,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 function formatDate(d: string | undefined): string {
@@ -150,27 +150,25 @@ export default function AgentReferralLinksPage() {
     <div className="page-container">
       {ConfirmDialogNode}
 
-      <DashboardPageHeader
-        icon={Link2}
+      <WorkspaceHeader
         title={t("pageTitle")}
-        description={t("heroDescription")}
-        compactOnMobile={true}
+        context={t("heroDescription")}
         actions={
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              {t("newReferralLinkButton")}
-            </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            aria-label={t("newReferralLinkButton")}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("newReferralLinkButton")}</span>
+          </button>
         }
         metrics={[
-          { label: t("statTotalLinks"), value: total, icon: Link2 },
-          { label: tc("active"), value: activeLinks, icon: Check },
-          { label: t("statRegistrations"), value: totalRegistrations, icon: Users },
-          { label: t("statConversions"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, icon: Hash },
+          { label: t("statTotalLinks"), value: total, icon: Link2, tone: "primary" },
+          { label: tc("active"), value: activeLinks, icon: Check, tone: "success" },
+          { label: t("statRegistrations"), value: totalRegistrations, icon: Users, tone: "info" },
+          { label: t("statConversions"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, icon: Hash, tone: "warning" },
         ]}
-        compactMetrics={true}
       />
 
       {/* Create Modal */}

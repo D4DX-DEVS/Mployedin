@@ -31,6 +31,8 @@ export function ToolProposalCard({
   const entries = Object.entries(item.args).filter(([, v]) => v !== undefined && v !== "");
   const isBusy = item.status === "confirming" || item.status === "cancelling";
 
+  const rows = item.preview?.rows ?? [];
+
   return (
     <div className="rounded-lg border border-primary/30 bg-primary/5 text-sm chip-pad">
       <div className="flex items-center gap-2 font-medium text-foreground">
@@ -38,7 +40,35 @@ export function ToolProposalCard({
         <span>{item.summary}</span>
       </div>
 
-      {entries.length > 0 && item.status === "pending" && (
+      {item.preview && item.status === "pending" && (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-muted-foreground">{item.preview.summary}</p>
+          {rows.length > 0 && (
+            <div className="rounded-md bg-background/60 p-2">
+              <div className="space-y-1">
+                {rows.slice(0, 8).map((row, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="min-w-0 truncate font-medium text-foreground" title={row.name}>
+                      {row.name}
+                    </span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      {row.score != null && (
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          {Math.round(row.score)}%
+                        </span>
+                      )}
+                      {row.note && <span className="min-w-0 truncate text-xs text-muted-foreground" title={row.note}>{row.note}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {rows.length > 8 && <p className="mt-1 text-xs text-muted-foreground">{t("previewMore", { count: rows.length - 8 })}</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!item.preview && entries.length > 0 && item.status === "pending" && (
         <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 rounded-md bg-background/60 p-2 text-xs sm:grid-cols-2">
           {entries.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-2 sm:block">

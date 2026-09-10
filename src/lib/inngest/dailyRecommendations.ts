@@ -2,11 +2,18 @@
  * Daily Job Recommendations — Inngest Cron Function
  *
  * Runs daily at 9 AM UTC. For each active job seeker:
- *   1. Check notification preferences (skip if jobs category disabled or unsubscribed)
+ *   1. Resolve the digest gate (see digestGate.ts) — each half of the digest is
+ *      switched on or off on its own, so "Job Match Alerts: off" silences the
+ *      job section without also hiding who viewed the profile
  *   2. Run match scoring against active jobs (reuses matchScore.ts)
  *   3. Pick top 5 jobs scoring ≥ 40
  *   4. Aggregate profile views from last 24h
- *   5. Emit "notification/daily-digest" event with combined data
+ *   5. Raise the in-app "new jobs matching you" bell entry
+ *   6. Emit "notification/daily-digest" event with combined data
+ *
+ * This is the platform's ONLY "new jobs for you" push. A second daily cron
+ * (/api/cron/job-alerts, 07:00 UTC) used to send its own, weaker version of the
+ * same email two hours earlier; it was deleted rather than kept in sync.
  *
  * Processes users in batches of 50 for reliability (Inngest retries per batch).
  */
@@ -28,6 +35,8 @@ import {
   type JobProfile,
 } from "@/lib/matchScore";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
+import { digestGateFor, type DigestGate } from "@/lib/notifications/digestGate";
+import { notify } from "@/lib/notifications/trigger";
 
 interface ActiveJob {
   _id: string;
@@ -43,7 +52,6 @@ interface ActiveJob {
 const BATCH_SIZE = 50;
 const MIN_MATCH_SCORE = 40;
 const TOP_JOBS_COUNT = 5;
-const MIN_HOURS_BETWEEN_DIGESTS = 23;
 
 export const dailyRecommendationsCron = inngest.createFunction(
   {
@@ -63,8 +71,10 @@ export const dailyRecommendationsCron = inngest.createFunction(
       return { skipped: true, reason: "disabled by admin" };
     }
 
-    // Fetch all active job seekers who have email enabled for jobs
-    const seekerUserIds = await step.run("fetch-eligible-seekers", async () => {
+    // Resolve, per seeker, which halves of the digest they still want. A seeker
+    // is dropped here only when they want neither — the jobs/profile-view
+    // switches are applied inside the batch so one can be off without the other.
+    const gates = await step.run("fetch-eligible-seekers", async () => {
       // Get all job_seeker users who are active
       const seekerUsers = await User.find({
         role: "job_seeker",
@@ -75,41 +85,21 @@ export const dailyRecommendationsCron = inngest.createFunction(
         .lean();
 
       const userIds = seekerUsers.map((u) => u._id.toString());
+      if (userIds.length === 0) return [] as Array<{ userId: string; gate: DigestGate }>;
 
-      // Filter by notification preferences
-      const prefsToExclude = await NotificationPreference.find({
-        userId: { $in: userIds },
-        $or: [
-          { unsubscribedAll: true },
-          { "categories.jobs.enabled": false },
-          { emailFrequency: "none" },
-        ],
-      })
-        .select("userId")
+      const prefs = await NotificationPreference.find({ userId: { $in: userIds } })
+        .select("userId unsubscribedAll emailFrequency lastDigestSentAt categories")
         .lean();
 
-      const excludeSet = new Set(
-        prefsToExclude.map((p) => p.userId.toString()),
-      );
+      const prefByUser = new Map(prefs.map((p) => [p.userId.toString(), p]));
+      const now = new Date();
 
-      // Also exclude users who received a digest in the last 23 hours
-      const recentDigests = await NotificationPreference.find({
-        userId: { $in: userIds },
-        lastDigestSentAt: {
-          $gte: new Date(Date.now() - MIN_HOURS_BETWEEN_DIGESTS * 60 * 60 * 1000),
-        },
-      })
-        .select("userId")
-        .lean();
-
-      for (const rd of recentDigests) {
-        excludeSet.add(rd.userId.toString());
-      }
-
-      return userIds.filter((id) => !excludeSet.has(id));
+      return userIds
+        .map((userId) => ({ userId, gate: digestGateFor(prefByUser.get(userId), { now }) }))
+        .filter((entry) => entry.gate.send);
     });
 
-    if (seekerUserIds.length === 0) {
+    if (gates.length === 0) {
       return { processed: 0, reason: "no eligible seekers" };
     }
 
@@ -140,11 +130,11 @@ export const dailyRecommendationsCron = inngest.createFunction(
     });
 
     // Process in batches
-    const totalBatches = Math.ceil(seekerUserIds.length / BATCH_SIZE);
+    const totalBatches = Math.ceil(gates.length / BATCH_SIZE);
     let totalEmitted = 0;
 
     for (let i = 0; i < totalBatches; i++) {
-      const batchIds = seekerUserIds.slice(
+      const batch: Array<{ userId: string; gate: DigestGate }> = gates.slice(
         i * BATCH_SIZE,
         (i + 1) * BATCH_SIZE,
       );
@@ -154,7 +144,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
         async () => {
           let emitted = 0;
 
-          for (const userId of batchIds) {
+          for (const { userId, gate } of batch) {
             try {
               // Fetch seeker profile
               const seeker = await JobSeeker.findOne({ userId })
@@ -176,26 +166,31 @@ export const dailyRecommendationsCron = inngest.createFunction(
                   ),
               );
 
-              // Score and rank jobs
-              const scoredJobs = activeJobs
-                .filter((j) => !appliedJobIds.has(j._id))
-                .map((j) => ({
-                  ...j,
-                  matchScore: calculateMatchScore(seekerProfile, j.jobProfile),
-                }))
-                .filter((j) => j.matchScore >= MIN_MATCH_SCORE)
-                .sort((a, b) => b.matchScore - a.matchScore)
-                .slice(0, TOP_JOBS_COUNT);
+              // Score and rank jobs — skipped outright when the seeker turned
+              // job match alerts off.
+              const scoredJobs = !gate.jobs
+                ? []
+                : activeJobs
+                    .filter((j) => !appliedJobIds.has(j._id))
+                    .map((j) => ({
+                      ...j,
+                      matchScore: calculateMatchScore(seekerProfile, j.jobProfile),
+                    }))
+                    .filter((j) => j.matchScore >= MIN_MATCH_SCORE)
+                    .sort((a, b) => b.matchScore - a.matchScore)
+                    .slice(0, TOP_JOBS_COUNT);
 
               // Aggregate profile views from last 24h
               const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-              const recentViews = await ProfileView.find({
-                jobSeekerId: userId,
-                viewedAt: { $gte: yesterday },
-                notifiedAt: { $exists: false },
-              })
-                .populate("viewerId", "name")
-                .lean();
+              const recentViews = !gate.profileViews
+                ? []
+                : await ProfileView.find({
+                    jobSeekerId: userId,
+                    viewedAt: { $gte: yesterday },
+                    notifiedAt: { $exists: false },
+                  })
+                    .populate("viewerId", "name")
+                    .lean();
 
               const profileViews = {
                 count: recentViews.length,
@@ -238,6 +233,30 @@ export const dailyRecommendationsCron = inngest.createFunction(
                 },
               });
 
+              // Raise the bell entry too. The digest worker only sends email,
+              // so without this the seeker sees nothing in-app about the jobs
+              // that were found for them.
+              if (scoredJobs.length > 0) {
+                const titles = scoredJobs.map((j) => j.title).join(", ");
+                const companies = [...new Set(scoredJobs.map((j) => j.company).filter(Boolean))]
+                  .slice(0, 3)
+                  .join(", ");
+                await notify({
+                  userId,
+                  type: "new_job_posted",
+                  title: `${scoredJobs.length} new job${scoredJobs.length > 1 ? "s" : ""} matching your profile`,
+                  message: `Top matches: ${titles.slice(0, 100)}${titles.length > 100 ? "…" : ""} at ${companies}`,
+                  link: "/job-seeker/jobs",
+                  titleKey: "seekerJobMatchesTitle",
+                  bodyKey: "seekerJobMatchesBody",
+                  params: { count: scoredJobs.length, titles: titles.slice(0, 100), companies },
+                  // Email for these jobs is the digest emitted just above —
+                  // a second per-seeker email would be the duplicate this
+                  // consolidation set out to remove.
+                  sendEmail: false,
+                });
+              }
+
               // Mark profile views as notified
               if (recentViews.length > 0) {
                 const viewIds = recentViews.map((v) => v._id);
@@ -261,7 +280,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
     }
 
     return {
-      processed: seekerUserIds.length,
+      processed: gates.length,
       emitted: totalEmitted,
       batches: totalBatches,
     };

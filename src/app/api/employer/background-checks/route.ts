@@ -37,6 +37,9 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
     BackgroundCheck.find(filter)
       .populate({ path: "jobSeekerId", select: "fullName userId", populate: { path: "userId", select: "name" } })
       .populate({ path: "jobId", select: "title" })
+      // The job worklist shows where each candidate sits, so a check that has
+      // overtaken its candidate (or been left behind) is visible at a glance.
+      .populate({ path: "applicationId", select: "status" })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)

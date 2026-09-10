@@ -196,10 +196,11 @@ export default function SuperAgentJobSeekersPage() {
         }
       />
 
-      <SuperAgentSection
-        eyebrow={t("directory")}
-        title={t("candidates")}
-      >
+      {/* Heading kept for screen readers only, the same convention agents,
+          commissions and leads already use: this is the page's one list
+          section, sitting directly under the h1, and the visible eyebrow +
+          title + sentence only narrated the toolbar below it. */}
+      <SuperAgentSection title={t("candidates")} className="[&>div:first-child]:sr-only">
         <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>

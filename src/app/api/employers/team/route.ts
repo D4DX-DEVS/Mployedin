@@ -5,8 +5,8 @@ import { withSubscription } from "@/lib/subscription/withSubscription";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { teamInviteSchema } from "@/lib/validators/team";
-import { CompanyUser, getDefaultPermissions, getMergedPermissions, getPrimaryRole } from "@/models/CompanyUser";
-import type { CompanyRole } from "@/models/CompanyUser";
+import { CompanyUser, computeEffectivePermissions, getPrimaryRole } from "@/models/CompanyUser";
+import type { CompanyRole, PermissionFlag } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { User } from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -168,7 +168,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     companyRole?: CompanyRole;
     companyRoles?: CompanyRole[];
     jobAccess?: string[];
-    permissions?: Record<string, boolean>;
+    permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
   };
 
   // Resolve roles array (support both single and multi)
@@ -193,7 +193,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   const email = rawBody.email;
   const jobAccess = rawBody.jobAccess;
-  const customPerms = rawBody.permissions;
+  const permissionOverrides = rawBody.permissionOverrides;
   const primaryRole = getPrimaryRole(resolvedRoles);
 
   // Locale for invite links: derive from the inviting page's URL, fallback en
@@ -202,7 +202,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const sendInviteComms = async (inviteToken: string) => {
-    const acceptPath = `/${locale}/employer/team/accept?token=${inviteToken}`;
+    // Points at the public join page, not the dashboard accept page. A
+    // colleague who has never used mployedin has no session, and the dashboard
+    // would bounce them to login and drop the token. The join page decides:
+    // set a password and join, or sign in first if they already have an account.
+    const acceptPath = `/${locale}/join-team?token=${inviteToken}`;
     const acceptUrl = `${baseUrl}${acceptPath}`;
     const safeCompanyName = escapeHtml(employer.companyName);
     const safeRoleName = escapeHtml(roleName);
@@ -246,6 +250,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       existing.status = "pending";
       existing.companyRole = primaryRole;
       existing.companyRoles = resolvedRoles;
+      // Roles can differ from last time, and permissions now decide what this
+      // person can reach, so they are recomputed rather than carried over.
+      existing.permissionOverrides = permissionOverrides;
+      existing.permissions = computeEffectivePermissions(resolvedRoles, permissionOverrides);
       existing.inviteToken = randomBytes(32).toString("hex");
       existing.inviteExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
       existing.invitedBy = ctx.userId as unknown as typeof existing.invitedBy;
@@ -269,12 +277,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   }
 
   const inviteToken = randomBytes(32).toString("hex");
-  const defaultPermissions = resolvedRoles.length > 1
-    ? getMergedPermissions(resolvedRoles)
-    : getDefaultPermissions(primaryRole);
-  const finalPermissions = customPerms
-    ? { ...defaultPermissions, ...customPerms }
-    : defaultPermissions;
+  // Always computed, never taken from the request. The stored object is the
+  // roles unioned, then the employer's manual ticks applied on top, so a caller
+  // cannot hand us a permission set the role system never agreed to.
+  const finalPermissions = computeEffectivePermissions(resolvedRoles, permissionOverrides);
 
   // Check if the invited email matches an existing user
   const existingUser = await User.findOne({ email }).select("_id").lean();
@@ -287,6 +293,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     companyRoles: resolvedRoles,
     jobAccess: jobAccess ?? [],
     permissions: finalPermissions,
+    permissionOverrides,
     invitedBy: ctx.userId,
     inviteToken,
     inviteExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 hours
@@ -310,11 +317,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 }
 
 export const GET = withAuth(getHandler);
-// ponytail: Team feature disabled for launch (EMPLOYER-FIX-PLAN E6, Option A) —
-// invite membership never reaches the invitee's session, ACLs are dead code.
-// Re-enable postHandler once session/JWT resolves active CompanyUser membership (Option B).
-export const POST = withAuth(async () =>
-  NextResponse.json({ error: "Team feature is temporarily disabled" }, { status: 501 })
+// Un-parked 2026-09-09. An invited colleague now signs in with no Employer
+// document of their own: the session resolves their active CompanyUser
+// membership and withAuth swaps in the owner's user id, so every employer
+// lookup resolves the company. Seat limit restored as it was before the pause.
+export const POST = withAuth(
+  withSubscription(postHandler, { type: "limit", feature: "teamMembers" }),
 );
-void postHandler;
-void withSubscription;

@@ -51,14 +51,22 @@ export interface IWorkflowStage {
 }
 
 export interface IWorkflowSettings {
-  aiAutoScreen: boolean;
-  notifyOnStageChange: boolean;
-  autoRejectBelow: number;
+  /** Retired 2026-09-10 — scoring always runs. Kept so old documents still type. */
+  aiAutoScreen?: boolean;
+  notifyOnStageChange?: boolean;
+  /** Only applied when autoRejectEnabled is true. */
+  autoRejectBelow?: number;
+  /** Opt-in: reject on arrival below the threshold. Absent on legacy docs = off. */
+  autoRejectEnabled?: boolean;
+  /** Default N for "shortlist the best N". */
+  shortlistTarget?: number;
 }
 
 export interface IJobWorkflow {
   stages?: IWorkflowStage[];
   settings?: IWorkflowSettings;
+  /** Set by PATCH /api/jobs/[id]/workflow. Absent = the job follows the employer rules. */
+  customizedAt?: Date;
 }
 
 export interface IMatchingWeights {
@@ -197,11 +205,19 @@ const JobSchema = new Schema<IJob>(
         autoProgress: { type: Boolean, default: false },
         order: Number,
       }],
+      // No defaults on purpose. Mongoose persisted them on every job, so a
+      // "job overrides employer" resolver could not tell a saved override from
+      // a default that would silently beat the employer's rule. Overrides count
+      // only once customizedAt is stamped by PATCH /api/jobs/[id]/workflow
+      // (src/lib/hiring/workflowSettings.ts). A missing autoRejectEnabled = OFF.
       settings: {
-        aiAutoScreen: { type: Boolean, default: true },
-        notifyOnStageChange: { type: Boolean, default: true },
-        autoRejectBelow: { type: Number, default: 40 },
+        aiAutoScreen: Boolean,
+        notifyOnStageChange: Boolean,
+        autoRejectBelow: Number,
+        autoRejectEnabled: Boolean,
+        shortlistTarget: { type: Number, min: 5, max: 100 },
       },
+      customizedAt: Date,
     },
     matchingWeights: {
       skills: Number,

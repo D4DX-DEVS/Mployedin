@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { getNavGroups } from "@/lib/nav/menuConfig";
+import type { ICompanyUserPermissions } from "@/models/CompanyUser";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
@@ -54,7 +55,15 @@ export default async function DashboardLayout({
 
   // When in tenant view use employer nav so the full employer workspace is shown
   const effectiveRole: UserRole = isTenantView ? "employer" : role;
-  const navGroups = getNavGroups(effectiveRole, locale);
+
+  // A colleague invited into an employer's workspace sees only the areas they
+  // were granted. An owner holds every function, so their rail is unchanged,
+  // and an agent in tenant view carries no company permissions at all, so the
+  // full employer rail is shown there as before.
+  const companyPermissions = isTenantView
+    ? undefined
+    : (session.user as { companyPermissions?: ICompanyUserPermissions }).companyPermissions;
+  const navGroups = getNavGroups(effectiveRole, locale, companyPermissions);
 
   // Run maintenance check and shell data fetch in parallel
   const [isMaintenanceMode, { lastLogin, companyLogo }] = await Promise.all([

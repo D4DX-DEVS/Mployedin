@@ -17,7 +17,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -288,35 +287,14 @@ export default function SuperAgentPlacementsPage() {
     title: t("exportTitle"),
   });
 
+  // In the hero strip rather than a card grid of their own. The page used to
+  // stack four full cards, a section heading, then five more visa cards before
+  // the first placement row — three bands of chrome above the actual list.
   const kpis = [
-    {
-      label: t("kpiPlacements"),
-      value: total,
-      helper: t("kpiPlacementsHelper"),
-      icon: <Trophy className="h-5 w-5" />,
-      toneClassName: "workspace-tone-sky",
-    },
-    {
-      label: t("kpiUpcomingStarts"),
-      value: totals.upcomingStarts,
-      helper: t("kpiUpcomingStartsHelper"),
-      icon: <CalendarClock className="h-5 w-5" />,
-      toneClassName: "workspace-tone-emerald",
-    },
-    {
-      label: t("kpiCommissionPaid"),
-      value: totals.commissionPaid,
-      helper: t("kpiCommissionPaidHelper"),
-      icon: <DollarSign className="h-5 w-5" />,
-      toneClassName: "workspace-tone-indigo",
-    },
-    {
-      label: t("kpiEmployers"),
-      value: totals.employers,
-      helper: t("kpiEmployersHelper"),
-      icon: <Users2 className="h-5 w-5" />,
-      toneClassName: "workspace-tone-amber",
-    },
+    { label: t("kpiPlacements"), value: total, note: t("kpiPlacementsHelper"), icon: Trophy },
+    { label: t("kpiUpcomingStarts"), value: totals.upcomingStarts, note: t("kpiUpcomingStartsHelper"), icon: CalendarClock },
+    { label: t("kpiCommissionPaid"), value: totals.commissionPaid, note: t("kpiCommissionPaidHelper"), icon: DollarSign },
+    { label: t("kpiEmployers"), value: totals.employers, note: t("kpiEmployersHelper"), icon: Users2 },
   ];
 
   /* ---------------------------------------------------------------- */
@@ -352,15 +330,14 @@ export default function SuperAgentPlacementsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
+        metrics={kpis}
+        compactMetrics
       />
 
-      <SuperAgentMetricsGrid items={kpis} />
-
-      <SuperAgentSection
-        eyebrow={t("sectionEyebrow")}
-        title={t("sectionTitle")}
-        description={t("sectionDescription")}
-      >
+      {/* No section heading: "PLACEMENTS / Review successful hiring outcomes /
+          Use visa status toggles…" restated the h1 and then narrated the
+          controls sitting right below it. */}
+      <SuperAgentSection>
         {/* ---- Error State ---- */}
         {error && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
@@ -375,22 +352,29 @@ export default function SuperAgentPlacementsPage() {
           </div>
         )}
 
-        {/* ---- Visa Status Strip ---- */}
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {VISA_STATUSES.map((s) => (
+        {/* ---- Visa Status Filter Pills ---- */}
+        {/* Filter toggles, not statistics: one scrolling row of pills like every
+            other listing in the role, replacing five metric cards that
+            outweighed the table they filter. Kept on their own line rather than
+            inside the toolbar's `left` slot — sharing that row with the search,
+            filter and export controls squeezed the column and clipped the last
+            pill mid-word at 1440px. */}
+        <div className="scrollbar-none -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1">
+          {VISA_STATUSES.map((s) => {
+            const active = filters.visaStatus === s;
+            return (
               <button
                 key={s}
                 type="button"
-                onClick={() => updateFilter("visaStatus", filters.visaStatus === s ? "" : s)}
-                aria-pressed={filters.visaStatus === s}
-                className={`rounded-2xl border px-4 py-3 text-left transition-all ${filters.visaStatus === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
+                onClick={() => updateFilter("visaStatus", active ? "" : s)}
+                aria-pressed={active}
+                className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm transition-colors ${active ? "border-primary/35 bg-primary/10 font-semibold text-primary" : "border-border/70 bg-card text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{visaLabels[s]}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{visaCounts[s] ?? 0}</p>
+                {visaLabels[s]}
+                <span className={`text-xs font-semibold tabular-nums ${active ? "text-primary" : "text-foreground/70"}`}>{visaCounts[s] ?? 0}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
         {/* ---- Merged Filters via TableToolbar ---- */}

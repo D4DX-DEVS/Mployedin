@@ -10,13 +10,14 @@ import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  Plus, Sparkles, RotateCcw, ArrowRight,
-  BarChart3, FileText, RefreshCw,
+  Plus, RotateCcw,
+  BarChart3, FileText, RefreshCw, CircleDollarSign, CheckCircle2, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { InvoiceTable } from "@/components/shared/InvoiceTable";
 import type { ExportColumn } from "@/lib/export";
 
@@ -69,6 +70,11 @@ export default function AgentInvoicesPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
+  // Free text goes through the same URL-backed filter as the rest, debounced
+  // so a `router.replace` does not fire on every keystroke. It was previously
+  // hard-wired to "" with a no-op setter, which made the input impossible to
+  // type into: a controlled field whose value never changed.
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "");
   const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
   const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
@@ -79,16 +85,31 @@ export default function AgentInvoicesPage() {
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
   const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
 
-  const [summary, setSummary] = useState({
+  interface CurrencyTotals { currency: string; totalAmount: number; totalPaid: number; totalBalance: number; count: number }
+  const [summary, setSummary] = useState<{
+    draft: number; pending_approval: number; issued: number; paid: number; partially_paid: number;
+    totalAmount: number; totalPaid: number; totalBalance: number; byCurrency?: CurrencyTotals[];
+  }>({
     draft: 0, pending_approval: 0, issued: 0, paid: 0, partially_paid: 0,
     totalAmount: 0, totalPaid: 0, totalBalance: 0,
   });
+  // Invoices are stored in the currency they were raised in and nothing
+  // converts between currencies, so the strip labels each total with the
+  // currency it is actually in — one figure per currency, largest first.
+  // Before this it printed the raw cross-currency sum under the viewer's
+  // display currency (INR over a table of AED rows).
+  const currencyTotals: CurrencyTotals[] = summary.byCurrency?.length
+    ? summary.byCurrency
+    : [{ currency: displayCurrency, totalAmount: summary.totalAmount, totalPaid: summary.totalPaid, totalBalance: summary.totalBalance, count: 0 }];
+  const moneyStrip = (pick: (row: CurrencyTotals) => number) =>
+    currencyTotals.map((row) => `${row.currency} ${formatCount(pick(row), { maximumFractionDigits: 0 })}`).join(" · ");
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (search) params.set("search", search);
       if (statusFilter) params.set("status", statusFilter);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
@@ -105,7 +126,7 @@ export default function AgentInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, dateFrom, dateTo, page, limit, updateTotal]);
+  }, [search, statusFilter, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { document.title = `${t("pageTitle")} · MPLOYEDIN`; }, [t]);
@@ -137,22 +158,29 @@ export default function AgentInvoicesPage() {
 
   return (
     <div className="page-container">
-      <div className="mb-4 max-sm:hidden">
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-      </div>
-      <TableToolbar
+      {/* One header for the page: title, scope line and the four money totals
+          that used to sit in a separate card grid below the toolbar. */}
+      <WorkspaceHeader
         title={t("title")}
-        search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
-        left={
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" /> {t("agentWorkspace")}
-          </div>
+        context={t("description")}
+        actions={
+          <Button onClick={() => setShowBuilder(true)} aria-label={t("createInvoiceButton")} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("createInvoiceButton")}</span>
+          </Button>
         }
+        metrics={[
+          { label: t("metricRevenue"), shortLabel: t("metricRevenueShort"), value: moneyStrip((row) => row.totalAmount), icon: CircleDollarSign, tone: "primary" },
+          { label: t("metricPaid"), value: moneyStrip((row) => row.totalPaid), icon: CheckCircle2, tone: "success" },
+          { label: t("metricPending"), value: moneyStrip((row) => row.totalBalance), icon: Clock, tone: "warning" },
+          { label: t("metricTotalInvoices"), shortLabel: t("tabButtonInvoices"), value: formatCount(total), icon: FileText, tone: "info" },
+        ]}
+      />
+
+      <TableToolbar
+        search={search} onSearchChange={(v) => { setSearch(v); resetPage(); }} searchPlaceholder={t("searchPlaceholder")}
         right={
           <div className="flex items-center gap-2">
-            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {formatCount(total)} {t("invoicesPill")}
-            </div>
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
               <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonInvoices")}
@@ -162,11 +190,6 @@ export default function AgentInvoicesPage() {
               </button>
             </div>
           </div>
-        }
-        actions={
-          <Button onClick={() => setShowBuilder(true)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">
-            <Plus className="h-4 w-4" /> {t("createInvoiceButton")}
-          </Button>
         }
         onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}
         filterContent={
@@ -189,26 +212,6 @@ export default function AgentInvoicesPage() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      {/* Metrics Strip */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricRevenue")}</p>
-          <p className="mt-3 text-lg sm:text-xl font-semibold text-primary">{displayCurrency} {formatCount(summary.totalAmount, { maximumFractionDigits: 0 })}</p>
-        </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricPaid")}</p>
-          <p className="mt-3 text-lg sm:text-xl font-semibold text-emerald-600">{displayCurrency} {formatCount(summary.totalPaid, { maximumFractionDigits: 0 })}</p>
-        </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricPending")}</p>
-          <p className="mt-3 text-lg sm:text-xl font-semibold text-amber-600">{displayCurrency} {formatCount(summary.totalBalance, { maximumFractionDigits: 0 })}</p>
-        </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl max-sm:col-span-2 sm:max-lg:col-span-3 lg:col-span-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("metricTotalInvoices")}</p>
-          <p className="mt-3 text-lg sm:text-xl font-semibold text-primary">{formatCount(total)}</p>
-        </div>
-      </div>
-
       {/* Analytics View */}
       {activeView === "analytics" && (
         <div className="space-y-4">
@@ -220,7 +223,7 @@ export default function AgentInvoicesPage() {
             </div>
             <Button variant="outline" size="dense" onClick={refreshAnalytics} className="gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refreshButton")}</Button>
           </div>
-          {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
+          {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={analyticsData.currency} />}
           {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}
         </div>
       )}

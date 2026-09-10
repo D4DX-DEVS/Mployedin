@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
+  ChevronRight,
   ClipboardList,
   Gift,
   Target,
@@ -14,9 +15,12 @@ import type { AgentActionCounts, AgentQueueItem, AgentQueueKind } from "@/lib/ag
 type CountKey = keyof AgentActionCounts;
 
 export interface AgentTodayQueueLabels {
-  eyebrow: string;
-  /** Already interpolated with the total, or the "nothing overdue" wording. */
+  /** Section heading: "Needs your attention". */
   title: string;
+  /** Already interpolated with the total, or the "nothing overdue" wording. */
+  description: string;
+  /** The header action, which opens the task board. */
+  viewTasks: string;
   summary: Record<CountKey, string>;
   /** Fallback row title when a record has no name of its own. */
   kind: Record<AgentQueueKind, string>;
@@ -80,54 +84,64 @@ export const AGENT_QUEUE_COUNT_ORDER: readonly CountKey[] = [
  */
 export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQueueProps) {
   return (
+    /* Same surface, radius and heading scale as the employer home's
+       "Recommended next" panel (PriorityActions), so the two homes read as
+       one product. */
     <section
       aria-labelledby="agent-today-queue"
-      className="workspace-panel-surface rounded-3xl panel-body"
+      className="workspace-panel-surface rounded-2xl panel-body"
     >
-      <div className="flex flex-col gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          {labels.eyebrow}
-        </p>
-        <h2
-          id="agent-today-queue"
-          className="heading-section font-semibold tracking-tight text-foreground"
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h2
+            id="agent-today-queue"
+            className="heading-label font-semibold tracking-tight text-foreground"
+          >
+            {labels.title}
+          </h2>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:text-sm">{labels.description}</p>
+        </div>
+        <Link
+          href={`/${locale}/agent/tasks`}
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:text-sm"
         >
-          {labels.title}
-        </h2>
+          {labels.viewTasks}
+          <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+        </Link>
       </div>
 
-      {/* Counts first: five cells that each open the list they total. These are
-          the only numbers on this page that name something to do. */}
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      {/* Counts first, as one row of chips that each open the list they
+          total. They were five stacked tiles (90px); the chips take one line
+          on desktop and two on a phone. */}
+      <ul className="mt-3 flex flex-wrap gap-2">
         {AGENT_QUEUE_COUNT_ORDER.map((key) => (
-          <Link
-            key={key}
-            href={`/${locale}${AGENT_QUEUE_COUNT_HREFS[key]}`}
-            className={`workspace-subtle-surface card-pad rounded-xl transition-colors hover:border-primary/25 hover:bg-card ${
-              counts[key] > 0 ? "" : "opacity-60"
-            }`}
-          >
-            <p className="text-xl font-semibold tabular-nums tracking-tight text-foreground">
-              {counts[key]}
-            </p>
-            <p className="mt-1 text-xs font-medium leading-4 text-muted-foreground">
+          <li key={key}>
+            <Link
+              href={`/${locale}${AGENT_QUEUE_COUNT_HREFS[key]}`}
+              className={`inline-flex min-h-9 items-center gap-2 rounded-full border border-border/70 bg-background/70 py-1 pe-3 ps-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                counts[key] > 0 ? "" : "opacity-60"
+              }`}
+            >
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold tabular-nums text-primary">
+                {counts[key]}
+              </span>
               {labels.summary[key]}
-            </p>
-          </Link>
+            </Link>
+          </li>
         ))}
-      </div>
+      </ul>
 
       {items.length > 0 ? (
-        <ul className="mt-4 flex flex-col divide-y divide-border/70">
+        <ul className="mt-3 flex flex-col divide-y divide-border/70">
           {items.map((item) => {
             const Icon = KIND_ICON[item.kind];
             return (
               <li key={`${item.kind}-${item.id}`}>
                 <Link
                   href={`/${locale}${item.href}`}
-                  className="group flex min-h-14 items-center gap-3 py-3 transition-colors hover:bg-secondary/50"
+                  className="group flex min-h-12 items-center gap-3 py-2 transition-colors hover:bg-secondary/50"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-status-rejected-bg text-status-rejected">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-rejected-bg text-status-rejected">
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
@@ -147,7 +161,7 @@ export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQue
           })}
         </ul>
       ) : (
-        <div className="workspace-empty-state mt-4 flex items-center gap-3 rounded-2xl p-5">
+        <div className="workspace-empty-state mt-3 flex items-center gap-3 rounded-2xl p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-status-selected" aria-hidden="true" />
           <div>
             <p className="text-sm font-medium text-foreground">{labels.emptyTitle}</p>

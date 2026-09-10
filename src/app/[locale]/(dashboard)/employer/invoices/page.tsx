@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -813,6 +814,14 @@ export default function EmployerInvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // The search box was wired as `search="" onSearchChange={() => {}}` — a
+  // controlled input pinned to the empty string, so it looked editable and
+  // discarded every keystroke. `searchInput` drives the field, the debounced
+  // copy drives the request. Kept on useState like the filters beside it
+  // rather than moved into the query string, which would change this page's
+  // addressing behaviour along with it.
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebounce(searchInput, 400);
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -827,6 +836,7 @@ export default function EmployerInvoicesPage() {
     setErrorMessage(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (search) params.set("search", search);
       if (statusFilter) params.set("status", statusFilter);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
@@ -843,7 +853,7 @@ export default function EmployerInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, dateFrom, dateTo, page, limit, updateTotal]);
+  }, [search, statusFilter, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
@@ -883,7 +893,7 @@ export default function EmployerInvoicesPage() {
         }
       />
       <TableToolbar
-        search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
+        search={searchInput} onSearchChange={(v) => { setSearchInput(v); resetPage(); }} searchPlaceholder={t("searchPlaceholder")}
         onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}
         filterContent={
           <div className="space-y-3">

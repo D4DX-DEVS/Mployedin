@@ -26,7 +26,7 @@ interface EmployerProfile {
   industry?: string;
   companySize?: string;
   foundedYear?: number;
-  city?: string;
+  /* Employer has no `city` field in the schema — country/address only. */
   country?: string;
   address?: string;
   domainVerified?: boolean;
@@ -88,7 +88,7 @@ function salaryLabel(salary?: EmployerJob["salary"], salaryFromLabel?: string) {
 }
 
 function employerLocation(employer: EmployerProfile, locationFlexibleLabel?: string) {
-  return [employer.city, employer.country].filter(Boolean).join(", ") || employer.address || locationFlexibleLabel || "Location flexible";
+  return employer.country || employer.address || locationFlexibleLabel || "Location flexible";
 }
 
 const getEmployerProfile = cache(async (id: string) => {
@@ -100,7 +100,7 @@ const getEmployerProfile = cache(async (id: string) => {
 
   const employer = await Employer.findById(id)
     .select(
-      "companyName logo description website industry companySize foundedYear city country address domainVerified isAgentVerified verificationLevel responseTimeCommitment socialLinks"
+      "companyName logo description website industry companySize foundedYear country address domainVerified isAgentVerified verificationLevel responseTimeCommitment socialLinks"
     )
     .lean()
     .catch(() => null);
@@ -112,7 +112,7 @@ const getEmployerProfile = cache(async (id: string) => {
   const activeJobs = await Job.find({
     employerId: id,
     status: "active",
-    $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: new Date() } }],
+    $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gte: new Date() } }],
   })
     .sort({ createdAt: -1 })
     .limit(6)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,10 +9,11 @@ import { sanitizeHtml } from "@/lib/security/html";
 import { applicationKeys } from "@/hooks/useApplications";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useStartConversation } from "@/hooks/useCandidates";
-import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
+import { CURRENCIES } from "@/components/features/employer/job-form/jobFormSchema";
+import { isFormError } from "@/lib/errors/form-error";
 import {
   Award,
   BadgeCheck,
@@ -69,6 +70,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { CompareCandidatesDialog } from "@/components/features/employer/applications/CompareCandidatesDialog";
+import { useJobWorkflow } from "@/hooks/useJobWorkflow";
+import { useSeekerAvailability } from "@/hooks/useSeekerAvailability";
+import { availabilityWindowStart, firstFreeSlots } from "@/lib/interviews/availabilitySlots";
+import { resolveHiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -93,13 +99,65 @@ import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
-import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom } from "@/lib/hiring/pipeline";
+import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom, type PipelineStage } from "@/lib/hiring/pipeline";
 import type { ApplicationStatus } from "@/models/Application";
 import { CandidateJourney } from "@/components/features/employer/applications/CandidateJourney";
 
+/**
+ * Verification state that travels with the candidate.
+ *
+ * A check is an attribute of a candidate, not a pipeline stage — employers run
+ * them at different points (before an offer, after a conditional one, never) —
+ * so it is surfaced wherever the candidate appears rather than gating a stage.
+ */
+export interface CandidateCheck {
+  _id: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  outcome: "clear" | "flagged" | "failed" | "pending";
+  checkType: "background" | "reference" | "both";
+  requestedAt?: string;
+  references: { responded: number; total: number };
+}
+
+/**
+ * How a check reads at a glance: the outcome wins once the check is finished,
+ * because "Completed" alone hides whether it came back clear or flagged.
+ */
+export function checkChipTone(check: CandidateCheck): { key: string; tone: string } {
+  if (check.status === "cancelled") return { key: "checkChipCancelled", tone: "border-border bg-muted/40 text-muted-foreground" };
+  if (check.status === "completed") {
+    if (check.outcome === "clear") return { key: "checkChipClear", tone: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" };
+    if (check.outcome === "flagged") return { key: "checkChipFlagged", tone: "border-amber-500/40 bg-amber-500/10 text-amber-700" };
+    if (check.outcome === "failed") return { key: "checkChipFailed", tone: "border-destructive/40 bg-destructive/10 text-destructive" };
+    return { key: "checkChipDone", tone: "border-border bg-muted/40 text-muted-foreground" };
+  }
+  return { key: "checkChipRunning", tone: "border-sky-500/30 bg-sky-500/10 text-sky-700" };
+}
+
+/** True while a check should stop an offer going out without a second look. */
+export function checkBlocksOffer(check?: CandidateCheck): "pending" | "flagged" | null {
+  if (!check || check.status === "cancelled") return null;
+  if (check.status !== "completed") return "pending";
+  return check.outcome === "flagged" || check.outcome === "failed" ? "flagged" : null;
+}
+
+/** The job's posted pay, used to seed an offer with terms that match the posting. */
+export interface JobSalary {
+  min?: number;
+  max?: number;
+  currency?: string;
+  period?: string;
+}
+
 export interface Applicant {
   _id: string;
-  jobId: { _id: string; title: string; requirements?: { skills?: string[]; preferredSkills?: string[] } };
+  jobId: {
+    _id: string;
+    title: string;
+    salary?: JobSalary;
+    employerId?: { companyName?: string };
+    requirements?: { skills?: string[]; preferredSkills?: string[] };
+  };
   jobSeekerId: {
     _id?: string;
     userId?: { _id?: string; name?: string; avatar?: string } | string;
@@ -115,12 +173,14 @@ export interface Applicant {
   viewedByEmployerAt?: string;
   appliedAt: string;
   coverLetter?: string;
-  matchBreakdown?: { skills: number; experience: number; overall: number };
+  matchBreakdown?: { skills?: number; experience?: number; location?: number; salary?: number; overall?: number };
   matchStrengths?: string[];
   matchGaps?: string[];
   otherApplicationsCount?: number;
   screeningAnswers?: { questionId: string; questionLabel: string; answer: string | string[] | boolean }[];
   documents?: { name: string; url: string; type: string }[];
+  /** Most recent background / reference check, when one has been raised. */
+  latestCheck?: CandidateCheck;
 }
 
 interface TimelineEntry {
@@ -218,7 +278,38 @@ function useContainerWide(minWidth: number) {
   return [ref, isWide] as const;
 }
 
-export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: string; embedded?: boolean }) {
+/**
+ * `stageLock` pins the list to one stage and everything after it, and takes the
+ * stage controls away — the Shortlist tab owns that cut of the list, so letting
+ * the status dropdown wander off it would leave the tab showing something other
+ * than its own name.
+ */
+/**
+ * Where to open this candidate's CV from, or null when there is none.
+ *
+ * The profile CV is preferred, but an application can carry its own resume —
+ * gating the action on `jobSeekerId.cv` alone hid the very file the candidate
+ * attached to this application.
+ */
+export function resumeViewHref(app: Applicant): string | null {
+  if (app.jobSeekerId?.cv?.originalUrl) {
+    return `/api/applications/${app._id}/documents/download?cv=1&view=1#cv.pdf`;
+  }
+  const index = app.documents?.findIndex((doc) => doc.type === "resume") ?? -1;
+  const doc = index >= 0 ? app.documents?.[index] : undefined;
+  if (!doc) return null;
+  return `/api/applications/${app._id}/documents/download?i=${index}&view=1#${encodeURIComponent(doc.name)}`;
+}
+
+export function ApplicationsWorkspace({
+  jobId,
+  embedded = false,
+  stageLock,
+}: {
+  jobId?: string;
+  embedded?: boolean;
+  stageLock?: PipelineStage;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -296,12 +387,13 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
     jobId?: string;
     candidate?: { role?: string; experience?: number; skills?: string[]; location?: string };
     aiMatchScore?: number;
-    matchBreakdown?: { skills?: number; experience?: number; location?: number; overall?: number };
+    matchBreakdown?: { skills?: number; experience?: number; location?: number; salary?: number; overall?: number };
   } | null>(null);
   const [bulkMatchProgress, setBulkMatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   // ── Bulk interview & email state ──────────────────────────────────
   const [bulkInterviewModal, setBulkInterviewModal] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [emailPreviewModal, setEmailPreviewModal] = useState<{
     action: "reject" | "move_stage" | "send_message";
     targetStage?: string;
@@ -408,10 +500,11 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
       p.forEach((v, k) => url.set(k, v));
     });
   }
+  // Stage presets ("Interviewing", "Offers pending") were removed: on the job
+  // workspace they only re-filtered to what the Interviews / Offers tabs
+  // already show, so stage navigation now lives in exactly one place.
   const viewPresets = [
     { key: "top", label: tw("presetTopMatches"), query: "scoreMin=70&sort=score" },
-    { key: "interviewing", label: tw("presetInterviewing"), query: "status=interview_scheduled" },
-    { key: "offers", label: tw("presetOffersPending"), query: "status=offer" },
   ];
 
   // Debounce user inputs to avoid excessive API calls
@@ -423,13 +516,15 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
   // shortlisted" — advancing to Interviewing does not unpick a candidate. It
   // travels as `stageFrom` so the dropdown's own stage values keep meaning
   // exactly one stage.
-  const shortlistReached = statusFilter === SHORTLIST_REACHED;
+  // A locked tab (Shortlist) is always "this stage or further on"; the loose
+  // chip on the global list means the same thing.
+  const shortlistReached = !stageLock && statusFilter === SHORTLIST_REACHED;
 
   const applicationsQuery = useApplications({
     page,
     limit,
-    status: statusFilter !== "all" && !shortlistReached ? statusFilter : undefined,
-    stageFrom: shortlistReached ? "shortlisted" : undefined,
+    status: !stageLock && statusFilter !== "all" && !shortlistReached ? statusFilter : undefined,
+    stageFrom: stageLock ?? (shortlistReached ? "shortlisted" : undefined),
     jobId: jobFilter || undefined,
     search: debouncedSearch.trim() || undefined,
     scoreMin: debouncedScoreRange[0] > 0 ? debouncedScoreRange[0] : undefined,
@@ -483,6 +578,10 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
 
   // Selected job's details (for dynamic filter hints)
   const selectedJob = employerJobs.find((j) => j._id === jobFilter) ?? null;
+  // The shortlist target from the hiring rules (this job's if customised, else the
+  // company's) seeds "Shortlist top N" — the same number the chat tool uses.
+  const { data: jobWorkflow } = useJobWorkflow(jobFilter || "");
+  const shortlistTarget = resolveHiringRules(undefined, jobWorkflow?.settings as HiringRulesInput | undefined).shortlistTarget;
 
   // Job filter options — duplicate titles get a "Latest" tag + posting date/time (see helper).
   const jobOptions = buildJobFilterOptions(employerJobs, {
@@ -642,7 +741,7 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
 
     // Show all eligible candidates sorted by score; user picks how many
     setShortlistConfirm({ candidates: scored, total: scored.length });
-    setShortlistCount(scored.length); // default: all
+    setShortlistCount(Math.min(shortlistTarget, scored.length)); // default: the rule's target, capped by who is eligible
   }
 
   /** Execute the actual shortlisting after user confirms */
@@ -761,12 +860,10 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
     startDate: string; benefits?: string; notes?: string; expiresAt?: string;
   }) {
     if (!offerModal) return;
-    try {
-      await createOffer.mutateAsync({ applicationId: offerModal.appId, ...data });
-      setOfferModal(null);
-    } catch (err) {
-      console.error("Failed to create offer:", err);
-    }
+    // Rethrow: the modal owns the error message. Swallowing it here is what made
+    // a rejected offer look like a button that simply did nothing.
+    await createOffer.mutateAsync({ applicationId: offerModal.appId, ...data });
+    setOfferModal(null);
   }
 
   function openTimeline(appId: string, candidateName?: string) {
@@ -807,9 +904,7 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
     const js = app.jobSeekerId;
     const currentRole = js?.experience?.find((e) => e.isCurrent)?.jobTitle;
     return {
-      url:
-        urlOverride ??
-        (js?.cv?.originalUrl ? `/api/applications/${app._id}/documents/download?cv=1&view=1#cv.pdf` : ""),
+      url: urlOverride ?? resumeViewHref(app) ?? "",
       name: getCandidateName(app),
       applicationId: app._id,
       status: app.status,
@@ -859,22 +954,34 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
     return true;
   });
 
-  const highMatchCount = filteredApplications.filter((app) => (app.aiMatchScore ?? 0) >= AI_MATCH_HIGH_THRESHOLD).length;
-  const interviewCount = filteredApplications.filter((app) => app.status === "interview_scheduled").length;
-  const selectedStageCount = filteredApplications.filter((app) => app.status === "selected").length;
+  // These three sit under a funnel of job-wide aggregates, so they have to be
+  // job-wide too. Counting `filteredApplications` counted the current page:
+  // the same 13 applications read "2 High Match" at 10 rows a page and "5" at
+  // 25. `statusCounts` comes from the server over the whole scope.
+  // Kept out of `statusCounts` on purpose: that map is summed for the applicant
+  // total, so a score-based figure inside it would inflate the total.
+  const highMatchCount = (applicationsQuery.data?.highMatchCount as number | undefined) ?? 0;
+  const interviewCount = countOf("interview_scheduled");
+  const selectedStageCount = countOf("selected");
   const allVisibleSelected = filteredApplications.length > 0 && filteredApplications.every((app) => selected.includes(app._id));
+  // The email preview renders the values that will really be sent, so it needs
+  // the employer's own name and a candidate actually in the selection.
+  const employerName = applications.find((app) => app.jobId?.employerId?.companyName)?.jobId?.employerId?.companyName ?? tw("yourCompany");
+  const firstSelected = applications.find((app) => selected.includes(app._id));
+  const previewCandidateName = firstSelected ? getCandidateName(firstSelected) : t("candidateFallback");
   const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || (!jobPinned && !!jobFilter) || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0;
 
   async function handleBulkAction(
     action: "reject" | "move_stage" | "send_message",
     targetStage?: string,
-    emailOverride?: { emailSubject?: string; emailBody?: string },
+    emailOverride?: { emailSubject?: string; emailBody?: string; notifyCandidate?: boolean },
   ) {
     if (!selected.length) return;
     if (action === "reject" && !rejectionReason.trim()) {
       setShowRejectPrompt(true);
       return;
     }
+    const notifyCandidate = emailOverride?.notifyCandidate ?? true;
     try {
       const result = await bulkAction.mutateAsync({
         applicationIds: selected,
@@ -882,8 +989,11 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
         params: {
           ...(targetStage && { targetStage }),
           ...(action === "reject" && { rejectionReason: rejectionReason.trim() }),
-          ...(emailOverride?.emailSubject && { emailSubject: emailOverride.emailSubject }),
-          ...(emailOverride?.emailBody && { emailBody: emailOverride.emailBody }),
+          // Custom copy is pointless when no mail is going out, and sending it
+          // would make the server treat this as "email with overrides".
+          ...(notifyCandidate && emailOverride?.emailSubject ? { emailSubject: emailOverride.emailSubject } : {}),
+          ...(notifyCandidate && emailOverride?.emailBody ? { emailBody: emailOverride.emailBody } : {}),
+          notifyCandidate,
         },
       });
       reportBulkActionResult(result);
@@ -1052,16 +1162,12 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
         />
       )}
 
-      {/* Stage chips — one tap per stage, the same affordance the Interviews tab
-          has. Status used to live only inside the "All statuses" dropdown, which
-          is what made a separate Shortlist page feel missing: the shortlist is
-          this list, one click away. Tapping the active chip clears it. */}
-      {/* Only the shortlist gets a chip. The tab beside it already counts
-          everyone who applied, so an "Applied" chip repeated that number with a
-          different value and read as a bug; the other stages have their own
-          tabs. This is the one cut of the list that has no home elsewhere. */}
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("stageChipsLabel")}>
-        {pipelineStages.filter((stage) => stage.value === "shortlisted").map((stage) => {
+      {/* Shortlist chip — only on the standalone /employer/applications list.
+          Inside a job the Shortlist tab owns this cut, so a chip here would be a
+          second control for the same filter, disagreeing with the tab it sits
+          under. Tapping the active chip clears it. */}
+      <div className={embedded ? "hidden" : "flex flex-wrap items-center gap-2"} role="group" aria-label={t("stageChipsLabel")}>
+        {(embedded ? [] : pipelineStages.filter((stage) => stage.value === "shortlisted")).map((stage) => {
           const active = statusFilter === SHORTLIST_REACHED;
           const stageCount = countOf(...stagesFrom("shortlisted"));
           // A stage nobody is in gets no chip: it would offer a filter that
@@ -1117,8 +1223,9 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
             ariaLabel={t("selectJob")}
           />
         )}
-        <div className="hidden w-36 sm:block">
-          <SearchableSelect
+        {!stageLock && (
+          <div className="hidden w-36 sm:block">
+            <SearchableSelect
                 className="h-10 w-full rounded-xl border-border bg-background"
                 options={[
                   { value: "all", label: t("allStatuses") },
@@ -1128,7 +1235,8 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
                 onValueChange={setStatusFilter}
                 placeholder={t("allStatuses")}
               />
-        </div>
+          </div>
+        )}
         <div className="hidden w-32 sm:block">
           <SearchableSelect
                 className="h-10 w-full rounded-xl border-border bg-background"
@@ -1157,17 +1265,6 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
             <span className="ms-1.5 inline-flex h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
           )}
         </Button>
-        <div className="hidden sm:block">
-          <Button
-                size="sm"
-                variant="outline"
-                className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-10 rounded-xl border-status-selected/20 bg-status-selected-bg px-3 text-sm text-emerald-700 hover:bg-status-selected-bg" : "h-10 rounded-xl border-border bg-background/80 px-3 text-sm"}
-                onClick={() => setScoreRange(scoreRange[0] === 70 && scoreRange[1] === 100 ? [0, 100] : [70, 100])}
-              >
-                <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-                {t("highMatch")}
-              </Button>
-        </div>
         <Button
           type="button"
           variant="outline"
@@ -1255,7 +1352,8 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
         <section className="workspace-panel-surface rounded-2xl panel-body">
           {/* Phones only: the controls that sit in the toolbar from sm */}
           <div className="mb-3 grid gap-2 sm:hidden">
-            <SearchableSelect
+            {!stageLock && (
+              <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-background/70"
                 options={[
                   { value: "all", label: t("allStatuses") },
@@ -1265,6 +1363,7 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
                 onValueChange={setStatusFilter}
                 placeholder={t("allStatuses")}
               />
+            )}
             <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-background/70"
                 options={[
@@ -1277,15 +1376,6 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
                 placeholder={t("sortLabel")}
                 ariaLabel={t("sortLabel")}
               />
-            <Button
-                size="sm"
-                variant="outline"
-                className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-11 rounded-xl border-status-selected/20 bg-status-selected-bg px-3 text-sm text-emerald-700 hover:bg-status-selected-bg" : "h-11 rounded-xl border-border bg-background/80 px-3 text-sm"}
-                onClick={() => setScoreRange(scoreRange[0] === 70 && scoreRange[1] === 100 ? [0, 100] : [70, 100])}
-              >
-                <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-                {t("highMatch")}
-              </Button>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           {/* AI Score Range */}
@@ -1480,6 +1570,14 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
               <span className="hidden sm:inline">{tw("saveToPool")}</span>
               <span className="ms-1.5 sm:hidden">{tw("saveToPoolShort")}</span>
             </Button>
+            {selected.length >= 2 && selected.length <= 3 && (
+              <Button size="sm" variant="outline" className="h-10 flex-1 rounded-xl border-border bg-background/80 px-2 text-xs sm:flex-none sm:px-4 sm:text-sm"
+                onClick={() => setCompareOpen(true)}>
+                <Columns3 className="h-3.5 w-3.5 sm:me-2" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("compare")}</span>
+                <span className="ms-1.5 sm:hidden">{t("compareShort")}</span>
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -1490,6 +1588,10 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
         open={bulkPoolOpen}
         onOpenChange={(open) => { setBulkPoolOpen(open); if (!open) setSelected([]); }}
       />
+
+      {compareOpen && (
+        <CompareCandidatesDialog open={compareOpen} onOpenChange={setCompareOpen} applicationIds={selected.slice(0, 3)} />
+      )}
 
       {showRejectPrompt && (
         <div className="flex flex-col gap-3 rounded-3xl border border-destructive/30 bg-destructive/5 card-pad">
@@ -1805,6 +1907,8 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
           ) : (
             <TableView
               applications={filteredApplications}
+              emptyTitle={stageLock === "shortlisted" ? tw("shortlistEmpty") : undefined}
+              emptyDescription={stageLock === "shortlisted" ? tw("shortlistEmptyDesc") : undefined}
               selected={selected}
               onToggle={canUpdate ? toggleSelect : undefined}
               onGenerateAiMatch={canUpdate ? handleGenerateAiMatch : undefined}
@@ -1867,6 +1971,7 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
                 onSubmit={handleScorecardSubmit}
                 onCancel={() => setScorecardModal(null)}
                 isLoading={createScorecard.isPending}
+                embedded
               />
               </FeatureGate>
             </div>
@@ -1887,6 +1992,11 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
       {/* Offer Creation Modal */}
       {offerModal && createPortal(
         <OfferCreateModal
+          jobSalary={
+            applications.find((a) => a._id === offerModal.appId)?.jobId?.salary
+            ?? (selectedJob as { salary?: JobSalary } | undefined)?.salary
+          }
+          check={applications.find((a) => a._id === offerModal.appId)?.latestCheck}
           onSubmit={handleCreateOffer}
           onCancel={() => setOfferModal(null)}
         />,
@@ -1901,6 +2011,12 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
             const app = filteredApplications.find((a) => a._id === id);
             return app ? getCandidateName(app) : `#${id.slice(-4)}`;
           })}
+          singleSeeker={(() => {
+            if (selected.length !== 1) return null;
+            const app = filteredApplications.find((a) => a._id === selected[0]);
+            const seekerId = app?.jobSeekerId?._id;
+            return app && seekerId ? { id: seekerId, name: getCandidateName(app) } : null;
+          })()}
           onSubmit={handleBulkInterview}
           onCancel={() => setBulkInterviewModal(false)}
           isLoading={createInterview.isPending}
@@ -1915,7 +2031,9 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
           targetStage={emailPreviewModal.targetStage}
           rejectionReason={emailPreviewModal.rejectionReason}
           candidateCount={selected.length}
-          jobTitle={selectedJob?.title ?? "Position"}
+          jobTitle={selectedJob?.title ?? applications.find((a) => selected.includes(a._id))?.jobId?.title ?? t("roleNotSpecified")}
+          companyName={employerName}
+          previewCandidateName={previewCandidateName}
           onConfirm={(emailOverride) => {
             handleBulkAction(
               emailPreviewModal.action,
@@ -1967,8 +2085,29 @@ export function ApplicationsWorkspace({ jobId, embedded = false }: { jobId?: str
   );
 }
 
+/**
+ * Verification at a glance on the candidate row. Icon + text, never colour
+ * alone — the tone only reinforces what the label already says.
+ */
+function CheckChip({ check }: { check: CandidateCheck }) {
+  const t = useTranslations("employerApplications");
+  const { key, tone } = checkChipTone(check);
+  const refs = check.references.total > 0
+    ? t("checkChipRefs", { done: check.references.responded, total: check.references.total })
+    : "";
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${tone}`}
+      title={refs ? `${t(key)} · ${refs}` : t(key)}
+    >
+      <ShieldCheck className="h-3 w-3 shrink-0" aria-hidden />
+      {t(key)}
+    </span>
+  );
+}
+
 function TableView({
-  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact
+  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact, emptyTitle, emptyDescription
 }: {
   applications: Applicant[];
   selected: string[];
@@ -1981,6 +2120,10 @@ function TableView({
   onViewCv?: (app: Applicant) => void;
   hasActiveRefinement?: boolean;
   compact?: boolean;
+  /** A stage-locked tab needs its own empty copy — "no applications yet" is
+   *  wrong on a Shortlist that simply has nobody in it yet. */
+  emptyTitle?: string;
+  emptyDescription?: string;
 }) {
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("employerApplications");
@@ -2006,8 +2149,8 @@ function TableView({
     return (
       <EmptyState
         icon={Inbox}
-        title={t("noApplications")}
-        description={t("noApplicationsDesc")}
+        title={emptyTitle ?? t("noApplications")}
+        description={emptyDescription ?? t("noApplicationsDesc")}
       />
     );
   }
@@ -2076,7 +2219,7 @@ function TableView({
                       event.stopPropagation();
                       onToggle(app._id);
                     }}
-                    className="text-muted-foreground transition hover:text-foreground"
+                    className="-m-1 p-1 text-muted-foreground transition hover:text-foreground"
                   >
                     {isSelected ? <CheckSquare className="h-5 w-5 text-status-applied" /> : <Square className="h-5 w-5" />}
                   </button>
@@ -2131,6 +2274,7 @@ function TableView({
                     <span className="hidden shrink-0 lg:block">
                       <StatusBadge status={app.status} />
                     </span>
+                    {app.latestCheck ? <CheckChip check={app.latestCheck} /> : null}
                   </div>
                   {/* Role and match score are grid cells from `lg` only, so a
                       phone or tablet row showed nothing to rank candidates by —
@@ -2219,7 +2363,7 @@ function TableView({
                     <BarChart3 className="h-4 w-4" />
                   </Button>
                 ) : null}
-                {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
+                {resumeViewHref(app) && onViewCv ? (
                   <Button
                     variant="ghost"
                     size="dense"
@@ -2342,13 +2486,22 @@ function ApplicationDetailsPanel({
   const candidateInitials = getCandidateInitials(candidateName);
   const candidateExperienceYears = app.jobSeekerId?.totalExperienceYears;
   const displayDateLocale = locale === "ar" ? "ar-SA" : "en-US";
-  const appliedDate = new Date(app.appliedAt).toLocaleDateString(displayDateLocale);
+  // Same shape as the list beside it — the bare numeric form read "8/31/2026"
+  // next to the list's "Sep 2, 2026", and is ambiguous outside the US.
+  const appliedDate = new Date(app.appliedAt).toLocaleDateString(displayDateLocale, {
+    day: "numeric", month: "short", year: "numeric",
+  });
+  // Components only — "Overall" is deliberately absent: it repeats the score
+  // already printed in the panel header. Rows whose component was never scored
+  // are dropped rather than shown as 0%, which reads as "terrible fit" instead
+  // of "not measured".
   const matchItems = app.matchBreakdown
-    ? [
+    ? ([
         { label: t("skills"), value: app.matchBreakdown.skills },
         { label: t("experience"), value: app.matchBreakdown.experience },
-        { label: t("overall"), value: app.matchBreakdown.overall },
-      ]
+        { label: t("location"), value: app.matchBreakdown.location },
+        { label: t("salary"), value: app.matchBreakdown.salary },
+      ].filter((item) => typeof item.value === "number") as Array<{ label: string; value: number }>)
     : [];
   const stageOptions = pipelineStages
     .filter((stage) => stage.value !== app.status)
@@ -2506,6 +2659,13 @@ function ApplicationDetailsPanel({
                     {candidateName}
                   </a>
                   <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" />
+                  {/* Only worth screen space when the candidate is in play for
+                      more than this one job. */}
+                  {(app.otherApplicationsCount ?? 0) > 0 ? (
+                    <span className="shrink-0 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {t("otherRolesChip", { count: app.otherApplicationsCount ?? 0 })}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="truncate text-sm font-medium text-foreground/80">{currentRole || t("roleNotSpecified")}</p>
                 {app.jobId?.title ? (
@@ -2732,61 +2892,49 @@ function ApplicationDetailsPanel({
               </div>
             ) : null}
 
-            {/* Row 1: AI Match Score | Application Overview (2 equal cards) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="workspace-glass-panel card-pad rounded-2xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiMatchScore")}</p>
-                {app.aiMatchScore != null ? (
-                  <div className="mt-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold tracking-tight text-foreground">{app.aiMatchScore}%</span>
-                      <span className={`text-sm font-semibold ${matchLabelColor}`}>{matchLabel}</span>
-                    </div>
-                    {matchItems.length ? (
-                      <div className="mt-3 space-y-2">
-                        {matchItems.map((item) => (
-                          <div key={item.label} className="flex items-center gap-2">
-                            <span className="w-20 text-[11px] text-muted-foreground">{item.label}</span>
-                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/50">
-                              <div
-                                className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-rose-400"}`}
-                                style={{ width: `${item.value}%` }}
-                              />
-                            </div>
-                            <span className="w-9 text-right text-[11px] font-medium text-foreground/80">{item.value}%</span>
-                          </div>
-                        ))}
+            {/* Row 1: match breakdown, full width.
+
+                The score itself is not repeated here — it is already the large
+                figure in the panel header. This card answers the question the
+                header cannot: *why* that number. The old second card in this
+                row held a single "Applied Roles: 1" and a button with no
+                handler, so it was removed; the cross-application count now
+                rides as a chip in the header, and only when there is one. */}
+            <div className="workspace-glass-panel card-pad rounded-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("matchBreakdown")}</p>
+              {app.aiMatchScore != null ? (
+                matchItems.length ? (
+                  <div className="mt-3 space-y-2">
+                    {matchItems.map((item) => (
+                      <div key={item.label} className="flex items-center gap-2">
+                        <span className="w-20 text-[11px] text-muted-foreground">{item.label}</span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/50">
+                          <div
+                            className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-rose-400"}`}
+                            style={{ width: `${item.value}%` }}
+                          />
+                        </div>
+                        <span className="w-9 text-right text-[11px] font-medium text-foreground/80">{item.value}%</span>
                       </div>
-                    ) : null}
+                    ))}
                   </div>
                 ) : (
-                  <div className="mt-3">
-                    {onGenerateAiMatch ? (
-                      <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs text-status-applied hover:bg-sky-500/10" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
-                        <Sparkles className={`mr-1.5 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-status-applied" : ""}`} />
-                        {t("generateScore")}
-                      </Button>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{t("aiScorePending")}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="workspace-glass-panel card-pad rounded-2xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
-                <div className="mt-3 space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">{t("appliedRoles")}</span>
-                    <span className="text-[11px] font-semibold text-foreground">{(app.otherApplicationsCount ?? 0) > 0 ? t("otherRolesCount", { count: app.otherApplicationsCount ?? 0 }) : "1"}</span>
-                  </div>
+                  // Scored before component scores were recorded — say so
+                  // rather than drawing four empty bars.
+                  <p className="mt-3 text-xs text-muted-foreground">{t("breakdownUnavailable")}</p>
+                )
+              ) : (
+                <div className="mt-3">
+                  {onGenerateAiMatch ? (
+                    <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs text-status-applied hover:bg-sky-500/10" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
+                      <Sparkles className={`mr-1.5 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-status-applied" : ""}`} />
+                      {t("generateScore")}
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t("aiScorePending")}</p>
+                  )}
                 </div>
-                {(app.otherApplicationsCount ?? 0) > 0 ? (
-                  <Button variant="outline" size="dense" className="mt-3 w-full rounded-xl border-border text-[11px]">
-                    {t("viewAllApplications")}
-                  </Button>
-                ) : null}
-              </div>
+              )}
             </div>
 
             {/* Resume lives in its own tab — no duplicate quick card here. */}
@@ -3020,15 +3168,61 @@ function ApplicationDetailsPanel({
   );
 }
 
+/**
+ * Free slots from the candidate's self-scheduling calendar. Renders nothing
+ * until they load and nothing at all when instant booking is off (the API
+ * answers 403), so the modal never blocks on it.
+ */
+function AvailabilityChips({ seeker, scheduledAt, onPick }: { seeker: { id: string; name: string }; scheduledAt: string; onPick: (iso: string) => void }) {
+  const t = useTranslations("employerApplications");
+  const locale = useLocale();
+  const { data } = useSeekerAvailability(seeker.id, availabilityWindowStart(scheduledAt));
+  if (!data) return null;
+
+  const slots = firstFreeSlots(data.availability, 12);
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const picked = scheduledAt ? new Date(scheduledAt).getTime() : null;
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-3">
+      <p className="text-xs text-muted-foreground">
+        {slots.length ? t("freeSlotsFor", { name: seeker.name }) : t("noFreeSlots", { name: seeker.name })}
+      </p>
+      {slots.length > 0 && (
+        <ul className="flex flex-wrap gap-2" aria-label={t("freeSlotsLabel", { name: seeker.name })}>
+          {slots.map((slot) => {
+            const active = picked === slot.at.getTime();
+            return (
+              <li key={`${slot.date}-${slot.start}`}>
+                <button
+                  type="button"
+                  onClick={() => onPick(slot.at.toISOString())}
+                  aria-pressed={active}
+                  className={`min-h-11 rounded-full border px-3 text-xs font-medium transition-colors sm:min-h-9 ${active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"}`}
+                >
+                  {fmt.format(slot.at)}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function BulkInterviewScheduleModal({
   candidateCount,
   candidateNames,
+  singleSeeker = null,
   onSubmit,
   onCancel,
   isLoading,
 }: {
   candidateCount: number;
   candidateNames: string[];
+  /** Set when exactly one candidate is selected: their free slots become chips. */
+  singleSeeker?: { id: string; name: string } | null;
   onSubmit: (data: {
     scheduledAt: string; type: string; duration: number;
     durationPerCandidate: number; gapMinutes: number;
@@ -3242,6 +3436,9 @@ function BulkInterviewScheduleModal({
           {isPast && (
             <p className="text-xs text-red-500 -mt-2">{t("bulkIvPastWarning")}</p>
           )}
+          {singleSeeker && (
+            <AvailabilityChips seeker={singleSeeker} scheduledAt={scheduledAt} onPick={setScheduledAt} />
+          )}
 
           {/* Type / Duration / Gap row */}
           <div className="grid grid-cols-3 gap-3">
@@ -3419,6 +3616,8 @@ function EmailPreviewModal({
   rejectionReason,
   candidateCount,
   jobTitle,
+  companyName,
+  previewCandidateName,
   onConfirm,
   onCancel,
   isLoading,
@@ -3428,7 +3627,9 @@ function EmailPreviewModal({
   rejectionReason?: string;
   candidateCount: number;
   jobTitle: string;
-  onConfirm: (emailOverride?: { emailSubject?: string; emailBody?: string }) => void;
+  companyName: string;
+  previewCandidateName: string;
+  onConfirm: (emailOverride?: { emailSubject?: string; emailBody?: string; notifyCandidate?: boolean }) => void;
   onCancel: () => void;
   isLoading: boolean;
 }) {
@@ -3441,6 +3642,16 @@ function EmailPreviewModal({
     targetStage === "hired" ? "Hired" :
     action === "send_message" ? "Message" :
     (targetStage ?? "Update").replace(/_/g, " ");
+  // The buttons say what pressing them does, so they need the verb, not the
+  // stage the candidate lands in ("Shortlist", not "Shortlisted").
+  const actionVerb =
+    action === "reject" ? t("verbReject") :
+    action === "send_message" ? t("verbSend") :
+    targetStage === "shortlisted" ? t("verbShortlist") :
+    targetStage === "selected" ? t("verbSelect") :
+    targetStage === "offer" ? t("verbOffer") :
+    targetStage === "hired" ? t("verbHire") :
+    t("verbUpdate");
 
   // Default email subject/body based on action
   const defaultSubject = action === "reject"
@@ -3475,7 +3686,6 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
 
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
-  const [customized, setCustomized] = useState(false);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
@@ -3501,7 +3711,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             <label className="block text-xs font-medium mb-1">{t("emailSubjectLabel")}</label>
             <input
               value={subject}
-              onChange={(e) => { setSubject(e.target.value); setCustomized(true); }}
+              onChange={(e) => setSubject(e.target.value)}
               className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
               maxLength={200}
             />
@@ -3510,7 +3720,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             <label className="block text-xs font-medium mb-1">{t("emailBodyLabel")}</label>
             <textarea
               value={body}
-              onChange={(e) => { setBody(e.target.value); setCustomized(true); }}
+              onChange={(e) => setBody(e.target.value)}
               className="w-full h-40 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none font-mono chip-pad"
               maxLength={10000}
             />
@@ -3522,16 +3732,19 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             <div className="rounded-xl border border-border bg-card text-sm card-pad">
               <div className="border-b border-border pb-2 mb-3">
                 <p className="text-xs text-muted-foreground">{t("emailPreviewSubject")}</p>
-                <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, "Company")}</p>
+                {/* Preview with the values that will actually be sent. It used
+                    to render the literal "Company" and "John Doe", so it showed
+                    an email nobody would ever receive. */}
+                <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, companyName)}</p>
               </div>
               <div
                 className="prose prose-sm max-w-none"
                 dangerouslySetInnerHTML={{
                   __html: sanitizeHtml(
                     body
-                      .replace(/\{\{candidateName\}\}/g, "John Doe")
+                      .replace(/\{\{candidateName\}\}/g, previewCandidateName)
                       .replace(/\{\{jobTitle\}\}/g, jobTitle)
-                      .replace(/\{\{companyName\}\}/g, "Company")
+                      .replace(/\{\{companyName\}\}/g, companyName)
                       .replace(/\{\{status\}\}/g, statusLabel.toLowerCase())
                   ),
                 }}
@@ -3541,23 +3754,26 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-between">
           <Button variant="ghost" size="sm" className="text-xs text-muted-foreground"
-            onClick={() => { setSubject(defaultSubject); setBody(defaultBody); setCustomized(false); }}>
-            Reset to Default
+            onClick={() => { setSubject(defaultSubject); setBody(defaultBody); }}>
+            {t("resetToDefault")}
           </Button>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
             {action !== "send_message" && (
-              <Button variant="outline" onClick={() => onConfirm()} disabled={isLoading} className="h-9">
-                {isLoading ? "Processing..." : `${statusLabel} Without Email`}
+              // `notifyCandidate: false` is what makes this button true to its
+              // name — without it the API falls back to the default template
+              // and mails the candidate anyway.
+              <Button variant="outline" onClick={() => onConfirm({ notifyCandidate: false })} disabled={isLoading} className="h-9">
+                {isLoading ? t("processing") : t("confirmWithoutEmail", { action: actionVerb })}
               </Button>
             )}
             <Button
-              onClick={() => onConfirm(customized ? { emailSubject: subject, emailBody: body } : { emailSubject: subject, emailBody: body })}
+              onClick={() => onConfirm({ emailSubject: subject, emailBody: body, notifyCandidate: true })}
               disabled={isLoading || (!subject.trim() && action === "send_message")}
               className="h-9"
             >
               <Send className="w-3.5 h-3.5 me-1" />
-              {isLoading ? "Sending..." : `${action === "send_message" ? "Send" : statusLabel} & Email ${candidateCount}`}
+              {isLoading ? t("sending") : t("confirmAndEmail", { action: actionVerb, count: candidateCount })}
             </Button>
           </div>
         </div>
@@ -3681,9 +3897,14 @@ function InterviewScheduleModal({
 }
 
 function OfferCreateModal({
+  jobSalary,
+  check,
   onSubmit,
   onCancel,
 }: {
+  jobSalary?: { min?: number; max?: number; currency?: string; period?: string };
+  /** Verification state for this candidate, if a check was ever raised. */
+  check?: CandidateCheck;
   onSubmit: (data: {
     salary: { amount: number; currency: string; period: string };
     startDate: string; benefits?: string; notes?: string; expiresAt?: string;
@@ -3691,18 +3912,35 @@ function OfferCreateModal({
   onCancel: () => void;
 }) {
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [period, setPeriod] = useState<"monthly" | "annually">("annually");
+  // Default to the job's own terms. A hardcoded USD/annually default meant an
+  // INR monthly job opened an offer form that disagreed with the posting, and
+  // the currency list here did not even contain INR.
+  const [currency, setCurrency] = useState(
+    () => (CURRENCIES.some((c) => c.code === jobSalary?.currency) ? jobSalary!.currency! : "USD"),
+  );
+  const [period, setPeriod] = useState<"monthly" | "annually">(
+    () => (jobSalary?.period === "monthly" ? "monthly" : "annually"),
+  );
   const [startDate, setStartDate] = useState("");
   const [benefits, setBenefits] = useState("");
   const [notes, setNotes] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // The API rejects a start date in the past with a precise message. It used to
+  // go nowhere, leaving the form looking like it had simply stopped working.
+  const [error, setError] = useState<string | null>(null);
   const t = useTranslations("employerApplications");
+  // Offers cannot start in the past, so the calendar must not offer it — the
+  // previous month's leading cells were selectable without this.
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  // Warn, never block: a conditional offer while references are outstanding is
+  // a normal way to hire, so this informs the decision rather than gating it.
+  const checkWarning = checkBlocksOffer(check);
 
   async function handleSubmit() {
     if (!amount || !startDate) return;
     setSubmitting(true);
+    setError(null);
     try {
       await onSubmit({
         salary: { amount: parseFloat(amount), currency, period },
@@ -3711,6 +3949,10 @@ function OfferCreateModal({
         ...(notes && { notes }),
         ...(expiresAt && { expiresAt }),
       });
+    } catch (err: unknown) {
+      // A FormError was written for this screen (the API named the field or the
+      // conflict), so it is shown verbatim; anything else keeps generic copy.
+      setError(isFormError(err) ? err.message : t("offerFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -3724,23 +3966,32 @@ function OfferCreateModal({
           <p className="text-sm text-muted-foreground mt-1">{t("offerSubtitle")}</p>
         </div>
         <div className="px-6 py-4 space-y-4">
+          {checkWarning ? (
+            <div
+              className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
+                checkWarning === "flagged"
+                  ? "border-destructive/30 bg-destructive/5 text-destructive"
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-800"
+              }`}
+            >
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>{checkWarning === "flagged" ? t("offerCheckFlagged") : t("offerCheckPending")}</span>
+            </div>
+          ) : null}
           <div>
             <label className="block text-xs font-medium mb-1">{`${t("offerSalary")} *`}</label>
             <div className="flex gap-2">
               <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
                 placeholder={t("offerAmountPlaceholder")} min="0" step="100"
                 className="flex-1 h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+              {/* One list, shared with the job form, so an offer can always be
+                  written in the currency the job was posted in. */}
               <SearchableSelect
                 className="w-24 h-9"
-                options={[
-                  { value: "USD", label: "USD" },
-                  { value: "EUR", label: "EUR" },
-                  { value: "GBP", label: "GBP" },
-                  { value: "SAR", label: "SAR" },
-                  { value: "AED", label: "AED" },
-                ]}
+                options={CURRENCIES.map((c) => ({ value: c.code, label: c.code }))}
                 value={currency}
                 onValueChange={setCurrency}
+                ariaLabel={t("offerCurrency")}
               />
               <SearchableSelect
                 className="w-28 h-9"
@@ -3756,11 +4007,11 @@ function OfferCreateModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1">{`${t("offerStartDate")} *`}</label>
-              <DateTimePicker mode="date" value={startDate} onChange={setStartDate} />
+              <DateTimePicker mode="date" value={startDate} onChange={setStartDate} minDate={today} />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">{t("offerExpiresOn")}</label>
-              <DateTimePicker mode="date" value={expiresAt} onChange={setExpiresAt} />
+              <DateTimePicker mode="date" value={expiresAt} onChange={setExpiresAt} minDate={today} />
               <p className="text-[11px] text-muted-foreground mt-0.5">{t("offerExpiryDefault")}</p>
             </div>
           </div>
@@ -3779,6 +4030,11 @@ function OfferCreateModal({
               className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
           </div>
         </div>
+        {error && (
+          <p role="alert" className="mx-6 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
           <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
           <Button size="sm" onClick={handleSubmit} disabled={!amount || !startDate || submitting} className="">

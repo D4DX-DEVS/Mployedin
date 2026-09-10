@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
-import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -37,7 +37,7 @@ import {
   Building2, Users, DollarSign, SplitSquareVertical,
   TrendingUp, CalendarDays, RotateCcw, Download,
   Search, AlertCircle, CheckCircle2,
-  ClipboardList, TimerReset, Target, Info, MapPin,
+  ClipboardList, TimerReset, Info, MapPin,
   Eye, SlidersHorizontal, CircleDollarSign,
   BarChart3,
 } from "lucide-react";
@@ -233,23 +233,30 @@ function DashboardMetricCard({
   tone = "blue",
 }: DashboardMetricCardProps) {
   return (
-    <div className="workspace-glass-panel card-pad rounded-xl">
+    // Deliberately tighter than `card-pad`: six of these sit in one row above
+    // the agent table, and at the shared card rhythm (16px padding, mt-2 value,
+    // leading-5 helper, mt-4 bar) the strip alone ran ~165px tall and pushed
+    // the table it summarises off the first screen. Same content, ~40px less.
+    <div className="workspace-glass-panel rounded-xl p-2.5 sm:p-3">
       {/* Phones: label + value + slim progress only — the helper sentence and
           icon chip made six of these a three-screen wall of cards. */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-[0.16em]">{label}</p>
-          <div className="mt-1 text-base font-semibold tracking-tight text-foreground sm:mt-2 sm:text-xl">{value}</div>
-          <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{helper}</p>
+          {/* No 0.16em tracking: six cards across 1440px leave ~145px of label
+              column once the icon chip is subtracted, and the wide tracking
+              broke "TEAM COMPLETION" and "PENDING ACTIONS" onto two lines. */}
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground sm:text-[11px]">{label}</p>
+          <div className="mt-0.5 text-base font-semibold leading-tight tracking-tight text-foreground sm:mt-1 sm:text-lg">{value}</div>
+          <p className="mt-0.5 hidden text-[11px] leading-4 text-muted-foreground sm:block">{helper}</p>
         </div>
-        <div className={`${METRIC_TONE_CLASS_MAP[tone]} hidden rounded-xl p-2 sm:block`}>{icon}</div>
+        <div className={`${METRIC_TONE_CLASS_MAP[tone]} hidden shrink-0 rounded-lg p-1.5 sm:block`}>{icon}</div>
       </div>
       {typeof progress === "number" ? (
-        <div className="mt-2 flex items-center gap-2 sm:mt-4">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/60 sm:h-2">
+        <div className="mt-1.5 flex items-center gap-2 sm:mt-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/60">
             <div className={`h-full rounded-full ${getProgressColor(progress)}`} style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
-          <span className={`min-w-10 text-right text-xs font-bold tabular-nums ${getProgressTextColor(progress)} max-sm:hidden`}>{progress}%</span>
+          <span className={`min-w-9 text-right text-[11px] font-bold tabular-nums ${getProgressTextColor(progress)} max-sm:hidden`}>{progress}%</span>
         </div>
       ) : null}
     </div>
@@ -515,16 +522,19 @@ export default function SuperAgentTargetProfilesPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={Target}
+      {/* SuperAgentPageIntro, not PageHero: this was the one page in the role
+          still on the other hero, so its title sat at a different size and its
+          action floated on a second row while every sibling page kept them on
+          one. */}
+      <SuperAgentPageIntro
         title={t("title")}
         description={t("superAgentDescription")}
-        actions={
-          <Badge variant="outline" className="rounded-full px-2.5 py-1.5 sm:px-3">
-            <CircleDollarSign className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{currencyLabel}</span>
-          </Badge>
-        }
-      />
+        inlineActions
+      >
+        <Badge variant="outline" className="rounded-full px-2.5 py-1.5 sm:px-3">
+          <CircleDollarSign className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{currencyLabel}</span>
+        </Badge>
+      </SuperAgentPageIntro>
 
       <div className="flex flex-wrap items-center gap-2">
           <div className="relative">

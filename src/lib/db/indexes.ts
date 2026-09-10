@@ -75,7 +75,7 @@ export async function ensureIndexes() {
     { key: { nationality: 1 } },
     { key: { currentLocation: 1 } },
     { key: { availableFrom: 1 } },
-    // Cron hot path: job-alerts cursor pagination over visible, available seekers
+    // Talent search / candidate listing: discoverable, available seekers
     { key: { profileVisibility: 1, availabilityStatus: 1, _id: 1 } },
   ]);
 

@@ -91,6 +91,12 @@ export const bulkActionSchema = z.object({
       emailSubject: z.string().max(200).optional(),
       /** Custom email body HTML (supports {{candidateName}}, {{jobTitle}}, {{companyName}}, {{status}} placeholders) */
       emailBody: z.string().max(10000).optional(),
+      /**
+       * False suppresses the candidate email entirely — what the "without
+       * email" button in the bulk preview means. Omitted defaults to true so
+       * existing callers keep notifying.
+       */
+      notifyCandidate: z.boolean().optional(),
     })
     .optional(),
 });

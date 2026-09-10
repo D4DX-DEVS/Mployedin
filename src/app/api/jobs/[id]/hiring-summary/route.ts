@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { canAccessJob } from "@/lib/jobs/access";
-import { ALL_APPLICATION_STATUSES } from "@/lib/hiring/pipeline";
+import { ALL_APPLICATION_STATUSES, PIPELINE_STAGES } from "@/lib/hiring/pipeline";
 import Job from "@/models/Job";
 import Application, { type ApplicationStatus } from "@/models/Application";
 import Interview from "@/models/Interview";
@@ -17,6 +17,9 @@ import type { UserRole } from "@/models/User";
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
 const count = (facet: Array<{ n?: number }> | undefined) => facet?.[0]?.n ?? 0;
+
+/** Stages a candidate passes through before interviewing — "applied", "shortlisted". */
+const STAGES_BEFORE_INTERVIEW = PIPELINE_STAGES.slice(0, PIPELINE_STAGES.indexOf("interview_scheduled"));
 
 /**
  * GET /api/jobs/[id]/hiring-summary
@@ -103,10 +106,13 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const openInterviewAppIds = ((interviews?.openApplicationIds ?? []) as Array<{ _id: unknown }>)
     .map((row) => row._id)
     .filter(Boolean);
+  // Only candidates who have been moved *back* count here. Anyone at selected,
+  // offer or hired has finished with interviewing, so counting their still-open
+  // interview made the same person read as both Interviewing and Offer.
   const interviewingElsewhere = openInterviewAppIds.length
     ? await Application.countDocuments({
         _id: { $in: openInterviewAppIds },
-        status: { $nin: ["interview_scheduled", "rejected", "withdrawn"] },
+        status: { $in: STAGES_BEFORE_INTERVIEW },
       })
     : 0;
   const interviewingCandidates = statusCounts.interview_scheduled + interviewingElsewhere;

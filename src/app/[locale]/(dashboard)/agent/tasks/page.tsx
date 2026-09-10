@@ -13,11 +13,11 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { readQuery } from "@/lib/ui/urlQuery";
 import {
-  CheckSquare, Plus, Clock, AlertCircle, CheckCircle2,
+  Plus, Clock, AlertCircle, CheckCircle2,
   Trash2, Edit, Calendar, RotateCcw, Search, Inbox, Star,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
@@ -188,40 +188,39 @@ export default function AgentTasksPage() {
   return (
     <div className="page-container">
       {/* Hero */}
-      <DashboardPageHeader
-        icon={CheckSquare}
+      <WorkspaceHeader
         title={t("pageTitle")}
-        description={t("pageDescription")}
+        context={t("pageDescription")}
         actions={
-          <Button onClick={() => setShowForm(!showForm)} className="min-h-11">
-            <Plus className="mr-1 h-4 w-4" /> {t("newTaskButton")}
+          <Button onClick={() => setShowForm(!showForm)} aria-label={t("newTaskButton")} className="min-h-11 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("newTaskButton")}</span>
           </Button>
         }
         // The strip used to be four dead numbers. Each cell is now the filter
         // it describes, so "Overdue 6" is the way into those six tasks.
         metrics={[
           {
-            label: t("statPending"), value: stats.pending, icon: Clock,
+            label: t("statPending"), value: stats.pending, icon: Clock, tone: "warning",
             onClick: () => setStatusFilter(statusFilter === "pending" ? "all" : "pending"),
             active: statusFilter === "pending",
           },
           {
-            label: t("statInProgress"), value: stats.inProgress, icon: Star,
+            label: t("statInProgress"), value: stats.inProgress, icon: Star, tone: "primary",
             onClick: () => setStatusFilter(statusFilter === "in_progress" ? "all" : "in_progress"),
             active: statusFilter === "in_progress",
           },
           {
-            label: t("statCompleted"), value: stats.completed, icon: CheckCircle2,
+            label: t("statCompleted"), value: stats.completed, icon: CheckCircle2, tone: "success",
             onClick: () => setStatusFilter(statusFilter === "completed" ? "all" : "completed"),
             active: statusFilter === "completed",
           },
           {
-            label: t("statOverdue"), value: stats.overdue, icon: AlertCircle,
+            label: t("statOverdue"), value: stats.overdue, icon: AlertCircle, tone: "info",
             onClick: () => setDueFilter(dueFilter === "overdue" ? "all" : "overdue"),
             active: dueFilter === "overdue",
           },
         ]}
-        compactMetrics
       />
 
       {/* New Task Form */}

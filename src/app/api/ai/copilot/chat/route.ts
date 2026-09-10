@@ -8,7 +8,8 @@ import { SMALL_MODEL, LARGE_MODEL, classifyComplexity } from "@/lib/ai/copilot/m
 import { getCopilotSystemPrompt } from "@/lib/ai/copilot/prompts";
 import { getToolsForUser, getToolByName } from "@/lib/ai/copilot/registry";
 import { toJsonSchema, validateArgs } from "@/lib/ai/copilot/paramSchema";
-import type { CopilotStreamFrame, CopilotToolContext } from "@/lib/ai/copilot/types";
+import type { CopilotStreamFrame, CopilotToolContext, CopilotToolPreview } from "@/lib/ai/copilot/types";
+import { parseEmployerJobIdFromPath, buildEmployerJobContext } from "@/lib/ai/copilot/pageContext";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { copilotChatSchema } from "@/lib/validators/ai";
@@ -180,6 +181,22 @@ export async function POST(req: NextRequest) {
     let systemPrompt = getCopilotSystemPrompt(role);
     if (currentPage) systemPrompt += `\n\n## Current Page\nThe user is currently viewing: ${currentPage}`;
 
+    let pageJobId: string | undefined;
+    if (role === "employer" && currentPage) {
+      const parsedJobId = parseEmployerJobIdFromPath(currentPage);
+      if (parsedJobId) {
+        try {
+          const jobContext = await buildEmployerJobContext(userId, parsedJobId);
+          if (jobContext) {
+            pageJobId = jobContext.jobId;
+            systemPrompt += `\n\n## Current Job\nThe user is looking at their own job "${jobContext.title}" (jobId: ${jobContext.jobId}) — ${jobContext.applicants} applicants, ${jobContext.atApplied} still at the Applied stage. When they say "this job", "these candidates" or give no job, use this jobId without asking.`;
+          }
+        } catch (err) {
+          logger.warn({ err, userId, parsedJobId }, "[AI Copilot] failed to build job context");
+        }
+      }
+    }
+
     const orMessages: ORMessage[] = [
       { role: "system", content: systemPrompt },
       ...messages.map((m: { role: string; content: string }) => ({
@@ -188,7 +205,7 @@ export async function POST(req: NextRequest) {
       })),
     ];
 
-    const toolCtx: CopilotToolContext = { userId, role, locale, permissionMode, customPermissions, req };
+    const toolCtx: CopilotToolContext = { userId, role, locale, permissionMode, customPermissions, req, currentPage, pageJobId };
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -256,12 +273,36 @@ export async function POST(req: NextRequest) {
                   // rest of this turn. Getting a mutation's args or follow-up wrong
                   // costs more than the model-tier savings are worth.
                   currentModel = LARGE_MODEL;
+                  let preview: CopilotToolPreview | undefined;
+                  if (tool.preview) {
+                    try {
+                      preview = await tool.preview(validated.value, toolCtx);
+                    } catch (err) {
+                      logger.warn({ err, tool: tool.name }, "[AI Copilot] preview failed");
+                    }
+                  }
+                  if (preview?.blocker) {
+                    // The dry run found nothing to do (ambiguous job, nothing to
+                    // move): no card — hand the reason back so the model asks.
+                    send({ type: "tool_result", tool: tool.name, ok: false, message: preview.blocker });
+                    orMessages.push({
+                      role: "tool",
+                      tool_call_id: call.id,
+                      name: call.function.name,
+                      content: JSON.stringify({ ok: false, message: preview.blocker }),
+                    });
+                    continue;
+                  }
+                  // Pin whatever the dry run resolved (e.g. the job taken from the
+                  // current page) so confirming replays exactly what the card shows.
+                  const proposalArgs = preview?.resolvedArgs ? { ...validated.value, ...preview.resolvedArgs } : validated.value;
+                  const summary = tool.summarize(proposalArgs);
                   const proposal = await CopilotProposal.create({
                     userId,
                     role,
                     toolName: tool.name,
-                    args: validated.value,
-                    summary: tool.summarize(validated.value),
+                    args: proposalArgs,
+                    summary,
                     status: "pending",
                     expiresAt: new Date(Date.now() + PROPOSAL_TTL_MS),
                   });
@@ -269,9 +310,10 @@ export async function POST(req: NextRequest) {
                     type: "proposal",
                     proposalId: String(proposal._id),
                     tool: tool.name,
-                    label: tool.summarize(validated.value),
-                    summary: tool.summarize(validated.value),
-                    args: validated.value,
+                    label: summary,
+                    summary,
+                    args: proposalArgs,
+                    preview: preview ? { summary: preview.summary, rows: preview.rows } : undefined,
                   });
                   orMessages.push({
                     role: "tool",
@@ -279,6 +321,7 @@ export async function POST(req: NextRequest) {
                     name: call.function.name,
                     content: JSON.stringify({
                       status: "awaiting_user_confirmation",
+                      ...(preview ? { preview: preview.summary, candidates: preview.rows?.slice(0, 10) } : {}),
                       note: "This action requires the user to confirm in the UI before it runs. Do not tell the user it is done — tell them a confirmation card is shown.",
                     }),
                   });

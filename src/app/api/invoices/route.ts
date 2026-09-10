@@ -151,13 +151,27 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     Invoice.find(filter)
       .populate("jobId", "title")
       .populate("employerId", "companyName")
-      .populate("agentId", "userId")
+      // Invoice.agentId refs the Agent PROFILE, which holds no name or email —
+      // identity lives on the linked User. Populating one level deep handed the
+      // client { _id, userId } and the super-agent invoice table's AGENT column
+      // read `.name` off it, so every row rendered its "—" fallback.
+      .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name email" } })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
     Invoice.countDocuments(filter),
   ]);
+
+  // Flatten the nested agent populate back to { _id, name, email }, the shape
+  // every consumer already reads (InvoiceTable's AGENT column, the CSV/PDF
+  // export column). Keeps the fix to one file.
+  for (const inv of invoices as Array<Record<string, unknown>>) {
+    const agent = inv.agentId as { _id?: unknown; userId?: { name?: string; email?: string } } | null | undefined;
+    if (agent && typeof agent === "object" && agent.userId) {
+      inv.agentId = { _id: agent._id, name: agent.userId.name, email: agent.userId.email };
+    }
+  }
 
   // Internal economics/notes never go to the customer (mirror [id] GET redaction)
   if (ctx.role === "employer") {
@@ -180,28 +194,56 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // even though the invoice list is populated). Cast the filter through the schema
   // so string ids become ObjectIds before using it as the aggregation $match stage.
   const aggregationMatch = Invoice.find(filter).cast(Invoice) as Record<string, unknown>;
-  const summaryAgg = await Invoice.aggregate([
-    { $match: aggregationMatch },
-    {
-      $group: {
-        _id: "$status",
-        total: { $sum: "$totalAmount" },
-        count: { $sum: 1 },
-        taxTotal: { $sum: "$taxAmount" },
-        paidTotal: { $sum: "$paidAmount" },
-        balanceTotal: { $sum: "$balanceDue" },
+  const [summaryAgg, currencyAgg] = await Promise.all([
+    Invoice.aggregate([
+      { $match: aggregationMatch },
+      {
+        $group: {
+          _id: "$status",
+          total: { $sum: "$totalAmount" },
+          count: { $sum: 1 },
+          taxTotal: { $sum: "$taxAmount" },
+          paidTotal: { $sum: "$paidAmount" },
+          balanceTotal: { $sum: "$balanceDue" },
+        },
       },
-    },
+    ]),
+    // The status totals above add amounts across currencies as if they were
+    // one number, and the pages then labelled that sum with the viewer's
+    // *display* currency — an agent whose profile says INR saw "INR 25,322"
+    // over a table of AED invoices. Nothing converts, so the honest total is
+    // one per currency the invoices are actually in.
+    Invoice.aggregate([
+      { $match: aggregationMatch },
+      {
+        $group: {
+          _id: { $ifNull: ["$currency", "AED"] },
+          total: { $sum: "$totalAmount" },
+          count: { $sum: 1 },
+          paidTotal: { $sum: "$paidAmount" },
+          balanceTotal: { $sum: "$balanceDue" },
+        },
+      },
+      { $sort: { total: -1 } },
+    ]),
   ]);
 
   const summary = {
     draft: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0, void: 0,
     totalAmount: 0, totalCount: 0, totalTax: 0, totalPaid: 0, totalBalance: 0,
+    /** Per-currency totals, largest first; the only figures safe to label with a currency code. */
+    byCurrency: currencyAgg.map((row) => ({
+      currency: String(row._id),
+      totalAmount: row.total as number,
+      totalPaid: (row.paidTotal as number) || 0,
+      totalBalance: (row.balanceTotal as number) || 0,
+      count: row.count as number,
+    })),
   };
   for (const row of summaryAgg) {
     const s = row._id as string;
-    if (s in summary) {
-      (summary as Record<string, number>)[s] = row.total;
+    if (s in summary && s !== "byCurrency") {
+      (summary as unknown as Record<string, number>)[s] = row.total;
     }
     summary.totalAmount += row.total;
     summary.totalCount += row.count;

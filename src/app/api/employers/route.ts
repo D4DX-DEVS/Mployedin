@@ -469,7 +469,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
   await sendEmail({
     to: email,
-    ...EmailTemplates.employerWelcome(name, email, setupUrl, creatorName, loginUrl),
+    // Here the agent chose the password on the form, so the employer is sent
+    // the same one rather than a generated one.
+    ...EmailTemplates.employerWelcome(name, email, payload.password, setupUrl, creatorName, loginUrl),
     userId: user._id.toString(),
     source: "employer-onboard",
     category: "onboarding",

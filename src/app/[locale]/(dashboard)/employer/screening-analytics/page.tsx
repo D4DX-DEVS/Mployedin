@@ -17,6 +17,7 @@ interface QuestionAnalytic {
   distribution?: Record<string, number>;
   sampleAnswers?: string[];
   numericStats?: { avg: number; min: number; max: number };
+  dateStats?: { earliest: string; latest: string };
 }
 
 interface AnalyticsData {
@@ -98,15 +99,21 @@ export default function ScreeningAnalyticsPage() {
     <div className="page-container">
       <WorkspaceHeader title={t("title")} context={t("description")} />
 
-      {/* Toolbar: the job picker only. Jobs without screening questions have
-          nothing to show, so they never appear in the list. */}
+      {/* Toolbar: the job picker only. Every job is listed, so the list itself
+          has to say which ones have no questions — otherwise the only way to
+          find out is to select each job in turn and read the same empty state.
+          The trigger keeps the bare title; the marker belongs in the list. */}
       <div className="workspace-toolbar">
         <SearchableSelect
           className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
           value={selectedJobId}
           onValueChange={setSelectedJobId}
           placeholder={t("selectJob")}
-          options={jobs.map((j) => ({ value: j._id, label: j.title }))}
+          options={jobs.map((j) => ({
+            value: j._id,
+            label: j.hasQuestions ? j.title : t("optionNoQuestions", { title: j.title }),
+            triggerLabel: j.title,
+          }))}
           ariaLabel={t("selectJob")}
         />
       </div>
@@ -194,6 +201,29 @@ export default function ScreeningAnalyticsPage() {
                       ].map((stat) => (
                         <div key={stat.label} className="rounded-lg bg-muted px-4 py-2 text-center">
                           <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                          <p className="text-xs text-muted-foreground">{stat.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Date range — same tiles as the numeric stats. A date
+                      question ("earliest start date") used to render its
+                      response count and nothing else. */}
+                  {q.dateStats && (
+                    <div className="flex gap-3">
+                      {[
+                        { label: t("earliest"), value: q.dateStats.earliest },
+                        { label: t("latest"), value: q.dateStats.latest },
+                      ].map((stat) => (
+                        <div key={stat.label} className="rounded-lg bg-muted px-4 py-2 text-center">
+                          <p className="text-lg font-bold text-foreground">
+                            {new Date(stat.value).toLocaleDateString(locale, {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
                           <p className="text-xs text-muted-foreground">{stat.label}</p>
                         </div>
                       ))}

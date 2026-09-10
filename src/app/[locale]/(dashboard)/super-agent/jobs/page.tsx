@@ -508,7 +508,10 @@ export default function SuperAgentJobsPage() {
         </div>
 
         {/* ── AI Suggestions (hidden on mobile) ── */}
-        <div className="mb-4 hidden flex-wrap gap-1.5 sm:flex">
+        {/* One row that scrolls sideways, not a wrapping block. Eight chips of
+            uneven width wrapped into a ragged two-row slab that read as page
+            content rather than as optional shortcuts to the field above. */}
+        <div className="scrollbar-none -mx-1 mb-4 hidden gap-1.5 overflow-x-auto px-1 pb-1 sm:flex">
           {AI_SUGGESTIONS_KEYS.map((key, i) => {
             const q = t(key);
             return (
@@ -518,7 +521,7 @@ export default function SuperAgentJobsPage() {
                   setAiQuery(q);
                   handleAiSearch(q);
                 }}
-                className="rounded-full border border-border/70 bg-background/85 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
+                className="shrink-0 whitespace-nowrap rounded-full border border-border/70 bg-background/85 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
               >
                 {q}
               </button>

@@ -9,6 +9,9 @@ import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+/** Statuses that have cleared approval. `completed` is included: it passed approval first. */
+const APPROVED_STATUSES = ["approved", "budget_approved", "resources_assigned", "active", "completed"];
+
 async function handler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role !== "admin" && ctx.role !== "super_agent") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -38,7 +41,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const yearStart = new Date(year, 0, 1);
   const yearEnd = new Date(year + 1, 0, 1);
   const dateFilter = { createdAt: { $gte: yearStart, $lt: yearEnd } };
-  const baseFilter = { ...scopeFilter, ...dateFilter };
+  // Soft-deleted requests are hidden by the list route next door
+  // (api/exhibitions/route.ts), so counting them here made the analytics
+  // "Requests" total larger than the list the super-agent can actually see.
+  const baseFilter = { ...scopeFilter, ...dateFilter, isDeleted: { $ne: true } };
 
   const [
     statusCounts, budgetAgg, monthlyTrend, participationBreakdown,
@@ -49,7 +55,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
     ExhibitionRequest.aggregate([
-      { $match: { ...baseFilter, status: { $in: ["approved", "budget_approved", "resources_assigned", "active", "completed"] } } },
+      { $match: { ...baseFilter, status: { $in: APPROVED_STATUSES } } },
       {
         $group: {
           _id: null,
@@ -66,10 +72,16 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       { $group: { _id: { month: { $month: "$createdAt" }, status: "$status" }, count: { $sum: 1 } } },
       { $sort: { "_id.month": 1 } },
     ]),
+    // Participation styles are a multi-select, so this counts style selections,
+    // not requests — one request with two styles contributes to both slices and
+    // the slices never sum to the request count. `preserveNullAndEmptyArrays`
+    // keeps requests that picked nothing: without it they vanished silently and
+    // the chart read as if only a handful of requests existed. They land in the
+    // `unspecified` bucket instead, which is the honest answer.
     ExhibitionRequest.aggregate([
       { $match: baseFilter },
-      { $unwind: "$participationTypes" },
-      { $group: { _id: "$participationTypes", count: { $sum: 1 } } },
+      { $unwind: { path: "$participationTypes", preserveNullAndEmptyArrays: true } },
+      { $group: { _id: { $ifNull: ["$participationTypes", "unspecified"] }, count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
     ExhibitionRequest.aggregate([
@@ -79,10 +91,13 @@ async function handler(req: NextRequest, ctx: AuthContext) {
           _id: "$agentId",
           total: { $sum: 1 },
           approved: {
-            $sum: { $cond: [{ $in: ["$status", ["approved", "budget_approved", "resources_assigned", "active", "completed"]] }, 1, 0] },
+            $sum: { $cond: [{ $in: ["$status", APPROVED_STATUSES] }, 1, 0] },
+          },
+          rejected: {
+            $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] },
           },
           totalBudget: {
-            $sum: { $cond: [{ $in: ["$status", ["approved", "budget_approved", "resources_assigned", "active", "completed"]] }, "$estimatedBudget", 0] },
+            $sum: { $cond: [{ $in: ["$status", APPROVED_STATUSES] }, "$estimatedBudget", 0] },
           },
         },
       },
@@ -121,11 +136,25 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const statusMap: Record<string, number> = {};
   for (const s of statusCounts) statusMap[s._id] = s.count;
 
-  const approvedCount = (statusMap.approved ?? 0) + (statusMap.budget_approved ?? 0) +
-    (statusMap.resources_assigned ?? 0) + (statusMap.active ?? 0) + (statusMap.completed ?? 0);
+  const approvedCount = APPROVED_STATUSES.reduce((sum, status) => sum + (statusMap[status] ?? 0), 0);
   const rejectedCount = statusMap.rejected ?? 0;
   const decided = approvedCount + rejectedCount;
   const approvalRate = decided > 0 ? Math.round((approvedCount / decided) * 100) : 0;
+
+  // Pipeline buckets must partition the request total, or the progress bars
+  // below them divide by a total they never add up to. `approved` above counts
+  // everything that cleared approval INCLUDING completed, so the pipeline row
+  // has to subtract completed or the same requests are drawn twice. `other`
+  // absorbs draft / revision_requested / archived — and anything added to
+  // EXHIBITION_STATUSES later — so the partition always closes.
+  const completedCount = statusMap.completed ?? 0;
+  const submittedCount = statusMap.submitted ?? 0;
+  const underReviewCount = statusMap.under_review ?? 0;
+  const approvedInProgress = approvedCount - completedCount;
+  const otherCount = Math.max(
+    0,
+    totalCount - submittedCount - underReviewCount - approvedInProgress - completedCount - rejectedCount,
+  );
 
   const budget = budgetAgg[0] ?? { totalEstimated: 0, totalApproved: 0, totalActualSpend: 0, avgBudget: 0, count: 0 };
   const perf = performanceAgg[0] ?? { totalLeads: 0, totalEmployers: 0, totalCandidates: 0, totalHires: 0, totalRevenue: 0, totalCost: 0, count: 0 };
@@ -157,25 +186,40 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const agentUsers = await User.find({ _id: { $in: agentUserIds } }).select("_id name email").lean();
   const nameMap = new Map(agentUsers.map((u) => [String(u._id), u.name]));
 
-  const topAgents = topAgentsAgg.map((a: { _id: string; total: number; approved: number; totalBudget: number }) => ({
-    agentId: String(a._id),
-    name: nameMap.get(String(a._id)) ?? "Unknown",
-    total: a.total,
-    approved: a.approved,
-    approvalRate: a.total > 0 ? Math.round((a.approved / a.total) * 100) : 0,
-    totalBudget: a.totalBudget ?? 0,
-  }));
+  // Same denominator as the headline card: approved ÷ decided. This row used to
+  // divide by every request the agent had ever raised, so the table said 6%
+  // under the same word the card printed 67% — two formulas, one label.
+  const topAgents = topAgentsAgg.map((a: { _id: string; total: number; approved: number; rejected: number; totalBudget: number }) => {
+    const agentDecided = a.approved + (a.rejected ?? 0);
+    return {
+      agentId: String(a._id),
+      name: nameMap.get(String(a._id)) ?? "Unknown",
+      total: a.total,
+      approved: a.approved,
+      rejected: a.rejected ?? 0,
+      decided: agentDecided,
+      approvalRate: agentDecided > 0 ? Math.round((a.approved / agentDecided) * 100) : 0,
+      totalBudget: a.totalBudget ?? 0,
+    };
+  });
 
   return NextResponse.json({
     year,
     kpis: {
       totalRequests: totalCount,
-      submitted: statusMap.submitted ?? 0,
-      underReview: statusMap.under_review ?? 0,
+      submitted: submittedCount,
+      underReview: underReviewCount,
+      /** Everything that cleared approval, completed included — the approval-rate numerator. */
       approved: approvedCount,
+      /** Approved but not yet completed — the pipeline row, so completed is not drawn twice. */
+      approvedInProgress,
       rejected: rejectedCount,
-      completed: statusMap.completed ?? 0,
+      completed: completedCount,
+      /** Draft / revision requested / archived — whatever the named buckets leave over. */
+      other: otherCount,
       approvalRate,
+      /** Denominator behind approvalRate, so the UI can say what the % is out of. */
+      decided,
       totalEstimatedBudget: Math.round(budget.totalEstimated ?? 0),
       totalApprovedBudget: Math.round(budget.totalApproved ?? 0),
       totalActualSpend: Math.round(budget.totalActualSpend ?? 0),

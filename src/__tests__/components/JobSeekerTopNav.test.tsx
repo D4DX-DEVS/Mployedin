@@ -104,7 +104,7 @@ describe("JobSeekerTopNav", () => {
     expect(screen.getByText("طلباتي")).toBeInTheDocument();
     expect(screen.getByText("الرسائل")).toBeInTheDocument();
     expect(screen.getByText("الشركات")).toBeInTheDocument();
-    expect(screen.getByText("تنبيهات الوظائف")).toBeInTheDocument();
+    expect(screen.getByText("عمليات البحث المحفوظة")).toBeInTheDocument();
     // Profile is on the avatar menu, not in the tabs.
     expect(screen.queryByText("الملف الشخصي")).not.toBeInTheDocument();
   });
@@ -135,7 +135,7 @@ describe("JobSeekerTopNav", () => {
     expect(nav).not.toHaveTextContent("Profile");
     expect(nav).not.toHaveTextContent("Settings");
     expect(nav).toHaveTextContent("Companies");
-    expect(nav).toHaveTextContent("Job Alerts");
+    expect(nav).toHaveTextContent("Saved Searches");
   });
 });
 
@@ -161,7 +161,7 @@ describe("JobSeekerBottomNav", () => {
     const sheet = screen.getByRole("dialog");
     expect(sheet).toHaveTextContent("Messages");
     expect(sheet).toHaveTextContent("Companies");
-    expect(sheet).toHaveTextContent("Job Alerts");
+    expect(sheet).toHaveTextContent("Saved Searches");
     // Offers moved to the Applications hub; Profile, Settings and Subscription
     // to the header avatar menu. None of them belong in this sheet.
     expect(sheet).not.toHaveTextContent("Offers");

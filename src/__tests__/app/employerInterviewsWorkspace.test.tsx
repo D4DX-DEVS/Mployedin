@@ -41,6 +41,10 @@ jest.mock("@/hooks/useApplications", () => ({
   useCreateScorecard: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
+jest.mock("@/components/shared/FeatureGate", () => ({
+  FeatureGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 jest.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({ can: () => true }),
 }));
@@ -88,11 +92,11 @@ jest.mock("@/components/ui/button", () => ({
 }));
 
 jest.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => (open ? <>{children}</> : null),
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dialog-content">{children}</div>,
   DialogHeader: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
 }));
 
 jest.mock("@/components/ui/table", () => ({
@@ -315,6 +319,34 @@ describe("InterviewsWorkspace", () => {
       fireEvent.click(screen.getByRole("menuitem", { name: "Cancel" }));
       await waitFor(() => expect(confirmMock).toHaveBeenCalled());
       expect(updateInterviewMutateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("action modal", () => {
+    /** The action forms used to be a hand-rolled `fixed z-50` overlay rendered
+        inside `<main class="isolate">`, so the sidebar (z-40) and top bar
+        painted over the backdrop. Rendering through the shared Dialog portals
+        the overlay to <body> above every shell layer. */
+    it("opens the Complete form inside the shared Dialog", () => {
+      render(<InterviewsWorkspace jobId="job-1" embedded />);
+      fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+      const dialog = screen.getByTestId("dialog-content");
+      expect(dialog).toContainElement(screen.getByRole("button", { name: "Save Outcome" }));
+      expect(dialog).toContainElement(screen.getByText("Complete Interview & Set Outcome"));
+    });
+
+    it("shows the scorecard step in the same Dialog with a single title", async () => {
+      updateInterviewMutateAsyncMock.mockResolvedValue({});
+      render(<InterviewsWorkspace jobId="job-1" embedded />);
+      fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+      fireEvent.click(screen.getByRole("button", { name: /passed/i }));
+      fireEvent.click(screen.getByRole("button", { name: "Save Outcome" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Save Scorecard" })).toBeInTheDocument());
+      const dialog = screen.getByTestId("dialog-content");
+      expect(dialog).toContainElement(screen.getByRole("button", { name: "Save Scorecard" }));
+      // One heading for the step, none repeated by the embedded form.
+      expect(screen.getAllByText("Interview Scorecard")).toHaveLength(1);
+      expect(screen.queryByText("Evaluate the candidate across key dimensions")).not.toBeInTheDocument();
     });
   });
 

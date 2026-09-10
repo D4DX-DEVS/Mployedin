@@ -428,7 +428,7 @@ export const EmailTemplates = {
     `,
   }),
 
-  employerWelcome: (contactName: string, email: string, setupUrl: string, agentName: string, _loginUrl: string) => ({
+  employerWelcome: (contactName: string, email: string, tempPassword: string, setupUrl: string, agentName: string, loginUrl: string) => ({
     subject: "Welcome to MPLOYEDIN – Your Account is Ready",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -440,11 +440,12 @@ export const EmailTemplates = {
           <p>Your employer account has been created by <strong>${esc(agentName)}</strong>. You can now start posting jobs and managing candidates on MPLOYEDIN.</p>
           <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
             <p style="margin: 4px 0;"><strong>Email:</strong> ${esc(email)}</p>
+            <p style="margin: 4px 0;"><strong>Temporary password:</strong> <code style="font-family: monospace; font-size: 15px; letter-spacing: 0.5px;">${esc(tempPassword)}</code></p>
           </div>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${setupUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Set Your Password &amp; Log In</a>
+            <a href="${loginUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Log In</a>
           </div>
-          <p style="color: #6b7280; font-size: 14px;">This link expires in 24 hours.</p>
+          <p style="color: #6b7280; font-size: 14px;">Please change this password after your first sign-in, from Settings or by using <a href="${setupUrl}" style="color: #0D6FD8;">this link</a> (valid for 24 hours).</p>
           <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
         </div>
       </div>

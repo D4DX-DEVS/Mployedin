@@ -40,6 +40,7 @@ const REACHED_ELSEWHERE: Record<string, string> = {
   "/employer/calendar": "View toggle on the interviews page",
   "/employer/scorecards": "Interviews header link; one is filled while completing an interview",
   "/employer/messages": "Topbar messages indicator, shown at every width",
+  "/employer/assessments": "Parked feature: the employer can build a test but no candidate can sit one (no seeker UI, and the create form never sets jobIds), so totalAttempts is structurally 0. Left off the sidebar until the candidate half exists; direct URL still opens it",
   "/employer/team": "Parked feature (invite API answers 501); reachable from team activity",
   "/employer/team/accept": "Invite email link",
 };
@@ -100,13 +101,18 @@ describe("employer navigation", () => {
     expect(orphans).toEqual([]);
   });
 
-  it("wires the three pages the audit found orphaned", () => {
-    expect(navHrefs.has("/employer/assessments")).toBe(true);
+  it("keeps the three pages the audit found orphaned accounted for", () => {
     expect(navHrefs.has("/employer/screening-analytics")).toBe(true);
     // Scorecards left the sidebar deliberately: one is filled as the last step
     // of completing an interview, so the interviews page both writes and reads
     // them. It stays reachable — it just is not a menu of its own.
     expect("/employer/scorecards" in REACHED_ELSEWHERE).toBe(true);
+    // Assessments went back off the sidebar in September 2026, for a different
+    // reason than the original orphaning: the page works, but the half that
+    // would make it useful — a candidate taking the test — was never built, so
+    // every employer who opened it saw a test nobody could sit. It is parked,
+    // not lost; the entry below names why.
+    expect("/employer/assessments" in REACHED_ELSEWHERE).toBe(true);
   });
 
   it("groups the whole hiring pipeline under one row", () => {

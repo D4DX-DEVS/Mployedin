@@ -502,7 +502,9 @@ export default function SuperAgentAgentsPage() {
               <TableRow className="bg-background/60 hover:bg-background/60">
                 <TableHead><SortHeader field="name">{t("agent")}</SortHeader></TableHead>
                 <TableHead>{t("progress")}</TableHead>
-                <TableHead className="text-right"><SortHeader field="conversionRate">{t("convRateShort")}</SortHeader></TableHead>
+                <TableHead className="text-right" title={t("convRateExplainer")}>
+                  <SortHeader field="conversionRate">{t("convRateShort")}</SortHeader>
+                </TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -577,8 +579,14 @@ export default function SuperAgentAgentsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right text-foreground/85">
-                    <span className="block font-semibold">
+                    {/* Converted leads over total leads — NOT placements.
+                        Without the sub-label a row reading "22%" next to
+                        "Placements: 0" looks like a miscalculation. */}
+                    <span className="block font-semibold" title={t("convRateExplainer")}>
                       {a.leadsCount > 0 ? `${Math.round((a.conversions / a.leadsCount) * 100)}%` : "—"}
+                    </span>
+                    <span className="block text-[11px] font-normal text-muted-foreground">
+                      {t("convRateBasis", { conversions: a.conversions ?? 0, leads: a.leadsCount ?? 0 })}
                     </span>
                     <div className="ms-auto mt-1.5 h-2 w-32 max-w-full overflow-hidden rounded-full bg-muted/75">
                       <div
@@ -679,6 +687,8 @@ export default function SuperAgentAgentsPage() {
               selectedCityIds={createCityIds}
               selectedStateIds={createStateIds}
               onChange={(cities, states) => { setCreateCityIds(cities); setCreateStateIds(states); }}
+              locationsEndpoint="/api/super-agent/territory/locations"
+              emptyMessage={tc("noTerritoryAssigned")}
               label={t("formLabelAssignedRegion")}
             />
 

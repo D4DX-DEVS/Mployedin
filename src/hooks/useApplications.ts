@@ -2,6 +2,8 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tansta
 import { interviewKeys } from "@/hooks/useInterviews";
 import { jobHiringSummaryKeys } from "@/hooks/useJobHiringSummary";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { useTranslations, useLocale } from "next-intl";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 
 // ── Types ──────────────────────────────────────────────────────────
 export interface ApplicationsFilters {
@@ -288,6 +290,8 @@ export function useCreateInterviewFromApp() {
 /** Create an offer from the applications page */
 export function useCreateOfferFromApp() {
   const qc = useQueryClient();
+  const t = useTranslations("formErrors");
+  const locale = useLocale();
   return useMutation({
     mutationFn: async (body: {
       applicationId: string;
@@ -302,7 +306,12 @@ export function useCreateOfferFromApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Failed to create offer");
+      // The API names the field it rejected ("Start date must be in the
+      // future"). A bare Error threw that away and the offer form showed
+      // nothing at all when a submit failed.
+      if (!res.ok) {
+        throw await formErrorFromResponse(res, { t, locale });
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -396,12 +405,36 @@ export function useBulkAiMatch() {
   });
 }
 
-/** Compare multiple applications side-by-side */
-export function useCompareApplications(ids: string[]) {return useQuery({
+/** One column of GET /api/applications/compare. */
+export interface CompareCandidate {
+  applicationId: string;
+  status: string;
+  appliedAt: string;
+  aiMatchScore: number | null;
+  matchBreakdown: { skills?: number; experience?: number; location?: number; salary?: number } | null;
+  candidate: {
+    name: string;
+    profilePicture: string | null;
+    skills: string[];
+    yearsOfExperience: number;
+    preferredSalary: { min: number; max: number; currency: string } | null;
+    profileCompleteness: number;
+  };
+  job: { title: string; salaryRange: { min: number; max: number; currency: string } | null };
+}
+
+export interface CompareResponse {
+  candidates: CompareCandidate[];
+  /** Lower-cased skills present on every candidate. */
+  commonSkills: string[];
+}
+
+/** Compare 2–3 applications side-by-side (the API caps at 3). */
+export function useCompareApplications(ids: string[]) {return useQuery<CompareResponse>({
     queryKey: applicationKeys.compare(ids),
-    queryFn: async () => {
+    queryFn: async (): Promise<CompareResponse> => {
       const res = await fetch(`/api/applications/compare?ids=${ids.join(",")}`);
-      if (!res.ok) throw new Error("Failed to load comparison data");
+      if (!res.ok) throw new Error("Comparison request failed");
       return res.json();
     },
     enabled: ids.length >= 2,

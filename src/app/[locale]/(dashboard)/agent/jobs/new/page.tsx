@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CurrencySelect } from "@/components/ui/currency-select";
 import { CountrySelect } from "@/components/ui/country-select";
 import { JOB_CATEGORIES } from "@/components/features/employer/job-form/jobFormSchema";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 const EMPLOYMENT_TYPES = [
   "full_time",
@@ -121,13 +121,11 @@ export default function AgentJobPosterPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={Briefcase}
+      <WorkspaceHeader
         title={t("title")}
-        description={t("description")}
-        compactOnMobile
+        context={t("description")}
         actions={
-          <Button variant="outline" onClick={() => router.back()} className="h-11 rounded-xl border-border/75 bg-card/90 hover:border-border hover:text-status-applied">
+          <Button variant="outline" onClick={() => router.back()} className="min-h-11 gap-2 rounded-xl border-border/75 bg-card/90 hover:border-border hover:text-status-applied">
             <ArrowLeft className="h-4 w-4" />
             {common("back")}
           </Button>

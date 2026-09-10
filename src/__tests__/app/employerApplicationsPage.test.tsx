@@ -71,6 +71,10 @@ jest.mock("@/hooks/usePermissions", () => ({
 jest.mock("@/hooks/useWorkflow", () => ({
   useWorkflow: () => ({ data: null }),
 }));
+// The page is now an async server component guarded by a company-function check.
+jest.mock("@/lib/auth/requireCompanyFunction", () => ({ requireCompanyFunction: jest.fn(async () => undefined) }));
+jest.mock("@/hooks/useJobWorkflow", () => ({ useJobWorkflow: () => ({ data: null }) }));
+jest.mock("@/hooks/useSeekerAvailability", () => ({ useSeekerAvailability: () => ({ data: null }) }));
 
 jest.mock("@/hooks/useApplications", () => ({
   useApplications: (...args: unknown[]) => useApplicationsMock(...args),
@@ -199,7 +203,7 @@ describe("EmployerApplicationsPage", () => {
   it("keeps rich candidate details out of the default list until Detailed View is opened", async () => {
     const user = userEvent.setup();
 
-    render(<EmployerApplicationsPage />);
+    render(await EmployerApplicationsPage());
 
     expect(screen.getByRole("heading", { name: /applications/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /select visible/i })).toBeInTheDocument();
@@ -223,7 +227,7 @@ describe("EmployerApplicationsPage", () => {
   it("closes the detailed view sheet from its close button", async () => {
     const user = userEvent.setup();
 
-    render(<EmployerApplicationsPage />);
+    render(await EmployerApplicationsPage());
 
     await user.click(screen.getByTestId("applicant-row-app-1"));
     expect(await screen.findByRole("dialog", { name: /candidate details for amina noor/i })).toBeInTheDocument();
@@ -236,7 +240,7 @@ describe("EmployerApplicationsPage", () => {
   it("opens the detailed view sheet when the compact row is clicked", async () => {
     const user = userEvent.setup();
 
-    render(<EmployerApplicationsPage />);
+    render(await EmployerApplicationsPage());
 
     await user.click(screen.getByTestId("applicant-row-app-1"));
 

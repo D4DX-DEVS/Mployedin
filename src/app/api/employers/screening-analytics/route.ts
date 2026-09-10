@@ -4,6 +4,11 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
+import {
+  aggregateScreeningAnswers,
+  type ScreeningApplicationInput,
+  type ScreeningQuestionInput,
+} from "@/lib/screeningAnalytics";
 
 /**
  * GET /api/employers/screening-analytics — Aggregate screening question answer stats
@@ -36,73 +41,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const job = await Job.findById(jobId).select("screeningQuestions title").lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  const questions = (job as Record<string, unknown>).screeningQuestions as { id: string; label: string; type: string; options?: string[] }[] ?? [];
+  const questions = (job as Record<string, unknown>).screeningQuestions as ScreeningQuestionInput[] ?? [];
 
-  // Get all applications with screening answers
+  // Applications that answered at least one question. The aggregation drops
+  // blank answers itself, so a row here is a candidate, not a response.
   const applications = await Application.find({
     jobId,
     screeningAnswers: { $exists: true, $ne: [] },
   })
     .select("screeningAnswers")
-    .lean();
+    .lean<ScreeningApplicationInput[]>();
 
-  // Aggregate answers per question
-  const analytics = questions.map((q) => {
-    const answers = applications
-      .map((app: Record<string, unknown>) =>
-        ((app as Record<string, unknown>).screeningAnswers as { questionId: string; answer: string }[])
-          ?.find((a) => a.questionId === q.id)
-      )
-      .filter(Boolean);
-
-    const totalResponses = answers.length;
-
-    // For options-based questions, count frequency
-    let distribution: Record<string, number> | undefined;
-    if (q.options?.length && ["select", "radio", "checkbox"].includes(q.type)) {
-      distribution = {};
-      for (const opt of q.options) {
-        distribution[opt] = 0;
-      }
-      for (const ans of answers) {
-        const val = ans!.answer;
-        if (val in distribution!) {
-          distribution![val]++;
-        } else {
-          distribution!["Other"] = (distribution!["Other"] ?? 0) + 1;
-        }
-      }
-    }
-
-    // For text questions, show sample answers
-    let sampleAnswers: string[] | undefined;
-    if (["text", "textarea"].includes(q.type)) {
-      sampleAnswers = answers.slice(0, 10).map((a) => a!.answer);
-    }
-
-    // For number questions, compute average
-    let numericStats: { avg: number; min: number; max: number } | undefined;
-    if (q.type === "number") {
-      const nums = answers.map((a) => parseFloat(a!.answer)).filter((n) => !isNaN(n));
-      if (nums.length > 0) {
-        numericStats = {
-          avg: Math.round(nums.reduce((s, n) => s + n, 0) / nums.length),
-          min: Math.min(...nums),
-          max: Math.max(...nums),
-        };
-      }
-    }
-
-    return {
-      questionId: q.id,
-      label: q.label,
-      type: q.type,
-      totalResponses,
-      distribution,
-      sampleAnswers,
-      numericStats,
-    };
-  });
+  const analytics = aggregateScreeningAnswers(questions, applications);
 
   return NextResponse.json({
     jobId,

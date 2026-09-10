@@ -74,7 +74,10 @@ function InlineSearchSelect({
   }, [open]);
 
   useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus();
+    /* preventScroll: the panel sits inside a scrolling DialogContent, and a
+       plain focus() scrolled the whole dialog to bring the input into view —
+       the modal visibly jumped every time a dropdown opened. */
+    if (open && inputRef.current) inputRef.current.focus({ preventScroll: true });
   }, [open]);
 
   /* Same clamp as InlineSearchSelect: a 200px panel anchored left-0 under a
@@ -188,6 +191,12 @@ interface CascadingLocationPickerProps {
   label?: string;
   readOnly?: boolean;
   error?: string;
+  /** Cascade source. Defaults to the public catalogue; role-scoped callers
+   *  (super-agent territory) point it at an endpoint that returns the same
+   *  shape narrowed to what they may assign. */
+  locationsEndpoint?: string;
+  /** Shown instead of an empty country dropdown when the source has nothing. */
+  emptyMessage?: string;
 }
 
 export function CascadingLocationPicker({
@@ -197,6 +206,8 @@ export function CascadingLocationPicker({
   label = "Assigned Locations",
   readOnly = false,
   error,
+  locationsEndpoint = "/api/filters/locations",
+  emptyMessage,
 }: CascadingLocationPickerProps) {
   const tc = useTranslations("common");
 
@@ -210,17 +221,22 @@ export function CascadingLocationPicker({
   const [loadingCities, setLoadingCities] = useState(false);
   const [expandedPanel, setExpandedPanel] = useState(false);
   const [citySearch, setCitySearch] = useState("");
+  const [countriesLoaded, setCountriesLoaded] = useState(false);
+  /* A scoped source may hand back a state the caller only partly owns; then
+     "select the entire state" must not be offered or the save is rejected. */
+  const [stateFullyAssigned, setStateFullyAssigned] = useState(true);
 
   const [nameCache, setNameCache] = useState<Map<string, { name: string; type: "city" | "state" }>>(
     new Map()
   );
 
   useEffect(() => {
-    fetch("/api/filters/locations?level=countries")
+    fetch(`${locationsEndpoint}?level=countries`)
       .then((r) => r.json())
       .then((data) => setCountries(data.countries ?? []))
-      .catch(console.error);
-  }, []);
+      .catch(console.error)
+      .finally(() => setCountriesLoaded(true));
+  }, [locationsEndpoint]);
 
   useEffect(() => {
     const unresolvedCities = selectedCityIds.filter((id) => !nameCache.has(id));
@@ -247,23 +263,26 @@ export function CascadingLocationPicker({
   useEffect(() => {
     if (!selectedCountry) { setStates([]); return; }
     setLoadingStates(true);
-    fetch(`/api/filters/locations?level=states&countryId=${selectedCountry}`)
+    fetch(`${locationsEndpoint}?level=states&countryId=${selectedCountry}`)
       .then((r) => r.json())
       .then((data) => setStates(data.states ?? []))
       .catch(console.error)
       .finally(() => setLoadingStates(false));
-  }, [selectedCountry]);
+  }, [selectedCountry, locationsEndpoint]);
 
   useEffect(() => {
     if (!selectedState) { setCities([]); setCitySearch(""); return; }
     setLoadingCities(true);
     setCitySearch("");
-    fetch(`/api/filters/locations?level=cities&stateId=${selectedState}`)
+    fetch(`${locationsEndpoint}?level=cities&stateId=${selectedState}`)
       .then((r) => r.json())
-      .then((data) => setCities(data.cities ?? []))
+      .then((data) => {
+        setCities(data.cities ?? []);
+        setStateFullyAssigned(data.stateFullyAssigned !== false);
+      })
       .catch(console.error)
       .finally(() => setLoadingCities(false));
-  }, [selectedState]);
+  }, [selectedState, locationsEndpoint]);
 
   const filteredCities = useMemo(() => {
     if (!citySearch) return cities;
@@ -401,7 +420,9 @@ export function CascadingLocationPicker({
       {expandedPanel && !readOnly && (
         <div className="rounded-lg border border-border/50 bg-card space-y-3 chip-pad">
 
-          {/* Country & State row */}
+          {emptyMessage && countriesLoaded && countries.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{emptyMessage}</p>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground mb-1">Country</Label>
@@ -425,6 +446,7 @@ export function CascadingLocationPicker({
               />
             </div>
           </div>
+          )}
 
           {/* Cities / Region panel */}
           {selectedState && (
@@ -443,7 +465,8 @@ export function CascadingLocationPicker({
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {/* Select entire state */}
+                  {/* Select entire state — only when the whole state is assignable */}
+                  {stateFullyAssigned && (
                   <Button
                     type="button"
                     variant={isEntireStateSelected ? "default" : "ghost"}
@@ -460,6 +483,7 @@ export function CascadingLocationPicker({
                       <><Globe className="h-3 w-3" /> All state</>
                     )}
                   </Button>
+                  )}
 
                   {!isEntireStateSelected && cities.length > 0 && (
                     <>

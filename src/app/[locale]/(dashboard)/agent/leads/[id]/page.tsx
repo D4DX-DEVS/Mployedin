@@ -11,7 +11,7 @@ import {
   Loader2, Mail, MapPin, MessageSquare, Phone, Plus,
   Sparkles, Target, TrendingUp, User, XCircle,
 } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
@@ -180,14 +180,13 @@ export default function LeadDetailPage() {
   return (
     <div className="page-container">
       {/* Header */}
-      <DashboardPageHeader
-        icon={Building2}
+      <WorkspaceHeader
         title={lead.companyName}
-        description={[lead.contactPerson, lead.country, lead.industry].filter(Boolean).join(" · ")}
+        context={[lead.contactPerson, lead.country, lead.industry].filter(Boolean).join(" · ")}
         actions={
           <>
-            <Link href="../leads" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
-              <ArrowLeft className="h-3.5 w-3.5" />{t("backToPipeline")}
+            <Link href="../leads" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground transition hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />{t("backToPipeline")}
             </Link>
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold ${config.bgColor} ${config.borderColor} ${config.color}`}>
               {config.icon}{config.label}
@@ -200,11 +199,14 @@ export default function LeadDetailPage() {
           </>
         }
         metrics={[
-          { label: t("ageLabel"), value: `${daysSinceCreated}d`, icon: Clock },
-          { label: t("lastTouchLabel"), value: `${daysSinceLastActivity}d ago`, icon: Calendar },
+          { label: t("ageLabel"), value: `${daysSinceCreated}d`, icon: Clock, tone: "info" },
+          { label: t("lastTouchLabel"), value: `${daysSinceLastActivity}d ago`, icon: Calendar, tone: "warning" },
         ]}
-      >
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      />
+
+      {/* Stage rail: an action row for the lead, so it sits below the header
+          rather than inside it (Pattern A keeps the header to title + totals). */}
+      <div className="flex flex-wrap items-center gap-1.5">
           {STAGES.filter((s) => s !== "lost").map((s, i) => {
             const sConfig = STAGE_CONFIG[s];
             const isActive = s === lead.status;
@@ -246,8 +248,7 @@ export default function LeadDetailPage() {
               <Sparkles className="h-3.5 w-3.5" />{t("reopen")}
             </button>
           )}
-        </div>
-      </DashboardPageHeader>
+      </div>
 
       {/* Main content: 2-column layout */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

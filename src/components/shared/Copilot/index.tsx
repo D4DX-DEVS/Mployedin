@@ -376,6 +376,7 @@ export function Copilot({ className }: CopilotProps) {
                 summary: frame.summary,
                 args: frame.args,
                 status: "pending",
+                preview: frame.preview,
               },
             ]);
           } else if (frame.type === "text") {

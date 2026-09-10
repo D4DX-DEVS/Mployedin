@@ -3,7 +3,15 @@ export type CopilotStreamFrame =
   | { type: "text_delta"; content: string }
   | { type: "tool_call"; tool: string; label: string }
   | { type: "tool_result"; tool: string; ok: boolean; message: string; data?: unknown }
-  | { type: "proposal"; proposalId: string; tool: string; label: string; summary: string; args: Record<string, unknown> }
+  | {
+      type: "proposal";
+      proposalId: string;
+      tool: string;
+      label: string;
+      summary: string;
+      args: Record<string, unknown>;
+      preview?: { summary: string; rows?: Array<{ name: string; score: number | null; note?: string }> };
+    }
   | { type: "error"; message: string }
   | { type: "done" };
 
@@ -24,5 +32,6 @@ export type TranscriptItem =
       args: Record<string, unknown>;
       status: ProposalStatus;
       resultMessage?: string;
+      preview?: { summary: string; rows?: Array<{ name: string; score: number | null; note?: string }> };
     }
   | { id: string; kind: "error"; message: string };

@@ -14,6 +14,7 @@ import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { notify, getSuperAgentUserId } from "@/lib/notifications/trigger";
 import bcrypt from "bcryptjs";
+import { generateShareablePassword } from "@/lib/security/tempPassword";
 import crypto from "crypto";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
@@ -102,8 +103,20 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
   }
 
-  // Generate a temporary password (hashed only — never sent in plaintext)
-  const tempPassword = crypto.randomBytes(6).toString("base64url");
+  /**
+   * A temporary password the agent can read out and hand over.
+   *
+   * Agents convert a lead while sitting with the client, so the account has to
+   * be usable in that conversation. This password is returned in the response
+   * exactly once, emailed to the employer at the same moment, and stored only
+   * as a bcrypt hash — nothing can read it back afterwards. The setup link
+   * still works, and the employer can change the password whenever they like.
+   *
+   * It satisfies `strongPasswordSchema` (12+ characters, upper, lower, digit,
+   * symbol) so the account is no weaker than one the employer picks, and it
+   * avoids look-alike characters because it gets read aloud and retyped.
+   */
+  const tempPassword = generateShareablePassword();
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
   // Generate email verification token
@@ -187,10 +200,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
   const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
 
-  await Promise.allSettled([
+  const agentUserDoc = await User.findById(ctx.userId).select("name").lean();
+  const convertedByName = (agentUserDoc as { name?: string } | null)?.name ?? "Your MPLOYEDIN agent";
+
+  const [welcomeResult] = await Promise.allSettled([
     sendEmail({
       to: contactEmail,
-      ...EmailTemplates.employerWelcome(contactPerson, contactEmail, setupUrl, "Your MPLOYEDIN Agent", loginUrl),
+      ...EmailTemplates.employerWelcome(contactPerson, contactEmail, tempPassword, setupUrl, convertedByName, loginUrl),
       userId: user._id.toString(),
       source: "lead-convert",
       category: "onboarding",
@@ -202,6 +218,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       category: "system",
     }),
   ]);
+
+  // The agent is told whether the welcome email actually left, because the
+  // credentials dialog is the fallback when it did not. A failed send must not
+  // fail the conversion — the account exists either way.
+  const welcomeEmailSent = welcomeResult.status === "fulfilled";
+  if (!welcomeEmailSent) {
+    logger.error(
+      { err: welcomeResult.reason, leadId: id, employerId: String(employer._id) },
+      "[Lead Convert] Welcome email failed to send; agent must share the credentials manually",
+    );
+  }
 
   // Notify agent (if conversion done by super_agent/admin)
   if (ctx.role !== "agent" && agentDoc?.userId) {
@@ -220,8 +247,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (agentId) {
     const saUserId = await getSuperAgentUserId(agentId);
     if (saUserId) {
-      const agentUser = await User.findById(ctx.userId).select("name").lean();
-      const agentName = (agentUser as { name?: string })?.name ?? "An agent";
+      const agentName = convertedByName;
       notify({
         userId: saUserId,
         type: "lead_converted",
@@ -250,6 +276,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       _id: employer._id,
       companyName: employer.companyName,
       email: contactEmail,
+    },
+    /**
+     * Shown to the agent once and never retrievable again: only the bcrypt
+     * hash is stored. `emailSent` tells the UI whether the employer already
+     * has these details or whether the agent has to pass them on.
+     */
+    credentials: {
+      email: contactEmail,
+      password: tempPassword,
+      emailSent: welcomeEmailSent,
     },
     lead: {
       _id: lead._id,

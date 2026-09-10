@@ -15,9 +15,10 @@ import {
 } from "@/components/features/targets/TargetComponents";
 import { useTranslations } from "next-intl";
 import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import {
   Building2, Users, DollarSign, TrendingUp, CalendarDays,
-  RotateCcw, Target, Crosshair, Zap, Trophy, Clock, Search, ArrowRight,
+  RotateCcw, Target, Zap, Trophy, Clock, Search, ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -157,16 +158,10 @@ export default function AgentTargetManagementPage() {
   return (
     <div className="page-container">
       <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <div className="workspace-tone-sky rounded-2xl p-2.5"><Crosshair className="h-5 w-5" /></div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">{t("myTargets")}</h1>
-            <p className="text-sm text-muted-foreground">{t("agentDescription")}</p>
-          </div>
-        </div>
-      </div>
+      <WorkspaceHeader
+        title={t("myTargets")}
+        context={t("agentDescription")}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">

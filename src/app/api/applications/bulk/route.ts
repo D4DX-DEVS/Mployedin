@@ -3,7 +3,6 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
-import JobSeeker from "@/models/JobSeeker";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { bulkActionSchema } from "@/lib/validators/applications";
@@ -22,6 +21,7 @@ import CommTemplate from "@/models/CommTemplate";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
+import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -91,7 +91,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       select: "userId email fullName",
       populate: { path: "userId", select: "_id name email" },
     })
-    .populate("jobId", "title");
+    .populate("jobId", "title workflow");
 
   if (!applications.length) {
     return NextResponse.json({ error: "No matching applications found" }, { status: 404 });
@@ -130,10 +130,41 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     if (emp?.companyName) companyName = emp.companyName;
   }
 
+  // Candidate notifications: an explicit `notifyCandidate` from the UI wins
+  // ("Shortlist without email" means exactly that — absent custom copy used to
+  // fall through to the default template and send anyway). Otherwise the
+  // employer's saved hiring rule decides, per application: job override first,
+  // then the employer default.
+  const ruleEmployerIds = [...new Set(applications.map((a) => String(a.employerId)).filter(Boolean))];
+  const employerRuleDocs = (await Employer.find({ _id: { $in: ruleEmployerIds } })
+    .select("workflow")
+    .lean()) as Array<WorkflowSettingsCarrier & { _id: unknown }>;
+  const employerRules = new Map(employerRuleDocs.map((e) => [String(e._id), e]));
+  const shouldNotifyCandidate = (app: { employerId?: unknown; jobId?: unknown }): boolean => {
+    if (typeof params?.notifyCandidate === "boolean") return params.notifyCandidate;
+    return resolveHiringRulesForJob(
+      app.jobId as WorkflowSettingsCarrier | null,
+      employerRules.get(String(app.employerId)),
+    ).notifyOnStageChange;
+  };
+
   // Update each and push status history
   let successCount = 0;
   const errors: string[] = [];
   const emailsSent: string[] = [];
+  // Mail is collected here and sent in one parallel batch after the writes.
+  // Awaiting each send inside the loop made the response wait on N sequential
+  // SMTP round trips — a six-candidate move held the request open for a minute
+  // with no progress on screen — while every other side effect below is already
+  // fire-and-forget.
+  const pendingEmails: Array<{
+    appId: string;
+    to: string;
+    subject: string;
+    html: string;
+    userId?: string;
+    source: string;
+  }> = [];
 
   for (const app of applications) {
     try {
@@ -151,6 +182,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       const seekerUserId = typeof jobSeeker?.userId === "object"
         ? String((jobSeeker.userId as { _id?: unknown })?._id ?? "")
         : String(jobSeeker?.userId ?? "");
+      const notifyCandidate = shouldNotifyCandidate(app);
 
       // Status change actions
       if (newStatus && app.status !== newStatus) {
@@ -166,8 +198,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         }
         await app.save();
 
-        // Send notification + email based on new status
-        if (seekerUserId) {
+        // Send notification + email based on new status (both follow the notify rule)
+        if (seekerUserId && notifyCandidate) {
           if (action === "reject") {
             notifyRejected(seekerUserId, jobTitle, String(app._id)).catch((err) =>
               logger.error({ err, applicationId: String(app._id) }, "failed to notify rejection (bulk)"));
@@ -181,7 +213,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         }
 
         // Send direct email if employer provided custom content or we have defaults
-        if (seekerEmail) {
+        if (seekerEmail && notifyCandidate) {
           try {
             let emailContent: { subject: string; html: string };
 
@@ -206,15 +238,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
               emailContent = EmailTemplates.statusUpdate(seekerName, jobTitle, newStatus.replace(/_/g, " "));
             }
 
-            await sendEmail({
+            pendingEmails.push({
+              appId: String(app._id),
               to: seekerEmail,
               subject: emailContent.subject,
               html: emailContent.html,
               userId: seekerUserId || undefined,
               source: "bulk-action",
-              category: "applications",
             });
-            emailsSent.push(String(app._id));
           } catch (emailErr) {
             logger.error({ appId: app._id, err: emailErr }, "Bulk email failed for app");
           }
@@ -231,15 +262,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
               .replace(/\{\{jobTitle\}\}/g, jobTitle)
               .replace(/\{\{companyName\}\}/g, companyName);
 
-            await sendEmail({
+            pendingEmails.push({
+              appId: String(app._id),
               to: seekerEmail,
               subject,
               html: wrapEmailHtml(sanitizeHtml(body)),
               userId: seekerUserId || undefined,
               source: "bulk-message",
-              category: "applications",
             });
-            emailsSent.push(String(app._id));
           } catch (emailErr) {
             logger.error({ appId: app._id, err: emailErr }, "Bulk message failed for app");
           }
@@ -250,6 +280,28 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     } catch (err) {
       errors.push(`Application ${app._id}: ${err instanceof Error ? err.message : "Unknown"}`);
     }
+  }
+
+  // One parallel batch, so the response waits on the slowest send rather than
+  // the sum of them. A send that fails is logged and reported in `emailsSent`
+  // being short — it never fails the stage change, which is already committed.
+  if (pendingEmails.length) {
+    const results = await Promise.allSettled(
+      pendingEmails.map((mail) =>
+        sendEmail({
+          to: mail.to,
+          subject: mail.subject,
+          html: mail.html,
+          userId: mail.userId,
+          source: mail.source,
+          category: "applications",
+        }),
+      ),
+    );
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") emailsSent.push(pendingEmails[index].appId);
+      else logger.error({ appId: pendingEmails[index].appId, err: result.reason }, "Bulk email failed for app");
+    });
   }
 
   // When an agent/super-agent/admin runs the bulk action, the owning employer(s)

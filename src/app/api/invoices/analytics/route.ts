@@ -17,11 +17,23 @@ import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
+/**
+ * Statuses that never represent earned revenue. Applied to every revenue
+ * aggregation here — the KPI tiles already excluded them while the monthly
+ * trend and category breakdown did not, so a voided invoice vanished from the
+ * headline total but still inflated the chart underneath it.
+ */
+const NON_REVENUE_STATUSES = ["void", "cancelled", "refunded", "credit_note"];
+
+/** Statuses whose outstanding balance counts as money still owed. */
+const PENDING_STATUSES = ["issued", "sent", "partially_paid", "overdue"];
+
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const url = new URL(req.url);
   const period = url.searchParams.get("period") ?? "30d";
+  const requestedCurrency = url.searchParams.get("currency");
 
   // Calculate date range
   const now = new Date();
@@ -36,6 +48,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Build scope filter based on role
   const scopeFilter: Record<string, unknown> = {};
+  // Commission is a different collection with different owner fields: it has no
+  // `userId` at all, and its `agentId`/`superAgentId` are PROFILE ids. Reusing
+  // the invoice scope against it silently matched nothing for a super-agent's
+  // own override lines, so "Commission Due" read 0 while the ledger held
+  // pending rows. Mirrors the scoping in /api/commissions.
+  let commissionScope: Record<string, unknown> | null = null;
 
   if (ctx.role === "super_agent") {
     const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id agentIds").lean();
@@ -44,8 +62,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         { userId: ctx.userId },
         { agentId: { $in: sa.agentIds ?? [] } },
       ];
+      commissionScope = { superAgentId: sa._id };
     } else {
       scopeFilter.userId = ctx.userId;
+      commissionScope = { superAgentId: null };
     }
   } else if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
@@ -54,8 +74,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         { userId: ctx.userId },
         { agentId: agentDoc._id },
       ];
+      commissionScope = { agentId: agentDoc._id };
     } else {
       scopeFilter.userId = ctx.userId;
+      commissionScope = { agentId: null };
     }
   } else if (ctx.role !== "admin") {
     // Employer / job_seeker / any non-privileged role — own invoices only.
@@ -65,11 +87,39 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // and agentCommissionPayable. Mirrors the ownership scope in the invoices
     // list route (invoices/route.ts) using Invoice.userId (the customer ref).
     scopeFilter.userId = ctx.userId;
+    // Employers and job seekers never earn commission — fail closed.
+    commissionScope = { _id: null };
   }
   // Admin: no scope filter (sees all)
 
+  // Invoices are raised in the currency the customer is billed in and nothing
+  // converts between them, so summing totalAmount across currencies produces a
+  // number that is in no currency at all — which the pages then labelled with
+  // the viewer's display-currency preference ("INR 25,322" over AED rows).
+  // Analytics is therefore scoped to ONE currency: the caller picks it, or we
+  // default to whichever currency carries the most invoices in scope.
+  const currencyRows = await Invoice.aggregate([
+    { $match: { ...scopeFilter, status: { $nin: NON_REVENUE_STATUSES } } },
+    { $group: { _id: { $ifNull: ["$currency", "AED"] }, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } },
+    { $sort: { total: -1, count: -1 } },
+  ]);
+  const currencies: string[] = currencyRows.map((row: { _id: string }) => String(row._id));
+  const currency = requestedCurrency && currencies.includes(requestedCurrency)
+    ? requestedCurrency
+    : currencies[0] ?? "AED";
+  // Older invoices predate the currency field; treat a missing value as the
+  // default so they are not silently dropped from their own currency's totals.
+  // Expressed with $in rather than $or on purpose — the super-agent scope
+  // filter already owns the top-level $or, and spreading a second one over it
+  // would replace the team scope with a currency clause and leak other teams'
+  // invoices into the totals.
+  const currencyFilter: Record<string, unknown> = {
+    currency: currency === "AED" ? { $in: [currency, null] } : currency,
+  };
+
   const dateFilter = { createdAt: { $gte: startDate } };
-  const matchFilter = { ...scopeFilter, ...dateFilter };
+  const scopedFilter = { ...scopeFilter, ...currencyFilter };
+  const matchFilter = { ...scopedFilter, ...dateFilter };
 
   // Run all aggregations in parallel
   const [
@@ -86,7 +136,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // all-time made "Total Revenue: 0" sit next to "Overdue: 3,150".
     // Exclude terminal statuses from revenue calculation
     Invoice.aggregate([
-      { $match: { ...scopeFilter, status: { $nin: ["void", "cancelled", "refunded", "credit_note"] } } },
+      { $match: { ...scopedFilter, status: { $nin: NON_REVENUE_STATUSES } } },
       {
         $group: {
           _id: "$status",
@@ -100,9 +150,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       },
     ]),
 
-    // Monthly revenue trend (last 12 months)
+    // Monthly revenue trend (last 12 months). The void exclusion here is not
+    // optional decoration: without it a voided invoice was excluded from the
+    // KPI tile directly above this chart and still drawn inside it.
     Invoice.aggregate([
-      { $match: { ...scopeFilter, createdAt: { $gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) } } },
+      {
+        $match: {
+          ...scopedFilter,
+          status: { $nin: NON_REVENUE_STATUSES },
+          createdAt: { $gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) },
+        },
+      },
       {
         $group: {
           _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
@@ -117,7 +175,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     // Revenue by category
     Invoice.aggregate([
-      { $match: matchFilter },
+      { $match: { ...matchFilter, status: { $nin: NON_REVENUE_STATUSES } } },
       {
         $group: {
           _id: "$category",
@@ -154,7 +212,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     // Invoice aging analysis
     Invoice.aggregate([
-      { $match: { ...scopeFilter, status: { $in: ["issued", "sent", "partially_paid", "overdue"] } } },
+      { $match: { ...scopedFilter, status: { $in: PENDING_STATUSES } } },
       {
         $project: {
           totalAmount: 1,
@@ -177,9 +235,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       },
     ]),
 
-    // Commission summary
+    // Commission summary — same currency scope as the revenue tiles beside it.
     Commission.aggregate([
-      { $match: ctx.role === "admin" ? {} : scopeFilter },
+      { $match: { ...(ctx.role === "admin" ? {} : commissionScope ?? {}), ...currencyFilter } },
       {
         $group: {
           _id: "$status",
@@ -193,10 +251,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     Invoice.aggregate([
       {
         $match: {
-          ...scopeFilter,
+          ...scopedFilter,
           // Include the literal "overdue" status — invoices flagged by the
           // overdue cron were invisible to this tile.
-          status: { $in: ["issued", "sent", "partially_paid", "overdue"] },
+          status: { $in: PENDING_STATUSES },
           dueDate: { $lt: new Date() },
         },
       },
@@ -230,7 +288,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     kpi.taxCollected += row.taxAmount;
     kpi.refunds += row.refundedAmount;
     kpi.totalInvoices += row.count;
-    if (["issued", "sent", "partially_paid", "overdue"].includes(row._id)) {
+    if (PENDING_STATUSES.includes(row._id)) {
       kpi.pendingRevenue += row.balanceDue;
     }
   }
@@ -260,6 +318,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   return NextResponse.json({
+    /** The currency every figure below is actually denominated in. */
+    currency,
+    /** Every currency this viewer has invoices in, largest first. */
+    currencies,
     kpi: { ...kpi, monthlyGrowth },
     revenueByStatus,
     revenueByMonth: months,

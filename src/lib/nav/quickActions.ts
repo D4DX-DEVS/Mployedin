@@ -232,7 +232,8 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
     },
     {
       key: "newLead",
-      href: "/agent/leads/new",
+      // The one New Lead form is the dialog on the pipeline page.
+      href: "/agent/leads?new=1",
       icon: "Target",
       labelKey: "newLead",
       descriptionKey: "newLeadDesc",

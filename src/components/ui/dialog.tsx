@@ -39,16 +39,33 @@ const DialogContent = React.forwardRef<
   }
 >(({ className, children, hideClose, mobileSheet = true, ...props }, ref) => {
   const tCommon = useTranslations("common");
+  /* A dialog that asks for its own width has to get it.
+     `cn()` is tailwind-merge, which only drops a conflicting utility when the
+     variant prefix matches — so the default `sm:max-w-lg` used to survive
+     alongside a caller's `max-w-4xl`, and, being emitted inside a media query
+     further down the stylesheet, won on every viewport at or above 40rem. Every
+     dialog declaring a bare width wider than `lg` therefore rendered at 32rem
+     and clipped its own content (agent Exhibition Requests → View Details was
+     the reported case; 19 call sites had it).
+     Detecting the caller's width and leaving ours out is what makes the
+     declared width authoritative, rather than hoping the merge resolves it. */
+  const declaresMaxWidth = /(?:^|\s)(?:[a-z-]+:)*max-w-/.test(className ?? "");
   return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-[10000] grid gap-3 overflow-y-auto overscroll-contain border border-border bg-background p-4 shadow-2xl shadow-black/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:max-w-lg sm:gap-4 sm:p-6",
+        "fixed z-[10000] grid gap-3 overflow-y-auto overscroll-contain border border-border bg-background p-4 shadow-2xl shadow-black/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:gap-4 sm:p-6",
+        /* Only when the caller named no width of its own. */
+        !declaresMaxWidth && (mobileSheet ? "sm:max-w-lg" : "max-w-lg"),
+        /* The phone sheet is edge-to-edge by design, so a caller width that is
+           narrower than a small tablet must not shrink it into a floating card
+           down there — it applies from `sm` up, where the dialog is centred. */
+        mobileSheet && "max-sm:max-w-none",
         mobileSheet
           ? "inset-x-0 bottom-0 mx-auto max-h-[85dvh] w-full rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl sm:pb-6 sm:data-[state=closed]:zoom-out-[0.97] sm:data-[state=open]:zoom-in-[0.97] sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]"
-          : "left-[50%] top-[50%] max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-2xl data-[state=closed]:zoom-out-[0.97] data-[state=open]:zoom-in-[0.97] data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+          : "left-[50%] top-[50%] max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] translate-x-[-50%] translate-y-[-50%] rounded-2xl data-[state=closed]:zoom-out-[0.97] data-[state=open]:zoom-in-[0.97] data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       {...props}

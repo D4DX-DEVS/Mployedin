@@ -1,27 +1,29 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
+import Lead from "@/models/Lead";
+import Placement from "@/models/Placement";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import {
-  ArrowRight,
-  BarChart3,
-  BriefcaseBusiness,
-  Building2,
-  CalendarCheck2,
-  CircleDollarSign,
-  Target,
-  UserRoundSearch,
-  Users,
-} from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { DashboardSignalStrip } from "@/components/shared/DashboardOverview";
+import { BriefcaseBusiness, Building2, CalendarCheck2, Gift } from "lucide-react";
+import type { WorkspaceMetric } from "@/components/shared/WorkspaceHeader";
 import { AgentTodayQueue, type AgentTodayQueueLabels } from "@/components/features/agent/AgentTodayQueue";
+import {
+  AgentSmartHeader,
+  AgentPipeline,
+  AgentRolePerformance,
+  type AgentRoleMetric,
+} from "@/components/features/agent/dashboard";
 import { getAgentActionCounts, getAgentQueueItems, resolveAgentScope, EMPTY_AGENT_COUNTS } from "@/lib/agents/workQueue";
 
+/**
+ * The agent home, on the employer home's shape: greeting header carrying the
+ * four at-a-glance figures → what needs doing → the funnel → the busiest
+ * roles. Every number is a link into the list it counts, no number appears
+ * twice, and the whole page fits one desktop screen.
+ */
 export default async function AgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
@@ -31,36 +33,35 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
 
   await connectDB();
 
-  // Load agent metrics
+  const userName = session.user.name?.split(" ")[0] ?? "there";
+
   const agentDoc = await Agent.findOne({ userId: session.user.id })
-    .select("_id assignedEmployerIds performance")
+    .select("_id assignedEmployerIds")
     .lean();
 
   const agentId = agentDoc?._id;
   const employerCount = agentDoc?.assignedEmployerIds?.length ?? 0;
-  const perf = agentDoc?.performance ?? {};
 
-  // Job stats
+  // Every figure on this page is counted live. The funnel used to read the
+  // `performance.*` counters on the Agent document — fire-and-forget
+  // increments that only tick when a record is created through one specific
+  // API path — so it showed "12 employers created" beside "22 active
+  // accounts" and "0 placements" over a book with placements in it.
   let activeJobs = 0;
+  let vacanciesPosted = 0;
   let totalApps = 0;
+  let totalInterviews = 0;
+  let totalOffers = 0;
   let interviewRate = 0;
   let offerRate = 0;
-
-  interface JobMetricRow {
-    jobId: string;
-    title: string;
-    status: string;
-    applications: number;
-    interviews: number;
-    offers: number;
-    interviewRate: number;
-    offerRate: number;
-  }
-  let jobMetrics: JobMetricRow[] = [];
+  let leadsGenerated = 0;
+  let leadsConverted = 0;
+  let placementsCount = 0;
+  let jobMetrics: AgentRoleMetric[] = [];
 
   if (agentId) {
     // Portfolio scope: jobs owned directly or via assigned employers.
-    const jobFilter = {
+    const portfolioFilter = {
       $or: [
         { agentId },
         ...(agentDoc?.assignedEmployerIds?.length
@@ -68,9 +69,16 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           : []),
       ],
     };
+    const jobFilter = { ...portfolioFilter, deletedAt: null };
 
-    // Portfolio-wide active count (not limited to the displayed rows).
-    activeJobs = await Job.countDocuments({ ...jobFilter, status: "active" });
+    // Portfolio-wide counts (not limited to the displayed rows).
+    [activeJobs, vacanciesPosted, leadsGenerated, leadsConverted, placementsCount] = await Promise.all([
+      Job.countDocuments({ ...jobFilter, status: "active" }),
+      Job.countDocuments(jobFilter),
+      Lead.countDocuments({ agentId }),
+      Lead.countDocuments({ agentId, status: "converted" }),
+      Placement.countDocuments(portfolioFilter),
+    ]);
 
     // Per-job status counts across the ENTIRE portfolio for accurate totals
     // and rates, joined to job titles/statuses for the displayed top rows.
@@ -100,134 +108,48 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         .lean(),
     ]);
 
-    {
-      // Build per-job map
-      const jobMap = new Map<string, Record<string, number>>();
-      perJobCounts.forEach((r: { _id: { jobId: unknown; status: string }; count: number }) => {
-        const jid = String(r._id.jobId);
-        if (!jobMap.has(jid)) jobMap.set(jid, {});
-        jobMap.get(jid)![r._id.status] = r.count;
-      });
+    const jobMap = new Map<string, Record<string, number>>();
+    perJobCounts.forEach((r: { _id: { jobId: unknown; status: string }; count: number }) => {
+      const jid = String(r._id.jobId);
+      if (!jobMap.has(jid)) jobMap.set(jid, {});
+      jobMap.get(jid)![r._id.status] = r.count;
+    });
 
-      // Aggregate totals
-      let totalInterviews = 0;
-      let totalOffers = 0;
-      jobMap.forEach((counts) => {
-        totalApps += Object.values(counts).reduce((a, b) => a + b, 0);
-        totalInterviews +=
-          (counts["interview_scheduled"] ?? 0) +
-          (counts["selected"] ?? 0) +
-          (counts["offer"] ?? 0) +
-          (counts["hired"] ?? 0);
-        totalOffers += (counts["offer"] ?? 0) + (counts["hired"] ?? 0);
-      });
+    const interviewsOf = (counts: Record<string, number>) =>
+      (counts["interview_scheduled"] ?? 0) + (counts["selected"] ?? 0) + (counts["offer"] ?? 0) + (counts["hired"] ?? 0);
+    const offersOf = (counts: Record<string, number>) => (counts["offer"] ?? 0) + (counts["hired"] ?? 0);
 
-      interviewRate = totalApps > 0 ? Math.round((totalInterviews / totalApps) * 100) : 0;
-      offerRate = totalApps > 0 ? Math.round((totalOffers / totalApps) * 100) : 0;
+    jobMap.forEach((counts) => {
+      totalApps += Object.values(counts).reduce((a, b) => a + b, 0);
+      totalInterviews += interviewsOf(counts);
+      totalOffers += offersOf(counts);
+    });
 
-      // Build per-job metrics rows (top 10 by application count)
-      jobMetrics = recentJobDocs
-        .map((j) => {
-          const counts = jobMap.get(String(j._id)) ?? {};
-          const apps = Object.values(counts).reduce((a, b) => a + b, 0);
-          const intvs =
-            (counts["interview_scheduled"] ?? 0) +
-            (counts["selected"] ?? 0) +
-            (counts["offer"] ?? 0) +
-            (counts["hired"] ?? 0);
-          const offs = (counts["offer"] ?? 0) + (counts["hired"] ?? 0);
-          return {
-            jobId: String(j._id),
-            title: j.title as string,
-            status: j.status as string,
-            applications: apps,
-            interviews: intvs,
-            offers: offs,
-            interviewRate: apps > 0 ? Math.round((intvs / apps) * 100) : 0,
-            offerRate: apps > 0 ? Math.round((offs / apps) * 100) : 0,
-          };
-        })
-        .sort((a, b) => b.applications - a.applications)
-        .slice(0, 4);
-    }
-  }
+    interviewRate = totalApps > 0 ? Math.round((totalInterviews / totalApps) * 100) : 0;
+    offerRate = totalApps > 0 ? Math.round((totalOffers / totalApps) * 100) : 0;
 
-  const kpis = [
-    { label: t("kpis.activeEmployers"), value: employerCount },
-    { label: t("kpis.activeJobs"), value: activeJobs },
-    { label: t("kpis.totalApplications"), value: totalApps },
-    { label: t("kpis.placements"), value: (perf as Record<string, number>).placementsCompleted ?? 0 },
-  ];
-
-  const funnel = [
-    { label: t("funnel.leadsGenerated"), value: (perf as Record<string, number>).leadsGenerated ?? 0 },
-    { label: t("funnel.employersCreated"), value: (perf as Record<string, number>).employersCreated ?? 0 },
-    { label: t("funnel.vacanciesPosted"), value: (perf as Record<string, number>).vacanciesPosted ?? 0 },
-    { label: t("funnel.interviewRate"), value: `${interviewRate}%` },
-    { label: t("funnel.offerRate"), value: `${offerRate}%` },
-  ];
-
-  const actions = [
-    {
-      label: t("actions.addEmployerLead.label"),
-      href: `/${locale}/agent/leads/new`,
-      icon: Target,
-      tone: "workspace-tone-amber",
-    },
-    {
-      label: t("actions.postJob.label"),
-      href: `/${locale}/agent/jobs/new`,
-      icon: BriefcaseBusiness,
-      tone: "workspace-tone-sky",
-    },
-    {
-      label: t("actions.myJobs.label"),
-      href: `/${locale}/agent/jobs`,
-      icon: BarChart3,
-      tone: "workspace-tone-indigo",
-    },
-    {
-      label: t("actions.jobSeekers.label"),
-      href: `/${locale}/agent/job-seekers`,
-      icon: UserRoundSearch,
-      tone: "workspace-tone-violet",
-    },
-    {
-      label: t("actions.performanceReport.label"),
-      href: `/${locale}/agent/reports`,
-      icon: CircleDollarSign,
-      tone: "workspace-tone-rose",
-    },
-  ];
-
-  function getJobStatusClasses(status: string): string {
-    switch (status) {
-      case "active":
-        return "status-active";
-      case "draft":
-        return "status-draft";
-      case "closed":
-        return "status-closed";
-      case "expired":
-        return "status-expired";
-      default:
-        return "status-draft";
-    }
-  }
-
-  function getJobStatusLabel(status: string): string {
-    switch (status) {
-      case "active":
-        return t("statuses.active");
-      case "draft":
-        return t("statuses.draft");
-      case "closed":
-        return t("statuses.closed");
-      case "expired":
-        return t("statuses.expired");
-      default:
-        return t("statuses.unknown");
-    }
+    // The busiest live roles. A draft with no applications has no performance
+    // to show and only pushed real roles off the three-row list.
+    jobMetrics = recentJobDocs
+      .filter((j) => j.status === "active" || jobMap.has(String(j._id)))
+      .map((j) => {
+        const counts = jobMap.get(String(j._id)) ?? {};
+        const apps = Object.values(counts).reduce((a, b) => a + b, 0);
+        const intvs = interviewsOf(counts);
+        const offs = offersOf(counts);
+        return {
+          jobId: String(j._id),
+          title: j.title as string,
+          status: j.status as string,
+          applications: apps,
+          interviews: intvs,
+          offers: offs,
+          interviewRate: apps > 0 ? Math.round((intvs / apps) * 100) : 0,
+          offerRate: apps > 0 ? Math.round((offs / apps) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.applications - a.applications)
+      .slice(0, 3);
   }
 
   // The queue replaces a three-branch guess ("any applications at all? review
@@ -235,7 +157,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   // module the nav badges use, so the badge and this list always agree.
   const scope = agentDoc ? await resolveAgentScope(String(session.user.id)) : null;
   const [queueItems, queueCounts] = scope
-    ? await Promise.all([getAgentQueueItems(scope), getAgentActionCounts(scope)])
+    ? await Promise.all([getAgentQueueItems(scope, 4), getAgentActionCounts(scope)])
     : [[], EMPTY_AGENT_COUNTS];
 
   const tQueue = await getTranslations("agentQueue");
@@ -249,8 +171,9 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   // components in this codebase take copy as props, and it keeps the panel a
   // plain synchronous component.
   const queueLabels: AgentTodayQueueLabels = {
-    eyebrow: tQueue("eyebrow"),
-    title: queueTotal > 0 ? tQueue("titleWithCount", { count: queueTotal }) : tQueue("titleClear"),
+    title: tQueue("title"),
+    description: queueTotal > 0 ? tQueue("titleWithCount", { count: queueTotal }) : tQueue("titleClear"),
+    viewTasks: tQueue("viewTasks"),
     summary: {
       dueFollowUps: tQueue("summary.dueFollowUps"),
       overdueTasks: tQueue("summary.overdueTasks"),
@@ -282,152 +205,80 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     emptyDescription: tQueue("empty.description"),
   };
 
-  const signals = [
-    { label: t("kpis.activeEmployers"), value: employerCount, href: `/${locale}/agent/employers`, icon: Building2 },
-    { label: t("kpis.activeJobs"), value: activeJobs, href: `/${locale}/agent/jobs?status=active`, icon: BriefcaseBusiness },
-    { label: t("kpis.totalApplications"), value: totalApps, href: `/${locale}/agent/candidates?status=applied`, icon: Users },
-    { label: t("kpis.placements"), value: kpis[3]?.value ?? 0, href: `/${locale}/agent/placements`, icon: CalendarCheck2 },
+  // Four figures the queue and the funnel do not already print: the size of
+  // the book, the live roles, and how well it converts. Each opens its list.
+  const metrics: WorkspaceMetric[] = [
+    {
+      label: t("overview.activeAccounts"),
+      shortLabel: t("overview.activeAccountsShort"),
+      value: employerCount,
+      href: `/${locale}/agent/employers`,
+      icon: Building2,
+      tone: "success",
+      ariaLabel: `${t("overview.activeAccounts")}: ${employerCount}`,
+    },
+    {
+      label: t("overview.liveRoles"),
+      shortLabel: t("overview.liveRolesShort"),
+      value: activeJobs,
+      href: `/${locale}/agent/jobs?status=active`,
+      icon: BriefcaseBusiness,
+      tone: "primary",
+      ariaLabel: `${t("overview.liveRoles")}: ${activeJobs}`,
+    },
+    {
+      label: t("overview.interviewRate"),
+      shortLabel: t("overview.interviewRateShort"),
+      value: `${interviewRate}%`,
+      href: `/${locale}/agent/interviews`,
+      icon: CalendarCheck2,
+      tone: "warning",
+      ariaLabel: `${t("overview.interviewRate")}: ${interviewRate}%`,
+    },
+    {
+      label: t("overview.offerRate"),
+      shortLabel: t("overview.offerRateShort"),
+      value: `${offerRate}%`,
+      href: `/${locale}/agent/offers`,
+      icon: Gift,
+      tone: "info",
+      ariaLabel: `${t("overview.offerRate")}: ${offerRate}%`,
+    },
   ];
 
   return (
     <div className="page-container dashboard-overview-page">
-      <DashboardPageHeader
-        icon={Target}
-        title={t("hero.title")}
-        summary={{
-          label: t("portfolio.eyebrow"),
-          value: t("portfolio.activeAccounts", { count: employerCount }),
-          note: t("portfolio.summary", { jobs: activeJobs, applications: totalApps, placements: kpis[3]?.value ?? 0 }),
-        }}
+      <AgentSmartHeader
+        userName={userName}
+        counts={queueCounts}
+        activeJobs={activeJobs}
+        metrics={metrics}
+        locale={locale}
       />
 
       <AgentTodayQueue items={queueItems} counts={queueCounts} locale={locale} labels={queueLabels} />
 
-      <DashboardSignalStrip
-        headingId="agent-signals"
-        title={t("taskFirst.atAGlance")}
-        signals={signals}
-      />
+      {/* Two-up on wide screens: stacked, these two cost a second screen of
+          scrolling. Both cards are now header + list rows — five funnel stages
+          against three roles — so they stand level on their own and the grid's
+          default stretch has nothing to pad. This used to carry `items-start`
+          against a five-across funnel strip, which left 99px of ragged white
+          under the shorter card at every width. */}
+      <div className="grid gap-3 sm:gap-4 xl:grid-cols-[3fr_2fr]">
+        <AgentPipeline
+          leads={leadsGenerated}
+          leadsConverted={leadsConverted}
+          applications={totalApps}
+          interviews={totalInterviews}
+          interviewRate={interviewRate}
+          offers={totalOffers}
+          offerRate={offerRate}
+          placements={placementsCount}
+          locale={locale}
+        />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
-        <section className="workspace-panel-surface rounded-3xl panel-body">
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
-              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.funnel.title")}</h2>
-            </div>
-            <div className="max-sm:hidden workspace-subtle-surface rounded-2xl text-right text-primary chip-pad">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("funnel.offerRate")}</p>
-              <p className="mt-1 text-lg font-semibold">{offerRate}%</p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-3">
-            {funnel.map((item) => (
-              <div key={item.label} className="workspace-subtle-surface card-pad rounded-xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-                <p className="mt-1.5 text-xl font-semibold tracking-tight text-foreground">{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="order-1 workspace-panel-surface rounded-2xl xl:order-2 panel-body">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
-            <p className="max-sm:hidden mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
-          </div>
-
-          <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-2">
-            {actions.map((action) => {
-              const Icon = action.icon;
-
-              return (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  className="workspace-subtle-surface card-pad group relative flex min-h-[96px] flex-col items-start gap-2 rounded-xl transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)] sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-3"
-                >
-                  <div className={`shrink-0 rounded-xl p-2.5 ${action.tone}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="heading-label pe-5 font-semibold leading-5 text-foreground sm:truncate sm:pe-0">{action.label}</h3>
-                  </div>
-                  <ArrowRight className="absolute end-3 top-3 h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary sm:static" />
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <AgentRolePerformance rows={jobMetrics} locale={locale} />
       </div>
-
-      <section className="workspace-panel-surface rounded-2xl panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.rolePerformance.eyebrow")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.rolePerformance.title")}</h2>
-            <p className="max-sm:hidden mt-1 text-sm text-muted-foreground">{t("sections.rolePerformance.description")}</p>
-          </div>
-          <Link
-            href={`/${locale}/agent/jobs`}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/85"
-          >
-            {t("sections.rolePerformance.reviewAll")}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-
-        {jobMetrics.length > 0 ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="pb-3 pr-4 font-semibold text-muted-foreground">{t("table.job")}</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.applications")}</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.interviews")}</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.offers")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/80">
-                {jobMetrics.map((row) => (
-                  <tr key={row.jobId} className="transition-colors hover:bg-secondary/70">
-                    <td className="py-3 pr-4">
-                      <div className="flex min-w-0 flex-col items-start gap-1.5">
-                        <Link href={`/${locale}/agent/jobs/${row.jobId}`} className="font-semibold text-foreground transition-colors hover:text-primary">
-                          {row.title}
-                        </Link>
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${getJobStatusClasses(row.status)}`}>
-                          {getJobStatusLabel(row.status)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 pr-4 text-right font-medium tabular-nums text-foreground/80">{row.applications}</td>
-                    <td className="py-3 pr-4 text-right">
-                      <span className="block font-medium tabular-nums text-foreground/80">{row.interviews}</span>
-                      <span className="mt-1 block text-[11px] font-semibold tabular-nums text-primary">
-                        {t("table.interviewRate")}: {row.interviewRate}%
-                      </span>
-                    </td>
-                    <td className="py-3 text-right">
-                      <span className="block font-medium tabular-nums text-foreground/80">{row.offers}</span>
-                      <span className="mt-1 block text-[11px] font-semibold tabular-nums text-emerald-600">
-                        {t("table.offerRate")}: {row.offerRate}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="workspace-empty-state mt-5 rounded-2xl p-6 text-center">
-            <p className="text-sm font-medium text-foreground">{t("empty.title")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("empty.description")}</p>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
   Globe, DollarSign, Save, CheckCircle2, Bell, Shield, Clock,
   Users, Calendar, FileText, Briefcase, Mail, ChevronRight, Percent,
   MapPin, AlertTriangle, Camera, Loader2, Trash2, UserCircle,
-  Receipt, Settings,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,7 @@ import {
   SUPPORTED_CURRENCIES,
   currencyForCountry,
 } from "@/lib/currency";
-import { PageHero } from "@/components/shared/PageHero";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -1427,11 +1427,7 @@ export default function AgentSettingsPage() {
 
   return (
     <div className="page-container">
-      <PageHero
-        icon={Settings}
-        title={t("hero.title")}
-        description=""
-      />
+      <WorkspaceHeader title={t("hero.title")} context={t("hero.description")} />
 
       {/* Sidebar + Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">

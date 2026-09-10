@@ -8,6 +8,9 @@ const PUBLIC_ROUTES = [
   "/verify-email",
   "/verify-oauth-2fa",
   "/confirm-email-change",
+  // An invited colleague clicks this from their email with no account and no
+  // session. It must not redirect to login, or the invite token is lost.
+  "/join-team",
   "/maintenance",
   "/api/auth",
   "/api/contact",

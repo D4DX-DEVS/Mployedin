@@ -16,4 +16,24 @@ describe("workflowUpdateSchema", () => {
     const result = workflowUpdateSchema.safeParse({ stages: [stage("phone_screen")] });
     expect(result.success).toBe(false);
   });
+
+  // The builder now saves rules only; stages are read-only in the UI.
+  it("accepts a settings-only payload with the three hiring rules", () => {
+    const result = workflowUpdateSchema.safeParse({
+      settings: { autoRejectEnabled: true, autoRejectBelow: 45, notifyOnStageChange: false, shortlistTarget: 30 },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.stages).toBeUndefined();
+      expect(result.data.settings?.shortlistTarget).toBe(30);
+    }
+  });
+  it("still tolerates the retired aiAutoScreen flag from old clients", () => {
+    expect(workflowUpdateSchema.safeParse({ settings: { aiAutoScreen: true } }).success).toBe(true);
+  });
+  it("rejects a shortlist target outside 5–100 and a non-integer threshold", () => {
+    expect(workflowUpdateSchema.safeParse({ settings: { shortlistTarget: 200 } }).success).toBe(false);
+    expect(workflowUpdateSchema.safeParse({ settings: { shortlistTarget: 2 } }).success).toBe(false);
+    expect(workflowUpdateSchema.safeParse({ settings: { autoRejectBelow: 40.5 } }).success).toBe(false);
+  });
 });

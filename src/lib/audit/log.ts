@@ -139,6 +139,11 @@ export function actorFromCtx(ctx: {
   userId: string;
   role: string;
   tenantView?: { actorId: string; actorRole: string; employerId: string };
+  // Only actorId is read below. The extra index signature (matching the
+  // AuthContext pattern in withAuth.ts) lets callers pass their full
+  // member object — companyRoles, permissions, jobAccess included — as an
+  // inline literal without tripping TS's excess-property check.
+  member?: { actorId: string; companyId: string; [key: string]: unknown };
 }) {
   // During tenant view / impersonation, withAuth swaps ctx.userId and ctx.role to the
   // target so that employer-scoped lookups work transparently. Attributing the audit
@@ -149,6 +154,17 @@ export function actorFromCtx(ctx: {
     return {
       actorId: ctx.tenantView.actorId,
       actorRole: ctx.tenantView.actorRole,
+      onBehalfOfId: ctx.userId,
+      onBehalfOfRole: ctx.role,
+    };
+  }
+  // A company member borrows the owner's workspace the same way, so the same
+  // rule applies: the colleague is the actor, the owner is who it was done for.
+  // Team Activity Logs lists rows by member user id and would be empty otherwise.
+  if (ctx.member) {
+    return {
+      actorId: ctx.member.actorId,
+      actorRole: ctx.role,
       onBehalfOfId: ctx.userId,
       onBehalfOfRole: ctx.role,
     };
