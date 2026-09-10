@@ -11,6 +11,7 @@ import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notif
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
+import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
@@ -165,6 +166,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       changedBy: ctx.userId,
       note: note ?? `Status updated to ${status}`,
     });
+    // Moving forward past interviewing settles any slot still on the books —
+    // the mirror of the backwards guard above. Without it the Interviews tab
+    // and the Overview inbox keep counting an interview nobody will attend.
+    if (advancesPastInterviewing(status)) {
+      await closeOpenInterviewsForAdvance(application._id);
+    }
   }
 
   // Staff-only fields. A job seeker holds applications:update (to withdraw) and

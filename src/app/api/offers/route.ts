@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Offer from "@/models/Offer";
 import Application from "@/models/Application";
+import { closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
@@ -287,6 +288,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Update application status to "offer"
   await Application.findByIdAndUpdate(applicationId, { status: "offer" });
+
+  // The interview that led to this offer is over. Left open it kept the
+  // Interviews tab counting it and the Overview inbox promising an "upcoming
+  // interview" that would never be held.
+  await closeOpenInterviewsForAdvance(applicationId);
 
   // Notify job seeker
   const jobSeeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean();

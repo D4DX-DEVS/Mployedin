@@ -1747,6 +1747,29 @@ input::placeholder {
 }
 }
 
+/* `.tap-target-box` is deliberately phone-only — see the block above. This is
+   the same pseudo-element band with no width condition, for a control that is
+   small at every size and has room around it (the applications list checkbox,
+   which sits alone in its own grid cell at 28px).
+
+   Only use it where nothing sits within ~44px horizontally: two of these on
+   adjacent icon buttons would overlap, and the later sibling would swallow the
+   earlier one's clicks. Verify with elementFromPoint, never
+   getBoundingClientRect — the box reads its layout size either way. */
+.tap-target-box-any {
+  position: relative;
+}
+.tap-target-box-any::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
 /* Named responsive containment for the audited Admin shortcut grid. */
 @media (max-width: 639px) {
   .admin-quick-actions-grid,
@@ -3754,3 +3777,5 @@ table.workspace-list-table tbody tr:focus-visible {
 }
 
 /* rebuild nudge 2026-09-08 job-workspace r3 */
+
+/* touched to force a Turbopack CSS rebuild — in-place edits above do not always invalidate. */
