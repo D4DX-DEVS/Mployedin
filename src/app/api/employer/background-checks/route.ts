@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth/withAuth";
+import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { Employer } from "@/models/Employer";
@@ -10,7 +10,13 @@ import { backgroundCheckCreateSchema } from "@/lib/validators/backgroundChecks";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+interface AuthCtx {
+  userId: string;
+  role: UserRole;
+  locale: string;
+  /** Present when the caller is a colleague borrowing the owner's workspace. */
+  member?: AuthContext["member"];
+}
 
 /**
  * GET /api/employer/background-checks (FG-7)
@@ -32,6 +38,11 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
   if (status) filter.status = status;
   if (jobId && isValidObjectId(jobId)) filter.jobId = jobId;
   if (applicationId && isValidObjectId(applicationId)) filter.applicationId = applicationId;
+  // A colleague opens their own queue. ctx.userId is the company owner once the
+  // workspace has been resolved, so the real person is ctx.member.actorId.
+  if (url.searchParams.get("assignedToMe") === "true") {
+    filter.assignedTo = ctx.member?.actorId ?? ctx.userId;
+  }
 
   const [items, total] = await Promise.all([
     BackgroundCheck.find(filter)
@@ -40,6 +51,8 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
       // The job worklist shows where each candidate sits, so a check that has
       // overtaken its candidate (or been left behind) is visible at a glance.
       .populate({ path: "applicationId", select: "status" })
+      .populate({ path: "assignedTo", select: "name email" })
+      .populate({ path: "verifiedBy", select: "name email" })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)

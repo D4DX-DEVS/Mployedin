@@ -26,11 +26,7 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), replace: (...args: unknown[]) => replaceMock(...args) }),
 }));
 
-// Phase 3 leaves: saved views fetch through react-query and the pool dialog
-// reads talent pools — neither is what this suite asserts on.
-jest.mock("@/hooks/useSavedViews", () => ({
-  useSavedViews: () => ({ views: [], isLoading: false, create: { mutateAsync: jest.fn() }, remove: { mutateAsync: jest.fn() } }),
-}));
+// The pool dialog reads talent pools — not what this suite asserts on.
 jest.mock("@/components/features/employer/SaveToPoolDialog", () => ({ SaveToPoolDialog: () => null }));
 
 // Every data hook is already mocked, so the page only needs useQueryClient to

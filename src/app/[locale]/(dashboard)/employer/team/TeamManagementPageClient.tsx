@@ -31,6 +31,8 @@ import type { CompanyRole, MemberStatus, TeamMember } from "@/hooks/useTeam";
 import type { ExportColumn } from "@/lib/export";
 import { useJobs } from "@/hooks/useJobs";
 import { FormMultiSelect } from "@/components/shared/AppForm";
+import { CompanyFunctionChecklist } from "@/components/features/employer/team/CompanyFunctionChecklist";
+import type { PermissionFlag } from "@/lib/permissions/companyRoles";
 
 const ROLE_COLORS: Record<CompanyRole, string> = {
   owner: "bg-status-interview-bg text-status-interview border-status-interview/20",
@@ -75,12 +77,14 @@ export default function TeamManagementPage() {
   const removeMutation = useRemoveTeamMember();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteData, setInviteData] = useState({ email: "", companyRoles: ["hiring_manager"] as CompanyRole[], jobAccess: [] as string[] });
+  const [invitePermissionOverrides, setInvitePermissionOverrides] = useState<Partial<Record<PermissionFlag, boolean>>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   // Job access edit modal
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [editJobAccess, setEditJobAccess] = useState<string[]>([]);
+  const [editPermissionOverrides, setEditPermissionOverrides] = useState<Partial<Record<PermissionFlag, boolean>>>({});
 
   // Fetch employer's jobs for job assignment selector
   const { data: jobsData } = useJobs({ page: 1, limit: 200, myJobs: true });
@@ -113,10 +117,18 @@ export default function TeamManagementPage() {
     setSaving(true);
     setError("");
     try {
-      const payload: { email: string; companyRoles: CompanyRole[]; jobAccess?: string[] } = {
+      const payload: {
+        email: string;
+        companyRoles: CompanyRole[];
+        jobAccess?: string[];
+        permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
+      } = {
         email: inviteData.email,
         companyRoles: inviteData.companyRoles,
       };
+      if (Object.keys(invitePermissionOverrides).length > 0) {
+        payload.permissionOverrides = invitePermissionOverrides;
+      }
       // Only send jobAccess for restricted roles
       if (showJobAccessForRoles(inviteData.companyRoles) && inviteData.jobAccess.length > 0) {
         payload.jobAccess = inviteData.jobAccess;
@@ -124,6 +136,7 @@ export default function TeamManagementPage() {
       await inviteMutation.mutateAsync(payload);
       setShowInviteModal(false);
       setInviteData({ email: "", companyRoles: ["hiring_manager"], jobAccess: [] });
+      setInvitePermissionOverrides({});
     } catch (err: unknown) {
       setError(t("failedToSendInvite"));
     } finally {
@@ -144,13 +157,21 @@ export default function TeamManagementPage() {
   function openJobAccessEditor(member: TeamMember) {
     setEditingMember(member);
     setEditJobAccess(member.jobAccess ?? []);
+    setEditPermissionOverrides((member.permissionOverrides ?? {}) as Partial<Record<PermissionFlag, boolean>>);
   }
 
   async function handleSaveJobAccess() {
     if (!editingMember) return;
-    await updateMutation.mutateAsync({ memberId: editingMember._id, jobAccess: editJobAccess });
+    await updateMutation.mutateAsync({
+      memberId: editingMember._id,
+      jobAccess: editJobAccess,
+      // Always sent, including when emptied, so clearing every tick actually
+      // resets the person back to their role defaults.
+      permissionOverrides: editPermissionOverrides as Record<string, boolean>,
+    });
     setEditingMember(null);
     setEditJobAccess([]);
+    setEditPermissionOverrides({});
   }
 
   function getJobAccessLabel(member: TeamMember): string {
@@ -522,6 +543,12 @@ export default function TeamManagementPage() {
               />
             </div>
 
+            <CompanyFunctionChecklist
+              roles={inviteData.companyRoles}
+              overrides={invitePermissionOverrides}
+              onChange={setInvitePermissionOverrides}
+            />
+
             {showJobAccessForRoles(inviteData.companyRoles) && (
               <div className="space-y-2">
                 <Label>{t("jobAccessModal.assignedJobs")}</Label>
@@ -568,7 +595,7 @@ export default function TeamManagementPage() {
       </Dialog>
 
       {/* Job Access Edit Modal */}
-      <Dialog open={!!editingMember} onOpenChange={(open) => { if (!open) { setEditingMember(null); setEditJobAccess([]); } }}>
+      <Dialog open={!!editingMember} onOpenChange={(open) => { if (!open) { setEditingMember(null); setEditJobAccess([]); setEditPermissionOverrides({}); } }}>
         <DialogContent className="w-full max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -596,8 +623,16 @@ export default function TeamManagementPage() {
                 searchable
               />
             </div>
+
+            <CompanyFunctionChecklist
+              roles={(editingMember?.companyRoles?.length ? editingMember.companyRoles : editingMember ? [editingMember.companyRole] : []) as CompanyRole[]}
+              overrides={editPermissionOverrides}
+              onChange={setEditPermissionOverrides}
+              defaultOpen
+            />
+
             <DialogFooter className="gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={() => { setEditingMember(null); setEditJobAccess([]); }} className="flex-1 sm:flex-none">
+              <Button type="button" variant="outline" onClick={() => { setEditingMember(null); setEditJobAccess([]); setEditPermissionOverrides({}); }} className="flex-1 sm:flex-none">
                 {t("cancel")}
               </Button>
               <Button onClick={handleSaveJobAccess} disabled={updateMutation.isPending} className="flex-1 sm:flex-none">

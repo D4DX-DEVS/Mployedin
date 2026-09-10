@@ -6357,7 +6357,24 @@
       "allJobsPlaceholder": "كل الوظائف (بدون تقييد)"
     },
     "parkedTitle": "الدعوات متوقفة مؤقتًا",
-    "parkedDescription": "يمكنك مراجعة الأعضاء الموجودين في حسابك، لكن إرسال دعوة جديدة معطّل ريثما نُكمل ربط تسجيل الدخول. سنعيد تفعيله هنا."
+    "parkedDescription": "يمكنك مراجعة الأعضاء الموجودين في حسابك، لكن إرسال دعوة جديدة معطّل ريثما نُكمل ربط تسجيل الدخول. سنعيد تفعيله هنا.",
+    "fineTune": "ضبط ما يمكنهم فعله",
+    "fineTuneHint": "تسري التغييرات عند تسجيل الدخول في المرة القادمة.",
+    "fineTuneCount": "{count} من {total} صلاحيات ممنوحة",
+    "fineTuneChanged": "معدّل",
+    "functions": {
+      "canCreateJobs": "نشر الوظائف وتعديلها",
+      "canReviewApplicants": "مراجعة المتقدمين",
+      "canScheduleInterviews": "جدولة المقابلات",
+      "canSendOffers": "إرسال العروض",
+      "canOnboardPlacements": "إلحاق الموظفين الجدد",
+      "canRunScreening": "الفرز والتحقق من الخلفية",
+      "canManageTalentPools": "مجموعات المواهب والتواصل",
+      "canManageBilling": "الفواتير والمدفوعات",
+      "canViewAnalytics": "التقارير والتحليلات",
+      "canManageCompanySettings": "إعدادات الشركة",
+      "canManageTeam": "إدارة الفريق"
+    }
   },
   "employerActivity": {
     "title": "سجل النشاط",
@@ -6627,7 +6644,8 @@
       "pending": "قيد الانتظار",
       "clear": "نظيف",
       "flagged": "مُعلَّم",
-      "failed": "فشل"
+      "failed": "فشل",
+      "unable_to_verify": "تعذّر التحقق"
     },
     "refStatus": {
       "pending": "قيد الانتظار",
@@ -6663,7 +6681,19 @@
     "fromDate": "من تاريخ",
     "toDate": "إلى تاريخ",
     "unknownCandidate": "مرشح بلا اسم",
-    "openCheck": "فتح"
+    "openCheck": "فتح",
+    "assignedTo": "مُسند إلى",
+    "assignedToMe": "المُسند إليّ",
+    "allChecks": "جميع الفحوصات",
+    "unassigned": "غير مُسند",
+    "assignTo": "إسناد إلى",
+    "assignHint": "أسند هذا الفحص إلى زميل لديه صلاحية الفرز.",
+    "verifiedBy": "تم التحقق بواسطة {name}",
+    "verifiedOn": "تم التحقق في {date}",
+    "recordVerdict": "تسجيل النتيجة",
+    "verdictSaved": "تم تسجيل النتيجة.",
+    "noScreeners": "لا يوجد زميل لديه صلاحية الفرز بعد.",
+    "assignedToYou": "مُسند إليك"
   },
   "employerPlacements": {
     "backToPlacements": "العودة إلى التعيينات",
@@ -16620,23 +16650,6 @@
     "viewBoard": "لوحة",
     "unreviewedFilter": "بحاجة إلى مراجعة",
     "unreviewedFilterShort": "غير مُراجَع",
-    "viewsButton": "العروض المحفوظة",
-    "viewsPresets": "جاهزة",
-    "viewsMine": "عروضي",
-    "viewsEmpty": "لا توجد عروض محفوظة بعد",
-    "saveCurrentView": "حفظ العرض الحالي…",
-    "saveViewTitle": "حفظ هذا العرض",
-    "saveViewNameLabel": "الاسم",
-    "saveViewNamePlaceholder": "مثال: React متقدم، تطابق عالٍ",
-    "saveViewButton": "حفظ العرض",
-    "viewSaved": "تم حفظ العرض",
-    "viewDeleted": "تم حذف العرض",
-    "deleteView": "حذف العرض",
-    "confirmDeleteView": "حذف «{name}»؟ يزيل هذا الاختصار فقط ولا يؤثر على المرشحين.",
-    "viewLimitReached": "يمكنك الاحتفاظ بما يصل إلى 20 عرضًا محفوظًا.",
-    "toastViewSaveError": "تعذّر حفظ هذا العرض. يرجى المحاولة مرة أخرى.",
-    "toastViewDeleteError": "تعذّر حذف هذا العرض. يرجى المحاولة مرة أخرى.",
-    "presetTopMatches": "أفضل التطابقات",
     "presetInterviewing": "في المقابلات",
     "presetOffersPending": "عروض قيد الانتظار",
     "boardLoadMore": "تحميل المزيد",
@@ -16663,7 +16676,6 @@
     "hiringProgressTotal": "{count, plural, zero {لا متقدمين بعد} one {متقدم واحد} two {متقدمان} few {# متقدمين} many {# متقدمًا} other {# متقدم}}",
     "boardOffPath": "المرفوضون والمنسحبون",
     "boardMatch": "تطابق {score}٪",
-    "savingButton": "جارٍ الحفظ…",
     "factsEmploymentType": "نوع التوظيف",
     "factsWorkMode": "نمط العمل",
     "factsDuration": "المدة",

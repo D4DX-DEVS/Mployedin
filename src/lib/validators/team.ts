@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
-import { COMPANY_FUNCTIONS } from "@/models/CompanyUser";
+import { COMPANY_FUNCTIONS } from "@/lib/permissions/companyRoles";
 
 /**
  * The employer's manual ticks on top of the roles they chose.
@@ -10,8 +10,16 @@ import { COMPANY_FUNCTIONS } from "@/models/CompanyUser";
  * written straight from the request, so a caller cannot invent a flag or set
  * one the role system does not know about.
  */
+const COMPANY_FUNCTION_NAMES = new Set<string>(COMPANY_FUNCTIONS);
+
 const companyFunctionOverrides = z
-  .record(z.enum(COMPANY_FUNCTIONS as readonly string[] as [string, ...string[]]), z.boolean())
+  // Keyed by plain string, then narrowed by hand. `z.record` over an enum makes
+  // the record exhaustive, which rejected every partial selection — and a
+  // partial selection is the entire point of the fine-tune checklist.
+  .record(z.string(), z.boolean())
+  .refine((v) => Object.keys(v).every((k) => COMPANY_FUNCTION_NAMES.has(k)), {
+    message: "Unknown permission",
+  })
   .optional();
 
 export const teamInviteSchema = z.object({

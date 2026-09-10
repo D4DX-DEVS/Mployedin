@@ -20,9 +20,13 @@ export const backgroundCheckCreateSchema = z.object({
 
 export const backgroundCheckUpdateSchema = z.object({
   status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional(),
-  outcome: z.enum(["clear", "flagged", "failed", "pending"]).optional(),
+  outcome: z.enum(["clear", "flagged", "failed", "unable_to_verify", "pending"]).optional(),
   backgroundResults: z.string().trim().max(4000).optional(),
   backgroundNotes: z.string().trim().max(2000).optional(),
+  /** Hand this check to a colleague. Null clears the assignment. */
+  assignedTo: commonSchemas.objectId.nullable().optional(),
+  /** Set when the assignee is recording their verdict, not just editing. */
+  verify: z.boolean().optional(),
   reference: z
     .object({
       index: z.number().int().min(0).max(9),

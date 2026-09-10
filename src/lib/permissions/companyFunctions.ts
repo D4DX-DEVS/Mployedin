@@ -1,4 +1,4 @@
-import type { ICompanyUserPermissions, PermissionFlag } from "@/models/CompanyUser";
+import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/companyRoles";
 
 /**
  * Which granted function a company member needs to touch each API path.

@@ -6357,7 +6357,24 @@
       "allJobsPlaceholder": "All Jobs (no restriction)"
     },
     "parkedTitle": "Invites are paused",
-    "parkedDescription": "You can review the people already on your account, but sending a new invite is switched off while we finish the sign-in handover. We'll turn it back on here."
+    "parkedDescription": "You can review the people already on your account, but sending a new invite is switched off while we finish the sign-in handover. We'll turn it back on here.",
+    "fineTune": "Fine-tune what they can do",
+    "fineTuneHint": "Changes take effect the next time they sign in.",
+    "fineTuneCount": "{count} of {total} functions granted",
+    "fineTuneChanged": "Changed",
+    "functions": {
+      "canCreateJobs": "Post and edit jobs",
+      "canReviewApplicants": "Review applicants",
+      "canScheduleInterviews": "Schedule interviews",
+      "canSendOffers": "Send offers",
+      "canOnboardPlacements": "Onboard new hires",
+      "canRunScreening": "Screening and background checks",
+      "canManageTalentPools": "Talent pools and outreach",
+      "canManageBilling": "Invoices and billing",
+      "canViewAnalytics": "Reports and analytics",
+      "canManageCompanySettings": "Company settings",
+      "canManageTeam": "Manage team"
+    }
   },
   "employerActivity": {
     "title": "Activity History",
@@ -6627,7 +6644,8 @@
       "pending": "Pending",
       "clear": "Clear",
       "flagged": "Flagged",
-      "failed": "Failed"
+      "failed": "Failed",
+      "unable_to_verify": "Unable to verify"
     },
     "refStatus": {
       "pending": "Pending",
@@ -6663,7 +6681,19 @@
     "fromDate": "From date",
     "toDate": "To date",
     "unknownCandidate": "Unnamed candidate",
-    "openCheck": "Open"
+    "openCheck": "Open",
+    "assignedTo": "Assigned to",
+    "assignedToMe": "Assigned to me",
+    "allChecks": "All checks",
+    "unassigned": "Unassigned",
+    "assignTo": "Assign to",
+    "assignHint": "Hand this check to a colleague who can run screening.",
+    "verifiedBy": "Verified by {name}",
+    "verifiedOn": "Verified {date}",
+    "recordVerdict": "Record verdict",
+    "verdictSaved": "Verdict recorded.",
+    "noScreeners": "No colleague has screening access yet.",
+    "assignedToYou": "Assigned to you"
   },
   "employerPlacements": {
     "backToPlacements": "Back to Placements",
@@ -16620,23 +16650,6 @@
     "viewBoard": "Board",
     "unreviewedFilter": "Needs review",
     "unreviewedFilterShort": "Unreviewed",
-    "viewsButton": "Views",
-    "viewsPresets": "Presets",
-    "viewsMine": "My views",
-    "viewsEmpty": "No saved views yet",
-    "saveCurrentView": "Save current view…",
-    "saveViewTitle": "Save this view",
-    "saveViewNameLabel": "Name",
-    "saveViewNamePlaceholder": "e.g. Senior React, high match",
-    "saveViewButton": "Save view",
-    "viewSaved": "View saved",
-    "viewDeleted": "View deleted",
-    "deleteView": "Delete view",
-    "confirmDeleteView": "Delete “{name}”? This only removes the shortcut, not any candidates.",
-    "viewLimitReached": "You can keep up to 20 saved views.",
-    "toastViewSaveError": "We couldn't save this view. Please try again.",
-    "toastViewDeleteError": "We couldn't delete this view. Please try again.",
-    "presetTopMatches": "Top matches",
     "presetInterviewing": "In interviews",
     "presetOffersPending": "Offers pending",
     "boardLoadMore": "Load more",
@@ -16663,7 +16676,6 @@
     "hiringProgressTotal": "{count, plural, =0 {No applicants yet} one {# applicant} other {# applicants}}",
     "boardOffPath": "Rejected & withdrawn",
     "boardMatch": "{score}% match",
-    "savingButton": "Saving…",
     "factsEmploymentType": "Employment type",
     "factsWorkMode": "Work arrangement",
     "factsDuration": "Duration",

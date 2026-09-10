@@ -63,8 +63,6 @@ import { ViewToggle } from "@/components/shared/ViewToggle";
 import { useUpdateInterview } from "@/hooks/useInterviews";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
 import { ApplicationsBoard } from "./ApplicationsBoard";
-import { SavedViewsMenu } from "./SavedViewsMenu";
-import { useSavedViews } from "@/hooks/useSavedViews";
 import { AIEmailDraftButton } from "@/components/shared/AIEmailDraftButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -464,48 +462,6 @@ export function ApplicationsWorkspace({
     const qs = params.toString();
     return `${pathname}${qs ? `?${qs}` : ""}`;
   }
-
-  // Saved views (A15): a view is the toolbar's filter query string.
-  const savedViews = useSavedViews();
-  const currentViewQuery = (() => {
-    const p = new URLSearchParams();
-    if (statusFilter !== "all") p.set("status", statusFilter);
-    if (searchQuery.trim()) p.set("search", searchQuery.trim());
-    if (scoreRange[0] > 0) p.set("scoreMin", String(scoreRange[0]));
-    if (scoreRange[1] < 100) p.set("scoreMax", String(scoreRange[1]));
-    if (experienceRange[0] !== null) p.set("experienceMin", String(experienceRange[0]));
-    if (experienceRange[1] !== null) p.set("experienceMax", String(experienceRange[1]));
-    if (skillsFilter.length) p.set("skills", skillsFilter.join(","));
-    if (sortOption !== "newest") p.set("sort", sortOption);
-    if (unreviewedOnly) p.set("unreviewed", "1");
-    return p.toString();
-  })();
-  function applyView(query: string) {
-    const p = new URLSearchParams(query);
-    setStatusFilter(p.get("status") ?? "all");
-    setSearchQuery(p.get("search") ?? "");
-    const min = Number(p.get("scoreMin"));
-    const max = Number(p.get("scoreMax"));
-    setScoreRange([min > 0 ? min : 0, max > 0 && max < 100 ? max : 100]);
-    const emin = p.get("experienceMin");
-    const emax = p.get("experienceMax");
-    setExperienceRange([emin ? Number(emin) : null, emax ? Number(emax) : null]);
-    setSkillsFilter((p.get("skills") ?? "").split(",").filter(Boolean));
-    const sort = p.get("sort");
-    setSortOption(sort === "oldest" || sort === "score" ? sort : "newest");
-    setUnreviewedOnly(["1", "true"].includes(p.get("unreviewed") ?? ""));
-    // Keep the URL shareable: swap the filter params, keep view/jobId.
-    writeUrl((url) => {
-      for (const k of ["status", "search", "scoreMin", "scoreMax", "experienceMin", "experienceMax", "skills", "sort", "unreviewed", "page"]) url.delete(k);
-      p.forEach((v, k) => url.set(k, v));
-    });
-  }
-  // Stage presets ("Interviewing", "Offers pending") were removed: on the job
-  // workspace they only re-filtered to what the Interviews / Offers tabs
-  // already show, so stage navigation now lives in exactly one place.
-  const viewPresets = [
-    { key: "top", label: tw("presetTopMatches"), query: "scoreMin=70&sort=score" },
-  ];
 
   // Debounce user inputs to avoid excessive API calls
   const debouncedSearch = useDebounce(searchQuery, 350);
@@ -1283,16 +1239,6 @@ export function ApplicationsWorkspace({
           <span className="sm:hidden">{tw("unreviewedFilterShort")}</span>
           <span className="hidden sm:inline">{tw("unreviewedFilter")}</span>
         </Button>
-        <SavedViewsMenu
-          presets={viewPresets}
-          views={savedViews.views}
-          activeQuery={currentViewQuery}
-          onApply={applyView}
-          onSave={async (name) => { await savedViews.create.mutateAsync({ name, query: currentViewQuery }); }}
-          onDelete={async (id) => { await savedViews.remove.mutateAsync(id); }}
-          canSave={savedViews.views.length < 20}
-          isLoading={savedViews.isLoading}
-        />
         <TableToolbar
           className="ms-auto"
           onExportCsv={handleExportCsv}

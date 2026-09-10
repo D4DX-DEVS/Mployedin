@@ -1,5 +1,5 @@
 import type { UserRole } from "@/models/User";
-import type { ICompanyUserPermissions, PermissionFlag } from "@/models/CompanyUser";
+import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/companyRoles";
 import type { IconName } from "./iconRegistry";
 
 /** Resources in the system */
