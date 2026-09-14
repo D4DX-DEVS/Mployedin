@@ -195,14 +195,36 @@ export default function AdminEmployersPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog({ message: t("deactivateConfirmMessage"), confirmLabel: t("deactivateConfirmLabel") });
     if (!ok) return;
-    await fetch(`/api/employers/${id}`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/employers/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? t("requestFailed"));
+        return;
+      }
+      toast.success(t("toastDeactivated"));
+    } catch {
+      toast.error(t("requestFailed"));
+      return;
+    }
     fetchEmployers();
   };
 
   const handlePermanentDelete = async (id: string) => {
     const ok = await confirmDialog({ title: t("permanentDeleteTitle"), message: t("permanentDeleteMessage"), confirmLabel: t("permanentDeleteLabel") });
     if (!ok) return;
-    await fetch(`/api/employers/${id}?permanent=true`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/employers/${id}?permanent=true`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? t("requestFailed"));
+        return;
+      }
+      toast.success(t("toastDeletedPermanently"));
+    } catch {
+      toast.error(t("requestFailed"));
+      return;
+    }
     fetchEmployers();
   };
 
@@ -232,13 +254,22 @@ export default function AdminEmployersPage() {
 
   const handleRevoke = async () => {
     if (!verifyItem) return;
+    const ok = await confirmDialog({ message: t("revokeConfirmMessage"), confirmLabel: t("revokeButtonLabel") });
+    if (!ok) return;
     setVerifyLoading(true);
-    const res = await fetch(`/api/employers/${verifyItem._id}/verify`, { method: "DELETE" });
-    if (res.ok) {
-      setVerifyItem((prev) => prev ? { ...prev, domainVerified: false, verificationLevel: "basic" } : prev);
-      setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
-        ? { ...e, domainVerified: false, verificationLevel: "basic" }
-        : e));
+    try {
+      const res = await fetch(`/api/employers/${verifyItem._id}/verify`, { method: "DELETE" });
+      if (res.ok) {
+        setVerifyItem((prev) => prev ? { ...prev, domainVerified: false, verificationLevel: "basic" } : prev);
+        setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
+          ? { ...e, domainVerified: false, verificationLevel: "basic" }
+          : e));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setVerifyError(err.error ?? t("requestFailed"));
+      }
+    } catch {
+      setVerifyError(t("requestFailed"));
     }
     setVerifyLoading(false);
   };

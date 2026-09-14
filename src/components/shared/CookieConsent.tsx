@@ -47,6 +47,10 @@ export default function CookieConsent({ locale }: CookieConsentProps) {
 
   return (
     <div
+      // Stable, locale-independent hook: other bottom-anchored UI (the public job
+      // page's sticky apply bar) measures this banner so it never sits underneath
+      // it. Do not key off the aria-label — that string is translated.
+      data-cookie-consent=""
       className="pointer-events-none fixed inset-x-0 bottom-0 z-50 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-4"
       role="region"
       aria-live="polite"

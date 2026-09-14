@@ -76,6 +76,7 @@ const NotificationSchema = new Schema<INotification>(
         "verification",
         "agent_joined",
         "employer_registered",
+        "job_seeker_registered",
         "placement_completed",
         "new_job_posted",
         "target_assigned",

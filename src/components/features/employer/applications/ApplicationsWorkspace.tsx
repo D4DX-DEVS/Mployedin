@@ -58,6 +58,7 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { ViewToggle } from "@/components/shared/ViewToggle";
 import { useUpdateInterview } from "@/hooks/useInterviews";
@@ -169,6 +170,8 @@ export interface Applicant {
   status: string;
   aiMatchScore?: number;
   viewedByEmployerAt?: string;
+  /** Snapshot at apply time: the candidate joined through a partner referral. Employers never see who. */
+  isAgentReferred?: boolean;
   appliedAt: string;
   coverLetter?: string;
   matchBreakdown?: { skills?: number; experience?: number; location?: number; salary?: number; overall?: number };
@@ -2231,10 +2234,13 @@ function TableView({
                       {app.jobId?.title || t("roleNotSpecified")}
                     </p>
                   )}
-                  <p className="truncate text-xs text-muted-foreground">
-                    {location}
-                    {experienceYears != null ? (location ? ` • ${t("yearsExp", { count: experienceYears })} exp` : `${t("yearsExp", { count: experienceYears })} exp`) : ""}
-                  </p>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p className="min-w-0 truncate text-xs text-muted-foreground">
+                      {location}
+                      {experienceYears != null ? (location ? ` • ${t("yearsExp", { count: experienceYears })} exp` : `${t("yearsExp", { count: experienceYears })} exp`) : ""}
+                    </p>
+                    {app.isAgentReferred ? <ReferredBadge size="xs" /> : null}
+                  </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1 lg:hidden">
                   {matchScore != null ? (
@@ -2605,6 +2611,7 @@ function ApplicationDetailsPanel({
                     {candidateName}
                   </a>
                   <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" />
+                  {app.isAgentReferred ? <ReferredBadge /> : null}
                   {/* Only worth screen space when the candidate is in play for
                       more than this one job. */}
                   {(app.otherApplicationsCount ?? 0) > 0 ? (

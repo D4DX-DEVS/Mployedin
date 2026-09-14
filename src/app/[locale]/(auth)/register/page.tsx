@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn, getSession } from "next-auth/react";
 import { signInWithPopup } from "firebase/auth";
@@ -10,12 +10,16 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BriefcaseBusiness, Loader2, UserRoundSearch } from "lucide-react";
+import { BriefcaseBusiness, Handshake, Loader2, UserRoundSearch } from "lucide-react";
+import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
+import { REFERRAL_CODE_RE, REFERRAL_COOKIE_NAME } from "@/lib/referrals/url";
 
 export default function RegisterPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("auth");
+  const callback = safeCallbackPath(searchParams.get("callbackUrl"), locale);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,6 +33,33 @@ export default function RegisterPage() {
   const [appleLoading, setAppleLoading] = useState(false);
   const [roleSelected, setRoleSelected] = useState(false);
 
+  // ?ref=MPL-… from an agent's job-seeker referral link. Validated before it is
+  // trusted; a bad link shows nothing and never blocks the signup.
+  const refParam = (searchParams.get("ref") ?? "").trim().toUpperCase();
+  const [referralCode, setReferralCode] = useState("");
+  const [referralWrongAudience, setReferralWrongAudience] = useState(false);
+
+  useEffect(() => {
+    if (!refParam || !REFERRAL_CODE_RE.test(refParam)) return;
+    let cancelled = false;
+    fetch(`/api/referral/validate?code=${encodeURIComponent(refParam)}`)
+      .then((res) => res.json())
+      .then((data: { valid?: boolean; audience?: string }) => {
+        if (cancelled) return;
+        if (data.valid && data.audience === "job_seeker") {
+          setReferralCode(refParam);
+          // Carries the code through the LinkedIn / Apple redirect; claimed and
+          // cleared by /api/auth/post-login-redirect.
+          const secure = window.location.protocol === "https:" ? "; Secure" : "";
+          document.cookie = `${REFERRAL_COOKIE_NAME}=${encodeURIComponent(refParam)}; Max-Age=3600; Path=/; SameSite=Lax${secure}`;
+        } else if (data.valid && data.audience === "employer") {
+          setReferralWrongAudience(true);
+        }
+      })
+      .catch(() => { /* a bad link never blocks signup */ });
+    return () => { cancelled = true; };
+  }, [refParam]);
+
   async function handleGoogleSignIn() {
     setError("");
     setGoogleLoading(true);
@@ -36,7 +67,11 @@ export default function RegisterPage() {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
       const idToken = await result.user.getIdToken();
 
-      const res = await signIn("firebase", { idToken, redirect: false });
+      const res = await signIn("firebase", {
+        idToken,
+        ...(referralCode ? { referralCode } : {}),
+        redirect: false,
+      });
       if (res?.error) {
         setError(t("googleSignInFailed"));
         return;
@@ -45,7 +80,9 @@ export default function RegisterPage() {
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? false;
-      if (!isOnboarded) {
+      if (callback) {
+        router.replace(callback);
+      } else if (!isOnboarded) {
         router.replace(`/${locale}/onboarding`);
       } else {
         const redirects: Record<string, string> = { admin: "admin", employer: "employer", job_seeker: "job-seeker", agent: "agent", super_agent: "super-agent" };
@@ -80,7 +117,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/job-seeker-register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, ...(referralCode ? { referralCode } : {}) }),
     });
 
     const data = await res.json();
@@ -102,12 +139,12 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (signInResult?.error) {
-      // Fallback: account exists but auto sign-in failed — send to login.
-      router.push(`/${locale}/login?email=${encodeURIComponent(email)}`);
+      // Fallback: account exists but auto sign-in failed — send to login, forwarding the callback.
+      router.push(withCallback(`/${locale}/login?email=${encodeURIComponent(email)}`, callback));
       return;
     }
 
-    router.replace(`/${locale}/onboarding`);
+    router.replace(callback ?? `/${locale}/onboarding`);
   }
 
   if (!roleSelected) {
@@ -134,7 +171,7 @@ export default function RegisterPage() {
           </button>
 
           <Link
-            href={`/${locale}/employer-register`}
+            href={withCallback(`/${locale}/employer-register`, callback)}
             className="flex min-h-24 w-full items-center gap-4 rounded-2xl border border-border bg-card text-start transition-colors hover:border-primary/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 card-pad"
           >
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
@@ -178,6 +215,14 @@ export default function RegisterPage() {
         </button>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("createYourAccount")}</h1>
         <p className="text-base text-muted-foreground font-light">{t("registerSubtitle")}</p>
+        {referralCode ? (
+          <div data-testid="referral-notice" className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+            <Handshake className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden />
+            <span className="text-xs font-medium text-emerald-700">{t("referralNotice")}</span>
+          </div>
+        ) : referralWrongAudience ? (
+          <p className="text-xs text-muted-foreground">{t("referralNoticeWrongAudience")}</p>
+        ) : null}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -306,7 +351,7 @@ export default function RegisterPage() {
           variant="outline"
           type="button"
           className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: "/api/auth/post-login-redirect" }); }}
+          onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: withCallback("/api/auth/post-login-redirect", callback) }); }}
           disabled={appleLoading}
         >
           {appleLoading ? (
@@ -322,7 +367,7 @@ export default function RegisterPage() {
           variant="outline"
           type="button"
           className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: "/api/auth/post-login-redirect" }); }}
+          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: withCallback("/api/auth/post-login-redirect", callback) }); }}
           disabled={linkedInLoading}
         >
           {linkedInLoading ? (
@@ -345,7 +390,7 @@ export default function RegisterPage() {
 
       <p className="text-center text-xs text-muted-foreground">
         {t("hiringQuestion")}{" "}
-        <Link href={`/${locale}/employer-register`} className="text-muted-foreground hover:text-foreground font-medium underline transition-colors">
+        <Link href={withCallback(`/${locale}/employer-register`, callback)} className="text-muted-foreground hover:text-foreground font-medium underline transition-colors">
           {t("registerAsEmployer")}
         </Link>
       </p>

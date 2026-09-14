@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 
 const REMEMBER_ME_KEY = "mployedin_remember_email";
 const ROLE_REDIRECTS: Record<string, string> = {
@@ -44,18 +45,15 @@ function getPostSignInPath(locale: string, role: string, isOnboarded: boolean): 
   return `/${locale}/${ROLE_REDIRECTS[role] ?? "job-seeker"}`;
 }
 
+// Reads the live URL, so it is only safe inside effects and event handlers.
+// During SSR there is no `window`; render-time consumers must use the
+// `callbackPath` state below instead.
 function getSafeCallbackPath(locale: string): string | null {
-  const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
-  if (!callbackUrl) return null;
-
-  try {
-    const parsed = new URL(callbackUrl, window.location.origin);
-    if (parsed.origin !== window.location.origin) return null;
-    if (!parsed.pathname.startsWith(`/${locale}/`)) return null;
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
+  if (typeof window === "undefined") {
     return null;
   }
+  const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
+  return safeCallbackPath(callbackUrl, locale);
 }
 
 function getOAuthRedirectUrl(locale: string): string {
@@ -80,12 +78,16 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [requires2fa, setRequires2fa] = useState(false);
+  // Resolved after mount: the callback URL lives on `window.location`, which
+  // does not exist while the page is server-rendered.
+  const [callbackPath, setCallbackPath] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const anyLoading = loading || googleLoading || linkedInLoading || appleLoading;
 
   useEffect(() => {
     const savedEmail = localStorage.getItem(REMEMBER_ME_KEY);
     const params = new URLSearchParams(window.location.search);
+    setCallbackPath(safeCallbackPath(params.get("callbackUrl"), locale));
     const requestedEmail = params.get("email");
     const initialEmail = requestedEmail || savedEmail;
     if (initialEmail) {
@@ -105,7 +107,7 @@ export default function LoginPage() {
     } else if (oauthError) {
       setError({ kind: "oauth", message: t("oauthError") });
     }
-  }, [t]);
+  }, [t, locale]);
 
   useEffect(() => {
     if (error) errorRef.current?.focus();
@@ -418,14 +420,14 @@ export default function LoginPage() {
       <p className="text-center text-sm text-muted-foreground">
         {t("noAccount")}{" "}
         <Link
-          href={`/${locale}/register`}
+          href={withCallback(`/${locale}/register`, callbackPath)}
           className="inline-flex min-h-11 items-center text-primary font-semibold transition-colors hover:text-primary/80"
         >
           {t("createAccount")}
         </Link>
         {" \u00B7 "}
         <Link
-          href={`/${locale}/employer-register`}
+          href={withCallback(`/${locale}/employer-register`, callbackPath)}
           className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           {t("postJobsAsEmployer")}

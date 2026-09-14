@@ -19,12 +19,23 @@ import { verifyTotp, hashRecoveryCode } from "@/lib/security/totp";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { resolveCompanyContext } from "@/lib/auth/companyContext";
 import { getClientIp } from "@/lib/security/clientIp";
+import { attachJobSeekerReferral } from "@/lib/referrals/attachJobSeeker";
+import { hashOtp, otpHashesMatch } from "@/lib/auth/emailVerification";
+import PendingSignin, { PENDING_SIGNIN_MAX_ATTEMPTS } from "@/models/PendingSignin";
+import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   rememberMe: z.string().optional(),
   totpCode: z.string().optional(),
+});
+
+const emailOtpSchema = z.object({
+  email: z.string().email(),
+  otp: z.string().regex(/^\d{6}$/),
+  /** Optional job-seeker referral code; validated inside attachJobSeekerReferral. */
+  referralCode: z.string().trim().max(32).optional(),
 });
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -278,10 +289,11 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       id: "firebase",
       name: "Firebase",
-      credentials: { idToken: { type: "text" } },
+      credentials: { idToken: { type: "text" }, referralCode: { type: "text" } },
       async authorize(credentials) {
         try {
           const idToken = (credentials as { idToken?: string })?.idToken;
+          const referralCode = (credentials as { referralCode?: string })?.referralCode;
           if (!idToken) return null;
 
           const adminAuth = getFirebaseAdminAuth();
@@ -327,6 +339,22 @@ export const authConfig: NextAuthConfig = {
               preferredRoles: [],
               preferredLocations: [],
             });
+
+            // Referral link the seeker arrived through (/register?ref=). New
+            // users only: a returning user must never claim a code.
+            if (referralCode) {
+              try {
+                await attachJobSeekerReferral({ userId: dbUser._id.toString(), code: referralCode });
+              } catch (err) {
+                logger.error({ err }, "[Firebase Registration] Referral attach threw");
+              }
+            }
+
+            // Same default plan a password signup gets (job-seeker-register).
+            // Google sign-ups used to skip this and ran on the grace period only.
+            autoAssignDefaultPlan(dbUser._id.toString(), "job_seeker").catch((err) =>
+              logger.error({ err }, "[Firebase Registration] Failed to auto-assign subscription"),
+            );
 
             logActivity({
               actorId: dbUser._id.toString(),
@@ -402,6 +430,284 @@ export const authConfig: NextAuthConfig = {
           };
         } catch (err) {
           logger.error({ err }, "Firebase authorize error");
+          return null;
+        }
+      },
+    }),
+    // ── Email OTP Quick-Apply Provider ──────────────────────────────────────────
+    // Credentials: { email, otp }
+    // Passwordless sign-in for anonymous job seekers arriving from a shared job
+    // link. The code is minted by /api/auth/apply-otp/start into PendingSignin;
+    // redeeming it here is the ONLY place a quick-apply account is created, so
+    // an unverified address never leaves a User behind.
+    Credentials({
+      id: "email-otp",
+      name: "Email OTP",
+      credentials: { email: { type: "text" }, otp: { type: "text" }, referralCode: { type: "text" } },
+      async authorize(credentials) {
+        try {
+          const parsed = emailOtpSchema.safeParse(credentials);
+          if (!parsed.success) return null;
+
+          const { email: rawEmail, otp } = parsed.data;
+          const email = rawEmail.toLowerCase().trim();
+
+          await connectDB();
+
+          // Per-email rate limit for OTP attempts: 5 per 300 seconds.
+          // This is tighter than start rate limit to resist brute force
+          // (6-digit code has only 1M combinations).
+          // failClosed: this is the only brake on guessing a 6-digit code. If the
+          // shared rate-limit store is unavailable, checkRateLimit otherwise falls
+          // back to a per-instance in-memory counter, which on a scaled deployment
+          // is no limit at all. The equivalent guard in /api/auth/verify-email
+          // fails closed for the same reason.
+          const { allowed } = await checkRateLimit(`otp-auth:${email}`, {
+            limit: 5,
+            windowSec: 300,
+            prefix: "otp-auth",
+            failClosed: true,
+          });
+          if (!allowed) {
+            logActivity({
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "otp_rate_limited" },
+            });
+            return null;
+          }
+
+          const pending = await PendingSignin.findOne({ email });
+          if (!pending) {
+            logActivity({
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "invalid_otp" },
+            });
+            return null;
+          }
+
+          if (pending.expiresAt < new Date()) {
+            await PendingSignin.deleteOne({ _id: pending._id });
+            logActivity({
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "otp_expired" },
+            });
+            return null;
+          }
+
+          // Second brake, independent of the rate-limit store: a row survives at
+          // most PENDING_SIGNIN_MAX_ATTEMPTS wrong guesses, then must be re-requested.
+          if (pending.attempts >= PENDING_SIGNIN_MAX_ATTEMPTS) {
+            await PendingSignin.deleteOne({ _id: pending._id });
+            logActivity({
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "otp_attempts_exceeded" },
+            });
+            return null;
+          }
+
+          // Must match the purpose used by /api/auth/apply-otp/start. A code
+          // issued by the signup email-verification flow will not hash to this
+          // value, so it cannot be used to log in.
+          if (!otpHashesMatch(hashOtp(otp, "signin"), pending.otpHash)) {
+            await PendingSignin.updateOne({ _id: pending._id }, { $inc: { attempts: 1 } });
+            logActivity({
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "invalid_otp", attempts: pending.attempts + 1 },
+            });
+            return null;
+          }
+
+          // Redeem atomically. Two concurrent submissions of the same code can
+          // both pass the comparison above; only the one that deletes the row
+          // proceeds, so a code is single use even under a race.
+          const redeemed = await PendingSignin.findOneAndDelete({ _id: pending._id, otpHash: pending.otpHash });
+          if (!redeemed) {
+            logActivity({
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "otp_already_redeemed" },
+            });
+            return null;
+          }
+
+          // email/name/avatar/locale are part of the object returned to Auth.js
+          // below. Omitting them here left the returned user with an undefined
+          // email, which downstream turned into a failed sign-in.
+          const userProjection =
+            "email name avatar locale isActive role isEmailVerified lockUntil failedLoginAttempts twoFactorEnabled";
+
+          let user = await User.findOne({ email }).select(userProjection);
+          let isNewUser = false;
+
+          if (!user) {
+            // The code proved control of the mailbox, so the account is born
+            // verified. No password: this user signs in with a fresh code each
+            // time, or sets one later from Settings.
+            try {
+              user = await User.create({
+                name: email.split("@")[0],
+                email,
+                role: "job_seeker",
+                isActive: true,
+                isEmailVerified: true,
+                locale: "en",
+                lastLogin: new Date(),
+              });
+              isNewUser = true;
+            } catch (err) {
+              // E11000: someone registered this address between our lookup and
+              // the insert (a parallel signup, or a second tab). Sign into the
+              // account that won; never fail the visitor for a race we can resolve.
+              if ((err as { code?: number }).code !== 11000) throw err;
+              user = await User.findOne({ email }).select(userProjection);
+              if (!user) throw err;
+            }
+          }
+
+          if (isNewUser) {
+            // Upsert, not create: the same race above could otherwise leave one
+            // user with two profiles.
+            await JobSeeker.updateOne(
+              { userId: user._id },
+              {
+                $setOnInsert: {
+                  userId: user._id,
+                  fullName: user.name,
+                  isOnboarded: false,
+                  skills: [],
+                  experience: [],
+                  education: [],
+                  languages: [],
+                  certifications: [],
+                  preferredCountries: [],
+                  preferredRoles: [],
+                  preferredLocations: [],
+                },
+              },
+              { upsert: true },
+            );
+
+            // Referral link this visitor arrived through, when the client
+            // forwards one. New accounts only — a returning seeker signing in
+            // with a code must never claim a referral.
+            if (parsed.data.referralCode) {
+              try {
+                await attachJobSeekerReferral({ userId: user._id.toString(), code: parsed.data.referralCode });
+              } catch (err) {
+                logger.error({ err }, "[Email-OTP Registration] Referral attach threw");
+              }
+            }
+
+            // Same default plan every other seeker signup gets. Fire-and-forget
+            // like job-seeker-register: a catalogue problem must not block sign-in.
+            autoAssignDefaultPlan(user._id.toString(), "job_seeker").catch((err) =>
+              logger.error({ err }, "[Email-OTP Registration] Failed to auto-assign subscription"),
+            );
+
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: "job_seeker",
+              action: "register.email_otp",
+              resource: "auth",
+              resourceId: user._id.toString(),
+              meta: { email, provider: "email-otp" },
+            });
+          }
+
+          // SECURITY: Only job_seeker accounts sign in via email-OTP.
+          // Staff (admin/agent/super_agent) and employers stay on password-based auth.
+          // The start route never mints a code for them, so reaching this branch
+          // means the role changed after the code was requested.
+          if (user.role !== "job_seeker") {
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "non_job_seeker_otp_attempt" },
+            });
+            return null;
+          }
+
+          if (!user.isActive) {
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "account_inactive" },
+            });
+            return null;
+          }
+
+          // Locked out from failed password attempts: a code must not bypass that.
+          if (user.isLocked()) {
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "account_locked" },
+            });
+            return null;
+          }
+
+          // Defence in depth: refuse if the account has TOTP enrolled. Today this
+          // cannot happen — enrolment is admin-only and this provider is
+          // job_seeker-only — but if either rule changes, or a demoted account
+          // keeps stale 2FA fields, this path must not become a 2FA bypass.
+          if (user.twoFactorEnabled) {
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "otp_blocked_2fa_enrolled" },
+            });
+            return null;
+          }
+
+          // Mark verified and reset lockout state. The signup flow's
+          // emailVerification* fields are deliberately NOT touched: a pending
+          // "confirm your address" code on the same account stays valid.
+          await User.findByIdAndUpdate(user._id, {
+            $set: {
+              isEmailVerified: true,
+              lastLogin: new Date(),
+              failedLoginAttempts: 0,
+              lockUntil: null,
+            },
+          });
+
+          const jobSeeker = isNewUser
+            ? null
+            : await JobSeeker.findOne({ userId: user._id }).select("isOnboarded").lean();
+
+          logActivity({
+            actorId: user._id.toString(),
+            actorRole: user.role,
+            action: "login.success",
+            resource: "auth",
+            meta: { email, provider: "email-otp", newAccount: isNewUser },
+          });
+
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            image: user.avatar,
+            role: user.role,
+            locale: user.locale,
+            isEmailVerified: true,
+            isOnboarded: jobSeeker?.isOnboarded ?? false,
+          };
+        } catch (err) {
+          logger.error({ err }, "Email-OTP authorize error");
           return null;
         }
       },
@@ -553,7 +859,14 @@ export const authConfig: NextAuthConfig = {
         }
       }
       // OAuth sign-in: create/find user in DB (LinkedIn OAuth — Firebase handles its own flow in authorize())
-      if (account && account.provider !== "credentials") {
+      //
+      // "email-otp" is excluded: it is a Credentials provider whose authorize() has
+      // already resolved and updated the account, so running the OAuth path would
+      // re-look-up the user and try to create a duplicate. It only ever signs in
+      // job_seeker accounts, and job seekers cannot enrol in 2FA, so the OAuth 2FA
+      // gate below does not apply to it. Firebase deliberately still goes through
+      // here so that gate keeps covering Google sign-in.
+      if (account && account.provider !== "credentials" && account.provider !== "email-otp") {
         await connectDB();
         let dbUser = await User.findOne({ email: token.email });
         const isNewUser = !dbUser;

@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ReferralAudience } from "@/lib/referrals/url";
 
 // ── Types ──────────────────────────────────────────────────────────
 
 export interface ReferralRegistration {
-  employerId: string;
+  /** Missing on rows written before job-seeker links existed → employer. */
+  kind?: "employer" | "job_seeker";
+  employerId?: string;
+  jobSeekerId?: string;
   userId: string;
-  companyName: string;
+  /** Employer rows only. */
+  companyName?: string;
+  /** Job-seeker rows only. */
+  name?: string;
   email: string;
   country?: string;
   city?: string;
@@ -17,6 +24,8 @@ export interface ReferralLinkItem {
   code: string;
   createdBy: { _id: string; name: string; email: string } | string;
   creatorRole: "agent" | "super_agent";
+  /** Missing on links created before job-seeker links existed → employer. */
+  audience?: ReferralAudience;
   label?: string;
   expiresAt?: string;
   maxUses: number;
@@ -37,6 +46,7 @@ export interface ReferralLinksFilters {
   search?: string;
   status?: ReferralLinkStatus;
   creatorRole?: ReferralCreatorRole;
+  audience?: ReferralAudience;
   dateFrom?: string;
   dateTo?: string;
   sortBy?: ReferralSortField;
@@ -47,6 +57,8 @@ export interface ReferralLinksStats {
   totalLinks: number;
   activeLinks: number;
   totalRegistrations: number;
+  employerRegistrations: number;
+  jobSeekerRegistrations: number;
   myLinks: number;
   agentLinks: number;
 }
@@ -61,6 +73,7 @@ interface ReferralLinksResponse {
 }
 
 interface CreateReferralLinkPayload {
+  audience?: ReferralAudience;
   label?: string;
   maxUses?: number;
   expiresAt?: string;
@@ -96,6 +109,7 @@ export function useReferralLinks(filters: ReferralLinksFilters) {
       if (filters.search) params.set("search", filters.search);
       if (filters.status) params.set("status", filters.status);
       if (filters.creatorRole) params.set("creatorRole", filters.creatorRole);
+      if (filters.audience) params.set("audience", filters.audience);
       if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
       if (filters.dateTo) params.set("dateTo", filters.dateTo);
       if (filters.sortBy) params.set("sortBy", filters.sortBy);

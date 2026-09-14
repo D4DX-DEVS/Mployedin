@@ -20,6 +20,15 @@ export interface INotificationPreference extends Document {
     profile_views: CategoryPreference;
     marketing: CategoryPreference;
     system: CategoryPreference;
+    /*
+     * Staff categories. The agent and super-agent settings pages have always
+     * offered these three, but they were absent here, so Mongoose stripped
+     * them out of every update and the toggles reverted on reload while the
+     * API still answered 200.
+     */
+    placements: CategoryPreference;
+    commissions: CategoryPreference;
+    team: CategoryPreference;
   };
   unsubscribedAll: boolean;
   dailyDigestTime: string; // "HH:mm" format, default "09:00"
@@ -45,6 +54,29 @@ const CategoryPreferenceSchema = new Schema(
 );
 
 const DEFAULT_CHANNELS: NotificationChannel[] = ["in_app", "email"];
+
+/**
+ * Every category and the state it starts in. Also the backfill source: a
+ * document written before a category existed has no sub-document for it, and
+ * the orchestrator reads `categories[x]?.enabled` — so without this, adding a
+ * category would silently stop delivery for everyone who already had a
+ * preferences document.
+ */
+export const CATEGORY_DEFAULTS: Record<string, CategoryPreference> = {
+  jobs: { enabled: true, channels: DEFAULT_CHANNELS },
+  applications: { enabled: true, channels: DEFAULT_CHANNELS },
+  interviews: { enabled: true, channels: DEFAULT_CHANNELS },
+  offers: { enabled: true, channels: DEFAULT_CHANNELS },
+  profile_views: { enabled: true, channels: DEFAULT_CHANNELS },
+  marketing: { enabled: false, channels: ["email"] },
+  system: { enabled: true, channels: DEFAULT_CHANNELS },
+  placements: { enabled: true, channels: DEFAULT_CHANNELS },
+  commissions: { enabled: true, channels: DEFAULT_CHANNELS },
+  team: { enabled: true, channels: DEFAULT_CHANNELS },
+};
+
+/** The category keys a client may write. */
+export const CATEGORY_KEYS = Object.keys(CATEGORY_DEFAULTS) as (keyof INotificationPreference["categories"])[];
 
 const NotificationPreferenceSchema = new Schema<INotificationPreference>(
   {
@@ -88,6 +120,18 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
         type: CategoryPreferenceSchema,
         default: () => ({ enabled: true, channels: ["in_app", "email"] }),
       },
+      placements: {
+        type: CategoryPreferenceSchema,
+        default: () => ({ enabled: true, channels: DEFAULT_CHANNELS }),
+      },
+      commissions: {
+        type: CategoryPreferenceSchema,
+        default: () => ({ enabled: true, channels: DEFAULT_CHANNELS }),
+      },
+      team: {
+        type: CategoryPreferenceSchema,
+        default: () => ({ enabled: true, channels: DEFAULT_CHANNELS }),
+      },
     },
     unsubscribedAll: { type: Boolean, default: false },
     dailyDigestTime: { type: String, default: "09:00" },
@@ -112,7 +156,45 @@ export async function getOrCreatePreferences(
   let prefs = await NotificationPreference.findOne({ userId });
   if (!prefs) {
     prefs = await NotificationPreference.create({ userId });
+    return prefs;
   }
+
+  /*
+   * Backfill categories added after this document was written, so a new
+   * category behaves like its default rather than like "disabled" — the
+   * orchestrator reads `categories[x]?.enabled` and would otherwise stop
+   * delivering to everyone who already had a preferences document.
+   *
+   * Both halves of this are deliberate. The check reads the *stored* document
+   * through the driver because Mongoose materialises a single-nested
+   * sub-document's defaults in memory: `prefs.categories.placements` is a
+   * populated object even when the collection has no such field, so a check
+   * against the hydrated document finds nothing missing and writes nothing. The
+   * write goes through the driver for the same reason — it must land exactly as
+   * given, including the channel list, because a later
+   * `$set: { "categories.x.enabled": false }` creates the sub-document with an
+   * empty channels array if the field was never stored.
+   */
+  const stored = await NotificationPreference.collection.findOne(
+    { _id: prefs._id },
+    { projection: { categories: 1 } },
+  );
+  const storedCategories = (stored?.categories ?? {}) as Record<string, unknown>;
+  const missing = CATEGORY_KEYS.filter((key) => !storedCategories[key]);
+
+  if (missing.length > 0) {
+    const updates: Record<string, CategoryPreference> = {};
+    for (const key of missing) {
+      // Copy the channel array too — every default shares one array instance.
+      updates[`categories.${key}`] = {
+        ...CATEGORY_DEFAULTS[key],
+        channels: [...CATEGORY_DEFAULTS[key].channels],
+      };
+    }
+    await NotificationPreference.collection.updateOne({ _id: prefs._id }, { $set: updates });
+    prefs = (await NotificationPreference.findOne({ userId })) ?? prefs;
+  }
+
   return prefs;
 }
 
@@ -140,15 +222,29 @@ export function typeToCategory(
       return "jobs";
     case "profile_update":
       return "profile_views";
+    // Commission notifications are the only thing that emits "payment"
+    // (notifyCommissionApproved / notifyCommissionPaid), and both go to an
+    // agent or super-agent — never to an employer or a seeker.
     case "payment":
+      return "commissions";
+    case "placement":
+    case "placement_completed":
+      return "placements";
+    // "Super agent assignments, team updates, and milestones" — the label the
+    // staff settings pages already use for this group.
+    case "agent_joined":
+    case "target_assigned":
+    case "target_updated":
+    case "target_at_risk":
+    case "target_milestone":
+      return "team";
     case "verification":
     case "system":
     case "lead_converted":
     case "mention":
     case "message":
-    case "agent_joined":
     case "employer_registered":
-    case "placement_completed":
+    case "job_seeker_registered":
       return "system";
     default:
       return "system";

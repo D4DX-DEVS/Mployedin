@@ -471,10 +471,10 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 <div><p className="text-xs text-muted-foreground">{t("paymentTerms")}</p><p className="capitalize">{invoice.paymentTerms.replace(/_/g, " ")}</p></div>
               )}
               {invoice.jobId?.title && (
-                <div><p className="text-xs text-muted-foreground">Job</p><p>{invoice.jobId.title}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("job")}</p><p>{invoice.jobId.title}</p></div>
               )}
               <div><p className="text-xs text-muted-foreground">{t("currencyLabel")}</p><p>{invoice.currency}</p></div>
-              <div><p className="text-xs text-muted-foreground">Category</p><p className="capitalize">{invoice.category?.replace(/_/g, " ")}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("categoryCol")}</p><p className="capitalize">{invoice.category?.replace(/_/g, " ")}</p></div>
             </div>
             {invoice.notes && (
               <div className="rounded-lg bg-muted/30 p-3 text-sm"><p className="mb-1 text-xs text-muted-foreground">{t("notes")}</p><p>{invoice.notes}</p></div>

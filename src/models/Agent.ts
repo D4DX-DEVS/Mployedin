@@ -37,6 +37,8 @@ export interface IInvoiceDefaults {
 export interface IAgent extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
+  /** Set when an admin converts this user away from the agent role. */
+  roleArchivedAt?: Date | null;
   superAgentId?: mongoose.Types.ObjectId;
   referralCode: string;
   assignedCityIds: mongoose.Types.ObjectId[];
@@ -72,6 +74,9 @@ const ActivityLogSchema = new Schema<IActivityLog>(
 const AgentSchema = new Schema<IAgent>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    // Stamped when an admin converts this user away from the agent role, so the
+    // profile survives the change instead of being deleted with its history.
+    roleArchivedAt: { type: Date, default: null, index: true },
     superAgentId: { type: Schema.Types.ObjectId, ref: "SuperAgent" },
     referralCode: { type: String, unique: true, sparse: true },
     assignedCityIds: [{ type: Schema.Types.ObjectId, ref: "City" }],

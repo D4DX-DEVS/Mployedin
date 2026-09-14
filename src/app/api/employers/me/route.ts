@@ -6,6 +6,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { employerUpdateSchema } from "@/lib/validators/employers";
 import { encryptIfPlain } from "@/lib/security/encryption";
+import { meetsProfileRequirements } from "@/lib/employers/publishGate";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -60,6 +61,19 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     if (typeof updateData[f] === "string" && updateData[f]) {
       updateData[f] = encryptIfPlain(updateData[f] as string);
     }
+  }
+
+  // Clearing the publishing gate for an admin-converted account: once the saved
+  // profile carries a company name, email and industry, stamp it so their jobs
+  // can go live. Judged on the merged result, not just this request's fields,
+  // so an employer filling the form in two passes is not stuck.
+  const merged = {
+    companyName: (updateData.companyName as string | undefined) ?? employer.companyName,
+    companyEmail: (updateData.companyEmail as string | undefined) ?? employer.companyEmail,
+    industry: (updateData.industry as string | undefined) ?? employer.industry,
+  };
+  if (!employer.profileConfirmedAt && meetsProfileRequirements(merged)) {
+    updateData.profileConfirmedAt = new Date();
   }
 
   // Use updateOne to avoid full Mongoose validation on PII-encrypted fields

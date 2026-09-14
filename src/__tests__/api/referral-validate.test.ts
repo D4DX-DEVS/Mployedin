@@ -32,7 +32,7 @@ describe("GET /api/referral/validate — public oracle exposes validity only", (
 
     const res = await GET(new NextRequest("http://localhost:3000/api/referral/validate?code=MPL-ABCD1234"));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ valid: true });
+    expect(await res.json()).toEqual({ valid: true, audience: "employer" });
   });
 
   it("reports an exhausted link as invalid with a reason and nothing else", async () => {
@@ -40,7 +40,7 @@ describe("GET /api/referral/validate — public oracle exposes validity only", (
     const { GET } = await import("@/app/api/referral/validate/route");
 
     const res = await GET(new NextRequest("http://localhost:3000/api/referral/validate?code=MPL-FULL0000"));
-    expect(await res.json()).toEqual({ valid: false, reason: "max_reached" });
+    expect(await res.json()).toEqual({ valid: false, audience: "employer", reason: "max_reached" });
   });
 
   it("returns only { valid: true } for a legacy agent code", async () => {
@@ -49,6 +49,14 @@ describe("GET /api/referral/validate — public oracle exposes validity only", (
     const { GET } = await import("@/app/api/referral/validate/route");
 
     const res = await GET(new NextRequest("http://localhost:3000/api/referral/validate?code=LEGACY1"));
-    expect(await res.json()).toEqual({ valid: true });
+    expect(await res.json()).toEqual({ valid: true, audience: "employer" });
+  });
+
+  it("reports job_seeker audience for a seeker link and still no creator role", async () => {
+    referralFindOne.mockReturnValue(lean({ code: "MPL-SEEK0001", isActive: true, maxUses: 0, usedCount: 0, creatorRole: "agent", audience: "job_seeker" }));
+    const { GET } = await import("@/app/api/referral/validate/route");
+
+    const res = await GET(new NextRequest("http://localhost:3000/api/referral/validate?code=MPL-SEEK0001"));
+    expect(await res.json()).toEqual({ valid: true, audience: "job_seeker" });
   });
 });

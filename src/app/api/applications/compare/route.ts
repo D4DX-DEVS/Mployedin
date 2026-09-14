@@ -114,6 +114,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       status: app.status,
       appliedAt: app.appliedAt,
       aiMatchScore: app.aiMatchScore ?? null,
+      isAgentReferred: app.isAgentReferred === true,
       matchBreakdown: app.matchBreakdown ?? null,
       candidate: {
         name: seeker?.fullName ?? seeker?.userId?.name ?? "Unknown",

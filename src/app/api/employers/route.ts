@@ -4,7 +4,6 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
-import SuperAgent from "@/models/SuperAgent";
 import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
@@ -16,6 +15,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import logger from "@/lib/logger";
 import { buildEmployerAdminCreatePayload } from "@/lib/employers/admin";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -37,7 +37,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     }
 
     // Query Employer profiles for assigned employers
-    const empQuery: Record<string, unknown> = { _id: { $in: empIds } };
+    // Archived by an admin role conversion — the company profile is kept so its
+    // jobs keep an owner, but the account is no longer an employer. `null` also
+    // matches documents predating the field.
+    const empQuery: Record<string, unknown> = { _id: { $in: empIds }, roleArchivedAt: null };
     if (search) {
       const safe = escapeRegex(search);
       empQuery.$or = [
@@ -83,11 +86,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ employers, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   }
 
-  // Super-agents can only see employers under their agents
+  // Super-agents can only see employers under their agents.
+  // "Their agents" is effectiveAgentIds — the explicit team plus agents who
+  // arrived through a region the admin assigned to this super-agent. Reading
+  // agentIds alone made this the one super-agent route with a narrower idea of
+  // the team than the rest, so a region-inherited agent's employers were
+  // missing here and present everywhere else.
   if (ctx.role === "super_agent") {
-    const superAgent = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
-    if (!superAgent) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
-    const agentDocIds = superAgent.agentIds ?? [];
+    const saScope = await getSuperAgentScope(ctx.userId);
+    if (!saScope) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
+    const agentDocIds = saScope.effectiveAgentIds;
     if (agentDocIds.length === 0) {
       return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
@@ -98,7 +106,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ? [agentIdParam]
       : agentDocIds;
 
-    const empQuery: Record<string, unknown> = { agentId: { $in: scopedAgentIds } };
+    // See the note on the super-agent query above: archived conversions are
+    // kept but must not appear in an employer list.
+    const empQuery: Record<string, unknown> = { agentId: { $in: scopedAgentIds }, roleArchivedAt: null };
     if (search) {
       const safe = escapeRegex(search);
       empQuery.$or = [

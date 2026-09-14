@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { formatDateTime } from "@/lib/ui/intlFormat";
+import { toast } from "sonner";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,12 +106,18 @@ export default function AdminNotificationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
-      const data = await res.json();
-      if (data.success) {
+      const data = await res.json().catch(() => ({ success: false }));
+      if (res.ok && data.success) {
         setConfig(data.config);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+      } else {
+        toast.error(data.error ?? t("configSaveFailed"));
+        fetchAll();
       }
+    } catch {
+      toast.error(t("configSaveFailed"));
+      fetchAll();
     } finally {
       setSaving(false);
     }
@@ -456,27 +464,47 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
   const [action, setAction] = useState("force_unsubscribe");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const overrides = config?.userOverrides ?? [];
 
   const addOverride = async () => {
     if (!userId || !reason) return;
     setSubmitting(true);
     try {
-      await fetch("/api/admin/notification-config/user-override", {
+      const res = await fetch("/api/admin/notification-config/user-override", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, action, reason }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? t("overrideAddFailed"));
+        return;
+      }
       setUserId(""); setReason(""); onRefresh();
+    } catch {
+      toast.error(t("overrideAddFailed"));
     } finally { setSubmitting(false); }
   };
 
   const removeOverride = async (uid: string) => {
-    await fetch("/api/admin/notification-config/user-override", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: uid }),
-    });
+    const ok = await confirmDialog({ message: t("removeOverrideConfirm"), confirmLabel: t("removeOverrideButton") });
+    if (!ok) return;
+    try {
+      const res = await fetch("/api/admin/notification-config/user-override", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: uid }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? t("overrideRemoveFailed"));
+        return;
+      }
+    } catch {
+      toast.error(t("overrideRemoveFailed"));
+      return;
+    }
     onRefresh();
   };
 
@@ -488,6 +516,8 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
 
   return (
     <div className="space-y-6">
+      {ConfirmDialogNode}
+
       <SectionCard title={t("addUserOverrideTitle")} icon={UserX}>
         <div className="p-5 space-y-3">
           <p className="text-xs text-muted-foreground">{t("addUserOverrideDescription")}</p>

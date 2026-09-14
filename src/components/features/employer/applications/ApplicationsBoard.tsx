@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Dot, FolderOpen, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { useInfiniteApplications, type ApplicationsFilters } from "@/hooks/useApplications";
 import { PIPELINE_STAGES, OFF_PATH_STATUSES, STAGE_LABEL_KEYS, STAGE_DOT_CLASS } from "@/lib/hiring/pipeline";
 import { Button } from "@/components/ui/button";
@@ -167,6 +168,11 @@ function BoardCard({
           {candidateName || "—"}
         </button>
       </div>
+      {app.isAgentReferred && (
+        <div className="mb-1.5">
+          <ReferredBadge size="xs" />
+        </div>
+      )}
       {isNew && (
         <div className="mb-1.5 inline-flex items-center gap-1 text-xs text-status-applied font-medium">
           <Dot className="h-2 w-2 bg-status-applied rounded-full" aria-hidden /> {ta("newBadge")}

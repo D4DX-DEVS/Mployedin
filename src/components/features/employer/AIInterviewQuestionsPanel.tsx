@@ -181,14 +181,14 @@ export function AIInterviewQuestionsPanel({
       .val{font-size:13px;color:#374151}
       .redflag{color:#dc2626}</style></head>
       <body>
-      <h1>Interview Questions: ${jobTitle}</h1>
-      <p class="meta">${candidateName ? `Candidate: ${candidateName} · ` : ""}Type: ${activeTab.replace("_", " ")} · ${allQ.length} questions</p>
+      <h1>${t("printTitle", { job: jobTitle })}</h1>
+      <p class="meta">${candidateName ? `${t("printCandidate", { name: candidateName })} · ` : ""}${t("printType", { type: activeTab.replace("_", " ") })} · ${t("printQuestionCount", { count: allQ.length })}</p>
       ${allQ.map((q, i) => `
         <div class="q">
           <h3>Q${i + 1}: ${q.question}</h3>
-          <div class="label">Tests</div><div class="val">${q.tests}</div>
-          <div class="label">Strong Answer</div><div class="val">${q.strongAnswer}</div>
-          <div class="label redflag">Red Flag</div><div class="val">${q.redFlag}</div>
+          <div class="label">${t("tests")}</div><div class="val">${q.tests}</div>
+          <div class="label">${t("strongAnswer")}</div><div class="val">${q.strongAnswer}</div>
+          <div class="label redflag">${t("redFlag")}</div><div class="val">${q.redFlag}</div>
         </div>`).join("")}
       </body></html>`;
     const w = window.open("", "_blank");

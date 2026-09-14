@@ -149,14 +149,32 @@ export default function ContactSubmissionsPage() {
   };
 
   const handleMarkRead = async (id: string) => {
-    await fetch(`/api/admin/cms/contact-submissions/${id}`, { method: "PATCH" });
+    try {
+      const res = await fetch(`/api/admin/cms/contact-submissions/${id}`, { method: "PATCH" });
+      if (!res.ok) {
+        toast.error(t("markReadFailed"));
+        return;
+      }
+    } catch {
+      toast.error(t("markReadFailed"));
+      return;
+    }
     fetchItems();
   };
 
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog(t("deleteConfirmation"));
     if (!ok) return;
-    await fetch(`/api/admin/cms/contact-submissions/${id}`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/admin/cms/contact-submissions/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error(t("deleteFailed"));
+        return;
+      }
+    } catch {
+      toast.error(t("deleteFailed"));
+      return;
+    }
     fetchItems();
   };
 

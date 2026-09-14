@@ -10,6 +10,7 @@ import type { NextRequest } from "next/server";
 // resolves the correct overload without affecting runtime behavior.
 import type { NextAuthRequest } from "next-auth";
 import { getDashboardPath } from "@/lib/permissions/matrix";
+import { withCallback } from "@/lib/routing/callbackUrl";
 import type { UserRole } from "@/types/user";
 import { SECURITY_HEADERS, getSecurityHeaders } from "@/lib/security/headers";
 import { setCsrfCookie, validateCsrf, isCsrfExempt } from "@/lib/security/csrf";
@@ -244,12 +245,15 @@ export default auth(async function middleware(req: NextAuthRequest) {
         NextResponse.redirect(verifyUrl)
       );
     }
-    // Redirect non-onboarded job seekers trying to access the dashboard back to onboarding
+    // Redirect non-onboarded job seekers trying to access the dashboard back to onboarding.
+    // Carry the destination as a callback so they can return after onboarding.
     const isJobSeekerDash = stripped.startsWith("/job-seeker");
     if (isJobSeekerDash && session.user.role === "job_seeker" && session.user.isOnboarded === false) {
       const urlLocale = pathname.split("/")[1] || defaultLocale;
+      const { search } = req.nextUrl;
+      const callbackPath = pathname + search;
       return withSecurityHeaders(
-        NextResponse.redirect(new URL(`/${urlLocale}/onboarding`, req.url))
+        NextResponse.redirect(new URL(withCallback(`/${urlLocale}/onboarding`, callbackPath), req.url))
       );
     }
     // Redirect already-onboarded job seekers away from /onboarding to the dashboard

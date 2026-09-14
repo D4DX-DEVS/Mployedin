@@ -43,6 +43,20 @@ export interface ISocialLink {
   url: string;
 }
 
+/**
+ * Set once, at signup, by `attachJobSeekerReferral`. Provenance, not ownership:
+ * `agentId` (assignment) is a separate field and is not written by referrals.
+ */
+export interface IJobSeekerReferral {
+  linkId: mongoose.Types.ObjectId;
+  code: string;
+  agentId?: mongoose.Types.ObjectId;
+  superAgentId?: mongoose.Types.ObjectId;
+  referrerUserId: mongoose.Types.ObjectId;
+  referrerRole: "agent" | "super_agent";
+  referredAt: Date;
+}
+
 export interface IAccomplishment {
   type: "online_profile" | "work_sample" | "publication" | "presentation" | "patent" | "certification";
   title: string;
@@ -106,6 +120,9 @@ export interface IJobSeeker extends Document {
   userId: mongoose.Types.ObjectId;
   agentId?: mongoose.Types.ObjectId;
   premiumLinkTag?: string;
+  referral?: IJobSeekerReferral;
+  /** True iff `referral` is set. Denormalised so employer-facing reads and sorts never need the sub-document. */
+  isAgentReferred: boolean;
   // Profile
   fullName?: string;
   nationality?: string;
@@ -138,6 +155,13 @@ export interface IJobSeeker extends Document {
     /** Times an employer/agent/admin downloaded this candidate's resume. */
     downloadCount?: number;
   };
+  /**
+   * Set by /api/ai/cv-extract when the profile was filled from a parsed CV.
+   * These were written by the route for months but never declared here, so
+   * Mongoose silently dropped them and no profile carried the flag.
+   */
+  cvExtractedByAI?: boolean;
+  cvExtractedAt?: Date;
   // Skills & Experience
   skills: string[];
   suggestedSkills: string[];
@@ -181,6 +205,13 @@ export interface IJobSeeker extends Document {
   preferredLocations: string[];
   isOnboarded: boolean;
   profileCompletedLater?: boolean;
+  /**
+   * Set when an admin converts this user away from the job_seeker role. The
+   * profile is archived rather than deleted so a conversion never destroys a
+   * CV, skills or application history, and converting back restores the same
+   * profile instead of handing the person a blank one.
+   */
+  roleArchivedAt?: Date | null;
   // Preferences
   preferredCountries: string[];
   preferredRoles: string[];
@@ -298,6 +329,19 @@ const DiversityInclusionSchema = new Schema<IDiversityInclusion>({
   },
 }, { _id: false });
 
+const JobSeekerReferralSchema = new Schema<IJobSeekerReferral>(
+  {
+    linkId: { type: Schema.Types.ObjectId, ref: "ReferralLink", required: true },
+    code: { type: String, required: true },
+    agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
+    superAgentId: { type: Schema.Types.ObjectId, ref: "SuperAgent" },
+    referrerUserId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    referrerRole: { type: String, enum: ["agent", "super_agent"], required: true },
+    referredAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
 /** Settings page payload. `_id: false` — it is a single embedded document, not
  *  a collection member. `strict` still applies inside, so unknown keys sent by a
  *  future client are dropped rather than stored unvalidated. */
@@ -353,6 +397,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
     premiumLinkTag: String,
+    referral: { type: JobSeekerReferralSchema, default: undefined },
+    isAgentReferred: { type: Boolean, default: false },
     fullName: String,
     nationality: String,
     dateOfBirth: Date,
@@ -379,6 +425,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       atsAnalyzedAt: Date,
       downloadCount: { type: Number, default: 0 },
     },
+    cvExtractedByAI: { type: Boolean, default: false },
+    cvExtractedAt: Date,
     skills: [String],
     suggestedSkills: [String],
     experience: [WorkExperienceSchema],
@@ -431,6 +479,7 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     preferredLocations: [String],
     isOnboarded: { type: Boolean, default: false, index: true },
     profileCompletedLater: { type: Boolean, default: false },
+    roleArchivedAt: { type: Date, default: null, index: true },
     preferredCountries: [String],
     preferredRoles: [String],
     preferredSalary: {

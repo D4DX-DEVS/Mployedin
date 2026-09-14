@@ -26,6 +26,7 @@ jest.mock("@/lib/auth/withAuth", () => ({
 }));
 
 const OWNED_AGENT = "agent_owned_1";
+const SELF_SA = "sa_self_1";
 const FOREIGN_AGENT = "agent_someone_elses";
 
 /** Scope resolved by the canonical helper. Empty by default — the leak case. */
@@ -91,6 +92,12 @@ jest.mock("@/models/JobSeeker", () => ({
       seen.jobSeekers.push(filter);
       return [];
     }),
+    /* The header figures are a fourth read of the same collection; its
+       `$match` has to carry the same scope as the list. */
+    aggregate: jest.fn(async (pipeline: Array<Record<string, unknown>>) => {
+      seen.jobSeekers.push((pipeline[0] as { $match?: unknown })?.$match);
+      return [];
+    }),
   },
 }));
 
@@ -105,6 +112,13 @@ jest.mock("@/models/Application", () => ({
       seen.applications.push(filter);
       return 0;
     }),
+  },
+}));
+
+jest.mock("@/models/SuperAgent", () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(() => ({ select: () => ({ lean: async () => ({ _id: SELF_SA }) }) })),
   },
 }));
 
@@ -146,6 +160,14 @@ function request(url: string, role = "super_agent") {
 }
 
 /** Every filter the route handed the model must constrain the collection. */
+/** The `$or` branches of a scope filter, whether it stands alone or inside an `$and`. */
+function scopeBranches(filter: unknown): Array<Record<string, unknown>> {
+  const f = filter as { $and?: Array<{ $or?: Array<Record<string, unknown>> }>; $or?: Array<Record<string, unknown>> };
+  if (Array.isArray(f.$or)) return f.$or;
+  const withOr = f.$and?.find((c) => Array.isArray(c.$or));
+  return withOr?.$or ?? [];
+}
+
 function isScoped(filters: unknown[]): boolean {
   return filters.length > 0 && filters.every((filter) => Object.keys(filter as object).length > 0);
 }
@@ -185,8 +207,22 @@ describe("GET /api/super-agent/job-seekers", () => {
     await GET(request("http://t/api/super-agent/job-seekers"));
 
     expect(isScoped(seen.jobSeekers)).toBe(true);
+    /* The scope is a union: assignments of team agents, seekers those agents
+       referred, and seekers this super-agent referred through their own link.
+       With no team, the first two branches are empty sets and the third is
+       their own id — so the query still matches only what is theirs, never
+       the whole table. */
     for (const filter of seen.jobSeekers) {
-      expect((filter as { _id?: { $in: string[] } })._id).toEqual({ $in: [] });
+      const branches = scopeBranches(filter);
+      expect(branches.length).toBeGreaterThan(0);
+      expect(branches).toContainEqual({ _id: { $in: [] } });
+      expect(branches).toContainEqual({ "referral.agentId": { $in: [] } });
+      expect(branches).toContainEqual({ "referral.superAgentId": SELF_SA });
+      for (const branch of branches) {
+        const value = Object.values(branch)[0] as { $in?: unknown[] } | string;
+        const isEmptySet = typeof value === "object" && Array.isArray(value.$in) && value.$in.length === 0;
+        expect(isEmptySet || value === SELF_SA).toBe(true);
+      }
     }
   });
 });

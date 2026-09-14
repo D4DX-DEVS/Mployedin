@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { referralUrlFor } from "@/lib/referrals/url";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Agent from "@/models/Agent";
@@ -45,7 +46,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
     return NextResponse.json({
       referralCode: agent.referralCode,
-      referralLink: `${baseUrl}/en/employer-register?ref=${agent.referralCode}`,
+      referralLink: referralUrlFor({ code: agent.referralCode }, "en", baseUrl),
       linkId: rl._id,
       isActive: rl.isActive,
       usedCount: rl.usedCount,
@@ -78,7 +79,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
     return NextResponse.json({
       referralCode: sa.referralCode,
-      referralLink: `${baseUrl}/en/employer-register?ref=${sa.referralCode}`,
+      referralLink: referralUrlFor({ code: sa.referralCode }, "en", baseUrl),
       linkId: rl._id,
       isActive: rl.isActive,
       usedCount: rl.usedCount,
@@ -138,7 +139,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
     return NextResponse.json({
       referralCode: agent.referralCode,
-      referralLink: `${baseUrl}/en/employer-register?ref=${agent.referralCode}`,
+      referralLink: referralUrlFor({ code: agent.referralCode }, "en", baseUrl),
       linkId: rl._id,
       isActive: rl.isActive,
       usedCount: rl.usedCount,
@@ -183,7 +184,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
     return NextResponse.json({
       referralCode: sa.referralCode,
-      referralLink: `${baseUrl}/en/employer-register?ref=${sa.referralCode}`,
+      referralLink: referralUrlFor({ code: sa.referralCode }, "en", baseUrl),
       linkId: rl._id,
       isActive: rl.isActive,
       usedCount: rl.usedCount,

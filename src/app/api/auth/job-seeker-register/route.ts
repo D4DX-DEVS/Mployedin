@@ -11,6 +11,7 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { validateBody } from "@/lib/validators";
 import { jobSeekerRegisterSchema } from "@/lib/validators/misc";
 import { hashOtp } from "@/lib/auth/emailVerification";
+import { attachJobSeekerReferral } from "@/lib/referrals/attachJobSeeker";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const { name, email, password } = await validateBody(req, jobSeekerRegisterSchema);
+    const { name, email, password, referralCode } = await validateBody(req, jobSeekerRegisterSchema);
 
     const normalizedEmail = email;
 
@@ -69,6 +70,14 @@ export async function POST(req: NextRequest) {
       preferredLocations: [],
     });
 
+    // Referral: attach if the code is live. Never fail the signup over it.
+    if (referralCode) {
+      const attach = await attachJobSeekerReferral({ userId: user._id.toString(), code: referralCode, req });
+      if (!attach.attached) {
+        logger.info({ reason: attach.reason, email: normalizedEmail }, "[Registration] Referral code not attached");
+      }
+    }
+
     // Auto-assign default subscription plan (fire-and-forget — don't block registration)
     autoAssignDefaultPlan(user._id.toString(), "job_seeker").catch((err) =>
       logger.error({ err }, "[Registration] Failed to auto-assign subscription"),
@@ -80,7 +89,7 @@ export async function POST(req: NextRequest) {
       action: "register.job_seeker",
       resource: "auth",
       resourceId: user._id.toString(),
-      meta: { email: normalizedEmail },
+      meta: { email: normalizedEmail, ...(referralCode ? { referralCode } : {}) },
       req,
     });
 

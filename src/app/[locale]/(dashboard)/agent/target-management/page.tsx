@@ -144,7 +144,8 @@ export default function AgentTargetManagementPage() {
   useEffect(() => { fetchOwn(); }, [fetchOwn]);
   useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
 
-  const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
+  const MONTHS_SHORT = MONTH_KEYS.map((key) => t(`months.${key}`));
 
   const filteredLeaderboard = useMemo(() => {
     return leaderboard.filter((entry) => {
@@ -186,7 +187,7 @@ export default function AgentTargetManagementPage() {
         {myRank && (
           <div className="ml-auto workspace-glass-panel inline-flex items-center gap-2 rounded-full text-xs font-semibold chip-pad">
             <Trophy className="h-3.5 w-3.5 text-primary" />
-            Rank #{myRank.rank} of {totalParticipants}
+            {t("rankOfTotal", { rank: myRank.rank, total: totalParticipants })}
           </div>
         )}
       </div>
@@ -244,8 +245,8 @@ export default function AgentTargetManagementPage() {
             <>
               <div className="workspace-glass-panel flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold">Execution Status</p>
-                  <p className="text-xs text-muted-foreground">See what is still pending before the month closes.</p>
+                  <p className="text-sm font-semibold">{t("executionStatus")}</p>
+                  <p className="text-xs text-muted-foreground">{t("executionStatusHint")}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <CompletionBadge stage={getCompletionStage(profile.overallProgress)} />
@@ -259,21 +260,21 @@ export default function AgentTargetManagementPage() {
                 <KpiCard
                   label={t("employerTarget")}
                   value={<>{profile.employerAchieved}<span className="text-lg text-muted-foreground">/{profile.employerTarget}</span></>}
-                  subtext={<>Assigned {profile.employerTarget} · Balance <span className="font-semibold">{profile.employerPending}</span></>}
+                  subtext={<>{t("assignedValue", { value: profile.employerTarget })} · {t("balanceLabel")} <span className="font-semibold">{profile.employerPending}</span></>}
                   icon={<Building2 className="h-5 w-5" />}
                   toneClassName="workspace-tone-sky"
                 />
                 <KpiCard
                   label={t("employeeTarget")}
                   value={<>{profile.employeeAchieved}<span className="text-lg text-muted-foreground">/{profile.employeeTarget}</span></>}
-                  subtext={<>Assigned {profile.employeeTarget} · Balance <span className="font-semibold">{profile.employeePending}</span></>}
+                  subtext={<>{t("assignedValue", { value: profile.employeeTarget })} · {t("balanceLabel")} <span className="font-semibold">{profile.employeePending}</span></>}
                   icon={<Users className="h-5 w-5" />}
                   toneClassName="workspace-tone-emerald"
                 />
                 <KpiCard
                   label={t("financeTarget")}
                   value={<>{profile.currency} {formatCount(profile.financeAchieved)}<span className="text-lg text-muted-foreground">/{formatCount(profile.financeTarget)}</span></>}
-                  subtext={<>Assigned {profile.currency} {formatCount(profile.financeTarget)} · Balance <span className="font-semibold">{profile.currency} {formatCount(profile.financePending)}</span></>}
+                  subtext={<>{t("assignedValue", { value: `${profile.currency} ${formatCount(profile.financeTarget)}` })} · {t("balanceLabel")} <span className="font-semibold">{profile.currency} {formatCount(profile.financePending)}</span></>}
                   icon={<DollarSign className="h-5 w-5" />}
                   toneClassName="workspace-tone-amber"
                 />
@@ -292,40 +293,40 @@ export default function AgentTargetManagementPage() {
                   <div className="workspace-glass-panel card-pad rounded-2xl">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="rounded-xl bg-primary/10 p-2"><Zap className="h-4 w-4 text-primary" /></div>
-                      <span className="text-sm font-semibold">Daily Goals ({MONTHS_SHORT[currentMonth - 1]})</span>
+                      <span className="text-sm font-semibold">{t("goalsForMonth", { label: t("dailyGoals"), month: MONTHS_SHORT[currentMonth - 1] })}</span>
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{dailyGoals.employer}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employers</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employers")}</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{dailyGoals.employee}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employees")}</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(dailyGoals.finance)}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("finance")}</p>
                       </div>
                     </div>
                   </div>
                   <div className="workspace-glass-panel card-pad rounded-2xl">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="rounded-xl bg-primary/10 p-2"><Clock className="h-4 w-4 text-primary" /></div>
-                      <span className="text-sm font-semibold">Weekly Goals ({MONTHS_SHORT[currentMonth - 1]})</span>
+                      <span className="text-sm font-semibold">{t("goalsForMonth", { label: t("weeklyGoals"), month: MONTHS_SHORT[currentMonth - 1] })}</span>
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{weeklyGoals.employer}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employers</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employers")}</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{weeklyGoals.employee}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employees")}</p>
                       </div>
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(weeklyGoals.finance)}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("finance")}</p>
                       </div>
                     </div>
                   </div>
@@ -385,9 +386,9 @@ export default function AgentTargetManagementPage() {
             <div className="workspace-glass-panel rounded-2xl flex items-center gap-6 panel-body">
               <RankBadge rank={myRank.rank} />
               <div className="flex-1">
-                <p className="text-lg font-semibold">Your Position</p>
+                <p className="text-lg font-semibold">{t("yourPosition")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Rank #{myRank.rank} out of {totalParticipants} agents · {myRank.overallProgress}% overall
+                  {t("yourPositionDetail", { rank: myRank.rank, total: totalParticipants, progress: myRank.overallProgress })}
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -399,23 +400,24 @@ export default function AgentTargetManagementPage() {
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 panel-head">
               <div>
-                <p className="text-sm font-semibold">Leaderboard</p>
+                <p className="text-sm font-semibold">{t("leaderboard")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Showing {filteredLeaderboard.length} of top {leaderboard.length}{totalParticipants > leaderboard.length ? ` · ${totalParticipants} total agents` : ""}
+                  {t("leaderboardShowing", { shown: filteredLeaderboard.length, top: leaderboard.length })}
+                  {totalParticipants > leaderboard.length ? ` · ${t("leaderboardTotalAgents", { total: totalParticipants })}` : ""}
                 </p>
               </div>
             </div>
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Rank</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Agent</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Overall</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Stage</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Employer</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Employee</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Finance</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Risk</TableHead>
+                  <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("overall")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("stage")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("employer")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("employee")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("finance")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -15,10 +15,12 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import {
   RotateCcw, Users, Briefcase, GraduationCap,
-  Star, Eye, Mail, Phone, Globe, MapPin,
+  Star, MapPin,
 } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
+import type { ReferralSummary } from "@/lib/referrals/summary";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -28,15 +30,16 @@ interface JobSeekerItem {
   _id: string;
   fullName: string;
   email: string;
-  phone?: string;
   country?: string;
-  city?: string;
+  /** `currentLocation` on the profile — city, region, however it was written. */
+  location?: string;
   currentJobTitle?: string;
   experienceYears?: number;
   profileCompletion?: number;
   skills?: string[];
   createdAt: string;
   isActive?: boolean;
+  referralSummary?: ReferralSummary;
 }
 
 interface Filters {
@@ -59,7 +62,6 @@ const INITIAL_FILTERS: Filters = { search: "", country: "all", experienceMin: "a
 export default function SuperAgentJobSeekersPage() {
   const t = useTranslations("superAgentJobSeekers");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
 
   const [seekers, setSeekers] = useState<JobSeekerItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +112,11 @@ export default function SuperAgentJobSeekersPage() {
             ...data.countries.map((c: string) => ({ value: c, label: c })),
           ]);
         }
+      } else {
+        /* A non-ok response used to fall through silently: the table stayed
+           empty and the header read 0 / 0 / 0% / 0, which is indistinguishable
+           from a region with no candidates. */
+        toast.error(t("failedToLoadJobSeekers"));
       }
     } catch {
       toast.error(t("failedToLoadJobSeekers"));
@@ -239,14 +246,34 @@ export default function SuperAgentJobSeekersPage() {
                   <TableCell>
                     <p className="font-medium text-foreground">{s.fullName}</p>
                     <p className="text-xs text-muted-foreground">{s.email}</p>
-                    <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {[s.city, s.country].filter(Boolean).join(", ") || "—"}
+                    {/* A location is free text a candidate wrote — "Riyadh, Al
+                        Murooj, Saudi Arabia (Transferable Iqama)" is one real
+                        value — so the line is clamped. `truncate` has to sit on
+                        the text, not on the inline-flex row, or it paints no
+                        ellipsis. */}
+                    <span className="flex max-w-[260px] items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate" title={[s.location, s.country].filter(Boolean).join(", ")}>
+                        {[s.location, s.country].filter(Boolean).join(", ") || "—"}
+                      </span>
                     </span>
+                    {s.referralSummary ? (
+                      <span className="mt-1 block">
+                        <ReferralSourceChip namespace="superAgentJobSeekers" summary={s.referralSummary} />
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-sm">
-                    <span className="block">{s.currentJobTitle || "—"}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">{s.experienceYears != null ? `${s.experienceYears} ${t("yearsAbbr")}` : "—"}</span>
+                    <span className="block max-w-[240px] truncate" title={s.currentJobTitle || undefined}>
+                      {s.currentJobTitle || "—"}
+                    </span>
+                    {/* Half these profiles were filled from a CV that never wrote a
+                        years figure. Printing "0 yrs" beside a role someone
+                        holds today asserts no experience; a dash says the
+                        figure is not recorded, which is what is true. */}
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {s.experienceYears ? `${s.experienceYears} ${t("yearsAbbr")}` : "—"}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

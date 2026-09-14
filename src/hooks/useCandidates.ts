@@ -12,6 +12,8 @@ export interface Candidate {
   availabilityStatus?: string;
   profileCompleteness?: number;
   totalExperienceYears?: number;
+  /** The candidate joined through a partner referral link. Never says which partner. */
+  isAgentReferred?: boolean;
   matchScore?: number;
   matchBreakdown?: {
     skills: number;
@@ -93,6 +95,7 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
           profileCompleteness?: number;
           cv?: { originalUrl?: string };
         };
+        isAgentReferred?: boolean;
         aiMatchScore?: number;
         matchBreakdown?: { skills: number; experience: number; location: number; language: number };
         strengths?: string[];
@@ -113,6 +116,7 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
         experience: app.jobSeekerId?.experience,
         availabilityStatus: app.jobSeekerId?.availabilityStatus,
         profileCompleteness: app.jobSeekerId?.profileCompleteness,
+        isAgentReferred: app.isAgentReferred,
         cv: app.jobSeekerId?.cv,
         matchScore: app.aiMatchScore,
         matchBreakdown: app.matchBreakdown,

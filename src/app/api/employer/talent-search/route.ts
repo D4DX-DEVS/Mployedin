@@ -62,6 +62,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     });
   }
 
+  // Accounts an admin converted out of the job_seeker role keep their profile
+  // but must not surface in an employer's talent pool.
+  conditions.push({ roleArchivedAt: null });
+
   const filter = conditions.length > 0 ? { $and: conditions } : {};
 
   const [docs, total] = await Promise.all([
@@ -71,7 +75,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       // URL only fed a "View CV" menu item that 403s, and shipped a private
       // object's path to a browser that has no right to it.
       .select(
-        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience userId"
+        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience userId isAgentReferred"
       )
       .populate({ path: "userId", select: "name avatar" })
       .sort({ profileCompleteness: -1, updatedAt: -1 })
@@ -93,6 +97,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       profileCompleteness: d.profileCompleteness,
       totalExperienceYears: d.totalExperienceYears,
       experience: d.experience,
+      // Employers learn THAT a partner referred this candidate, never who.
+      isAgentReferred: d.isAgentReferred === true,
     };
   });
 

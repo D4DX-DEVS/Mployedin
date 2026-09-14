@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import { useConfirm } from "@/hooks/useConfirm";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
@@ -76,6 +77,7 @@ export default function AdminResourcesPage() {
   const t = useTranslations("resources");
   const tc = useTranslations("common");
   const ta = useTranslations("a11y");
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +184,13 @@ export default function AdminResourcesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    try { const res = await csrfFetch(`/api/resources/${id}`, { method: "DELETE" }); if (res.ok) { toast.success(t("deleted")); fetchItems(); } } catch { toast.error(t("deleteError")); }
+    const ok = await confirmDialog({ message: t("deleteConfirm"), confirmLabel: tc("delete") });
+    if (!ok) return;
+    try {
+      const res = await csrfFetch(`/api/resources/${id}`, { method: "DELETE" });
+      if (res.ok) { toast.success(t("deleted")); fetchItems(); }
+      else { toast.error(t("actionFailed")); }
+    } catch { toast.error(t("deleteError")); }
   };
 
   const handleDownloadTrack = async (item: Resource, file: ResourceFile) => {
@@ -224,6 +232,8 @@ export default function AdminResourcesPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
+
       <DashboardPageHeader
         compact
         icon={FolderOpen}
@@ -321,7 +331,7 @@ export default function AdminResourcesPage() {
                       </div>
                     </div>
                   ))}
-                  {(item.files?.length ?? 0) > 2 && <p className="text-xs text-muted-foreground text-center font-medium">+{item.files.length - 2} more files</p>}
+                  {(item.files?.length ?? 0) > 2 && <p className="text-xs text-muted-foreground text-center font-medium">{t("moreFiles", { count: item.files.length - 2 })}</p>}
 
                   <div className="flex items-center gap-1.5 pt-3 border-t border-border/40">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(item)} className="flex-1 h-8 text-xs"><Edit className="h-3.5 w-3.5 mr-1.5" /> {t("editResource")}</Button>
@@ -503,10 +513,10 @@ export default function AdminResourcesPage() {
                     <div className="rounded-2xl bg-primary/10 p-3"><Upload className="h-5 w-5 text-primary" /></div>
                     {formFiles.length > 0 ? (
                       <>
-                        <p className="text-sm font-semibold">{formFiles.length} file{formFiles.length > 1 ? "s" : ""} selected</p>
+                        <p className="text-sm font-semibold">{t("filesSelected", { count: formFiles.length })}</p>
                         <div className="flex flex-wrap justify-center gap-1.5 mt-1">
                           {formFiles.slice(0, 3).map((f, i) => (<Badge key={i} variant="secondary" className="max-w-full break-all text-xs">{f.name}</Badge>))}
-                          {formFiles.length > 3 && <Badge variant="secondary" className="text-xs">+{formFiles.length - 3} more</Badge>}
+                          {formFiles.length > 3 && <Badge variant="secondary" className="text-xs">{t("moreItems", { count: formFiles.length - 3 })}</Badge>}
                         </div>
                       </>
                     ) : (

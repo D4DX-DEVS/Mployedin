@@ -203,7 +203,7 @@ export default function SuperAgentCommissionsPage() {
           hasActiveFilters={!!(statusFilter || typeFilter || currencyFilter || dateFrom || dateTo)}
           actions={
             <div className="order-last flex w-full flex-wrap items-center gap-1.5 sm:order-none sm:w-auto">
-              {(["", "pending", "approved", "paid", "disputed"] as const).map((s) => (
+              {(["", "pending", "approved", "paid", "disputed", "clawed_back"] as const).map((s) => (
                 <Button
                   key={s}
                   onClick={() => { setStatusFilterState(s); resetPage(); }}

@@ -25,6 +25,7 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import {
   Building2,
+  UserRound,
   Calendar,
   Check,
   ChevronDown,
@@ -62,6 +63,9 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
+import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
+import { registrationDisplayName } from "@/lib/referrals/display";
 
 function linkStatus(link: ReferralLinkItem): "active" | "expired" | "maxed" | "inactive" {
   if (!link.isActive) return "inactive";
@@ -111,6 +115,7 @@ export default function SuperAgentReferralLinksPage() {
   // Filter state
   const [statusFilter, setStatusFilter] = useState<ReferralLinkStatus | "">("");
   const [creatorRoleFilter, setCreatorRoleFilter] = useState<ReferralCreatorRole | "">("");
+  const [audienceFilter, setAudienceFilter] = useState<ReferralAudience | "">("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState<ReferralSortField | "">("");
@@ -125,6 +130,7 @@ export default function SuperAgentReferralLinksPage() {
   const [newLabel, setNewLabel] = useState("");
   const [newMaxUses, setNewMaxUses] = useState("");
   const [newExpiresAt, setNewExpiresAt] = useState("");
+  const [newAudience, setNewAudience] = useState<ReferralAudience>("employer");
 
   const filters = {
     page: pagination.page,
@@ -132,6 +138,7 @@ export default function SuperAgentReferralLinksPage() {
     search: search || undefined,
     status: statusFilter || undefined,
     creatorRole: creatorRoleFilter || undefined,
+    audience: audienceFilter || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
     sortBy: sortBy || undefined,
@@ -150,6 +157,7 @@ export default function SuperAgentReferralLinksPage() {
   const creatorFilterId = useId();
   const dateFromId = useId();
   const dateToId = useId();
+  const audienceFilterId = useId();
   const sortByFilterId = useId();
   const sortOrderFilterId = useId();
   // Disabling breaks a link that may already be printed on material or shared
@@ -173,22 +181,19 @@ export default function SuperAgentReferralLinksPage() {
   const totalPages = data?.totalPages ?? 0;
   const stats = data?.stats ?? { totalLinks: 0, activeLinks: 0, totalRegistrations: 0, myLinks: 0, agentLinks: 0 };
 
-  const baseUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/${locale || "en"}/employer-register?ref=`
-      : "";
-
-  const handleCopy = useCallback((code: string) => {
-    navigator.clipboard.writeText(`${baseUrl}${code}`);
+  const handleCopy = useCallback((link: ReferralLinkItem) => {
+    const code = link.code;
+    navigator.clipboard.writeText(referralUrlFor(link, locale || "en", window.location.origin));
     setCopyMap((m) => ({ ...m, [code]: true }));
     setTimeout(() => setCopyMap((m) => ({ ...m, [code]: false })), 2000);
-  }, [baseUrl]);
+  }, [locale]);
 
   const handleCreate = async () => {
     await createMutation.mutateAsync({
       label: newLabel || undefined,
       maxUses: newMaxUses ? parseInt(newMaxUses) : undefined,
       expiresAt: newExpiresAt || undefined,
+      audience: newAudience,
     });
     setCreateOpen(false);
     setNewLabel("");
@@ -200,6 +205,7 @@ export default function SuperAgentReferralLinksPage() {
     setSearch("");
     setStatusFilter("");
     setCreatorRoleFilter("");
+    setAudienceFilter("");
     setDateFrom("");
     setDateTo("");
     setSortBy("");
@@ -208,7 +214,7 @@ export default function SuperAgentReferralLinksPage() {
     pagination.resetPage();
   };
 
-  const hasActiveFilters = !!(statusFilter || creatorRoleFilter || dateFrom || dateTo || sortBy || search);
+  const hasActiveFilters = !!(statusFilter || creatorRoleFilter || audienceFilter || dateFrom || dateTo || sortBy || search);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("tableHeadCode"), key: "code" },
@@ -246,6 +252,7 @@ export default function SuperAgentReferralLinksPage() {
       if (f.search) setSearch(f.search);
       if (f.status) setStatusFilter(f.status);
       if (f.creatorRole) setCreatorRoleFilter(f.creatorRole);
+      if (f.audience) setAudienceFilter(f.audience);
       if (f.dateFrom) setDateFrom(f.dateFrom);
       if (f.dateTo) setDateTo(f.dateTo);
       if (f.sortBy) setSortBy(f.sortBy);
@@ -289,6 +296,27 @@ export default function SuperAgentReferralLinksPage() {
       {createOpen && (
         <SuperAgentSection title="" className="mt-4">
           <div className="grid gap-4 sm:grid-cols-3">
+            <fieldset className="sm:col-span-3">
+              <legend className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("audienceLabel")}</legend>
+              <div className="flex flex-wrap gap-2">
+                {(["employer", "job_seeker"] as const).map((value) => (
+                  <label
+                    key={value}
+                    className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm ${newAudience === value ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="referral-audience"
+                      value={value}
+                      checked={newAudience === value}
+                      onChange={() => setNewAudience(value)}
+                      className="accent-primary"
+                    />
+                    {value === "job_seeker" ? t("audienceJobSeeker") : t("audienceEmployer")}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div>
               <label htmlFor={newLabelId} className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("labelFieldLabel")}</label>
               <Input id={newLabelId} value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("labelFieldPlaceholder")} className="h-10 rounded-xl" />
@@ -315,41 +343,40 @@ export default function SuperAgentReferralLinksPage() {
         </SuperAgentSection>
       )}
 
-      {/* AI Search + Filters */}
-      <div className="max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none workspace-panel-surface rounded-3xl p-3 sm:p-4 lg:p-5">
-        {/* AI Natural Language Search */}
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-xl">
-              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
-              <Input
-                aria-label={t("aiSearchPlaceholder")}
-                value={aiQuery}
-                onChange={(e) => setAiQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-                placeholder={t("aiSearchPlaceholder")}
-                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-28 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-              />
-              <button
-                onClick={handleAiSearch}
-                disabled={aiLoading || !aiQuery.trim()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-7 items-center gap-1.5 rounded-lg bg-purple-600 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
-              >
-                {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                {t("aiSearchButton")}
-              </button>
-            </div>
-          </div>
-
-          {aiSummary && (
-            <div className="flex items-start gap-2 rounded-xl bg-purple-50 px-4 py-2.5">
-              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
-              <p className="text-xs text-purple-700">{aiSummary}</p>
-            </div>
-          )}
-
-          {/* Merged search + filters via TableToolbar */}
+      {/* One row: the natural-language box rides the toolbar's own left slot
+          beside the plain search, Filters and Export. It used to sit in a
+          second card stacked above the toolbar, which nested a panel inside a
+          panel and left the whole right half of the row empty. */}
+      <div className="mt-4 space-y-3">
           <TableToolbar
+            left={
+              /* `left` is wrapped in `mt-3` by the toolbar, which is right when
+                 a title sits above it and wrong here — cancel it so the field
+                 lines up with the controls opposite. */
+              <div className="relative -mt-3 w-full xl:w-[32rem]">
+                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
+                <Input
+                  aria-label={t("aiSearchPlaceholder")}
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
+                  placeholder={t("aiSearchPlaceholder")}
+                  className="h-12 rounded-xl border-border bg-secondary/65 pl-9 pr-14 text-sm text-foreground shadow-none placeholder:text-muted-foreground sm:h-9 sm:pr-28"
+                />
+                {/* Icon-only on a phone, like the Filter and Export buttons
+                    beside it: the shell's touch-target rules squeezed the
+                    labelled pill into a 28px square with no readable text. */}
+                <button
+                  onClick={handleAiSearch}
+                  disabled={aiLoading || !aiQuery.trim()}
+                  aria-label={t("aiSearchButton")}
+                  className="absolute end-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-purple-600 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50 sm:h-7 sm:w-auto sm:px-3"
+                >
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-3 sm:w-3" /> : <Sparkles className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
+                  <span className="hidden sm:inline">{t("aiSearchButton")}</span>
+                </button>
+              </div>
+            }
             search={search}
             onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
             searchPlaceholder={t("tableSearchPlaceholder")}
@@ -398,6 +425,19 @@ export default function SuperAgentReferralLinksPage() {
                   </Select>
                 </div>
                 <div>
+                  <label htmlFor={audienceFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("audienceLabel")}</label>
+                  <Select value={audienceFilter || "all"} onValueChange={(v) => { setAudienceFilter(v === "all" ? "" : (v as ReferralAudience)); pagination.resetPage(); }}>
+                    <SelectTrigger id={audienceFilterId} className="h-9 w-full text-sm">
+                      <SelectValue placeholder={t("filterAudienceAll")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("filterAudienceAll")}</SelectItem>
+                      <SelectItem value="employer">{t("audienceEmployer")}</SelectItem>
+                      <SelectItem value="job_seeker">{t("audienceJobSeeker")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <label htmlFor={dateFromId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateFrom")}</label>
                   <DateTimePicker id={dateFromId} mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); pagination.resetPage(); }} />
                 </div>
@@ -436,7 +476,13 @@ export default function SuperAgentReferralLinksPage() {
             }
             className="mb-4"
           />
-        </div>
+
+          {aiSummary && (
+            <div className="-mt-1 flex items-start gap-2 rounded-xl bg-purple-50 px-4 py-2.5">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
+              <p className="text-xs text-purple-700">{aiSummary}</p>
+            </div>
+          )}
       </div>
 
       {/* Links table */}
@@ -521,6 +567,7 @@ export default function SuperAgentReferralLinksPage() {
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                           {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
+                        <ReferralAudienceChip audience={link.audience} namespace="superAgentReferralLinks" />
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{link.label || "—"}</TableCell>
                       <TableCell className="text-sm">{link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""}</TableCell>
@@ -544,7 +591,7 @@ export default function SuperAgentReferralLinksPage() {
                       <TableCell className="text-right">
                         <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleCopy(link.code); }}
+                            onClick={(e) => { e.stopPropagation(); handleCopy(link); }}
                             className="inline-flex max-sm:min-h-11 h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
                             title={t("copyButtonTooltip")}
                             data-table-action=""
@@ -589,10 +636,10 @@ export default function SuperAgentReferralLinksPage() {
                               {link.registrations.map((reg, i) => (
                                 <div key={i} className="flex items-center gap-3 rounded-xl bg-background/60 px-4 py-3">
                                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-                                    <Building2 className="h-4 w-4" />
+                                    {reg.kind === "job_seeker" ? <UserRound className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
                                   </div>
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium text-foreground">{reg.companyName}</p>
+                                    <p className="text-sm font-medium text-foreground">{registrationDisplayName(reg)}</p>
                                     <p className="text-xs text-muted-foreground">{reg.email}</p>
                                   </div>
                                   <div className="text-right text-xs text-muted-foreground">

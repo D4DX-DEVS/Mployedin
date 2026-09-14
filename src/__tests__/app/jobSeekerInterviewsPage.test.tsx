@@ -40,6 +40,14 @@ jest.mock("@/hooks/usePagination", () => ({
 jest.mock("@/hooks/useTableExport", () => ({
   useTableExport: () => ({ handleExportCsv: jest.fn(), handleExportExcel: jest.fn(), handleExportPdf: jest.fn() }),
 }));
+const toastErrorMock = jest.fn();
+const toastSuccessMock = jest.fn();
+jest.mock("sonner", () => ({
+  toast: {
+    error: (...args: unknown[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+  },
+}));
 jest.mock("@/hooks/useJobSeekerActionCounts", () => {
   const data = { pendingOffers: 0, interviewsAwaitingResponse: 1, upcomingInterviews: 1, totalApplications: 9, activeApplications: 3 };
   return { useJobSeekerActionCountsQuery: () => ({ data, isError: false }), useJobSeekerActionCounts: () => data };
@@ -48,6 +56,8 @@ jest.mock("@/hooks/useJobSeekerActionCounts", () => {
 describe("InterviewsPage", () => {
   beforeEach(() => {
     fetchMock.mockReset();
+    toastErrorMock.mockReset();
+    toastSuccessMock.mockReset();
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ interviews: [], total: 0, counts: { upcoming: 1, past: 8 } }),
@@ -86,5 +96,54 @@ describe("InterviewsPage", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/interviews?page=1&limit=10&status=confirmed&fetchCounts=true");
     });
     expect(screen.getByText("1 upcoming · 8 past")).toBeInTheDocument();
+  });
+
+  function upcomingInterview() {
+    const scheduledAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    return {
+      _id: "iv-1",
+      applicationId: "app-1",
+      jobTitle: "Backend Engineer",
+      companyName: "Acme",
+      type: "video",
+      status: "scheduled",
+      scheduledAt,
+      duration: 45,
+      candidateResponse: "pending",
+    };
+  }
+
+  it("tells the seeker when a response could not be saved", async () => {
+    // First call loads the list, the POST is the response the server rejects.
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return { ok: false, json: async () => ({ error: "nope" }) };
+      return { ok: true, json: async () => ({ interviews: [upcomingInterview()], total: 1, counts: { upcoming: 1, past: 0 } }) };
+    });
+
+    render(<InterviewsPage />);
+    const confirm = await screen.findByRole("button", { name: "Confirm" });
+    await userEvent.click(confirm);
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith("We couldn't save your response. Please try again.");
+    });
+    // The silent version re-enabled the button and moved nothing, so the seeker
+    // had no way to tell the interview was never confirmed.
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+  });
+
+  it("confirms the response when the server accepts it", async () => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return { ok: true, json: async () => ({ ok: true }) };
+      return { ok: true, json: async () => ({ interviews: [upcomingInterview()], total: 1, counts: { upcoming: 1, past: 0 } }) };
+    });
+
+    render(<InterviewsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(toastSuccessMock).toHaveBeenCalledWith("Your response has been sent.");
+    });
+    expect(toastErrorMock).not.toHaveBeenCalled();
   });
 });

@@ -146,7 +146,9 @@
     "passwordTooWeak": "Password must include uppercase, lowercase, a number, and a symbol.",
     "alreadyHaveAccount": "Already have an account?",
     "hiringQuestion": "Hiring?",
-    "registerAsEmployer": "Register as an employer"
+    "registerAsEmployer": "Register as an employer",
+    "referralNotice": "You're joining through a partner referral",
+    "referralNoticeWrongAudience": "This link is for employers. You can still create a job-seeker account."
   },
   "authLayout": {
     "aiPowered": "AI-powered",
@@ -1159,7 +1161,10 @@
       "list": "List",
       "calendar": "Calendar"
     },
-    "statusFiltersLabel": "Interview status filters"
+    "statusFiltersLabel": "Interview status filters",
+    "respondFailed": "We couldn't save your response. Please try again.",
+    "responseSaved": "Your response has been sent.",
+    "monthLoadFailed": "We couldn't load that month. Please try again."
   },
   "jobSeekerMessages": {
     "title": "Messages",
@@ -1224,7 +1229,38 @@
       "securePayments": "Secure & Trusted Payments",
       "sslNote": "Your payments are secured with 256-bit SSL encryption.",
       "download": "Download",
-      "autoRenewAdminOnly": "Auto-renew changes require an administrator. Contact support to update this."
+      "autoRenewAdminOnly": "Auto-renew changes require an administrator. Contact support to update this.",
+      "featureApplications": "Applications",
+      "featureApplicationsDetail": "{count} applications/month",
+      "featureApplicationsUnlimited": "Unlimited applications/month",
+      "featureProfileBoost": "Profile Boost",
+      "featureSalaryInsights": "Salary Insights",
+      "featurePriorityReview": "Priority Review",
+      "featureResumeBuilder": "Resume Builder",
+      "statusActive": "Active",
+      "nextRenewal": "Next Renewal",
+      "autoRenew": "Auto Renew",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "billingCycle": "Billing Cycle",
+      "startDate": "Start Date",
+      "availablePlans": "Available Plans",
+      "included": "Included",
+      "notIncluded": "Not included",
+      "availableOnPremium": "Available on Premium",
+      "paymentMethod": "Payment Method",
+      "noPaymentMethod": "No payment method added.",
+      "addPaymentMethod": "Add Payment Method",
+      "getStarted": "Get Started",
+      "getStartedDescription": "Activate your free plan to start applying for jobs and track your applications.",
+      "activating": "Activating…",
+      "activateFreePlan": "Activate Free Plan",
+      "invoices": "Invoices",
+      "invoiceCount": "{count, plural, one {# invoice} other {# invoices}}",
+      "invoiceId": "Invoice ID",
+      "invoiceDate": "Date",
+      "invoiceAmount": "Amount",
+      "invoiceStatus": "Status"
     },
     "search": {
       "title": "AI Job Search",
@@ -1398,7 +1434,17 @@
         "course_certificate": "Course Certificate",
         "professional_certificate": "Professional Certificate",
         "other": "Other Document"
-      }
+      },
+      "extractedName": "Name:",
+      "extractedEmail": "Email:",
+      "extractedLocation": "Location:",
+      "extractedHeadline": "Headline:",
+      "sectionSkills": "Skills",
+      "sectionExperience": "Experience",
+      "sectionEducation": "Education",
+      "sectionCertifications": "Certifications",
+      "sectionLanguages": "Languages",
+      "degreeInField": "{degree} in {field}"
     },
     "experience": {
       "title": "Work Experience",
@@ -1651,6 +1697,83 @@
       "profile": {
         "aiCareerInsight": "AI career insight",
         "smartBadge": "SMART"
+      },
+      "fallbackName": "Job Seeker",
+      "headlinePlaceholderText": "Add a headline",
+      "removePhoto": "Remove photo",
+      "changePhoto": "Change photo",
+      "uploadPhoto": "Upload photo",
+      "updatedAgo": "Updated {time}",
+      "stepsDone": "{done}/{total} steps done",
+      "stepsShort": "{done}/{total} steps",
+      "detailsLeft": "{count, plural, one {# detail left} other {# details left}}",
+      "profileCompletion": "Profile completion",
+      "quickLinks": "Quick links",
+      "profileSetup": "Profile Setup",
+      "setupProgress": "{done} of {total} complete",
+      "overallProgress": "Overall progress",
+      "tipLabel": "Tip:",
+      "tipSuffix": "to boost your profile further.",
+      "missingFields": {
+        "nationality": "Add nationality",
+        "location": "Add current location",
+        "summary": "Write a summary",
+        "skills": "Add skills",
+        "experience": "Add experience",
+        "education": "Add education",
+        "languages": "Add languages",
+        "linkedin": "Add LinkedIn profile"
+      },
+      "present": "Present",
+      "currentBadge": "Current",
+      "activeBadge": "Active",
+      "certificationsLabel": "Certifications",
+      "accomplishmentTypes": {
+        "online_profile": "Online Profiles",
+        "work_sample": "Work Samples",
+        "publication": "Publications",
+        "presentation": "Presentations",
+        "patent": "Patents",
+        "certification": "Certifications"
+      },
+      "careerProfileTitle": "Career Profile",
+      "careerProfileEmpty": "Add your career preferences — industry, role, desired job type",
+      "careerCurrentIndustry": "Current industry",
+      "careerDepartment": "Department",
+      "careerRoleCategory": "Role category",
+      "careerJobRole": "Job role",
+      "careerDesiredJobType": "Desired job type",
+      "careerEmploymentType": "Employment type",
+      "careerPreferredShift": "Preferred shift",
+      "linksLabel": "Links",
+      "linkLinkedin": "LinkedIn",
+      "linkPortfolio": "Portfolio",
+      "editNameTitle": "Edit Name",
+      "editNameDescription": "Update your display name",
+      "fullNameLabel": "Full Name",
+      "fullNamePlaceholder": "Your full name",
+      "editHeadlineTitle": "Edit Headline",
+      "editHeadlineDescription": "Update your professional headline",
+      "resumeHeadlineLabel": "Resume Headline",
+      "resumeHeadlinePlaceholder": "e.g. Full Stack Developer with 3 years of experience",
+      "resumeHeadlineHint": "A one-line summary that appears below your name",
+      "editSummaryTitle": "Edit Professional Summary",
+      "editSummaryDescription": "Update your professional summary",
+      "aboutYouLabel": "About You",
+      "summaryPlaceholder": "Highlight your key career achievements to help employers know your potential",
+      "generating": "Generating…",
+      "generateWithAi": "Generate with AI",
+      "charCount": "{count}/{max} characters",
+      "cancel": "Cancel",
+      "save": "Save",
+      "errors": {
+        "avatarType": "Choose a JPEG, PNG, or WebP image.",
+        "avatarSize": "Choose an image under 2MB.",
+        "uploadFailed": "We couldn't upload that photo. Please try again.",
+        "network": "We couldn't reach the server. Please try again.",
+        "removePhoto": "We couldn't remove your photo. Please try again.",
+        "saveFailed": "We couldn't save your changes. Please try again.",
+        "summaryFailed": "We couldn't generate a summary. Please try again."
       }
     },
     "settings": {
@@ -3366,7 +3489,8 @@
     "contactAdminToUpgrade": "Contact your administrator to upgrade.",
     "autoRenewAdminOnly": "Auto-renew changes require an administrator. Contact support to update this.",
     "a11yLiveExchangeRates": "Live exchange rates",
-    "a11yDisplayCurrency": "Display currency"
+    "a11yDisplayCurrency": "Display currency",
+    "addInline": "Add"
   },
   "invoiceManagement": {
     "title": "Invoices",
@@ -5255,7 +5379,16 @@
     "clearOverride": "Clear Override",
     "testEmailSent": "Test email sent!",
     "testFailed": "Failed",
-    "networkError": "Network error"
+    "networkError": "Network error",
+    "publishBlockedTitle": "Your jobs stay as drafts until this profile is complete",
+    "publishBlockedBody": "An administrator set this account up as an employer. Fill in the company details below — the contact phone lives on the Contact tab — then save, and your jobs can go on the public board straight after.",
+    "publishBlockedMissing": "Still needed: {fields}",
+    "publishUnlocked": "Company profile confirmed. Your jobs can be published now.",
+    "industryRequired": "Company name, email, phone and industry are required before your jobs can be published.",
+    "fieldCompanyName": "company name",
+    "fieldCompanyEmail": "company email",
+    "fieldIndustry": "industry",
+    "fieldPhone": "phone number"
   },
   "adminDashboard": {
     "taskFirst": {
@@ -6947,7 +7080,12 @@
     "tuningBody": "Increase skills for technical hiring, raise relevant experience for senior roles, and lean on education and certifications for regulated or licensed positions.",
     "totalLabel": "Total:",
     "need100": "Need 100%",
-    "saveAsTemplateShort": "Template"
+    "saveAsTemplateShort": "Template",
+    "loadFromTemplate": "Load from Template",
+    "loadFromTemplateHint": "Select a matching weight preset to apply",
+    "templateNamePlaceholder": "Template name (e.g. Tech Roles — Skills Heavy)",
+    "closeLabel": "Close",
+    "dismissErrorLabel": "Dismiss"
   },
   "hiringRules": {
     "pageTitle": "Hiring workflow",
@@ -7141,7 +7279,8 @@
         "part_time": "Part-time",
         "contract": "Contract",
         "internship": "Internship",
-        "freelance": "Freelance"
+        "freelance": "Freelance",
+        "walk_in": "Walk-in"
       },
       "workModes": {
         "onsite": "On-site",
@@ -7447,7 +7586,11 @@
       "competitiveInsight": "is within the competitive range",
       "aboveInsight": "is above market — excellent for attracting top talent",
       "adjust": "Adjust to market rate → {min} – {max}"
-    }
+    },
+    "postHeldTitle": "Saved as a draft, not published",
+    "postHeldDescription": "Add your company name, email and industry before this job can go on the public board.",
+    "completeCompanyProfile": "Complete company profile",
+    "publishBlockedProfile": "Add your company name, email and industry before publishing this job."
   },
   "employerCommon": {
     "workspace": "Employer workspace",
@@ -7484,7 +7627,9 @@
     "type": "Type",
     "scheduled": "Scheduled",
     "status": "Status",
-    "outcome": "Outcome"
+    "outcome": "Outcome",
+    "referredBadge": "Partner referred",
+    "referredBadgeHint": "Referred to Mployedin by one of our recruitment partners"
   },
   "employerCalendar": {
     "title": "Interview Calendar",
@@ -7635,6 +7780,16 @@
     "organizerContact": "Organizer Contact",
     "participationTypes": "Participation Types",
     "objectives": "Objectives",
+    "optional": "optional",
+    "organizerContactShort": "Contact",
+    "detailApprovedBudget": "Approved Budget",
+    "detailLegacyBudgetBreakdown": "Legacy Budget Breakdown",
+    "detailRequirementTags": "Requirement Tags",
+    "tableHeaderCategory": "Category",
+    "createFirstRequest": "Create your first request",
+    "listSubtitle": "Open details or continue editing drafts from the table below.",
+    "listTitle": "Request history",
+    "listEyebrow": "Your requests",
     "budgetBreakdown": "Budget Breakdown",
     "executionPlan": "Execution Plan",
     "expectedOutcome": "Expected Outcome",
@@ -7788,6 +7943,8 @@
     "fetchError": "We couldn't load resources",
     "heroLabel": "Resources",
     "clear": "Clear",
+    "downloadFile": "Download file",
+    "previewFile": "Preview file",
     "openInNewTab": "Open in new tab",
     "sortLabel": "Sort",
     "sortNewest": "Newest",
@@ -7817,6 +7974,10 @@
     "createError": "We couldn't create resource",
     "updateError": "We couldn't update resource",
     "deleteError": "We couldn't delete resource",
+    "deleteConfirm": "Delete this resource? This cannot be undone.",
+    "moreItems": "+{count} more",
+    "filesSelected": "{count, plural, one {# file selected} other {# files selected}}",
+    "moreFiles": "+{count} more files",
     "fileRemoved": "File removed",
     "fileRemoveError": "We couldn't remove file",
     "resourceTitle": "Title",
@@ -8002,6 +8163,9 @@
     "failedToLoadProfiles": "We couldn't load target profiles",
     "profileCancelled": "Target profile cancelled",
     "failedToCancel": "We couldn't cancel",
+    "cancelProfile": "Cancel profile",
+    "previousValue": "was {value}",
+    "cancelConfirm": "Cancel this target profile? Its targets will no longer be tracked.",
     "failedToClone": "We couldn't clone",
     "profilesCloned": "Cloned {count} profiles from {year}",
     "profileReassigned": "Target profile reassigned",
@@ -8267,6 +8431,20 @@
     "filters": "Filters",
     "export": "Export",
     "executionStatus": "Execution Status",
+    "monthlyRevenueDeals": "Monthly revenue & deals (thousands)",
+    "totalRevenue": "Total revenue",
+    "businessVolumeYear": "Business Volume — {year}",
+    "categoryOnlySuffix": " — {category} only",
+    "quarterSuffix": " — Q{quarter}",
+    "leaderboardTotalAgents": "{total} total agents",
+    "leaderboardShowing": "Showing {shown} of top {top}",
+    "yourPositionDetail": "Rank #{rank} out of {total} agents · {progress}% overall",
+    "yourPosition": "Your Position",
+    "rankOfTotal": "Rank #{rank} of {total}",
+    "goalsForMonth": "{label} ({month})",
+    "balanceLabel": "Balance",
+    "assignedValue": "Assigned {value}",
+    "executionStatusHint": "See what is still pending before the month closes.",
     "executionStatusHelper": "Quick view of what is completed, active, and still pending.",
     "progress": "Progress",
     "teamCompletionHelper": "{inProgress} active · {completed} completed",
@@ -8383,6 +8561,9 @@
     "saveFailed": "Save failed",
     "saveWebhookFailed": "We couldn't save webhook",
     "deleteFailed": "Delete failed",
+    "totalCount": "{count} total",
+    "failedCount": "{count} failed",
+    "activeFilterCount": "{count} active",
     "toggleFailed": "Toggle failed",
     "testRequestFailed": "Test request failed",
     "loadLogFailed": "We couldn't load delivery log",
@@ -8565,7 +8746,11 @@
     "adminContactSubmissionTitle": "New contact enquiry",
     "adminContactSubmissionBody": "{senderName} sent an enquiry: \"{subject}\".",
     "strongCandidatesTitle": "{count, plural, one {# strong candidate for {jobTitle}} other {# strong candidates for {jobTitle}}}",
-    "strongCandidatesBody": "{count, plural, one {# new applicant scored {threshold}%+ for \"{jobTitle}\". Review them while they are still available.} other {# new applicants scored {threshold}%+ for \"{jobTitle}\". Review them while they are still available.}}"
+    "strongCandidatesBody": "{count, plural, one {# new applicant scored {threshold}%+ for \"{jobTitle}\". Review them while they are still available.} other {# new applicants scored {threshold}%+ for \"{jobTitle}\". Review them while they are still available.}}",
+    "referrerJobSeekerRegisteredTitle": "New job seeker joined via your link",
+    "referrerJobSeekerRegisteredBody": "{seekerName} registered through your referral link.",
+    "roleChangedTitle": "Your account type changed",
+    "roleChangedBody": "An administrator changed your account from {fromRole} to {toRole}."
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -9220,7 +9405,9 @@
     "noLogs": "No activity logs found",
     "noLogsDesc": "Team member activities will appear here once they start using the platform.",
     "export": "Export",
-    "exportData": "Export data"
+    "exportData": "Export data",
+    "details": "Details",
+    "system": "System"
   },
   "employerCandidateProfile": {
     "matchedSkills": "Matching skills",
@@ -10414,7 +10601,11 @@
     "roleAgent": "Agent",
     "roleEmployer": "Employer",
     "roleJobSeeker": "Job seeker",
-    "roleSystem": "System"
+    "roleSystem": "System",
+    "target": "Target",
+    "changeDetail": "Change",
+    "changeArrow": "{from} → {to}",
+    "noChangeRecorded": "—"
   },
   "adminPlatformData": {
     "tabsLabel": "Platform data tables",
@@ -10546,6 +10737,8 @@
     "viewButtonTitle": "View",
     "deleteButtonTitle": "Delete",
     "deleteConfirmation": "Are you sure you want to delete this submission?",
+    "markReadFailed": "We couldn't mark this as read. Please try again.",
+    "deleteFailed": "We couldn't delete this submission. Please try again.",
     "dialogTitle": "Contact Message",
     "dialogDescription": "View the full details of the selected contact form submission.",
     "fieldName": "Name",
@@ -10682,7 +10875,16 @@
     "registrationsLabel": "Registrations",
     "noRegistrationsYet": "No registrations yet.",
     "dashPlaceholder": "—",
-    "exportTitle": "Referral Links"
+    "exportTitle": "Referral Links",
+    "audienceChipEmployer": "Employer link",
+    "audienceChipJobSeeker": "Job-seeker link",
+    "audienceEmployer": "Employers",
+    "audienceJobSeeker": "Job seekers",
+    "filterAudienceAll": "All audiences",
+    "filterAudienceEmployer": "Employer links",
+    "filterAudienceJobSeeker": "Job-seeker links",
+    "registrationSeeker": "Job seeker",
+    "tableHeaderAudience": "Audience"
   },
   "adminSubscriptionDashboard": {
     "failedToLoadDashboardData": "We couldn't load dashboard data. Please try again.",
@@ -10968,6 +11170,7 @@
     "overridePlaceholder": "Reason for override (e.g. verified via phone call / business registry)",
     "revokeButtonLoading": "Revoking…",
     "revokeButtonLabel": "Revoke Verification",
+    "revokeConfirmMessage": "Revoke this employer's verification? They will drop back to basic status.",
     "verifyButtonLoading": "Verifying…",
     "verifyButtonLabel": "Verify Employer",
     "closeButtonLabel": "Close",
@@ -10980,6 +11183,8 @@
     "exportColumnJoined": "Joined",
     "exportTitle": "Employers",
     "toastVerificationFailed": "We couldn't verify this employer. Please try again.",
+    "toastDeletedPermanently": "Employer permanently deleted",
+    "toastDeactivated": "Employer deactivated",
     "requestFailed": "We couldn't complete that. Please try again."
   },
   "adminGdpr": {
@@ -11623,6 +11828,7 @@
     "deleting": "Deleting...",
     "templateDeleted": "Template deleted",
     "templateDeleteFailed": "We couldn't delete template",
+    "createdOn": "Created {date}",
     "deleteTemplateConfirm": "Delete{template, select, EMPTY {} other { \"{template}\"}}? This cannot be undone.",
     "broadcastHistoryHead": "Sent broadcasts",
     "recentActivityHeading": "Recent delivery activity",
@@ -12110,7 +12316,16 @@
     "tableHeaderLocation": "Location",
     "exportYes": "Yes",
     "exportNo": "No",
-    "toastFailedDeactivate": "We couldn't deactivate this job seeker. Please try again."
+    "toastFailedDeactivate": "We couldn't deactivate this job seeker. Please try again.",
+    "tableHeaderReferredBy": "Referred by",
+    "filterReferredAny": "Referred (any)",
+    "filterReferredAgent": "Referred by agent",
+    "filterReferredSuperAgent": "Referred by super-agent",
+    "filterReferredNone": "Not referred",
+    "filterReferredAll": "All candidates",
+    "referredByRoleAgent": "Agent",
+    "referredByRoleSuperAgent": "Super-agent",
+    "exportHeaderReferredBy": "Referred by"
   },
   "adminReports": {
     "adminWorkspace": "Admin workspace",
@@ -12265,6 +12480,10 @@
     "pauseEmailsLabel": "Pause Emails",
     "forceInstantLabel": "Force Instant",
     "removeOverrideButton": "Remove",
+    "configSaveFailed": "We couldn't save that change. Please try again.",
+    "overrideRemoveFailed": "We couldn't remove that override. Please try again.",
+    "overrideAddFailed": "We couldn't add that override. Please try again.",
+    "removeOverrideConfirm": "Remove this user override? Their own notification settings will apply again.",
     "sendTestEmailTitle": "Send Test Email",
     "sendTestEmailDescription": "Verify the email pipeline. Creates an entry in Email Logs.",
     "testEmailPlaceholder": "admin@mployedin.com",
@@ -12395,6 +12614,7 @@
     "bulkUserIdsLabel": "User IDs (one per line or comma-separated) — max 100",
     "bulkUserCountLabel": "user(s) entered",
     "bulkAssignButtonLabel": "Assign to",
+    "bulkAssignUserCount": "{count, plural, one {# user} other {# users}}",
     "bulkAssigningLabel": "Assigning...",
     "bulkResultsLabel": "Results:",
     "bulkAssignedLabel": "assigned",
@@ -12567,7 +12787,23 @@
     "toastFailedSavePermissions": "We couldn't save those permissions. Please try again.",
     "selectAllUsers": "Select all users",
     "selectUser": "Select {name}",
-    "customPermissions": "Custom"
+    "customPermissions": "Custom",
+    "changeRoleConfirmTitle": "Change account type?",
+    "changeRoleConfirmMessage": "{name} becomes {toRole} instead of {fromRole}. Their {fromRole} profile is archived rather than deleted, so converting them back restores it.",
+    "changeRoleEmployerNote": "Live jobs owned by this company are paused and come off the public board.",
+    "changeRoleSeekerNote": "They stop appearing in candidate searches and the talent pool.",
+    "changeRoleConfirmLabel": "Change account type",
+    "bulkConfirmSetRoleTitle": "Change account type for {count, plural, one {# account} other {# accounts}}?",
+    "bulkConfirmSetRoleMessage": "{count, plural, one {The selected account becomes {role}} other {All # selected accounts become {role}}}. Existing profiles are archived rather than deleted, and live jobs owned by any employer in this selection are paused.",
+    "bulkConfirmSetRoleLabel": "Change {count, plural, one {# account} other {# accounts}}",
+    "bulkConfirmDeactivateTitle": "Deactivate {count, plural, one {# account} other {# accounts}}?",
+    "bulkConfirmDeactivateMessage": "{count, plural, one {They are} other {They are}} signed out and cannot sign back in. Jobs owned by any employer in this selection come off the public board.",
+    "bulkConfirmDeactivateLabel": "Deactivate {count, plural, one {# account} other {# accounts}}",
+    "bulkConfirmDeleteTitle": "Permanently delete {count, plural, one {# account} other {# accounts}}?",
+    "bulkConfirmDeleteMessage": "This cannot be undone. Each account and everything attached to it — jobs, applications, interviews, placements and commissions — is deleted for good.",
+    "bulkConfirmDeleteLabel": "Delete {count, plural, one {# account} other {# accounts}}",
+    "toastRoleChanged": "{name} is now {role}.",
+    "toastBulkFailed": "We couldn't apply that bulk action. Please try again."
   },
   "superAgentSettings": {
     "profilePhoto": "Profile photo",
@@ -13345,7 +13581,14 @@
     "noText": "No",
     "loadLinksError": "We couldn't load referral links. Please try again.",
     "disableConfirmTitle": "Disable this referral link?",
-    "disableConfirmMessage": "Link {code} will stop working immediately. Anyone who already has it will not be able to sign up through it, and you will not see who tried. You can enable it again later."
+    "disableConfirmMessage": "Link {code} will stop working immediately. Anyone who already has it will not be able to sign up through it, and you will not see who tried. You can enable it again later.",
+    "audienceLabel": "Who is this link for?",
+    "audienceEmployer": "Employers",
+    "audienceJobSeeker": "Job seekers",
+    "audienceChipEmployer": "Employer link",
+    "audienceChipJobSeeker": "Job-seeker link",
+    "registrationSeeker": "Job seeker",
+    "filterAudienceAll": "All audiences"
   },
   "superAgentInvoices": {
     "failedToLoad": "We couldn't load invoices",
@@ -13578,6 +13821,7 @@
     "status_approved": "Approved",
     "status_paid": "Paid",
     "status_disputed": "Disputed",
+    "status_clawed_back": "Clawed Back",
     "statusPaid": "Paid ✓",
     "actionApprove": "Approve",
     "actionMarkPaid": "Mark Paid",
@@ -13619,7 +13863,9 @@
     "noJobSeekersFound": "No job seekers found",
     "tryAdjustingFilters": "Try adjusting your filters",
     "yearsAbbr": "yrs",
-    "failedToLoadJobSeekers": "We couldn't load job seekers"
+    "failedToLoadJobSeekers": "We couldn't load job seekers",
+    "referredByYouChip": "Referred by you",
+    "referredViaChip": "Referred via {name}"
   },
   "superAgentReports": {
     "teamPerformanceSummary": "Team performance summary",
@@ -13924,6 +14170,7 @@
     "status_offer": "Offer",
     "status_hired": "Hired",
     "status_rejected": "Rejected",
+    "status_withdrawn": "Withdrawn",
     "currentResultsLabel": "Current results",
     "currentResultsTitle": "Manage each candidate before the next handoff",
     "paginationSummary": "{applications} applications across {pages} pages",
@@ -13963,6 +14210,7 @@
     "rejectButton": "Reject",
     "rejectErrorReasonRequired": "A rejection reason is required.",
     "rejectErrorGeneric": "Could not reject the application.",
+    "advanceErrorGeneric": "We couldn't move this candidate to the next stage. Please try again.",
     "makeOfferTitle": "Make an offer",
     "salaryAmountLabel": "Salary amount",
     "salaryPlaceholder": "e.g. 12000",
@@ -14119,7 +14367,9 @@
     "noJobSeekersFound": "No job seekers found",
     "exportTitle": "Agent Job Seekers",
     "modalEditTitle": "Edit Job Seeker",
-    "editJobSeeker": "Edit {name}"
+    "editJobSeeker": "Edit {name}",
+    "referredByYouChip": "Referred by you",
+    "filterReferredMine": "Referred by me"
   },
   "agentEmployers": {
     "heroWorkspace": "Agent workspace",
@@ -14151,6 +14401,7 @@
     "referralCopied": "Copied!",
     "referralLinkFetchFailed": "We couldn't get referral link",
     "referralLinkNetworkError": "Network error — please try again",
+    "referralLinkDisableFailed": "We couldn't turn this referral link off. Please try again.",
     "browseEmployersLabel": "Browse employers",
     "browseEmployersTitle": "Filter the accounts you want to work on next",
     "browseEmployersDescription": "Search by company, contact, industry, or location to focus your assigned book.",
@@ -14397,6 +14648,7 @@
     "statusLabelApproved": "Approved",
     "statusLabelPaid": "Paid",
     "statusLabelDisputed": "Disputed",
+    "statusLabelClawed_back": "Clawed Back",
     "typeFilterLabel": "Type",
     "typeFilterAll": "All types",
     "typeFilterPlacement": "Placement",
@@ -14509,7 +14761,13 @@
     "deleteButtonTitle": "Delete link",
     "deleteConfirmMessage": "Permanently delete this referral link? This cannot be undone.",
     "registrationsLabel": "Registrations ({count})",
-    "noRegistrationsYet": "No registrations yet for this link."
+    "noRegistrationsYet": "No registrations yet for this link.",
+    "audienceLabel": "Who is this link for?",
+    "audienceEmployer": "Employers",
+    "audienceJobSeeker": "Job seekers",
+    "audienceChipEmployer": "Employer link",
+    "audienceChipJobSeeker": "Job-seeker link",
+    "registrationSeeker": "Job seeker"
   },
   "agentLeadsNew": {
     "agentWorkspace": "Agent workspace",
@@ -15009,7 +15267,8 @@
     "negotiable": "Negotiable",
     "fromSalaryPerMonth": "From {currency} {min} / month",
     "salaryRangePerMonth": "{currency} {min} – {max} / month",
-    "jobSearch": "Job Search"
+    "jobSearch": "Job Search",
+    "stickyApply": "Easy Apply"
   },
   "applicationDetail": {
     "errorLoadingDetails": "Could not load application details.",
@@ -15590,7 +15849,11 @@
     "copied": "Copied!",
     "copyAll": "Copy All",
     "print": "Print",
-    "closeLabel": "Close interview questions for {job}"
+    "closeLabel": "Close interview questions for {job}",
+    "printTitle": "Interview Questions: {job}",
+    "printCandidate": "Candidate: {name}",
+    "printType": "Type: {type}",
+    "printQuestionCount": "{count, plural, one {# question} other {# questions}}"
   },
   "logoUpload": {
     "onlyJpegPngWebpAllowed": "Only JPEG, PNG, and WebP images are allowed.",
@@ -15620,7 +15883,9 @@
     "tip4": "Short descriptions work better",
     "generating": "Generating...",
     "generatePosters": "Generate Posters ({credits} Credits)",
-    "variationsText": "2 variations will be generated. You can generate more."
+    "variationsText": "2 variations will be generated. You can generate more.",
+    "templateLabel": "Template",
+    "templateHint": "Controls the poster composition & layout."
   },
   "posterPreviewPanel": {
     "noPreview": "Generated posters will preview here",
@@ -15628,7 +15893,28 @@
     "downloadShareDesc": "Download your poster in multiple formats",
     "saveButton": "Save to My Posters",
     "savingState": "Saving...",
-    "savedState": "Saved to My Posters"
+    "savedState": "Saved to My Posters",
+    "backToSettings": "Poster settings",
+    "dragHint": "Drag it on the poster to reposition.",
+    "textLabel": "Text",
+    "textDefaultPlaceholder": "(default)",
+    "colorLabel": "Color",
+    "recentLabel": "Recent",
+    "customizeLook": "Customize look",
+    "customizeTip": "Tip: click any text on the poster to edit it (size, weight, color, text).",
+    "sharePoster": "Share Poster",
+    "shareHint": "Anyone with this link can view this poster",
+    "sizeLabel": "Size",
+    "fontSizeLabel": "Font size",
+    "weightLabel": "Weight",
+    "templateLabel": "Template",
+    "fontLabel": "Font",
+    "textThemeLabel": "Text theme",
+    "allTextSizeLabel": "All text size",
+    "bodyWeightLabel": "Body weight",
+    "overlayLabel": "Overlay",
+    "decreaseLabel": "Decrease",
+    "increaseLabel": "Increase"
   },
   "posterShareView": {
     "applyNow": "Apply Now",
@@ -16006,7 +16292,7 @@
   "easyApply": {
     "loading": "Loading…",
     "quickApplyTitle": "Apply in seconds",
-    "quickApplyHint": "Upload your CV and we'll build your profile automatically — just sign in with Google to finish.",
+    "quickApplyHint": "Upload your CV and we'll build your profile automatically — use email or sign in with Google to finish.",
     "uploadYourCv": "Upload your CV (PDF or Word)",
     "continueWithGoogle": "Continue with Google",
     "settingUpProfile": "Setting up your profile…",
@@ -16045,8 +16331,43 @@
     "errors": {
       "applyFailed": "We couldn't apply. Please try again.",
       "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
-      "networkError": "Network error. Please try again."
-    }
+      "networkError": "Network error. Please try again.",
+      "couldNotExtract": "We couldn't read your CV automatically. You can still apply — add your details below.",
+      "invalidEmail": "Please enter a valid email address.",
+      "rateLimited": "Too many attempts. Please try again later.",
+      "emailFailed": "We couldn't send the email. Please try again.",
+      "invalidCode": "Please enter a 6-digit code.",
+      "codeExpired": "The code has expired. Please request a new one.",
+      "codeInvalid": "We couldn't verify that code. Please check it and try again.",
+      "popupBlocked": "Your browser blocked the Google sign-in popup. Try using email instead.",
+      "captchaFailed": "We couldn't confirm you're not a bot. Please try again.",
+      "captchaUnavailable": "The bot check is temporarily unavailable. Please try again in a moment."
+    },
+    "continueWithEmail": "Continue with email",
+    "sendCode": "Send code",
+    "verify": "Verify",
+    "enterCode": "Enter the code",
+    "codeSentTo": "We've sent a 6-digit code to {email}",
+    "useDifferentEmail": "Use a different email",
+    "resend": "Resend",
+    "resendIn": "Resend in {seconds}s",
+    "foundYourDetails": "We found your details",
+    "profileComplete": "Your profile is {percent}% complete",
+    "emailConfirmMsg": "Confirming email: {email}",
+    "name": "Full name",
+    "enterName": "Enter your full name",
+    "phone": "Phone",
+    "enterPhone": "Enter your phone number",
+    "headline": "Professional headline",
+    "enterHeadline": "What's your professional headline?",
+    "looksGood": "Looks good",
+    "email": "Email",
+    "enterEmail": "Enter your email",
+    "inAppBrowserHint": "{app}'s browser blocks Google sign-in. Use your email, or open this page in Chrome or Safari.",
+    "copyLink": "Copy link",
+    "completeProfile": "Complete your profile",
+    "browseMoreJobs": "Browse more jobs",
+    "profileCompletionOptional": "Profile completion is optional — you can do it anytime."
   },
   "socialShare": {
     "shareJob": "Share this job",

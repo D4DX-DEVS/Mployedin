@@ -20,9 +20,11 @@ import logger from "@/lib/logger";
 import { checkAdvert } from "@/lib/compliance/inclusiveWording";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
+import { isPublishGated, PUBLISH_GATE_SELECT, PUBLISH_GATE_ERROR, type PublishGateFields } from "@/lib/employers/publishGate";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
+import { stripPrivateJobFields } from "@/lib/jobs/visibility";
 import type { AuthContext } from "@/lib/auth/withAuth";
 
 // The local shape was missing tenantView, so handlers could not tell an admin or
@@ -291,6 +293,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     portfolioStats = { employerCount: employerSet.size, totalApplicants };
   }
 
+  // The feed goes to any signed-in user, so anything employer-only — the other
+  // applicants' ids above all — is stripped unless the caller manages the job.
+  if (!canFilterManagedJobs) {
+    for (const job of jobs) stripPrivateJobFields(job as Record<string, unknown>);
+  }
+
   return NextResponse.json({
     jobs,
     pagination: { page, limit, total, pages: Math.ceil(total / limit), totalPages: Math.ceil(total / limit) },
@@ -337,13 +345,17 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 
   let employerId: string | undefined;
   let agentId: string | undefined;
+  // An admin-converted employer has no real company details yet; their job is
+  // held as a draft rather than going straight onto the public board.
+  let publishGated = false;
 
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId })
-      .select("_id agentId")
+      .select(`_id agentId ${PUBLISH_GATE_SELECT}`)
       .lean();
     if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
     employerId = String(emp._id);
+    publishGated = isPublishGated(emp as PublishGateFields);
 
     // 8C.1: employer can assign agentId via body
     if (body.agentId) {
@@ -417,7 +429,13 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
   // No approval queue: employers and agents publish directly. Admins and
   // super-agents oversee (edit / close / delete) via their job lists. A draft
   // stays private until the poster publishes it.
-  const resolvedStatus: string = status ?? "active";
+  let resolvedStatus: string = status ?? "active";
+
+  // Gate, not a refusal: the job is saved so nothing the employer typed is
+  // lost, it just stays private until the company profile is filled in. The
+  // response carries the reason so the UI can link them straight there.
+  const heldForProfile = publishGated && resolvedStatus === "active";
+  if (heldForProfile) resolvedStatus = "draft";
 
   // Advisory only, mirroring the UI panel: the platform cannot know an
   // employer's context (a genuine occupational requirement, positive action, or
@@ -548,7 +566,15 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  return NextResponse.json({ job }, { status: 201 });
+  return NextResponse.json(
+    {
+      job,
+      // Present only when the publish was downgraded to a draft, so existing
+      // clients that ignore it keep working unchanged.
+      ...(heldForProfile ? { heldForProfile: true, reason: PUBLISH_GATE_ERROR } : {}),
+    },
+    { status: 201 },
+  );
 }
 
 export { getHandler, createHandler };

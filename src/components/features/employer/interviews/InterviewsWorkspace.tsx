@@ -1360,8 +1360,8 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                     {prepBrief.suggestedQuestions.map((q, i) => (
                       <div key={i} className="rounded-xl border border-border bg-background/60 chip-pad">
                         <p className="text-sm font-medium text-foreground">{i + 1}. {q.question}</p>
-                        <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold">Purpose:</span> {q.purpose}</p>
-                        <p className="text-xs text-muted-foreground"><span className="font-semibold">Follow-up:</span> {q.followUp}</p>
+                        <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold">{t("purpose")}:</span> {q.purpose}</p>
+                        <p className="text-xs text-muted-foreground"><span className="font-semibold">{t("followUp")}:</span> {q.followUp}</p>
                       </div>
                     ))}
                   </div>

@@ -13,6 +13,9 @@ jest.mock("next/image", () => ({
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
   useParams: () => ({ locale: "en" }),
+  // The page now reads ?callbackUrl so a visitor who arrived from a shared job
+  // link is returned to that job after onboarding instead of the dashboard.
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 jest.mock("next-auth/react", () => ({

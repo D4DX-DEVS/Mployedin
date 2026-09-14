@@ -14,6 +14,14 @@ if (!process.env.ENCRYPTION_KEY) {
 process.env.UPSTASH_REDIS_REST_URL = "";
 process.env.UPSTASH_REDIS_REST_TOKEN = "";
 
+// Same idea for reCAPTCHA: next/jest loads the developer's .env, so real keys
+// there would make the quick-apply client try to load Google's script in jsdom
+// (hangs the EasyApply tests) and make server tests call Google for real.
+// Tests that exercise the gate set these explicitly.
+process.env.RECAPTCHA_SECRET_KEY = "";
+process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "";
+process.env.RECAPTCHA_ALLOWED_HOSTS = "";
+
 // jsdom does not implement ResizeObserver, which several UI components rely on.
 // Provide a no-op polyfill so component tests don't crash with "ResizeObserver is not defined".
 if (typeof globalThis.ResizeObserver === "undefined") {

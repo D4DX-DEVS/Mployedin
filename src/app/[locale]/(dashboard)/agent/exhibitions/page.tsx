@@ -535,9 +535,9 @@ export default function AgentExhibitionsPage() {
 
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
-          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">Request history</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Open details or continue editing drafts from the table below.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("listEyebrow")}</p>
+          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("listTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("listSubtitle")}</p>
         </div>
 
         <div className="mt-5">
@@ -550,7 +550,7 @@ export default function AgentExhibitionsPage() {
           <div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
           <p className="text-sm font-semibold text-foreground">{t("noRequests")}</p>
           <Button variant="outline" className="mt-2 rounded-xl" onClick={openNewRequest}>
-            <Plus className="mr-2 h-4 w-4" /> Create your first request
+            <Plus className="mr-2 h-4 w-4" /> {t("createFirstRequest")}
           </Button>
         </div>
       ) : (
@@ -559,14 +559,14 @@ export default function AgentExhibitionsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/80 to-muted/40">
-                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Category</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Location</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dates</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">Budget</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Priority</th>
-                <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderEvent")}</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderCategory")}</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">{t("tableHeaderLocation")}</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderDates")}</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">{t("tableHeaderBudget")}</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderStatus")}</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderPriority")}</th>
+                <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -659,11 +659,11 @@ export default function AgentExhibitionsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-[20rem]">
                     <div className="rounded-xl border bg-background/80 chip-pad">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Budget</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("tableHeaderBudget")}</p>
                       <p className="mt-1 font-semibold">{formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
                     </div>
                     <div className="rounded-xl border bg-background/80 chip-pad">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Expected Leads</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailExpectedLeads")}</p>
                       <p className="mt-1 font-semibold">{detailItem.expectedLeads ?? "-"}</p>
                     </div>
                   </div>
@@ -676,7 +676,7 @@ export default function AgentExhibitionsPage() {
                 {detailItem.status === "revision_requested" && detailItem.reviewNote && (
                   <div className="rounded-lg border border-orange-200 bg-orange-50 chip-pad">
                     <p className="mb-1 flex items-center gap-1 font-medium text-orange-800">
-                      <AlertTriangle className="h-4 w-4" /> Revision Requested
+                      <AlertTriangle className="h-4 w-4" /> {t("statusRevisionRequested")}
                     </p>
                     <p className="text-orange-700">{detailItem.reviewNote}</p>
                   </div>
@@ -700,7 +700,7 @@ export default function AgentExhibitionsPage() {
                 </div>
                 {detailItem.participationTypes.length > 0 && (
                   <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Participation</p>
+                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailParticipation")}</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.participationTypes.map((participationType) => (
                         <Badge key={participationType} variant="outline" className="capitalize">
@@ -712,7 +712,7 @@ export default function AgentExhibitionsPage() {
                 )}
                 {detailItem.objectives.length > 0 && (
                   <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Objectives</p>
+                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailObjectives")}</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.objectives.map((objective) => (
                         <Badge key={objective} variant="outline">{labelFor(OBJECTIVES, objective)}</Badge>
@@ -722,7 +722,7 @@ export default function AgentExhibitionsPage() {
                 )}
                 {detailItem.requiredResources.length > 0 && (
                   <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Requirement Tags</p>
+                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailRequirementTags")}</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.requiredResources.map((resource) => (
                         <Badge key={resource} variant="outline">{labelFor(RESOURCE_TYPES, resource)}</Badge>
@@ -732,7 +732,7 @@ export default function AgentExhibitionsPage() {
                 )}
                 {detailItem.budgetBreakdown && (
                   <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Legacy Budget Breakdown</p>
+                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailLegacyBudgetBreakdown")}</p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {Object.entries(detailItem.budgetBreakdown).map(([key, value]) => (
                         <div key={key} className="rounded border p-2 text-center">
@@ -745,7 +745,7 @@ export default function AgentExhibitionsPage() {
                 )}
                 {detailItem.approvedBudget != null && (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 card-pad">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Approved Budget</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailApprovedBudget")}</p>
                     <p className="mt-2 text-lg font-bold text-emerald-700">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
                     {detailItem.approvedBudget !== detailItem.estimatedBudget && (
                       <p className="mt-1 text-xs text-muted-foreground">Estimated was {formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
@@ -754,13 +754,13 @@ export default function AgentExhibitionsPage() {
                 )}
                 {detailItem.description && (
                   <div className="rounded-xl border bg-card card-pad">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Description</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailDescription")}</p>
                     <p className="mt-2 leading-6">{detailItem.description}</p>
                   </div>
                 )}
                 {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
                   <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Approval History</p>
+                    <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailApprovalHistory")}</p>
                     <ApprovalTimeline entries={detailItem.statusHistory} />
                   </div>
                 )}
@@ -812,7 +812,7 @@ export default function AgentExhibitionsPage() {
             </div>
 
             <div>
-              <Label>Description</Label>
+              <Label>{t("description")}</Label>
               <Textarea
                 value={form.description}
                 onChange={(event) => updateForm("description", event.target.value)}
@@ -823,7 +823,7 @@ export default function AgentExhibitionsPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label>Start Date</Label>
+                <Label>{t("startDate")}</Label>
                 <DateTimePicker
                   value={form.eventStartDate}
                   onChange={(value) => {
@@ -841,7 +841,7 @@ export default function AgentExhibitionsPage() {
                 />
               </div>
               <div>
-                <Label>End Date</Label>
+                <Label>{t("endDate")}</Label>
                 <DateTimePicker
                   value={form.eventEndDate}
                   onChange={(value) => updateForm("eventEndDate", value)}
@@ -856,7 +856,7 @@ export default function AgentExhibitionsPage() {
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <Label>Venue <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Label>{t("venue")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
                 <Input
                   value={form.venue}
                   onChange={(event) => updateForm("venue", event.target.value)}
@@ -864,7 +864,7 @@ export default function AgentExhibitionsPage() {
                 />
               </div>
               <div>
-                <Label>Organizer <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Label>{t("organizerName")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
                 <Input
                   value={form.organizerName}
                   onChange={(event) => updateForm("organizerName", event.target.value)}
@@ -872,7 +872,7 @@ export default function AgentExhibitionsPage() {
                 />
               </div>
               <div>
-                <Label>Contact <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Label>{t("organizerContactShort")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
                 <Input
                   value={form.organizerContact}
                   onChange={(event) => updateForm("organizerContact", event.target.value)}
@@ -883,7 +883,7 @@ export default function AgentExhibitionsPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label>Estimated Budget</Label>
+                <Label>{t("estimatedBudget")}</Label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -894,7 +894,7 @@ export default function AgentExhibitionsPage() {
                 />
               </div>
               <div>
-                <Label>Currency</Label>
+                <Label>{t("currency")}</Label>
                 <SearchableSelect
                   options={CURRENCY_OPTIONS}
                   value={form.budgetCurrency}
@@ -938,10 +938,10 @@ export default function AgentExhibitionsPage() {
 
           <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
             <Button variant="outline" onClick={() => handleSubmit(true)}>
-              <Save className="mr-1 h-4 w-4" /> Save Draft
+              <Save className="mr-1 h-4 w-4" /> {t("saveDraft")}
             </Button>
             <Button onClick={() => handleSubmit(false)}>
-              <Send className="mr-1 h-4 w-4" /> Submit Request
+              <Send className="mr-1 h-4 w-4" /> {t("submitRequest")}
             </Button>
           </div>
         </DialogContent>

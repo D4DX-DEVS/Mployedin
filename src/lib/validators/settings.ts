@@ -44,20 +44,36 @@ export const agentProfileUpdateSchema = z.object({
   phone: z.string().max(20).trim().optional(),
 });
 
+const notificationCategorySchema = z.object({
+  enabled: z.boolean().optional(),
+  channels: z.array(z.enum(["in_app", "email", "whatsapp"])).max(5).optional(),
+});
+
 /** PATCH /api/user/notification-preferences */
 export const notificationPreferencesUpdateSchema = z.object({
   emailFrequency: z.enum(["instant", "daily", "weekly", "none"]).optional(),
+  // Keyed by the real category names, not by any string. A page that toggles a
+  // category the schema does not have used to pass validation, get $set-stripped
+  // by Mongoose, and come back 200 as though it had saved.
+  //
+  // Spelled out as an object rather than z.record(z.enum(...), ...): in Zod 4 an
+  // enum-keyed record is exhaustive, which would have rejected every partial
+  // update the PATCH route is built to accept.
   categories: z
-    .record(
-      z.string().max(50),
-      z.object({
-        enabled: z.boolean().optional(),
-        channels: z
-          .array(z.enum(["in_app", "email", "whatsapp"]))
-          .max(5)
-          .optional(),
-      })
-    )
+    .object({
+      jobs: notificationCategorySchema,
+      applications: notificationCategorySchema,
+      interviews: notificationCategorySchema,
+      offers: notificationCategorySchema,
+      profile_views: notificationCategorySchema,
+      marketing: notificationCategorySchema,
+      system: notificationCategorySchema,
+      placements: notificationCategorySchema,
+      commissions: notificationCategorySchema,
+      team: notificationCategorySchema,
+    })
+    .partial()
+    .strict()
     .optional(),
   unsubscribedAll: z.boolean().optional(),
   dailyDigestTime: z.string().max(10).optional(),

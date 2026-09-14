@@ -37,3 +37,10 @@ updates:
     # where malicious or broken publishes show up.
     cooldown:
       default-days: 7
+    groups:
+      # One PR for every action bump. Ungrouped, each action opened its own
+      # branch (checkout, setup-node, trivy, gitleaks = four), and each one had
+      # to re-run the whole Security job on its own.
+      github-actions:
+        patterns:
+          - "*"

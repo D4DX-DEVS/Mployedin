@@ -207,13 +207,21 @@ export default function AgentEmployersPage() {
         await handleGetReferralLink();
       } else {
         // Disabling: just toggle isActive to false
-        const res = await fetch(`/api/referral-links/${referralData.linkId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: false }),
-        });
-        if (res.ok) {
+        try {
+          const res = await fetch(`/api/referral-links/${referralData.linkId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isActive: false }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            setReferralError(data.error || t("referralLinkDisableFailed"));
+            return;
+          }
+          setReferralError("");
           setReferralData((prev) => prev ? { ...prev, isActive: false } : prev);
+        } catch {
+          setReferralError(t("referralLinkNetworkError"));
         }
       }
     } finally {

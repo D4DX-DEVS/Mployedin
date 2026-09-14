@@ -17,12 +17,14 @@ const aiReferralSearchSchema = z.object({
 
 const VALID_STATUSES = new Set(["active", "expired", "maxed", "inactive"]);
 const VALID_ROLES = new Set(["agent", "super_agent"]);
+const VALID_AUDIENCES = new Set(["employer", "job_seeker"]);
 const VALID_SORT_FIELDS = new Set(["createdAt", "usedCount", "code", "label"]);
 
 interface RawReferralSearchFilters {
   search?: unknown;
   status?: unknown;
   creatorRole?: unknown;
+  audience?: unknown;
   dateFrom?: unknown;
   dateTo?: unknown;
   sortBy?: unknown;
@@ -48,6 +50,7 @@ function normalizeReferralSearchFilters(raw: RawReferralSearchFilters) {
     search: normalizeString(raw.search),
     status: typeof raw.status === "string" && VALID_STATUSES.has(raw.status) ? raw.status : undefined,
     creatorRole: typeof raw.creatorRole === "string" && VALID_ROLES.has(raw.creatorRole) ? raw.creatorRole : undefined,
+    audience: typeof raw.audience === "string" && VALID_AUDIENCES.has(raw.audience) ? raw.audience : undefined,
     dateFrom: normalizeDate(raw.dateFrom),
     dateTo: normalizeDate(raw.dateTo),
     sortBy: typeof raw.sortBy === "string" && VALID_SORT_FIELDS.has(raw.sortBy) ? raw.sortBy : undefined,
@@ -80,6 +83,7 @@ Return ONLY valid JSON with this exact shape:
   "search": string | null,
   "status": "active" | "expired" | "maxed" | "inactive" | null,
   "creatorRole": "agent" | "super_agent" | null,
+  "audience": "employer" | "job_seeker" | null,
   "dateFrom": "YYYY-MM-DD" | null,
   "dateTo": "YYYY-MM-DD" | null,
   "sortBy": "createdAt" | "usedCount" | "code" | "label" | null,
@@ -91,6 +95,7 @@ Guidelines:
 - Put referral code (e.g. "MPL-1234"), label keywords, or creator name into "search".
 - Use "status" when user mentions active links, expired, disabled, or limit-reached links.
 - Use "creatorRole" when user specifically mentions agent or super-agent links.
+- Use "audience": "job_seeker" when the user mentions candidate, job seeker or talent links; "employer" for company or client links.
 - Use date ranges when the user mentions time periods (this week, last month, Q2, etc.).
 - Use "sortBy": "usedCount" when user asks for "most used" or "top performing".
 - Use "sortOrder" accordingly (desc for "most", "top", "highest"; asc for "least", "fewest").

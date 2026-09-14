@@ -4,7 +4,9 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
+import SuperAgent from "@/models/SuperAgent";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { decorateReferralSummaries, type ReferralViewer } from "@/lib/referrals/summary";
 import mongoose from "mongoose";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -34,34 +36,74 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const education = searchParams.get("education")?.trim();              // degree/field keyword filter
   const nationality = searchParams.get("nationality")?.trim();          // nationality filter
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0"); // minimum experience years
+  const referred = searchParams.get("referred")?.trim();                // any | agent | super_agent | none | mine
 
   // ── Agent scoping — agents with explicit assignments see only their job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
+  const viewer: ReferralViewer = { role: ctx.role as ReferralViewer["role"] };
   if (ctx.role === "agent") {
     const agent = await Agent.findOne({ userId: ctx.userId })
       .select("assignedJobSeekerIds")
       .lean();
+    const agentDocId = agent?._id;
+    if (agentDocId) viewer.selfAgentId = String(agentDocId);
     const assignedIds = (agent?.assignedJobSeekerIds as mongoose.Types.ObjectId[]) ?? [];
-    const hasAssignedById = await JobSeeker.exists({ agentId: agent?._id });
+    const hasAssignedById = await JobSeeker.exists({ agentId: agentDocId });
     if (assignedIds.length > 0 || hasAssignedById) {
-      // Agent has explicit assignments — scope to those
+      // Agent has explicit assignments — scope to those, plus anyone who joined
+      // through their own referral link. A referral is provenance, not an
+      // assignment, so it never writes `agentId`; it has to be unioned here.
       const orConds: Record<string, unknown>[] = [];
       if (assignedIds.length > 0) orConds.push({ _id: { $in: assignedIds } });
-      if (agent?._id) orConds.push({ agentId: agent._id });
+      if (agentDocId) {
+        orConds.push({ agentId: agentDocId });
+        orConds.push({ "referral.agentId": agentDocId });
+      }
       agentScopeFilter = { $or: orConds };
     }
     // else: no explicit assignments — agent sees all job seekers
   } else if (ctx.role === "super_agent") {
     // Match the per-record rule in job-seekers/[id]: a super-agent may only see
-    // seekers owned by an agent inside their scope. Empty scope means nothing,
-    // never everything.
+    // seekers owned by an agent inside their scope, seekers those agents
+    // referred, and seekers they referred themselves. Empty scope means
+    // nothing, never everything.
     const scope = await getSuperAgentScope(ctx.userId);
-    agentScopeFilter = { agentId: { $in: scope?.effectiveAgentIds ?? [] } };
+    const effective = scope?.effectiveAgentIds ?? [];
+    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (sa?._id) viewer.selfSuperAgentId = String(sa._id);
+    agentScopeFilter = {
+      $or: [
+        { agentId: { $in: effective } },
+        { "referral.agentId": { $in: effective } },
+        ...(sa?._id ? [{ "referral.superAgentId": sa._id }] : []),
+      ],
+    };
   }
 
   // ── Build common filter conditions ────────────────────────
   const filterConditions: Record<string, unknown>[] = [];
+  // Hide profiles belonging to accounts an admin has converted to another role.
+  // The profile is kept (a conversion must never destroy a CV) but the person
+  // is no longer a job seeker, so they do not belong in seeker lists. `null`
+  // also matches documents predating the field, so existing seekers stay
+  // visible. Declared first so both the aggregate and find paths inherit it.
+  filterConditions.push({ roleArchivedAt: null });
   if (Object.keys(agentScopeFilter).length > 0) filterConditions.push(agentScopeFilter);
+
+  // ── Referral filter ───────────────────────────────────────
+  if (referred === "mine") {
+    if (ctx.role === "agent" && viewer.selfAgentId) {
+      filterConditions.push({ "referral.agentId": new mongoose.Types.ObjectId(viewer.selfAgentId) });
+    } else if (ctx.role === "super_agent" && viewer.selfSuperAgentId) {
+      filterConditions.push({ "referral.superAgentId": new mongoose.Types.ObjectId(viewer.selfSuperAgentId) });
+    }
+  } else if (referred === "agent" || referred === "super_agent") {
+    filterConditions.push({ "referral.referrerRole": referred });
+  } else if (referred === "any") {
+    filterConditions.push({ isAgentReferred: true });
+  } else if (referred === "none") {
+    filterConditions.push({ isAgentReferred: { $ne: true } });
+  }
   if (availability) filterConditions.push({ availabilityStatus: availability });
   if (minProfile > 0 || maxProfile < 100) {
     filterConditions.push({ profileCompleteness: { $gte: minProfile, $lte: maxProfile } });
@@ -214,6 +256,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           totalExperienceYears: 1, preferredJobType: 1,
           preferredLocations: 1,
           "cv.originalUrl": 1,
+          referral: 1, isAgentReferred: 1,
           createdAt: 1,
         },
       },
@@ -229,7 +272,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const [result] = await JobSeeker.aggregate(pipeline);
     const items = result?.items ?? [];
     const total = result?.count?.[0]?.total ?? 0;
-    return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit) });
+    return NextResponse.json({ items: await decorateReferralSummaries(items, viewer), total, page, totalPages: Math.ceil(total / limit) });
   }
 
   // No search — simple find + populate
@@ -244,5 +287,5 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     JobSeeker.countDocuments(baseFilter),
   ]);
 
-  return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit) });
+  return NextResponse.json({ items: await decorateReferralSummaries(items, viewer), total, page, totalPages: Math.ceil(total / limit) });
 }, { resource: "job_seekers", action: "read" });

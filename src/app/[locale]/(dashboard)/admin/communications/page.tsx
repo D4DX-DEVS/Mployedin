@@ -254,6 +254,8 @@ export default function AdminCommunicationsPage() {
       }
 
       toast.error(tr("templateDeleteFailed"));
+    } catch {
+      toast.error(tr("templateDeleteFailed"));
     } finally {
       setDeletingTemplateId((current) => (current === id ? null : current));
     }
@@ -660,7 +662,7 @@ export default function AdminCommunicationsPage() {
                       </div>
                       <p className="text-sm font-medium text-foreground">{template.subject}</p>
                       <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{template.body}</p>
-                      <p className="text-xs text-muted-foreground">Created {formatDate(new Date(template.createdAt))}</p>
+                      <p className="text-xs text-muted-foreground">{tr("createdOn", { date: formatDate(new Date(template.createdAt)) })}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">

@@ -386,7 +386,11 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
       });
 
       if (res.ok) {
-        const data = (await res.json()) as { job: { _id: string; status?: string } };
+        const data = (await res.json()) as {
+          job: { _id: string; status?: string };
+          /** Set when an unconfirmed admin-converted employer tried to publish. */
+          heldForProfile?: boolean;
+        };
         const jobId = draftId ?? String(data.job._id);
         // Mark as published so the unmount/beforeunload auto-draft save is skipped
         // (otherwise leaving this page would recreate the just-posted job as a draft).
@@ -395,17 +399,32 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         try {
           clearDraft();
         } catch { /* ignore */ }
-        toast.success(t("postSuccess"), {
-          description: t("postSuccessDescription"),
-          action: {
-            label: t("createPoster"),
-            onClick: () => {
-              // Navigate with poster query param to auto-open dialog
-              router.push(`/${locale}/${basePath}/jobs/${jobId}?poster=1`);
+        if (data.heldForProfile) {
+          // The job saved, but as a draft: an admin-converted employer has no
+          // real company details yet, and the personal name the profile was
+          // seeded with must not reach the public board. Say so here rather
+          // than letting Publish look like it silently did nothing.
+          toast.warning(t("postHeldTitle"), {
+            description: t("postHeldDescription"),
+            action: {
+              label: t("completeCompanyProfile"),
+              onClick: () => router.push(`/${locale}/${basePath}/settings`),
             },
-          },
-          duration: 8000,
-        });
+            duration: 10000,
+          });
+        } else {
+          toast.success(t("postSuccess"), {
+            description: t("postSuccessDescription"),
+            action: {
+              label: t("createPoster"),
+              onClick: () => {
+                // Navigate with poster query param to auto-open dialog
+                router.push(`/${locale}/${basePath}/jobs/${jobId}?poster=1`);
+              },
+            },
+            duration: 8000,
+          });
+        }
         router.push(`/${locale}/${basePath}/jobs/${jobId}`);
       } else {
         const err = (await res.json()) as {
@@ -415,7 +434,11 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         // The API already returns the offending field + reason; showing only
         // the generic "Validation failed" left the user with nothing to act on.
         const detail = err.details?.[0];
-        if (detail) {
+        if (err.error === "EMPLOYER_PROFILE_INCOMPLETE") {
+          // Publishing an existing draft hits the same gate as creating one;
+          // the raw error code would have been shown verbatim otherwise.
+          setSubmitError(t("publishBlockedProfile"));
+        } else if (detail) {
           setSubmitError(`${detail.path}: ${detail.message}`);
           const step = STEP_FOR_PATH[detail.path.split(".")[0]];
           if (step) setCurrentStep(step);

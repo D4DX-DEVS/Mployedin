@@ -35,7 +35,7 @@ export const autoApplyFunction = inngest.createFunction(
 
     const seeker = await step.run("fetch-seeker", () =>
       JobSeeker.findOne({ userId })
-        .select(`_id userId applicationMode autoApplyCount autoApplyResetAt profileCompleteness updatedAt ${SEEKER_MATCH_FIELDS}`)
+        .select(`_id userId applicationMode autoApplyCount autoApplyResetAt profileCompleteness updatedAt isAgentReferred ${SEEKER_MATCH_FIELDS}`)
         .lean()
     );
 
@@ -123,6 +123,7 @@ export const autoApplyFunction = inngest.createFunction(
           status: "applied",
           source: "auto_apply",
           autoApplied: true,
+          isAgentReferred: (seeker as { isAgentReferred?: boolean }).isAgentReferred === true,
           aiMatchScore: score,
           appliedAt: now,
           statusHistory: [{ status: "applied", changedAt: now }],

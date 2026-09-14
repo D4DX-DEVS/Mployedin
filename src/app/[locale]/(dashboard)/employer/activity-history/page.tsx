@@ -180,8 +180,8 @@ export default function ActivityHistoryPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("allActions")}</SelectItem>
-              <SelectItem value="start">Session Start</SelectItem>
-              <SelectItem value="exit">Session End</SelectItem>
+              <SelectItem value="start">{t("start")}</SelectItem>
+              <SelectItem value="exit">{t("exit")}</SelectItem>
               <SelectItem value="create">{t("created")}</SelectItem>
               <SelectItem value="update">{t("updated")}</SelectItem>
               <SelectItem value="delete">{t("deleted")}</SelectItem>
@@ -196,9 +196,9 @@ export default function ActivityHistoryPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("allRoles")}</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="super_agent">Super Agent</SelectItem>
-              <SelectItem value="agent">Agent</SelectItem>
+              <SelectItem value="admin">{t("roleAdmin")}</SelectItem>
+              <SelectItem value="super_agent">{t("roleSuperAgent")}</SelectItem>
+              <SelectItem value="agent">{t("roleAgent")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -31,6 +31,13 @@ jest.mock("@/models/Employer", () => ({
     findOne: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: EMPLOYER }) }),
     }),
+    // A self-registered employer, so the publish gate for admin-converted
+    // accounts stays out of the way of the status-machine assertions.
+    findById: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ createdVia: "self", profileConfirmedAt: null }),
+      }),
+    }),
   },
 }));
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: jest.fn() } }));

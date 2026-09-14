@@ -464,7 +464,7 @@ describe("EmployerApplicationsPage", () => {
 
     it("offers the shortlist and nothing else", () => {
       withCounts();
-      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      render(<ApplicationsWorkspace jobId="job-1" />);
 
       const chips = screen.getByRole("group", { name: /filter by stage/i });
       expect(within(chips).getAllByRole("button").map((b) => b.textContent?.trim())).toEqual(["Shortlisted4"]);
@@ -476,7 +476,7 @@ describe("EmployerApplicationsPage", () => {
         moved on to Interviewing = 4. */
     it("keeps counting candidates who have since advanced", () => {
       withCounts();
-      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      render(<ApplicationsWorkspace jobId="job-1" />);
       expect(screen.getByRole("button", { name: /shortlisted 4/i })).toBeInTheDocument();
     });
 
@@ -489,7 +489,7 @@ describe("EmployerApplicationsPage", () => {
         },
         isLoading: false,
       });
-      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      render(<ApplicationsWorkspace jobId="job-1" />);
       // 1 shortlisted + 1 hired; applied, rejected and withdrawn are excluded.
       expect(screen.getByRole("button", { name: /shortlisted 2/i })).toBeInTheDocument();
     });
@@ -497,7 +497,7 @@ describe("EmployerApplicationsPage", () => {
     it("filters to the shortlist in one click, and back out again", async () => {
       const user = userEvent.setup();
       withCounts();
-      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      render(<ApplicationsWorkspace jobId="job-1" />);
 
       await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
       await waitFor(() => expect(useApplicationsMock).toHaveBeenCalledWith(
@@ -513,7 +513,7 @@ describe("EmployerApplicationsPage", () => {
 
     it("drops the chip when nobody has been shortlisted", () => {
       withCounts(0, 0);
-      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      render(<ApplicationsWorkspace jobId="job-1" />);
       expect(screen.queryByRole("button", { name: /shortlisted/i })).not.toBeInTheDocument();
     });
 
@@ -522,11 +522,11 @@ describe("EmployerApplicationsPage", () => {
     it("keeps the chip while it is the active filter, even at zero", async () => {
       const user = userEvent.setup();
       withCounts();
-      const { rerender } = render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      const { rerender } = render(<ApplicationsWorkspace jobId="job-1" />);
       await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
 
       withCounts(0, 0);
-      rerender(<ApplicationsWorkspace jobId="job-1" embedded />);
+      rerender(<ApplicationsWorkspace jobId="job-1" />);
 
       expect(screen.getByRole("button", { name: /shortlisted 0/i })).toHaveAttribute("aria-pressed", "true");
     });
@@ -536,7 +536,7 @@ describe("EmployerApplicationsPage", () => {
         data: { applications: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } },
         isLoading: true,
       });
-      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      render(<ApplicationsWorkspace jobId="job-1" />);
       expect(screen.getByRole("button", { name: /shortlisted —/i })).toBeInTheDocument();
     });
   });

@@ -68,7 +68,7 @@ export function PosterPreviewPanel({
       const raw = localStorage.getItem(storageKey);
       if (raw) { const v = JSON.parse(raw); if (v && typeof v === "object") set({ look: v.look ?? {}, layout: v.layout ?? null }, false); }
     } catch { /* ignore corrupt cache */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [storageKey]);
   useEffect(() => {
     if (!storageKey) return;
@@ -217,27 +217,27 @@ export function PosterPreviewPanel({
               {POSTER_ELEMENTS.find((e) => e.id === selectedId)?.label}
             </p>
             <button type="button" onClick={() => setSelectedId(null)} className="text-[11px] text-muted-foreground underline">
-              ← Poster settings
+              ← {t("backToSettings")}
             </button>
           </div>
 
-          <p className="text-[11px] text-muted-foreground -mt-1">Drag it on the poster to reposition.</p>
+          <p className="text-[11px] text-muted-foreground -mt-1">{t("dragHint")}</p>
 
           {selMeta?.editableText && (
             <div>
-              <p className="text-[11px] text-muted-foreground mb-1">Text</p>
+              <p className="text-[11px] text-muted-foreground mb-1">{t("textLabel")}</p>
               <input
                 type="text"
                 value={el?.text ?? ""}
-                placeholder="(default)"
+                placeholder={t("textDefaultPlaceholder")}
                 onChange={(e) => patchEl(selectedId, { text: e.target.value || undefined })}
                 className="w-full rounded-md border px-2 py-1.5 text-[11px] bg-background"
               />
             </div>
           )}
 
-          <EditorRow label={selMeta?.kind === "image" ? "Size" : "Font size"}>
-            <Chip active={false} onClick={() => patchEl(selectedId, { fontScale: clamp((el?.fontScale ?? 1) - 0.1, 0.5, 2.5) })}>−</Chip>
+          <EditorRow label={selMeta?.kind === "image" ? t("sizeLabel") : t("fontSizeLabel")}>
+            <Chip active={false} label={t("decreaseLabel")} onClick={() => patchEl(selectedId, { fontScale: clamp((el?.fontScale ?? 1) - 0.1, 0.5, 2.5) })}>−</Chip>
             <input
               type="number"
               min={50}
@@ -248,12 +248,12 @@ export function PosterPreviewPanel({
               className="w-14 rounded-md border px-1.5 py-0.5 text-[11px] bg-background text-center"
             />
             <span className="text-[11px] text-muted-foreground self-center">%</span>
-            <Chip active={false} onClick={() => patchEl(selectedId, { fontScale: clamp((el?.fontScale ?? 1) + 0.1, 0.5, 2.5) })}>+</Chip>
+            <Chip active={false} label={t("increaseLabel")} onClick={() => patchEl(selectedId, { fontScale: clamp((el?.fontScale ?? 1) + 0.1, 0.5, 2.5) })}>+</Chip>
           </EditorRow>
 
           {selMeta?.kind === "text" && (
             <>
-              <EditorRow label="Weight">
+              <EditorRow label={t("weightLabel")}>
                 {([400, 500, 600, 700, 800] as const).map((w) => (
                   <Chip key={w} active={el?.fontWeight === w} onClick={() => patchEl(selectedId, { fontWeight: w })}>
                     {w}
@@ -262,7 +262,7 @@ export function PosterPreviewPanel({
               </EditorRow>
 
               <div>
-                <p className="text-[11px] text-muted-foreground mb-1">Color</p>
+                <p className="text-[11px] text-muted-foreground mb-1">{t("colorLabel")}</p>
                 <div className="flex items-center gap-2 mb-1.5">
                   <input
                     type="color"
@@ -280,7 +280,7 @@ export function PosterPreviewPanel({
                 </div>
                 {recentColors.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-1.5">
-                    <span className="text-[11px] text-muted-foreground self-center mr-0.5">Recent</span>
+                    <span className="text-[11px] text-muted-foreground self-center mr-0.5">{t("recentLabel")}</span>
                     {recentColors.map((c) => (
                       <button key={`r-${c}`} type="button" onClick={() => applyColor(selectedId, c)} className="h-5 w-5 rounded-full border" style={{ backgroundColor: c }} aria-label={c} />
                     ))}
@@ -323,10 +323,10 @@ export function PosterPreviewPanel({
         </div>
       ) : (
         <div className="rounded-lg border space-y-3 chip-pad">
-          <p className="text-xs font-semibold text-foreground">Customize look</p>
-          <p className="text-[11px] text-muted-foreground -mt-1">Tip: click any text on the poster to edit it (size, weight, color, text).</p>
+          <p className="text-xs font-semibold text-foreground">{t("customizeLook")}</p>
+          <p className="text-[11px] text-muted-foreground -mt-1">{t("customizeTip")}</p>
 
-          <EditorRow label="Template">
+          <EditorRow label={t("templateLabel")}>
             {TEMPLATES.map((tpl) => (
               <Chip key={tpl.id} active={activeLayout === tpl.layout} onClick={() => setLayoutOverride(tpl.layout)}>
                 {tpl.label}
@@ -334,7 +334,7 @@ export function PosterPreviewPanel({
             ))}
           </EditorRow>
 
-          <EditorRow label="Font">
+          <EditorRow label={t("fontLabel")}>
             {POSTER_FONTS.map((f) => (
               <Chip key={f.id} active={(look.fontFamily ?? POSTER_FONTS[0].stack) === f.stack} onClick={() => setLook((s) => ({ ...s, fontFamily: f.stack }))}>
                 <span style={{ fontFamily: f.stack }}>{f.label}</span>
@@ -342,7 +342,7 @@ export function PosterPreviewPanel({
             ))}
           </EditorRow>
 
-          <EditorRow label="Text theme">
+          <EditorRow label={t("textThemeLabel")}>
             {([
               ["white", "White"], ["warm", "Warm"], ["sky", "Sky"], ["mono-dark", "Dark"],
             ] as const).map(([id, label]) => (
@@ -352,8 +352,8 @@ export function PosterPreviewPanel({
             ))}
           </EditorRow>
 
-          <EditorRow label="All text size">
-            <Chip active={false} onClick={() => setLook((s) => ({ ...s, textScale: clamp((s.textScale ?? 1) - 0.1, 0.5, 2) }))}>−</Chip>
+          <EditorRow label={t("allTextSizeLabel")}>
+            <Chip active={false} label={t("decreaseLabel")} onClick={() => setLook((s) => ({ ...s, textScale: clamp((s.textScale ?? 1) - 0.1, 0.5, 2) }))}>−</Chip>
             <input
               type="number"
               min={50}
@@ -364,10 +364,10 @@ export function PosterPreviewPanel({
               className="w-14 rounded-md border px-1.5 py-0.5 text-[11px] bg-background text-center"
             />
             <span className="text-[11px] text-muted-foreground self-center">%</span>
-            <Chip active={false} onClick={() => setLook((s) => ({ ...s, textScale: clamp((s.textScale ?? 1) + 0.1, 0.5, 2) }))}>+</Chip>
+            <Chip active={false} label={t("increaseLabel")} onClick={() => setLook((s) => ({ ...s, textScale: clamp((s.textScale ?? 1) + 0.1, 0.5, 2) }))}>+</Chip>
           </EditorRow>
 
-          <EditorRow label="Body weight">
+          <EditorRow label={t("bodyWeightLabel")}>
             {([[400, "Plain"], [500, "Medium"], [700, "Bold"]] as const).map(([w, label]) => (
               <Chip key={w} active={(look.bodyWeight ?? 400) === w} onClick={() => setLook((s) => ({ ...s, bodyWeight: w }))}>
                 {label}
@@ -375,7 +375,7 @@ export function PosterPreviewPanel({
             ))}
           </EditorRow>
 
-          <EditorRow label="Overlay">
+          <EditorRow label={t("overlayLabel")}>
             {([["none", "None"], ["light", "Light"], ["medium", "Medium"], ["heavy", "Heavy"]] as const).map(([id, label]) => (
               <Chip key={id} active={(look.overlay ?? "medium") === id} onClick={() => setLook((s) => ({ ...s, overlay: id }))}>
                 {label}
@@ -424,8 +424,8 @@ export function PosterPreviewPanel({
       {/* Share Link */}
       {shareSlug && (
         <div>
-          <p className="text-xs font-medium text-foreground mb-1">Share Poster</p>
-          <p className="text-[11px] text-muted-foreground mb-2">Anyone with this link can view this poster</p>
+          <p className="text-xs font-medium text-foreground mb-1">{t("sharePoster")}</p>
+          <p className="text-[11px] text-muted-foreground mb-2">{t("shareHint")}</p>
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -504,11 +504,14 @@ function EditorRow({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+// `label` names the chips whose only content is a glyph (the −/+ steppers), so
+// a screen reader announces what they change rather than just "minus".
+function Chip({ active, onClick, children, label }: { active: boolean; onClick: () => void; children: ReactNode; label?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={label}
       className={`px-2.5 py-1 rounded-full text-[11px] border transition-all ${
         active ? "bg-primary/10 border-primary text-foreground" : "border-border hover:border-primary/40 text-muted-foreground"
       }`}

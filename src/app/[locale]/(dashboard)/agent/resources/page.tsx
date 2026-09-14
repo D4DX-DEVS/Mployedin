@@ -107,7 +107,7 @@ export default function ResourceDownloadsPage() {
             <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
           </div>
           {categoryFilter !== "all" && (
-            <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Clear</button>
+            <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">{t("clear")}</button>
           )}
         </div>
       </div>
@@ -169,9 +169,9 @@ export default function ResourceDownloadsPage() {
                           <span className="truncate font-medium text-foreground">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
                           <div className="flex gap-1 shrink-0">
                             {(file.contentType?.startsWith("image/") || file.contentType === "application/pdf") && (
-                              <button onClick={() => setPreviewUrl({url: file.url, type: file.contentType})} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-card transition-colors" aria-label="Preview file"><Eye className="h-4 w-4 text-muted-foreground" /></button>
+                              <button onClick={() => setPreviewUrl({url: file.url, type: file.contentType})} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-card transition-colors" aria-label={t("previewFile")}><Eye className="h-4 w-4 text-muted-foreground" /></button>
                             )}
-                            <button onClick={() => trackDownload(item, file)} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-card transition-colors text-primary" aria-label="Download file"><Download className="h-4 w-4" /></button>
+                            <button onClick={() => trackDownload(item, file)} className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-card transition-colors text-primary" aria-label={t("downloadFile")}><Download className="h-4 w-4" /></button>
                           </div>
                         </div>
                       ))}
@@ -205,7 +205,7 @@ export default function ResourceDownloadsPage() {
           )}
           {previewUrl && (
             <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => window.open(previewUrl.url, '_blank')}>Open in new tab</Button>
+              <Button variant="outline" size="sm" onClick={() => window.open(previewUrl.url, '_blank')}>{t("openInNewTab")}</Button>
             </div>
           )}
         </DialogContent>

@@ -52,7 +52,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const [job, seeker, seekerUser] = await Promise.all([
     Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status screeningQuestions maxApplicants applicantIds").lean(),
-    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl").lean(),
+    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl isAgentReferred").lean(),
     User.findById(ctx.userId).select("email name").lean(),
   ]);
 
@@ -134,6 +134,9 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     documents: appDocuments,
     behaviorSignals: signals,
     behaviorScore: bScore,
+    // Explicit so the pre-save hook skips its lookup, and so the re-apply
+    // ($set) path below carries the value too.
+    isAgentReferred: (seeker as { isAgentReferred?: boolean }).isAgentReferred === true,
   };
 
   let application;

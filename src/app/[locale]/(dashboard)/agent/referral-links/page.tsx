@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useReferralLinks";
 import {
   Building2,
+  UserRound,
   Calendar,
   Check,
   ChevronDown,
@@ -38,6 +39,9 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
+import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
+import { registrationDisplayName } from "@/lib/referrals/display";
 import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 function formatDate(d: string | undefined): string {
@@ -80,6 +84,7 @@ export default function AgentReferralLinksPage() {
   const [newLabel, setNewLabel] = useState("");
   const [newMaxUses, setNewMaxUses] = useState("");
   const [newExpiresAt, setNewExpiresAt] = useState("");
+  const [newAudience, setNewAudience] = useState<ReferralAudience>("employer");
 
   const filters = { page: pagination.page, limit: pagination.limit, search };
 
@@ -92,27 +97,24 @@ export default function AgentReferralLinksPage() {
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 0;
 
-  const baseUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/${locale || "en"}/employer-register?ref=`
-      : "";
-
-  const handleCopy = useCallback((code: string) => {
-    navigator.clipboard.writeText(`${baseUrl}${code}`);
-    setCopyMap((m) => ({ ...m, [code]: true }));
-    setTimeout(() => setCopyMap((m) => ({ ...m, [code]: false })), 2000);
-  }, [baseUrl]);
+  const handleCopy = useCallback((link: ReferralLinkItem) => {
+    navigator.clipboard.writeText(referralUrlFor(link, locale || "en", window.location.origin));
+    setCopyMap((m) => ({ ...m, [link.code]: true }));
+    setTimeout(() => setCopyMap((m) => ({ ...m, [link.code]: false })), 2000);
+  }, [locale]);
 
   const handleCreate = async () => {
     await createMutation.mutateAsync({
       label: newLabel || undefined,
       maxUses: newMaxUses ? parseInt(newMaxUses) : undefined,
       expiresAt: newExpiresAt || undefined,
+      audience: newAudience,
     });
     setCreateOpen(false);
     setNewLabel("");
     setNewMaxUses("");
     setNewExpiresAt("");
+    setNewAudience("employer");
   };
 
   const handleToggleActive = async (link: ReferralLinkItem) => {
@@ -179,6 +181,27 @@ export default function AgentReferralLinksPage() {
             <button onClick={() => setCreateOpen(false)} className="rounded-lg p-1 hover:bg-secondary/80"><X className="h-4 w-4" /></button>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <fieldset className="sm:col-span-3">
+              <legend className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("audienceLabel")}</legend>
+              <div className="flex flex-wrap gap-2">
+                {(["employer", "job_seeker"] as const).map((value) => (
+                  <label
+                    key={value}
+                    className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm ${newAudience === value ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="referral-audience"
+                      value={value}
+                      checked={newAudience === value}
+                      onChange={() => setNewAudience(value)}
+                      className="accent-primary"
+                    />
+                    {value === "job_seeker" ? t("audienceJobSeeker") : t("audienceEmployer")}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("formLabelLabel")}</label>
               <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("formLabelPlaceholder")} className="h-10 rounded-xl" />
@@ -255,6 +278,7 @@ export default function AgentReferralLinksPage() {
                       <div className="flex items-center gap-2">
                         <p className="font-mono text-sm font-semibold text-foreground">{link.code}</p>
                         {link.label && <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"><Tag className="h-2.5 w-2.5" />{link.label}</span>}
+                        <ReferralAudienceChip audience={link.audience} namespace="agentReferralLinks" />
                       </div>
                       <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("labelCreated")} {formatDate(link.createdAt)}</span>
@@ -266,7 +290,7 @@ export default function AgentReferralLinksPage() {
                   <div className="flex items-center gap-2">
                     <StatusBadge status={status === "active" ? "active" : status === "expired" ? "expired" : "inactive"} />
                     <button
-                      onClick={() => handleCopy(link.code)}
+                      onClick={() => handleCopy(link)}
                       className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-muted-foreground hover:border-primary/25 hover:text-primary"
                     >
                       {copyMap[link.code] ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -308,10 +332,10 @@ export default function AgentReferralLinksPage() {
                         {link.registrations.map((reg, i) => (
                           <div key={i} className="flex items-center gap-3 rounded-xl bg-secondary/40 px-4 py-3">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-status-applied-bg text-status-applied">
-                              <Building2 className="h-4 w-4" />
+                              {reg.kind === "job_seeker" ? <UserRound className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
                             </div>
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-foreground">{reg.companyName}</p>
+                              <p className="text-sm font-medium text-foreground">{registrationDisplayName(reg)}</p>
                               <p className="text-xs text-muted-foreground">{reg.email}</p>
                             </div>
                             <div className="text-right text-xs text-muted-foreground">

@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useSession, signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { signInWithPopup } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2 } from "lucide-react";
+import { isInAppBrowser, inAppBrowserName } from "@/lib/browser/inAppBrowser";
+import { getRecaptchaToken } from "@/lib/browser/recaptcha";
+import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +51,27 @@ interface JobSeekerProfile {
   socialLinks?: { label: string; url: string }[];
 }
 
+interface ExtractedProfileData {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  headline?: string;
+  skills?: Array<{ name: string; level?: string; yearsOfExperience?: number }>;
+  experience?: unknown[];
+  education?: unknown[];
+  languages?: unknown[];
+  certifications?: unknown[];
+  projects?: unknown[];
+  socialLinks?: unknown[];
+}
+
+interface CvExtractResponse {
+  success: true;
+  extracted: ExtractedProfileData;
+  profileCompleteness: number;
+  cvUrl: string | null;
+}
+
 // Sentinel keys for the CV selector
 const PROFILE_CV_KEY = "__profile_cv__";
 const NO_CV_KEY = "__none__";
@@ -59,9 +83,25 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   // ── Anonymous CV-first flow (shared-link visitors) ──────────────────────────
   const [anonCvFile, setAnonCvFile] = useState<File | null>(null);
-  const [anonPhase, setAnonPhase] = useState<"idle" | "auth" | "extract">("idle");
+  const [anonPhase, setAnonPhase] = useState<"idle" | "auth" | "extract" | "confirm">("idle");
   const [anonError, setAnonError] = useState("");
   const anonCvInputRef = useRef<HTMLInputElement>(null);
+
+  // Email OTP flow for anonymous users
+  const [anonAuthMethod, setAnonAuthMethod] = useState<"google" | "email" | null>(null);
+  const [anonEmail, setAnonEmail] = useState("");
+  const [anonOtpCode, setAnonOtpCode] = useState("");
+  const [anonOtpSent, setAnonOtpSent] = useState(false);
+  const [anonOtpResendCountdown, setAnonOtpResendCountdown] = useState(0);
+
+  // Profile confirmation after extraction. Only the three editable fields and the
+  // completeness figure are rendered, so the rest of the extracted payload is not
+  // held in state — it is already persisted server-side by /api/ai/cv-extract.
+  const [profileCompleteness, setProfileCompleteness] = useState<number | null>(null);
+  const [extractionFailed, setExtractionFailed] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [confirmPhone, setConfirmPhone] = useState("");
+  const [confirmHeadline, setConfirmHeadline] = useState("");
 
   const [profile, setProfile] = useState<JobSeekerProfile | null>(null);
   const [coverLetter, setCoverLetter] = useState("");
@@ -154,6 +194,37 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       .finally(() => setFetchingProfile(false));
   }, [isJobSeeker, profile, session?.user?.email, session?.user?.name]);
 
+  // Copy the current job URL — offered when an in-app browser blocks Google sign-in
+  // so the visitor can paste the link into a real browser.
+  // NOTE: every hook must sit above the early returns below. React counts hooks per
+  // render, and a hook declared after a conditional return crashes the component
+  // ("Rendered more hooks than during the previous render") the moment the early
+  // return stops firing — which took the whole apply card down behind the error boundary.
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = window.location.href;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+  }, []);
+
+  // OTP resend countdown
+  useEffect(() => {
+    if (anonOtpResendCountdown <= 0) return;
+    const timer = setTimeout(() => {
+      setAnonOtpResendCountdown((c) => c - 1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [anonOtpResendCountdown]);
+
   if (status === "loading" || fetchingProfile || (isJobSeeker && checkingApplied && !applied)) {
     return (
       <Button size="lg" disabled className="w-full rounded-2xl text-base">
@@ -163,21 +234,9 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
     );
   }
 
-  // CV-first quick apply: pick a CV (kept in memory — Google auth is a popup, so
-  // the page never unloads), sign in with Google, then the CV is extracted into
-  // the fresh profile and onboarding is skipped. Reduces drop-off from shared links.
-  async function handleAnonGoogleApply() {
-    setAnonError("");
-    setAnonPhase("auth");
+  // Finish the anonymous sign-in and extract CV if present
+  async function finishAnonSignIn() {
     try {
-      const result = await signInWithPopup(firebaseAuth, googleProvider);
-      const idToken = await result.user.getIdToken();
-      const res = await signIn("firebase", { idToken, redirect: false });
-      if (res?.error) {
-        setAnonError(t("googleSignInFailed"));
-        return;
-      }
-
       const fresh = await getSession();
       const freshRole = (fresh?.user as { role?: string } | undefined)?.role;
       if (freshRole !== "job_seeker") {
@@ -191,32 +250,495 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         try {
           const fd = new FormData();
           fd.append("cv", anonCvFile);
-          await csrfFetch("/api/ai/cv-extract", { method: "POST", body: fd });
+          const extractRes = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: fd });
+          if (!extractRes.ok) {
+            // Extraction failed
+            setExtractionFailed(true);
+            // Still upload the CV as a document
+            await uploadDocumentForAnon(anonCvFile);
+            setAnonPhase("confirm");
+            return;
+          }
+          const extractData: CvExtractResponse = await extractRes.json();
+          if (extractData.success) {
+            setProfileCompleteness(extractData.profileCompleteness);
+            setConfirmName(extractData.extracted.fullName ?? "");
+            setConfirmPhone(extractData.extracted.phone ?? "");
+            setConfirmHeadline(extractData.extracted.headline ?? "");
+            setAnonPhase("confirm");
+          } else {
+            setExtractionFailed(true);
+            await uploadDocumentForAnon(anonCvFile);
+            setAnonPhase("confirm");
+          }
         } catch {
-          // Extraction is best-effort — the user can still apply with a bare profile.
+          // Extraction failed
+          setExtractionFailed(true);
+          await uploadDocumentForAnon(anonCvFile);
+          setAnonPhase("confirm");
         }
-        // Profile came from the CV — don't bounce this user through onboarding.
-        await csrfFetch("/api/job-seekers/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ onboardingComplete: true }),
-        }).catch(() => {});
+      } else {
+        // No CV file — go straight to applying
+        await update();
       }
+    } catch {
+      setAnonError(t("errors.applyFailed"));
+      setAnonPhase("idle");
+    }
+  }
+
+  // Upload CV file as a document for anonymous users
+  async function uploadDocumentForAnon(file: File) {
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("category", "resume");
+      await fetch("/api/job-seeker/documents", { method: "POST", body: fd });
+    } catch {
+      // Best-effort — if it fails, continue anyway
+    }
+  }
+
+  // Handle profile confirmation and profile PATCH
+  async function handleAnonProfileConfirm() {
+    setAnonError("");
+    try {
+      const patchBody: Record<string, unknown> = { onboardingComplete: true };
+      if (confirmName && confirmName.trim().length > 0) {
+        patchBody.name = confirmName.trim();
+      }
+      if (confirmPhone && confirmPhone.trim().length >= 7) {
+        patchBody.phone = confirmPhone.trim();
+      }
+      if (confirmHeadline && confirmHeadline.trim().length > 0) {
+        patchBody.headline = confirmHeadline.trim();
+      }
+
+      const res = await csrfFetch("/api/job-seekers/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patchBody),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAnonError(data?.error ?? t("errors.applyFailed"));
+        return;
+      }
+
+      // Drop the cached profile so the apply form re-reads it. Without this the
+      // CV panel still shows the pre-sign-in snapshot and claims "No CV on file"
+      // even though the parse (or the fallback upload) just stored one.
+      setProfile(null);
 
       // Refresh the JWT/session so the component re-renders into the apply form.
       await update();
     } catch {
-      setAnonError(t("googleSignInFailed"));
+      setAnonError(t("errors.applyFailed"));
     } finally {
       setAnonPhase("idle");
     }
   }
 
+  // CV-first quick apply: pick a CV (kept in memory — Google auth is a popup, so
+  // the page never unloads), sign in with Google, then the CV is extracted into
+  // the fresh profile and onboarding is skipped. Reduces drop-off from shared links.
+  async function handleAnonGoogleApply() {
+    setAnonError("");
+    setAnonPhase("auth");
+    try {
+      const result = await signInWithPopup(firebaseAuth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      const res = await signIn("firebase", { idToken, redirect: false });
+      if (res?.error) {
+        // Check if it's a popup block error
+        if (res.error.includes("disallowed") || res.error.includes("popup")) {
+          setAnonError(t("errors.popupBlocked"));
+        } else {
+          setAnonError(t("googleSignInFailed"));
+        }
+        setAnonPhase("idle");
+        return;
+      }
+
+      await finishAnonSignIn();
+    } catch (err) {
+      // Check if it's a popup block error
+      const errorMsg = String(err);
+      if (errorMsg.includes("disallowed") || errorMsg.includes("popup") || errorMsg.includes("blocked")) {
+        setAnonError(t("errors.popupBlocked"));
+      } else {
+        setAnonError(t("googleSignInFailed"));
+      }
+      setAnonPhase("idle");
+    }
+  }
+
+  // Handle email OTP flow start
+  async function handleAnonEmailOtpStart() {
+    setAnonError("");
+    if (!anonEmail || !anonEmail.includes("@")) {
+      setAnonError(t("errors.invalidEmail"));
+      return;
+    }
+
+    try {
+      // Invisible reCAPTCHA v3. Resolves to null when no site key is configured,
+      // in which case the server skips the check too.
+      const captchaToken = await getRecaptchaToken("quick_apply");
+
+      const res = await csrfFetch("/api/auth/apply-otp/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: anonEmail, ...(captchaToken ? { captchaToken } : {}) }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data?.error === "INVALID_EMAIL") {
+          setAnonError(t("errors.invalidEmail"));
+        } else if (data?.error === "RATE_LIMITED") {
+          setAnonError(t("errors.rateLimited"));
+        } else if (data?.error === "EMAIL_FAILED") {
+          setAnonError(t("errors.emailFailed"));
+        } else if (data?.error === "CAPTCHA_FAILED" || data?.error === "CAPTCHA_REQUIRED") {
+          setAnonError(t("errors.captchaFailed"));
+        } else if (data?.error === "CAPTCHA_UNAVAILABLE") {
+          setAnonError(t("errors.captchaUnavailable"));
+        } else {
+          setAnonError(t("errors.applyFailed"));
+        }
+        return;
+      }
+
+      setAnonOtpSent(true);
+      setAnonOtpResendCountdown(30);
+    } catch {
+      setAnonError(t("errors.networkError"));
+    }
+  }
+
+  // Handle email OTP submission
+  async function handleAnonEmailOtpSubmit() {
+    setAnonError("");
+    if (!anonOtpCode || anonOtpCode.length !== 6) {
+      setAnonError(t("errors.invalidCode"));
+      return;
+    }
+
+    setAnonPhase("auth");
+    try {
+      const res = await signIn("email-otp", {
+        email: anonEmail,
+        otp: anonOtpCode,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        if (res.error.includes("expired")) {
+          setAnonError(t("errors.codeExpired"));
+        } else {
+          setAnonError(t("errors.codeInvalid"));
+        }
+        setAnonPhase("idle");
+        return;
+      }
+
+      await finishAnonSignIn();
+    } catch {
+      setAnonError(t("errors.applyFailed"));
+      setAnonPhase("idle");
+    }
+  }
+
+  // Profile confirmation step.
+  //
+  // This must sit OUTSIDE the `!session` branch below. It is only ever reached
+  // after a successful sign-in, so by the time it runs the session already
+  // exists — nesting it under `!session` meant it could never render and the
+  // visitor was dropped straight onto the apply form, never seeing what was
+  // parsed from their CV nor the message explaining that parsing had failed.
+  if (anonPhase === "confirm") {
+    return (
+        <div className="space-y-4 rounded-3xl border border-border/70 bg-muted/10 card-pad">
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {extractionFailed
+                ? t("errors.couldNotExtract")
+                : t("foundYourDetails")}
+            </p>
+            {!extractionFailed && profileCompleteness && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("profileComplete", { percent: Math.round(profileCompleteness) })}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {anonOtpSent && (
+              <div className="rounded-xl bg-blue-50 border border-blue-200 p-3">
+                <p className="text-xs text-blue-900">{t("emailConfirmMsg", { email: anonEmail })}</p>
+              </div>
+            )}
+
+            <div className="field">
+              <Label htmlFor="confirm-name" className="text-xs font-medium text-foreground">
+                {t("name")}
+              </Label>
+              <Input
+                id="confirm-name"
+                type="text"
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                placeholder={t("enterName")}
+                className="rounded-xl"
+                maxLength={200}
+              />
+            </div>
+
+            <div className="field">
+              <Label htmlFor="confirm-phone" className="text-xs font-medium text-foreground">
+                {t("phone")}
+              </Label>
+              <Input
+                id="confirm-phone"
+                type="tel"
+                value={confirmPhone}
+                onChange={(e) => setConfirmPhone(e.target.value)}
+                placeholder={t("enterPhone")}
+                className="rounded-xl"
+                maxLength={25}
+              />
+            </div>
+
+            <div className="field">
+              <Label htmlFor="confirm-headline" className="text-xs font-medium text-foreground">
+                {t("headline")}
+              </Label>
+              <textarea
+                id="confirm-headline"
+                value={confirmHeadline}
+                onChange={(e) => setConfirmHeadline(e.target.value)}
+                placeholder={t("enterHeadline")}
+                className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background text-sm chip-pad"
+                maxLength={500}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
+
+          <Button
+            size="lg"
+            onClick={handleAnonProfileConfirm}
+            disabled={anonPhase !== "confirm"}
+            className="w-full rounded-2xl text-base font-medium gap-2"
+          >
+            {anonPhase !== "confirm" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+            {t("looksGood")}
+          </Button>
+      </div>
+    );
+  }
+
   if (!session) {
+    const inAppBrwsr = isInAppBrowser();
+    const inAppName = inAppBrowserName();
+    const showEmailFirst = inAppBrwsr && anonAuthMethod === null;
+
+    // Email input form (before OTP is sent)
+    if (anonAuthMethod === "email" && !anonOtpSent) {
+      return (
+        <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
+          <p className="text-sm font-semibold text-foreground">{t("quickApplyTitle")}</p>
+          <p className="text-xs text-muted-foreground">{t("quickApplyHint")}</p>
+
+          <input
+            ref={anonCvInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="hidden"
+            onChange={(e) => {
+              setAnonCvFile(e.target.files?.[0] ?? null);
+              e.target.value = "";
+            }}
+          />
+
+          <Button
+            size="lg"
+            type="button"
+            variant="outline"
+            className="w-full justify-start gap-2 rounded-xl text-sm"
+            onClick={() => anonCvInputRef.current?.click()}
+            disabled={anonPhase !== "idle"}
+          >
+            {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
+            <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
+          </Button>
+
+          <div className="field">
+            <Label htmlFor="anon-email" className="text-xs font-medium text-foreground">
+              {t("email")}
+            </Label>
+            <Input
+              id="anon-email"
+              type="email"
+              value={anonEmail}
+              onChange={(e) => setAnonEmail(e.target.value)}
+              placeholder={t("enterEmail")}
+              className="rounded-xl"
+            />
+          </div>
+
+          <Button
+            size="lg"
+            onClick={handleAnonEmailOtpStart}
+            disabled={anonPhase !== "idle" || !anonEmail}
+            className="w-full rounded-2xl text-base font-medium gap-2"
+          >
+            {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {t("sendCode")}
+          </Button>
+
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={handleAnonGoogleApply}
+            disabled={anonPhase !== "idle"}
+            className="w-full rounded-2xl text-base font-medium gap-2"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </svg>
+            {t("continueWithGoogle")}
+          </Button>
+
+          {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
+
+          <button
+            type="button"
+            onClick={() => {
+              setAnonAuthMethod(null);
+              setAnonEmail("");
+            }}
+            className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {t("signInApply")}
+          </button>
+        </div>
+      );
+    }
+
+    // Email OTP code entry
+    if (anonOtpSent && anonAuthMethod === "email") {
+      return (
+        <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
+          <p className="text-sm font-semibold text-foreground">{t("enterCode")}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("codeSentTo", { email: anonEmail })}
+          </p>
+
+          <input
+            ref={anonCvInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="hidden"
+            onChange={(e) => {
+              setAnonCvFile(e.target.files?.[0] ?? null);
+              e.target.value = "";
+            }}
+          />
+
+          <Button
+            size="lg"
+            type="button"
+            variant="outline"
+            className="w-full justify-start gap-2 rounded-xl text-sm"
+            onClick={() => anonCvInputRef.current?.click()}
+            disabled={anonPhase !== "idle" || anonOtpResendCountdown > 0}
+          >
+            {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
+            <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
+          </Button>
+
+          <Input
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="000000"
+            value={anonOtpCode}
+            onChange={(e) => setAnonOtpCode(e.target.value.replace(/\D/g, ""))}
+            className="rounded-xl text-center tracking-widest text-lg"
+            autoComplete="one-time-code"
+          />
+
+          <Button
+            size="lg"
+            onClick={handleAnonEmailOtpSubmit}
+            disabled={anonPhase !== "idle" || anonOtpCode.length !== 6}
+            className="w-full rounded-2xl text-base font-medium gap-2"
+          >
+            {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {t("verify")}
+          </Button>
+
+          {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
+
+          <div className="flex gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setAnonAuthMethod(null);
+                setAnonOtpSent(false);
+                setAnonEmail("");
+                setAnonOtpCode("");
+              }}
+              className="flex-1 text-center text-muted-foreground underline-offset-2 hover:underline"
+            >
+              {t("useDifferentEmail")}
+            </button>
+            <button
+              type="button"
+              onClick={handleAnonEmailOtpStart}
+              disabled={anonOtpResendCountdown > 0}
+              className="flex-1 text-center text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              {anonOtpResendCountdown > 0 ? t("resendIn", { seconds: anonOtpResendCountdown }) : t("resend")}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+            onClick={() =>
+              router.push(`/${locale}/login?callbackUrl=/${locale}/jobs/${jobId}`)
+            }
+          >
+            {t("signInApply")}
+          </button>
+        </div>
+      );
+    }
+
+    // Main anonymous card - initial state
     return (
       <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
         <p className="text-sm font-semibold text-foreground">{t("quickApplyTitle")}</p>
         <p className="text-xs text-muted-foreground">{t("quickApplyHint")}</p>
+
+        {inAppBrwsr && (
+          <p className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-2 text-amber-900">
+            {t("inAppBrowserHint", { app: inAppName || "this app" })}
+          </p>
+        )}
 
         <input
           ref={anonCvInputRef}
@@ -228,7 +750,8 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             e.target.value = "";
           }}
         />
-        <Button size="lg"
+        <Button
+          size="lg"
           type="button"
           variant="outline"
           className="w-full justify-start gap-2 rounded-xl text-sm"
@@ -239,23 +762,99 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
         </Button>
 
-        <Button size="lg"
-          className="w-full rounded-2xl text-base font-medium gap-2"
-          onClick={handleAnonGoogleApply}
-          disabled={anonPhase !== "idle"}
-        >
-          {anonPhase !== "idle" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-          )}
-          {anonPhase === "extract" ? t("settingUpProfile") : t("continueWithGoogle")}
-        </Button>
+        {showEmailFirst ? (
+          <>
+            <div className="field">
+              <Label htmlFor="anon-email" className="text-xs font-medium text-foreground">
+                {t("email")}
+              </Label>
+              <Input
+                id="anon-email"
+                type="email"
+                value={anonEmail}
+                onChange={(e) => setAnonEmail(e.target.value)}
+                placeholder={t("enterEmail")}
+                className="rounded-xl"
+                disabled={anonOtpSent}
+              />
+            </div>
+
+            <Button
+              size="lg"
+              onClick={handleAnonEmailOtpStart}
+              disabled={anonPhase !== "idle" || !anonEmail}
+              className="w-full rounded-2xl text-base font-medium gap-2"
+            >
+              {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {t("sendCode")}
+            </Button>
+
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={handleAnonGoogleApply}
+              disabled={anonPhase !== "idle"}
+              className="w-full rounded-2xl text-base font-medium gap-2"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+              </svg>
+              {t("continueWithGoogle")}
+            </Button>
+
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline flex items-center justify-center gap-1"
+            >
+              <Link2 className="h-3 w-3" />
+              {t("copyLink")}
+            </button>
+          </>
+        ) : (
+          <>
+            <Button
+              size="lg"
+              className="w-full rounded-2xl text-base font-medium gap-2"
+              onClick={handleAnonGoogleApply}
+              disabled={anonPhase !== "idle"}
+            >
+              {anonPhase !== "idle" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+              )}
+              {anonPhase === "extract" ? t("settingUpProfile") : t("continueWithGoogle")}
+            </Button>
+
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => setAnonAuthMethod("email")}
+              disabled={anonPhase !== "idle"}
+              className="w-full rounded-2xl text-base font-medium gap-2"
+            >
+              {t("continueWithEmail")}
+            </Button>
+
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline flex items-center justify-center gap-1"
+            >
+              <Link2 className="h-3 w-3" />
+              {t("copyLink")}
+            </button>
+          </>
+        )}
 
         {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
 
@@ -282,10 +881,36 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (applied) {
     return (
-      <div className="w-full rounded-3xl border border-green-500/30 bg-green-500/10 text-center card-pad">
-        <p className="text-sm font-semibold text-green-600">✓ {t("applicationSubmitted")}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("sentProfile")}
+      <div className="space-y-3 w-full rounded-3xl border border-green-500/30 bg-green-500/10 card-pad">
+        <div className="text-center">
+          <p className="text-sm font-semibold text-green-600">✓ {t("applicationSubmitted")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("sentProfile")}
+          </p>
+          {profileCompleteness !== null && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t("profileComplete", { percent: Math.round(profileCompleteness) })}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2 pt-2">
+          <Link
+            href={`/${locale}/onboarding`}
+            className="block w-full text-center px-4 py-2.5 rounded-2xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+          >
+            {t("completeProfile")}
+          </Link>
+          <Link
+            href={`/${locale}/jobs`}
+            className="block w-full text-center px-4 py-2.5 rounded-2xl border border-border bg-secondary/80 text-foreground text-sm font-medium hover:bg-accent transition-colors"
+          >
+            {t("browseMoreJobs")}
+          </Link>
+        </div>
+
+        <p className="text-center text-xs text-muted-foreground">
+          {t("profileCompletionOptional")}
         </p>
       </div>
     );

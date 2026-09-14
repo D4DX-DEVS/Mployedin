@@ -214,7 +214,7 @@ function ActiveView({
               <p className="text-muted-foreground text-xs">{t("paymentMethodLabel")}</p>
               <p className="font-medium text-muted-foreground">
                 {t("noPaymentMethod")}
-                <button onClick={() => toast.info(t("paymentIntegrationComingSoon"), { description: t("paymentIntegrationNotYetAvailable") })} className="text-sky-500 hover:text-sky-600 ml-1">Add</button>
+                <button onClick={() => toast.info(t("paymentIntegrationComingSoon"), { description: t("paymentIntegrationNotYetAvailable") })} className="text-sky-500 hover:text-sky-600 ml-1">{t("addInline")}</button>
               </p>
             </div>
           </div>

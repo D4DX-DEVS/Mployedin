@@ -19,7 +19,7 @@ export interface ISAInvoiceDefaults {
 
 export interface ISuperAgent extends Document {
   _id: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;  referralCode: string;  assignedCityIds: mongoose.Types.ObjectId[];
+  userId: mongoose.Types.ObjectId;  roleArchivedAt?: Date | null;  referralCode: string;  assignedCityIds: mongoose.Types.ObjectId[];
   assignedStateIds: mongoose.Types.ObjectId[];
   agentIds: mongoose.Types.ObjectId[];
   commissions: {
@@ -43,6 +43,8 @@ export interface ISuperAgent extends Document {
 const SuperAgentSchema = new Schema<ISuperAgent>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    // Stamped when an admin converts this user away from the super_agent role.
+    roleArchivedAt: { type: Date, default: null, index: true },
     referralCode: { type: String, unique: true, sparse: true },
     assignedCityIds: [{ type: Schema.Types.ObjectId, ref: "City" }],
     assignedStateIds: [{ type: Schema.Types.ObjectId, ref: "State" }],
