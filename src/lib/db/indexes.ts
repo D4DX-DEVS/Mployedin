@@ -77,6 +77,10 @@ export async function ensureIndexes() {
     { key: { availableFrom: 1 } },
     // Talent search / candidate listing: discoverable, available seekers
     { key: { profileVisibility: 1, availabilityStatus: 1, _id: 1 } },
+    // Referral provenance: staff scoping by referrer, admin "referred" filter
+    { key: { "referral.agentId": 1 } },
+    { key: { "referral.superAgentId": 1 } },
+    { key: { isAgentReferred: 1 } },
   ]);
 
   // ── Employers ──────────────────────────────────────────────────────────────
@@ -137,6 +141,8 @@ export async function ensureIndexes() {
     { key: { appliedAt: -1 } },
     // Pipeline views: applications for a job filtered by status, newest first
     { key: { jobId: 1, status: 1, appliedAt: -1 } },
+    // Employer applicant list: referred candidates first, then newest
+    { key: { jobId: 1, isAgentReferred: -1, appliedAt: -1 } },
     { key: { employerId: 1, status: 1, appliedAt: -1 } },
     // Cron hot path: sla-alerts / nps-trigger scan terminal statuses by recency
     { key: { status: 1, updatedAt: -1 } },
@@ -282,6 +288,14 @@ export async function ensureIndexes() {
   // ── TenantViewSessions ────────────────────────────────────────────────────
   await safeCreateIndexes(db, "tenantviewsessions", [
     { key: { actorId: 1 }, unique: true },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  // ── PendingSignins (quick-apply email codes awaiting redemption) ──────────
+  // One live code per address; rows vanish on their own after the 10-minute
+  // window, so an abandoned "send code" leaves nothing behind.
+  await safeCreateIndexes(db, "pendingsignins", [
+    { key: { email: 1 }, unique: true },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
   ]);
 
@@ -676,6 +690,7 @@ export async function ensureIndexes() {
     { key: { agentId: 1 } },
     { key: { superAgentId: 1 } },
     { key: { expiresAt: 1 } },
+    { key: { audience: 1 } },
     { key: { code: 1 }, unique: true },
   ]);
 

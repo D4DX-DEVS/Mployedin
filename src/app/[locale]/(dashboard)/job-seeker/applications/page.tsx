@@ -342,15 +342,17 @@ export default function ApplicationsPage() {
 
 const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
 
+// Values only — every label comes from jobSeekerApplications.withdrawal.reasons.*,
+// so an English label here would only ever be dead weight.
 const WITHDRAWAL_REASONS = [
-  { value: "accepted_elsewhere", label: "Accepted offer elsewhere" },
-  { value: "salary_too_low", label: "Salary expectation not met" },
-  { value: "bad_experience", label: "Poor application experience" },
-  { value: "too_slow_process", label: "Process too slow" },
-  { value: "changed_mind", label: "Changed my mind" },
-  { value: "personal_reasons", label: "Personal reasons" },
-  { value: "other", label: "Other" },
-];
+  "accepted_elsewhere",
+  "salary_too_low",
+  "bad_experience",
+  "too_slow_process",
+  "changed_mind",
+  "personal_reasons",
+  "other",
+] as const;
 
 function ApplicationCard({
   app,
@@ -378,9 +380,9 @@ function ApplicationCard({
   const latestStatusEntry = app.statusHistory?.[app.statusHistory.length - 1];
   const recentStatuses = app.statusHistory?.slice(-3) ?? [];
   const hasExpandableDetails = recentStatuses.length > 0 || !!latestStatusEntry?.note || !!app.coverLetter || !!app.latestInterview || !!app.latestOffer || !!app.placement;
-  const withdrawalReasonOptions = WITHDRAWAL_REASONS.map((reason) => ({
-    value: reason.value,
-    label: t(`withdrawal.reasons.${reason.value}`),
+  const withdrawalReasonOptions = WITHDRAWAL_REASONS.map((value) => ({
+    value,
+    label: t(`withdrawal.reasons.${value}`),
   }));
   const formatDetailDate = (value: string) => new Date(value).toLocaleDateString(numberLocale, {
     month: "short",

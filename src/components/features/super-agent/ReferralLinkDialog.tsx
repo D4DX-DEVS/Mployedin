@@ -26,6 +26,7 @@ import {
   Tag,
 } from "lucide-react";
 import { useCreateReferralLink, useReferralLinks, ReferralLinkItem } from "@/hooks/useReferralLinks";
+import { referralUrlFor } from "@/lib/referrals/url";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ReferralLinkDialogProps {
@@ -269,7 +270,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
             ) : (
               <div className="mt-3 space-y-2">
                 {advancedLinks.map((link: ReferralLinkItem) => {
-                  const referralUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/${locale || "en"}/employer-register?ref=${link.code}`;
+                  const referralUrl = referralUrlFor(link, locale || "en", typeof window !== "undefined" ? window.location.origin : "");
                   const isExpired = link.expiresAt && new Date(link.expiresAt) < new Date();
                   const isMaxed = link.maxUses > 0 && link.usedCount >= link.maxUses;
 

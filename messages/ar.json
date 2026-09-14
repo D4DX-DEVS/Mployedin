@@ -146,7 +146,9 @@
     "passwordTooWeak": "يجب أن تتضمن كلمة المرور أحرفًا كبيرة وصغيرة ورقمًا ورمزًا.",
     "alreadyHaveAccount": "لديك حساب بالفعل؟",
     "hiringQuestion": "توظف؟",
-    "registerAsEmployer": "سجل كصاحب عمل"
+    "registerAsEmployer": "سجل كصاحب عمل",
+    "referralNotice": "أنت تنضم عبر إحالة من شريك",
+    "referralNoticeWrongAudience": "هذا الرابط مخصص لأصحاب العمل. لا يزال بإمكانك إنشاء حساب باحث عن عمل."
   },
   "authLayout": {
     "aiPowered": "مدعوم بالذكاء الاصطناعي",
@@ -1159,7 +1161,10 @@
       "list": "قائمة",
       "calendar": "التقويم"
     },
-    "statusFiltersLabel": "فلاتر حالة المقابلة"
+    "statusFiltersLabel": "فلاتر حالة المقابلة",
+    "respondFailed": "تعذر حفظ ردك. يرجى المحاولة مرة أخرى.",
+    "responseSaved": "تم إرسال ردك.",
+    "monthLoadFailed": "تعذر تحميل هذا الشهر. يرجى المحاولة مرة أخرى."
   },
   "jobSeekerMessages": {
     "title": "الرسائل",
@@ -1224,7 +1229,38 @@
       "securePayments": "مدفوعات آمنة وموثوقة",
       "sslNote": "مدفوعاتك محمية بتشفير SSL بقوة 256-بت.",
       "download": "تنزيل",
-      "autoRenewAdminOnly": "تغيير التجديد التلقائي يتطلب صلاحية المسؤول. تواصل مع الدعم لتحديث ذلك."
+      "autoRenewAdminOnly": "تغيير التجديد التلقائي يتطلب صلاحية المسؤول. تواصل مع الدعم لتحديث ذلك.",
+      "featureApplications": "الطلبات",
+      "featureApplicationsDetail": "{count} طلب شهريًا",
+      "featureApplicationsUnlimited": "طلبات غير محدودة شهريًا",
+      "featureProfileBoost": "تعزيز الملف الشخصي",
+      "featureSalaryInsights": "رؤى الرواتب",
+      "featurePriorityReview": "مراجعة ذات أولوية",
+      "featureResumeBuilder": "منشئ السيرة الذاتية",
+      "statusActive": "نشط",
+      "nextRenewal": "التجديد القادم",
+      "autoRenew": "التجديد التلقائي",
+      "enabled": "مُفعّل",
+      "disabled": "غير مُفعّل",
+      "billingCycle": "دورة الفوترة",
+      "startDate": "تاريخ البدء",
+      "availablePlans": "الخطط المتاحة",
+      "included": "مشمول",
+      "notIncluded": "غير مشمول",
+      "availableOnPremium": "متاح في الخطة المميزة",
+      "paymentMethod": "طريقة الدفع",
+      "noPaymentMethod": "لم تتم إضافة طريقة دفع.",
+      "addPaymentMethod": "إضافة طريقة دفع",
+      "getStarted": "ابدأ الآن",
+      "getStartedDescription": "فعّل خطتك المجانية لبدء التقديم على الوظائف ومتابعة طلباتك.",
+      "activating": "جارٍ التفعيل…",
+      "activateFreePlan": "تفعيل الخطة المجانية",
+      "invoices": "الفواتير",
+      "invoiceCount": "{count, plural, zero {# فاتورة} one {فاتورة واحدة} two {فاتورتان} few {# فواتير} many {# فاتورة} other {# فاتورة}}",
+      "invoiceId": "رقم الفاتورة",
+      "invoiceDate": "التاريخ",
+      "invoiceAmount": "المبلغ",
+      "invoiceStatus": "الحالة"
     },
     "search": {
       "title": "بحث الوظائف بالذكاء الاصطناعي",
@@ -1398,7 +1434,17 @@
         "course_certificate": "شهادة دورة",
         "professional_certificate": "شهادة مهنية",
         "other": "مستند آخر"
-      }
+      },
+      "extractedName": "الاسم:",
+      "extractedEmail": "البريد الإلكتروني:",
+      "extractedLocation": "الموقع:",
+      "extractedHeadline": "العنوان المهني:",
+      "sectionSkills": "المهارات",
+      "sectionExperience": "الخبرة",
+      "sectionEducation": "التعليم",
+      "sectionCertifications": "الشهادات",
+      "sectionLanguages": "اللغات",
+      "degreeInField": "{degree} في {field}"
     },
     "experience": {
       "title": "الخبرة العملية",
@@ -1651,6 +1697,83 @@
       "profile": {
         "aiCareerInsight": "رؤية مهنية بالذكاء الاصطناعي",
         "smartBadge": "ذكي"
+      },
+      "fallbackName": "باحث عن عمل",
+      "headlinePlaceholderText": "أضف عنوانًا مهنيًا",
+      "removePhoto": "إزالة الصورة",
+      "changePhoto": "تغيير الصورة",
+      "uploadPhoto": "رفع صورة",
+      "updatedAgo": "آخر تحديث {time}",
+      "stepsDone": "{done}/{total} خطوة مكتملة",
+      "stepsShort": "{done}/{total} خطوة",
+      "detailsLeft": "{count, plural, zero {# تفصيل متبقٍ} one {تفصيل واحد متبقٍ} two {تفصيلان متبقيان} few {# تفاصيل متبقية} many {# تفصيلًا متبقيًا} other {# تفصيل متبقٍ}}",
+      "profileCompletion": "اكتمال الملف الشخصي",
+      "quickLinks": "روابط سريعة",
+      "profileSetup": "إعداد الملف الشخصي",
+      "setupProgress": "{done} من {total} مكتملة",
+      "overallProgress": "التقدم الإجمالي",
+      "tipLabel": "نصيحة:",
+      "tipSuffix": "لتعزيز ملفك الشخصي أكثر.",
+      "missingFields": {
+        "nationality": "أضف الجنسية",
+        "location": "أضف الموقع الحالي",
+        "summary": "اكتب نبذة",
+        "skills": "أضف المهارات",
+        "experience": "أضف الخبرة",
+        "education": "أضف التعليم",
+        "languages": "أضف اللغات",
+        "linkedin": "أضف حساب لينكدإن"
+      },
+      "present": "حتى الآن",
+      "currentBadge": "حالي",
+      "activeBadge": "نشط",
+      "certificationsLabel": "الشهادات",
+      "accomplishmentTypes": {
+        "online_profile": "الملفات على الإنترنت",
+        "work_sample": "نماذج الأعمال",
+        "publication": "المنشورات",
+        "presentation": "العروض التقديمية",
+        "patent": "براءات الاختراع",
+        "certification": "الشهادات"
+      },
+      "careerProfileTitle": "الملف المهني",
+      "careerProfileEmpty": "أضف تفضيلاتك المهنية — المجال والدور ونوع الوظيفة المطلوبة",
+      "careerCurrentIndustry": "المجال الحالي",
+      "careerDepartment": "القسم",
+      "careerRoleCategory": "فئة الدور",
+      "careerJobRole": "الدور الوظيفي",
+      "careerDesiredJobType": "نوع الوظيفة المطلوبة",
+      "careerEmploymentType": "نوع التوظيف",
+      "careerPreferredShift": "الوردية المفضلة",
+      "linksLabel": "الروابط",
+      "linkLinkedin": "لينكدإن",
+      "linkPortfolio": "معرض الأعمال",
+      "editNameTitle": "تعديل الاسم",
+      "editNameDescription": "حدّث الاسم الظاهر",
+      "fullNameLabel": "الاسم الكامل",
+      "fullNamePlaceholder": "اسمك الكامل",
+      "editHeadlineTitle": "تعديل العنوان المهني",
+      "editHeadlineDescription": "حدّث عنوانك المهني",
+      "resumeHeadlineLabel": "عنوان السيرة الذاتية",
+      "resumeHeadlinePlaceholder": "مثال: مطور متكامل بخبرة 3 سنوات",
+      "resumeHeadlineHint": "سطر واحد يظهر أسفل اسمك",
+      "editSummaryTitle": "تعديل النبذة المهنية",
+      "editSummaryDescription": "حدّث نبذتك المهنية",
+      "aboutYouLabel": "نبذة عنك",
+      "summaryPlaceholder": "أبرز أهم إنجازاتك المهنية ليتعرف أصحاب العمل على إمكاناتك",
+      "generating": "جارٍ الإنشاء…",
+      "generateWithAi": "إنشاء بالذكاء الاصطناعي",
+      "charCount": "{count}/{max} حرف",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "errors": {
+        "avatarType": "اختر صورة بصيغة JPEG أو PNG أو WebP.",
+        "avatarSize": "اختر صورة أصغر من 2 ميجابايت.",
+        "uploadFailed": "تعذر رفع الصورة. يرجى المحاولة مرة أخرى.",
+        "network": "تعذر الوصول إلى الخادم. يرجى المحاولة مرة أخرى.",
+        "removePhoto": "تعذر إزالة الصورة. يرجى المحاولة مرة أخرى.",
+        "saveFailed": "تعذر حفظ التغييرات. يرجى المحاولة مرة أخرى.",
+        "summaryFailed": "تعذر إنشاء النبذة. يرجى المحاولة مرة أخرى."
       }
     },
     "settings": {
@@ -3366,7 +3489,8 @@
     "contactAdminToUpgrade": "تواصل مع المسؤول للترقية.",
     "autoRenewAdminOnly": "تغيير التجديد التلقائي يتطلب صلاحية المسؤول. تواصل مع الدعم لتحديث ذلك.",
     "a11yLiveExchangeRates": "أسعار صرف مباشرة",
-    "a11yDisplayCurrency": "عملة العرض"
+    "a11yDisplayCurrency": "عملة العرض",
+    "addInline": "إضافة"
   },
   "invoiceManagement": {
     "title": "الفواتير",
@@ -5255,7 +5379,16 @@
     "clearOverride": "مسح التجاوز",
     "testEmailSent": "تم إرسال بريد الاختبار!",
     "testFailed": "فشل",
-    "networkError": "خطأ في الشبكة"
+    "networkError": "خطأ في الشبكة",
+    "publishBlockedTitle": "ستبقى وظائفك كمسودات حتى يكتمل هذا الملف",
+    "publishBlockedBody": "قام أحد المشرفين بإعداد هذا الحساب كصاحب عمل. أكمل بيانات الشركة أدناه — ورقم هاتف التواصل موجود في تبويب «التواصل» — ثم احفظ، وبعدها يمكن نشر وظائفك على لوحة الوظائف العامة مباشرة.",
+    "publishBlockedMissing": "ما زال مطلوباً: {fields}",
+    "publishUnlocked": "تم تأكيد ملف الشركة. يمكن نشر وظائفك الآن.",
+    "industryRequired": "اسم الشركة والبريد الإلكتروني والهاتف ومجال العمل مطلوبة قبل أن يتم نشر وظائفك.",
+    "fieldCompanyName": "اسم الشركة",
+    "fieldCompanyEmail": "البريد الإلكتروني للشركة",
+    "fieldIndustry": "مجال العمل",
+    "fieldPhone": "رقم الهاتف"
   },
   "adminDashboard": {
     "taskFirst": {
@@ -6947,7 +7080,12 @@
     "tuningBody": "زِد المهارات للتوظيف التقني، وارفع الخبرة ذات الصلة للأدوار العليا، واعتمد على التعليم والشهادات للوظائف المنظمة أو المرخصة.",
     "totalLabel": "المجموع:",
     "need100": "يلزم 100%",
-    "saveAsTemplateShort": "قالب"
+    "saveAsTemplateShort": "قالب",
+    "loadFromTemplate": "التحميل من قالب",
+    "loadFromTemplateHint": "اختر إعدادًا مسبقًا لأوزان المطابقة لتطبيقه",
+    "templateNamePlaceholder": "اسم القالب (مثال: الأدوار التقنية — تركيز على المهارات)",
+    "closeLabel": "إغلاق",
+    "dismissErrorLabel": "تجاهل"
   },
   "hiringRules": {
     "pageTitle": "سير التوظيف",
@@ -7141,7 +7279,8 @@
         "part_time": "دوام جزئي",
         "contract": "عقد",
         "internship": "تدريب",
-        "freelance": "عمل حر"
+        "freelance": "عمل حر",
+        "walk_in": "حضور مباشر"
       },
       "workModes": {
         "onsite": "حضوري",
@@ -7447,7 +7586,11 @@
       "competitiveInsight": "ضمن النطاق التنافسي",
       "aboveInsight": "أعلى من السوق — ممتاز لجذب أفضل المواهب",
       "adjust": "اضبط على سعر السوق ← {min} – {max}"
-    }
+    },
+    "postHeldTitle": "تم الحفظ كمسودة ولم يُنشر",
+    "postHeldDescription": "أضف اسم شركتك وبريدها الإلكتروني ومجال عملها قبل أن تظهر هذه الوظيفة على لوحة الوظائف العامة.",
+    "completeCompanyProfile": "استكمال ملف الشركة",
+    "publishBlockedProfile": "أضف اسم شركتك وبريدها الإلكتروني ومجال عملها قبل نشر هذه الوظيفة."
   },
   "employerCommon": {
     "workspace": "مساحة عمل صاحب العمل",
@@ -7484,7 +7627,9 @@
     "type": "النوع",
     "scheduled": "مجدول",
     "status": "الحالة",
-    "outcome": "النتيجة"
+    "outcome": "النتيجة",
+    "referredBadge": "مُحال من شريك",
+    "referredBadgeHint": "تمت إحالته إلى Mployedin من قِبل أحد شركاء التوظيف لدينا"
   },
   "employerCalendar": {
     "title": "تقويم المقابلات",
@@ -7635,6 +7780,16 @@
     "organizerContact": "جهة اتصال المنظم",
     "participationTypes": "أنواع المشاركة",
     "objectives": "الأهداف",
+    "optional": "اختياري",
+    "organizerContactShort": "جهة الاتصال",
+    "detailApprovedBudget": "الميزانية المعتمدة",
+    "detailLegacyBudgetBreakdown": "تفصيل الميزانية القديم",
+    "detailRequirementTags": "وسوم المتطلبات",
+    "tableHeaderCategory": "الفئة",
+    "createFirstRequest": "أنشئ طلبك الأول",
+    "listSubtitle": "افتح التفاصيل أو تابع تحرير المسودات من الجدول أدناه.",
+    "listTitle": "سجل الطلبات",
+    "listEyebrow": "طلباتك",
     "budgetBreakdown": "تفصيل الميزانية",
     "executionPlan": "خطة التنفيذ",
     "expectedOutcome": "النتيجة المتوقعة",
@@ -7788,6 +7943,8 @@
     "fetchError": "تعذر تحميل الموارد",
     "heroLabel": "الموارد",
     "clear": "مسح",
+    "downloadFile": "تنزيل الملف",
+    "previewFile": "معاينة الملف",
     "openInNewTab": "فتح في تبويب جديد",
     "sortLabel": "الترتيب",
     "sortNewest": "الأحدث",
@@ -7817,6 +7974,10 @@
     "createError": "تعذر إنشاء المورد",
     "updateError": "تعذر تحديث المورد",
     "deleteError": "تعذر حذف المورد",
+    "deleteConfirm": "حذف هذا المورد؟ لا يمكن التراجع عن ذلك.",
+    "moreItems": "+{count} أخرى",
+    "filesSelected": "{count, plural, zero {# ملف محدد} one {# ملف محدد} two {# ملفان محددان} few {# ملفات محددة} many {# ملفًا محددًا} other {# ملف محدد}}",
+    "moreFiles": "+{count} ملفات أخرى",
     "fileRemoved": "تم إزالة الملف",
     "fileRemoveError": "تعذر إزالة الملف",
     "resourceTitle": "العنوان",
@@ -8002,6 +8163,9 @@
     "failedToLoadProfiles": "تعذر تحميل ملفات الأهداف",
     "profileCancelled": "تم إلغاء ملف الهدف",
     "failedToCancel": "تعذر الإلغاء",
+    "cancelProfile": "إلغاء الملف",
+    "previousValue": "كان {value}",
+    "cancelConfirm": "إلغاء ملف الهدف هذا؟ لن يتم تتبع أهدافه بعد الآن.",
     "failedToClone": "تعذر النسخ",
     "profilesCloned": "تم نسخ {count} ملفات من {year}",
     "profileReassigned": "تم إعادة تعيين ملف الهدف",
@@ -8267,6 +8431,20 @@
     "filters": "عوامل التصفية",
     "export": "تصدير",
     "executionStatus": "حالة التنفيذ",
+    "monthlyRevenueDeals": "الإيرادات والصفقات الشهرية (بالآلاف)",
+    "totalRevenue": "إجمالي الإيرادات",
+    "businessVolumeYear": "حجم الأعمال — {year}",
+    "categoryOnlySuffix": " — {category} فقط",
+    "quarterSuffix": " — الربع {quarter}",
+    "leaderboardTotalAgents": "{total} وكيل إجمالاً",
+    "leaderboardShowing": "عرض {shown} من أفضل {top}",
+    "yourPositionDetail": "المركز #{rank} من {total} وكيل · {progress}% إجمالاً",
+    "yourPosition": "ترتيبك",
+    "rankOfTotal": "المركز #{rank} من {total}",
+    "goalsForMonth": "{label} ({month})",
+    "balanceLabel": "المتبقي",
+    "assignedValue": "مُسند {value}",
+    "executionStatusHint": "اطّلع على ما لا يزال معلقاً قبل نهاية الشهر.",
     "executionStatusHelper": "عرض سريع لما هو مكتمل وقيد المعالجة وقيد الانتظار.",
     "progress": "التقدم",
     "teamCompletionHelper": "{inProgress} قيد المعالجة · {completed} مكتملة",
@@ -8383,6 +8561,9 @@
     "saveFailed": "تعذر الحفظ",
     "saveWebhookFailed": "تعذر حفظ الويب هوك",
     "deleteFailed": "تعذر الحذف",
+    "totalCount": "{count} الإجمالي",
+    "failedCount": "{count} فاشل",
+    "activeFilterCount": "{count} نشط",
     "toggleFailed": "تعذر التبديل",
     "testRequestFailed": "تعذر طلب الاختبار",
     "loadLogFailed": "تعذر تحميل سجل التسليم",
@@ -8565,7 +8746,11 @@
     "adminContactSubmissionTitle": "استفسار تواصل جديد",
     "adminContactSubmissionBody": "أرسل {senderName} استفسارًا: \"{subject}\".",
     "strongCandidatesTitle": "{count, plural, zero {لا توجد مرشحة قوية لـ {jobTitle}} one {# مرشح قوي لـ {jobTitle}} two {مرشحان قويان لـ {jobTitle}} few {# مرشحة قوية لـ {jobTitle}} many {# مرشح قوي لـ {jobTitle}} other {# مرشح قوي لـ {jobTitle}}}",
-    "strongCandidatesBody": "{count, plural, zero {لا يوجد متقدمون جدد سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.} one {متقدم واحد سجل {threshold}%+ لـ \"{jobTitle}\". قم بمراجعته أثناء توفره.} two {متقدمان سجلا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهما أثناء توفرهما.} few {# متقدمين سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.} many {# متقدم سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.} other {# متقدم سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.}}"
+    "strongCandidatesBody": "{count, plural, zero {لا يوجد متقدمون جدد سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.} one {متقدم واحد سجل {threshold}%+ لـ \"{jobTitle}\". قم بمراجعته أثناء توفره.} two {متقدمان سجلا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهما أثناء توفرهما.} few {# متقدمين سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.} many {# متقدم سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.} other {# متقدم سجلوا {threshold}%+ لـ \"{jobTitle}\". قم بمراجعتهم أثناء توفرهم.}}",
+    "referrerJobSeekerRegisteredTitle": "انضم باحث عن عمل جديد عبر رابطك",
+    "referrerJobSeekerRegisteredBody": "سجّل {seekerName} من خلال رابط الإحالة الخاص بك.",
+    "roleChangedTitle": "تم تغيير نوع حسابك",
+    "roleChangedBody": "قام أحد المشرفين بتغيير حسابك من {fromRole} إلى {toRole}."
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -9220,7 +9405,9 @@
     "noLogs": "لم يتم العثور على سجلات نشاط",
     "noLogsDesc": "ستظهر أنشطة أعضاء الفريق هنا بمجرد بدء استخدامهم للمنصة.",
     "export": "تصدير",
-    "exportData": "تصدير البيانات"
+    "exportData": "تصدير البيانات",
+    "details": "التفاصيل",
+    "system": "النظام"
   },
   "employerCandidateProfile": {
     "matchedSkills": "المهارات المطابقة",
@@ -10414,7 +10601,11 @@
     "roleAgent": "وكيل",
     "roleEmployer": "صاحب عمل",
     "roleJobSeeker": "باحث عن عمل",
-    "roleSystem": "النظام"
+    "roleSystem": "النظام",
+    "target": "الهدف",
+    "changeDetail": "التغيير",
+    "changeArrow": "{from} ← {to}",
+    "noChangeRecorded": "—"
   },
   "adminPlatformData": {
     "tabsLabel": "جداول بيانات المنصة",
@@ -10546,6 +10737,8 @@
     "viewButtonTitle": "عرض",
     "deleteButtonTitle": "حذف",
     "deleteConfirmation": "هل أنت متأكد من رغبتك في حذف هذا الطلب؟",
+    "markReadFailed": "تعذّر وضع علامة مقروء. يرجى المحاولة مرة أخرى.",
+    "deleteFailed": "تعذّر حذف هذا الطلب. يرجى المحاولة مرة أخرى.",
     "dialogTitle": "رسالة الاتصال",
     "dialogDescription": "عرض التفاصيل الكاملة لطلب نموذج الاتصال المختار.",
     "fieldName": "الاسم",
@@ -10682,7 +10875,16 @@
     "registrationsLabel": "التسجيلات",
     "noRegistrationsYet": "لا توجد تسجيلات حتى الآن.",
     "dashPlaceholder": "—",
-    "exportTitle": "روابط الإحالة"
+    "exportTitle": "روابط الإحالة",
+    "audienceChipEmployer": "رابط أصحاب العمل",
+    "audienceChipJobSeeker": "رابط الباحثين عن عمل",
+    "audienceEmployer": "أصحاب العمل",
+    "audienceJobSeeker": "الباحثون عن عمل",
+    "filterAudienceAll": "كل الفئات",
+    "filterAudienceEmployer": "روابط أصحاب العمل",
+    "filterAudienceJobSeeker": "روابط الباحثين عن عمل",
+    "registrationSeeker": "باحث عن عمل",
+    "tableHeaderAudience": "الفئة"
   },
   "adminSubscriptionDashboard": {
     "failedToLoadDashboardData": "تعذر تحميل بيانات لوحة التحكم. يرجى المحاولة مرة أخرى.",
@@ -10968,6 +11170,7 @@
     "overridePlaceholder": "سبب الاستبدال (مثل التحقق عبر المكالمة الهاتفية / سجل الشركات)",
     "revokeButtonLoading": "جاري الإلغاء…",
     "revokeButtonLabel": "إلغاء التحقق",
+    "revokeConfirmMessage": "إلغاء توثيق جهة العمل هذه؟ ستعود إلى الحالة الأساسية.",
     "verifyButtonLoading": "جاري التحقق…",
     "verifyButtonLabel": "التحقق من صاحب العمل",
     "closeButtonLabel": "إغلاق",
@@ -10980,6 +11183,8 @@
     "exportColumnJoined": "انضم في",
     "exportTitle": "أصحاب العمل",
     "toastVerificationFailed": "تعذّر التحقق من صاحب العمل هذا. يرجى المحاولة مرة أخرى.",
+    "toastDeletedPermanently": "تم حذف جهة العمل نهائيًا",
+    "toastDeactivated": "تم تعطيل جهة العمل",
     "requestFailed": "لم نتمكن من إتمام العملية. يرجى المحاولة مرة أخرى."
   },
   "adminGdpr": {
@@ -11623,6 +11828,7 @@
     "deleting": "جاري الحذف...",
     "templateDeleted": "تم حذف القالب",
     "templateDeleteFailed": "تعذر حذف القالب",
+    "createdOn": "أُنشئ في {date}",
     "deleteTemplateConfirm": "حذف{template, select, EMPTY {} other { \"{template}\"}}؟ لا يمكن التراجع عن هذا.",
     "broadcastHistoryHead": "عمليات البث المرسلة",
     "recentActivityHeading": "نشاط التسليم الأخير",
@@ -12110,7 +12316,16 @@
     "tableHeaderLocation": "الموقع",
     "exportYes": "نعم",
     "exportNo": "لا",
-    "toastFailedDeactivate": "تعذّر إلغاء تنشيط هذا الباحث عن عمل. يرجى المحاولة مرة أخرى."
+    "toastFailedDeactivate": "تعذّر إلغاء تنشيط هذا الباحث عن عمل. يرجى المحاولة مرة أخرى.",
+    "tableHeaderReferredBy": "أُحيل بواسطة",
+    "filterReferredAny": "مُحال (أي جهة)",
+    "filterReferredAgent": "مُحال من وكيل",
+    "filterReferredSuperAgent": "مُحال من وكيل رئيسي",
+    "filterReferredNone": "غير مُحال",
+    "filterReferredAll": "كل المرشحين",
+    "referredByRoleAgent": "وكيل",
+    "referredByRoleSuperAgent": "وكيل رئيسي",
+    "exportHeaderReferredBy": "أُحيل بواسطة"
   },
   "adminReports": {
     "adminWorkspace": "مساحة عمل المسؤول",
@@ -12265,6 +12480,10 @@
     "pauseEmailsLabel": "إيقاف رسائل البريد الإلكتروني",
     "forceInstantLabel": "فرض فوري",
     "removeOverrideButton": "حذف",
+    "configSaveFailed": "تعذّر حفظ هذا التغيير. يرجى المحاولة مرة أخرى.",
+    "overrideRemoveFailed": "تعذّر إزالة هذا التجاوز. يرجى المحاولة مرة أخرى.",
+    "overrideAddFailed": "تعذّر إضافة هذا التجاوز. يرجى المحاولة مرة أخرى.",
+    "removeOverrideConfirm": "إزالة تجاوز هذا المستخدم؟ ستُطبَّق إعدادات الإشعارات الخاصة به مرة أخرى.",
     "sendTestEmailTitle": "إرسال بريد إلكتروني للاختبار",
     "sendTestEmailDescription": "تحقق من خط أنابيب البريد الإلكتروني. ينشئ إدخالاً في سجلات البريد الإلكتروني.",
     "testEmailPlaceholder": "admin@mployedin.com",
@@ -12395,6 +12614,7 @@
     "bulkUserIdsLabel": "معرفات المستخدمين (واحد في كل سطر أو مفصول بفواصل) — أقصى 100",
     "bulkUserCountLabel": "مستخدم (مستخدمين) تم إدخالهم",
     "bulkAssignButtonLabel": "التخصيص لـ",
+    "bulkAssignUserCount": "{count, plural, zero {# مستخدم} one {مستخدم واحد} two {مستخدمان} few {# مستخدمين} many {# مستخدمًا} other {# مستخدم}}",
     "bulkAssigningLabel": "جاري التخصيص...",
     "bulkResultsLabel": "النتائج:",
     "bulkAssignedLabel": "مخصص",
@@ -12567,7 +12787,23 @@
     "toastFailedSavePermissions": "لم نتمكن من حفظ الصلاحيات. يرجى المحاولة مرة أخرى.",
     "selectAllUsers": "تحديد كل المستخدمين",
     "selectUser": "تحديد {name}",
-    "customPermissions": "مخصص"
+    "customPermissions": "مخصص",
+    "changeRoleConfirmTitle": "تغيير نوع الحساب؟",
+    "changeRoleConfirmMessage": "سيصبح {name} {toRole} بدلاً من {fromRole}. يُؤرشف ملف {fromRole} الخاص به ولا يُحذف، لذا فإن إعادته تستعيد الملف.",
+    "changeRoleEmployerNote": "سيتم إيقاف الوظائف النشطة التابعة لهذه الشركة مؤقتاً وإزالتها من لوحة الوظائف العامة.",
+    "changeRoleSeekerNote": "لن يظهر بعد الآن في نتائج البحث عن المرشحين ولا في قائمة المواهب.",
+    "changeRoleConfirmLabel": "تغيير نوع الحساب",
+    "bulkConfirmSetRoleTitle": "تغيير نوع الحساب لـ {count, plural, zero {لا حسابات} one {حساب واحد} two {حسابين} few {# حسابات} many {# حساباً} other {# حساب}}؟",
+    "bulkConfirmSetRoleMessage": "{count, plural, one {سيتحول الحساب المحدد إلى {role}} other {ستتحول جميع الحسابات المحددة البالغ عددها # إلى {role}}}. تُؤرشف الملفات الحالية ولا تُحذف، وتُوقَف مؤقتاً الوظائف النشطة التابعة لأي صاحب عمل ضمن هذا التحديد.",
+    "bulkConfirmSetRoleLabel": "تغيير {count, plural, zero {لا حسابات} one {حساب واحد} two {حسابين} few {# حسابات} many {# حساباً} other {# حساب}}",
+    "bulkConfirmDeactivateTitle": "إلغاء تفعيل {count, plural, zero {لا حسابات} one {حساب واحد} two {حسابين} few {# حسابات} many {# حساباً} other {# حساب}}؟",
+    "bulkConfirmDeactivateMessage": "سيتم تسجيل الخروج ولن يكون بالإمكان تسجيل الدخول مرة أخرى. وستُزال الوظائف التابعة لأي صاحب عمل ضمن هذا التحديد من لوحة الوظائف العامة.",
+    "bulkConfirmDeactivateLabel": "إلغاء تفعيل {count, plural, zero {لا حسابات} one {حساب واحد} two {حسابين} few {# حسابات} many {# حساباً} other {# حساب}}",
+    "bulkConfirmDeleteTitle": "حذف {count, plural, zero {لا حسابات} one {حساب واحد} two {حسابين} few {# حسابات} many {# حساباً} other {# حساب}} نهائياً؟",
+    "bulkConfirmDeleteMessage": "لا يمكن التراجع عن هذا الإجراء. سيُحذف كل حساب وكل ما يرتبط به — الوظائف والطلبات والمقابلات والتعيينات والعمولات — نهائياً.",
+    "bulkConfirmDeleteLabel": "حذف {count, plural, zero {لا حسابات} one {حساب واحد} two {حسابين} few {# حسابات} many {# حساباً} other {# حساب}}",
+    "toastRoleChanged": "{name} أصبح الآن {role}.",
+    "toastBulkFailed": "تعذّر تنفيذ هذا الإجراء الجماعي. يرجى المحاولة مرة أخرى."
   },
   "superAgentSettings": {
     "profilePhoto": "صورة الملف الشخصي",
@@ -13345,7 +13581,14 @@
     "noText": "لا",
     "loadLinksError": "تعذّر تحميل روابط الإحالة. يرجى المحاولة مرة أخرى.",
     "disableConfirmTitle": "تعطيل رابط الإحالة هذا؟",
-    "disableConfirmMessage": "سيتوقف الرابط {code} عن العمل فورًا. لن يتمكن أي شخص لديه الرابط من التسجيل من خلاله، ولن ترى من حاول ذلك. يمكنك تفعيله مرة أخرى لاحقًا."
+    "disableConfirmMessage": "سيتوقف الرابط {code} عن العمل فورًا. لن يتمكن أي شخص لديه الرابط من التسجيل من خلاله، ولن ترى من حاول ذلك. يمكنك تفعيله مرة أخرى لاحقًا.",
+    "audienceLabel": "لمن هذا الرابط؟",
+    "audienceEmployer": "أصحاب العمل",
+    "audienceJobSeeker": "الباحثون عن عمل",
+    "audienceChipEmployer": "رابط أصحاب العمل",
+    "audienceChipJobSeeker": "رابط الباحثين عن عمل",
+    "registrationSeeker": "باحث عن عمل",
+    "filterAudienceAll": "كل الفئات"
   },
   "superAgentInvoices": {
     "failedToLoad": "تعذر تحميل الفواتير",
@@ -13578,6 +13821,7 @@
     "status_approved": "موافق عليه",
     "status_paid": "مدفوع",
     "status_disputed": "محل نزاع",
+    "status_clawed_back": "مسترد",
     "statusPaid": "مدفوع ✓",
     "actionApprove": "موافقة",
     "actionMarkPaid": "تحديد كمدفوع",
@@ -13619,7 +13863,9 @@
     "noJobSeekersFound": "لم يتم العثور على طالبي وظائف",
     "tryAdjustingFilters": "حاول تعديل المرشحات الخاصة بك",
     "yearsAbbr": "سنة",
-    "failedToLoadJobSeekers": "تعذر تحميل طالبي الوظائف"
+    "failedToLoadJobSeekers": "تعذر تحميل طالبي الوظائف",
+    "referredByYouChip": "أحلته أنت",
+    "referredViaChip": "مُحال عبر {name}"
   },
   "superAgentReports": {
     "teamPerformanceSummary": "ملخص أداء الفريق",
@@ -13924,6 +14170,7 @@
     "status_offer": "عرض",
     "status_hired": "موظف",
     "status_rejected": "مرفوض",
+    "status_withdrawn": "منسحب",
     "currentResultsLabel": "النتائج الحالية",
     "currentResultsTitle": "أدر كل مرشح قبل التسليم التالي",
     "paginationSummary": "{applications} طلب عبر {pages} صفحة",
@@ -13963,6 +14210,7 @@
     "rejectButton": "رفض",
     "rejectErrorReasonRequired": "سبب الرفض مطلوب.",
     "rejectErrorGeneric": "لا يمكن رفض الطلب.",
+    "advanceErrorGeneric": "لم نتمكن من نقل هذا المرشح إلى المرحلة التالية. يرجى المحاولة مرة أخرى.",
     "makeOfferTitle": "قدم عرضاً",
     "salaryAmountLabel": "مبلغ الراتب",
     "salaryPlaceholder": "مثال: 12000",
@@ -14119,7 +14367,9 @@
     "noJobSeekersFound": "لم يتم العثور على طالبي وظائف",
     "exportTitle": "طالبو الوظائف - الوكيل",
     "modalEditTitle": "تحرير طالب الوظيفة",
-    "editJobSeeker": "تحرير {name}"
+    "editJobSeeker": "تحرير {name}",
+    "referredByYouChip": "أحلته أنت",
+    "filterReferredMine": "من إحالتي"
   },
   "agentEmployers": {
     "heroWorkspace": "مساحة عمل الوكيل",
@@ -14151,6 +14401,7 @@
     "referralCopied": "تم النسخ!",
     "referralLinkFetchFailed": "تعذر الحصول على رابط الإحالة",
     "referralLinkNetworkError": "خطأ في الشبكة — حاول مرة أخرى",
+    "referralLinkDisableFailed": "لم نتمكن من إيقاف رابط الإحالة هذا. يرجى المحاولة مرة أخرى.",
     "browseEmployersLabel": "استعرض أصحاب العمل",
     "browseEmployersTitle": "صفّي الحسابات التي تريد العمل عليها بعد ذلك",
     "browseEmployersDescription": "ابحث حسب الشركة أو جهة الاتصال أو الصناعة أو الموقع لتركيز دفتر المسندات الخاص بك.",
@@ -14397,6 +14648,7 @@
     "statusLabelApproved": "موافق عليها",
     "statusLabelPaid": "مدفوعة",
     "statusLabelDisputed": "مختلف عليها",
+    "statusLabelClawed_back": "مسترد",
     "typeFilterLabel": "النوع",
     "typeFilterAll": "جميع الأنواع",
     "typeFilterPlacement": "التوظيف",
@@ -14509,7 +14761,13 @@
     "deleteButtonTitle": "حذف الرابط",
     "deleteConfirmMessage": "حذف هذا الرابط نهائياً؟ لا يمكن التراجع عن هذا الإجراء.",
     "registrationsLabel": "التسجيلات ({count})",
-    "noRegistrationsYet": "لا توجد تسجيلات بعد لهذا الرابط."
+    "noRegistrationsYet": "لا توجد تسجيلات بعد لهذا الرابط.",
+    "audienceLabel": "لمن هذا الرابط؟",
+    "audienceEmployer": "أصحاب العمل",
+    "audienceJobSeeker": "الباحثون عن عمل",
+    "audienceChipEmployer": "رابط أصحاب العمل",
+    "audienceChipJobSeeker": "رابط الباحثين عن عمل",
+    "registrationSeeker": "باحث عن عمل"
   },
   "agentLeadsNew": {
     "agentWorkspace": "مساحة العمل الخاصة بالوكيل",
@@ -15009,7 +15267,8 @@
     "negotiable": "قابل للتفاوض",
     "fromSalaryPerMonth": "من {currency} {min} / شهر",
     "salaryRangePerMonth": "{currency} {min} – {max} / شهر",
-    "jobSearch": "البحث عن الوظائف"
+    "jobSearch": "البحث عن الوظائف",
+    "stickyApply": "تقديم سهل"
   },
   "applicationDetail": {
     "errorLoadingDetails": "تعذر تحميل تفاصيل الطلب.",
@@ -15590,7 +15849,11 @@
     "copied": "تم النسخ!",
     "copyAll": "نسخ الكل",
     "print": "طباعة",
-    "closeLabel": "إغلاق أسئلة المقابلة لـ {job}"
+    "closeLabel": "إغلاق أسئلة المقابلة لـ {job}",
+    "printTitle": "أسئلة المقابلة: {job}",
+    "printCandidate": "المرشح: {name}",
+    "printType": "النوع: {type}",
+    "printQuestionCount": "{count, plural, zero {# سؤال} one {سؤال واحد} two {سؤالان} few {# أسئلة} many {# سؤالًا} other {# سؤال}}"
   },
   "logoUpload": {
     "onlyJpegPngWebpAllowed": "يُسمح فقط بصور JPEG و PNG و WebP.",
@@ -15620,7 +15883,9 @@
     "tip4": "الأوصاف القصيرة تعمل بشكل أفضل",
     "generating": "جاري الإنشاء...",
     "generatePosters": "إنشاء ملصقات ({credits} رصيد)",
-    "variationsText": "سيتم إنشاء نسختين. يمكنك إنشاء المزيد."
+    "variationsText": "سيتم إنشاء نسختين. يمكنك إنشاء المزيد.",
+    "templateLabel": "القالب",
+    "templateHint": "يتحكم في تكوين الملصق وتخطيطه."
   },
   "posterPreviewPanel": {
     "noPreview": "سيتم عرض الملصقات المُنشأة هنا",
@@ -15628,7 +15893,28 @@
     "downloadShareDesc": "حمّل ملصقك بتنسيقات متعددة",
     "saveButton": "حفظ في ملصقاتي",
     "savingState": "جاري الحفظ...",
-    "savedState": "تم الحفظ في ملصقاتي"
+    "savedState": "تم الحفظ في ملصقاتي",
+    "backToSettings": "إعدادات الملصق",
+    "dragHint": "اسحبه على الملصق لتغيير موضعه.",
+    "textLabel": "النص",
+    "textDefaultPlaceholder": "(افتراضي)",
+    "colorLabel": "اللون",
+    "recentLabel": "الأحدث",
+    "customizeLook": "تخصيص المظهر",
+    "customizeTip": "نصيحة: انقر على أي نص في الملصق لتعديله (الحجم، السماكة، اللون، النص).",
+    "sharePoster": "مشاركة الملصق",
+    "shareHint": "يمكن لأي شخص لديه هذا الرابط عرض الملصق",
+    "sizeLabel": "الحجم",
+    "fontSizeLabel": "حجم الخط",
+    "weightLabel": "سماكة الخط",
+    "templateLabel": "القالب",
+    "fontLabel": "الخط",
+    "textThemeLabel": "نمط النص",
+    "allTextSizeLabel": "حجم كل النصوص",
+    "bodyWeightLabel": "سماكة النص الأساسي",
+    "overlayLabel": "التراكب",
+    "decreaseLabel": "إنقاص",
+    "increaseLabel": "زيادة"
   },
   "posterShareView": {
     "applyNow": "تقدم الآن",
@@ -16006,7 +16292,7 @@
   "easyApply": {
     "loading": "جاري التحميل…",
     "quickApplyTitle": "قدّم في ثوانٍ",
-    "quickApplyHint": "ارفع سيرتك الذاتية وسننشئ ملفك تلقائيًا — فقط سجّل الدخول عبر Google للإنهاء.",
+    "quickApplyHint": "حمّل سيرتك الذاتية وسننشئ ملفك الشخصي تلقائياً — استخدم البريد الإلكتروني أو سجل الدخول باستخدام Google لإنهاء العملية.",
     "uploadYourCv": "ارفع سيرتك الذاتية (PDF أو Word)",
     "continueWithGoogle": "المتابعة عبر Google",
     "settingUpProfile": "جاري إعداد ملفك…",
@@ -16045,8 +16331,43 @@
     "errors": {
       "applyFailed": "تعذر علينا التقديم. حاول مرة أخرى.",
       "planLimitReached": "لقد وصلت إلى حد التقديمات في خطتك. قم بترقية خطتك للمتابعة.",
-      "networkError": "خطأ في الشبكة. حاول مرة أخرى."
-    }
+      "networkError": "خطأ في الشبكة. حاول مرة أخرى.",
+      "couldNotExtract": "تعذر علينا قراءة سيرتك الذاتية تلقائياً. يمكنك الاستمرار — أضف تفاصيلك أدناه.",
+      "invalidEmail": "الرجاء إدخال عنوان بريد إلكتروني صحيح.",
+      "rateLimited": "عدد محاولات كثير جداً. حاول مرة أخرى لاحقاً.",
+      "emailFailed": "تعذر علينا إرسال البريد الإلكتروني. حاول مرة أخرى.",
+      "invalidCode": "الرجاء إدخال رمز مكون من 6 أرقام.",
+      "codeExpired": "انتهت صلاحية الرمز. الرجاء طلب رمز جديد.",
+      "codeInvalid": "تعذر علينا التحقق من الرمز. تحقق منه وحاول مرة أخرى.",
+      "popupBlocked": "حجب متصفحك نافذة تسجيل الدخول من Google. جرب استخدام البريد الإلكتروني بدلاً من ذلك.",
+      "captchaFailed": "تعذر علينا التأكد من أنك لست روبوتًا. حاول مرة أخرى.",
+      "captchaUnavailable": "فحص الروبوتات غير متاح مؤقتًا. حاول مرة أخرى بعد قليل."
+    },
+    "continueWithEmail": "المتابعة عبر البريد الإلكتروني",
+    "sendCode": "إرسال الرمز",
+    "verify": "تحقق",
+    "enterCode": "أدخل الرمز",
+    "codeSentTo": "لقد أرسلنا رمزاً مكون من 6 أرقام إلى {email}",
+    "useDifferentEmail": "استخدم بريداً إلكترونياً مختلفاً",
+    "resend": "إعادة الإرسال",
+    "resendIn": "إعادة الإرسال في {seconds}ث",
+    "foundYourDetails": "وجدنا تفاصيلك",
+    "profileComplete": "ملفك الشخصي {percent}% مكتمل",
+    "emailConfirmMsg": "تأكيد البريد الإلكتروني: {email}",
+    "name": "الاسم الكامل",
+    "enterName": "أدخل اسمك الكامل",
+    "phone": "الهاتف",
+    "enterPhone": "أدخل رقم هاتفك",
+    "headline": "العنوان المهني",
+    "enterHeadline": "ما هو عنوانك المهني؟",
+    "looksGood": "يبدو جيداً",
+    "email": "البريد الإلكتروني",
+    "enterEmail": "أدخل بريدك الإلكتروني",
+    "inAppBrowserHint": "متصفح {app} يحجب تسجيل الدخول من Google. استخدم بريدك الإلكتروني، أو افتح هذه الصفحة في Chrome أو Safari.",
+    "copyLink": "نسخ الرابط",
+    "completeProfile": "أكمل ملفك الشخصي",
+    "browseMoreJobs": "تصفح المزيد من الوظائف",
+    "profileCompletionOptional": "إكمال الملف الشخصي اختياري — يمكنك القيام به في أي وقت."
   },
   "socialShare": {
     "shareJob": "مشاركة الوظيفة",

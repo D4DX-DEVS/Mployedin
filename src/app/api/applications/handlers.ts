@@ -51,6 +51,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const employerIdParam = searchParams.get("employerId") ?? "";
   const sourceParam = searchParams.get("source") ?? "";
   const autoAppliedParam = searchParams.get("autoApplied") ?? "";
+  const referredParam = searchParams.get("referred") ?? "";
   const sortBy = searchParams.get("sortBy") ?? "appliedAt";
   const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
   const fetchEmployers = searchParams.get("fetchEmployers") === "true";
@@ -227,6 +228,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.autoApplied = { $ne: true };
   }
 
+  // Referred-only view (deep links, copilot). The default list already puts
+  // referred candidates first; this narrows to them.
+  if (referredParam === "true") {
+    query.isAgentReferred = true;
+  }
+
   // Experience filter — filter by jobSeeker's totalExperienceYears
   let experienceFilterSeekerIds: unknown[] | null = null;
   if (experienceMin || experienceMax) {
@@ -341,10 +348,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     createdAt: "createdAt",
   };
   const sortField = allowedSortFields[sortBy] ?? "appliedAt";
+  // Referred candidates ride above the rest on every ordering that is not a
+  // judgement. "Best match" stays a pure score order; there the badge alone
+  // carries the signal.
+  const sortSpec: Record<string, 1 | -1> = sortField === "aiMatchScore"
+    ? { [sortField]: sortOrder }
+    : { isAgentReferred: -1, [sortField]: sortOrder };
 
   const [applications, total] = await Promise.all([
     Application.find(query)
-      .sort({ [sortField]: sortOrder })
+      .sort(sortSpec)
       .skip(skip)
       .limit(limit)
       .select(ctx.role === "job_seeker" ? "-employerNotes -matchStrengths -matchGaps -rejectionReason" : "")
@@ -696,6 +709,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     behaviorSignals: signals,
     behaviorScore: bScore,
     screeningAnswers: screeningAnswers ?? [],
+    // Explicit so the pre-save hook skips its lookup, and so a re-apply after
+    // withdrawal ($set path, no hook) carries the value too.
+    isAgentReferred: (seeker as { isAgentReferred?: boolean }).isAgentReferred === true,
   };
 
   let application;

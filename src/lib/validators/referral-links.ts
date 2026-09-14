@@ -5,6 +5,7 @@ export const referralLinkCreateSchema = z.object({
   label: z.string().max(100).trim().optional().default(""),
   maxUses: z.coerce.number().int().min(0).default(0),
   expiresAt: z.string().max(50).optional(),
+  audience: z.enum(["employer", "job_seeker"]).default("employer"),
 });
 
 /** PATCH /api/referral-links/[id] */

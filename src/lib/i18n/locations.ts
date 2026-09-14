@@ -1,3 +1,5 @@
+import { escapeRegex } from "@/lib/security/sanitize";
+
 export const COUNTRY_REGION_CODES: Record<string, string> = {
   "united arab emirates": "AE",
   uae: "AE",
@@ -130,4 +132,62 @@ export function formatLocalizedLocation(
   }
 
   return parts.join(", ") || options.fallback || "";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Countries named inside free-text locations                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A profile's location is one free-text line — "Dubai, UAE", "Riyadh, Al
+ * Murooj, Saudi Arabia (Transferable Iqama)" — and the structured `country`
+ * field is unset on real records. Staff directories still need a country facet
+ * and a country filter, so both read the country out of that line, using the
+ * one alias table the app already maintains.
+ */
+
+/** The fullest spelling of each country in the alias table, title-cased. */
+const DISPLAY_NAME_BY_CODE: Map<string, string> = (() => {
+  const longest = new Map<string, string>();
+  for (const [alias, code] of Object.entries(COUNTRY_REGION_CODES)) {
+    const current = longest.get(code);
+    if (!current || alias.length > current.length) longest.set(code, alias);
+  }
+  return new Map(
+    [...longest].map(([code, alias]) => [
+      code,
+      alias.replace(/\b[a-z]/g, (letter) => letter.toUpperCase()),
+    ]),
+  );
+})();
+
+const ALIAS_MATCHERS: Array<{ code: string; pattern: RegExp }> = Object.entries(COUNTRY_REGION_CODES).map(
+  ([alias, code]) => ({ code, pattern: new RegExp(`(^|[^A-Za-z])${escapeRegex(alias)}($|[^A-Za-z])`, "i") }),
+);
+
+/** Every known country named anywhere in a free-text location, by display name. */
+export function countriesInLocationText(value: string | null | undefined): string[] {
+  const text = (value ?? "").trim();
+  if (!text) return [];
+  const codes = new Set<string>();
+  for (const { code, pattern } of ALIAS_MATCHERS) {
+    if (pattern.test(text)) codes.add(code);
+  }
+  return [...codes].map((code) => DISPLAY_NAME_BY_CODE.get(code) ?? code);
+}
+
+/**
+ * A case-insensitive regex source matching any spelling of one country inside a
+ * location line. Unrecognised input matches only itself.
+ */
+export function locationCountryRegex(countryName: string): string {
+  const code = getRegionCodeForCountryName(countryName);
+  const aliases = code
+    ? Object.entries(COUNTRY_REGION_CODES).filter(([, value]) => value === code).map(([alias]) => alias)
+    : [canonicalCountry(countryName)];
+  const spellings = aliases.filter(Boolean).map(escapeRegex);
+  if (spellings.length === 0) return "(?!)";
+  /* Plain ASCII boundaries: this source is handed to Mongo's regex engine as
+     well as used in tests, and the alias table is ASCII throughout. */
+  return `(^|[^A-Za-z])(${spellings.join("|")})($|[^A-Za-z])`;
 }

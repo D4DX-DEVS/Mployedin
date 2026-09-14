@@ -31,8 +31,15 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // Dev: no strict-dynamic/nonce — Turbopack injects lazy chunks (e.g. the
       // dashboard template) without the nonce, and strict-dynamic disables the
       // 'self' allowlist, blanking dashboard pages. Prod keeps the strict policy.
+      // apis.google.com is listed for dev only. Firebase's signInWithPopup injects
+      // that script at runtime; in prod 'strict-dynamic' already permits it because
+      // a trusted script inserted it, but the dev policy is a plain host allowlist,
+      // so without this entry "Continue with Google" is blocked locally.
+      // www.google.com + www.gstatic.com: reCAPTCHA v3 (quick-apply). Same
+      // reasoning — prod's 'strict-dynamic' already allows the script our own
+      // code injects; only the dev allowlist needs the hosts spelled out.
       isDev
-        ? `script-src 'self' 'unsafe-eval' 'unsafe-inline'`
+        ? `script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://www.google.com https://www.gstatic.com`
         : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
       // Next.js emits two deterministic framework style blocks without
       // propagating the request nonce. Permit only their exact hashes.
@@ -50,7 +57,10 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // The Spaces origins are needed by the CV/resume viewer, which fetches the
       // stored PDF and frames it as a blob:; without them every inline preview
       // failed and fell back to a whole-tab download.
-      "connect-src 'self' data: blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com",
+      // www.google.com: reCAPTCHA v3's api.js fetches /recaptcha/api2/clr from
+      // the page context; without it every quick-apply "Send code" logged CSP
+      // violations (the token was still minted, the console was not clean).
+      "connect-src 'self' data: blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com https://www.google.com",
       "worker-src 'self' blob:",
       // blob: lets the candidate CV viewer frame an in-memory PDF. The proxied
       // CV response sets X-Frame-Options: DENY / frame-ancestors 'none', so it

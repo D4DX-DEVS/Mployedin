@@ -154,6 +154,67 @@ export async function getSuperAgentEmployerIds(
 }
 
 /**
+ * Everything a super-agent's territory contains, resolved once.
+ *
+ * The link between an agent and an employer is written from both ends —
+ * `Agent.assignedEmployerIds` and `Employer.agentId` — and routes picked one or
+ * the other, so the same super-agent's dashboard said 24 employers while the
+ * territory page said 23 and the AI report said something else again. This is
+ * the union, which is the set the dashboard has always shown; nothing here is
+ * visible to a super-agent who could not already see it.
+ *
+ * `ownershipMatch` is the matching query fragment for the three collections
+ * that carry both an `employerId` and an `agentId` (Job, Application,
+ * Placement): a job the agent posted belongs to the territory even when the
+ * employer's own pointer has drifted.
+ */
+export interface SuperAgentBook {
+  agentIds: mongoose.Types.ObjectId[];
+  employerIds: mongoose.Types.ObjectId[];
+  saProfileId: mongoose.Types.ObjectId;
+  /** `{ $or: [...] }`, or a match-nothing filter when the territory is empty. */
+  ownershipMatch: Record<string, unknown>;
+}
+
+export async function getSuperAgentBook(saUserId: string): Promise<SuperAgentBook | null> {
+  const scope = await getSuperAgentScope(saUserId);
+  if (!scope) return null;
+
+  const agentIds = scope.effectiveAgentIds;
+  if (agentIds.length === 0) {
+    return {
+      agentIds: [],
+      employerIds: [],
+      saProfileId: scope.saProfileId,
+      ownershipMatch: { employerId: { $in: [] } },
+    };
+  }
+
+  const { Employer } = await import("@/models/Employer");
+  const [agentDocs, ownedEmployers] = await Promise.all([
+    Agent.find({ _id: { $in: agentIds } }).select("assignedEmployerIds").lean(),
+    Employer.find({ agentId: { $in: agentIds } }).select("_id").lean(),
+  ]);
+
+  const employerIds = deduplicateIds([
+    ...agentDocs.flatMap((a) => (a.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? []),
+    ...ownedEmployers.map((e) => e._id as mongoose.Types.ObjectId),
+  ]);
+
+  return {
+    agentIds,
+    employerIds,
+    saProfileId: scope.saProfileId,
+    ownershipMatch: {
+      $or: [
+        { agentId: { $in: agentIds } },
+        ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
+      ],
+    },
+  };
+}
+
+/**
  * Employer _ids assigned to an agent. Returns [] when the agent has no
  * assignments — callers MUST treat [] as "see nothing" (default-deny).
  */

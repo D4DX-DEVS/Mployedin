@@ -92,8 +92,8 @@ export function PosterCustomizer({
 
       {/* Template — controls composition/layout */}
       <div>
-        <label className="text-xs font-medium text-foreground">Template</label>
-        <p className="text-[11px] text-muted-foreground mb-1.5">Controls the poster composition & layout.</p>
+        <label className="text-xs font-medium text-foreground">{t("templateLabel")}</label>
+        <p className="text-[11px] text-muted-foreground mb-1.5">{t("templateHint")}</p>
         <div className="grid grid-cols-2 gap-1.5">
           {TEMPLATES.map((tpl) => (
             <button

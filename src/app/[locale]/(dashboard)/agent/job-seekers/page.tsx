@@ -17,13 +17,15 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, ChevronDown, ChevronUp, Edit2, FileText, Filter, Inbox, MapPin, Search, UserRoundSearch, X } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Handshake, ChevronDown, ChevronUp, Edit2, FileText, Filter, Inbox, MapPin, Search, UserRoundSearch, X } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
+import type { ReferralSummary } from "@/lib/referrals/summary";
 
 interface JobSeeker {
   _id: string;
@@ -37,6 +39,7 @@ interface JobSeeker {
   availabilityStatus?: string;
   preferredJobType?: string;
   cv?: { originalUrl?: string };
+  referralSummary?: ReferralSummary;
   createdAt: string;
 }
 
@@ -99,6 +102,7 @@ export default function AgentJobSeekersPage() {
   const [locationFilter, setLocationFilter] = useUrlFilter("location", "", { debounceMs: 400 });
   const [skillsFilter, setSkillsFilter] = useUrlFilter("skills", "", { debounceMs: 400 });
   const [hasCV, setHasCV] = useState(false);
+  const [referredMine, setReferredMine] = useState(false);
   const [jobType, setJobType] = useUrlFilter("jobType", "");
   const [sortBy, setSortBy] = useState("newest");
 
@@ -107,6 +111,7 @@ export default function AgentJobSeekersPage() {
     locationFilter,
     skillsFilter,
     hasCV,
+    referredMine,
     jobType,
     minProfile > 0 || maxProfile < 100,
   ].filter(Boolean).length;
@@ -118,6 +123,7 @@ export default function AgentJobSeekersPage() {
     setLocationFilter("");
     setSkillsFilter("");
     setHasCV(false);
+    setReferredMine(false);
     setJobType("");
     setSortBy("newest");
   };
@@ -132,6 +138,7 @@ export default function AgentJobSeekersPage() {
     if (skillsFilter) params.set("skills", skillsFilter);
     if (locationFilter) params.set("location", locationFilter);
     if (hasCV) params.set("hasCV", "1");
+    if (referredMine) params.set("referred", "mine");
     if (jobType) params.set("jobType", jobType);
     if (sortBy !== "newest") params.set("sort", sortBy);
     const res = await fetch(`/api/job-seekers?${params}`);
@@ -142,11 +149,11 @@ export default function AgentJobSeekersPage() {
     }
     setLoading(false);
      
-  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, jobType, sortBy, pagination.page, pagination.limit]);
+  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, referredMine, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, jobType, sortBy]);
+  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, referredMine, jobType, sortBy]);
 
   const handleSave = async (values: Record<string, string>) => {
     if (!editSeeker) return;
@@ -351,6 +358,20 @@ export default function AgentJobSeekersPage() {
               </Button>
             </div>
 
+            {/* Referred by me */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterReferredMine")}</label>
+              <Button
+                variant={referredMine ? "default" : "outline"}
+                size="sm"
+                className="gap-2 rounded-xl px-4 text-sm"
+                onClick={() => setReferredMine((v) => !v)}
+              >
+                <Handshake className="h-3.5 w-3.5" />
+                {referredMine ? t("filterReferredMine") : tc("all")}
+              </Button>
+            </div>
+
             {/* Sort */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterSortLabel")}</label>
@@ -414,6 +435,7 @@ export default function AgentJobSeekersPage() {
                   }`}>
                     {availabilityLabel(s.availabilityStatus)}
                   </span>
+                  <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   <div className="grid w-full min-w-0 gap-1 text-start">

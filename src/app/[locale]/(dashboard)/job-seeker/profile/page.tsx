@@ -146,7 +146,7 @@ export default function JobSeekerProfilePage() {
     try {
       const res = await csrfFetch("/api/ai/generate-summary", { method: "POST" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to generate summary");
+      if (!res.ok) throw new Error(data.error ?? t("errors.summaryFailed"));
       // Refetch the full profile to get consistent data after AI save
       await fetchProfile();
     } catch (e) {
@@ -198,11 +198,11 @@ export default function JobSeekerProfilePage() {
 
     const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
     if (!ALLOWED.includes(file.type)) {
-      setAvatarError("Only JPEG, PNG, or WebP images.");
+      setAvatarError(t("errors.avatarType"));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setAvatarError("Image must be under 2MB.");
+      setAvatarError(t("errors.avatarSize"));
       return;
     }
 
@@ -221,7 +221,7 @@ export default function JobSeekerProfilePage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        setAvatarError(data.error ?? "Upload failed");
+        setAvatarError(data.error ?? t("errors.uploadFailed"));
         setAvatarUrl(session?.user?.image ?? null);
         return;
       }
@@ -229,7 +229,7 @@ export default function JobSeekerProfilePage() {
       setAvatarUrl(data.url);
       await updateSession({ image: data.url });
     } catch {
-      setAvatarError("Network error. Please try again.");
+      setAvatarError(t("errors.network"));
       setAvatarUrl(session?.user?.image ?? null);
     } finally {
       setAvatarUploading(false);
@@ -250,7 +250,7 @@ export default function JobSeekerProfilePage() {
         await updateSession({ image: null });
       }
     } catch {
-      setAvatarError("Failed to remove photo.");
+      setAvatarError(t("errors.removePhoto"));
     } finally {
       setAvatarUploading(false);
     }
@@ -264,7 +264,7 @@ export default function JobSeekerProfilePage() {
       headers: { "Content-Type": "application/json", "x-csrf-token": getCsrfToken() },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error("Save failed");
+    if (!res.ok) throw new Error(t("errors.saveFailed"));
     // Re-fetch via GET for consistent lean() shape used by the rest of the page
     await fetchProfile();
     return res.json();
@@ -326,7 +326,7 @@ export default function JobSeekerProfilePage() {
   // JobSeeker.fullName is the identity employers see on an application (the apply
   // panel reads it), so it wins here — otherwise the two screens disagree whenever
   // User.name and JobSeeker.fullName drift apart.
-  const name      = profile?.fullName?.trim() || session?.user?.name || "Job Seeker";
+  const name      = profile?.fullName?.trim() || session?.user?.name || t("fallbackName");
   const email     = session?.user?.email ?? "";
   const displayAvatar = avatarUrl || session?.user?.image || "";
   const initials  = name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -360,16 +360,18 @@ export default function JobSeekerProfilePage() {
   const aiExtracted = !!profile?.cvExtractedByAI;
 
   // ── Detailed missing-fields for reaching 100% ────────────────────────
-  const missingFields: { label: string; points: number; href: string; icon: React.ElementType }[] = profile ? [
-    ...(!profile.nationality     ? [{ label: "Add nationality",       points: 10, href: "./cv",                        icon: Globe }] : []),
-    ...(!profile.currentLocation ? [{ label: "Add current location",  points: 5,  href: "./cv",                        icon: MapPin }] : []),
-    ...(!profile.summary         ? [{ label: "Write a summary",       points: 10, href: "#about",                      icon: User }] : []),
-    ...((profile.skills?.length ?? 0) === 0     ? [{ label: "Add skills",          points: 20, href: "./cv",                      icon: Award }] : []),
-    ...((profile.experience?.length ?? 0) === 0 ? [{ label: "Add experience",      points: 20, href: "./cv",                      icon: Briefcase }] : []),
-    ...((profile.education?.length ?? 0) === 0  ? [{ label: "Add education",       points: 15, href: "./cv",                      icon: GraduationCap }] : []),
-    ...((profile.languages?.length ?? 0) === 0  ? [{ label: "Add languages",       points: 5,  href: "./profile/personal-details", icon: LanguagesIcon }] : []),
+  // `id` is what the checklist below matches on. It used to compare the English
+  // label, so translating the label would have silently broken the de-duplication.
+  const missingFields: { id: string; label: string; points: number; href: string; icon: React.ElementType }[] = profile ? [
+    ...(!profile.nationality     ? [{ id: "nationality", label: t("missingFields.nationality"), points: 10, href: "./cv",                        icon: Globe }] : []),
+    ...(!profile.currentLocation ? [{ id: "location",    label: t("missingFields.location"),    points: 5,  href: "./cv",                        icon: MapPin }] : []),
+    ...(!profile.summary         ? [{ id: "summary",     label: t("missingFields.summary"),     points: 10, href: "#about",                      icon: User }] : []),
+    ...((profile.skills?.length ?? 0) === 0     ? [{ id: "skills",     label: t("missingFields.skills"),     points: 20, href: "./cv",                      icon: Award }] : []),
+    ...((profile.experience?.length ?? 0) === 0 ? [{ id: "experience", label: t("missingFields.experience"), points: 20, href: "./cv",                      icon: Briefcase }] : []),
+    ...((profile.education?.length ?? 0) === 0  ? [{ id: "education",  label: t("missingFields.education"),  points: 15, href: "./cv",                      icon: GraduationCap }] : []),
+    ...((profile.languages?.length ?? 0) === 0  ? [{ id: "languages",  label: t("missingFields.languages"),  points: 5,  href: "./profile/personal-details", icon: LanguagesIcon }] : []),
     ...(!(profile.linkedin || profile.socialLinks?.some((l) => l.label?.toLowerCase() === "linkedin"))
-      ? [{ label: "Add LinkedIn profile", points: 5, href: "./cv",                      icon: Linkedin }] : []),
+      ? [{ id: "linkedin", label: t("missingFields.linkedin"), points: 5, href: "./cv",                      icon: Linkedin }] : []),
   ] : [];
 
   const completenessColor     = completeness >= 80 ? "text-emerald-600" : completeness >= 50 ? "text-amber-500" : "text-rose-500";
@@ -609,7 +611,7 @@ export default function JobSeekerProfilePage() {
               {profile?.headline ? (
                 <p className="text-sm font-medium text-foreground/80">{profile.headline}</p>
               ) : (
-                <p className="text-sm text-muted-foreground/60 italic">Add a headline</p>
+                <p className="text-sm text-muted-foreground/60 italic">{t("headlinePlaceholderText")}</p>
               )}
               <button
                 onClick={() => { setEditHeadline(profile?.headline ?? ""); setShowHeadlineModal(true); }}
@@ -687,7 +689,7 @@ export default function JobSeekerProfilePage() {
                   disabled={avatarUploading}
                   className="text-xs text-rose-500 hover:text-rose-600 hover:underline"
                 >
-                  Remove photo
+                  {t("removePhoto")}
                 </button>
               )}
               <button
@@ -695,11 +697,11 @@ export default function JobSeekerProfilePage() {
                 disabled={avatarUploading}
                 className="text-xs text-primary hover:underline"
               >
-                {displayAvatar ? "Change photo" : "Upload photo"}
+                {displayAvatar ? t("changePhoto") : t("uploadPhoto")}
               </button>
               {lastUpdated && (
                 <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Updated {lastUpdated}
+                  <Clock className="w-3 h-3" /> {t("updatedAgo", { time: lastUpdated })}
                 </span>
               )}
             </div>
@@ -727,7 +729,7 @@ export default function JobSeekerProfilePage() {
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {missingSteps.length === 0 && completeness < 100
                 ? `${missingFields.length} detail${missingFields.length !== 1 ? "s" : ""} left`
-                : `${doneSteps.length}/${checklist.length} steps done`}
+                : t("stepsDone", { done: doneSteps.length, total: checklist.length })}
             </span>
           </div>
         </div>
@@ -735,11 +737,11 @@ export default function JobSeekerProfilePage() {
         {/* Mobile: compact progress bar */}
         <div className="sm:hidden mt-4 pt-4 border-t border-border/50">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>Profile completion</span>
+            <span>{t("profileCompletion")}</span>
             <span className={cn("font-semibold", completenessColor)}>
               {completeness}% · {missingSteps.length === 0 && completeness < 100
-                ? `${missingFields.length} detail${missingFields.length !== 1 ? "s" : ""} left`
-                : `${doneSteps.length}/${checklist.length} steps`}
+                ? t("detailsLeft", { count: missingFields.length })
+                : t("stepsShort", { done: doneSteps.length, total: checklist.length })}
             </span>
           </div>
           <Progress value={completeness} className="h-1.5" />
@@ -840,7 +842,7 @@ export default function JobSeekerProfilePage() {
         {/* Quick Links Sidebar — desktop only */}
         <div className="hidden lg:block w-48 shrink-0 self-stretch">
           <div className="card-base sticky top-24 panel-body">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick links</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("quickLinks")}</p>
             <nav className="space-y-0.5">
               {sectionRefs.map((s) => (
                 <a
@@ -876,10 +878,10 @@ export default function JobSeekerProfilePage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-500" />
-                  <span className="text-sm font-semibold">Profile Setup</span>
+                  <span className="text-sm font-semibold">{t("profileSetup")}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {doneSteps.length} of {checklist.length} complete
+                  {t("setupProgress", { done: doneSteps.length, total: checklist.length })}
                 </span>
               </div>
 
@@ -929,7 +931,7 @@ export default function JobSeekerProfilePage() {
               <div className="mt-4 pt-4 border-t border-border/50">
                 <Progress value={completeness} className="h-1.5" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
-                  <span>Overall progress</span>
+                  <span>{t("overallProgress")}</span>
                   <span>{completeness}%</span>
                 </div>
               </div>
@@ -971,24 +973,24 @@ export default function JobSeekerProfilePage() {
               {/* ── Mixed: some checklist steps + extra fields missing ── */}
               {missingFields.length > 0 && missingSteps.length > 0 && missingFields.some(f =>
                 !missingSteps.some(s =>
-                  (s.id === "skills" && f.label === "Add skills") ||
-                  (s.id === "experience" && f.label === "Add experience") ||
-                  (s.id === "education" && f.label === "Add education") ||
-                  (s.id === "personal" && (f.label === "Add nationality" || f.label === "Add current location"))
+                  (s.id === "skills" && f.id === "skills") ||
+                  (s.id === "experience" && f.id === "experience") ||
+                  (s.id === "education" && f.id === "education") ||
+                  (s.id === "personal" && (f.id === "nationality" || f.id === "location"))
                 )
               ) && (
                 <div className="mt-3 px-3">
                   <p className="text-[11px] text-muted-foreground">
-                    <span className="font-medium">Tip:</span>{" "}
+                    <span className="font-medium">{t("tipLabel")}</span>{" "}
                     {missingFields.filter(f =>
                       !missingSteps.some(s =>
-                        (s.id === "skills" && f.label === "Add skills") ||
-                        (s.id === "experience" && f.label === "Add experience") ||
-                        (s.id === "education" && f.label === "Add education") ||
-                        (s.id === "personal" && (f.label === "Add nationality" || f.label === "Add current location"))
+                        (s.id === "skills" && f.id === "skills") ||
+                        (s.id === "experience" && f.id === "experience") ||
+                        (s.id === "education" && f.id === "education") ||
+                        (s.id === "personal" && (f.id === "nationality" || f.id === "location"))
                       )
                     ).map(f => `${f.label} (+${f.points}%)`).join(", ")}{" "}
-                    to boost your profile further.
+                    {t("tipSuffix")}
                   </p>
                 </div>
               )}
@@ -1013,9 +1015,9 @@ export default function JobSeekerProfilePage() {
                         <div>
                           <p className="text-sm font-semibold">{exp.jobTitle}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{exp.company}{exp.location && ` · ${exp.location}`}</p>
-                          <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? "Present" : exp.to}</p>
+                          <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? t("present") : exp.to}</p>
                         </div>
-                        {exp.current && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs shrink-0">Current</Badge>}
+                        {exp.current && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs shrink-0">{t("currentBadge")}</Badge>}
                       </div>
                       {exp.description && <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{exp.description}</p>}
                     </div>
@@ -1099,7 +1101,7 @@ export default function JobSeekerProfilePage() {
                               <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
                             </a>
                           )}
-                          {proj.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Active</Badge>}
+                          {proj.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">{t("activeBadge")}</Badge>}
                         </div>
                       </div>
                     </div>
@@ -1116,7 +1118,7 @@ export default function JobSeekerProfilePage() {
                 {/* Certifications */}
                 {(profile?.certifications?.length ?? 0) > 0 && (
                   <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Certifications</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("certificationsLabel")}</p>
                     <div className="flex flex-wrap gap-2">
                       {profile!.certifications.map((c, i) => (
                         <Badge key={i} variant="secondary" className="gap-1 text-xs"><Award className="w-3 h-3" />{c}</Badge>
@@ -1131,12 +1133,12 @@ export default function JobSeekerProfilePage() {
                       const items = profile!.accomplishments!.filter((a) => a.type === type);
                       if (items.length === 0) return null;
                       const typeLabels: Record<string, string> = {
-                        online_profile: "Online Profiles",
-                        work_sample: "Work Samples",
-                        publication: "Publications",
-                        presentation: "Presentations",
-                        patent: "Patents",
-                        certification: "Certifications",
+                        online_profile: t("accomplishmentTypes.online_profile"),
+                        work_sample: t("accomplishmentTypes.work_sample"),
+                        publication: t("accomplishmentTypes.publication"),
+                        presentation: t("accomplishmentTypes.presentation"),
+                        patent: t("accomplishmentTypes.patent"),
+                        certification: t("accomplishmentTypes.certification"),
                       };
                       return (
                         <div key={type}>
@@ -1164,48 +1166,48 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Career Profile (NEW) ──────────────────────────────────── */}
           <div id="career-profile" className="scroll-mt-24">
-            <SectionCard icon={Building2} title="Career Profile" onAdd={() => router.push("./preferences")} isEmpty={!profile?.careerProfile} emptyLabel="Add your career preferences — industry, role, desired job type">
+            <SectionCard icon={Building2} title={t("careerProfileTitle")} onAdd={() => router.push("./preferences")} isEmpty={!profile?.careerProfile} emptyLabel={t("careerProfileEmpty")}>
               {profile?.careerProfile && (
                 <div className="grid grid-cols-2 gap-4">
                   {profile.careerProfile.currentIndustry && (
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Current industry</p>
+                      <p className="text-[11px] text-muted-foreground">{t("careerCurrentIndustry")}</p>
                       <p className="text-sm font-medium">{profile.careerProfile.currentIndustry}</p>
                     </div>
                   )}
                   {profile.careerProfile.department && (
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Department</p>
+                      <p className="text-[11px] text-muted-foreground">{t("careerDepartment")}</p>
                       <p className="text-sm font-medium">{profile.careerProfile.department}</p>
                     </div>
                   )}
                   {profile.careerProfile.roleCategory && (
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Role category</p>
+                      <p className="text-[11px] text-muted-foreground">{t("careerRoleCategory")}</p>
                       <p className="text-sm font-medium">{profile.careerProfile.roleCategory}</p>
                     </div>
                   )}
                   {profile.careerProfile.jobRole && (
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Job role</p>
+                      <p className="text-[11px] text-muted-foreground">{t("careerJobRole")}</p>
                       <p className="text-sm font-medium">{profile.careerProfile.jobRole}</p>
                     </div>
                   )}
                   {profile.careerProfile.desiredJobType && profile.careerProfile.desiredJobType.length > 0 && (
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Desired job type</p>
+                      <p className="text-[11px] text-muted-foreground">{t("careerDesiredJobType")}</p>
                       <p className="text-sm font-medium">{profile.careerProfile.desiredJobType.join(", ")}</p>
                     </div>
                   )}
                   {profile.careerProfile.desiredEmploymentType && profile.careerProfile.desiredEmploymentType.length > 0 && (
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Employment type</p>
+                      <p className="text-[11px] text-muted-foreground">{t("careerEmploymentType")}</p>
                       <p className="text-sm font-medium">{profile.careerProfile.desiredEmploymentType.join(", ")}</p>
                     </div>
                   )}
                   {profile.careerProfile.preferredShift && (
                     <div>
-                      <p className="text-[11px] text-muted-foreground">Preferred shift</p>
+                      <p className="text-[11px] text-muted-foreground">{t("careerPreferredShift")}</p>
                       <p className="text-sm font-medium capitalize">{profile.careerProfile.preferredShift}</p>
                     </div>
                   )}
@@ -1256,8 +1258,8 @@ export default function JobSeekerProfilePage() {
                 {(() => {
                   // Merge legacy fields + socialLinks array
                   const links: { label: string; url: string }[] = [];
-                  if (profile?.linkedin) links.push({ label: "LinkedIn", url: profile.linkedin });
-                  if (profile?.portfolio) links.push({ label: "Portfolio", url: profile.portfolio });
+                  if (profile?.linkedin) links.push({ label: t("linkLinkedin"), url: profile.linkedin });
+                  if (profile?.portfolio) links.push({ label: t("linkPortfolio"), url: profile.portfolio });
                   if (profile?.socialLinks?.length) {
                     for (const sl of profile.socialLinks) {
                       if (sl.url && !links.some((l) => l.url === sl.url)) {
@@ -1267,7 +1269,7 @@ export default function JobSeekerProfilePage() {
                   }
                   return links.length > 0 ? (
                     <div>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Links</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("linksLabel")}</p>
                       <div className="flex flex-wrap gap-4">
                         {links.map((link, i) => (
                           <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
@@ -1306,30 +1308,30 @@ export default function JobSeekerProfilePage() {
       <Dialog open={showNameModal} onOpenChange={setShowNameModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Name</DialogTitle>
-            <DialogDescription className="sr-only">Update your display name</DialogDescription>
+            <DialogTitle>{t("editNameTitle")}</DialogTitle>
+            <DialogDescription className="sr-only">{t("editNameDescription")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveName(); }} className="space-y-3 py-2">
             <div>
-              <Label htmlFor="editName">Full Name</Label>
+              <Label htmlFor="editName">{t("fullNameLabel")}</Label>
               <Input
                 id="editName"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Your full name"
+                placeholder={t("fullNamePlaceholder")}
                 maxLength={200}
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground mt-1">{editName.length}/200 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("charCount", { count: editName.length, max: 200 })}</p>
             </div>
           </form>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" size="sm">Cancel</Button>
+              <Button variant="outline" size="sm">{t("cancel")}</Button>
             </DialogClose>
             <Button size="sm" onClick={handleSaveName} disabled={savingName || !editName.trim()}>
               {savingName ? <Loader2 className="w-4 h-4 animate-spin me-1.5" /> : <Save className="w-4 h-4 me-1.5" />}
-              Save
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1339,33 +1341,33 @@ export default function JobSeekerProfilePage() {
       <Dialog open={showHeadlineModal} onOpenChange={setShowHeadlineModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Headline</DialogTitle>
-            <DialogDescription className="sr-only">Update your professional headline</DialogDescription>
+            <DialogTitle>{t("editHeadlineTitle")}</DialogTitle>
+            <DialogDescription className="sr-only">{t("editHeadlineDescription")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveHeadline(); }} className="space-y-3 py-2">
             <div>
-              <Label htmlFor="editHeadline">Resume Headline</Label>
+              <Label htmlFor="editHeadline">{t("resumeHeadlineLabel")}</Label>
               <Input
                 id="editHeadline"
                 value={editHeadline}
                 onChange={(e) => setEditHeadline(e.target.value)}
-                placeholder="e.g. Full Stack Developer with 3 years of experience"
+                placeholder={t("resumeHeadlinePlaceholder")}
                 maxLength={200}
                 autoFocus
               />
               <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">A one-line summary that appears below your name</p>
-                <p className="shrink-0 text-xs text-muted-foreground">{editHeadline.length}/200 characters</p>
+                <p className="text-xs text-muted-foreground">{t("resumeHeadlineHint")}</p>
+                <p className="shrink-0 text-xs text-muted-foreground">{t("charCount", { count: editHeadline.length, max: 200 })}</p>
               </div>
             </div>
           </form>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" size="sm">Cancel</Button>
+              <Button variant="outline" size="sm">{t("cancel")}</Button>
             </DialogClose>
             <Button size="sm" onClick={handleSaveHeadline} disabled={savingHeadline || !editHeadline.trim()}>
               {savingHeadline ? <Loader2 className="w-4 h-4 animate-spin me-1.5" /> : <Save className="w-4 h-4 me-1.5" />}
-              Save
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1375,13 +1377,13 @@ export default function JobSeekerProfilePage() {
       <Dialog open={showSummaryModal} onOpenChange={setShowSummaryModal}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Professional Summary</DialogTitle>
-            <DialogDescription className="sr-only">Update your professional summary</DialogDescription>
+            <DialogTitle>{t("editSummaryTitle")}</DialogTitle>
+            <DialogDescription className="sr-only">{t("editSummaryDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <Label htmlFor="editSummary">About You</Label>
+                <Label htmlFor="editSummary">{t("aboutYouLabel")}</Label>
                 <button
                   type="button"
                   onClick={async () => {
@@ -1389,7 +1391,7 @@ export default function JobSeekerProfilePage() {
                     try {
                       const res = await csrfFetch("/api/ai/generate-summary", { method: "POST" });
                       const data = await res.json();
-                      if (!res.ok) throw new Error(data.error ?? "Failed");
+                      if (!res.ok) throw new Error(data.error ?? t("errors.summaryFailed"));
                       setEditSummary(data.summary);
                       setProfile((prev) => prev ? { ...prev, summary: data.summary } : prev);
                     } catch (e) { console.error(e); }
@@ -1399,9 +1401,9 @@ export default function JobSeekerProfilePage() {
                   className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
                 >
                   {generatingSummary ? (
-                    <><Loader2 className="w-3 h-3 animate-spin" /> Generating…</>
+                    <><Loader2 className="w-3 h-3 animate-spin" /> {t("generating")}</>
                   ) : (
-                    <><Sparkles className="w-3 h-3" /> Generate with AI</>
+                    <><Sparkles className="w-3 h-3" /> {t("generateWithAi")}</>
                   )}
                 </button>
               </div>
@@ -1409,21 +1411,21 @@ export default function JobSeekerProfilePage() {
                 id="editSummary"
                 value={editSummary}
                 onChange={(e) => setEditSummary(e.target.value)}
-                placeholder="Highlight your key career achievements to help employers know your potential"
+                placeholder={t("summaryPlaceholder")}
                 maxLength={2000}
                 rows={5}
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground mt-1">{editSummary.length}/2000 characters</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("charCount", { count: editSummary.length, max: 2000 })}</p>
             </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" size="sm">Cancel</Button>
+              <Button variant="outline" size="sm">{t("cancel")}</Button>
             </DialogClose>
             <Button size="sm" onClick={handleSaveSummary} disabled={savingSummary}>
               {savingSummary ? <Loader2 className="w-4 h-4 animate-spin me-1.5" /> : <Save className="w-4 h-4 me-1.5" />}
-              Save
+              {t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>

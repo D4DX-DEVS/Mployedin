@@ -104,6 +104,33 @@ export interface IEmployer extends Document {
     limit: number;
     resetDate: Date;
   };
+  /**
+   * Account state mirrored from `User.isActive` by
+   * `lib/employers/accountStatus`. It has to be declared here: that helper
+   * writes it with `$set`, and without the path Mongoose strict mode dropped
+   * the write silently — so `Employer.isActive` never became false and the
+   * `employer.isActive === false` guard in admin impersonation could never fire.
+   */
+  isActive: boolean;
+  /**
+   * Set when an admin converts this user away from the employer role. The
+   * profile is archived rather than deleted, so the conversion is reversible
+   * and the company's jobs keep an owner instead of going ownerless-but-public.
+   */
+  roleArchivedAt?: Date | null;
+  /**
+   * How this profile came into existence. `role_conversion` profiles are
+   * auto-created by an admin role change with no company details, so they carry
+   * the soft job-publishing gate until the company profile is filled in.
+   */
+  createdVia?: "self" | "admin" | "role_conversion";
+  /**
+   * Stamped by `PATCH /api/employers/me` once the company profile carries a
+   * name, an email and an industry. A `role_conversion` profile cannot publish
+   * a job until this is set, which is what stops an admin-converted account
+   * putting a job on the public board under the person's own name.
+   */
+  profileConfirmedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -112,6 +139,10 @@ const EmployerSchema = new Schema<IEmployer>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
+    isActive: { type: Boolean, default: true, index: true },
+    roleArchivedAt: { type: Date, default: null, index: true },
+    createdVia: { type: String, enum: ["self", "admin", "role_conversion"], default: "self" },
+    profileConfirmedAt: { type: Date, default: null },
     companyName: { type: String, required: true, trim: true },
     companyEmail: { type: String, required: true, lowercase: true },
     // Optional: the registration form and admin-create path both allow an empty

@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { AlertCircle, Check } from "lucide-react";
 import { useCompareApplications, type CompareCandidate } from "@/hooks/useApplications";
+import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -112,6 +113,7 @@ function CandidateColumn({ row, common, t, tBand }: { row: CompareCandidate; com
           {initials(candidate.name)}
         </div>
         <p className="line-clamp-2 font-semibold">{candidate.name}</p>
+        {row.isAgentReferred ? <ReferredBadge size="xs" /> : null}
         <ScoreRing
           value={aiMatchScore ?? undefined}
           size={64}

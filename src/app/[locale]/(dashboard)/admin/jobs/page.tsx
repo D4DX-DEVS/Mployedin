@@ -33,6 +33,7 @@ import {
 import { JobsFilterSheet } from "./_components/JobsFilterSheet";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { useConfirm } from "@/hooks/useConfirm";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -137,6 +138,7 @@ function getJobSummary(job: Job): string | null {
 
 export default function AdminJobsPage() {
   const t = useTranslations("adminJobs");
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -247,7 +249,8 @@ export default function AdminJobsPage() {
   }, [deepLinkedJobId, jobs, setDeepLinkedJobId]);
 
   const handleDeleteJob = async (jobId: string) => {
-    if (!confirm(t("deleteConfirmation"))) return;
+    const ok = await confirmDialog({ message: t("deleteConfirmation"), confirmLabel: t("delete") });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
       if (!res.ok) throw new Error(t("jobDeletionFailed"));
@@ -345,6 +348,8 @@ export default function AdminJobsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
+
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader

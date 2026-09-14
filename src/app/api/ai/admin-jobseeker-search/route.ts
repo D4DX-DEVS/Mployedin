@@ -13,6 +13,7 @@ const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent"];
 const AVAILABILITY_VALUES = new Set(["immediately", "within_month", "within_3_months", "not_available"]);
 const JOB_TYPE_VALUES = new Set(["remote", "hybrid", "onsite", "any"]);
 const SORT_VALUES = new Set(["newest", "oldest", "profile_high", "profile_low"]);
+const REFERRED_VALUES = new Set(["any", "agent", "super_agent", "none"]);
 
 interface RawAdminJobSeekerFilters {
   search?: unknown;
@@ -23,6 +24,7 @@ interface RawAdminJobSeekerFilters {
   minProfile?: unknown;
   maxProfile?: unknown;
   hasCV?: unknown;
+  referred?: unknown;
   sort?: unknown;
   experienceYears?: unknown;
   education?: unknown;
@@ -61,6 +63,7 @@ function normalizeFilters(raw: RawAdminJobSeekerFilters) {
     minProfile,
     maxProfile,
     hasCV: raw.hasCV === true ? true : undefined,
+    referred: typeof raw.referred === "string" && REFERRED_VALUES.has(raw.referred) ? raw.referred : undefined,
     sort: typeof raw.sort === "string" && SORT_VALUES.has(raw.sort)
       ? raw.sort : undefined,
     experienceYears: typeof raw.experienceYears === "number" && raw.experienceYears >= 0
@@ -100,6 +103,7 @@ Return ONLY valid JSON with this exact shape:
   "minProfile": number | null,
   "maxProfile": number | null,
   "hasCV": boolean | null,
+  "referred": "any" | "agent" | "super_agent" | "none" | null,
   "sort": "newest" | "oldest" | "profile_high" | "profile_low" | null,
   "experienceYears": number | null,
   "education": string | null,
@@ -115,6 +119,7 @@ Guidelines:
 - "jobType" for preferred work mode.
 - "minProfile"/"maxProfile" for profile completeness percentage (0-100).
 - "hasCV" = true if user wants only candidates with uploaded CVs.
+- "referred" when the user asks for candidates who joined through a partner referral link: "any" for referred at all, "agent" or "super_agent" for a specific kind of referrer, "none" for candidates who came on their own.
 - "sort" for sorting preference.
 - "experienceYears" minimum years of experience if mentioned.
 - "education" for ANY degree, qualification, or academic field keywords. Examples: "MTech", "BTech", "MBA", "Computer Science", "BSc", "Engineering", "Bachelor", "Master", "PhD", "mechanical engineering". If the query mentions a degree or academic subject, it MUST go in "education", NOT "search". Use the SHORT FORM of the degree (BTech, MTech, MBA, BSc, MSc, PhD) — the system will automatically expand to match related variants (e.g. BTech also matches Bachelor, BSc, B.E.).

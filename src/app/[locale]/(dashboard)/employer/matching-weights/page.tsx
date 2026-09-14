@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { useState, useEffect } from "react";
-import { Save, RotateCcw, Loader2, CheckCircle, BookTemplate, Copy } from "lucide-react";
+import { Save, RotateCcw, Loader2, CheckCircle, BookTemplate, Copy, X } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -154,10 +154,10 @@ export default function EmployerMatchingWeightsPage() {
         <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-3 panel-body">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="heading-label font-semibold text-foreground">Load from Template</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Select a matching weight preset to apply</p>
+              <h3 className="heading-label font-semibold text-foreground">{t("loadFromTemplate")}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{t("loadFromTemplateHint")}</p>
             </div>
-            <button onClick={() => setShowTemplateSelector(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+            <button onClick={() => setShowTemplateSelector(false)} aria-label={t("closeLabel")} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
           </div>
           {templatesLoading ? (
             <div className="h-16 animate-pulse rounded-xl border border-border bg-background/70" />
@@ -201,7 +201,7 @@ export default function EmployerMatchingWeightsPage() {
             <Input
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="Template name (e.g. Tech Roles — Skills Heavy)"
+              placeholder={t("templateNamePlaceholder")}
               maxLength={100}
               className="flex-1"
               onKeyDown={(e) => e.key === "Enter" && handleSaveAsTemplate()}
@@ -233,7 +233,7 @@ export default function EmployerMatchingWeightsPage() {
       {error && (
         <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600">✕</button>
+          <button onClick={() => setError(null)} aria-label={t("dismissErrorLabel")} className="font-medium text-red-400 hover:text-red-600"><X className="h-4 w-4" /></button>
         </div>
       )}
 

@@ -11,6 +11,7 @@ import { validateBody } from "@/lib/validators";
 import { referralLinkCreateSchema } from "@/lib/validators/referral-links";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { referralUrlFor } from "@/lib/referrals/url";
 
 interface AuthCtx {
   userId: string;
@@ -117,6 +118,15 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
     filter.creatorRole = creatorRoleFilter;
   }
 
+  // Audience filter. Links written before job-seeker links existed have no
+  // `audience`, and they are employer links, so "employer" is `$ne` not `$eq`.
+  const audienceFilter = url.searchParams.get("audience")?.trim();
+  if (audienceFilter === "job_seeker") {
+    filter.audience = "job_seeker";
+  } else if (audienceFilter === "employer") {
+    filter.audience = { $ne: "job_seeker" };
+  }
+
   // Date range filter
   if (dateFrom || dateTo) {
     filter.createdAt = {};
@@ -175,12 +185,21 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
           agentLinks: {
             $sum: { $cond: [{ $eq: ["$creatorRole", "agent"] }, 1, 0] },
           },
+          employerRegistrations: {
+            $sum: { $cond: [{ $ne: ["$audience", "job_seeker"] }, "$usedCount", 0] },
+          },
+          jobSeekerRegistrations: {
+            $sum: { $cond: [{ $eq: ["$audience", "job_seeker"] }, "$usedCount", 0] },
+          },
         },
       },
     ]),
   ]);
 
-  const stats = statsAgg[0] ?? { totalLinks: 0, activeLinks: 0, totalRegistrations: 0, myLinks: 0, agentLinks: 0 };
+  const stats = statsAgg[0] ?? {
+    totalLinks: 0, activeLinks: 0, totalRegistrations: 0, myLinks: 0, agentLinks: 0,
+    employerRegistrations: 0, jobSeekerRegistrations: 0,
+  };
 
   return NextResponse.json({
     links,
@@ -194,6 +213,8 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
       totalRegistrations: stats.totalRegistrations,
       myLinks: stats.myLinks,
       agentLinks: stats.agentLinks,
+      employerRegistrations: stats.employerRegistrations ?? 0,
+      jobSeekerRegistrations: stats.jobSeekerRegistrations ?? 0,
     },
   });
 }
@@ -215,6 +236,7 @@ async function handlePost(req: NextRequest, ctx: AuthCtx) {
   const body = await validateBody(req, referralLinkCreateSchema);
   const label = body.label ?? "";
   const maxUses = body.maxUses;
+  const audience = body.audience;
   const expiresAt = body.expiresAt ? new Date(body.expiresAt) : undefined;
 
   // Validate expiry is in the future
@@ -264,6 +286,7 @@ async function handlePost(req: NextRequest, ctx: AuthCtx) {
     code,
     createdBy: ctx.userId,
     creatorRole: ctx.role,
+    audience,
     ...(agentId ? { agentId } : {}),
     ...(superAgentId ? { superAgentId } : {}),
     label: label || undefined,
@@ -276,13 +299,13 @@ async function handlePost(req: NextRequest, ctx: AuthCtx) {
     action: "referral_link.create",
     resource: "referral_links",
     resourceId: link._id.toString(),
-    meta: { code, label, maxUses, creatorRole: ctx.role },
+    meta: { code, label, maxUses, audience, creatorRole: ctx.role },
     req,
   });
 
   return NextResponse.json({
     link,
-    referralUrl: `${baseUrl}/en/employer-register?ref=${code}`,
+    referralUrl: referralUrlFor({ code, audience }, "en", baseUrl),
   }, { status: 201 });
 }
 

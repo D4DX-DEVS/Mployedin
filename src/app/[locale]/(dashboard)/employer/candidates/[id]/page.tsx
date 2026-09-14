@@ -12,6 +12,7 @@ import {
   GraduationCap, Languages, Award, Eye, Download, AlertCircle,
 } from "lucide-react";
 import { useCandidateDetail } from "@/hooks/useCandidates";
+import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { CvInlineFrame } from "@/components/shared/CvInlineFrame";
 import { useTranslations } from "next-intl";
@@ -78,6 +79,7 @@ interface CandidateProfile {
     availabilityStatus?: string;
     profileCompleteness?: number;
     badges?: string[];
+    isAgentReferred?: boolean;
     cv?: { originalUrl?: string };
     headline?: string;
     totalExperienceYears?: number;
@@ -207,6 +209,7 @@ export default function UnifiedCandidatePage() {
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </Button>
             <span className="truncate">{name}</span>
+            {candidate.isAgentReferred ? <ReferredBadge /> : null}
           </span>
         }
         context={t("unifiedProfile")}

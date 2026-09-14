@@ -397,14 +397,14 @@ export default function JobSeekerDocumentsPage() {
               <h3 className="font-semibold">{t("extractedProfile")}</h3>
             </div>
 
-            {extracted.fullName && <p className="text-sm"><strong>Name:</strong> {extracted.fullName}</p>}
-            {extracted.email && <p className="text-sm"><strong>Email:</strong> {extracted.email}</p>}
-            {extracted.currentLocation && <p className="text-sm"><strong>Location:</strong> {extracted.currentLocation}</p>}
-            {extracted.headline && <p className="text-sm"><strong>Headline:</strong> {extracted.headline}</p>}
+            {extracted.fullName && <p className="text-sm"><strong>{t("extractedName")}</strong> {extracted.fullName}</p>}
+            {extracted.email && <p className="text-sm"><strong>{t("extractedEmail")}</strong> {extracted.email}</p>}
+            {extracted.currentLocation && <p className="text-sm"><strong>{t("extractedLocation")}</strong> {extracted.currentLocation}</p>}
+            {extracted.headline && <p className="text-sm"><strong>{t("extractedHeadline")}</strong> {extracted.headline}</p>}
 
             {extracted.skills && extracted.skills.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Skills</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionSkills")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {extracted.skills.map((s, i) => (
                     <span key={`${s.name}-${i}`} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s.name}</span>
@@ -415,7 +415,7 @@ export default function JobSeekerDocumentsPage() {
 
             {extracted.experience && extracted.experience.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Experience</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionExperience")}</p>
                 <div className="space-y-1.5">
                   {extracted.experience.map((exp, i) => (
                     <div key={i} className="text-sm border-l-2 border-primary/30 pl-3">
@@ -429,11 +429,11 @@ export default function JobSeekerDocumentsPage() {
 
             {extracted.education && extracted.education.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Education</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionEducation")}</p>
                 <div className="space-y-1.5">
                   {extracted.education.map((ed, i) => (
                     <div key={i} className="text-sm border-l-2 border-blue-200 pl-3">
-                      <p className="font-medium">{ed.degree}{ed.field ? ` in ${ed.field}` : ""}</p>
+                      <p className="font-medium">{ed.field ? t("degreeInField", { degree: ed.degree, field: ed.field }) : ed.degree}</p>
                       <p className="text-xs text-muted-foreground">{ed.institution} · {ed.country}</p>
                     </div>
                   ))}
@@ -443,7 +443,7 @@ export default function JobSeekerDocumentsPage() {
 
             {extracted.certifications && extracted.certifications.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Certifications</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionCertifications")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {extracted.certifications.map((cert, i) => (
                     <span key={i} className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">{cert}</span>
@@ -454,7 +454,7 @@ export default function JobSeekerDocumentsPage() {
 
             {extracted.languages && extracted.languages.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Languages</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionLanguages")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {extracted.languages.map((l, i) => (
                     <span key={i} className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium capitalize">

@@ -40,6 +40,7 @@ export type NotificationType =
   | "system"
   | "agent_joined"
   | "employer_registered"
+  | "job_seeker_registered"
   | "placement_completed"
   | "new_job_posted"
   | "target_assigned"
@@ -298,6 +299,41 @@ export async function notifyScorecardSubmitted(
   });
 }
 
+/** Where a role lands after an admin converts the account. */
+const ROLE_HOME: Record<string, string> = {
+  admin: "/admin",
+  super_agent: "/super-agent",
+  agent: "/agent",
+  employer: "/employer",
+  job_seeker: "/job-seeker",
+};
+
+/**
+ * An admin role conversion silently rebuilds the account: different navigation,
+ * different permissions, a different profile. The person used to find that out
+ * by logging in to an app they did not recognise, so tell them it happened and
+ * where they now land.
+ */
+export async function notifyRoleChanged(
+  userId: string,
+  fromRole: string,
+  toRole: string,
+): Promise<void> {
+  await notify({
+    userId,
+    type: "system",
+    title: "Your account type changed",
+    message: `An administrator changed your account from ${fromRole.replace("_", " ")} to ${toRole.replace("_", " ")}.`,
+    // Stored without a locale segment — localizeActionUrl prefixes the reader's.
+    link: ROLE_HOME[toRole] ?? "/",
+    sendEmail: true,
+    metadata: { fromRole, toRole },
+    titleKey: "roleChangedTitle",
+    bodyKey: "roleChangedBody",
+    params: { fromRole, toRole },
+  });
+}
+
 export async function notifyTargetAssigned(
   assigneeId: string,
   assigneeRole: TargetAssigneeRole,
@@ -514,6 +550,28 @@ export async function notifySuperAgentEmployerRegistered(
     titleKey: "saEmployerRegisteredTitle",
     bodyKey: "saEmployerRegisteredBody",
     params: { companyName, agentName },
+  });
+}
+
+/** The owner of a job-seeker referral link, when a seeker registers through it. In-app only. */
+export async function notifyReferrerJobSeekerRegistered(
+  referrerUserId: string,
+  referrerRole: "agent" | "super_agent",
+  seekerName: string,
+  jobSeekerId: string,
+): Promise<void> {
+  const segment = referrerRole === "super_agent" ? "super-agent" : "agent";
+  await notify({
+    userId: referrerUserId,
+    type: "job_seeker_registered",
+    title: "New job seeker joined via your link",
+    message: `${seekerName} registered through your referral link.`,
+    link: `/${segment}/job-seekers?search=${encodeURIComponent(seekerName)}`,
+    sendEmail: false,
+    metadata: { jobSeekerId },
+    titleKey: "referrerJobSeekerRegisteredTitle",
+    bodyKey: "referrerJobSeekerRegisteredBody",
+    params: { seekerName },
   });
 }
 

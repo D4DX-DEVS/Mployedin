@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from "react";
+import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
+import type { ReferralSummary } from "@/lib/referrals/summary";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -60,11 +62,13 @@ interface JobSeeker {
   availabilityStatus?: string;
   preferredLocations?: string[];
   cv?: { originalUrl?: string };
+  referralSummary?: ReferralSummary;
   createdAt: string;
 }
 
 interface AiFilters {
   search?: string;
+  referred?: string;
   skills?: string[];
   location?: string;
   availability?: string;
@@ -122,6 +126,7 @@ export default function AdminJobSeekersPage() {
   const [jobTypeFilter, setJobTypeFilter] = useState("");
   const [sortFilter, setSortFilter] = useState("newest");
   const [hasCVFilter, setHasCVFilter] = useState(false);
+  const [referredFilter, setReferredFilter] = useState("");
   const [educationFilter, setEducationFilter] = useState("");
   const [nationalityFilter, setNationalityFilter] = useState("");
   const [experienceYearsFilter, setExperienceYearsFilter] = useState(0);
@@ -171,11 +176,17 @@ export default function AdminJobSeekersPage() {
     { header: tr("exportColumnHeaderHasCv"), key: "cv", formatter: (v) => (v as JobSeeker["cv"])?.originalUrl ? tr("exportYes") : tr("exportNo") },
     { header: tr("tableHeaderStatus"), key: "status", formatter: (v) => String(v ?? "active") },
     { header: tr("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: tr("exportHeaderReferredBy"), key: "referralSummary", formatter: (v) => {
+      const sum = v as ReferralSummary | undefined;
+      if (!sum) return "—";
+      const role = sum.role === "super_agent" ? tr("referredByRoleSuperAgent") : tr("referredByRoleAgent");
+      return sum.name ? `${role}: ${sum.name}` : role;
+    }},
   ], [tr]);
 
   // PDF fits ~10 columns in landscape A4; the full 17-column set is unreadable
   const pdfColumns = useMemo(() => {
-    const keepKeys = ["fullName", "email", "phone", "nationality", "currentLocation", "totalExperienceYears", "availabilityStatus", "profileCompleteness", "cv", "createdAt"];
+    const keepKeys = ["fullName", "email", "phone", "nationality", "currentLocation", "totalExperienceYears", "availabilityStatus", "profileCompleteness", "cv", "createdAt", "referralSummary"];
     return exportColumns.filter((c) => keepKeys.includes(c.key));
   }, [exportColumns]);
 
@@ -198,6 +209,7 @@ export default function AdminJobSeekersPage() {
     if (jobTypeFilter) params.set("jobType", jobTypeFilter);
     if (sortFilter && sortFilter !== "newest") params.set("sort", sortFilter);
     if (hasCVFilter) params.set("hasCV", "1");
+    if (referredFilter) params.set("referred", referredFilter);
     if (educationFilter) params.set("education", educationFilter);
     if (nationalityFilter) params.set("nationality", nationalityFilter);
     if (experienceYearsFilter > 0) params.set("experienceYears", String(experienceYearsFilter));
@@ -212,7 +224,7 @@ export default function AdminJobSeekersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, skillsFilter, locationFilter, availabilityFilter, jobTypeFilter, sortFilter, hasCVFilter, educationFilter, nationalityFilter, experienceYearsFilter, page, limit]);
+  }, [search, skillsFilter, locationFilter, availabilityFilter, jobTypeFilter, sortFilter, hasCVFilter, referredFilter, educationFilter, nationalityFilter, experienceYearsFilter, page, limit]);
 
   useEffect(() => {
     const timeout = setTimeout(fetchJobSeekers, 300);
@@ -250,6 +262,7 @@ export default function AdminJobSeekersPage() {
       if (filters.skills?.length) setSkillsFilter(filters.skills.join(","));
       if (filters.location) setLocationFilter(filters.location);
       if (filters.availability) setAvailabilityFilter(filters.availability);
+      if (filters.referred) setReferredFilter(filters.referred);
       if (filters.jobType) setJobTypeFilter(filters.jobType);
       if (filters.sort) setSortFilter(filters.sort);
       if (filters.hasCV) setHasCVFilter(true);
@@ -300,6 +313,7 @@ export default function AdminJobSeekersPage() {
     setSkillsFilter("");
     setLocationFilter("");
     setAvailabilityFilter("");
+    setReferredFilter("");
     setJobTypeFilter("");
     setSortFilter("newest");
     setHasCVFilter(false);
@@ -446,9 +460,10 @@ export default function AdminJobSeekersPage() {
     if (availabilityFilter) count++;
     if (jobTypeFilter) count++;
     if (hasCVFilter) count++;
+    if (referredFilter) count++;
     if (sortFilter !== "newest") count++;
     return count;
-  }, [search, skillsFilter, locationFilter, availabilityFilter, jobTypeFilter, hasCVFilter, sortFilter]);
+  }, [search, skillsFilter, locationFilter, availabilityFilter, jobTypeFilter, hasCVFilter, referredFilter, sortFilter]);
 
   return (
     <div className="page-container">
@@ -669,6 +684,22 @@ export default function AdminJobSeekersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Referred by */}
+              <div>
+                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("tableHeaderReferredBy")}</label>
+                <Select value={referredFilter || "all"} onValueChange={(v) => { setReferredFilter(v === "all" ? "" : v); resetPage(); }}>
+                  <SelectTrigger className="h-7 text-xs rounded-md">
+                    <SelectValue placeholder={tr("filterReferredAll")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{tr("filterReferredAll")}</SelectItem>
+                    <SelectItem value="any">{tr("filterReferredAny")}</SelectItem>
+                    <SelectItem value="agent">{tr("filterReferredAgent")}</SelectItem>
+                    <SelectItem value="super_agent">{tr("filterReferredSuperAgent")}</SelectItem>
+                    <SelectItem value="none">{tr("filterReferredNone")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {/* Job Type */}
               <div>
                 <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelJobType")}</label>
@@ -730,6 +761,7 @@ export default function AdminJobSeekersPage() {
               <TableHead>{tr("tableHeaderSkills")}</TableHead>
               <TableHead>{tr("tableHeaderProfilePercent")}</TableHead>
               <TableHead>{tr("tableHeaderJoined")}</TableHead>
+              <TableHead>{tr("tableHeaderReferredBy")}</TableHead>
               {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
                 <TableHead>{tr("tableHeaderActions")}</TableHead>
               )}
@@ -737,10 +769,10 @@ export default function AdminJobSeekersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableBodySkeleton rows={5} cols={7} />
+              <TableBodySkeleton rows={5} cols={8} />
             ) : jobSeekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="h-32 text-center">
+                <TableCell colSpan={8} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
                     <span className="text-sm">{tr("emptyStateTitle")}</span>
@@ -798,6 +830,11 @@ export default function AdminJobSeekersPage() {
                   ) : <span className="text-muted-foreground">—</span>}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-xs">{formatDate(new Date(js.createdAt))}</TableCell>
+                <TableCell className="text-xs">
+                  {js.referralSummary
+                    ? <ReferralSourceChip namespace="adminJobSeekers" summary={js.referralSummary} />
+                    : <span className="text-muted-foreground">—</span>}
+                </TableCell>
                 {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
@@ -830,7 +867,7 @@ export default function AdminJobSeekersPage() {
               {/* Expanded Row */}
               {expandedId === js._id && (
                 <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableCell colSpan={7} className="p-4">
+                  <TableCell colSpan={8} className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       {/* Summary */}
                       {js.summary && (

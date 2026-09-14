@@ -125,12 +125,16 @@ export default function AdminTerritoryPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    const res = await fetch(`/api/admin/territories/${deleteId}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success(tr("toastTerritoryDeleted"));
-      setDeleteId(null);
-      fetchTerritories();
-    } else {
+    try {
+      const res = await fetch(`/api/admin/territories/${deleteId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success(tr("toastTerritoryDeleted"));
+        setDeleteId(null);
+        fetchTerritories();
+      } else {
+        toast.error(tr("toastFailedToDelete"));
+      }
+    } catch {
       toast.error(tr("toastFailedToDelete"));
     }
   };

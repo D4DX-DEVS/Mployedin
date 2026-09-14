@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import AdminJobsPage from "@/app/[locale]/(dashboard)/admin/jobs/page";
@@ -158,8 +158,16 @@ describe("AdminJobsPage", () => {
 
     await user.click(screen.getByRole("button", { name: /delete/i }));
 
-    expect(confirmMock).toHaveBeenCalledWith("Are you sure you want to delete this job?");
-    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1", { method: "DELETE" });
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Are you sure you want to delete this job?")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1", { method: "DELETE" });
+    });
+    // The native window.confirm cannot be styled or translated, and was the last
+    // one left in the codebase.
+    expect(confirmMock).not.toHaveBeenCalled();
   });
 
   it("shows an error banner when the jobs request fails", async () => {

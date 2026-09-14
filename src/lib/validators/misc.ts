@@ -148,4 +148,6 @@ export const jobSeekerRegisterSchema = z.object({
   name: z.string().min(1).max(200).trim(),
   email: z.string().email().max(254).trim().toLowerCase(),
   password: strongPasswordSchema,
+  /** Shape is enforced by attachJobSeekerReferral; a bad code never blocks signup. */
+  referralCode: z.string().trim().max(32).optional(),
 });

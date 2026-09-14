@@ -192,6 +192,24 @@ describe("ApplicationsBoard", () => {
     expect(screen.getByText("New")).toBeInTheDocument();
   });
 
+  it("badges a partner-referred card and never names the partner", () => {
+    useInfiniteApplicationsMock.mockImplementation(({ status }: any) =>
+      status === "applied"
+        ? column([mockApp({ _id: "app-1", isAgentReferred: true })], 1)
+        : column([], 0),
+    );
+
+    const { container } = renderBoard({ applied: 1 });
+    // The next-intl mock renders the real English copy from messages/en.json.
+    expect(screen.getByTestId("referred-badge")).toHaveTextContent("Partner referred");
+    expect(container.textContent).not.toMatch(/agent|super.?agent/i);
+  });
+
+  it("shows no badge for a candidate who came on their own", () => {
+    renderBoard({ applied: 1 });
+    expect(screen.queryByTestId("referred-badge")).toBeNull();
+  });
+
   it("drops a dragged card onto another stage and moves it there", async () => {
     onMove.mockResolvedValue(undefined);
     renderBoard({ applied: 1, shortlisted: 1 });

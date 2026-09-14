@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -157,6 +158,17 @@ export default function AgentCandidatesPage() {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  /*
+   * The dialogs render their own error line, but the inline stage button has
+   * nowhere to put one — and the API refuses this move more often than it
+   * looks: moving a candidate who still has an open interview comes back 409.
+   * Without this the row simply did not change and said nothing about why.
+   */
+  const advanceStage = async (appId: string, newStatus: string) => {
+    const ok = await handleStatusUpdate(appId, newStatus);
+    if (!ok) toast.error(t("advanceErrorGeneric"));
   };
 
   const openSchedule = (app: ApplicationItem) => {
@@ -425,7 +437,7 @@ export default function AgentCandidatesPage() {
                         {updatingId === app._id ? (
                           <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         ) : TERMINAL_STATUSES.has(app.status) ? (
-                          <span className="text-xs capitalize text-muted-foreground">{app.status}</span>
+                          <span className="text-xs text-muted-foreground">{t(`status_${app.status}`)}</span>
                         ) : (
                           <>
                             {NEXT_STAGE_KEYS[app.status] && (
@@ -435,7 +447,7 @@ export default function AgentCandidatesPage() {
                                 className="gap-1 rounded-lg px-2.5 text-xs"
                                 title={t(`actionLabel_${app.status}`)}
                                 data-table-action=""
-                                onClick={() => handleStatusUpdate(app._id, NEXT_STAGE_KEYS[app.status])}
+                                onClick={() => advanceStage(app._id, NEXT_STAGE_KEYS[app.status])}
                               >
                                 {app.status === "applied" ? <Check className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                 {t(`actionLabel_${app.status}`)}

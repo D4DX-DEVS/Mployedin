@@ -29,7 +29,9 @@ interface AuditLogEntry {
   action: string;
   resource: string;
   resourceId?: string;
-  changes?: { before?: unknown; after?: unknown };
+  changes?: { before?: Record<string, unknown>; after?: Record<string, unknown> };
+  /** Actor-supplied context — currently the target's name/email and role move. */
+  meta?: Record<string, unknown>;
   ipAddress: string;
   country?: string;
   userAgent?: string;
@@ -44,8 +46,60 @@ const RESOURCE_COLOR: Record<string, string> = {
   settings: "bg-red-100 text-red-700",
 };
 
+/** Fields whose values are too long or too sensitive to print in a table cell. */
+const CHANGE_VALUE_BLOCKLIST = new Set(["customPermissions", "passwordHash", "registrationNo", "taxId"]);
+
+function formatChangeValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "object") return Array.isArray(value) ? `${value.length}` : "…";
+  return String(value).replace("_", " ");
+}
+
 export default function AuditLogsPage() {
   const t = useTranslations("adminAuditLogs");
+
+  /**
+   * The table used to show only "user.update" on "users" — the row proved that
+   * *something* happened to *someone* and nothing more. `changes.before` was
+   * recorded for some actions and never rendered at all, so an admin could not
+   * tell a role conversion from a name edit, let alone what the role had been.
+   */
+  const describeChange = useCallback((log: AuditLogEntry) => {
+    const from = log.meta?.fromRole;
+    const to = log.meta?.toRole;
+    if (from && to) {
+      return (
+        <span className="text-foreground">
+          {t("changeArrow", { from: formatChangeValue(from), to: formatChangeValue(to) })}
+        </span>
+      );
+    }
+
+    const after = log.changes?.after;
+    if (!after || typeof after !== "object") return null;
+    const before = log.changes?.before ?? {};
+    const fields = Object.keys(after).filter((k) => !CHANGE_VALUE_BLOCKLIST.has(k));
+    if (fields.length === 0) return null;
+
+    return (
+      <div className="space-y-0.5">
+        {fields.slice(0, 3).map((field) => (
+          <p key={field} className="text-xs">
+            <span className="text-muted-foreground">{field}: </span>
+            <span className="text-foreground">
+              {t("changeArrow", {
+                from: formatChangeValue((before as Record<string, unknown>)[field]),
+                to: formatChangeValue(after[field]),
+              })}
+            </span>
+          </p>
+        ))}
+        {fields.length > 3 && <p className="text-xs text-muted-foreground">+{fields.length - 3}</p>}
+      </div>
+    );
+  }, [t]);
+
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   /* Actor search and role filter arrived with the merge of the separate
@@ -88,6 +142,29 @@ export default function AuditLogsPage() {
     { header: t("onBehalfOf"), key: "onBehalfOfId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).onBehalfOfId?.email ?? "—" },
     { header: t("action"), key: "action" },
     { header: t("resource"), key: "resource" },
+    // Kept in step with the table columns, so an exported log is as readable as
+    // the screen it came from.
+    {
+      header: t("target"),
+      key: "resourceId" as keyof AuditLogEntry,
+      formatter: (_v, r) => {
+        const row = r as unknown as AuditLogEntry;
+        return String(row.meta?.targetEmail ?? row.meta?.targetName ?? row.resourceId ?? "—");
+      },
+    },
+    {
+      header: t("changeDetail"),
+      key: "changes" as keyof AuditLogEntry,
+      formatter: (_v, r) => {
+        const row = r as unknown as AuditLogEntry;
+        if (row.meta?.fromRole && row.meta?.toRole) {
+          return `${String(row.meta.fromRole)} -> ${String(row.meta.toRole)}`;
+        }
+        const after = row.changes?.after;
+        if (!after) return "—";
+        return Object.keys(after).filter((k) => !CHANGE_VALUE_BLOCKLIST.has(k)).join(", ") || "—";
+      },
+    },
     { header: t("ipAddress"), key: "ipAddress" },
     { header: t("country"), key: "country", formatter: (v) => String(v ?? "—") },
   ];
@@ -231,6 +308,8 @@ export default function AuditLogsPage() {
                 <th className="text-start px-4 py-3">{t("actor")}</th>
                 <th className="text-start px-4 py-3">{t("action")}</th>
                 <th className="text-start px-4 py-3">{t("resource")}</th>
+                <th className="text-start px-4 py-3">{t("target")}</th>
+                <th className="text-start px-4 py-3">{t("changeDetail")}</th>
                 <th className="text-start px-4 py-3">{t("ipAddress")}</th>
                 <th className="text-start px-4 py-3">{t("country")}</th>
               </tr>
@@ -268,6 +347,21 @@ export default function AuditLogsPage() {
                       <Badge className={`${RESOURCE_COLOR[log.resource] ?? "bg-muted text-muted-foreground"} border-0 text-xs`}>
                         {log.resource}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {log.meta?.targetEmail || log.meta?.targetName ? (
+                        <div className="min-w-0">
+                          {log.meta.targetName ? <p className="text-foreground truncate">{String(log.meta.targetName)}</p> : null}
+                          {log.meta.targetEmail ? <p className="text-muted-foreground truncate">{String(log.meta.targetEmail)}</p> : null}
+                        </div>
+                      ) : log.resourceId ? (
+                        <span className="text-muted-foreground font-mono text-[11px]">{log.resourceId}</span>
+                      ) : (
+                        <span className="text-muted-foreground">{t("noChangeRecorded")}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {describeChange(log) ?? <span className="text-muted-foreground">{t("noChangeRecorded")}</span>}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{log.ipAddress}</td>
                     <td className="px-4 py-3">

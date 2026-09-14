@@ -27,6 +27,8 @@ export interface ApplicationsFilters {
   fetchCounts?: boolean;
   /** Employer only: filter to unreviewed applications (viewedByEmployerAt: null). */
   unreviewed?: boolean;
+  /** Only candidates who joined through a partner referral link. */
+  referred?: boolean;
 }
 
 /** Filters for page-by-page loading; the page number is the query's own state. */
@@ -68,6 +70,7 @@ function buildApplicationsParams(filters: ApplicationsFilters): URLSearchParams 
   if (filters.fetchJobs) params.set("fetchJobs", "true");
   if (filters.fetchCounts) params.set("fetchCounts", "true");
   if (filters.unreviewed) params.set("unreviewed", "true");
+  if (filters.referred) params.set("referred", "true");
   return params;
 }
 
@@ -411,6 +414,8 @@ export interface CompareCandidate {
   status: string;
   appliedAt: string;
   aiMatchScore: number | null;
+  /** Snapshot at apply time: the candidate joined through a partner referral. */
+  isAgentReferred?: boolean;
   matchBreakdown: { skills?: number; experience?: number; location?: number; salary?: number } | null;
   candidate: {
     name: string;

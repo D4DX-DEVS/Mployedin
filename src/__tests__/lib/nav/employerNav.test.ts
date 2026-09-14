@@ -41,7 +41,9 @@ const REACHED_ELSEWHERE: Record<string, string> = {
   "/employer/scorecards": "Interviews header link; one is filled while completing an interview",
   "/employer/messages": "Topbar messages indicator, shown at every width",
   "/employer/assessments": "Parked feature: the employer can build a test but no candidate can sit one (no seeker UI, and the create form never sets jobIds), so totalAttempts is structurally 0. Left off the sidebar until the candidate half exists; direct URL still opens it",
-  "/employer/team": "Parked feature (invite API answers 501); reachable from team activity",
+  // No longer parked: POST /api/employers/team issues real invites and the row
+  // is back in the sidebar behind canManageTeam.
+  "/employer/team": "Sidebar row (canManageTeam); also reachable from team activity",
   "/employer/team/accept": "Invite email link",
 };
 

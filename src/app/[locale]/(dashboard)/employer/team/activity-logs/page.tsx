@@ -459,7 +459,7 @@ export default function TeamActivityLogsPage() {
                   <th className="text-start px-4 py-3">{t("teamMember")}</th>
                   <th className="text-start px-4 py-3">{t("action")}</th>
                   <th className="text-start px-4 py-3">{t("resource")}</th>
-                  <th className="text-start px-4 py-3">Details</th>
+                  <th className="text-start px-4 py-3">{t("details")}</th>
                   <th className="text-start px-4 py-3">{t("ipAddress")}</th>
                 </tr>
               </thead>
@@ -505,7 +505,7 @@ export default function TeamActivityLogsPage() {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">System</span>
+                          <span className="text-xs text-muted-foreground">{t("system")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">

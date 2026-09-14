@@ -29,10 +29,13 @@ export async function GET(req: NextRequest) {
   if (rl) {
     const expired = rl.expiresAt && new Date(rl.expiresAt) < new Date();
     const maxReached = rl.maxUses > 0 && rl.usedCount >= rl.maxUses;
-    // Public, unauthenticated endpoint: answer validity only. The creator's role
-    // (agent vs super-agent) is internal structure a code oracle must not leak.
+    // Public, unauthenticated endpoint: answer validity and audience only. The
+    // creator's role (agent vs super-agent) is internal structure a code oracle
+    // must not leak. Audience is needed so /register can tell an employer link
+    // from a seeker link and say so.
     return NextResponse.json({
       valid: !expired && !maxReached,
+      audience: rl.audience === "job_seeker" ? "job_seeker" : "employer",
       ...(expired ? { reason: "expired" } : {}),
       ...(maxReached ? { reason: "max_reached" } : {}),
     });
@@ -41,12 +44,13 @@ export async function GET(req: NextRequest) {
   // Fallback: legacy codes on Agent/SuperAgent models
   const agent = await Agent.findOne({ referralCode: code }).lean();
   if (agent) {
-    return NextResponse.json({ valid: true });
+    // Legacy default links only ever signed up employers.
+    return NextResponse.json({ valid: true, audience: "employer" });
   }
 
   const sa = await SuperAgent.findOne({ referralCode: code }).lean();
   if (sa) {
-    return NextResponse.json({ valid: true });
+    return NextResponse.json({ valid: true, audience: "employer" });
   }
 
   return NextResponse.json({ valid: false }, { status: 404 });

@@ -11,6 +11,7 @@ import { escapeRegex, isValidRole } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { adminUserCreateSchema, adminUserPatchSchema, adminUserDeleteSchema } from "@/lib/validators/admin";
 import { deactivateEmployerAccount, reactivateEmployerAccount } from "@/lib/employers/accountStatus";
+import { notifyRoleChanged } from "@/lib/notifications/trigger";
 
 import bcrypt from "bcryptjs";
 import logger from "@/lib/logger";
@@ -18,48 +19,94 @@ import logger from "@/lib/logger";
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 /**
- * Role changes must also create the role's profile document — job posting,
- * employer settings, and drafts all 404/403 when Employer/JobSeeker is missing
- * (admin-converted employers previously couldn't post jobs at all).
+ * A role change has to move the account's profile document too — job posting,
+ * employer settings and drafts all 404/403 when Employer/JobSeeker is missing
+ * (admin-converted employers once couldn't post jobs at all). This is the one
+ * place that does it, for both the single-user update and bulk `setRole`.
+ *
+ * The outgoing profile is ARCHIVED, never deleted. Deleting it was destructive
+ * in both directions:
+ *   - seeker → anything binned the CV, skills and onboarding state for good.
+ *     Converting back handed the person a blank profile, and their existing
+ *     applications still pointed at a JobSeeker id that no longer existed.
+ *   - employer → anything deleted the Employer but left that company's jobs
+ *     `status: "active"` with a dangling `employerId`: still on the public
+ *     board, still taking applications, with no owner able to take them down.
+ *
+ * So outgoing profiles get a `roleArchivedAt` stamp, and an outgoing employer
+ * additionally runs through `deactivateEmployerAccount`, which pauses exactly
+ * their live jobs with the restorable `employer_deactivated` reason. Converting
+ * back clears the stamp and resumes exactly those jobs.
  */
-async function ensureRoleProfile(user: { _id: unknown; name?: string; email?: string }, role: string, oldRole?: string): Promise<void> {
-  // Delete old profile if role is changing
+async function applyRoleProfileChange(
+  user: { _id: unknown; name?: string; email?: string },
+  role: string,
+  oldRole?: string,
+  /**
+   * Only `role_conversion` profiles carry the job-publishing gate. An admin
+   * creating an employer from scratch fills the company details in the same
+   * form, so gating those would block a flow that is already complete.
+   */
+  createdVia: "role_conversion" | "admin" = "role_conversion",
+): Promise<void> {
+  const userId = user._id;
+
   if (oldRole && oldRole !== role) {
+    const archivedAt = new Date();
     if (oldRole === "employer") {
+      // Pauses live jobs and mirrors isActive — must run before the stamp so a
+      // failure here leaves the profile visibly un-archived rather than
+      // silently archived with its jobs still public.
+      await deactivateEmployerAccount(String(userId));
       const { Employer } = await import("@/models/Employer");
-      await Employer.deleteOne({ userId: user._id });
+      await Employer.updateOne({ userId }, { $set: { roleArchivedAt: archivedAt } });
     } else if (oldRole === "job_seeker") {
       const JobSeeker = (await import("@/models/JobSeeker")).default;
-      await JobSeeker.deleteOne({ userId: user._id });
+      await JobSeeker.updateOne({ userId }, { $set: { roleArchivedAt: archivedAt } });
     } else if (oldRole === "agent") {
-      await Agent.deleteOne({ userId: user._id });
+      await Agent.updateOne({ userId }, { $set: { roleArchivedAt: archivedAt } });
     } else if (oldRole === "super_agent") {
-      await SuperAgent.deleteOne({ userId: user._id });
+      await SuperAgent.updateOne({ userId }, { $set: { roleArchivedAt: archivedAt } });
     }
   }
 
   if (role === "employer") {
     const { Employer } = await import("@/models/Employer");
-    const exists = await Employer.exists({ userId: user._id });
-    if (!exists) {
+    const existing = await Employer.exists({ userId });
+    if (existing) {
+      // Returning to a profile we archived earlier: un-archive and resume only
+      // the jobs that deactivation paused.
+      await Employer.updateOne({ userId }, { $set: { roleArchivedAt: null } });
+      await reactivateEmployerAccount(String(userId));
+    } else {
       await Employer.create({
-        userId: user._id,
+        userId,
+        // `companyName` is `required`, so this seeds from the account name — but
+        // `createdVia: "role_conversion"` keeps the profile behind the
+        // publishing gate until the employer confirms real company details, so
+        // a personal name never reaches the public job board.
         companyName: user.name || "My Company",
         companyEmail: user.email,
+        createdVia,
+        profileConfirmedAt: null,
       });
     }
   } else if (role === "job_seeker") {
     const JobSeeker = (await import("@/models/JobSeeker")).default;
-    const exists = await JobSeeker.exists({ userId: user._id });
-    if (!exists) {
-      await JobSeeker.create({ userId: user._id, fullName: user.name ?? "", isOnboarded: false });
+    const existing = await JobSeeker.exists({ userId });
+    if (existing) {
+      await JobSeeker.updateOne({ userId }, { $set: { roleArchivedAt: null } });
+    } else {
+      await JobSeeker.create({ userId, fullName: user.name ?? "", isOnboarded: false });
     }
   } else if (role === "agent") {
-    const exists = await Agent.exists({ userId: user._id });
-    if (!exists) await Agent.create({ userId: user._id, commissionRate: 0 });
+    const existing = await Agent.exists({ userId });
+    if (existing) await Agent.updateOne({ userId }, { $set: { roleArchivedAt: null } });
+    else await Agent.create({ userId, commissionRate: 0 });
   } else if (role === "super_agent") {
-    const exists = await SuperAgent.exists({ userId: user._id });
-    if (!exists) await SuperAgent.create({ userId: user._id, overrideRate: 0 });
+    const existing = await SuperAgent.exists({ userId });
+    if (existing) await SuperAgent.updateOne({ userId }, { $set: { roleArchivedAt: null } });
+    else await SuperAgent.create({ userId, overrideRate: 0 });
   }
 }
 
@@ -141,6 +188,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     }
 
     const results: Array<{ userId: string; status: "updated" | "skipped" | "error"; reason?: string }> = [];
+    // Recorded per user so the audit row can say what each account was before,
+    // not just which role they all ended up on.
+    const roleChanges: Array<{ userId: string; from: string; to: string }> = [];
 
     for (const id of ids) {
       if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -164,10 +214,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
                 break;
               }
             }
-            modified = (await User.updateOne({ _id: id }, { $set: { role } })).modifiedCount > 0;
+            // Reset permissions with the role, exactly as the single-user path
+            // does. Without this a user on `custom` permissions kept every
+            // grant from their previous role after a bulk conversion.
+            modified = (await User.updateOne(
+              { _id: id },
+              { $set: { role, permissionMode: "role_default" }, $unset: { customPermissions: "" } },
+            )).modifiedCount > 0;
             // Idempotent — also heals accounts converted before this fix existed.
             const u = await User.findById(id).select("name email role").lean();
-            if (u && role) await ensureRoleProfile(u, role, targetUser?.role);
+            if (u && role) await applyRoleProfileChange(u, role, targetUser?.role);
+            if (role && targetUser?.role && targetUser.role !== role) {
+              roleChanges.push({ userId: id, from: String(targetUser.role), to: role });
+              await notifyRoleChanged(id, String(targetUser.role), role);
+            }
             break;
           }
           case "activate":
@@ -223,6 +283,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
       action: `user.bulk_${action}`,
       resource: "users",
       meta: { ids, action, role, affected, skipped: results.length - affected },
+      ...(roleChanges.length ? { changes: { before: { roles: roleChanges.map((c) => c.from) }, after: { roles: roleChanges.map((c) => c.to) } } } : {}),
       req,
     });
 
@@ -264,7 +325,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  const oldUser = await User.findById(userId).select("role").lean();
+  const oldUser = await User.findById(userId)
+    .select("role isActive name email permissionMode")
+    .lean<Record<string, unknown> | null>();
   const updated = await User.findByIdAndUpdate(
     userId,
     { $set: updateData },
@@ -279,17 +342,41 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (role) {
-    await ensureRoleProfile(updated as { _id: unknown; name?: string; email?: string }, role as string, oldUser?.role);
+    await applyRoleProfileChange(
+      updated as { _id: unknown; name?: string; email?: string },
+      role as string,
+      oldUser?.role as string | undefined,
+    );
+  }
+
+  // `after` on its own made the audit trail unreadable: a row said
+  // `role: "employer"` with no way to tell what the role had been, or whether
+  // the field changed at all. Snapshot the same keys from the pre-update doc.
+  const before: Record<string, unknown> = {};
+  for (const key of Object.keys(updateData)) {
+    before[key] = oldUser?.[key] ?? null;
   }
 
   await logActivity({
     ...actorFromCtx(ctx),
-    action: "user.update",
+    // A role conversion rewrites what the account can do and moves its profile
+    // document; it deserves its own action rather than hiding inside the
+    // catch-all "user.update" alongside a name edit.
+    action: role ? "user.role_change" : "user.update",
     resource: "users",
     resourceId: String(userId),
-    changes: { after: updateData },
+    changes: { before, after: updateData },
+    meta: {
+      targetName: (oldUser?.name as string | undefined) ?? (updated as { name?: string }).name,
+      targetEmail: (oldUser?.email as string | undefined) ?? (updated as { email?: string }).email,
+      ...(role ? { fromRole: oldUser?.role, toRole: role } : {}),
+    },
     req,
   });
+
+  if (role && oldUser?.role && oldUser.role !== role) {
+    await notifyRoleChanged(String(userId), String(oldUser.role), String(role));
+  }
 
   return NextResponse.json({ user: updated });
 }
@@ -381,7 +468,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
 
     if (role === "employer" || role === "job_seeker") {
-      await ensureRoleProfile(user, role);
+      await applyRoleProfileChange(user, role, undefined, "admin");
     }
   } catch (profileErr) {
     // If profile creation fails, clean up the user document

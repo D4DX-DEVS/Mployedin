@@ -260,6 +260,32 @@ function CompanySettingsPage() {
     setHasChanges(JSON.stringify(form) !== JSON.stringify(initialFormRef.current));
   }, [form]);
 
+  /**
+   * An admin-converted employer cannot publish until the company profile is
+   * confirmed (lib/employers/publishGate). The percentage below is a nudge;
+   * this is a hard block, so it gets its own banner and its own required
+   * fields rather than hiding inside a progress bar.
+   *
+   * Scoped to `role_conversion` profiles — self-registered employers and
+   * employers an admin created through the full form already supplied these
+   * details and must not be blocked here.
+   */
+  const publishBlocked =
+    company?.createdVia === "role_conversion" && !company?.profileConfirmedAt;
+
+  const missingPublishFields = useMemo(() => {
+    const missing: string[] = [];
+    if (!form.companyName.trim()) missing.push(t("fieldCompanyName"));
+    if (!form.companyEmail.trim()) missing.push(t("fieldCompanyEmail"));
+    // Not part of the server-side gate, but `handleSubmit` refuses to save
+    // without it — and the field sits on the Contact tab, so an employer who
+    // is not told about it here fills in the industry, hits Save and gets an
+    // error pointing at a field they cannot see.
+    if (!form.phone.trim()) missing.push(t("fieldPhone"));
+    if (!form.industry.trim()) missing.push(t("fieldIndustry"));
+    return missing;
+  }, [form.companyName, form.companyEmail, form.phone, form.industry, t]);
+
   const profileCompletion = useMemo(() => {
     if (!company) return 0;
     const checks = [
@@ -291,6 +317,13 @@ function CompanySettingsPage() {
     e.preventDefault();
     if (!form.companyName || !form.companyEmail || !form.phone) {
       setError("Company name, email, and phone are required.");
+      return;
+    }
+    // The gate asks for an industry; the form never did, so a converted
+    // employer could save, see "Settings saved", and still silently be unable
+    // to publish. Ask for it here, and only while the gate is actually on.
+    if (publishBlocked && !form.industry.trim()) {
+      setError(t("industryRequired"));
       return;
     }
 
@@ -338,8 +371,11 @@ function CompanySettingsPage() {
       const newInitial = buildInitialForm(emp);
       initialFormRef.current = newInitial;
       setForm(newInitial);
-      setSuccess("Settings saved successfully.");
-      setTimeout(() => setSuccess(""), 4000);
+      // When this save is the one that cleared the publishing gate, say so —
+      // "Settings saved" alone would not tell them the block had lifted.
+      const gateJustCleared = publishBlocked && Boolean(emp?.profileConfirmedAt);
+      setSuccess(gateJustCleared ? t("publishUnlocked") : "Settings saved successfully.");
+      setTimeout(() => setSuccess(""), gateJustCleared ? 8000 : 4000);
       router.refresh();
     } catch (err) {
       setError("We couldn't update your settings. Your previous settings are still active. Review the fields and try again.");
@@ -473,6 +509,25 @@ function CompanySettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* â”€â”€ Publishing gate (admin-converted accounts only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {publishBlocked && (
+        <div
+          role="status"
+          className="flex items-start gap-3 p-3.5 rounded-lg bg-amber-50 border border-amber-200"
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold text-amber-800">{t("publishBlockedTitle")}</p>
+            <p className="text-sm text-amber-700">{t("publishBlockedBody")}</p>
+            {missingPublishFields.length > 0 && (
+              <p className="text-sm font-medium text-amber-800">
+                {t("publishBlockedMissing", { fields: missingPublishFields.join(", ") })}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* â”€â”€ Toast Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {success && (

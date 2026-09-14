@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import { auth } from "@/lib/auth/config";
+import { withAuth } from "@/lib/auth/withAuth";
+import type { UserRole } from "@/types/user";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
@@ -9,17 +10,19 @@ export const runtime = "nodejs";
 
 /**
  * POST /api/jobs/auto-draft
- * Called via navigator.sendBeacon when employer navigates away from job form.
- * Creates or updates a draft so the job is not lost.
+ * Called from the job form when the employer navigates away, so the half-filled
+ * job is not lost.
+ *
+ * Runs through withAuth like every other write. It previously called auth()
+ * directly, which meant tenant view never applied: the actor's own user id was
+ * used for `Employer.findOne`, an admin/agent/super-agent working inside an
+ * employer account has no Employer document of their own, and every autosave
+ * 403'd. Nothing surfaced that — the caller ignores the response — so leaving
+ * the form inside tenant view silently discarded the draft.
  */
-export async function POST(req: NextRequest) {
+async function autoDraftHandler(req: NextRequest, ctx: { userId: string; role: UserRole }) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return new NextResponse(null, { status: 401 });
-    }
-
-    const userId = (session.user as unknown as { id: string }).id;
+    const userId = ctx.userId;
     await connectDB();
 
     const employer = await Employer.findOne({ userId }).select("_id").lean();
@@ -97,3 +100,5 @@ export async function POST(req: NextRequest) {
     return new NextResponse(null, { status: 500 });
   }
 }
+
+export const POST = withAuth(autoDraftHandler, { resource: "jobs", action: "create" });

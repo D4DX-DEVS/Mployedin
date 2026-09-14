@@ -182,7 +182,8 @@ export async function POST(req: NextRequest) {
     try {
     if (referralCode) {
       // 1. Check new ReferralLink collection first
-      const rl = await ReferralLink.findOne({ code: referralCode, isActive: true });
+      // A job-seeker link pasted into employer signup is not a referral.
+      const rl = await ReferralLink.findOne({ code: referralCode, isActive: true, audience: { $ne: "job_seeker" } });
       if (rl) {
         // Check expiry
         if (rl.expiresAt && rl.expiresAt < new Date()) {

@@ -14,7 +14,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
-  const profile = await JobSeeker.findOne({ userId: ctx.userId }).lean();
+  // `-referral` hides the referrer ids; the seeker still sees isAgentReferred.
+  const profile = await JobSeeker.findOne({ userId: ctx.userId }).select("-referral").lean();
 
   if (!profile) {
     // No profile yet (e.g. brand-new seeker). Return an empty object with 200

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useId } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "@/hooks/useReferralLinks";
 import {
   Building2,
+  UserRound,
   Check,
   ChevronDown,
   ChevronUp,
@@ -29,6 +30,16 @@ import {
   Link2,
   TrendingUp,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
+import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
+import { registrationDisplayName } from "@/lib/referrals/display";
 
 function formatDate(d: string | undefined): string {
   if (!d) return "—";
@@ -73,8 +84,10 @@ export default function AdminReferralLinksPage() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
+  const [audienceFilter, setAudienceFilter] = useState<ReferralAudience | "">("");
+  const audienceFilterId = useId();
 
-  const filters = { page, limit, search };
+  const filters = { page, limit, search, audience: audienceFilter || undefined };
 
   const { data, isLoading } = useReferralLinks(filters);
   const updateMutation = useUpdateReferralLink();
@@ -83,16 +96,12 @@ export default function AdminReferralLinksPage() {
   const serverTotal = data?.total ?? 0;
   const serverPages = data?.totalPages ?? 0;
 
-  const baseUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/${locale || "en"}/employer-register?ref=`
-      : "";
-
-  const handleCopy = useCallback((code: string) => {
-    navigator.clipboard.writeText(`${baseUrl}${code}`);
+  const handleCopy = useCallback((link: ReferralLinkItem) => {
+    const code = link.code;
+    navigator.clipboard.writeText(referralUrlFor(link, locale || "en", window.location.origin));
     setCopyMap((m) => ({ ...m, [code]: true }));
     setTimeout(() => setCopyMap((m) => ({ ...m, [code]: false })), 2000);
-  }, [baseUrl]);
+  }, [locale]);
 
   const handleToggleActive = async (link: ReferralLinkItem) => {
     await updateMutation.mutateAsync({ id: link._id, isActive: !link.isActive });
@@ -113,6 +122,7 @@ export default function AdminReferralLinksPage() {
     { header: t("tableHeaderCode"), key: "code" as keyof ReferralLinkItem },
     { header: t("tableHeaderCreator"), key: "createdBy" as keyof ReferralLinkItem, formatter: (_v, r) => creatorName(r as unknown as ReferralLinkItem) },
     { header: t("tableHeaderRole"), key: "creatorRole" as keyof ReferralLinkItem, formatter: (v) => v === "super_agent" ? t("roleSuperAgent") : t("roleAgent") },
+    { header: t("tableHeaderAudience"), key: "audience" as keyof ReferralLinkItem, formatter: (v) => v === "job_seeker" ? t("audienceChipJobSeeker") : t("audienceChipEmployer") },
     { header: t("tableHeaderLabel"), key: "label" as keyof ReferralLinkItem, formatter: (v) => String(v || t("dashPlaceholder")) },
     { header: t("tableHeaderUsed"), key: "usedCount" as keyof ReferralLinkItem, formatter: (v, r) => { const l = r as unknown as ReferralLinkItem; return `${v}${l.maxUses > 0 ? ` / ${l.maxUses}` : ""}`; } },
     { header: t("tableHeaderStatus"), key: "isActive" as keyof ReferralLinkItem, formatter: (_v, r) => t(getStatusLabelKey(linkStatus(r as unknown as ReferralLinkItem))) },
@@ -140,6 +150,20 @@ export default function AdminReferralLinksPage() {
         onExportPdf={handleExportPdf}
       />
 
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <label htmlFor={audienceFilterId} className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("tableHeaderAudience")}</label>
+        <Select value={audienceFilter || "all"} onValueChange={(v) => { setAudienceFilter(v === "all" ? "" : (v as ReferralAudience)); resetPage(); }}>
+          <SelectTrigger id={audienceFilterId} className="h-9 w-full text-sm sm:w-56">
+            <SelectValue placeholder={t("filterAudienceAll")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterAudienceAll")}</SelectItem>
+            <SelectItem value="employer">{t("filterAudienceEmployer")}</SelectItem>
+            <SelectItem value="job_seeker">{t("filterAudienceJobSeeker")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Table */}
       {isLoading ? (
         <div className="workspace-panel-surface overflow-hidden rounded-2xl">
@@ -149,6 +173,7 @@ export default function AdminReferralLinksPage() {
                 <TableHead>{t("tableHeaderCode")}</TableHead>
                 <TableHead>{t("tableHeaderCreator")}</TableHead>
                 <TableHead>{t("tableHeaderRole")}</TableHead>
+                <TableHead>{t("tableHeaderAudience")}</TableHead>
                 <TableHead>{t("tableHeaderLabel")}</TableHead>
                 <TableHead>{t("tableHeaderUsed")}</TableHead>
                 <TableHead>{t("tableHeaderExpires")}</TableHead>
@@ -160,7 +185,7 @@ export default function AdminReferralLinksPage() {
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 9 }).map((_, j) => (
+                  {Array.from({ length: 10 }).map((_, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -184,6 +209,7 @@ export default function AdminReferralLinksPage() {
                 <TableHead>{t("tableHeaderCode")}</TableHead>
                 <TableHead>{t("tableHeaderCreator")}</TableHead>
                 <TableHead>{t("tableHeaderRole")}</TableHead>
+                <TableHead>{t("tableHeaderAudience")}</TableHead>
                 <TableHead>{t("tableHeaderLabel")}</TableHead>
                 <TableHead>{t("tableHeaderUsed")}</TableHead>
                 <TableHead>{t("tableHeaderExpires")}</TableHead>
@@ -214,6 +240,9 @@ export default function AdminReferralLinksPage() {
                           {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
                       </TableCell>
+                      <TableCell>
+                        <ReferralAudienceChip audience={link.audience} namespace="adminReferralLinks" />
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{link.label || t("dashPlaceholder")}</TableCell>
                       <TableCell className="text-sm font-medium">{link.usedCount}{link.maxUses > 0 ? ` / ${link.maxUses}` : ""}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
@@ -225,7 +254,7 @@ export default function AdminReferralLinksPage() {
                             variant="outline"
                             size="sm"
                             className="h-7 px-2 text-[11px]"
-                            onClick={(e) => { e.stopPropagation(); handleCopy(link.code); }}
+                            onClick={(e) => { e.stopPropagation(); handleCopy(link); }}
                           >
                             {copyMap[link.code] ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />}
                             {copyMap[link.code] ? t("buttonCopied") : t("buttonCopy")}
@@ -251,7 +280,7 @@ export default function AdminReferralLinksPage() {
                     </TableRow>
                     {isExpanded && (
                       <TableRow>
-                        <TableCell colSpan={9} className="bg-muted/30 px-6 py-4">
+                        <TableCell colSpan={10} className="bg-muted/30 px-6 py-4">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             {t("registrationsLabel")} ({link.registrations.length})
                           </p>
@@ -262,10 +291,10 @@ export default function AdminReferralLinksPage() {
                               {link.registrations.map((reg, i) => (
                                 <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card chip-pad">
                                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                                    <Building2 className="h-4 w-4" />
+                                    {reg.kind === "job_seeker" ? <UserRound className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="truncate text-sm font-medium text-foreground">{reg.companyName}</p>
+                                    <p className="truncate text-sm font-medium text-foreground">{registrationDisplayName(reg)}</p>
                                     <p className="truncate text-xs text-muted-foreground">{reg.email}</p>
                                     {reg.country && (
                                       <p className="text-[11px] text-muted-foreground">{reg.city ? `${reg.city}, ` : ""}{reg.country}</p>

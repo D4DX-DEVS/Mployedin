@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { resolveApplicationReferralFlag } from "@/lib/applications/referralSnapshot";
 
 export type ApplicationStatus =
   | "applied"
@@ -74,6 +75,8 @@ export interface IApplication extends Document {
   withdrawalNote?: string;
   source?: 'easy_apply' | 'full_form' | 'direct' | 'auto_apply';
   autoApplied: boolean;
+  /** Snapshot of `JobSeeker.isAgentReferred` when this application was created. Drives referred-first ordering. */
+  isAgentReferred: boolean;
   screeningAnswers?: IScreeningAnswer[];
   notes: INote[];
   appliedAt: Date;
@@ -170,6 +173,7 @@ const ApplicationSchema = new Schema<IApplication>(
       default: 'full_form',
     },
     autoApplied: { type: Boolean, default: false },
+    isAgentReferred: { type: Boolean, default: false },
     screeningAnswers: [{
       questionId: { type: String, required: true },
       questionLabel: { type: String, required: true },
@@ -200,6 +204,19 @@ const ApplicationSchema = new Schema<IApplication>(
   },
   { timestamps: true }
 );
+
+// Snapshot the seeker's referral state onto every NEW application. Creation
+// sites that already hold the seeker pass `isAgentReferred` explicitly and skip
+// the lookup; every other site (and any future one) gets it from here.
+ApplicationSchema.pre("save", async function () {
+  const flag = await resolveApplicationReferralFlag(this, async (jobSeekerId) => {
+    const JobSeekerModel = mongoose.models.JobSeeker;
+    if (!JobSeekerModel) return false;
+    const seeker = await JobSeekerModel.findById(jobSeekerId).select("isAgentReferred").lean();
+    return (seeker as { isAgentReferred?: boolean } | null)?.isAgentReferred === true;
+  });
+  if (flag !== undefined) this.isAgentReferred = flag;
+});
 
 ApplicationSchema.index({ jobSeekerId: 1 });
 ApplicationSchema.index({ jobId: 1 });

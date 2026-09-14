@@ -47,7 +47,6 @@ import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCar
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const settingsFormSchema = z.object({
-  preferredJobTypes: z.array(z.string()),
   preferredLocations: z.array(z.string()),
   salaryMin: z.number().min(0).optional(),
   salaryMax: z.number().min(0).optional(),
@@ -88,12 +87,9 @@ const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((c) => ({
   triggerLabel: c.symbol !== c.code ? `${c.symbol} ${c.code}` : c.code,
 }));
 
-const JOB_TYPE_OPTIONS = ["Full-time", "Part-time", "Remote", "Contract", "Freelance"];
-
 // ─── Default values ───────────────────────────────────────────────────────────
 
 const DEFAULTS: SettingsForm = {
-  preferredJobTypes: ["Full-time"],
   preferredLocations: [],
   salaryMin: undefined,
   salaryMax: undefined,

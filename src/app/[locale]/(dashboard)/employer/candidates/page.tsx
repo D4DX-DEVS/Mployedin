@@ -63,6 +63,7 @@ import {
   Zap,
 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { cn } from "@/lib/utils";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
@@ -393,6 +394,7 @@ function CandidateMatchCard({
               {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
               {availabilityLabel}
             </span>
+            {candidate.isAgentReferred ? <ReferredBadge size="xs" /> : null}
             {/* The band in words rides the meta line. It used to be crammed into
                 the score ring's hole at 6.6px, overlapping the arc; here it is
                 readable and costs the card no height. */}
@@ -1780,7 +1782,7 @@ export default function EmployerCandidatesPage() {
                   <Input
                     value={skillsFilter}
                     onChange={(event) => setSkillsFilter(event.target.value)}
-                    placeholder="Skills, comma separated"
+                    placeholder={t("skillsPlaceholder")}
                     className="h-10 rounded-xl border-border bg-background/80 text-sm shadow-none"
                   />
                   <Button

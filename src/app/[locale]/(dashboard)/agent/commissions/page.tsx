@@ -233,7 +233,7 @@ export default function AgentCommissionsPage() {
 
         {/* Status pills */}
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          {["all", "pending", "approved", "paid", "disputed"].map((status) => {
+          {["all", "pending", "approved", "paid", "disputed", "clawed_back"].map((status) => {
             const isSelected = filter === status;
             return (
               <Button

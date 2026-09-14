@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 
 type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 
@@ -27,6 +28,7 @@ export default function VerifyEmailPage() {
   const emailParam = searchParams.get("email");
   const emailFailed = searchParams.get("emailFailed") === "1";
   const registrationRole = searchParams.get("role");
+  const callback = safeCallbackPath(searchParams.get("callbackUrl"), locale);
   const changeEmailHref =
     registrationRole === "employer"
       ? `/${locale ?? "en"}/employer-register`
@@ -187,7 +189,7 @@ export default function VerifyEmailPage() {
             </p>
           </div>
           <Button size="lg" asChild className="w-full max-w-xs">
-            <Link href={`/${locale ?? "en"}/login`}>{t("continueToSignIn")}</Link>
+            <Link href={withCallback(`/${locale ?? "en"}/login`, callback)}>{t("continueToSignIn")}</Link>
           </Button>
         </div>
       )}
@@ -206,7 +208,7 @@ export default function VerifyEmailPage() {
           </div>
           <div className="w-full max-w-xs space-y-3">
             <Button size="lg" asChild variant="outline" className="w-full">
-              <Link href={`/${locale ?? "en"}/login`}>{t("backToSignIn")}</Link>
+              <Link href={withCallback(`/${locale ?? "en"}/login`, callback)}>{t("backToSignIn")}</Link>
             </Button>
             <p className="text-xs text-muted-foreground">
               {t("needHelp")}{" "}
@@ -334,7 +336,7 @@ export default function VerifyEmailPage() {
           <Button size="lg"
             variant="outline"
             className="w-full max-w-xs"
-            onClick={() => signOut({ callbackUrl: `/${locale ?? "en"}/login` })}
+            onClick={() => signOut({ callbackUrl: withCallback(`/${locale ?? "en"}/login`, callback) })}
           >
             {t("backToSignIn")}
           </Button>

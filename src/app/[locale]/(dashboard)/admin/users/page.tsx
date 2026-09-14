@@ -154,12 +154,57 @@ export default function AdminUsersPage() {
       });
       if (!ok) return;
     }
-    await updateUser(user._id, { isActive: !user.isActive });
+    // Only claim success once the request actually succeeded — this used to
+    // toast "deactivated" even when the PATCH had just failed and toasted an
+    // error one line above.
+    const changed = await updateUser(user._id, { isActive: !user.isActive });
+    if (!changed) return;
     toast.success(
       user.isActive
         ? t("toastUserDeactivated", { name: user.name || user.email })
         : t("toastUserActivated", { name: user.name || user.email }),
     );
+  }
+
+  /** Roles read as "job seeker" in prose, matching the badges in the table. */
+  function roleLabel(role: string) {
+    return role.replace("_", " ");
+  }
+
+  /**
+   * A role change rebuilds the account: different navigation, different
+   * permissions, and the outgoing profile gets archived (an employer's live
+   * jobs come off the public board with it). It used to fire straight from the
+   * dropdown's onClick with no confirmation and no toast, in a table that
+   * re-renders under a filter — one mis-aimed click and a real person's
+   * workspace changed under them with nothing on screen to say so.
+   */
+  async function changeUserRole(user: User, newRole: string) {
+    if (newRole === user.role) return;
+
+    const name = user.name || user.email;
+    const notes = [
+      user.role === "employer" ? t("changeRoleEmployerNote") : "",
+      user.role === "job_seeker" ? t("changeRoleSeekerNote") : "",
+    ].filter(Boolean);
+
+    const ok = await confirm({
+      title: t("changeRoleConfirmTitle"),
+      message: [
+        t("changeRoleConfirmMessage", {
+          name,
+          fromRole: roleLabel(user.role),
+          toRole: roleLabel(newRole),
+        }),
+        ...notes,
+      ].join(" "),
+      confirmLabel: t("changeRoleConfirmLabel"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+
+    const changed = await updateUser(user._id, { role: newRole });
+    if (changed) toast.success(t("toastRoleChanged", { name, role: roleLabel(newRole) }));
   }
 
   async function updateUser(userId: string, update: { role?: string; isActive?: boolean }) {
@@ -170,17 +215,57 @@ export default function AdminUsersPage() {
     });
     if (res.ok) {
       fetchUsers();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      toast.error(err.error || t("toastFailedUpdateUser"));
+      return true;
     }
+    const err = await res.json().catch(() => ({}));
+    toast.error(err.error || t("toastFailedUpdateUser"));
+    return false;
   }
 
   async function applyBulk() {
     if (!bulkAction || bulkAction === "__none__" || selected.length === 0) return;
+
+    const [action, role] = bulkAction.split(":");
+
+    /**
+     * Every destructive bulk action used to run straight off this button.
+     * "Delete" cascades — jobs, applications, interviews, placements and
+     * commissions all go with the account — and there was nothing between a
+     * mis-click and dozens of accounts being erased. Activation is the only
+     * action here that takes nothing away, so it is the only one that skips
+     * the prompt.
+     */
+    const count = selected.length;
+    const prompts: Record<string, { title: string; message: string; label: string }> = {
+      setRole: {
+        title: t("bulkConfirmSetRoleTitle", { count }),
+        message: t("bulkConfirmSetRoleMessage", { count, role: roleLabel(role ?? "") }),
+        label: t("bulkConfirmSetRoleLabel", { count }),
+      },
+      deactivate: {
+        title: t("bulkConfirmDeactivateTitle", { count }),
+        message: t("bulkConfirmDeactivateMessage", { count }),
+        label: t("bulkConfirmDeactivateLabel", { count }),
+      },
+      delete: {
+        title: t("bulkConfirmDeleteTitle", { count }),
+        message: t("bulkConfirmDeleteMessage", { count }),
+        label: t("bulkConfirmDeleteLabel", { count }),
+      },
+    };
+    const prompt = prompts[action];
+    if (prompt) {
+      const ok = await confirm({
+        title: prompt.title,
+        message: prompt.message,
+        confirmLabel: prompt.label,
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
+
     setBulkLoading(true);
     try {
-      const [action, role] = bulkAction.split(":");
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -188,7 +273,7 @@ export default function AdminUsersPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Bulk action failed");
+        toast.error(err.error || t("toastBulkFailed"));
         return;
       }
       const data = await res.json() as {
@@ -472,7 +557,7 @@ export default function AdminUsersPage() {
                           {ROLES.map((r) => (
                             <DropdownMenuItem
                               key={r}
-                              onClick={() => updateUser(user._id, { role: r })}
+                              onClick={() => changeUserRole(user, r)}
                               className="capitalize text-xs gap-2"
                             >
                               <Badge className={`${ROLE_COLORS[r] ?? ""} border text-[11px] px-1.5 py-0`}>
@@ -484,7 +569,7 @@ export default function AdminUsersPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       {user.permissionMode === "custom" && (
-                        <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">Custom</Badge>
+                        <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">{t("customPermissions")}</Badge>
                       )}
                     </div>
                   </TableCell>

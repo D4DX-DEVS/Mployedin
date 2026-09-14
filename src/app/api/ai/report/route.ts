@@ -11,6 +11,7 @@ import { Placement } from "@/models/Placement";
 import { Commission } from "@/models/Commission";
 import JobSeeker from "@/models/JobSeeker";
 import { routeGenerate } from "@/lib/ai/router";
+import { resolveReportScope } from "@/lib/ai/reportScope";
 import { sanitizeAIInput, redactPII } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiReportSchema } from "@/lib/validators/ai";
@@ -84,6 +85,12 @@ function normalizeReportOutput(report: string): string {
  *
  * All figures sent to the AI come directly from the database. The AI is
  * explicitly instructed NOT to invent numbers that were not supplied.
+ *
+ * Every figure is bounded by the caller's place in the hierarchy, resolved
+ * server-side in resolveReportScope: an admin sees the platform, a super-agent
+ * sees their territory, an agent sees their own book. The `scope` field on the
+ * body chooses the prompt ("market" vs the standard report) and has no say in
+ * what data is read.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_hiring_reports" });
@@ -109,40 +116,75 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const startOfQuarter = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
 
-  // ── 1. User counts by role ───────────────────────────────────────────────
-  const [
-    totalUsers, totalAdmins, totalAgents, totalSuperAgents,
-    totalEmployers, totalJobSeekers,
-    newUsersThisMonth, newUsersLastMonth,
-    newSeekersThisMonth, newEmployersThisMonth,
-  ] = await Promise.all([
-    User.countDocuments(),
-    User.countDocuments({ role: "admin" }),
-    User.countDocuments({ role: "agent" }),
-    User.countDocuments({ role: "super_agent" }),
-    User.countDocuments({ role: "employer" }),
-    User.countDocuments({ role: "job_seeker" }),
-    User.countDocuments({ createdAt: { $gte: startOfMonth } }),
-    User.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
-    User.countDocuments({ role: "job_seeker", createdAt: { $gte: startOfMonth } }),
-    User.countDocuments({ role: "employer",   createdAt: { $gte: startOfMonth } }),
-  ]);
+  // ── 0. Data boundary ─────────────────────────────────────────────────────
+  // `empMatch` is `{}` for an admin and an ownership filter for everyone else,
+  // so spreading it into a query either widens nothing or narrows to the
+  // caller's own book. An empty book matches no documents, which is the
+  // intended answer for an account with nothing assigned.
+  const dataScope = await resolveReportScope(ctx);
+  const empMatch: Record<string, unknown> = dataScope.ownershipMatch ?? {};
+
+  // ── 1. Coverage counts ───────────────────────────────────────────────────
+  let usersSection: string;
+
+  if (dataScope.isPlatform) {
+    const [
+      totalUsers, totalAdmins, totalAgents, totalSuperAgents,
+      totalEmployers, totalJobSeekers,
+      newUsersThisMonth, newUsersLastMonth,
+      newSeekersThisMonth, newEmployersThisMonth,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: "admin" }),
+      User.countDocuments({ role: "agent" }),
+      User.countDocuments({ role: "super_agent" }),
+      User.countDocuments({ role: "employer" }),
+      User.countDocuments({ role: "job_seeker" }),
+      User.countDocuments({ createdAt: { $gte: startOfMonth } }),
+      User.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
+      User.countDocuments({ role: "job_seeker", createdAt: { $gte: startOfMonth } }),
+      User.countDocuments({ role: "employer",   createdAt: { $gte: startOfMonth } }),
+    ]);
+    usersSection = `## Users
+- Total users: ${totalUsers}
+- Admins: ${totalAdmins} | Agents: ${totalAgents} | Super-Agents: ${totalSuperAgents}
+- Employers: ${totalEmployers} | Job-Seekers: ${totalJobSeekers}
+- New users this month: ${newUsersThisMonth} (last month: ${newUsersLastMonth})
+- New job-seekers this month: ${newSeekersThisMonth}
+- New employers this month: ${newEmployersThisMonth}`;
+  } else {
+    // Platform-wide role counts mean nothing inside a territory, and quoting
+    // them is exactly the leak. Report the caller's own book instead: the
+    // candidates counted are those who applied to employers in scope.
+    const scopedEmployerIds = dataScope.employerIds ?? [];
+    const [newEmployersThisMonth, seekerIds, seekerIdsThisMonth] = await Promise.all([
+      Employer.countDocuments({ _id: { $in: scopedEmployerIds }, createdAt: { $gte: startOfMonth } }),
+      Application.distinct("jobSeekerId", empMatch),
+      Application.distinct("jobSeekerId", { ...empMatch, createdAt: { $gte: startOfMonth } }),
+    ]);
+    usersSection = `## Coverage (${dataScope.label})
+- Agents in scope: ${(dataScope.agentIds ?? []).length}
+- Employers in scope: ${scopedEmployerIds.length}
+- New employers this month: ${newEmployersThisMonth}
+- Candidates who applied to these employers: ${seekerIds.length}
+- Candidates who applied this month: ${seekerIdsThisMonth.length}`;
+  }
 
   // ── 2. Job stats ─────────────────────────────────────────────────────────
   const [
     totalJobs, activeJobs, closedJobs,
     jobsThisMonth, jobsLastMonth,
   ] = await Promise.all([
-    Job.countDocuments(),
-    Job.countDocuments({ status: "active" }),
-    Job.countDocuments({ status: "closed" }),
-    Job.countDocuments({ createdAt: { $gte: startOfMonth } }),
-    Job.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
+    Job.countDocuments({ ...empMatch }),
+    Job.countDocuments({ ...empMatch, status: "active" }),
+    Job.countDocuments({ ...empMatch, status: "closed" }),
+    Job.countDocuments({ ...empMatch, createdAt: { $gte: startOfMonth } }),
+    Job.countDocuments({ ...empMatch, createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
   ]);
 
   // Jobs grouped by category (top 10)
   const jobsByCategory = await Job.aggregate([
-    { $match: { status: "active", category: { $exists: true, $nin: [null, ""] } } },
+    { $match: { ...empMatch, status: "active", category: { $exists: true, $nin: [null, ""] } } },
     { $group: { _id: "$category", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: 10 },
@@ -150,7 +192,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   // Jobs grouped by country (top 10)
   const jobsByCountry = await Job.aggregate([
-    { $match: { status: "active" } },
+    { $match: { ...empMatch, status: "active" } },
     { $group: { _id: "$location.country", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $limit: 10 },
@@ -161,18 +203,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     totalApplications, appsThisMonth, appsLastMonth,
     appsHired, appsInterview, appsOffer,
   ] = await Promise.all([
-    Application.countDocuments(),
-    Application.countDocuments({ createdAt: { $gte: startOfMonth } }),
-    Application.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
-    Application.countDocuments({ status: "hired" }),
+    Application.countDocuments({ ...empMatch }),
+    Application.countDocuments({ ...empMatch, createdAt: { $gte: startOfMonth } }),
+    Application.countDocuments({ ...empMatch, createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
+    Application.countDocuments({ ...empMatch, status: "hired" }),
     // "interview" is not in the Application.status enum — this counted nothing and
     // always reported 0. The stored value is "interview_scheduled".
-    Application.countDocuments({ status: "interview_scheduled" }),
-    Application.countDocuments({ status: "offer" }),
+    Application.countDocuments({ ...empMatch, status: "interview_scheduled" }),
+    Application.countDocuments({ ...empMatch, status: "offer" }),
   ]);
 
   // Applications per job category (top 10)
   const appsByCategory = await Application.aggregate([
+    ...(dataScope.ownershipMatch ? [{ $match: empMatch }] : []),
     {
       $lookup: {
         from: "jobs",
@@ -192,13 +235,29 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const [
     totalPlacements, placementsThisMonth, placementsThisQuarter,
   ] = await Promise.all([
-    Placement.countDocuments(),
-    Placement.countDocuments({ placedAt: { $gte: startOfMonth } }),
-    Placement.countDocuments({ placedAt: { $gte: startOfQuarter } }),
+    Placement.countDocuments({ ...empMatch }),
+    Placement.countDocuments({ ...empMatch, placedAt: { $gte: startOfMonth } }),
+    Placement.countDocuments({ ...empMatch, placedAt: { $gte: startOfQuarter } }),
   ]);
 
   // ── 5. Commission stats ──────────────────────────────────────────────────
+  // A commission belongs to the agent who earned it. A super-agent additionally
+  // earns their own override lines — `superAgentId` alone marks them as the
+  // overseer of someone else's commission, not the earner, so only
+  // type:"override" rows are added.
+  const commissionMatch: Record<string, unknown> | null = dataScope.isPlatform
+    ? null
+    : {
+        $or: [
+          { agentId: { $in: dataScope.agentIds ?? [] } },
+          ...(dataScope.superAgentProfileId
+            ? [{ superAgentId: dataScope.superAgentProfileId, type: "override" }]
+            : []),
+        ],
+      };
+
   const commissionAgg = await Commission.aggregate([
+    ...(commissionMatch ? [{ $match: commissionMatch }] : []),
     {
       $group: {
         _id: "$status",
@@ -216,7 +275,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const commApproved= commissionByStatus["approved"]?? { total: 0, count: 0 };
 
   // ── 6. Top agents by placements (this quarter) ───────────────────────────
-  const topAgentsRaw = await Agent.find()
+  const topAgentsRaw = await Agent.find(dataScope.agentIds ? { _id: { $in: dataScope.agentIds } } : {})
     .select("userId performance commissionRate")
     .sort({ "performance.placementsCompleted": -1 })
     .limit(10)
@@ -236,17 +295,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     leadsGenerated: a.performance.leadsGenerated,
   }));
 
-  // Agent commissions this quarter per agentId
-  const agentCommAgg = await Commission.aggregate([
-    { $match: { agentId: { $exists: true }, createdAt: { $gte: startOfQuarter } } },
-    { $group: { _id: "$agentId", earned: { $sum: "$amount" } } },
-    { $sort: { earned: -1 } },
-    { $limit: 10 },
-  ]);
 
   // ── 7. Top employers by jobs + applications ───────────────────────────────
   const topEmployersRaw = await Job.aggregate([
-    { $match: { status: "active" } },
+    { $match: { ...empMatch, status: "active" } },
     { $group: { _id: "$employerId", jobCount: { $sum: 1 } } },
     { $sort: { jobCount: -1 } },
     { $limit: 10 },
@@ -271,8 +323,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }));
 
   // ── 8. Geographic distribution: users by nationality ─────────────────────
+  // Outside an admin report the candidate pool is not "everyone on the
+  // platform" — it is the people who applied to employers in scope.
+  const scopedSeekerIds = dataScope.ownershipMatch
+    ? await Application.distinct("jobSeekerId", empMatch)
+    : null;
+
   const seekersByNationality = await JobSeeker.aggregate([
-      { $match: { nationality: { $exists: true, $nin: [null, ""] } } },
+      {
+        $match: {
+          ...(scopedSeekerIds ? { _id: { $in: scopedSeekerIds } } : {}),
+          nationality: { $exists: true, $nin: [null, ""] },
+        },
+      },
       { $group: { _id: "$nationality", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 10 },
@@ -280,15 +343,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   // ── Build prompt ─────────────────────────────────────────────────────────
   const dataBlock = `
-=== LIVE PLATFORM DATA (pulled from database at ${now.toISOString()}) ===
+=== LIVE DATA (pulled from database at ${now.toISOString()}) ===
+COVERAGE: ${dataScope.label}
+Every figure below is already filtered to that coverage. Describe it as such —
+never call it platform-wide unless the coverage line says so.
 
-## Users
-- Total users: ${totalUsers}
-- Admins: ${totalAdmins} | Agents: ${totalAgents} | Super-Agents: ${totalSuperAgents}
-- Employers: ${totalEmployers} | Job-Seekers: ${totalJobSeekers}
-- New users this month: ${newUsersThisMonth} (last month: ${newUsersLastMonth})
-- New job-seekers this month: ${newSeekersThisMonth}
-- New employers this month: ${newEmployersThisMonth}
+${usersSection}
 
 ## Jobs
 - Total jobs ever: ${totalJobs}
@@ -318,22 +378,23 @@ ${appsByCategory.map((c) => `  • ${c._id}: ${c.applications} applications`).jo
 - Pending: ${commPending.count} commissions totalling ${commPending.total} AED
 - Approved (awaiting payment): ${commApproved.count} totalling ${commApproved.total} AED
 
-## Top Agents (by lifetime placements completed)
+## Agents in scope (by lifetime placements completed)
 ${topAgents.map((a) => `  ${a.rank}. ${a.name} — ${a.placements} placements, ${a.leadsGenerated} leads`).join("\n") || "  No agent data"}
 
-## Top Employers (by active jobs)
+## Employers in scope (by active jobs)
 ${topEmployers.map((e) => `  ${e.rank}. ${e.name} (${e.industry}) — ${e.activeJobs} active jobs`).join("\n") || "  No employer data"}
 
-## Job-Seeker Nationalities (top 10)
+## Candidate nationalities in scope (top 10)
 ${seekersByNationality.map((n: {_id: string; count: number}) => `  • ${n._id}: ${n.count}`).join("\n") || "  No nationality data"}
 
-=== END OF PLATFORM DATA ===`;
+=== END OF DATA ===`;
 
   const systemContext = scope === "market"
     ? `You are a recruitment market analyst for MPLOYEDIN, specialising in the following region: ${safeContext}.
 
 CRITICAL RULES:
-- Only use the numbers in the LIVE PLATFORM DATA block below when answering data questions.
+- Only use the numbers in the LIVE DATA block below when answering data questions.
+- The COVERAGE line names whose data this is. Do not describe it as the whole platform unless it says so, and never imply knowledge of territories outside it.
 - If a metric is not in the data, say "Data not available" — do NOT estimate or invent platform figures.
 - You MAY use your knowledge of the specified region (${safeContext}) for salary benchmarks, visa trends, nationality demand, and sector insights when the query goes beyond platform data.
 - Always answer specifically about the country or region the user asks about — do NOT default to UAE only.
@@ -358,7 +419,8 @@ Use this exact shape:
     : `You are an analytics AI for MPLOYEDIN, a Gulf-region recruitment platform. You have been given the exact figures pulled live from the platform database right now.
 
 CRITICAL RULES:
-- Only use the numbers shown in the LIVE PLATFORM DATA block above.
+- Only use the numbers shown in the LIVE DATA block above.
+- The COVERAGE line names whose data this is. Do not describe it as the whole platform unless it says so, and never imply knowledge of territories outside it.
 - If a specific metric is not in the data block, say "Data not available" — do NOT estimate, assume, or invent figures.
 - Do not reference external market data unless the user explicitly asks for market context.
 - Flag clearly when a section has no data (e.g. empty category fields).

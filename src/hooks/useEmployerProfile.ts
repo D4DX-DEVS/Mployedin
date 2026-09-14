@@ -24,6 +24,13 @@ export interface CompanyData {
   verificationDocs: string[];
   paymentStatus: string;
   subscriptionType?: string;
+  /**
+   * Set to "role_conversion" when an admin turned this account into an employer.
+   * Such a profile has no real company details yet, so its jobs are held as
+   * drafts until `profileConfirmedAt` is stamped — see lib/employers/publishGate.
+   */
+  createdVia?: "self" | "admin" | "role_conversion";
+  profileConfirmedAt?: string | null;
   createdAt: string;
 }
 

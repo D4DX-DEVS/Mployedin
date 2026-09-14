@@ -1461,22 +1461,6 @@ function SecurityTab() {
         </div>
       </SectionCard>
 
-      <SectionCard>
-        <SectionHeader icon={Shield} title={t("security")} description={t("securityDesc")} />
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 card-pad">
-            <div className="flex items-start gap-3">
-              <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">{t("loginNotifications")}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("loginNotificationsDesc")}</p>
-              </div>
-            </div>
-            <Switch defaultChecked />
-          </div>
-        </div>
-      </SectionCard>
-
       <TwoFactorCard />
 
       <ChangeEmailCard />

@@ -52,7 +52,17 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     invoices: ["create", "read", "update", "delete", "export"],
   },
   super_agent: {
-    jobs: ["read", "export"],
+    // "create"/"update" exist for tenant view only. Inside an employer they
+    // oversee, withAuth requires BOTH the employer's permission and the actor's
+    // own, so without these a super-agent walked the entire Post-a-job wizard
+    // (the employer CTAs are shown because the tenant-view nav is computed as
+    // "employer") and hit a bare 403 on Publish — and on Save as draft. The
+    // handlers still refuse a super-agent acting as themselves: POST /api/jobs
+    // allows only employer/agent/admin, and PATCH /api/jobs/[id] 403s any role
+    // that is not employer/agent/admin, so this grants nothing outside tenant
+    // view. "delete" is deliberately withheld — tenant view blocks DELETE for
+    // every non-admin anyway.
+    jobs: ["create", "read", "update", "export"],
     applications: ["read", "export"],
     interviews: ["read"],
     placements: ["read", "export"],

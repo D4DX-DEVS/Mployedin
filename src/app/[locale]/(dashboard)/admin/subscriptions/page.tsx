@@ -1419,7 +1419,7 @@ function BulkAssignSection() {
             {bulkMut.isPending ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("bulkAssigningLabel")}</>
             ) : (
-              <>{t("bulkAssignButtonLabel")} {userIds.length} User(s)</>
+              <>{t("bulkAssignButtonLabel")} {t("bulkAssignUserCount", { count: userIds.length })}</>
             )}
           </Button>
 

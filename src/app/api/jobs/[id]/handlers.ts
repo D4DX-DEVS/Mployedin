@@ -10,10 +10,13 @@ import { jobUpdateSchema } from "@/lib/validators/jobs";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import { canTransitionJobStatus, expiryExtended } from "@/lib/jobs/statusTransitions";
+import { isEmployerPublishGated, PUBLISH_GATE_ERROR } from "@/lib/employers/publishGate";
+import { stripPrivateJobFields } from "@/lib/jobs/visibility";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 type Params = { id: string };
+
 
 // GET /api/jobs/[id]
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
@@ -24,17 +27,21 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     .lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
+  // employerId is populated above, so read the id off the populated doc.
+  const ownerId = (job.employerId as { _id?: unknown } | null)?._id ?? job.employerId;
+  const employerIds = await getScopedEmployerIds(ctx);
+  // null = unrestricted (admin). Anyone else only counts as the owning side
+  // when the job's employer is inside their scope.
+  const isOwnerSide = employerIds === null || employerIds.map(String).includes(String(ownerId));
+
   // An active job is public to any signed-in user. A non-active one (draft,
   // paused, closed) is only for the owning side — mirrors patchHandler below,
   // which already scopes writes this way.
-  if (job.status !== "active") {
-    // employerId is populated above, so read the id off the populated doc.
-    const ownerId = (job.employerId as { _id?: unknown } | null)?._id ?? job.employerId;
-    const employerIds = await getScopedEmployerIds(ctx);
-    if (employerIds !== null && !employerIds.map(String).includes(String(ownerId))) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
-    }
+  if (job.status !== "active" && !isOwnerSide) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
+
+  if (!isOwnerSide) stripPrivateJobFields(job as Record<string, unknown>);
 
   return NextResponse.json({ job });
 }
@@ -83,6 +90,15 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (job.status === "expired" && !expiryExtended((body as { expiresAt?: unknown }).expiresAt)) {
       return NextResponse.json(
         { error: "EXPIRES_AT_REQUIRED", from: job.status, to: nextStatus },
+        { status: 409 },
+      );
+    }
+    // Without this an admin-converted employer could save the job as a draft
+    // (which the create gate allows) and then simply publish it here, walking
+    // straight around the company-profile requirement.
+    if (nextStatus === "active" && job.employerId && await isEmployerPublishGated(String(job.employerId))) {
+      return NextResponse.json(
+        { error: PUBLISH_GATE_ERROR, from: job.status, to: nextStatus },
         { status: 409 },
       );
     }

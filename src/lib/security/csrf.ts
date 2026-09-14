@@ -101,6 +101,7 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/auth/employer-register",
   "/api/auth/job-seeker-register",
   "/api/auth/agent-register",
+  "/api/auth/apply-otp/", // Email-OTP quick-apply: no session yet, protected by dual rate limits + hashed 10-min code
   "/api/auth/verify-email",
   "/api/auth/resend-verification",
   "/api/auth/forgot-password",

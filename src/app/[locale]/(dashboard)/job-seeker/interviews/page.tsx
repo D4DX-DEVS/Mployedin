@@ -74,6 +74,15 @@ export default function InterviewsPage() {
   const [counts, setCounts] = useState<JourneyCounts | null | undefined>(undefined);
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
+  // The calendar reads its own month-scoped slice. The list's pagination only
+  // ever holds one page, so reusing it left every month but the first empty and
+  // the month arrows with nothing to load.
+  const [calendarMonth, setCalendarMonth] = useState<{ year: number; month: number }>(() => {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+  const [calendarInterviews, setCalendarInterviews] = useState<Interview[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(true);
 
   useEffect(() => {
     document.title = t("documentTitle");
@@ -107,8 +116,43 @@ export default function InterviewsPage() {
 
   useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
 
+  const fetchCalendarMonth = useCallback(async () => {
+    setCalendarLoading(true);
+    try {
+      const first = new Date(calendarMonth.year, calendarMonth.month, 1);
+      const last = new Date(calendarMonth.year, calendarMonth.month + 1, 0);
+      const iso = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const params = new URLSearchParams({
+        // The grid also paints the tail of the previous month and the head of
+        // the next one, so pad a week either side.
+        dateFrom: iso(new Date(first.getFullYear(), first.getMonth(), first.getDate() - 7)),
+        dateTo: iso(new Date(last.getFullYear(), last.getMonth(), last.getDate() + 7)),
+        limit: "100",
+      });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const res = await fetch(`/api/interviews?${params}`);
+      if (!res.ok) {
+        toast.error(t("monthLoadFailed"));
+        return;
+      }
+      const data = await res.json();
+      setCalendarInterviews(data.interviews ?? data.items ?? []);
+    } catch {
+      toast.error(t("monthLoadFailed"));
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, [calendarMonth.year, calendarMonth.month, statusFilter, t]);
+
+  useEffect(() => {
+    if (view !== "calendar") return;
+    fetchCalendarMonth();
+  }, [view, fetchCalendarMonth]);
+
   // Filter out legacy "rescheduled" rows (superseded by in-place updates)
   const activeInterviews = interviews.filter((i) => i.status !== "rescheduled");
+  const calendarEvents = calendarInterviews.filter((i) => i.status !== "rescheduled");
 
   const now = new Date();
   const upcoming = activeInterviews.filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled");
@@ -221,11 +265,11 @@ export default function InterviewsPage() {
       }
     >
       {view === "calendar" ? (
-        loading ? (
+        calendarLoading ? (
           <CalendarSkeleton />
         ) : (
           <MployedinCalendar
-            events={activeInterviews.map((i) => ({
+            events={calendarEvents.map((i) => ({
               _id: i._id,
               title: i.jobTitle ?? t("interviewFallback"),
               subtitle: i.companyName ?? "",
@@ -236,8 +280,8 @@ export default function InterviewsPage() {
               meetLink: i.meetLink,
               location: i.location,
             }))}
-            loading={loading}
-            onMonthChange={() => {}}
+            loading={calendarLoading}
+            onMonthChange={(year, month) => setCalendarMonth({ year, month })}
             renderEventExtra={(e) =>
               e.subtitle ? (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -312,11 +356,19 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
           ...(response === "reschedule_requested" && { rescheduleNote: rescheduleNote.trim() }),
         }),
       });
-      if (res.ok) {
-        setShowReschedule(false);
-        setRescheduleNote("");
-        onRefresh();
+      // A silent `if (res.ok)` left a rejected response looking like a no-op:
+      // the buttons re-enabled, nothing moved, and the seeker had no way to
+      // tell the interview was never confirmed.
+      if (!res.ok) {
+        toast.error(t("respondFailed"));
+        return;
       }
+      setShowReschedule(false);
+      setRescheduleNote("");
+      toast.success(t("responseSaved"));
+      onRefresh();
+    } catch {
+      toast.error(t("respondFailed"));
     } finally {
       setResponding(false);
     }

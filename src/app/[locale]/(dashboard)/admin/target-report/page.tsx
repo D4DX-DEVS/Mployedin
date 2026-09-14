@@ -468,7 +468,7 @@ export default function AdminTargetReportPage() {
             <div key={item.id} className="rounded-xl border border-border/50 text-center chip-pad">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
               <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr) : formatCount(item.curr)}</p>
-              <p className="text-xs text-muted-foreground">was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : formatCount(item.prev)}</p>
+              <p className="text-xs text-muted-foreground">{t("previousValue", { value: "isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : formatCount(item.prev) })}</p>
               <GrowthIndicator value={item.growth} />
             </div>
           ))}

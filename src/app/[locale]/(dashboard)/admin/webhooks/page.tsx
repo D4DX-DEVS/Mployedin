@@ -232,6 +232,8 @@ export default function AdminWebhooksPage() {
       if (res.ok) {
         toast.success(t("deleted"));
         fetchWebhooks();
+      } else {
+        toast.error(t("deleteFailed"));
       }
     } catch {
       toast.error(t("deleteFailed"));
@@ -540,7 +542,7 @@ export default function AdminWebhooksPage() {
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
             {showFilters ? t("hideFilters") : t("showFilters")}
-            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-xs">{activeFilterCount} active</Badge>}
+            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-xs">{t("activeFilterCount", { count: activeFilterCount })}</Badge>}
             {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           <div className="flex items-center gap-2">
@@ -797,9 +799,9 @@ export default function AdminWebhooksPage() {
                 </span>
                 <span className="flex items-center gap-1.5 text-red-500">
                   <XCircle className="h-3 w-3" />
-                  {logEntries.filter((e) => e.status === "failed").length} failed
+                  {t("failedCount", { count: logEntries.filter((e) => e.status === "failed").length })}
                 </span>
-                <span className="ml-auto text-muted-foreground">{logEntries.length} total</span>
+                <span className="ml-auto text-muted-foreground">{t("totalCount", { count: logEntries.length })}</span>
               </div>
             )}
 

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Check, ChevronRight, ChevronDown, Search, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2 } from "lucide-react";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { TagAutocomplete, Autocomplete } from "@/components/ui/tag-autocomplete";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -330,7 +331,9 @@ const NOTICE_PERIOD_DAYS: Record<string, number> = {
 export default function JobSeekerOnboardingPage() {
   const t = useTranslations("onboarding");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
+  const callback = safeCallbackPath(searchParams.get("callbackUrl"), locale);
   const { data: session, status, update: updateSession } = useSession();
 
   // Construct STEPS array with translations
@@ -441,7 +444,7 @@ export default function JobSeekerOnboardingPage() {
           // Profile not found — that's fine for credentials users
         });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [session, userName]);
 
   // ── Auto-trigger AI import for LinkedIn users ────────────────────────────
@@ -458,7 +461,7 @@ export default function JobSeekerOnboardingPage() {
       aiImportTriggered.current = true;
       handleAiImport();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [isLinkedIn, profileLoaded, aiImported, aiImporting, status]);
 
   // ── AI-powered LinkedIn profile import ──────────────────────────────────
@@ -732,7 +735,7 @@ export default function JobSeekerOnboardingPage() {
       case 3: return !!step3.headline.trim();
       default: return true;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [step, step0, step1, step2, step3]);
 
   // ── Save helpers ─────────────────────────────────────────────────────────
@@ -828,7 +831,7 @@ export default function JobSeekerOnboardingPage() {
       });
       // Refresh the JWT so middleware sees isOnboarded: true + updated name
       await updateSession({ isOnboarded: true, name: step0.name });
-      router.push(`/${locale ?? "en"}/job-seeker`);
+      router.push(callback ?? `/${locale ?? "en"}/job-seeker`);
     } catch (err) {
       setSaveError((err as Error).message);
     } finally {
@@ -1730,7 +1733,7 @@ export default function JobSeekerOnboardingPage() {
                       // searchable on a choice the seeker never made.
                       await saveStep({ onboardingComplete: true, profileCompletedLater: true, profileVisibility: "hidden" });
                       await updateSession({ isOnboarded: true });
-                      router.push(`/${locale ?? "en"}/job-seeker`);
+                      router.push(callback ?? `/${locale ?? "en"}/job-seeker`);
                     } catch {
                       setSaveError(t("failedToSkip"));
                     } finally {

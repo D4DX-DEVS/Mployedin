@@ -298,7 +298,7 @@ export default function AdminExhibitionsPage() {
   const searchParams = useSearchParams();
   const t = useTranslations("adminExhibitions");
   const ta = useTranslations("a11y");
-  const { confirm } = useConfirm();
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   // Was a hard-coded `const pageSize = 10` used only for the "showing x-y"
@@ -488,6 +488,8 @@ export default function AdminExhibitionsPage() {
       if (response.ok) {
         toast.success(t("requestDeleted"));
         fetchItems();
+      } else {
+        toast.error(t("failedToDeleteRequest"));
       }
     } catch {
       toast.error(t("failedToDeleteRequest"));
@@ -612,6 +614,8 @@ export default function AdminExhibitionsPage() {
 
   return (
     <div className="page-container pb-20 lg:pb-16">
+      {ConfirmDialogNode}
+
       <DashboardPageHeader
         compact
         icon={CalendarDays}

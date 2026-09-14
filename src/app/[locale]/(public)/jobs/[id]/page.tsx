@@ -10,6 +10,7 @@ import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/feature
 import TrackJobView from "@/components/features/public/TrackJobView";
 import SocialShare from "@/components/features/public/SocialShare";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
+import { StickyApplyBar } from "@/components/features/public/StickyApplyBar";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
@@ -194,7 +195,7 @@ export default async function JobDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 md:py-8">
+        <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 md:py-8 pb-24 lg:pb-8">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8 lg:items-start">
             {/* Main content */}
             <div className="lg:col-span-2 space-y-5 sm:space-y-6">
@@ -204,7 +205,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                   <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{job.title}</h1>
                   <div className="flex items-center gap-2 shrink-0">
                     <SocialShare
-                      url={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/${locale}/jobs/${String(job._id)}`}
+                      url={`${BASE_URL}/${locale}/jobs/${String(job._id)}`}
                       title={`${job.title} at ${employer?.companyName ?? "Company"}`}
                       description={job.description?.slice(0, 120)}
                     />
@@ -325,7 +326,7 @@ export default async function JobDetailPage({ params }: PageProps) {
             {/* Sidebar */}
             <div className="space-y-4 lg:self-start">
               {/* Apply card */}
-              <div className="bg-card border border-border rounded-xl panel-body">
+              <div id="apply" className="bg-card border border-border rounded-xl panel-body">
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-foreground">{job.title}</p>
                   <p className="text-xs text-muted-foreground">{employer?.companyName}</p>
@@ -385,6 +386,8 @@ export default async function JobDetailPage({ params }: PageProps) {
           <SimilarJobs jobId={String(job._id)} locale={locale} />
         </div>
       </div>
+
+      <StickyApplyBar targetId="apply" jobTitle={job.title} salaryLine={salary ?? undefined} />
     </>
   );
 }

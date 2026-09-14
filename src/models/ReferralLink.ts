@@ -1,9 +1,15 @@
 import mongoose, { Document, Schema } from "mongoose";
+import type { ReferralAudience } from "@/lib/referrals/url";
 
 export interface IReferralRegistration {
-  employerId: mongoose.Types.ObjectId;
+  /** Missing on rows written before job-seeker links existed → employer. */
+  kind?: "employer" | "job_seeker";
+  employerId?: mongoose.Types.ObjectId;
+  jobSeekerId?: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  companyName: string;
+  companyName?: string;
+  /** Seeker display name (job_seeker rows). */
+  name?: string;
   email: string;
   country?: string;
   city?: string;
@@ -15,6 +21,8 @@ export interface IReferralLink extends Document {
   code: string;
   createdBy: mongoose.Types.ObjectId; // userId of agent/super-agent
   creatorRole: "agent" | "super_agent";
+  /** Who the link signs up. Missing on old documents → "employer". */
+  audience: ReferralAudience;
   agentId?: mongoose.Types.ObjectId; // Agent doc _id (if creator is agent)
   superAgentId?: mongoose.Types.ObjectId; // SuperAgent doc _id (if creator is super-agent)
   label?: string; // optional friendly name e.g. "LinkedIn Campaign Q2"
@@ -29,9 +37,12 @@ export interface IReferralLink extends Document {
 
 const ReferralRegistrationSchema = new Schema<IReferralRegistration>(
   {
-    employerId: { type: Schema.Types.ObjectId, ref: "Employer", required: true },
+    kind: { type: String, enum: ["employer", "job_seeker"], default: "employer" },
+    employerId: { type: Schema.Types.ObjectId, ref: "Employer" },
+    jobSeekerId: { type: Schema.Types.ObjectId, ref: "JobSeeker" },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    companyName: { type: String, required: true },
+    companyName: { type: String },
+    name: { type: String },
     email: { type: String, required: true },
     country: String,
     city: String,
@@ -45,6 +56,7 @@ const ReferralLinkSchema = new Schema<IReferralLink>(
     code: { type: String, required: true, unique: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     creatorRole: { type: String, enum: ["agent", "super_agent"], required: true },
+    audience: { type: String, enum: ["employer", "job_seeker"], default: "employer" },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
     superAgentId: { type: Schema.Types.ObjectId, ref: "SuperAgent" },
     label: { type: String, trim: true, maxlength: 100 },

@@ -23,6 +23,7 @@ import {
   TrendingUp, MapPin, Filter, MoreHorizontal, FileText, Award, SplitSquareVertical,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useConfirm } from "@/hooks/useConfirm";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -113,6 +114,7 @@ type TabView = "dashboard" | "leaderboard";
 
 export default function AdminTargetManagementPage() {
   const t = useTranslations("targets");
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const locale = pathname.split("/")[1] || "en";
@@ -236,6 +238,8 @@ export default function AdminTargetManagementPage() {
 
   // Actions
   const handleCancel = async (id: string) => {
+    const ok = await confirmDialog({ message: t("cancelConfirm"), confirmLabel: t("cancelProfile") });
+    if (!ok) return;
     try {
       const res = await csrfFetch(`/api/admin/target-profiles/${id}`, { method: "DELETE" });
       if (res.ok) { toast.success(t("profileCancelled")); fetchProfiles(); }
@@ -334,6 +338,8 @@ export default function AdminTargetManagementPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
+
       {/* The page heading is the shared hero, and it carries the totals. The two
           KPI card rows that used to sit between the toolbar and the table repeated
           these same six numbers and rendered 3-4 per row on a phone. */}
