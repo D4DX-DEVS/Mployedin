@@ -4,6 +4,7 @@ import { Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google
 import { headers } from "next/headers";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
+import { CspNonceProvider } from "@/components/shared/CspNonceProvider";
 import "@/app/globals.css";
 import { getStorageFallbackScript } from "@/lib/storage-fallback";
 
@@ -90,14 +91,7 @@ export default async function RootLayout({
           async
           suppressHydrationWarning
           nonce={nonce}
-          dangerouslySetInnerHTML={{
-            // __webpack_nonce__ lets runtime style injectors (react-style-singleton,
-            // used by Radix dialogs for scroll-lock) tag their <style> with the CSP
-            // nonce — without it the app's own CSP blocks those styles.
-            __html:
-              getStorageFallbackScript() +
-              (nonce ? `;window.__webpack_nonce__=${JSON.stringify(nonce)};` : ""),
-          }}
+          dangerouslySetInnerHTML={{ __html: getStorageFallbackScript() }}
         />
       </head>
       <body
@@ -105,6 +99,13 @@ export default async function RootLayout({
         className={`${manrope.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
+        {/* Publishes the nonce to runtime style injectors (react-style-singleton,
+            which Radix uses for dialog/dropdown scroll-lock) before anything can
+            open and inject a <style>. Setting window.__webpack_nonce__ from the
+            inline script above did not work: webpack rewrites that identifier to
+            __webpack_require__.nc at build time, so the value never reached
+            get-nonce and prod logged a style-src-elem violation on every menu. */}
+        <CspNonceProvider nonce={nonce} />
         {children}
         <ResponsiveTables />
         <ServiceWorkerRegistration />

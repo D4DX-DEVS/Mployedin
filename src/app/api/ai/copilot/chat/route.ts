@@ -18,54 +18,73 @@ import { logActivity } from "@/lib/audit/log";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import logger from "@/lib/logger";
 
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+import {
+  GOOGLE_AI_OPENAI_BASE,
+  hasGoogleAiApiKey,
+  getGoogleAiApiKey,
+  openAiCompatHeaders,
+  providerErrorMessage,
+  completionBudget,
+  copilotReasoningEffort,
+} from "@/lib/ai/googleAI";
+
 const MAX_TOOL_ITERATIONS = 4;
 const PROPOSAL_TTL_MS = 15 * 60 * 1000;
 
-interface ORToolCall {
+interface CopilotToolCall {
   id: string;
   type: "function";
   function: { name: string; arguments: string };
+  /**
+   * Gemini 3.x attaches `{ google: { thought_signature } }` to every tool call
+   * and rejects the follow-up request (400 "Function call is missing a
+   * thought_signature") unless the assistant message that carries the tool
+   * call echoes it back verbatim. Opaque to us; never read, only forwarded.
+   */
+  extra_content?: Record<string, unknown>;
 }
-interface ORMessage {
+interface CopilotMessage {
   role: "system" | "user" | "assistant" | "tool";
   content: string | null;
-  tool_calls?: ORToolCall[];
+  tool_calls?: CopilotToolCall[];
   tool_call_id?: string;
   name?: string;
 }
 
-interface ORDelta {
+interface CopilotDelta {
   content?: string;
-  tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }>;
+  tool_calls?: Array<{
+    index?: number;
+    id?: string;
+    function?: { name?: string; arguments?: string };
+    extra_content?: Record<string, unknown>;
+  }>;
 }
 
-async function callOpenRouterOnce(
+async function callGeminiOnce(
   model: string,
-  messages: ORMessage[],
+  messages: CopilotMessage[],
   tools: unknown[],
   apiKey: string,
   onDelta?: (chunk: string) => void
-): Promise<ORMessage> {
-  const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+): Promise<CopilotMessage> {
+  const res = await fetch(`${GOOGLE_AI_OPENAI_BASE}/chat/completions`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com",
-      "X-Title": "Mployedin Copilot",
-    },
+    headers: openAiCompatHeaders(apiKey),
     body: JSON.stringify({
       model,
       messages,
-      max_tokens: AI_TOKEN_LIMITS.chat,
+      // Thinking (when enabled via env) shares max_tokens with the answer, so
+      // completionBudget adds headroom only in that case.
+      max_tokens: completionBudget(AI_TOKEN_LIMITS.chat, copilotReasoningEffort()),
+      reasoning_effort: copilotReasoningEffort(),
       stream: true,
       ...(tools.length ? { tools, tool_choice: "auto" } : {}),
     }),
   });
   if (!res.ok || !res.body) {
     const err = await res.text().catch(() => "");
-    throw new Error(`OpenRouter error ${res.status}: ${err}`);
+    throw new Error(providerErrorMessage(res.status, err));
   }
 
   // Assemble the full assistant message from SSE deltas, forwarding text
@@ -74,7 +93,7 @@ async function callOpenRouterOnce(
   const decoder = new TextDecoder();
   let buffer = "";
   let content = "";
-  const toolCalls: ORToolCall[] = [];
+  const toolCalls: CopilotToolCall[] = [];
 
   while (true) {
     const { done, value } = await reader.read();
@@ -87,7 +106,7 @@ async function callOpenRouterOnce(
       if (!payload.startsWith("data:")) continue;
       const data = payload.slice(5).trim();
       if (!data || data === "[DONE]") continue;
-      let json: { choices?: { delta?: ORDelta }[] };
+      let json: { choices?: { delta?: CopilotDelta }[] };
       try {
         json = JSON.parse(data);
       } catch {
@@ -105,6 +124,7 @@ async function callOpenRouterOnce(
         if (tc.id) toolCalls[i].id = tc.id;
         if (tc.function?.name) toolCalls[i].function.name += tc.function.name;
         if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
+        if (tc.extra_content) toolCalls[i].extra_content = tc.extra_content;
       }
     }
   }
@@ -118,15 +138,15 @@ async function callOpenRouterOnce(
  * briefly unavailable) transparently retries once on LARGE_MODEL so a flaky
  * cheap tier degrades to "costs more this turn" instead of a broken reply.
  */
-async function callOpenRouter(model: string, messages: ORMessage[], tools: unknown[], apiKey: string, onDelta?: (chunk: string) => void) {
+async function callGemini(model: string, messages: CopilotMessage[], tools: unknown[], apiKey: string, onDelta?: (chunk: string) => void) {
   try {
-    return { message: await callOpenRouterOnce(model, messages, tools, apiKey, onDelta), modelUsed: model };
+    return { message: await callGeminiOnce(model, messages, tools, apiKey, onDelta), modelUsed: model };
   } catch (err) {
     if (model === LARGE_MODEL) throw err;
     logger.warn({ err, model }, "[AI Copilot] small model failed, falling back to large model");
     // ponytail: a mid-stream failure may have emitted partial deltas before the retry
     // re-streams — the final "text" frame replaces the client's buffer, so it self-heals.
-    return { message: await callOpenRouterOnce(LARGE_MODEL, messages, tools, apiKey, onDelta), modelUsed: LARGE_MODEL };
+    return { message: await callGeminiOnce(LARGE_MODEL, messages, tools, apiKey, onDelta), modelUsed: LARGE_MODEL };
   }
 }
 
@@ -165,15 +185,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "messages array required" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = hasGoogleAiApiKey() ? getGoogleAiApiKey() : "";
     if (!apiKey) {
-      logger.error("[AI Copilot] OPENROUTER_API_KEY not set");
+      logger.error("[AI Copilot] GEMINI_API_KEY not set");
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
 
     await connectDB();
     const tools = getToolsForUser(role, permissionMode, customPermissions);
-    const orTools = tools.map((t) => ({
+    const chatTools = tools.map((t) => ({
       type: "function" as const,
       function: { name: t.name, description: t.description, parameters: toJsonSchema(t.parameters) },
     }));
@@ -197,7 +217,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const orMessages: ORMessage[] = [
+    const chatMessages: CopilotMessage[] = [
       { role: "system", content: systemPrompt },
       ...messages.map((m: { role: string; content: string }) => ({
         role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
@@ -221,19 +241,19 @@ export async function POST(req: NextRequest) {
           const onDelta = (chunk: string) => send({ type: "text_delta", content: chunk });
 
           for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-            const { message, modelUsed } = await callOpenRouter(currentModel, orMessages, orTools, apiKey, onDelta);
+            const { message, modelUsed } = await callGemini(currentModel, chatMessages, chatTools, apiKey, onDelta);
             currentModel = modelUsed; // stick with whatever actually served this call
             modelsUsed.add(modelUsed);
 
             if (message.tool_calls?.length) {
-              orMessages.push({ role: "assistant", content: message.content ?? null, tool_calls: message.tool_calls });
+              chatMessages.push({ role: "assistant", content: message.content ?? null, tool_calls: message.tool_calls });
 
               for (const call of message.tool_calls) {
                 const tool = getToolByName(call.function.name);
                 const isPermitted = tool && tools.some((t) => t.name === tool.name);
 
                 if (!isPermitted) {
-                  orMessages.push({
+                  chatMessages.push({
                     role: "tool",
                     tool_call_id: call.id,
                     name: call.function.name,
@@ -246,7 +266,7 @@ export async function POST(req: NextRequest) {
                 try {
                   rawArgs = call.function.arguments ? JSON.parse(call.function.arguments) : {};
                 } catch {
-                  orMessages.push({
+                  chatMessages.push({
                     role: "tool",
                     tool_call_id: call.id,
                     name: call.function.name,
@@ -257,7 +277,7 @@ export async function POST(req: NextRequest) {
 
                 const validated = validateArgs(tool.parameters, rawArgs);
                 if (!validated.ok) {
-                  orMessages.push({
+                  chatMessages.push({
                     role: "tool",
                     tool_call_id: call.id,
                     name: call.function.name,
@@ -285,7 +305,7 @@ export async function POST(req: NextRequest) {
                     // The dry run found nothing to do (ambiguous job, nothing to
                     // move): no card — hand the reason back so the model asks.
                     send({ type: "tool_result", tool: tool.name, ok: false, message: preview.blocker });
-                    orMessages.push({
+                    chatMessages.push({
                       role: "tool",
                       tool_call_id: call.id,
                       name: call.function.name,
@@ -315,7 +335,7 @@ export async function POST(req: NextRequest) {
                     args: proposalArgs,
                     preview: preview ? { summary: preview.summary, rows: preview.rows } : undefined,
                   });
-                  orMessages.push({
+                  chatMessages.push({
                     role: "tool",
                     tool_call_id: call.id,
                     name: call.function.name,
@@ -328,7 +348,7 @@ export async function POST(req: NextRequest) {
                 } else {
                   const result = await tool.execute(validated.value, toolCtx);
                   send({ type: "tool_result", tool: tool.name, ok: result.ok, message: result.message, data: result.data });
-                  orMessages.push({
+                  chatMessages.push({
                     role: "tool",
                     tool_call_id: call.id,
                     name: call.function.name,
@@ -358,7 +378,7 @@ export async function POST(req: NextRequest) {
             // Model was still calling tools when the iteration cap hit — force a
             // final answer by calling once with no tools, so the user never gets
             // a turn that ends in silence.
-            const { message } = await callOpenRouter(currentModel, orMessages, [], apiKey, onDelta);
+            const { message } = await callGemini(currentModel, chatMessages, [], apiKey, onDelta);
             send({ type: "text", content: message.content ?? "" });
           }
 

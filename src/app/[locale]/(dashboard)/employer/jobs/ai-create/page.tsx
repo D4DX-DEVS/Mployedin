@@ -4,7 +4,7 @@ import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import Link from "next/link";
-import { Bot, FileText, Globe, Loader2, Mic, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
+import { Bot, FileText, Globe, Loader2, Mic, RotateCcw, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -21,6 +21,8 @@ function hasMalayalam(text: string): boolean {
 interface Message {
   role: "user" | "assistant";
   content: string;
+  /** The reply failed (network, non-2xx, or an empty stream); shown with a Retry, never sent back to the model or persisted. */
+  error?: boolean;
 }
 
 interface ExtractedRequirements {
@@ -53,6 +55,62 @@ interface ExtractedJob {
   showSalary?: boolean;
   tags?: string[];
   visibility?: string;
+  screeningQuestions?: ExtractedScreeningQuestion[];
+}
+
+/** A screening question as the model writes it — loosely typed, normalised by buildPrefill. */
+interface ExtractedScreeningQuestion {
+  label?: string;
+  /** Some replies use `question` instead of `label`. */
+  question?: string;
+  type?: string;
+  required?: boolean;
+  options?: string[];
+  placeholder?: string;
+}
+
+type ScreeningQuestionValue = NonNullable<JobFormValues["screeningQuestions"]>[number];
+type ScreeningQuestionType = ScreeningQuestionValue["type"];
+
+const SCREENING_QUESTION_TYPES: readonly ScreeningQuestionType[] = ["text", "textarea", "select", "checkbox", "radio", "number", "date"];
+const CHOICE_QUESTION_TYPES: readonly ScreeningQuestionType[] = ["select", "radio", "checkbox"];
+
+/**
+ * Coerce the model's screening questions into the form's exact shape: drop
+ * blanks, whitelist the type, keep options only for choice types (and demote a
+ * choice type with no options to free text, which the API would reject), and
+ * mint the ids and order the wizard expects.
+ */
+function normalizeScreeningQuestions(list: ExtractedScreeningQuestion[] | undefined): ScreeningQuestionValue[] {
+  if (!Array.isArray(list)) return [];
+  const out: ScreeningQuestionValue[] = [];
+  for (const raw of list) {
+    if (!raw || typeof raw !== "object") continue;
+    const label = String(raw.label ?? raw.question ?? "").trim().slice(0, 500);
+    if (!label) continue;
+    const options = Array.isArray(raw.options)
+      ? raw.options.map((o) => String(o ?? "").trim()).filter(Boolean).slice(0, 20)
+      : [];
+    let type: ScreeningQuestionType = (SCREENING_QUESTION_TYPES as readonly string[]).includes(raw.type ?? "")
+      ? (raw.type as ScreeningQuestionType)
+      : options.length
+        ? "select"
+        : "text";
+    const isChoice = CHOICE_QUESTION_TYPES.includes(type);
+    if (isChoice && options.length === 0) type = "text";
+    const placeholder = typeof raw.placeholder === "string" ? raw.placeholder.trim().slice(0, 200) : "";
+    out.push({
+      id: `sq_ai_${out.length}_${Math.random().toString(36).slice(2, 8)}`,
+      label,
+      type,
+      required: Boolean(raw.required),
+      ...(CHOICE_QUESTION_TYPES.includes(type) ? { options } : {}),
+      ...(placeholder ? { placeholder } : {}),
+      order: out.length,
+    });
+    if (out.length === 20) break;
+  }
+  return out;
 }
 
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
@@ -67,6 +125,15 @@ function readChatSession(): { messages?: Message[]; extractedJob?: ExtractedJob 
   } catch {
     return null;
   }
+}
+
+/**
+ * A persisted assistant turn with no text (the stream was cut by a refresh or
+ * came back empty) or a failed turn is a reply that never arrived. Restoring it
+ * would pin a permanent blank bubble to the conversation.
+ */
+function dropUnfinishedReplies(list: Message[]): Message[] {
+  return list.filter((m) => m.role !== "assistant" || (!m.error && m.content.trim().length > 0));
 }
 const VOICE_WAVE_BARS = [0.45, 0.8, 1, 0.65, 0.9, 0.55, 0.75] as const;
 const DETECTED_LANGUAGE_LABELS: Record<string, string> = {
@@ -157,6 +224,7 @@ function buildPrefill(job: ExtractedJob): Partial<JobFormValues> {
     showSalary: job.showSalary ?? Boolean((job.salary?.min ?? 0) > 0 || (job.salary?.max ?? 0) > 0),
     vacancies: job.vacancies,
     tags: job.tags?.length ? job.tags.slice(0, 6) : extractSkills(job.requirements).slice(0, 6),
+    screeningQuestions: normalizeScreeningQuestions(job.screeningQuestions),
   };
 }
 
@@ -301,10 +369,11 @@ export default function EmployerAIJobCreatePage() {
   useEffect(() => {
     const saved = readChatSession();
     if (!saved) return;
-    if (saved.messages && saved.messages.length > 0) setMessages(saved.messages);
+    const restored = saved.messages ? dropUnfinishedReplies(saved.messages) : [];
+    if (restored.length > 0) setMessages(restored);
     if (saved.extractedJob) setExtractedJob(saved.extractedJob);
     if (saved.extractedBulkJobs && saved.extractedBulkJobs.length > 0) setExtractedBulkJobs(saved.extractedBulkJobs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Persist the conversation + draft so an accidental remount or navigation
@@ -349,7 +418,7 @@ export default function EmployerAIJobCreatePage() {
         // Filter out "system" role messages — the chat UI Message type only
         // supports "user" | "assistant"; system messages are transient and not
         // rendered, so dropping them on restore is safe.
-        setMessages(thread.messages.filter((m) => m.role !== "system") as never);
+        setMessages(dropUnfinishedReplies(thread.messages.filter((m) => m.role !== "system") as Message[]));
         setThreadId(resumeId);
         if (thread.meta?.extractedJob) setExtractedJob(thread.meta.extractedJob);
         if (thread.meta?.extractedBulkJobs) setExtractedBulkJobs(thread.meta.extractedBulkJobs);
@@ -360,37 +429,46 @@ export default function EmployerAIJobCreatePage() {
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [resumeId]);
 
   // ── Server-persist after each completed assistant reply ────────────────
   // Fires whenever messages change AND the last message is an assistant turn
   // (i.e. the AI just finished responding). One upsert per completed reply —
   // NOT per token, NOT on user keystroke. Mirrors ChatGPT's save cadence.
+  // The thread id is read through a ref so that learning it from the first
+  // upsert does not re-run this effect and write the same reply twice.
+  const threadIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    threadIdRef.current = threadId;
+  }, [threadId]);
   useEffect(() => {
     if (restoringThread) return; // don't race with the resume fetch
+    if (isStreaming) return; // one upsert per completed reply, not per streamed chunk
     if (messages.length <= 1) return; // skip the initial greeting
     const last = messages[messages.length - 1];
     if (last?.role !== "assistant") return;
-    // Skip the placeholder empty assistant bubble during streaming.
-    if (!last.content || !last.content.trim()) return;
+    // A reply that never arrived, or failed, is not part of the thread — and
+    // the ConversationThread schema rejects empty content outright.
+    if (last.error || !last.content || !last.content.trim()) return;
 
     let cancelled = false;
     (async () => {
       try {
+        const currentThreadId = threadIdRef.current;
         const res = await fetch("/api/ai/chat/drafts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...(threadId ? { threadId } : {}),
-            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            ...(currentThreadId ? { threadId: currentThreadId } : {}),
+            messages: messages.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content })),
             ...(extractedJob ? { extractedJob } : {}),
             ...(extractedBulkJobs.length > 0 ? { extractedBulkJobs } : {}),
           }),
         });
         if (!res.ok) return;
         const data = (await res.json()) as { threadId: string };
-        if (!cancelled && data.threadId && data.threadId !== threadId) {
+        if (!cancelled && data.threadId && data.threadId !== threadIdRef.current) {
           setThreadId(data.threadId);
         }
       } catch {
@@ -398,18 +476,16 @@ export default function EmployerAIJobCreatePage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [messages, extractedJob, extractedBulkJobs, threadId, restoringThread]);
+  }, [messages, extractedJob, extractedBulkJobs, restoringThread, isStreaming]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isStreaming || isRecording || isVoiceProcessing) return;
-
-    const userMsg: Message = { role: "user", content: input.trim() };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  /**
+   * Stream one assistant turn for `history` (which ends with a user message).
+   * Shared by sendMessage and retryLastReply. An empty stream is a failure,
+   * not a blank answer: Muse can spend the whole completion budget reasoning
+   * and return 200 with no text, and the user needs a retry, not a blank bubble.
+   */
+  const streamReply = async (history: Message[]) => {
     setIsStreaming(true);
-
-    const allMessages = [...messages, userMsg];
     const assistantMsg: Message = { role: "assistant", content: "" };
     setMessages((prev) => [...prev, assistantMsg]);
 
@@ -418,7 +494,7 @@ export default function EmployerAIJobCreatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: allMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: history.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content })),
           context: "job_creator",
         }),
       });
@@ -440,6 +516,8 @@ export default function EmployerAIJobCreatePage() {
           return copy;
         });
       }
+
+      if (!accumulated.trim()) throw new Error(t("jobCreator.streamError"));
 
       // Try to extract job data — check bulk first
       const bulkMatch = accumulated.match(/<BULK_JOB_DATA>([\s\S]*?)<\/BULK_JOB_DATA>/);
@@ -466,12 +544,32 @@ export default function EmployerAIJobCreatePage() {
     } catch {
       setMessages((prev) => {
         const copy = [...prev];
-        copy[copy.length - 1] = { ...copy[copy.length - 1], content: t("errorMessage") };
+        copy[copy.length - 1] = { ...copy[copy.length - 1], content: t("errorMessage"), error: true };
         return copy;
       });
     } finally {
       setIsStreaming(false);
     }
+  };
+
+  const sendMessage = async () => {
+    if (!input.trim() || isStreaming || isRecording || isVoiceProcessing) return;
+
+    const userMsg: Message = { role: "user", content: input.trim() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    await streamReply([...messages, userMsg]);
+  };
+
+  /** Drop the failed bubble and ask again with exactly the same history. */
+  const retryLastReply = async () => {
+    if (isStreaming) return;
+    const last = messages[messages.length - 1];
+    if (last?.role !== "assistant" || !last.error) return;
+    const history = messages.slice(0, -1);
+    setMessages(history);
+    await streamReply(history);
   };
 
   const reviewInForm = () => {
@@ -639,16 +737,37 @@ export default function EmployerAIJobCreatePage() {
                     const hasJobData = /<JOB_DATA>[\s\S]*?<\/JOB_DATA>/.test(msg.content) || /<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/.test(msg.content);
                     const displayText = msg.content.replace(/<JOB_DATA>[\s\S]*?<\/JOB_DATA>/, "").replace(/<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/, "").trim();
                     if (msg.role === "assistant") {
+                      const isLast = i === messages.length - 1;
+                      // Muse reasons for 5–20 s before the first character; an
+                      // empty bubble with a 1px cursor read as "stuck".
+                      const isPending = isStreaming && isLast && !msg.content;
                       return (
                         <div className="prose-sm prose-p:my-0 prose-li:my-0">
-                          {renderMarkdown(displayText)}
+                          {isPending ? (
+                            <span role="status" className="inline-flex items-center gap-2 text-muted-foreground">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                              {t("jobCreator.thinking")}
+                            </span>
+                          ) : (
+                            renderMarkdown(displayText)
+                          )}
+                          {msg.error && isLast && !isStreaming && (
+                            <button
+                              type="button"
+                              onClick={() => void retryLastReply()}
+                              className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md sm:min-h-0"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                              {t("jobCreator.retry")}
+                            </button>
+                          )}
                           {hasJobData && !isStreaming && (
                             <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 text-green-800 text-xs chip-pad">
                               <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
                               <span className="font-medium">{t("jobCreator.draftReadyPanel")}</span>
                             </div>
                           )}
-                          {isStreaming && i === messages.length - 1 && (
+                          {isStreaming && isLast && !isPending && (
                             <span className="inline-block w-1 h-4 ml-0.5 bg-primary animate-pulse" />
                           )}
                         </div>

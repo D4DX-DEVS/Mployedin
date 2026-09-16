@@ -41,6 +41,22 @@ export function ServiceWorkerRegistration() {
       return;
     }
 
+    // sw.ts sets skipWaiting + clientsClaim, so a worker from a fresh deploy
+    // takes over THIS document mid-session. The document is still running the
+    // previous build's chunk hashes, which the new precache no longer holds and
+    // the deploy has already dropped from the CDN — every later lazy import
+    // (the Google sign-in chunk among them) then 404s on a page that looks
+    // fine, and the navigation itself fails with Serwist's `no-response`.
+    // Reload once when control changes so document and worker are one build.
+    // `hadController` keeps the very first registration from reloading.
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {

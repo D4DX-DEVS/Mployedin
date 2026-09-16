@@ -11,6 +11,7 @@ import ReferralLink from "@/models/ReferralLink";
 import { validateBody } from "@/lib/validators";
 import { saAgentUpdateSchema } from "@/lib/validators/super-agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { EMPTY_AGENT_PERFORMANCE, getLiveAgentPerformance } from "@/lib/agentPerformance";
 
 export const GET = withAuth(async (req: NextRequest, ctx, params) => {
   await connectDB();
@@ -108,7 +109,11 @@ export const GET = withAuth(async (req: NextRequest, ctx, params) => {
       isActive: user?.isActive ?? false,
       joinedAt: user?.createdAt,
     },
-    performance: agent.performance ?? {},
+    // Counted from the collections. `agent.performance` is a fire-and-forget
+    // subdoc that drifts, and this scorecard sits beside lists of the very
+    // records it claims to count.
+    performance: (await getLiveAgentPerformance([agent._id])).get(String(agent._id))
+      ?? EMPTY_AGENT_PERFORMANCE,
     leads: {
       items: leads,
       total: leads.length,

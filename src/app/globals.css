@@ -2029,9 +2029,29 @@ table.workspace-list-table tbody tr:focus-visible {
      delete / switch workspace on admin employers) wrapped onto three lines and
      made the collapsed card 240px tall — taller than the record it belongs to.
      Keep the labels, put them on one line, and let the row scroll: the same
-     affordance the employer filter-chip rows use. */
-  table.responsive-card-table > tbody > tr > td[data-mobile-actions] > :where(div, span),
-  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] > :where(div, span) {
+     affordance the employer filter-chip rows use.
+
+     That scroller was applied to EVERY actions row, including rows that overrun
+     by a few pixels. /en/agent/jobs measured clientWidth 280 / scrollWidth 290
+     at 390px, so its second action painted as "View Jo" — indistinguishable
+     from clipped text, because a hidden scrollbar is not an affordance. QA
+     filed it as a rendering bug, which is a fair reading.
+
+     So the scroller is now earned rather than assumed. A row is only worth
+     scrolling when it holds enough actions that wrapping would distort the
+     card; one or two always fit on two lines. The split is by action count
+     rather than by measured width because it has to hold in `ar` as well,
+     where the same labels are wider — a width-based tweak that fits in English
+     clips in Arabic. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] > :where(div, span):not(:has(> :nth-child(3))),
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] > :where(div, span):not(:has(> :nth-child(3))) {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    justify-content: flex-start;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] > :where(div, span):has(> :nth-child(3)),
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] > :where(div, span):has(> :nth-child(3)) {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
@@ -2040,6 +2060,18 @@ table.workspace-list-table tbody tr:focus-visible {
        already scrolled past its first actions — admin employers showed
        "…e permanently" first and hid verify, edit and deactivate entirely. */
     justify-content: flex-start;
+    /* Scroll shadow, so the rows that still scroll say so. Two cover layers
+       painted in the card colour scroll WITH the content (`local`); two shadow
+       layers stay fixed to the box (`scroll`). At either end the cover sits over
+       the shadow and hides it, so a shadow appears only on the side that has
+       content outside the box — and disappears once you reach that end. No
+       measurement, no resize listener, and it stays correct when the row is
+       re-rendered with a different number of actions. */
+    background:
+      linear-gradient(to right, hsl(var(--card)) 30%, hsl(var(--card) / 0)) left center / 1.75rem 100% no-repeat local,
+      linear-gradient(to left, hsl(var(--card)) 30%, hsl(var(--card) / 0)) right center / 1.75rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.16), rgb(0 0 0 / 0)) left center / 0.75rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.16), rgb(0 0 0 / 0)) right center / 0.75rem 100% no-repeat scroll;
   }
 
   table.responsive-card-table > tbody > tr > td[data-mobile-actions] > :where(div, span)::-webkit-scrollbar,
@@ -2052,8 +2084,15 @@ table.workspace-list-table tbody tr:focus-visible {
     flex-shrink: 0;
   }
 
-  table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after,
-  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after {
+  /* Scoped to the scrolling branch. Forcing labels onto one line is what makes
+     a five-action row one line tall, but in a wrapping row it is the opposite
+     of what we want: there the container wraps, so a long label should break
+     too rather than push its button past the card's edge — the card itself is
+     `overflow: hidden`, which would clip it exactly the way the scroller did.
+     Rows with one or two actions therefore keep the earlier `white-space:
+     normal; overflow-wrap: anywhere` from the base rule above. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] > :where(div, span):has(> :nth-child(3)) :where(button, a)[title]:not([data-table-action])::after,
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] > :where(div, span):has(> :nth-child(3)) :where(button, a)[title]:not([data-table-action])::after {
     white-space: nowrap;
     overflow-wrap: normal;
   }
@@ -3779,3 +3818,4 @@ table.workspace-list-table tbody tr:focus-visible {
 /* rebuild nudge 2026-09-08 job-workspace r3 */
 
 /* touched to force a Turbopack CSS rebuild — in-place edits above do not always invalidate. */
+

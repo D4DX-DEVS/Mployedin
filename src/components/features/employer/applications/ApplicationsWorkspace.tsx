@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useStartConversation } from "@/hooks/useCandidates";
 import { CURRENCIES } from "@/components/features/employer/job-form/jobFormSchema";
 import { isFormError } from "@/lib/errors/form-error";
+import { isBreakdownMeasured } from "@/lib/matchBreakdown";
 import {
   Award,
   BadgeCheck,
@@ -182,6 +183,14 @@ export interface Applicant {
   documents?: { name: string; url: string; type: string }[];
   /** Most recent background / reference check, when one has been raised. */
   latestCheck?: CandidateCheck;
+}
+
+/** One entry of the candidate's private note history, as GET .../notes returns it. */
+interface PanelNote {
+  _id: string;
+  authorName: string;
+  content: string;
+  createdAt: string | null;
 }
 
 interface TimelineEntry {
@@ -617,7 +626,14 @@ export function ApplicationsWorkspace({
       if (explain) toast.info(t("shortlistNoneInView"));
       return;
     }
-    const unscored = applications.filter((app) => app.aiMatchScore == null);
+    // Explicit runs also pick up rows carrying a headline score with a legacy
+    // zeroed breakdown: those were unreachable by every scoring path, so the
+    // contradictory "85% / Skills 0%" could never be corrected from the UI.
+    // The automatic first-load pass stays limited to never-scored rows.
+    const unscored = applications.filter(
+      (app) => app.aiMatchScore == null
+        || (explain && !isBreakdownMeasured(app.matchBreakdown, app.aiMatchScore)),
+    );
     if (!unscored.length) {
       if (explain) toast.info(t("scoreAllAlreadyScored"));
       return;
@@ -2430,7 +2446,25 @@ function ApplicationDetailsPanel({
   const [noteText, setNoteText] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
-  useEffect(() => { setNoteText(""); setNoteSaved(false); }, [app._id]);
+  const [noteHistory, setNoteHistory] = useState<PanelNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState(false);
+  useEffect(() => { setNoteText(""); setNoteSaved(false); setNoteHistory([]); setNotesError(false); }, [app._id]);
+
+  // Read the history back. Without this the tab was write-only: a note was
+  // stored server-side but the panel reopened empty, which reads as data loss.
+  useEffect(() => {
+    if (activeTab !== "notes") return;
+    let cancelled = false;
+    setNotesLoading(true);
+    setNotesError(false);
+    fetch(`/api/applications/${app._id}/notes`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("notes"))))
+      .then((data: { notes?: PanelNote[] }) => { if (!cancelled) setNoteHistory(data.notes ?? []); })
+      .catch(() => { if (!cancelled) setNotesError(true); })
+      .finally(() => { if (!cancelled) setNotesLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, app._id]);
   const pipelineStages = usePipelineStages();
   const currentRole = getCurrentRole(app);
   const candidateName = getCandidateName(app);
@@ -2447,7 +2481,11 @@ function ApplicationDetailsPanel({
   // already printed in the panel header. Rows whose component was never scored
   // are dropped rather than shown as 0%, which reads as "terrible fit" instead
   // of "not measured".
-  const matchItems = app.matchBreakdown
+  // A pre-fix row stored zeroes for every component beside a real headline
+  // score. Drawing those as "Skills 0%" contradicts the badge above them, so
+  // such a row is treated as never measured and offered a re-score.
+  const breakdownMeasured = isBreakdownMeasured(app.matchBreakdown, app.aiMatchScore);
+  const matchItems = app.matchBreakdown && breakdownMeasured
     ? ([
         { label: t("skills"), value: app.matchBreakdown.skills },
         { label: t("experience"), value: app.matchBreakdown.experience },
@@ -2505,8 +2543,21 @@ function ApplicationDetailsPanel({
         body: JSON.stringify({ content }),
       });
       if (!res.ok) throw new Error("Failed to save note");
+      const data = (await res.json()) as { note?: { authorName?: string; content?: string; createdAt?: string } };
       setNoteText("");
       setNoteSaved(true);
+      // Show it in the history immediately — the saved confirmation alone is
+      // what made the old composer feel like it had swallowed the note.
+      setNoteHistory((prev) => [
+        {
+          _id: `pending-${Date.now()}`,
+          authorName: data.note?.authorName ?? "",
+          content: data.note?.content ?? content,
+          createdAt: data.note?.createdAt ?? new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+      setNotesError(false);
     } catch {
       setNoteSaved(false); // keep the draft so the user can retry
     } finally {
@@ -2873,8 +2924,18 @@ function ApplicationDetailsPanel({
                   </div>
                 ) : (
                   // Scored before component scores were recorded — say so
-                  // rather than drawing four empty bars.
-                  <p className="mt-3 text-xs text-muted-foreground">{t("breakdownUnavailable")}</p>
+                  // rather than drawing four empty bars, and offer the re-score
+                  // that fills them in (the headline score alone used to make
+                  // the row ineligible for every scoring path in the UI).
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">{t("breakdownUnavailable")}</p>
+                    {onGenerateAiMatch ? (
+                      <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs text-status-applied hover:bg-sky-500/10" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
+                        <Sparkles className={`mr-1.5 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-status-applied" : ""}`} />
+                        {t("rescoreMatch")}
+                      </Button>
+                    ) : null}
+                  </div>
                 )
               ) : (
                 <div className="mt-3">
@@ -3047,7 +3108,32 @@ function ApplicationDetailsPanel({
                   <Plus className="me-1.5 h-3.5 w-3.5" /> {noteSaving ? t("updating") : t("addNote")}
                 </Button>
               </div>
-              {/* ponytail: composer only — listing past notes needs `notes` on the Applicant type + a GET route. Add when the team wants to read history here. */}
+              <div className="border-t border-border/60 pt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("noteHistory")}</p>
+                {notesLoading ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="h-10 animate-pulse rounded-xl bg-muted/50" />
+                    <div className="h-10 animate-pulse rounded-xl bg-muted/40" />
+                  </div>
+                ) : notesError ? (
+                  <p className="mt-2 text-xs text-muted-foreground">{t("noteHistoryError")}</p>
+                ) : noteHistory.length === 0 ? (
+                  <p className="mt-2 text-xs text-muted-foreground">{t("noteHistoryEmpty")}</p>
+                ) : (
+                  <ul className="mt-2 space-y-2">
+                    {noteHistory.map((note) => (
+                      <li key={note._id} className="rounded-xl bg-muted/40 px-3 py-2">
+                        <p className="text-xs text-foreground/90 whitespace-pre-wrap">{note.content}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {[note.authorName, note.createdAt
+                            ? new Date(note.createdAt).toLocaleDateString(displayDateLocale, { day: "numeric", month: "short", year: "numeric" })
+                            : null].filter(Boolean).join(" · ")}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           ) : null}
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { connectDB } from "@/lib/db/mongoose";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { EMPTY_AGENT_PERFORMANCE, getLiveAgentPerformance } from "@/lib/agentPerformance";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 import Job from "@/models/Job";
@@ -49,8 +50,9 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   // dashboard tiles that under-counted the very lists they open.
   const scope = await getSuperAgentScope(session.user.id as string);
   const agentDocIds = scope?.effectiveAgentIds ?? [];
+  // `performance` is deliberately not selected — see getLiveAgentPerformance.
   const agentDocs = await Agent.find({ _id: { $in: agentDocIds } })
-    .select("userId assignedEmployerIds performance")
+    .select("userId assignedEmployerIds")
     .lean();
   const agentUserIds = agentDocs.map((a) => a.userId);
 
@@ -137,16 +139,21 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     jobs: number;
     employers: number;
   }
+  // Counted from the collections, never from `Agent.performance`. The
+  // denormalized subdoc put 17 placements on this leaderboard while the
+  // Placements KPI and funnel above it — both counting real documents —
+  // correctly read 0, so one dashboard disagreed with itself by 17 records.
+  const livePerformance = await getLiveAgentPerformance(agentDocIds);
   const leaderboard: LeaderboardRow[] = agentDocs
     .map((a) => {
-      const perf = (a.performance ?? {}) as Record<string, number>;
+      const perf = livePerformance.get(String(a._id)) ?? EMPTY_AGENT_PERFORMANCE;
       return {
         agentId: String(a._id),
         name: agentNameMap.get(String(a.userId)) ?? "Agent",
-        placements: perf.placementsCompleted ?? 0,
-        leads: perf.leadsGenerated ?? 0,
-        jobs: perf.vacanciesPosted ?? 0,
-        employers: perf.employersCreated ?? 0,
+        placements: perf.placementsCompleted,
+        leads: perf.leadsGenerated,
+        jobs: perf.vacanciesPosted,
+        employers: perf.employersCreated,
       };
     })
     .sort((a, b) => b.placements - a.placements || b.leads - a.leads)

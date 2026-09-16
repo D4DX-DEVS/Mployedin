@@ -149,6 +149,15 @@ export interface IExhibitionRequest extends Document {
   /* Step 4 — Budget */
   estimatedBudget: number;
   budgetBreakdown?: IBudgetBreakdown;
+  /**
+   * What the super-agent advised at operational approval. Advisory only — the
+   * binding figure is `approvedBudget`, which only an admin sets. Without a
+   * field of its own the super-agent's dialog collected a number and threw it
+   * away, leaving no record that any figure had been proposed.
+   */
+  recommendedBudget?: number;
+  recommendedBudgetBy?: mongoose.Types.ObjectId;
+  recommendedBudgetAt?: Date;
   approvedBudget?: number;
   actualSpend?: number;
   budgetCurrency: string;
@@ -250,6 +259,9 @@ const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
     /* Step 4 — Budget */
     estimatedBudget: { type: Number, min: 0, default: 0 },
     budgetBreakdown: { type: BudgetBreakdownSchema },
+    recommendedBudget: { type: Number, min: 0 },
+    recommendedBudgetBy: { type: Schema.Types.ObjectId, ref: "User" },
+    recommendedBudgetAt: { type: Date },
     approvedBudget: { type: Number, min: 0 },
     actualSpend: { type: Number, min: 0 },
     budgetCurrency: { type: String, default: "USD", maxlength: 5 },

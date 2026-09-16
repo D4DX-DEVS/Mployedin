@@ -8,6 +8,7 @@ import Agent from "@/models/Agent";
 import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerReviseSchema } from "@/lib/validators/offers";
+import { defaultOfferExpiry } from "@/lib/offers/expiry";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
@@ -70,7 +71,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   offer.startDate = startDate;
   if (benefits !== undefined) offer.benefits = benefits;
   if (notes !== undefined) offer.notes = notes;
-  offer.expiresAt = expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  offer.expiresAt = expiresAt || defaultOfferExpiry(startDate);
   offer.revisionNumber = (offer.revisionNumber ?? 1) + 1;
   // A revision re-opens the offer for the candidate.
   offer.status = "pending";

@@ -17,6 +17,7 @@ import { validateBody } from "@/lib/validators";
 import { aiReportSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { EMPTY_AGENT_PERFORMANCE, getLiveAgentPerformance } from "@/lib/agentPerformance";
 
 const LEADING_REPORT_PHRASES = [
   "here is the analytics report based on the live platform data",
@@ -275,25 +276,35 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const commApproved= commissionByStatus["approved"]?? { total: 0, count: 0 };
 
   // ── 6. Top agents by placements (this quarter) ───────────────────────────
-  const topAgentsRaw = await Agent.find(dataScope.agentIds ? { _id: { $in: dataScope.agentIds } } : {})
-    .select("userId performance commissionRate")
-    .sort({ "performance.placementsCompleted": -1 })
-    .limit(10)
+  // Ranked and reported on live counts. Sorting on
+  // `performance.placementsCompleted` ordered this table by a fire-and-forget
+  // subdoc, so the report narrated placement totals that no Placement
+  // document backed — and an AI summary states them as fact.
+  const agentsInScope = await Agent.find(dataScope.agentIds ? { _id: { $in: dataScope.agentIds } } : {})
+    .select("userId commissionRate")
     .lean();
 
-  const agentUserIds = topAgentsRaw.map((a) => a.userId);
+  const livePerf = await getLiveAgentPerformance(agentsInScope.map((a) => a._id));
+
+  const agentUserIds = agentsInScope.map((a) => a.userId);
   const agentUsers   = await User.find({ _id: { $in: agentUserIds } })
     .select("_id name")
     .lean();
   const agentNameMap: Record<string, string> = {};
   for (const u of agentUsers) agentNameMap[String(u._id)] = u.name;
 
-  const topAgents = topAgentsRaw.map((a, i) => ({
-    rank: i + 1,
-    name: agentNameMap[String(a.userId)] ?? "Unknown",
-    placements: a.performance.placementsCompleted,
-    leadsGenerated: a.performance.leadsGenerated,
-  }));
+  const topAgents = agentsInScope
+    .map((a) => {
+      const perf = livePerf.get(String(a._id)) ?? EMPTY_AGENT_PERFORMANCE;
+      return {
+        name: agentNameMap[String(a.userId)] ?? "Unknown",
+        placements: perf.placementsCompleted,
+        leadsGenerated: perf.leadsGenerated,
+      };
+    })
+    .sort((x, y) => y.placements - x.placements || y.leadsGenerated - x.leadsGenerated)
+    .slice(0, 10)
+    .map((a, i) => ({ rank: i + 1, ...a }));
 
 
   // ── 7. Top employers by jobs + applications ───────────────────────────────

@@ -5,6 +5,16 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
+import {
+  GOOGLE_AI_OPENAI_BASE,
+  hasGoogleAiApiKey,
+  getGoogleAiApiKey,
+  openAiCompatHeaders,
+  completionBudget,
+  chatReasoningEffort,
+  logUsage,
+  type ChatUsage,
+} from "@/lib/ai/googleAI";
 import { getAssistantSystemPrompt, SCOPE_GUARD, type AssistantContext } from "@/lib/ai/assistantPrompts";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
@@ -32,7 +42,6 @@ import { logActivity } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 import logger from "@/lib/logger";
 
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const CHAT_MODEL = GEMINI_MODELS.flash;
 
 export async function POST(req: NextRequest) {
@@ -794,7 +803,7 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
     const systemPrompt = getSystemPrompt(context ?? "", profileContext, jobsContext, roleStatsContext + pageContext + recentActivityContext);
 
     // Build OpenAI-compatible messages array
-    const openRouterMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
+    const chatMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
       { role: "system", content: systemPrompt },
       ...messages.map((m: { role: string; content: string }) => ({
         role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
@@ -802,31 +811,29 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
       })),
     ];
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      logger.error("[AI Chat] OPENROUTER_API_KEY not set");
+    if (!hasGoogleAiApiKey()) {
+      logger.error("[AI Chat] GEMINI_API_KEY not set");
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
 
-    const upstream = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    const startedAt = Date.now();
+    const upstream = await fetch(`${GOOGLE_AI_OPENAI_BASE}/chat/completions`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com",
-        "X-Title": "Mployedin",
-      },
+      headers: openAiCompatHeaders(getGoogleAiApiKey()),
       body: JSON.stringify({
         model: CHAT_MODEL,
-        messages: openRouterMessages,
-        max_tokens: AI_TOKEN_LIMITS.chat,
+        messages: chatMessages,
+        // Thinking (when enabled via env) shares max_tokens with the answer, so
+        // completionBudget adds headroom only in that case.
+        max_tokens: completionBudget(AI_TOKEN_LIMITS.chat, chatReasoningEffort()),
+        reasoning_effort: chatReasoningEffort(),
         stream: true,
       }),
     });
 
     if (!upstream.ok) {
       const err = await upstream.text();
-      logger.error({ status: upstream.status, err }, "[AI Chat] OpenRouter error");
+      logger.error({ status: upstream.status, err }, "[AI Chat] Gemini error");
       return NextResponse.json({ error: "AI service error" }, { status: 502 });
     }
 
@@ -840,12 +847,25 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
     });
 
     const encoder = new TextEncoder();
+    const promptChars = systemPrompt.length;
     const stream = new ReadableStream({
       async start(controller) {
         const reader = upstream.body?.getReader();
         if (!reader) { controller.close(); return; }
         const decoder = new TextDecoder();
         let buffer = "";
+        let emittedChars = 0;
+        let finishReason: string | null = null;
+        let usage: ChatUsage | undefined;
+        const finish = () => {
+          logUsage(CHAT_MODEL, usage, startedAt);
+          if (emittedChars === 0) {
+            // 200 with an empty body: safety block, exhausted budget, or the
+            // model answered nothing. The client treats an empty stream as an
+            // error and offers a retry; this is the only place the cause shows.
+            logger.error({ finishReason, usage, promptChars, context }, "[AI Chat] Gemini returned no visible content");
+          }
+        };
         try {
           while (true) {
             const { done, value } = await reader.read();
@@ -856,16 +876,24 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
             for (const line of lines) {
               if (!line.startsWith("data: ")) continue;
               const raw = line.slice(6).trim();
-              if (raw === "[DONE]") { controller.close(); return; }
+              if (raw === "[DONE]") { finish(); controller.close(); return; }
               try {
                 const chunk = JSON.parse(raw) as {
-                  choices: { delta: { content?: string } }[];
+                  choices?: { delta?: { content?: string }; finish_reason?: string | null }[];
+                  usage?: ChatUsage;
                 };
-                const text = chunk.choices[0]?.delta?.content;
-                if (text) controller.enqueue(encoder.encode(text));
+                if (chunk.usage) usage = chunk.usage;
+                const choice = chunk.choices?.[0];
+                if (choice?.finish_reason) finishReason = choice.finish_reason;
+                const text = choice?.delta?.content;
+                if (text) {
+                  emittedChars += text.length;
+                  controller.enqueue(encoder.encode(text));
+                }
               } catch { /* skip malformed chunk */ }
             }
           }
+          finish();
         } finally {
           try { controller.close(); } catch { /* already closed */ }
         }

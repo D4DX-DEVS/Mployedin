@@ -3,7 +3,7 @@
  *
  * Each tool declares its arguments with this small set of primitive shapes
  * instead of a full zod schema. The same definition is used to:
- *   1. Generate the OpenAI/OpenRouter-compatible JSON Schema handed to the model.
+ *   1. Generate the OpenAI-compatible JSON Schema handed to the model.
  *   2. Validate + coerce the model's tool-call arguments at execute time.
  *
  * Kept deliberately tiny (string/number/boolean/array<string>) — every
@@ -19,7 +19,7 @@ export type ParamDef =
 
 export type ParamSchema = Record<string, ParamDef>;
 
-/** Convert a ParamSchema into the JSON Schema object OpenRouter's function-calling expects. */
+/** Convert a ParamSchema into the JSON Schema object Gemini's function-calling expects. */
 export function toJsonSchema(schema: ParamSchema): {
   type: "object";
   properties: Record<string, unknown>;

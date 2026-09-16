@@ -13,12 +13,33 @@ import { Label } from "@/components/ui/label";
 import { BriefcaseBusiness, Handshake, Loader2, UserRoundSearch } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 import { REFERRAL_CODE_RE, REFERRAL_COOKIE_NAME } from "@/lib/referrals/url";
+import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
+
+/** Deliberately permissive — the server and the verification email decide. */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FieldName = "name" | "email" | "password" | "confirmPassword" | "terms";
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+/** Focus order when a submit fails — matches the visual order of the form. */
+const FIELD_ORDER: FieldName[] = ["name", "email", "password", "confirmPassword", "terms"];
+
+/** Inline message under one field. Renders nothing when the field is valid. */
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="mt-1.5 text-sm font-medium text-destructive">
+      {message}
+    </p>
+  );
+}
 
 export default function RegisterPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
+  const tf = useTranslations("formErrors");
   const callback = safeCallbackPath(searchParams.get("callbackUrl"), locale);
 
   const [name, setName] = useState("");
@@ -27,6 +48,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
@@ -95,20 +117,50 @@ export default function RegisterPage() {
     }
   }
 
+  /** Clear one field's message as soon as the user acts on it. */
+  function clearFieldError(field: FieldName) {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    // Collect every violated rule so the user sees them all in one submit.
-    const errors: string[] = [];
-    if (!agreedToTerms) errors.push(t("mustAgreeToTerms"));
-    if (password !== confirmPassword) errors.push(t("passwordsDoNotMatch"));
-    if (password.length < 12) errors.push(t("passwordTooShort"));
-    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      errors.push(t("passwordTooWeak"));
-    }
-    if (errors.length > 0) {
-      setError(errors.join(" • "));
+    /**
+     * Every rule that failed, keyed by the field that broke it.
+     *
+     * Two things were wrong before. The form relied on `required` and
+     * `type="email"`, so the browser's own constraint validation refused the
+     * submit first: `handleSubmit` never ran, the styled error block never
+     * rendered, and the only feedback was a native bubble in the *browser's*
+     * language — English text on an Arabic page. And the rules below were a
+     * second, hand-written copy of the password policy that had already
+     * drifted from `passwordPolicy.ts`, the module the server validates with.
+     */
+    const nextErrors: FieldErrors = {};
+    if (!name.trim()) nextErrors.name = tf("nameRequired");
+    if (!email.trim()) nextErrors.email = tf("emailRequired");
+    else if (!EMAIL_PATTERN.test(email.trim())) nextErrors.email = tf("emailInvalid");
+
+    const passwordIssue = validatePasswordForForm(password, { locale, t: tf });
+    if (passwordIssue) nextErrors.password = passwordIssue;
+
+    if (!confirmPassword) nextErrors.confirmPassword = tf("passwordRequired");
+    else if (password !== confirmPassword) nextErrors.confirmPassword = t("passwordsDoNotMatch");
+
+    if (!agreedToTerms) nextErrors.terms = t("mustAgreeToTerms");
+
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      // Move focus to the first problem so a keyboard or screen-reader user is
+      // told what to fix rather than left on an unchanged page.
+      const first = FIELD_ORDER.find((field) => nextErrors[field]);
+      if (first) document.getElementById(first)?.focus();
       return;
     }
 
@@ -225,7 +277,10 @@ export default function RegisterPage() {
         ) : null}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* `noValidate` hands validation to handleSubmit. The browser's own
+          bubbles are never translated and blocked the submit before any of
+          the messages below could render. */}
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div className="field">
           <Label htmlFor="name" className="text-sm font-medium">{t("fullName")}</Label>
           <Input
@@ -233,11 +288,14 @@ export default function RegisterPage() {
             type="text"
             placeholder={t("fullNamePlaceholder")}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); clearFieldError("name"); }}
             required
             autoComplete="name"
+            aria-invalid={fieldErrors.name ? true : undefined}
+            aria-describedby={fieldErrors.name ? "name-error" : undefined}
             className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
+          <FieldError id="name-error" message={fieldErrors.name} />
         </div>
 
         <div className="field">
@@ -247,11 +305,14 @@ export default function RegisterPage() {
             type="email"
             placeholder="name@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
             required
             autoComplete="email"
+            aria-invalid={fieldErrors.email ? true : undefined}
+            aria-describedby={fieldErrors.email ? "email-error" : undefined}
             className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
+          <FieldError id="email-error" message={fieldErrors.email} />
         </div>
 
         <div className="field">
@@ -261,11 +322,14 @@ export default function RegisterPage() {
             type="password"
             placeholder={t("minChars")}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); clearFieldError("password"); }}
             required
             autoComplete="new-password"
+            aria-invalid={fieldErrors.password ? true : undefined}
+            aria-describedby={fieldErrors.password ? "password-error" : undefined}
             className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
+          <FieldError id="password-error" message={fieldErrors.password} />
         </div>
 
         <div className="field">
@@ -275,19 +339,25 @@ export default function RegisterPage() {
             type="password"
             placeholder={t("confirmPasswordPlaceholder")}
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError("confirmPassword"); }}
             required
             autoComplete="new-password"
+            aria-invalid={fieldErrors.confirmPassword ? true : undefined}
+            aria-describedby={fieldErrors.confirmPassword ? "confirmPassword-error" : undefined}
             className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
+          <FieldError id="confirmPassword-error" message={fieldErrors.confirmPassword} />
         </div>
 
+        <div>
         <div className="flex min-h-11 items-start gap-3 rounded-xl p-1">
           <input
             id="terms"
             type="checkbox"
             checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            onChange={(e) => { setAgreedToTerms(e.target.checked); clearFieldError("terms"); }}
+            aria-invalid={fieldErrors.terms ? true : undefined}
+            aria-describedby={fieldErrors.terms ? "terms-error" : undefined}
             className="mt-1 h-5 w-5 shrink-0 rounded border-border text-primary focus:ring-primary/40"
           />
           <label htmlFor="terms" className="text-sm text-muted-foreground leading-5">
@@ -300,6 +370,8 @@ export default function RegisterPage() {
               {t("privacyPolicyLink")}
             </Link>
           </label>
+        </div>
+        <FieldError id="terms-error" message={fieldErrors.terms} />
         </div>
 
         {error && (

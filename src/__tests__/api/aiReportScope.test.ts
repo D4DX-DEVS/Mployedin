@@ -98,9 +98,12 @@ jest.mock("@/models/Application", () => ({
 
 jest.mock("@/models/Agent", () => ({
   __esModule: true,
+  // The route no longer sorts/limits in Mongo: top agents are ranked in JS
+  // over live counts, because the old `.sort({"performance.placementsCompleted"})`
+  // ordered the table by a denormalized subdoc that had drifted from reality.
   Agent: {
     find: () => ({
-      select: () => ({ sort: () => ({ limit: () => ({ lean: jest.fn().mockResolvedValue([]) }) }) }),
+      select: () => ({ lean: jest.fn().mockResolvedValue([]) }),
     }),
   },
   default: { findOne: () => selectLean(null) },

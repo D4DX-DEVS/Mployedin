@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+import { canonicalProjectRoot } from "./src/lib/config/projectRoot";
+
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 // Only load Serwist for production builds — its webpack plugin
@@ -20,7 +22,11 @@ if (process.env.NODE_ENV === "production") {
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
-  outputFileTracingRoot: process.cwd(),
+  // Also Turbopack's `[project]` root and the key of its persistent dev cache.
+  // Must be one spelling no matter who launched the process — a raw cwd is
+  // `D:\` from PowerShell and `d:\` from VS Code, and mixing them across
+  // restarts split the cache into two project roots (see the helper).
+  outputFileTracingRoot: canonicalProjectRoot(),
 
   // Vercel's nft (node-file-trace) can miss files whose paths contain special
   // characters like "[" or "(" (dynamic segments / route groups). Explicitly

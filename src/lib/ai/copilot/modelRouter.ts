@@ -10,12 +10,13 @@ import { GEMINI_MODELS } from "@/lib/ai/gemini";
  * is about to (or already did) call a mutating tool this turn, where a wrong
  * argument means a wrong write proposal shown to the user.
  *
- * SMALL_MODEL defaults to an OpenRouter free-tier model — override via env if
- * it becomes unavailable/rate-limited. Either way, callOpenRouter in the chat
- * route falls back to LARGE_MODEL automatically on failure, so a flaky free
+ * On Gemini the split is real again: SMALL_MODEL is 2.5 Flash-Lite and
+ * LARGE_MODEL is 2.5 Flash (see `@/lib/ai/googleAI`), both with thinking off
+ * unless GEMINI_COPILOT_REASONING_EFFORT says otherwise. callGemini in the chat
+ * route falls back to LARGE_MODEL automatically on failure, so a flaky small
  * model degrades to "costs a bit more" rather than breaking the feature.
  */
-export const SMALL_MODEL = process.env.OPENROUTER_COPILOT_SMALL_MODEL || "google/gemini-2.0-flash-exp:free";
+export const SMALL_MODEL = process.env.GEMINI_COPILOT_SMALL_MODEL || GEMINI_MODELS.flash;
 export const LARGE_MODEL = GEMINI_MODELS.gpt;
 
 interface RoutableMessage {

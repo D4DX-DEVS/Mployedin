@@ -76,7 +76,8 @@ Rules:
   let raw: string;
   try {
     raw = redactPII(
-      await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.skills_suggest)
+      // Contributor tier: prompt carries only a typed job title and category.
+      await generateText(prompt, GEMINI_MODELS.cheap, AI_TOKEN_LIMITS.skills_suggest)
     )
       .replace(/```json\n?|```/g, "")
       .trim();
