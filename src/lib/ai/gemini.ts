@@ -1,68 +1,68 @@
 /**
- * Centralized Gemini AI client library — routed via OpenRouter
- * All Gemini API interactions go through this module.
+ * Centralized text AI client — Google Gemini API.
+ *
+ * The file name and every export below are unchanged from when this pointed at
+ * OpenRouter (and Muse AI, for one day), so the ~15 call sites keep compiling
+ * and behaving the same. Only the provider underneath moved. Base URLs, key
+ * handling, model ids and the thinking policy live in `@/lib/ai/googleAI`.
  */
 
-import logger from "@/lib/logger";
+import {
+  GOOGLE_AI_MODELS,
+  chatCompletionsFetch,
+  generateContentFetch,
+  sseToAsyncIterable,
+  logUsage,
+  nativeUsage,
+  nativeResponseText,
+  nativeThinkingConfig,
+  providerErrorMessage,
+  jsonModeRequestFields,
+  JSON_INSTRUCTION,
+  completionBudget,
+  textReasoningEffort,
+  type ChatMessage,
+  type ChatUsage,
+  type NativeGenerateContentResponse,
+  type NativePart,
+} from "@/lib/ai/googleAI";
 
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
-
-function getApiKey(): string {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error("OPENROUTER_API_KEY environment variable is not set");
-  return key;
-}
-
+/**
+ * Aliases kept because call sites and TASK_MODEL_MAP in `@/lib/ai/router` index
+ * into them by name. `cheap` used to mean Meta's contributor tier; it is now
+ * simply the default text model, which is already the cheapest one Google sells.
+ */
 export const GEMINI_MODELS = {
-  flash: "google/gemini-3.1-flash-lite-preview",
-  pro: "google/gemini-2.5-pro",
-  flashLite: "google/gemini-2.5-flash",
-  // ponytail: same OpenRouter endpoint, just a different model id — override via env if needed
-  gpt: process.env.OPENROUTER_TEXT_MODEL || "openai/gpt-4o-mini",
+  flash: GOOGLE_AI_MODELS.text,
+  flashLite: GOOGLE_AI_MODELS.text,
+  cheap: GOOGLE_AI_MODELS.text,
+  pro: GOOGLE_AI_MODELS.smart,
+  gpt: GOOGLE_AI_MODELS.smart,
 } as const;
 
 type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
 
-interface OpenRouterMessage {
-  role: "system" | "user" | "assistant";
-  content: string | OpenRouterContentPart[];
-}
-
-interface OpenRouterContentPart {
-  type: "text" | "image_url";
-  text?: string;
-  image_url?: { url: string };
-}
-
-interface OpenRouterUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-}
-
-async function openRouterFetch(
+async function chatFetch(
   model: GeminiModel,
-  messages: OpenRouterMessage[],
+  messages: ChatMessage[],
   maxTokens?: number,
   stream = false,
   jsonMode = false
 ): Promise<Response> {
-  return fetch(`${OPENROUTER_BASE}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getApiKey()}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com",
-      "X-Title": "Mployedin",
-    },
-    body: JSON.stringify({
+  const effort = textReasoningEffort();
+  return chatCompletionsFetch(
+    {
       model,
-      messages,
-      ...(maxTokens ? { max_tokens: maxTokens } : {}),
-      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      messages: jsonMode ? [{ role: "system", content: JSON_INSTRUCTION } as ChatMessage, ...messages] : messages,
+      // Callers size maxTokens for the visible answer; thinking (when enabled)
+      // shares the same budget, so completionBudget adds headroom only then.
+      ...(maxTokens ? { max_tokens: completionBudget(maxTokens, effort) } : {}),
+      ...(jsonMode ? jsonModeRequestFields() : {}),
+      reasoning_effort: effort,
       stream,
-    }),
-  });
+    },
+    `chat:${model}`
+  );
 }
 
 /** Generate a single text response */
@@ -73,22 +73,16 @@ export async function generateText(
   jsonMode = false
 ): Promise<string> {
   const start = Date.now();
-  const res = await openRouterFetch(model, [{ role: "user", content: prompt }], maxOutputTokens, false, jsonMode);
+  const res = await chatFetch(model, [{ role: "user", content: prompt }], maxOutputTokens, false, jsonMode);
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenRouter error ${res.status}: ${err}`);
+    const err = await res.text().catch(() => "");
+    throw new Error(providerErrorMessage(res.status, err, "request"));
   }
-  const data = await res.json() as {
+  const data = (await res.json()) as {
     choices: { message: { content: string } }[];
-    usage?: OpenRouterUsage;
+    usage?: ChatUsage;
   };
-  const usage = data.usage;
-  if (usage) {
-    logger.info(
-      { model, promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens, latencyMs: Date.now() - start },
-      "AI usage"
-    );
-  }
+  logUsage(model, data.usage, start);
   return data.choices[0].message.content;
 }
 
@@ -97,76 +91,51 @@ export async function generateStream(
   prompt: string,
   model: GeminiModel = GEMINI_MODELS.flash
 ): Promise<AsyncIterable<string>> {
-  const res = await openRouterFetch(model, [{ role: "user", content: prompt }], undefined, true);
+  const res = await chatFetch(model, [{ role: "user", content: prompt }], undefined, true);
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenRouter stream error ${res.status}: ${err}`);
+    const err = await res.text().catch(() => "");
+    throw new Error(providerErrorMessage(res.status, err, "stream"));
   }
   return sseToAsyncIterable(res);
 }
 
-/** Generate with multimodal content (text + image/PDF) */
+/**
+ * Generate with multimodal content (text + image/PDF).
+ *
+ * Goes through the native generateContent API rather than the OpenAI-compatible
+ * one: the compat layer takes images but not PDFs, and CV / job-poster
+ * extraction sends PDFs.
+ */
 export async function generateMultimodal(
-  parts: { text?: string; inlineData?: { mimeType: string; data: string } }[],
+  parts: NativePart[],
   model: GeminiModel = GEMINI_MODELS.flash,
   maxOutputTokens?: number
 ): Promise<string> {
   const start = Date.now();
-  const content: OpenRouterContentPart[] = parts.map((p) => {
-    if (p.inlineData) {
-      return {
-        type: "image_url",
-        image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` },
-      };
-    }
-    return { type: "text", text: p.text ?? "" };
-  });
-  const res = await openRouterFetch(model, [{ role: "user", content }], maxOutputTokens);
+  const effort = textReasoningEffort();
+  const res = await generateContentFetch(
+    model,
+    {
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        ...(maxOutputTokens ? { maxOutputTokens: completionBudget(maxOutputTokens, effort) } : {}),
+        ...nativeThinkingConfig(model, effort),
+      },
+    },
+    `multimodal:${model}`
+  );
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenRouter error ${res.status}: ${err}`);
+    const err = await res.text().catch(() => "");
+    throw new Error(providerErrorMessage(res.status, err, "request"));
   }
-  const data = await res.json() as {
-    choices: { message: { content: string } }[];
-    usage?: OpenRouterUsage;
-  };
-  const usage = data.usage;
-  if (usage) {
-    logger.info(
-      { model, promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens, latencyMs: Date.now() - start },
-      "AI usage"
-    );
+  const data = (await res.json()) as NativeGenerateContentResponse;
+  logUsage(model, nativeUsage(data), start);
+  const text = nativeResponseText(data);
+  if (!text) {
+    const why = data.promptFeedback?.blockReason ?? data.candidates?.[0]?.finishReason ?? "empty response";
+    throw new Error(`Gemini returned no text (${why})`);
   }
-  return data.choices[0].message.content;
-}
-
-/** Parse SSE stream from OpenRouter into an async iterable of text chunks */
-async function* sseToAsyncIterable(res: Response): AsyncIterable<string> {
-  const reader = res.body?.getReader();
-  if (!reader) return;
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const raw = line.slice(6).trim();
-      if (raw === "[DONE]") return;
-      try {
-        const chunk = JSON.parse(raw) as {
-          choices: { delta: { content?: string } }[];
-        };
-        const text = chunk.choices[0]?.delta?.content;
-        if (text) yield text;
-      } catch {
-        // malformed chunk — skip
-      }
-    }
-  }
+  return text;
 }
 
 /** Parse JSON from AI response (strips markdown code blocks) */

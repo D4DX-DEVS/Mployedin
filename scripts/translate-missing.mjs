@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Translate missing keys from en.json → ar.json using Gemini via OpenRouter.
+ * Translate missing keys from en.json → ar.json using the Gemini API.
  *
  * Usage:
- *   OPENROUTER_API_KEY=sk-... node scripts/translate-missing.mjs
+ *   GEMINI_API_KEY=... node scripts/translate-missing.mjs
  *
  * Reads messages/en.json and messages/ar.json, finds keys present in en but
- * missing in ar, batches them into Gemini Flash requests, and writes the
+ * missing in ar, batches them into Gemini requests, and writes the
  * updated ar.json back to disk.
  */
 
@@ -19,13 +19,14 @@ const root = path.resolve(__dirname, "..");
 const enPath = path.join(root, "messages", "en.json");
 const arPath = path.join(root, "messages", "ar.json");
 
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
-const MODEL = "google/gemini-2.5-flash";
+const GEMINI_BASE = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai";
+// UI strings only — the cheapest text model is plenty.
+const MODEL = process.env.GEMINI_TRANSLATE_MODEL || "gemini-3.1-flash-lite";
 
 function getApiKey() {
-  const key = process.env.OPENROUTER_API_KEY;
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
   if (!key) {
-    console.error("❌  Set OPENROUTER_API_KEY environment variable first.");
+    console.error("❌  Set GEMINI_API_KEY environment variable first.");
     process.exit(1);
   }
   return key;
@@ -82,13 +83,11 @@ Return ONLY a JSON object mapping the same keys to Arabic translations. No markd
 
 ${JSON.stringify(Object.fromEntries(entries), null, 2)}`;
 
-  const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+  const res = await fetch(`${GEMINI_BASE}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://mployedin.com",
-      "X-Title": "Mployedin Translator",
     },
     body: JSON.stringify({
       model: MODEL,
@@ -99,7 +98,7 @@ ${JSON.stringify(Object.fromEntries(entries), null, 2)}`;
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenRouter ${res.status}: ${err}`);
+    throw new Error(`Gemini ${res.status}: ${err}`);
   }
 
   const data = await res.json();

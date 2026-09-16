@@ -11,6 +11,7 @@ import Agent from "@/models/Agent";
 import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerCreateSchema } from "@/lib/validators/offers";
+import { defaultOfferExpiry } from "@/lib/offers/expiry";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
@@ -259,8 +260,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "An active offer already exists for this application" }, { status: 409 });
   }
 
-  // Set default expiry date if not provided (7 days from now)
-  const expiryDate = expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // Default the expiry to a week out, clamped to the start date so it can
+  // never fall after the job begins.
+  const expiryDate = expiresAt || defaultOfferExpiry(startDate);
 
   const creator = await User.findById(ctx.userId).select("name").lean();
   const offer = await Offer.create({

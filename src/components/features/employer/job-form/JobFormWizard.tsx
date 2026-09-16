@@ -16,6 +16,7 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 
 import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSchema";
 import { useJobFormDraft, useDebounce } from "./useJobFormDraft";
+import type { StoredDraft } from "./jobDraftStorage";
 import { StepIndicator } from "./StepIndicator";
 import { Step1BasicInfo } from "./Step1BasicInfo";
 import { Step2JobDetails } from "./Step2JobDetails";
@@ -188,6 +189,9 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     return () => { cancelled = true; };
   }, [isAdmin]);
 
+  // A draft found in local storage, waiting for the employer to accept it.
+  const [pendingDraft, setPendingDraft] = useState<StoredDraft | null>(null);
+
   // Track whether AI prefill has been applied to prevent localStorage draft from overwriting it
   const aiPrefillApplied = useRef(false);
   // Carries extractionDraftId + extractionDraftIndex when this form session is
@@ -232,11 +236,23 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
       }
     }
 
+    // Offered, not applied. Restoring silently meant an employer who clicked
+    // "Write it myself" could not tell a forgotten draft from a fresh form —
+    // and could publish its stale contents without noticing.
     const saved = loadDraft();
-    if (saved) {
-      reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, saved));
-    }
-  }, [loadDraft, reset, useAiPrefill]);
+    if (saved) setPendingDraft(saved);
+  }, [loadDraft, useAiPrefill]);
+
+  function restorePendingDraft() {
+    if (!pendingDraft) return;
+    reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, pendingDraft.values));
+    setPendingDraft(null);
+  }
+
+  function discardPendingDraft() {
+    clearDraft();
+    setPendingDraft(null);
+  }
 
   // Debounced auto-save to localStorage (1500ms) — uses the draft hook's shared
   // storage key so a reload can actually restore what was typed.
@@ -572,6 +588,26 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
             </div>
           }
         />
+
+        {pendingDraft && (
+          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              {t("draftFound", {
+                when: new Date(pendingDraft.savedAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
+                  day: "numeric", month: "short", year: "numeric",
+                }),
+              })}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={discardPendingDraft}>
+                {t("draftDiscard")}
+              </Button>
+              <Button type="button" size="sm" onClick={restorePendingDraft}>
+                {t("draftRestore")}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {isAdmin && (
           <div className="mt-3 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad">

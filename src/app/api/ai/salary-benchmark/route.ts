@@ -99,7 +99,10 @@ Base the numbers on real market data for this currency and period. For example i
     // shows "Could not load market data." Report unavailable, not a crash.
     let rawText: string;
     try {
-      rawText = (await generateText(prompt, GEMINI_MODELS.flash, 400)).trim();
+      // Contributor tier: the prompt above is role/location/seniority/currency
+      // only — no candidate or employer personal data — so it is safe to let
+      // Meta train on it in exchange for the cheaper rate.
+      rawText = (await generateText(prompt, GEMINI_MODELS.cheap, 400)).trim();
     } catch (err) {
       logger.warn({ err }, "[Salary Benchmark] provider call failed");
       return NextResponse.json({ error: "Benchmark unavailable" }, { status: 503 });

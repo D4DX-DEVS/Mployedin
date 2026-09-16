@@ -353,10 +353,17 @@ export default function OffersPage() {
                   <span className="font-medium">{formatDate(offer.startDate)}</span>
                 </span>
 
-                <span className="text-xs text-muted-foreground">
-                  {t("expiresOn", { date: formatDate(offer.expiresAt) })}
-                  {isExpired(offer) && ` ${t("expired")}`}
-                </span>
+                {/* The deadline only means something while the candidate can
+                    still respond. The expiry cron leaves non-pending offers
+                    alone, so an accepted offer keeps its original expiresAt
+                    forever — printing it showed a long-dead date on an offer
+                    the candidate had already taken. */}
+                {offer.status === "pending" && (
+                  <span className="text-xs text-muted-foreground">
+                    {t("expiresOn", { date: formatDate(offer.expiresAt) })}
+                    {isExpired(offer) && ` ${t("expired")}`}
+                  </span>
+                )}
               </div>
 
               {(offer.benefits || offer.notes) && (

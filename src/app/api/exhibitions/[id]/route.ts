@@ -201,6 +201,21 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       priority,
     } = body;
 
+    /**
+     * A money figure must be a finite number that is not negative.
+     *
+     * `Number.isFinite` alone let `-500` straight through to a schema that
+     * declares `min: 0`, so the write failed inside `save()` as an unhandled
+     * ValidationError — a 500 where the caller deserved a 400 naming the
+     * field. Rejecting it here means the caller is told what is wrong.
+     */
+    const parseMoney = (raw: unknown, field: string): number | { error: string } => {
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return { error: `${field} must be a valid number` };
+      if (value < 0) return { error: `${field} cannot be negative` };
+      return value;
+    };
+
     if (status) {
       const allowed = VALID_TRANSITIONS[ctx.role]?.[item.status] ?? [];
       if (!allowed.includes(status)) {
@@ -235,12 +250,33 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         item.budgetApprovedAt = new Date();
         // Lock in approvedBudget at financial approval time
         if (approvedBudget !== undefined) {
-          const budgetNum = Number(approvedBudget);
-          if (!Number.isFinite(budgetNum)) {
-            return NextResponse.json({ error: "approvedBudget must be a valid number" }, { status: 400 });
+          const budgetNum = parseMoney(approvedBudget, "approvedBudget");
+          if (typeof budgetNum !== "number") {
+            return NextResponse.json({ error: budgetNum.error }, { status: 400 });
           }
           item.approvedBudget = budgetNum;
         }
+      }
+
+      /**
+       * A super-agent's operational approval records a *recommendation*.
+       *
+       * Their dialog has always offered a "Recommended Budget" field, but
+       * neither branch below accepted it: the first needs status
+       * `budget_approved` (a transition this role cannot make) and the second
+       * needs the admin role. Every figure a super-agent typed was discarded
+       * with no error and no trace — five approved requests carried no budget
+       * at all. It is kept separate from `approvedBudget` so the advisory
+       * figure can never be mistaken for the binding one.
+       */
+      if (status === "approved" && ctx.role === "super_agent" && approvedBudget !== undefined) {
+        const recommended = parseMoney(approvedBudget, "recommendedBudget");
+        if (typeof recommended !== "number") {
+          return NextResponse.json({ error: recommended.error }, { status: 400 });
+        }
+        item.recommendedBudget = recommended;
+        item.recommendedBudgetBy = ctx.userId as unknown as typeof item.recommendedBudgetBy;
+        item.recommendedBudgetAt = new Date();
       }
 
       item.statusHistory.push({
@@ -255,18 +291,41 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
     // Budget fields — only admin can set approvedBudget at any time
     if (approvedBudget !== undefined && status !== "budget_approved" && ctx.role === "admin") {
-      const budgetNum = Number(approvedBudget);
-      if (!Number.isFinite(budgetNum)) {
-        return NextResponse.json({ error: "approvedBudget must be a valid number" }, { status: 400 });
+      const budgetNum = parseMoney(approvedBudget, "approvedBudget");
+      if (typeof budgetNum !== "number") {
+        return NextResponse.json({ error: budgetNum.error }, { status: 400 });
       }
       item.approvedBudget = budgetNum;
     }
-    if (actualSpend !== undefined) item.actualSpend = Number(actualSpend);
+    if (actualSpend !== undefined) {
+      const spend = parseMoney(actualSpend, "actualSpend");
+      if (typeof spend !== "number") {
+        return NextResponse.json({ error: spend.error }, { status: 400 });
+      }
+      item.actualSpend = spend;
+    }
     if (budgetNotes !== undefined) item.budgetNotes = budgetNotes?.trim();
     if (assignedTeam !== undefined) item.assignedTeam = assignedTeam;
     if (priority !== undefined && EXHIBITION_PRIORITIES.includes(priority)) item.priority = priority;
 
-    await item.save();
+    // A schema violation is bad input, not a server fault. Unguarded, it left
+    // the handler as an unhandled rejection and the caller saw a bare 500.
+    // Matched by name rather than `instanceof mongoose.Error.ValidationError`:
+    // importing the mongoose value here drags its ESM `bson` dependency into
+    // anything that loads this route, and the name is stable across instances.
+    try {
+      await item.save();
+    } catch (err) {
+      const validation = err as { name?: string; errors?: Record<string, { message?: string }> };
+      if (validation?.name === "ValidationError" && validation.errors) {
+        const detail = Object.values(validation.errors)
+          .map((e) => e?.message)
+          .filter(Boolean)
+          .join("; ");
+        return NextResponse.json({ error: detail || "Invalid exhibition data" }, { status: 400 });
+      }
+      throw err;
+    }
 
     if (status) {
       sendExhibitionStatusEmail(

@@ -60,6 +60,8 @@ interface ExhibitionRequest {
   participationDetails?: string;
   objectives: string[];
   estimatedBudget: number;
+  /** Advisory figure from this role's operational approval; admin sets the binding one. */
+  recommendedBudget?: number;
   approvedBudget?: number;
   budgetBreakdown?: { travel: number; accommodation: number; marketingMaterial: number; stallCost: number; miscellaneous: number };
   budgetCurrency: string;
@@ -257,6 +259,7 @@ export default function SuperAgentExhibitionsPage() {
   const [reviewAction, setReviewAction] = useState<string>("");
   const [reviewNote, setReviewNote] = useState("");
   const [approvedBudget, setApprovedBudget] = useState("");
+  const [budgetError, setBudgetError] = useState("");
 
   // Detail dialog
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
@@ -286,7 +289,16 @@ export default function SuperAgentExhibitionsPage() {
     try {
       const trimmedNote = reviewNote.trim() || undefined;
       const payload: Record<string, unknown> = { status: reviewAction, reviewNote: trimmedNote, statusReason: trimmedNote };
-      if (approvedBudget) payload.approvedBudget = Number(approvedBudget);
+      if (approvedBudget) {
+        // The server rejects these too; catching them here means the dialog
+        // stays open on the offending field instead of closing on a failure.
+        const parsed = Number(approvedBudget);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          setBudgetError(t("reviewBudgetInvalid"));
+          return;
+        }
+        payload.approvedBudget = parsed;
+      }
       const res = await csrfFetch(`/api/exhibitions/${reviewItem._id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
@@ -297,13 +309,17 @@ export default function SuperAgentExhibitionsPage() {
           approved: "toastExhibitionApproved",
         };
         toast.success(t(actionMap[reviewAction] || "toastExhibitionApproved"));
-        setReviewItem(null); setReviewNote(""); setApprovedBudget(""); fetchItems();
+        setReviewItem(null); setReviewNote(""); setApprovedBudget(""); setBudgetError(""); fetchItems();
       } else { const err = await res.json(); toast.error(err.error ?? t("errorUpdatingExhibition")); }
     } catch { toast.error(t("errorUpdatingExhibition")); }
   };
 
   const openReview = (item: ExhibitionRequest, action: string) => {
-    setReviewItem(item); setReviewAction(action); setReviewNote(""); setApprovedBudget(item.approvedBudget?.toString() ?? item.estimatedBudget?.toString() ?? "");
+    setReviewItem(item); setReviewAction(action); setReviewNote(""); setBudgetError("");
+    // Prefill this role's own previous recommendation, not the admin's binding
+    // figure — the dialog writes a recommendation and must not look like it is
+    // about to overwrite an approved budget.
+    setApprovedBudget(item.recommendedBudget?.toString() ?? item.estimatedBudget?.toString() ?? "");
   };
 
   const fmtDate = (d: string | undefined | null) => formatDate(d, { day: "2-digit", month: "short", year: "numeric" }, locale);
@@ -518,7 +534,8 @@ export default function SuperAgentExhibitionsPage() {
                 <div><span className="text-muted-foreground">{t("detailDates")}:</span> {fmtDate(detailItem.eventStartDate)}{detailItem.eventEndDate ? ` – ${fmtDate(detailItem.eventEndDate)}` : ""}{dayCount(detailItem.eventStartDate, detailItem.eventEndDate) ? ` (${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)` : ""}</div>
                 <div><span className="text-muted-foreground">{t("detailSubmitted")}:</span> {fmtDate(detailItem.createdAt)}</div>
                 <div><span className="text-muted-foreground">{t("detailBudgetRequested")}:</span> {detailItem.budgetCurrency} {formatCount(detailItem.estimatedBudget)}</div>
-                <div><span className="text-muted-foreground">{t("detailBudgetApproved")}:</span> {detailItem.approvedBudget ? `${detailItem.budgetCurrency} ${formatCount(detailItem.approvedBudget)}` : "—"}</div>
+                <div><span className="text-muted-foreground">{t("detailBudgetRecommended")}:</span> {typeof detailItem.recommendedBudget === "number" ? `${detailItem.budgetCurrency} ${formatCount(detailItem.recommendedBudget)}` : "—"}</div>
+                <div><span className="text-muted-foreground">{t("detailBudgetApproved")}:</span> {typeof detailItem.approvedBudget === "number" ? `${detailItem.budgetCurrency} ${formatCount(detailItem.approvedBudget)}` : "—"}</div>
                 <div><span className="text-muted-foreground">{t("detailExpectedLeads")}:</span> {detailItem.expectedLeads ?? "—"}</div>
                 <div><span className="text-muted-foreground">{t("detailReviewedBy")}:</span> {detailItem.reviewedBy?.name ?? "—"}{detailItem.reviewedAt ? ` · ${fmtDate(detailItem.reviewedAt)}` : ""}</div>
               </div>
@@ -549,7 +566,7 @@ export default function SuperAgentExhibitionsPage() {
       </Dialog>
 
       {/* Review Modal */}
-      <Dialog open={!!reviewItem} onOpenChange={() => { setReviewItem(null); setReviewNote(""); setApprovedBudget(""); }}>
+      <Dialog open={!!reviewItem} onOpenChange={() => { setReviewItem(null); setReviewNote(""); setApprovedBudget(""); setBudgetError(""); }}>
         <DialogContent className="max-w-md">
           {reviewItem && (<>
             <DialogHeader>
@@ -569,8 +586,18 @@ export default function SuperAgentExhibitionsPage() {
               {reviewAction === "approved" && (
                 <div>
                   <Label>{t("reviewRecommendedBudget")} ({reviewItem.budgetCurrency})</Label>
-                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder={t("reviewRecommendedBudget")} />
-                  <p className="text-xs text-muted-foreground mt-1">{t("reviewRequested")}: {reviewItem.budgetCurrency} {formatCount(reviewItem.estimatedBudget)}</p>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={approvedBudget}
+                    onChange={(e) => { setApprovedBudget(e.target.value); setBudgetError(""); }}
+                    aria-invalid={budgetError ? true : undefined}
+                    placeholder={t("reviewRecommendedBudget")}
+                  />
+                  {budgetError
+                    ? <p className="mt-1 text-xs font-medium text-destructive" role="alert">{budgetError}</p>
+                    : <p className="text-xs text-muted-foreground mt-1">{t("reviewRequested")}: {reviewItem.budgetCurrency} {formatCount(reviewItem.estimatedBudget)}</p>}
                 </div>
               )}
               <div>
@@ -579,7 +606,7 @@ export default function SuperAgentExhibitionsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => { setReviewItem(null); setReviewNote(""); }}>{tc("cancel")}</Button>
+              <Button variant="ghost" onClick={() => { setReviewItem(null); setReviewNote(""); setBudgetError(""); }}>{tc("cancel")}</Button>
               <Button onClick={handleReview}
                 variant={reviewAction === "rejected" ? "destructive" : "default"}
                 className={!["rejected"].includes(reviewAction) ? (reviewAction === "revision_requested" ? "bg-orange-600 hover:bg-orange-700" : "bg-emerald-600 hover:bg-emerald-700") : ""}

@@ -89,6 +89,8 @@ interface ExhibitionRequest {
   participationDetails?: string;
   objectives: string[];
   estimatedBudget: number;
+  /** What the super-agent advised at operational approval. Advisory only. */
+  recommendedBudget?: number;
   approvedBudget?: number;
   actualSpend?: number;
   budgetBreakdown?: {
@@ -340,6 +342,7 @@ export default function AdminExhibitionsPage() {
   const [actionStatus, setActionStatus] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [approvedBudget, setApprovedBudget] = useState("");
+  const [budgetError, setBudgetError] = useState("");
   const [budgetNotes, setBudgetNotes] = useState("");
   const [assignedTeam, setAssignedTeam] = useState("");
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
@@ -441,7 +444,15 @@ export default function AdminExhibitionsPage() {
     setActionItem(item);
     setActionStatus(status);
     setReviewNote("");
-    setApprovedBudget(item.approvedBudget?.toString() ?? item.estimatedBudget?.toString() ?? "");
+    setBudgetError("");
+    // Prefer the super-agent's recommendation over the raw request when no
+    // binding figure exists yet — it is the most informed number available.
+    setApprovedBudget(
+      item.approvedBudget?.toString()
+        ?? item.recommendedBudget?.toString()
+        ?? item.estimatedBudget?.toString()
+        ?? "",
+    );
     setBudgetNotes(item.budgetNotes ?? "");
     setAssignedTeam(item.assignedTeam?.join(", ") ?? "");
   };
@@ -456,7 +467,15 @@ export default function AdminExhibitionsPage() {
         statusReason: trimmedNote,
       };
       if (["budget_approved", "approved"].includes(actionStatus) && approvedBudget) {
-        payload.approvedBudget = Number(approvedBudget);
+        // The server rejects a negative figure with a 400; catching it here
+        // keeps the dialog open on the offending field rather than closing on
+        // a failure the user never asked for.
+        const parsed = Number(approvedBudget);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          setBudgetError(t("budgetCannotBeNegative"));
+          return;
+        }
+        payload.approvedBudget = parsed;
         payload.budgetNotes = budgetNotes;
       }
       if (actionStatus === "resources_assigned" && assignedTeam) {
@@ -1033,8 +1052,17 @@ export default function AdminExhibitionsPage() {
                 {["approved", "budget_approved"].includes(actionStatus) && (
                   <div>
                     <Label>{t("approvedBudget", { currency: actionItem.budgetCurrency })}</Label>
-                    <Input type="number" value={approvedBudget} onChange={(event) => setApprovedBudget(event.target.value)} />
+                    <Input type="number" min={0} step="any" value={approvedBudget} onChange={(event) => { setApprovedBudget(event.target.value); setBudgetError(""); }} aria-invalid={budgetError ? true : undefined} />
+                    {budgetError && <p className="mt-1 text-xs font-medium text-destructive" role="alert">{budgetError}</p>}
                     <p className="mt-1 text-xs text-muted-foreground">{t("requested")}: {formatMoney(actionItem.estimatedBudget, actionItem.budgetCurrency)}</p>
+                    {/* The super-agent who signed off operationally advised a
+                        figure; this is the only place it can inform the
+                        decision it was collected for. */}
+                    {typeof actionItem.recommendedBudget === "number" && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t("superAgentRecommended")}: {formatMoney(actionItem.recommendedBudget, actionItem.budgetCurrency)}
+                      </p>
+                    )}
                   </div>
                 )}
                 {actionStatus === "resources_assigned" && (

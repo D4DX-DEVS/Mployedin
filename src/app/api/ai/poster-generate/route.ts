@@ -100,113 +100,127 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }
   employer.posterCredits = reserved.posterCredits;
 
-  // Get job data for smart prompting
-  const job = await Job.findById(body.jobId).lean();
-  if (!job) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  }
-
-  // Verify job belongs to this employer
-  if (String(job.employerId) !== String(employer._id)) {
-    return NextResponse.json({ error: "This job does not belong to your employer account" }, { status: 403 });
-  }
-
-  const jobData: PosterJobData = {
-    title: job.title,
-    companyName: employer.companyName,
-    employmentType: job.employmentType,
-    location: job.location?.city ? `${job.location.city}, ${job.location.country || ""}` : job.location?.country,
-    salary: job.salary?.min ? `${job.salary.min}-${job.salary.max} ${job.salary.currency || "AED"}` : undefined,
-    experience: job.experienceMin != null ? `${job.experienceMin}-${job.experienceMax || job.experienceMin} years` : undefined,
-    skills: job.skills?.slice(0, 6),
-    industry: employer.industry,
-    category: job.category,
-    country: job.location?.country || employer.country,
-  };
-
-  // Build prompts for 2 variations
-  const primaryFormat: PosterFormat = body.formats[0];
-  // Random palette offset per generation so re-generating yields a fresh look
-  // (fixes "every poster comes back the same dark-blue background").
-  const paletteSeed = Math.floor(Math.random() * 8);
-  const prompts = [0, 1].map((variationIndex) => ({
-    prompt: buildPosterPrompt({
-      type: body.type as PosterType,
-      format: primaryFormat,
-      style: body.style as DesignStyle,
-      description: body.description,
-      jobData,
-      variationIndex,
-      template: body.template as PosterTemplate,
-      paletteSeed,
-    }),
-    size: FORMAT_TO_AI_SIZE[primaryFormat],
-    quality: "medium" as const,
-  }));
-
-  // Generate 2 images in parallel
-  let images;
   try {
-    images = await generateImages(prompts);
-  } catch (err: any) {
-    // Generation failed after credits were reserved — refund them.
-    await Employer.updateOne({ _id: employer._id }, { $inc: { "posterCredits.used": -CREDITS_PER_GENERATION } });
-    const msg = err?.message || "Image generation failed";
-    const isBilling = msg.includes("billing") || msg.includes("quota") || msg.includes("rate limit");
-    return NextResponse.json(
-      { error: msg },
-      { status: isBilling ? 402 : 500 },
+    // Get job data for smart prompting
+    const job = await Job.findById(body.jobId).lean();
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    // Verify job belongs to this employer
+    if (String(job.employerId) !== String(employer._id)) {
+      return NextResponse.json({ error: "This job does not belong to your employer account" }, { status: 403 });
+    }
+
+    const jobData: PosterJobData = {
+      title: job.title,
+      companyName: employer.companyName,
+      employmentType: job.employmentType,
+      location: job.location?.city ? `${job.location.city}, ${job.location.country || ""}` : job.location?.country,
+      salary: job.salary?.min ? `${job.salary.min}-${job.salary.max} ${job.salary.currency || "AED"}` : undefined,
+      experience: job.experienceMin != null ? `${job.experienceMin}-${job.experienceMax || job.experienceMin} years` : undefined,
+      skills: job.skills?.slice(0, 6),
+      industry: employer.industry,
+      category: job.category,
+      country: job.location?.country || employer.country,
+    };
+
+    // Build prompts for 2 variations
+    const primaryFormat: PosterFormat = body.formats[0];
+    // Random palette offset per generation so re-generating yields a fresh look
+    // (fixes "every poster comes back the same dark-blue background").
+    const paletteSeed = Math.floor(Math.random() * 8);
+    const prompts = [0, 1].map((variationIndex) => ({
+      prompt: buildPosterPrompt({
+        type: body.type as PosterType,
+        format: primaryFormat,
+        style: body.style as DesignStyle,
+        description: body.description,
+        jobData,
+        variationIndex,
+        template: body.template as PosterTemplate,
+        paletteSeed,
+      }),
+      size: FORMAT_TO_AI_SIZE[primaryFormat],
+      quality: "medium" as const,
+    }));
+
+    // Generate 2 images in parallel
+    let images;
+    try {
+      images = await generateImages(prompts);
+    } catch (err: any) {
+      // Generation failed after credits were reserved — refund them.
+      await Employer.updateOne({ _id: employer._id }, { $inc: { "posterCredits.used": -CREDITS_PER_GENERATION } });
+      const msg = err?.message || "Image generation failed";
+      const isBilling = msg.includes("billing") || msg.includes("quota") || msg.includes("rate limit");
+      return NextResponse.json(
+        { error: msg },
+        { status: isBilling ? 402 : 500 },
+      );
+    }
+
+    // Upload to S3
+    const variations = await Promise.all(
+      images.map(async (img) => {
+        const buffer = Buffer.from(img.b64, "base64");
+        // Gemini reports the format it produced (png by default, sometimes jpeg).
+        const ext = img.mimeType === "image/jpeg" ? "jpg" : img.mimeType === "image/webp" ? "webp" : "png";
+        const result = await uploadBuffer(buffer, {
+          folder: "media",
+          contentType: img.mimeType || "image/png",
+          fileName: `poster-${nanoid(8)}.${ext}`,
+        });
+        return {
+          backgroundUrl: result.url,
+          // Template controls composition — both variations share it (artwork varies via prompt).
+          layout: templateToLayout(body.template as PosterTemplate),
+        };
+      }),
     );
+
+    // Save generation record
+    const posterGen = await PosterGeneration.create({
+      employerId: employer._id,
+      jobId: body.jobId,
+      type: body.type,
+      // The description box is optional; the record's prompt is required. Store
+      // the prompt that actually produced the artwork when the employer left the
+      // box empty (an empty string failed schema validation after both images
+      // had already been generated and paid for).
+      prompt: (body.description.trim() || prompts[0].prompt).slice(0, 500),
+      style: body.style,
+      showFields: body.showFields,
+      formats: body.formats,
+      variations,
+      selectedVariation: 0,
+      shareSlug: nanoid(10),
+      creditsUsed: CREDITS_PER_GENERATION,
+    });
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "poster.generate",
+      resource: "poster",
+      resourceId: posterGen._id.toString(),
+      meta: { type: body.type, style: body.style, creditsUsed: CREDITS_PER_GENERATION },
+      req,
+    });
+
+    return NextResponse.json({
+      id: posterGen._id,
+      variations,
+      creditsUsed: CREDITS_PER_GENERATION,
+      creditsRemaining: employer.posterCredits.limit - employer.posterCredits.used,
+      shareSlug: posterGen.shareSlug,
+    });
+  } catch (err) {
+    // Upload or record save failed after the credits were reserved — give them
+    // back before the error surfaces as a 500 (the generateImages branch above
+    // already refunded and returned, so it never reaches here).
+    await Employer.updateOne({ _id: employer._id }, { $inc: { "posterCredits.used": -CREDITS_PER_GENERATION } }).catch(() => {});
+    throw err;
   }
-
-  // Upload to S3
-  const variations = await Promise.all(
-    images.map(async (img) => {
-      const buffer = Buffer.from(img.b64, "base64");
-      const result = await uploadBuffer(buffer, {
-        folder: "media",
-        contentType: "image/png",
-        fileName: `poster-${nanoid(8)}.png`,
-      });
-      return {
-        backgroundUrl: result.url,
-        // Template controls composition — both variations share it (artwork varies via prompt).
-        layout: templateToLayout(body.template as PosterTemplate),
-      };
-    }),
-  );
-
-  // Save generation record
-  const posterGen = await PosterGeneration.create({
-    employerId: employer._id,
-    jobId: body.jobId,
-    type: body.type,
-    prompt: body.description.slice(0, 500),
-    style: body.style,
-    showFields: body.showFields,
-    formats: body.formats,
-    variations,
-    selectedVariation: 0,
-    shareSlug: nanoid(10),
-    creditsUsed: CREDITS_PER_GENERATION,
-  });
-
-  await logActivity({
-    ...actorFromCtx(ctx),
-    action: "poster.generate",
-    resource: "poster",
-    resourceId: posterGen._id.toString(),
-    meta: { type: body.type, style: body.style, creditsUsed: CREDITS_PER_GENERATION },
-    req,
-  });
-
-  return NextResponse.json({
-    id: posterGen._id,
-    variations,
-    creditsUsed: CREDITS_PER_GENERATION,
-    creditsRemaining: employer.posterCredits.limit - employer.posterCredits.used,
-    shareSlug: posterGen.shareSlug,
-  });
 }
 
 export const POST = withAuth(postHandler, { aiQuota: true });

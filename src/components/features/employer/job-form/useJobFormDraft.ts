@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { JobFormValues } from "./jobFormSchema";
+import { parseStoredDraft, type StoredDraft } from "./jobDraftStorage";
 
 const DRAFT_SAVE_DELAY = 1500; // ms
 
@@ -10,7 +11,7 @@ interface UseJobFormDraftReturn {
   draftId: string | null;
   savedIndicator: boolean;
   saveDraft: (values: JobFormValues) => Promise<string | null>;
-  loadDraft: () => JobFormValues | null;
+  loadDraft: () => StoredDraft | null;
   autosaveLocal: (values: JobFormValues) => void;
   clearDraft: () => void;
 }
@@ -114,12 +115,12 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
     [draftId, locale, storageKey, flashSaved]
   );
 
-  const loadDraft = useCallback((): JobFormValues | null => {
+  const loadDraft = useCallback((): StoredDraft | null => {
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as { values?: JobFormValues };
-      return parsed.values ?? null;
+      const draft = parseStoredDraft(localStorage.getItem(storageKey));
+      // An expired draft is cleared on sight so it cannot be offered again.
+      if (!draft) localStorage.removeItem(storageKey);
+      return draft;
     } catch {
       return null;
     }
@@ -141,13 +142,16 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
     [storageKey, draftId]
   );
 
-  // Remove the locally persisted draft (call after a successful publish).
+  // Remove the locally persisted draft (after a successful publish, or when the
+  // employer declines to restore it). The draft id goes with it: a later save
+  // must create a new server draft rather than patch the discarded one.
   const clearDraft = useCallback(() => {
     try {
       localStorage.removeItem(storageKey);
     } catch {
       // ignore storage errors
     }
+    setDraftId(null);
   }, [storageKey]);
 
   // Cleanup on unmount

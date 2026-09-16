@@ -11,6 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Sparkles, Search, X, ChevronLeft, ChevronRight, ArrowUp, BookmarkPlus, SlidersHorizontal } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -198,11 +199,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const searchParams = useSearchParams();
   const employerIdParam = searchParams.get("employerId")?.trim() ?? "";
   const employerIdFilter = OBJECT_ID_PATTERN.test(employerIdParam) ? employerIdParam : "";
-  // The retired /job-seeker/search route redirects here as `?search=`, and the
-  // ⌘K palette links the same way. Without seeding the box from it, every one
-  // of those links landed on the generic recommended feed with the query
-  // silently dropped.
-  const urlSearch = searchParams.get("search")?.trim() ?? "";
 
   const [sortMode, setSortMode] = useState<SortMode>("match");
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -218,20 +214,36 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // ── Search state ────────────────────────────────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState(urlSearch);
+  // Lives in the query string like every other searchable list in the app, so a
+  // search has an address: shareable, bookmarkable, restored by Back. It also
+  // still seeds from `?search=`, which is how the ⌘K palette and the retired
+  // /job-seeker/search route hand off.
+  const [searchQuery, setSearchQuery] = useUrlFilter("search", "", { debounceMs: 400 });
   const [searchPage, setSearchPage] = useState(1);
   const [saveSearchOpen, setSaveSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const debouncedSearch = useDebounce(searchQuery, 400);
-  useEffect(() => {
-    if (urlSearch) setSearchQuery(urlSearch);
-  }, [urlSearch]);
-  const isSearchMode = debouncedSearch.trim().length > 0 || employerIdFilter.length > 0;
+  // Submitting must not wait out the debounce. Holding the submitted text
+  // rather than a flag makes this self-resetting: the moment the user types
+  // again `searchQuery` diverges and the debounced value takes over.
+  const [submittedSearch, setSubmittedSearch] = useState<string | null>(null);
+  const effectiveSearch = submittedSearch === searchQuery ? searchQuery : debouncedSearch;
+
+  const handleSearchSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmittedSearch(searchQuery);
+    setSearchPage(1);
+    // Frees the results from under the on-screen keyboard on phones.
+    searchInputRef.current?.blur();
+  }, [searchQuery]);
+
+  const isSearchMode = effectiveSearch.trim().length > 0 || employerIdFilter.length > 0;
   // Only one experience/work-type selection maps cleanly onto a saved search's
   // single-value filters; otherwise leave it for the user to pick in the dialog.
   const prefillExperience = filters.experienceLevels.length === 1 ? filters.experienceLevels[0] : "";
   const prefillWorkType = filters.workTypes.length === 1 ? filters.workTypes[0] : "";
   // A saved search needs a text query; hide the action in employer-only browse.
-  const canSaveSearch = debouncedSearch.trim().length > 0;
+  const canSaveSearch = effectiveSearch.trim().length > 0;
 
   // Hydrate already-applied job IDs so the "Applied" state shows on first load,
   // including for jobs surfaced through search (not just the recommended feed).
@@ -254,8 +266,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
     isLoading: searchLoading,
     error: searchError,
   } = useQuery({
-    queryKey: ["job-search", debouncedSearch, searchPage, employerIdFilter],
-    queryFn: () => fetchSearchJobs(debouncedSearch.trim(), searchPage, employerIdFilter || undefined),
+    queryKey: ["job-search", effectiveSearch, searchPage, employerIdFilter],
+    queryFn: () => fetchSearchJobs(effectiveSearch.trim(), searchPage, employerIdFilter || undefined),
     enabled: isSearchMode,
     staleTime: 2 * 60_000,
   });
@@ -406,10 +418,11 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
             {/* Search and the preferences link share one row on phones. */}
             <div className="flex flex-row items-center gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-3">
-              <div className="relative min-w-0 flex-1">
+              <form role="search" onSubmit={handleSearchSubmit} className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
-                  type="text"
+                  ref={searchInputRef}
+                  type="search"
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -419,13 +432,17 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   placeholder={t("search.placeholder")}
                   aria-label={t("search.ariaLabel")}
                   style={{ paddingInlineStart: "2.75rem", paddingInlineEnd: "3rem" }}
-                  className="input-field h-11 w-full rounded-2xl border-border/70 bg-background/95 text-sm shadow-none"
+                  /* WebKit draws its own clear affordance on type=search, which
+                     would sit underneath the X button below. */
+                  className="input-field h-11 w-full rounded-2xl border-border/70 bg-background/95 text-sm shadow-none [&::-webkit-search-cancel-button]:appearance-none"
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={() => {
                       setSearchQuery("");
                       setSearchPage(1);
+                      setSubmittedSearch(null);
                     }}
                     className="absolute end-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     aria-label={t("search.clear")}
@@ -433,7 +450,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     <X className="h-4 w-4" />
                   </button>
                 )}
-              </div>
+              </form>
 
               <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:justify-end">
                 <button
@@ -474,11 +491,11 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       {searchLoading
                         ? t("search.searching")
                         : searchData
-                        ? debouncedSearch.trim().length > 0
-                          ? t("search.resultsFor", { count: searchData.total, query: debouncedSearch })
+                        ? effectiveSearch.trim().length > 0
+                          ? t("search.resultsFor", { count: searchData.total, query: effectiveSearch })
                           : t("search.employerActiveRoles", { count: searchData.total })
-                        : debouncedSearch.trim().length > 0
-                          ? t("search.pendingResultsFor", { query: debouncedSearch })
+                        : effectiveSearch.trim().length > 0
+                          ? t("search.pendingResultsFor", { query: effectiveSearch })
                           : t("search.employerRoles")}
                     </span>
                   </div>
@@ -785,7 +802,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
       <SaveSearchDialog
         open={saveSearchOpen}
         onOpenChange={setSaveSearchOpen}
-        query={debouncedSearch}
+        query={effectiveSearch}
         experienceLevel={prefillExperience}
         workType={prefillWorkType}
         locale={locale}

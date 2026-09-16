@@ -4,7 +4,7 @@
  * Strategy:
  * 1. Use LinkedIn userinfo endpoint (OIDC data: name, email, picture)
  * 2. Fetch the public LinkedIn profile page HTML
- * 3. Feed the HTML text to Gemini Flash via OpenRouter to extract structured data
+ * 3. Feed the HTML text to Gemini to extract structured data
  * 4. Return parsed profile fields for onboarding pre-fill
  */
 
@@ -127,7 +127,7 @@ async function fetchUserInfo(
 
 /**
  * Use AI to extract structured profile data from raw text.
- * Uses Gemini Flash via OpenRouter for fast, cheap extraction.
+ * Uses Gemini on the default (cheapest) text model.
  */
 async function aiExtractProfile(
   rawText: string,

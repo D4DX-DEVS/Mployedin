@@ -120,6 +120,18 @@ export const SALARY_PRESETS: Partial<Record<CurrencyCode, Array<{ label: string;
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 
+/**
+ * A city name always carries at least one letter.
+ *
+ * Shared with the Listing Health score so the two agree: that panel used to
+ * award the location point for any non-empty string, which is how a form
+ * holding City "12345" — content zod rejects — could still read 80% and
+ * "ready to publish".
+ */
+export function isPlausibleCityName(city: string): boolean {
+  return /\p{L}/u.test(city);
+}
+
 export const jobFormSchema = z.object({
   // Step 1 — Basic Info
   title: z.string().min(5, "Title must be at least 5 characters").max(200).trim(),
@@ -131,7 +143,7 @@ export const jobFormSchema = z.object({
     city: z
       .string()
       .min(1, "City is required")
-      .regex(/\p{L}/u, "Enter a valid city name"),
+      .refine(isPlausibleCityName, "Enter a valid city name"),
     isRemote: z.boolean().default(false),
   }),
 

@@ -1,6 +1,34 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
 
+/**
+ * `expiresAt` is the candidate's deadline to respond, so it has to sit between
+ * now and the start date — a deadline that has already passed, or one that
+ * lands after the job has begun, is not a deadline. Neither bound was checked
+ * before, which let offers advertise an expiry weeks ahead of their own start
+ * date (and the expiry cron never touches them once accepted).
+ */
+function refineExpiryWindow<T extends { startDate: Date; expiresAt?: Date }>(
+  data: T,
+  ctx: z.RefinementCtx
+) {
+  if (!data.expiresAt) return;
+  if (data.expiresAt <= new Date()) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["expiresAt"],
+      message: "Expiry date must be in the future",
+    });
+  }
+  if (data.expiresAt > data.startDate) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["expiresAt"],
+      message: "Expiry date must be on or before the start date",
+    });
+  }
+}
+
 export const offerCreateSchema = z.object({
   applicationId: commonSchemas.objectId,
   salary: z.object({
@@ -24,7 +52,7 @@ export const offerCreateSchema = z.object({
     .string()
     .transform((val) => new Date(val))
     .optional(),
-});
+}).superRefine(refineExpiryWindow);
 
 export const offerRespondSchema = z
   .object({
@@ -73,7 +101,7 @@ export const offerReviseSchema = z.object({
     .transform((val) => new Date(val))
     .optional(),
   revisionNote: z.string().max(500).optional(),
-});
+}).superRefine(refineExpiryWindow);
 
 /** Employer/agent sends a reminder for a pending offer. */
 export const offerRemindSchema = z.object({

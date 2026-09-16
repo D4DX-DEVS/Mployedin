@@ -1,13 +1,24 @@
 /**
- * Centralized image-generation client — OpenRouter (cheap image model) for poster generation.
- * File name kept for callers; provider is now OpenRouter.
+ * Centralized image-generation client — Gemini image model for poster generation.
+ * File name and exports kept for callers; the provider underneath is Google.
+ *
+ * Uses the native generateContent API with an IMAGE response modality. The
+ * callers' `size` was always an aspect ratio rather than exact pixels (both
+ * previous providers treated it that way too), so it maps onto
+ * `imageConfig.aspectRatio`. Billing is per output image.
  */
 
 import logger from "@/lib/logger";
+import {
+  GOOGLE_AI_MODELS,
+  generateContentFetch,
+  providerErrorMessage,
+  logUsage,
+  nativeUsage,
+  type NativeGenerateContentResponse,
+} from "@/lib/ai/googleAI";
 
-// ponytail: single cheap image model, override via env if a cheaper/better one appears
-const MODEL = process.env.OPENROUTER_IMAGE_MODEL || "google/gemini-2.5-flash-image";
-const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+const MODEL = GOOGLE_AI_MODELS.image;
 
 export interface ImageGenerationOptions {
   prompt: string;
@@ -15,66 +26,61 @@ export interface ImageGenerationOptions {
   quality?: "low" | "medium" | "high";
 }
 
-interface GeneratedImage {
+export interface GeneratedImage {
   b64: string;
+  /** As reported by the model — usually image/png, occasionally image/jpeg. */
+  mimeType: string;
   revisedPrompt?: string;
 }
 
-// OpenRouter image models don't take a size param — steer aspect ratio via the prompt.
-// Deliberately avoid the word "poster" here — it makes image models bake in headline text.
-function aspectHint(size?: string): string {
-  switch (size) {
-    case "1024x1536": return " Output a tall vertical portrait image (2:3 aspect ratio).";
-    case "1536x1024": return " Output a wide horizontal landscape image (3:2 aspect ratio).";
-    default: return " Output a square image (1:1 aspect ratio).";
-  }
-}
+const ASPECT_RATIO: Record<NonNullable<ImageGenerationOptions["size"]>, string> = {
+  "1024x1024": "1:1",
+  "1536x1024": "3:2",
+  "1024x1536": "2:3",
+};
 
 /**
- * Generate an image via OpenRouter. Returns base64-encoded PNG data.
+ * Generate an image via Gemini. Returns base64-encoded image data.
  */
 export async function generateImage(opts: ImageGenerationOptions): Promise<GeneratedImage> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY environment variable is not set");
-
+  const size = opts.size ?? "1024x1024";
+  const aspectRatio = ASPECT_RATIO[size] ?? "1:1";
   const start = Date.now();
 
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  const res = await generateContentFetch(
+    MODEL,
+    {
+      contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
+      generationConfig: {
+        responseModalities: ["IMAGE"],
+        imageConfig: { aspectRatio },
+      },
     },
-    body: JSON.stringify({
-      model: MODEL,
-      modalities: ["image", "text"],
-      messages: [{ role: "user", content: opts.prompt + aspectHint(opts.size) }],
-    }),
-  });
+    "image",
+    // Image generation is slower than a chat completion; give it more room
+    // than the shared default before the abort timer fires.
+    60000
+  );
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    if (res.status === 402) {
-      throw new Error("OpenRouter credit limit reached. Please add credits to your OpenRouter account.");
-    }
-    if (res.status === 429) {
-      throw new Error("OpenRouter rate limit exceeded. Please wait a moment and try again.");
-    }
-    throw new Error(`OpenRouter image generation failed (${res.status}): ${text.slice(0, 200)}`);
+    throw new Error(providerErrorMessage(res.status, text, "image generation"));
   }
 
-  const data = await res.json();
-  const latencyMs = Date.now() - start;
-  logger.info({ model: MODEL, size: opts.size ?? "1024x1024", latencyMs }, "OpenRouter image generated");
+  const data = (await res.json()) as NativeGenerateContentResponse;
+  logUsage(MODEL, nativeUsage(data), start);
 
-  // OpenRouter returns images on message.images[].image_url.url as a data: URL
-  const url: string | undefined = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  const b64 = url?.includes(",") ? url.split(",", 2)[1] : undefined;
-  if (!b64) {
-    throw new Error("OpenRouter returned no image data");
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  const image = parts.find((p) => p.inlineData?.data);
+  if (!image?.inlineData) {
+    const why = data.promptFeedback?.blockReason ?? data.candidates?.[0]?.finishReason ?? "empty response";
+    throw new Error(`Gemini returned no image data (${why})`);
   }
 
-  return { b64 };
+  logger.info({ model: MODEL, aspectRatio, latencyMs: Date.now() - start }, "Gemini image generated");
+
+  const revisedPrompt = parts.map((p) => p.text ?? "").join(" ").trim() || undefined;
+  return { b64: image.inlineData.data, mimeType: image.inlineData.mimeType || "image/png", revisedPrompt };
 }
 
 /**
@@ -92,7 +98,8 @@ export async function generateImages(
     if (r.status === "fulfilled") {
       images.push(r.value);
     } else {
-      logger.error({ error: r.reason, promptIndex: i }, "Image generation failed for variation");
+      // `err` is the key pino serialises; `error` printed as `{}` and hid the provider message.
+      logger.error({ err: r.reason, promptIndex: i }, "Image generation failed for variation");
       // Re-throw user-friendly errors directly
       throw r.reason;
     }

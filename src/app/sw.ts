@@ -1,7 +1,9 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/next/worker";
-import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from "serwist";
+import { NetworkOnly, Serwist } from "serwist";
+
+import { isAuthRequest } from "@/lib/security/swAuthBypass";
 
 // This declares the value of `injectionPoint` to TypeScript.
 // Also declare ServiceWorkerGlobalScope since tsconfig uses "dom" lib
@@ -18,12 +20,23 @@ type ServiceWorkerGlobalScope = WorkerGlobalScope &
 
 declare const self: ServiceWorkerGlobalScope;
 
+// Auth handshakes must outrank defaultCache's catch-all `cross-origin`
+// NetworkFirst, which would otherwise hold Firebase's one-shot popup documents
+// for an hour. Rationale and the rule itself: lib/security/swAuthBypass.ts.
+const runtimeCaching: RuntimeCaching[] = [
+  {
+    matcher: ({ url }) => isAuthRequest(url),
+    handler: new NetworkOnly(),
+  },
+  ...defaultCache,
+];
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching,
   fallbacks: {
     entries: [
       {

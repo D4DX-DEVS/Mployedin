@@ -34,7 +34,16 @@ function keyToReadable(key: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }
 
-const useTranslations = (namespace?: string) => {
+/**
+ * Real next-intl hands back the same `t` for the same namespace on every
+ * render. Minting a fresh closure here broke any component that lists `t` in a
+ * useCallback/useEffect dependency array: the effect re-fired every render, so
+ * pages that fetch on mount (job-seeker Offers, for one) spun forever and never
+ * left their loading skeleton under test. Cache per namespace to match.
+ */
+const translatorCache = new Map<string, ReturnType<typeof buildTranslator>>();
+
+const buildTranslator = (namespace?: string) => {
   const nsObj = namespace ? resolve(messages, namespace) : messages;
   const t = (key: string, params?: Record<string, unknown>) => {
     // Try resolving from actual messages
@@ -72,6 +81,16 @@ const useTranslations = (namespace?: string) => {
   t.raw = (key: string) => key;
   t.has = () => true;
   return t;
+};
+
+const useTranslations = (namespace?: string) => {
+  const cacheKey = namespace ?? "";
+  let translator = translatorCache.get(cacheKey);
+  if (!translator) {
+    translator = buildTranslator(namespace);
+    translatorCache.set(cacheKey, translator);
+  }
+  return translator;
 };
 
 const useLocale = () => "en";

@@ -1,21 +1,22 @@
 /**
- * Text embedding generation using OpenRouter (Gemini embedding model)
+ * Text embedding generation — Gemini API (`gemini-embedding-001`).
+ *
+ * This is the model the Atlas vector index was built with (3072 dims), so moving
+ * from OpenRouter to Google's own endpoint changed the transport only; existing
+ * vectors stay comparable. Changing the model means re-embedding every profile
+ * and rebuilding the index at the new dimensionality.
  * Used for vector search across job seeker profiles.
  */
 
 import logger from "@/lib/logger";
+import { providerFetch } from "@/lib/ai/providerFetch";
+import { GOOGLE_AI_MODELS, GOOGLE_AI_OPENAI_BASE, openAiCompatHeaders } from "@/lib/ai/googleAI";
 
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
-const EMBEDDING_MODEL = "google/gemini-embedding-001";
+const EMBEDDING_MODEL = GOOGLE_AI_MODELS.embedding;
 
 /** Dimensionality of vectors produced by EMBEDDING_MODEL (Atlas index must match). */
 export const EMBEDDING_DIMENSIONS = 3072;
 
-function getApiKey(): string {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error("OPENROUTER_API_KEY environment variable is not set");
-  return key;
-}
 
 /**
  * Generate embedding vector for a text string.
@@ -24,19 +25,14 @@ function getApiKey(): string {
 export async function generateEmbedding(text: string): Promise<number[]> {
   const trimmed = text.slice(0, 8000); // Limit input size
 
-  const res = await fetch(`${OPENROUTER_BASE}/embeddings`, {
+  const res = await providerFetch(`${GOOGLE_AI_OPENAI_BASE}/embeddings`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${getApiKey()}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com",
-      "X-Title": "Mployedin",
-    },
+    headers: openAiCompatHeaders(),
     body: JSON.stringify({
       model: EMBEDDING_MODEL,
       input: trimmed,
     }),
-  });
+  }, "embedding");
 
   if (!res.ok) {
     const err = await res.text();
@@ -50,24 +46,19 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
 /**
  * Generate embeddings for multiple texts in a batch.
- * OpenRouter supports batch embedding.
+ * The OpenAI-compatible endpoint accepts an array input.
  */
 export async function generateEmbeddingBatch(texts: string[]): Promise<number[][]> {
   const trimmed = texts.map(t => t.slice(0, 8000));
 
-  const res = await fetch(`${OPENROUTER_BASE}/embeddings`, {
+  const res = await providerFetch(`${GOOGLE_AI_OPENAI_BASE}/embeddings`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${getApiKey()}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com",
-      "X-Title": "Mployedin",
-    },
+    headers: openAiCompatHeaders(),
     body: JSON.stringify({
       model: EMBEDDING_MODEL,
       input: trimmed,
     }),
-  });
+  }, "embedding");
 
   if (!res.ok) {
     const err = await res.text();
@@ -75,9 +66,13 @@ export async function generateEmbeddingBatch(texts: string[]): Promise<number[][
     throw new Error(`Batch embedding failed: ${res.status}`);
   }
 
-  const data = await res.json() as { data: { embedding: number[]; index: number }[] };
-  // Sort by index to maintain order
-  return data.data.sort((a, b) => a.index - b.index).map(d => d.embedding);
+  const data = await res.json() as { data: { embedding: number[]; index?: number | null }[] };
+  // Google returns items in input order and may leave `index` null on the first
+  // one, so only re-sort when every item carries a numeric index.
+  const items = data.data.every((d) => typeof d.index === "number")
+    ? [...data.data].sort((a, b) => (a.index as number) - (b.index as number))
+    : data.data;
+  return items.map((d) => d.embedding);
 }
 
 /**

@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import type { JobFormValues } from "./jobFormSchema";
+import { isPlausibleCityName, type JobFormValues } from "./jobFormSchema";
 
 interface ScoreFactor {
   label: string;
@@ -52,7 +52,9 @@ export function JobQualityScore({ values }: JobQualityScoreProps) {
       {
         label: t("factors.location"),
         points: 10,
-        earned: Boolean(country && city),
+        // Presence is not validity: "12345" is not a city, and awarding the
+        // point for it made a form zod rejects look ready to publish.
+        earned: Boolean(country) && isPlausibleCityName(city),
         tip: t("tips.location"),
       },
       {

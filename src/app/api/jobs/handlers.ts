@@ -278,15 +278,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // scope, not just the current page.
   if (canFilterManagedJobs) {
     const baseQuery = { ...query, ...(status ? { status: { $exists: true } } : {}) };
-    const portfolioJobs = await Job.find(baseQuery).select("_id employerId vacancies").limit(1000).lean();
+    const portfolioJobs = await Job.find(baseQuery).select("_id employerId vacancies status").limit(1000).lean();
     const employerSet = new Set(
       portfolioJobs.map((j) => (j.employerId ? String(j.employerId) : null)).filter(Boolean),
     );
     const portfolioJobIds = portfolioJobs.map((j) => j._id);
-    totalVacancies = portfolioJobs.reduce(
-      (sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 0),
-      0,
-    );
+    // The openings figure follows the status tab, unlike the tab badges beside
+    // it (which must stay whole-set to be worth reading). Leaving it global
+    // printed "41 open positions" above six drafts — numbers that visibly
+    // disagree, and the same figure did move when a search was typed.
+    totalVacancies = portfolioJobs
+      .filter((j) => !status || (j as { status?: string }).status === status)
+      .reduce((sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 0), 0);
     const totalApplicants = portfolioJobIds.length
       ? await Application.countDocuments({ jobId: { $in: portfolioJobIds } })
       : 0;

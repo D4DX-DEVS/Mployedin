@@ -26,13 +26,17 @@ jest.mock("framer-motion", () => ({
     span: ({ children, layoutId: _l, transition: _t, ...props }: React.HTMLAttributes<HTMLSpanElement> & Record<string, unknown>) => <span {...props}>{children}</span>,
   },
 }));
-jest.mock("@/hooks/usePagination", () => ({
-  usePagination: () => ({
+// The identities have to be stable: fetchOffers lists paginationParams and
+// updateTotal in its dependency array, so fresh closures on every render
+// re-fire the effect forever and the page never leaves its loading skeleton.
+jest.mock("@/hooks/usePagination", () => {
+  const value = {
     page: 1, limit: 10, total: 0, totalPages: 0,
     setPage: jest.fn(), setLimit: jest.fn(), resetPage: jest.fn(), updateTotal: jest.fn(),
     paginationParams: () => new URLSearchParams({ page: "1", limit: "10" }),
-  }),
-}));
+  };
+  return { usePagination: () => value };
+});
 jest.mock("@/hooks/useTableExport", () => ({
   useTableExport: () => ({ handleExportCsv: jest.fn(), handleExportExcel: jest.fn(), handleExportPdf: jest.fn() }),
 }));
@@ -60,5 +64,36 @@ describe("OffersPage", () => {
     expect(within(journey).getByRole("link", { name: /Offers, 1 needs your attention/ })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("tablist", { name: "Offer status filters" })).toBeInTheDocument();
     expect(screen.queryByText("Offers you have received")).toBeNull();
+  });
+
+  // An accepted offer keeps whatever expiresAt it was created with — the expiry
+  // cron only touches pending offers — so rendering "Expires on" regardless of
+  // status showed candidates a long-dead deadline on an offer they already took.
+  it("shows the response deadline on a pending offer but not on an accepted one", async () => {
+    const offer = (id: string, status: string) => ({
+      _id: id,
+      jobId: { _id: `job_${id}`, title: `Role ${id}`, location: "Dubai" },
+      salary: { amount: 12000, currency: "AED", period: "monthly" },
+      startDate: "2026-11-09T00:00:00.000Z",
+      status,
+      expiresAt: "2026-07-17T00:00:00.000Z",
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        offers: [offer("pend", "pending"), offer("acc", "accepted")],
+        pagination: { total: 2 },
+        stats: { total: 2, pending: 1, accepted: 1, declined: 0 },
+      }),
+    });
+
+    render(<OffersPage />);
+
+    const cardFor = async (title: string) =>
+      (await screen.findByText(title)).closest(".card-base") as HTMLElement;
+    const pendingCard = await cardFor("Role pend");
+    const acceptedCard = await cardFor("Role acc");
+    expect(within(pendingCard).getByText(/Expires on/)).toBeInTheDocument();
+    expect(within(acceptedCard).queryByText(/Expires on/)).toBeNull();
   });
 });

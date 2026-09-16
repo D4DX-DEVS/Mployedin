@@ -67,7 +67,9 @@ Write a production-ready job description for the company category above with exa
 Tone: Professional, engaging, inclusive. Avoid jargon overload. Focus on impact and growth.`;
 
   const raw = redactPII(
-    await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.job_description)
+    // Contributor tier: job title/category/location/skills only, all sanitized
+    // above and none of it personal data.
+    await generateText(prompt, GEMINI_MODELS.cheap, AI_TOKEN_LIMITS.job_description)
   ).replace(/```json\n?|```/g, "").trim();
 
   let sections: Omit<GeneratedDescription, "full">;

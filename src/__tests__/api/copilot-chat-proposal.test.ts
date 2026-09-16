@@ -46,7 +46,7 @@ jest.mock("@/models/CopilotProposal", () => ({
   default: { create: jest.fn(async (doc: Record<string, unknown>) => ({ _id: "prop1", ...doc })) },
 }));
 
-/** One OpenRouter SSE body. */
+/** One Gemini SSE body. */
 function sse(delta: Record<string, unknown>): Response {
   const body = `data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`;
   return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
@@ -70,7 +70,7 @@ async function post(message: string) {
 describe("copilot chat route — proposal branch", () => {
   const fetchMock = jest.fn();
   beforeAll(() => {
-    process.env.OPENROUTER_API_KEY = "test-key";
+    process.env.GEMINI_API_KEY = "test-key";
     global.fetch = fetchMock as unknown as typeof fetch;
   });
   beforeEach(() => {
@@ -94,6 +94,29 @@ describe("copilot chat route — proposal branch", () => {
     expect(JSON.parse(toolMsg!.content)).toEqual({ ok: false, message: expect.stringContaining("Which job") });
     expect(frames.at(-2)).toEqual({ type: "text", content: "Which job did you mean — A or B?" });
     expect(frames.at(-1)).toEqual({ type: "done" });
+  });
+
+  it("echoes Gemini's thought_signature back on the tool call it answers", async () => {
+    // Gemini 3.x attaches extra_content.google.thought_signature to every tool
+    // call delta and answers the follow-up with 400 "Function call is missing a
+    // thought_signature" unless the assistant message carries it back verbatim.
+    // Dropping it while assembling deltas broke every Copilot turn that used a
+    // tool (2026-09-16); this pins the round trip.
+    const signature = { google: { thought_signature: "sig-abc" } };
+    mockPreview.mockResolvedValueOnce({ summary: "Which job should I shortlist for?", blocker: "Which job?" });
+    fetchMock
+      .mockResolvedValueOnce(
+        sse({ tool_calls: [{ index: 0, id: "call_1", function: { name: mockTool.name, arguments: "{}" }, extra_content: signature }] }),
+      )
+      .mockResolvedValueOnce(textTurn("Which job?"));
+
+    await post("shortlist the best 5");
+
+    const secondCall = JSON.parse(fetchMock.mock.calls[1][1].body as string) as {
+      messages: Array<{ role: string; tool_calls?: Array<{ id: string; extra_content?: unknown }> }>;
+    };
+    const assistantTurn = secondCall.messages.find((m) => m.role === "assistant" && m.tool_calls?.length);
+    expect(assistantTurn?.tool_calls?.[0]).toMatchObject({ id: "call_1", extra_content: signature });
   });
 
   it("pins the dry run's resolved args into the proposal so execute replays what the card showed", async () => {

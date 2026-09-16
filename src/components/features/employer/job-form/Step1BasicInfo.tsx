@@ -59,6 +59,9 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
+  // Suggestions are optional, but failing invisibly told an employer nothing
+  // while the panel simply never appeared. Say it once, quietly.
+  const [suggestionsFailed, setSuggestionsFailed] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -105,10 +108,14 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
           setTitleSuggestions(data.suggestions.titles ?? []);
           setSuggestions(data.suggestions);
           setShowSuggestions(true);
+          setSuggestionsFailed(false);
           onSuggestionsLoaded?.(data.suggestions);
+        } else {
+          setSuggestionsFailed(true);
         }
       } catch {
-        // silently fail — suggestions are non-critical
+        // Never blocks the form — the employer can type the title themselves.
+        setSuggestionsFailed(true);
       } finally {
         setFetchingSuggestions(false);
       }
@@ -253,6 +260,9 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
           <p className="text-xs text-muted-foreground">
             {t("jobTitleHint")}
           </p>
+          {suggestionsFailed && !fetchingSuggestions && (
+            <p className="text-xs text-muted-foreground">{t("suggestionsUnavailable")}</p>
+          )}
           {errors.title && (
             <p id="job-title-error" className="mt-1 text-xs text-destructive">{getTitleError()}</p>
           )}

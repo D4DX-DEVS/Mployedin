@@ -66,6 +66,11 @@ jest.mock("@/models/Application", () => ({
     countDocuments: (...args: unknown[]) => mockApplicationCountDocuments(...args),
     aggregate: (...args: unknown[]) => mockApplicationAggregate(...args),
   },
+  __esModule: true,
+  default: {
+    countDocuments: (...args: unknown[]) => mockApplicationCountDocuments(...args),
+    aggregate: (...args: unknown[]) => mockApplicationAggregate(...args),
+  },
 }));
 
 const mockAgentFind = jest.fn();
@@ -76,17 +81,42 @@ jest.mock("@/models/Agent", () => ({
 }));
 
 const mockEmployerFind = jest.fn();
+const mockEmployerAggregate = jest.fn().mockResolvedValue([]);
 jest.mock("@/models/Employer", () => ({
   Employer: {
     find: (...args: unknown[]) => mockEmployerFind(...args),
+    aggregate: (...args: unknown[]) => mockEmployerAggregate(...args),
+  },
+  __esModule: true,
+  default: {
+    find: (...args: unknown[]) => mockEmployerFind(...args),
+    aggregate: (...args: unknown[]) => mockEmployerAggregate(...args),
   },
 }));
 
 const mockPlacementCountDocuments = jest.fn();
+const mockPlacementAggregate = jest.fn().mockResolvedValue([]);
 jest.mock("@/models/Placement", () => ({
   Placement: {
     countDocuments: (...args: unknown[]) => mockPlacementCountDocuments(...args),
+    aggregate: (...args: unknown[]) => mockPlacementAggregate(...args),
   },
+  __esModule: true,
+  default: {
+    countDocuments: (...args: unknown[]) => mockPlacementCountDocuments(...args),
+    aggregate: (...args: unknown[]) => mockPlacementAggregate(...args),
+  },
+}));
+
+// getLiveAgentPerformance counts all six agent scorecard figures from their
+// own collections, so the report now reaches Lead and Interview too.
+jest.mock("@/models/Lead", () => ({
+  __esModule: true,
+  default: { aggregate: jest.fn().mockResolvedValue([]) },
+}));
+jest.mock("@/models/Interview", () => ({
+  __esModule: true,
+  default: { aggregate: jest.fn().mockResolvedValue([]) },
 }));
 
 const mockCommissionAggregate = jest.fn();
@@ -149,10 +179,20 @@ describe("POST /api/ai/report", () => {
       .mockResolvedValueOnce(0)
       .mockResolvedValueOnce(11)
       .mockResolvedValueOnce(0);
-    mockJobAggregate
-      .mockResolvedValueOnce([{ _id: "Technology", count: 4 }])
-      .mockResolvedValueOnce([{ _id: "India", count: 7 }])
-      .mockResolvedValueOnce([{ _id: "employer_001", jobCount: 7 }]);
+    // Dispatch on the pipeline rather than on call order. getLiveAgentPerformance
+    // added a fourth Job.aggregate (jobs grouped by agentId) between the
+    // existing ones, and a positional queue silently handed each of the three
+    // expected results to the wrong caller.
+    const jobAggregateByGroupKey: Record<string, unknown[]> = {
+      "$industry": [{ _id: "Technology", count: 4 }],
+      "$country": [{ _id: "India", count: 7 }],
+      "$employerId": [{ _id: "employer_001", jobCount: 7 }],
+      "$agentId": [],
+    };
+    mockJobAggregate.mockImplementation((pipeline: { $group?: { _id?: unknown } }[]) => {
+      const groupKey = pipeline?.find?.((stage) => stage?.$group)?.$group?._id;
+      return Promise.resolve(jobAggregateByGroupKey[String(groupKey)] ?? []);
+    });
 
     mockApplicationCountDocuments
       .mockResolvedValueOnce(2)
@@ -172,21 +212,12 @@ describe("POST /api/ai/report", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
+    // No sort/limit: the route ranks top agents in JS over live collection
+    // counts now, rather than ordering on the `performance` subdoc, which
+    // drifts and reported placements no Placement document backed.
     mockAgentFind.mockReturnValue({
       select: jest.fn().mockReturnValue({
-        sort: jest.fn().mockReturnValue({
-          limit: jest.fn().mockReturnValue({
-            lean: jest.fn().mockResolvedValue([
-              {
-                userId: "user_001",
-                performance: {
-                  placementsCompleted: 0,
-                  leadsGenerated: 0,
-                },
-              },
-            ]),
-          }),
-        }),
+        lean: jest.fn().mockResolvedValue([{ _id: "agent_001", userId: "user_001" }]),
       }),
     });
 
