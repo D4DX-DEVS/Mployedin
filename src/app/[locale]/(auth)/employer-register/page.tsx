@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Building2, FileCheck, UserCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm";
+import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 
 type VerificationLevel = "basic" | "standard" | "premium";
 
@@ -177,6 +178,7 @@ export default function EmployerRegisterPage() {
   const params = useParams<{ locale?: string }>();
   const locale = params?.locale ?? "en";
   const t = useTranslations("employerRegister");
+  const tErrors = useTranslations("formErrors");
   const referralCode = searchParams.get("ref") ?? "";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -279,17 +281,12 @@ export default function EmployerRegisterPage() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step3.contactEmail)) {
       errors.contactEmail = t("validation.validEmailRequired");
     }
-    if (!step3.password) {
-      errors.password = t("validation.passwordRequired");
-    } else if (
-      step3.password.length < 12 ||
-      !/[a-z]/.test(step3.password) ||
-      !/[A-Z]/.test(step3.password) ||
-      !/[0-9]/.test(step3.password) ||
-      !/[^A-Za-z0-9]/.test(step3.password)
-    ) {
-      errors.password = t("validation.passwordStrength");
-    }
+    // One password policy, not a hand-copied second one. These rules were
+    // re-implemented inline here and could drift from passwordPolicy.ts, the
+    // module the server actually validates against; the shared helper also
+    // says which rule failed rather than restating the whole policy.
+    const passwordProblem = validatePasswordForForm(step3.password, { locale, t: tErrors });
+    if (passwordProblem) errors.password = passwordProblem;
     if (step3.password !== step3.confirmPassword) {
       errors.confirmPassword = t("validation.passwordMismatch");
     }
@@ -590,6 +587,12 @@ export default function EmployerRegisterPage() {
         {step === 3 && (
           <form
             className="space-y-4"
+            // `noValidate` hands validation to validateStep3. FormInput passes
+            // `required` through to the real input, so the browser refused this
+            // submit before validateStep3 ran: none of the per-field messages
+            // below could render, and the only feedback was a native bubble in
+            // the browser's language — English text on an Arabic page.
+            noValidate
             onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
           >
             <h2 className="heading-label font-semibold flex items-center gap-2 text-foreground">

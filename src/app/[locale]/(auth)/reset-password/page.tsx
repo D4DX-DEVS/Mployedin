@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,7 @@ const STRENGTH_COLORS = ["bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-gre
 
 export default function ResetPasswordPage() {
   const t = useTranslations("resetPassword");
+  const tErrors = useTranslations("formErrors");
   const STRENGTH_LABELS = [t("veryWeak"), t("weak"), t("good"), t("strong")];
   const { locale } = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
@@ -56,6 +58,15 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    // Checked against the shared policy, not the local `getStrength` meter:
+    // the meter is a display heuristic, so a password could clear it and still
+    // be refused by the server with an error this page cannot explain.
+    const passwordProblem = validatePasswordForForm(password, { locale, t: tErrors });
+    if (passwordProblem) {
+      setError(passwordProblem);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError(t("passwordsDoNotMatchPeriod"));
@@ -157,7 +168,7 @@ export default function ResetPasswordPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div className="field">
           <Label htmlFor="password" className="text-sm font-medium">{t("newPassword")}</Label>
           <div className="relative">

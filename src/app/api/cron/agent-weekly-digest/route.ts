@@ -107,8 +107,15 @@ export async function GET(req: NextRequest) {
             { $match: { agentId: agentId, status: { $in: ["approved", "paid"] }, createdAt: { $gte: weekAgo } } },
             { $group: { _id: null, total: { $sum: "$amount" } } },
           ]).then((r) => r[0]?.total ?? 0),
+          // Both halves of the previous `$or` matched nothing, so this figure
+          // was always 0: Interview has no `employer` subdocument (only a flat
+          // `employerId`), and `agentId` stores the Agent document's _id — the
+          // shape POST /api/interviews writes and incrementAgentCounter uses —
+          // not the agent's User id. It also feeds `totalActivity`, which
+          // decides whether the digest is sent, so an agent whose week was all
+          // interviews was counted as idle and emailed nothing.
           Interview.countDocuments({
-            $or: [{ "employer.agentId": agentId }, { agentId: userId }],
+            agentId: agentDoc._id,
             createdAt: { $gte: weekAgo },
           }),
           Lead.countDocuments({
