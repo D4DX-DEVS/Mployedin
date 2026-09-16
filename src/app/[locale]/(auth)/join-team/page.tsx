@@ -81,6 +81,13 @@ function JoinTeamForm() {
     e.preventDefault();
     setError(null);
 
+    // The name check is explicit because the form is `noValidate`: the browser
+    // no longer enforces `required`, and its bubble was never translated.
+    if (!name.trim()) {
+      setError(tErrors("nameRequired"));
+      return;
+    }
+
     const passwordProblem = validatePasswordForForm(password, { locale, t: tErrors });
     if (passwordProblem) {
       setError(passwordProblem);
@@ -192,7 +199,7 @@ function JoinTeamForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="join-email">{t("emailLabel")}</Label>
           <Input id="join-email" type="email" value={invite.email} readOnly disabled />

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { User, MapPin, CheckCircle, ChevronRight, ChevronLeft, Loader2, Briefcase, Shield } from "lucide-react";
 import { FormInput, FormSelect } from "@/components/shared/AppForm";
 
@@ -24,6 +25,8 @@ interface Step2Data {
 
 export default function AgentRegisterPage() {
   const t = useTranslations("agentRegister");
+  const tErrors = useTranslations("formErrors");
+  const locale = useLocale();
 
   const COUNTRIES = [
     { value: "AE", label: t("countryAE") },
@@ -96,8 +99,13 @@ export default function AgentRegisterPage() {
       setError(t("invalidEmailAddress"));
       return false;
     }
-    if (step1.password.length < 12 || !/[a-z]/.test(step1.password) || !/[A-Z]/.test(step1.password) || !/[0-9]/.test(step1.password) || !/[^A-Za-z0-9]/.test(step1.password)) {
-      setError("Password must be 12+ characters and include upper-case, lower-case, numeric, and special characters");
+    // Was a hand-copied second password policy whose failure message was a
+    // hardcoded English string — untranslated on an Arabic page, and free to
+    // drift from passwordPolicy.ts, which is what the server enforces. The
+    // shared helper also names the rule that actually failed.
+    const passwordProblem = validatePasswordForForm(step1.password, { locale, t: tErrors });
+    if (passwordProblem) {
+      setError(passwordProblem);
       return false;
     }
     if (step1.password !== step1.confirmPassword) {
