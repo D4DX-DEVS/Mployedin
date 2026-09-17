@@ -57,6 +57,11 @@ class AccountLockedError extends CredentialsSignin {
 class LoginRateLimitedError extends CredentialsSignin {
   code = "login_rate_limited";
 }
+/** Thrown when the account exists but an admin has deactivated it. */
+class AccountInactiveError extends CredentialsSignin {
+  code = "account_inactive";
+}
+
 /** Thrown when credentials could not be checked because the service failed. */
 class AuthenticationUnavailableError extends CredentialsSignin {
   code = "authentication_unavailable";
@@ -117,7 +122,9 @@ export const authConfig: NextAuthConfig = {
             ipAddress: ip,
             meta: { email: parsed.data.email, reason: "account_inactive" },
           });
-          return null;
+          // Deactivated is not the same as wrong-password: telling the user
+          // "invalid credentials" sent them round the reset loop forever.
+          throw new AccountInactiveError();
         }
 
         const valid = await user.comparePassword(parsed.data.password);
@@ -402,10 +409,24 @@ export const authConfig: NextAuthConfig = {
             }
           }
 
+          // Deactivated accounts must be rejected BEFORE lastLogin is touched —
+          // bumping it on a refused sign-in made inactive users look like they had
+          // just logged in successfully. Firebase itself authenticates them fine,
+          // so without this branch the UI showed a bare "Google sign-in failed"
+          // and nothing was ever written to the audit log.
+          if (!dbUser.isActive) {
+            logActivity({
+              actorId: dbUser._id.toString(),
+              actorRole: dbUser.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "account_inactive", provider: "firebase-google" },
+            });
+            throw new AccountInactiveError();
+          }
+
           // Update lastLogin for returning Firebase/Google users
           await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
-
-          if (!dbUser.isActive) return null;
 
           // Look up isOnboarded for existing users
           const fbJobSeeker = await JobSeeker.findOne({ userId: dbUser._id }).select("isOnboarded").lean();
@@ -429,6 +450,9 @@ export const authConfig: NextAuthConfig = {
             isOnboarded: fbJobSeeker?.isOnboarded ?? false,
           };
         } catch (err) {
+          // A typed CredentialsSignin carries the reason code the login page maps;
+          // swallowing it here is what turned every refusal into a generic failure.
+          if (err instanceof CredentialsSignin) throw err;
           logger.error({ err }, "Firebase authorize error");
           return null;
         }

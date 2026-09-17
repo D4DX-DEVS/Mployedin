@@ -32,10 +32,17 @@ export async function POST(req: NextRequest) {
   }
 
   await connectDB();
-  const user = await User.findOne({ email: body.email, isActive: true });
+  const account = await User.findOne({ email: body.email });
+  const user = account?.isActive ? account : null;
 
-  // Always return success to prevent email enumeration
+  // Always return success to prevent email enumeration. The caller learns nothing,
+  // but the server log must still say WHY nothing was sent — a silent no-op here is
+  // indistinguishable from a failed send when someone reports "no mail arrived".
   if (!user) {
+    logger.info(
+      { email: body.email, reason: !account ? "no_account" : "account_inactive" },
+      "[ForgotPassword] No reset email sent",
+    );
     return NextResponse.json({ message: "If an account exists, a reset link has been sent." });
   }
 
@@ -56,7 +63,16 @@ export async function POST(req: NextRequest) {
     const template = EmailTemplates.passwordReset(resetUrl);
     await sendEmail({ to: user.email as string, ...template });
   } catch (emailErr) {
-    logger.error({ err: emailErr }, "[ForgotPassword] Failed to send reset email");
+    logger.error({ err: emailErr }, "[ForgotPassword] Reset email could not be sent");
+    // Queryable next to every other auth event: a reset that never reached the
+    // inbox used to leave nothing behind but a line in the server log.
+    logActivity({
+      actorId: user._id.toString(),
+      actorRole: user.role,
+      action: "password_reset.email_failed",
+      resource: "auth",
+      meta: { email: user.email, error: emailErr instanceof Error ? emailErr.message : "unknown" },
+    });
     // Still return success — don't leak delivery failures to the caller
   }
 

@@ -351,6 +351,11 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       const idToken = await result.user.getIdToken();
       const res = await signIn("firebase", { idToken, redirect: false });
       if (res?.error) {
+        if ((res as { code?: string }).code === "account_inactive") {
+          setAnonError(t("accountInactive"));
+          setAnonPhase("idle");
+          return;
+        }
         // Check if it's a popup block error
         if (res.error.includes("disallowed") || res.error.includes("popup")) {
           setAnonError(t("errors.popupBlocked"));

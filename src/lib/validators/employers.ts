@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { websiteSchema } from "./website";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 
 export const employerCreateSchema = z.object({
@@ -10,7 +11,7 @@ export const employerCreateSchema = z.object({
   registrationNo: z.string().max(50).trim().optional(),
   taxId: z.string().max(50).trim().optional(),
   address: z.string().max(500).trim().optional(),
-  website: commonSchemas.url.optional().or(z.literal("")),
+  website: websiteSchema.optional(),
   industry: z.string().max(100).optional(),
   companySize: z.string().max(50).optional(),
 });
@@ -25,7 +26,7 @@ export const employerUpdateSchema = z.object({
   taxId: z.string().max(50).trim().optional(),
   address: z.string().max(500).trim().optional(),
   country: z.string().max(10).trim().optional(),
-  website: commonSchemas.url.optional().or(z.literal("")),
+  website: websiteSchema.optional(),
   industry: z.string().max(100).optional(),
   companySize: z.string().max(50).optional(),
   workflowMode: z.enum(["auto", "manual"]).optional(),

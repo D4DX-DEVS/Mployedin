@@ -8,6 +8,7 @@ import { Building2, FileCheck, UserCircle, CheckCircle, ChevronRight, ChevronLef
 import { Button } from "@/components/ui/button";
 import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
+import { normalizeWebsiteUrl } from "@/lib/validators/website";
 
 type VerificationLevel = "basic" | "standard" | "premium";
 
@@ -247,9 +248,22 @@ export default function EmployerRegisterPage() {
     if (!step1.size) errors.size = t("validation.sizeRequired");
     if (!step1.country) errors.country = t("validation.countryRequired");
     if (!step1.city.trim()) errors.city = t("validation.cityRequired");
+    // Website is optional, but the server still rejects a malformed one. Catch
+    // it here so the message appears beside the field the employer can edit,
+    // instead of as a banner on step 3 pointing at a step they have left.
+    const websiteResult = normalizeWebsiteUrl(step1.website);
+    const normalizedWebsite = websiteResult.ok ? websiteResult.value : null;
+    if (normalizedWebsite === null) {
+      errors.website = t("validation.websiteInvalid");
+    }
     if (Object.keys(errors).length > 0) {
       showFieldErrors(errors);
       return false;
+    }
+    // Show the employer the canonical URL we are about to store, so "talindia.co"
+    // visibly becomes "https://talindia.co/" before they move on.
+    if (normalizedWebsite !== null && normalizedWebsite !== step1.website) {
+      setStep1(p => ({ ...p, website: normalizedWebsite }));
     }
     setFieldErrors({});
     setError("");
@@ -484,8 +498,15 @@ export default function EmployerRegisterPage() {
                   }} />
               </div>
             </div>
-            <FormInput label={t("website")} value={step1.website} placeholder="https://example.com"
-              onChange={(e) => setStep1(p => ({ ...p, website: e.target.value }))} />
+            <div data-registration-field="website">
+              <FormInput label={t("websiteOptional")} value={step1.website} placeholder="talindia.co"
+                error={fieldErrors.website}
+                hint={t("websiteHint")}
+                onChange={(e) => {
+                  clearFieldError("website");
+                  setStep1(p => ({ ...p, website: e.target.value }));
+                }} />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div data-registration-field="country">
                 <FormSelect label={t("country")} required value={step1.country} options={countryOptions}
