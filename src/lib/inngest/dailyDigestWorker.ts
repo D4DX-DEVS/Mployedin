@@ -17,7 +17,11 @@ export const dailyDigestWorker = inngest.createFunction(
   {
     id: "daily-digest-worker",
     name: "Daily Digest Email Worker",
-    retries: 3,
+    // A rejected digest used to be retried 3 more times, and each attempt was a
+    // fresh Gmail login plus a fresh failed emaillogs row — that is how ~230
+    // recipients turned into ~1,200 failures a day once SMTP started refusing.
+    // The digest is not worth amplifying: the next daily run covers a blip.
+    retries: 1,
     // Inngest free plan caps concurrency at 5 (sync is rejected above that).
     concurrency: { limit: 5 },
     triggers: [{ event: "notification/daily-digest" }],

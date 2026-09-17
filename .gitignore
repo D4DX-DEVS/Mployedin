@@ -160,3 +160,16 @@ ACCESS-CONTROL-*.md
 *-AUDIT-*.md
 *-PLAN-VERIFIED.md
 PLAN.md
+
+# ===== Throwaway investigation scripts (repo root only) =====
+# One-off DB/SMTP/Firebase probe scripts land here during debugging sessions.
+# Anchored to / so real code in src/ and scripts/ is never ignored.
+/check-*.js
+/check_*.js
+/investigate-*.js
+/query-*.js
+/debug-*.js
+/db-investigation.js
+/firebase-audit.js
+/test-*.js
+/test_*.js

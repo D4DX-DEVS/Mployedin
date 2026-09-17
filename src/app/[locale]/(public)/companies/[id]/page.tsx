@@ -9,6 +9,7 @@ import { Building2, MapPin, Globe, Users, Briefcase, CheckCircle2, Calendar, Ext
 import RelativeDate from "@/components/shared/RelativeDate";
 import CompanyReviews from "@/components/features/public/CompanyReviews";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { normalizeWebsiteUrl } from "@/lib/validators/website";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -42,6 +43,15 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
 
   const employer = emp as Record<string, unknown>;
   const socialLinks = employer.socialLinks as Record<string, string> | undefined;
+  // Rows saved before the website field was normalised can hold anything the
+  // old z.string().url() let through — including "javascript:…", which would
+  // land in an href on this public page. Re-check at render, not just on write.
+  const safeHref = (value: unknown) => {
+    const result = normalizeWebsiteUrl(typeof value === "string" ? value : "");
+    return result.ok && result.value ? result.value : null;
+  };
+  const websiteHref = safeHref(employer.website);
+  const linkedinHref = safeHref(socialLinks?.linkedin);
 
   const jobs = await Job.find({ employerId: id, status: "active", deletedAt: null })
     .select("title location salary requirements employmentType workMode createdAt")
@@ -92,8 +102,8 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
                   {t("founded", { year: employer.foundedYear as number })}
                 </span>
               ) : null}
-              {employer.website ? (
-                <a href={employer.website as string} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary hover:underline">
+              {websiteHref ? (
+                <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary hover:underline">
                   <Globe className="w-4 h-4" />
                   {t("website")}
                 </a>
@@ -110,13 +120,11 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
         ) : null}
 
         {/* Social Links */}
-        {socialLinks && Object.values(socialLinks).some(Boolean) && (
+        {linkedinHref && (
           <div className="mt-4 flex gap-3">
-            {socialLinks.linkedin && (
-              <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            )}
+            <a href={linkedinHref} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+              <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
         )}
       </div>

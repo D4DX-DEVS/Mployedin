@@ -95,6 +95,11 @@ export default function RegisterPage() {
         redirect: false,
       });
       if (res?.error) {
+        // Google authenticated them; a deactivated account is our refusal, not theirs.
+        if ((res as { code?: string }).code === "account_inactive") {
+          setError(t("accountInactive"));
+          return;
+        }
         setError(t("googleSignInFailed"));
         return;
       }

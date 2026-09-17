@@ -28,6 +28,7 @@ type LoginErrorKind =
   | "credentials"
   | "two-factor"
   | "locked"
+  | "inactive"
   | "rate-limit"
   | "service"
   | "session"
@@ -122,6 +123,13 @@ export default function LoginPage() {
 
       const res = await signIn("firebase", { idToken, redirect: false });
       if (res?.error) {
+        // Google itself authenticated them — the refusal came from our side, so
+        // say which side and why instead of a bare "sign-in failed".
+        const code = (res as { code?: string }).code;
+        if (code === "account_inactive") {
+          setError({ kind: "inactive", message: t("accountInactive") });
+          return;
+        }
         setError({ kind: "oauth", message: t("googleSignInFailed") });
         return;
       }
@@ -130,7 +138,18 @@ export default function LoginPage() {
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
       router.replace(getSafeCallbackPath(locale) ?? getPostSignInPath(locale, role, isOnboarded));
-    } catch {
+    } catch (err) {
+      // The whole "works on my machine, fails on theirs" class lives here: a
+      // closed popup, a popup the browser blocked, or privacy settings that
+      // partition the third-party storage signInWithPopup relies on.
+      const code = (err as { code?: string })?.code;
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        return;
+      }
+      if (code === "auth/popup-blocked") {
+        setError({ kind: "oauth", message: t("googlePopupBlocked") });
+        return;
+      }
       setError({ kind: "oauth", message: t("googleSignInFailed") });
     } finally {
       setGoogleLoading(false);
@@ -170,6 +189,10 @@ export default function LoginPage() {
         }
         if (code === "account_locked") {
           setError({ kind: "locked", message: t("accountLocked") });
+          return;
+        }
+        if (code === "account_inactive") {
+          setError({ kind: "inactive", message: t("accountInactive") });
           return;
         }
         if (code === "login_rate_limited") {

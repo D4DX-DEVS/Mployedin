@@ -44,6 +44,51 @@ interface SmtpConfig {
   smtpSecure?: boolean;
 }
 
+/**
+ * Shared connection policy for every transporter we build.
+ *
+ * Without `pool`, nodemailer opens a new TCP connection AND a new SMTP AUTH for
+ * every single message. The daily digest fans out through Inngest at concurrency
+ * 5, so one run produced hundreds of logins within minutes and Gmail answered
+ * `454-4.7.0 Too many login attempts`, which then killed every transactional mail
+ * (OTP, verification, password reset) queued behind it. Pooling keeps a single
+ * authenticated connection alive and paces the queue instead of re-authenticating.
+ */
+const POOL_OPTIONS = {
+  pool: true,
+  maxConnections: 1,
+  maxMessages: 100,
+  rateDelta: 60_000,
+  rateLimit: 15,
+  connectionTimeout: 20_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 30_000,
+} as const;
+
+/**
+ * Gmail shows app passwords in four space-separated groups and they are routinely
+ * pasted that way into .env or the DO dashboard, where SMTP AUTH then rejects the
+ * spaces. Only Gmail gets this treatment: on another provider a space can be a
+ * real character in the password, and stripping it would break a working login.
+ */
+function normalizeSmtpPassword(raw: string | undefined, host: string | undefined): string | undefined {
+  if (!raw) return raw;
+  return /gmail|googlemail/i.test(host ?? "") ? raw.replace(/\s+/g, "") : raw;
+}
+
+/**
+ * Seed and QA accounts use reserved domains (RFC 2606 .test/.invalid/.example,
+ * plus our own test.* subdomains). They can never receive mail, but every attempt
+ * still spends one of the sending account's limited daily recipients and earns a
+ * bounce against its reputation — 26 of 229 digest recipients on 2026-09-17.
+ */
+const UNDELIVERABLE_HOST = /(^|\.)(test|invalid|example|localhost)$|^test\./i;
+
+export function isUndeliverableAddress(address: string): boolean {
+  const host = address.split("@")[1]?.trim().toLowerCase();
+  return host ? UNDELIVERABLE_HOST.test(host) : true;
+}
+
 let defaultTransporter: nodemailer.Transporter | null = null;
 
 function getEnvTransporter(): nodemailer.Transporter {
@@ -52,6 +97,7 @@ function getEnvTransporter(): nodemailer.Transporter {
   if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
     // Gmail OAuth2
     defaultTransporter = nodemailer.createTransport({
+      ...POOL_OPTIONS,
       service: "gmail",
       auth: {
         type: "OAuth2",
@@ -64,17 +110,22 @@ function getEnvTransporter(): nodemailer.Transporter {
   } else if (process.env.SMTP_HOST || process.env.EMAIL_HOST) {
     // Generic SMTP (supports both SMTP_* and EMAIL_* env var naming)
     defaultTransporter = nodemailer.createTransport({
+      ...POOL_OPTIONS,
       host: process.env.SMTP_HOST ?? process.env.EMAIL_HOST,
       port: parseInt(process.env.SMTP_PORT ?? process.env.EMAIL_PORT ?? "587"),
       secure: (process.env.SMTP_SECURE ?? process.env.EMAIL_SECURE) === "true",
       auth: {
         user: process.env.SMTP_USER ?? process.env.EMAIL_USER,
-        pass: process.env.SMTP_PASS ?? process.env.EMAIL_PASS,
+        pass: normalizeSmtpPassword(
+          process.env.SMTP_PASS ?? process.env.EMAIL_PASS,
+          process.env.SMTP_HOST ?? process.env.EMAIL_HOST,
+        ),
       },
     });
   } else {
     // Development: ethereal fake SMTP (auto-created)
     defaultTransporter = nodemailer.createTransport({
+      ...POOL_OPTIONS,
       host: "smtp.ethereal.email",
       port: 587,
       auth: {
@@ -87,16 +138,32 @@ function getEnvTransporter(): nodemailer.Transporter {
   return defaultTransporter;
 }
 
+/**
+ * Pooled transporters own a live socket, so building one per send would leak a
+ * connection for every message — the opposite of what pooling is for. Employer
+ * overrides and the DB-level SMTP config are both stable, so key the cache on the
+ * config itself: a changed host/user/password simply produces a new entry.
+ */
+const smtpTransporterCache = new Map<string, nodemailer.Transporter>();
+
 function createSmtpTransporter(smtp: SmtpConfig): nodemailer.Transporter {
-  return nodemailer.createTransport({
-    host: smtp.smtpHost || "smtp.gmail.com",
-    port: smtp.smtpPort || 587,
+  const host = smtp.smtpHost || "smtp.gmail.com";
+  const port = smtp.smtpPort || 587;
+  const pass = normalizeSmtpPassword(smtp.smtpAppPassword, host) ?? smtp.smtpAppPassword;
+  const cacheKey = [host, port, String(smtp.smtpSecure || false), smtp.smtpEmail, pass].join("|");
+  const cached = smtpTransporterCache.get(cacheKey);
+  if (cached) return cached;
+
+  const transporter = nodemailer.createTransport({
+    ...POOL_OPTIONS,
+    host,
+    port,
     secure: smtp.smtpSecure || false,
-    auth: {
-      user: smtp.smtpEmail,
-      pass: smtp.smtpAppPassword,
-    },
+    auth: { user: smtp.smtpEmail, pass },
   });
+
+  smtpTransporterCache.set(cacheKey, transporter);
+  return transporter;
 }
 
 /**
@@ -160,8 +227,25 @@ async function resolveTransporter(employerId?: string): Promise<{ transporter: n
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<{ messageId: string }> {
-  const { transporter: t, fromEmail } = await resolveTransporter(payload.employerId);
   const toAddr = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to;
+
+  // Refuse reserved test domains before a connection is opened, so seeded data
+  // cannot eat the daily sending quota that OTP and password-reset mail shares.
+  const deliverable = (Array.isArray(payload.to) ? payload.to : [payload.to]).filter((a) => !isUndeliverableAddress(a));
+  if (deliverable.length === 0) {
+    logEmailDelivery({
+      userId: payload.userId,
+      to: toAddr,
+      subject: payload.subject,
+      category: payload.category ?? "system",
+      source: payload.source ?? "direct",
+      status: "failed",
+      errorMessage: "Not sent: reserved test domain (RFC 2606) — this address can never receive mail",
+    }).catch((err) => { logger.error({ err, to: toAddr }, "Failed to log skipped email"); });
+    throw new Error("Recipient address is a reserved test domain and cannot receive mail");
+  }
+
+  const { transporter: t, fromEmail } = await resolveTransporter(payload.employerId);
   const senderName = payload.senderName || "MPLOYEDIN";
 
   // Build List-Unsubscribe headers (RFC 8058) if userId is provided

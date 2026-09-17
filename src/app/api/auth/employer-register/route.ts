@@ -17,7 +17,7 @@ import { hashOtp } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
-import { z } from "zod";
+import { normalizeWebsiteUrl } from "@/lib/validators/website";
 
 export const runtime = "nodejs";
 
@@ -50,10 +50,14 @@ export async function POST(req: NextRequest) {
     const companyName = get("companyName");
     const industry = get("industry");
     const size = get("size");
-    const website = get("website").trim();
-    if (website && !z.string().url().max(2048).safeParse(website).success) {
-      return NextResponse.json({ message: "Please enter a valid website URL (e.g. https://example.com)." }, { status: 400 });
+    const websiteResult = normalizeWebsiteUrl(get("website"));
+    if (!websiteResult.ok) {
+      return NextResponse.json(
+        { message: "We couldn't read that website address. Enter it like talindia.co, or leave it blank." },
+        { status: 400 },
+      );
     }
+    const website = websiteResult.value;
     const country = get("country");
     const city = get("city");
 
