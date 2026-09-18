@@ -45,6 +45,7 @@ export interface IEmployer extends Document {
   registrationNo?: string;
   taxId?: string;
   address?: string;
+  city?: string;
   country?: string;
   website?: string;
   industry?: string;
@@ -159,6 +160,10 @@ const EmployerSchema = new Schema<IEmployer>(
     registrationNo: { type: String, select: false },
     taxId: { type: String, select: false },
     address: String,
+    // Signup asks for City as a required field and the register route passes it
+    // to Employer.create(). Without this path Mongoose strict mode dropped it
+    // silently, so every company registered since launch has no city.
+    city: String,
     country: String,
     website: String,
     industry: String,

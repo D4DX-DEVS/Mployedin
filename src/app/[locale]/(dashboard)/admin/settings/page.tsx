@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent } from "lucide-react";
+import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent, ReceiptText, Banknote } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { CurrencySelect } from "@/components/ui/currency-select";
 import { Switch } from "@/components/ui/switch";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
@@ -26,14 +27,54 @@ interface CommissionOverride {
   label: string;
 }
 
+interface InvoiceIssuerBank {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  iban: string;
+  swift: string;
+  branch: string;
+  instructions: string;
+}
+
+/**
+ * The FROM block and payment instructions printed on every invoice PDF.
+ * `addressText` is the textarea's value; it is split into `addressLines` on
+ * save, because an address is lines rather than one string.
+ */
+interface InvoiceIssuerForm {
+  legalName: string;
+  addressText: string;
+  country: string;
+  taxRegNo: string;
+  email: string;
+  phone: string;
+  website: string;
+  bank: InvoiceIssuerBank;
+  footerNote: string;
+}
+
 interface SystemSettings {
   platformName: string;
   supportEmail: string;
   maintenanceMode: boolean;
   defaultCurrency: string;
   smtp: SmtpConfig;
+  invoiceIssuer: InvoiceIssuerForm;
   commissionOverrides: CommissionOverride[];
 }
+
+const EMPTY_ISSUER: InvoiceIssuerForm = {
+  legalName: "",
+  addressText: "",
+  country: "",
+  taxRegNo: "",
+  email: "",
+  phone: "",
+  website: "",
+  bank: { bankName: "", accountName: "", accountNumber: "", iban: "", swift: "", branch: "", instructions: "" },
+  footerNote: "",
+};
 
 export default function AdminSettingsPage() {
   const t = useTranslations("adminSettings");
@@ -56,6 +97,7 @@ export default function AdminSettingsPage() {
       smtpPort: 587,
       smtpSecure: false,
     },
+    invoiceIssuer: EMPTY_ISSUER,
     commissionOverrides: [],
   });
 
@@ -82,6 +124,25 @@ export default function AdminSettingsPage() {
               smtpPort: data.settings.smtp?.smtpPort ?? 587,
               smtpSecure: data.settings.smtp?.smtpSecure ?? false,
             },
+            invoiceIssuer: {
+              legalName: data.settings.invoiceIssuer?.legalName ?? "",
+              addressText: (data.settings.invoiceIssuer?.addressLines ?? []).join("\n"),
+              country: data.settings.invoiceIssuer?.country ?? "",
+              taxRegNo: data.settings.invoiceIssuer?.taxRegNo ?? "",
+              email: data.settings.invoiceIssuer?.email ?? "",
+              phone: data.settings.invoiceIssuer?.phone ?? "",
+              website: data.settings.invoiceIssuer?.website ?? "",
+              bank: {
+                bankName: data.settings.invoiceIssuer?.bank?.bankName ?? "",
+                accountName: data.settings.invoiceIssuer?.bank?.accountName ?? "",
+                accountNumber: data.settings.invoiceIssuer?.bank?.accountNumber ?? "",
+                iban: data.settings.invoiceIssuer?.bank?.iban ?? "",
+                swift: data.settings.invoiceIssuer?.bank?.swift ?? "",
+                branch: data.settings.invoiceIssuer?.bank?.branch ?? "",
+                instructions: data.settings.invoiceIssuer?.bank?.instructions ?? "",
+              },
+              footerNote: data.settings.invoiceIssuer?.footerNote ?? "",
+            },
             commissionOverrides: data.settings.commissionOverrides ?? [],
           });
         }
@@ -96,7 +157,17 @@ export default function AdminSettingsPage() {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({
+          ...settings,
+          invoiceIssuer: {
+            ...settings.invoiceIssuer,
+            addressText: undefined,
+            addressLines: settings.invoiceIssuer.addressText
+              .split("\n")
+              .map((l) => l.trim())
+              .filter(Boolean),
+          },
+        }),
       });
       if (res.ok) {
         setSaved(true);
@@ -198,6 +269,171 @@ export default function AdminSettingsPage() {
             onCheckedChange={(checked) => setSettings((s) => ({ ...s, maintenanceMode: checked }))}
             aria-label={t("maintenanceModeLabel")}
           />
+        </div>
+
+        {/* Invoice issuer — the FROM block and payment instructions printed on
+            every invoice PDF. Kept here rather than in code so a change of
+            address or tax number does not need a deploy. */}
+        <div className="panel-body space-y-4">
+          <div>
+            <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
+              <ReceiptText className="h-4 w-4 text-primary" />
+              {t("invoiceIssuerTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">{t("invoiceIssuerDescription")}</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1 sm:col-span-2">
+              <label htmlFor="issuer-legal-name" className="text-sm text-muted-foreground">{t("issuerLegalNameLabel")}</label>
+              <Input
+                id="issuer-legal-name"
+                value={settings.invoiceIssuer.legalName}
+                placeholder={t("issuerLegalNamePlaceholder")}
+                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, legalName: e.target.value } }))}
+              />
+            </div>
+
+            <div className="space-y-1 sm:col-span-2">
+              <label htmlFor="issuer-address" className="text-sm text-muted-foreground">{t("issuerAddressLabel")}</label>
+              <Textarea
+                id="issuer-address"
+                rows={3}
+                value={settings.invoiceIssuer.addressText}
+                placeholder={t("issuerAddressPlaceholder")}
+                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, addressText: e.target.value } }))}
+              />
+              <p className="text-xs text-muted-foreground">{t("issuerAddressHelp")}</p>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="issuer-country" className="text-sm text-muted-foreground">{t("issuerCountryLabel")}</label>
+              <Input
+                id="issuer-country"
+                value={settings.invoiceIssuer.country}
+                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, country: e.target.value } }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="issuer-tax-reg" className="text-sm text-muted-foreground">{t("issuerTaxRegLabel")}</label>
+              <Input
+                id="issuer-tax-reg"
+                value={settings.invoiceIssuer.taxRegNo}
+                placeholder={t("issuerTaxRegPlaceholder")}
+                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, taxRegNo: e.target.value } }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="issuer-email" className="text-sm text-muted-foreground">{t("issuerEmailLabel")}</label>
+              <Input
+                id="issuer-email"
+                type="email"
+                value={settings.invoiceIssuer.email}
+                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, email: e.target.value } }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="issuer-phone" className="text-sm text-muted-foreground">{t("issuerPhoneLabel")}</label>
+              <Input
+                id="issuer-phone"
+                value={settings.invoiceIssuer.phone}
+                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, phone: e.target.value } }))}
+              />
+            </div>
+
+            <div className="space-y-1 sm:col-span-2">
+              <label htmlFor="issuer-website" className="text-sm text-muted-foreground">{t("issuerWebsiteLabel")}</label>
+              <Input
+                id="issuer-website"
+                value={settings.invoiceIssuer.website}
+                placeholder={t("issuerWebsitePlaceholder")}
+                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, website: e.target.value } }))}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border/70 card-pad space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Banknote className="h-4 w-4 text-primary" /> {t("issuerBankTitle")}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("issuerBankDescription")}</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label htmlFor="issuer-bank-name" className="text-sm text-muted-foreground">{t("issuerBankNameLabel")}</label>
+                <Input
+                  id="issuer-bank-name"
+                  value={settings.invoiceIssuer.bank.bankName}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, bankName: e.target.value } } }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="issuer-account-name" className="text-sm text-muted-foreground">{t("issuerAccountNameLabel")}</label>
+                <Input
+                  id="issuer-account-name"
+                  value={settings.invoiceIssuer.bank.accountName}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, accountName: e.target.value } } }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="issuer-account-number" className="text-sm text-muted-foreground">{t("issuerAccountNumberLabel")}</label>
+                <Input
+                  id="issuer-account-number"
+                  value={settings.invoiceIssuer.bank.accountNumber}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, accountNumber: e.target.value } } }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="issuer-iban" className="text-sm text-muted-foreground">{t("issuerIbanLabel")}</label>
+                <Input
+                  id="issuer-iban"
+                  value={settings.invoiceIssuer.bank.iban}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, iban: e.target.value } } }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="issuer-swift" className="text-sm text-muted-foreground">{t("issuerSwiftLabel")}</label>
+                <Input
+                  id="issuer-swift"
+                  value={settings.invoiceIssuer.bank.swift}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, swift: e.target.value } } }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="issuer-branch" className="text-sm text-muted-foreground">{t("issuerBranchLabel")}</label>
+                <Input
+                  id="issuer-branch"
+                  value={settings.invoiceIssuer.bank.branch}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, branch: e.target.value } } }))}
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <label htmlFor="issuer-instructions" className="text-sm text-muted-foreground">{t("issuerInstructionsLabel")}</label>
+                <Textarea
+                  id="issuer-instructions"
+                  rows={2}
+                  value={settings.invoiceIssuer.bank.instructions}
+                  placeholder={t("issuerInstructionsPlaceholder")}
+                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, instructions: e.target.value } } }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="issuer-footer" className="text-sm text-muted-foreground">{t("issuerFooterLabel")}</label>
+            <Input
+              id="issuer-footer"
+              value={settings.invoiceIssuer.footerNote}
+              placeholder={t("issuerFooterPlaceholder")}
+              onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, footerNote: e.target.value } }))}
+            />
+            <p className="text-xs text-muted-foreground">{t("issuerFooterHelp")}</p>
+          </div>
         </div>
 
         {/* Commission Overrides */}

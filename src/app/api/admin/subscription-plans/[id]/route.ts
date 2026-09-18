@@ -6,6 +6,13 @@ import SubscriptionPlan from "@/models/SubscriptionPlan";
 import Subscription from "@/models/Subscription";
 import { validateBody } from "@/lib/validators";
 import { subscriptionPlanUpdateSchema } from "@/lib/validators/subscriptions";
+import { buildPlanSnapshot } from "@/lib/subscription/helpers";
+import {
+  diffPlanSnapshot,
+  LIVE_SUBSCRIPTION_STATUSES,
+  type PlanLike,
+  type SnapshotLike,
+} from "@/lib/subscription/planSnapshotDrift";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 
@@ -51,7 +58,10 @@ async function patchHandler(
 
   const targetRole = body.targetRole ?? plan.targetRole;
   // findByIdAndUpdate skips the model's pre-validate slug hook — regenerate here on rename
-  const update: Record<string, unknown> = { ...body };
+  // `applyToExisting` steers the snapshot re-sync below; it is not a plan
+  // field and must never reach the document.
+  const { applyToExisting, ...planFields } = body;
+  const update: Record<string, unknown> = { ...planFields };
   if (body.name !== undefined || body.targetRole !== undefined) {
     const name = body.name ?? plan.name;
     update.slug = `${targetRole}_${name}`.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
@@ -90,6 +100,35 @@ async function patchHandler(
     await session.endSession();
   }
 
+  // Live subscriptions froze this plan into `planSnapshot` when they were
+  // created, and every renewal invoice is written from that snapshot — which is
+  // how an employer kept being invoiced in USD after this plan moved to AED.
+  // Report the drift always; only rewrite it when the admin asked, because
+  // rewriting a snapshot re-prices a paying customer.
+  const liveSubscriptions = await Subscription.find({
+    planId: plan._id,
+    status: { $in: LIVE_SUBSCRIPTION_STATUSES },
+  })
+    .select("_id planSnapshot")
+    .lean();
+
+  const drifted = liveSubscriptions
+    .map((sub) => ({
+      _id: sub._id,
+      fields: diffPlanSnapshot(plan as unknown as PlanLike, sub.planSnapshot as SnapshotLike),
+    }))
+    .filter((row) => row.fields.length > 0);
+
+  let resynced = 0;
+  if (applyToExisting && drifted.length > 0) {
+    const snapshot = buildPlanSnapshot(plan);
+    const result = await Subscription.updateMany(
+      { _id: { $in: drifted.map((row) => row._id) } },
+      { $set: { planSnapshot: snapshot } },
+    );
+    resynced = result.modifiedCount ?? 0;
+  }
+
   await logActivity({
     ...actorFromCtx(ctx),
     action: "subscription_plan.update",
@@ -99,7 +138,15 @@ async function patchHandler(
     req,
   });
 
-  return NextResponse.json({ plan });
+  return NextResponse.json({
+    plan,
+    snapshotDrift: {
+      /** Live subscriptions still billed on older terms than the plan now states. */
+      count: drifted.length,
+      resynced,
+      fields: [...new Set(drifted.flatMap((row) => row.fields.map((f) => f.field)))],
+    },
+  });
 }
 
 /**

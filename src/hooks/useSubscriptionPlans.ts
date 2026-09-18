@@ -43,6 +43,11 @@ export interface SubscriptionPlanPayload {
   isActive?: boolean;
   isDefault?: boolean;
   sortOrder?: number;
+  /**
+   * Update only: rewrite the frozen planSnapshot on live subscriptions of
+   * this plan. Off by default — it re-prices paying customers.
+   */
+  applyToExisting?: boolean;
 }
 
 export type { IEmployerFeatureLimits, IJobSeekerFeatureLimits, IAIFeatureLimit, PlanTargetRole };

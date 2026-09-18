@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp, Power, RotateCcw,
   Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText, ShieldCheck, AlertTriangle,
@@ -98,6 +99,8 @@ interface PlanFormState {
   jobSeekerLimits: IJobSeekerFeatureLimits;
   isActive: boolean;
   isDefault: boolean;
+  /** Rewrite the frozen planSnapshot on live subscriptions of this plan. */
+  applyToExisting: boolean;
   sortOrder: number;
 }
 
@@ -114,6 +117,7 @@ function emptyForm(targetRole: "employer" | "job_seeker" = "employer"): PlanForm
     jobSeekerLimits: defaultJobSeekerLimits(),
     isActive: true,
     isDefault: false,
+  applyToExisting: false,
     sortOrder: 0,
   };
 }
@@ -131,6 +135,7 @@ function planToForm(p: SubscriptionPlanItem): PlanFormState {
     jobSeekerLimits: p.jobSeekerLimits ?? defaultJobSeekerLimits(),
     isActive: p.isActive,
     isDefault: p.isDefault,
+    applyToExisting: false,
     sortOrder: p.sortOrder,
   };
 }
@@ -296,6 +301,7 @@ export default function AdminSubscriptionPlansPage() {
       isActive: form.isActive,
       isDefault: form.isDefault,
       sortOrder: form.sortOrder,
+      applyToExisting: form.applyToExisting,
       ...(form.targetRole === "employer"
         ? { employerLimits: form.employerLimits }
         : { jobSeekerLimits: form.jobSeekerLimits }),
@@ -306,7 +312,16 @@ export default function AdminSubscriptionPlansPage() {
     // 409 ("this plan still has subscriptions") looked like a crash.
     try {
       if (editId) {
-        await updateMut.mutateAsync({ id: editId, ...payload });
+        const result = await updateMut.mutateAsync({ id: editId, ...payload });
+        // Live subscribers keep billing on the snapshot they were created with,
+        // so an edit here does not reach them unless it was asked to. Say which
+        // it was, rather than leaving the admin to guess.
+        const drift = result?.snapshotDrift;
+        if (drift?.resynced > 0) {
+          toast.success(t("snapshotResynced", { count: drift.resynced }));
+        } else if (drift?.count > 0) {
+          toast.warning(t("snapshotDriftWarning", { count: drift.count }));
+        }
       } else {
         await createMut.mutateAsync(payload);
       }
@@ -574,6 +589,27 @@ export default function AdminSubscriptionPlansPage() {
                   <label htmlFor="plan-default" className="text-sm">{t("defaultPlanToggleLabel")}</label>
                 </div>
               </div>
+
+              {/* Editing only: a subscription froze this plan when it was
+                  created and every renewal invoice is written from that frozen
+                  copy, so a price or currency change here never reaches
+                  existing subscribers on its own. Opt in deliberately — it
+                  re-prices live customers. */}
+              {editId && (
+                <div className="rounded-xl border border-border/70 bg-secondary/20 p-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="plan-apply-existing"
+                      checked={form.applyToExisting}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, applyToExisting: v }))}
+                    />
+                    <label htmlFor="plan-apply-existing" className="text-sm font-medium">
+                      {t("applyToExistingLabel")}
+                    </label>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t("applyToExistingHelp")}</p>
+                </div>
+              )}
             </div>
           )}
 

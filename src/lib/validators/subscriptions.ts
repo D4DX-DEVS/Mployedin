@@ -84,6 +84,13 @@ export const subscriptionPlanUpdateSchema = z.object({
   isActive: z.boolean().optional(),
   isDefault: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
+  /**
+   * Re-write the frozen planSnapshot on live subscriptions of this plan.
+   * Off by default: a snapshot grandfathers the terms someone bought on, so
+   * re-syncing one re-prices a paying customer and must be a deliberate act.
+   * Not a plan field — the route strips it before writing.
+   */
+  applyToExisting: z.boolean().optional(),
 });
 
 // ── POST /api/subscriptions/assign ───────────────────────────────────────────

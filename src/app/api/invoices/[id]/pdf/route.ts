@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import { canAccessInvoice } from "@/lib/invoices/access";
 import { generateInvoicePdf } from "@/lib/invoices/generatePdf";
+import { getInvoiceIssuer } from "@/lib/invoices/issuer";
+import { resolveBillToFallback } from "@/lib/invoices/billToFallback";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
@@ -78,8 +80,20 @@ async function handler(
     }
   }
 
+  // Subscription invoices are written by the renewal cron against `userId`
+  // only — no employerId, no billingDetails — so the PDF printed "BILL TO —".
+  // Look the payer up once here and hand it to the generator as a fallback.
+  const [issuer, billToFallback] = await Promise.all([
+    getInvoiceIssuer(),
+    resolveBillToFallback(invoice),
+  ]);
+
   const pdfInvoice = { ...invoice, issuedByLabel } as Parameters<typeof generateInvoicePdf>[0];
-  const pdfBuffer = generateInvoicePdf(pdfInvoice, ctx.role);
+  const pdfBuffer = generateInvoicePdf(pdfInvoice, {
+    viewerRole: ctx.role,
+    issuer,
+    billToFallback,
+  });
 
   await logActivity({
     ...actorFromCtx(ctx),

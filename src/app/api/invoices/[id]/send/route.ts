@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import { canAccessInvoice } from "@/lib/invoices/access";
 import { generateInvoicePdf } from "@/lib/invoices/generatePdf";
+import { getInvoiceIssuer } from "@/lib/invoices/issuer";
+import { resolveBillToFallback } from "@/lib/invoices/billToFallback";
 import { sendEmail } from "@/lib/communications/email";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import connectDB from "@/lib/db/mongoose";
@@ -64,9 +66,15 @@ async function handler(
     );
   }
 
-  // Generate PDF
+  // Generate PDF — the emailed copy carries the same issuer block and payment
+  // instructions as the one downloaded from the dashboard.
+  const [issuer, billToFallback] = await Promise.all([
+    getInvoiceIssuer(),
+    resolveBillToFallback(invoice),
+  ]);
   const pdfBuffer = generateInvoicePdf(
     invoice as Parameters<typeof generateInvoicePdf>[0],
+    { issuer, billToFallback },
   );
 
   const companyName = billing?.companyName ?? employer?.companyName ?? "Customer";

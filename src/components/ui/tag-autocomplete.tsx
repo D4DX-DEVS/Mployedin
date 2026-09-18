@@ -207,6 +207,17 @@ interface AutocompleteProps {
   type: TaxonomyType;
   value: string;
   onChange: (next: string) => void;
+  /**
+   * Fired only when the value is *settled* — a suggestion was picked or Enter
+   * was pressed — never on an intermediate keystroke.
+   *
+   * `onChange` runs on every character, so a caller that treats it as "the user
+   * is done" latches after the first letter. That is exactly how onboarding's
+   * specialization field ended up storing "C" for "Computer Science": it set a
+   * `confirmed` flag inside onChange, and the confirmed branch swapped this
+   * input out for a chip mid-word. Use this for that kind of transition.
+   */
+  onCommit?: (next: string) => void;
   placeholder?: string;
   allowCustom?: boolean;
   className?: string;
@@ -215,13 +226,14 @@ interface AutocompleteProps {
 }
 
 /**
- * Single-value text input with a taxonomy-backed suggestion dropdown. Commits the
- * typed or picked value via onChange.
+ * Single-value text input with a taxonomy-backed suggestion dropdown. Reports
+ * every keystroke through onChange and settled values through onCommit.
  */
 export function Autocomplete({
   type,
   value,
   onChange,
+  onCommit,
   placeholder = "Type to search…",
   allowCustom = true,
   className,
@@ -231,12 +243,20 @@ export function Autocomplete({
   const [open, setOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
   const { items, loading } = useTaxonomySearch(type, value);
-  const containerRef = useOutsideClick(() => setOpen(false));
+  // Clicking away is "I'm done typing", so it settles the value. This hook does
+  // not fire for clicks inside the dropdown, which is why it is used here
+  // instead of the input's onBlur — blur would beat a suggestion click and
+  // commit the half-typed text instead of the option the user just picked.
+  const containerRef = useOutsideClick(() => {
+    setOpen(false);
+    if (value.trim()) onCommit?.(value);
+  });
 
   const suggestions = items.filter((s) => s.toLowerCase() !== value.trim().toLowerCase());
 
   const commit = (raw: string) => {
     onChange(raw);
+    onCommit?.(raw);
     setOpen(false);
     setActiveIndex(-1);
   };
@@ -256,6 +276,11 @@ export function Autocomplete({
       } else if (!allowCustom && suggestions[0]) {
         e.preventDefault();
         commit(suggestions[0]);
+      } else if (allowCustom && value.trim()) {
+        // Free text the user typed themselves. Without this, Enter did nothing
+        // unless a suggestion happened to be highlighted.
+        e.preventDefault();
+        commit(value.trim());
       }
     }
   };

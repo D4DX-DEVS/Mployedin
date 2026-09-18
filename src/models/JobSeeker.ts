@@ -15,6 +15,11 @@ export interface IEducation {
   degree: string;
   institution: string;
   field?: string;
+  /** Course/programme name, e.g. "B.Tech/B.E." — distinct from `field`. */
+  course?: string;
+  /** Full Time / Part Time / Distance Learning. Not a grade. */
+  courseType?: string;
+  startYear?: number;
   graduationDate?: Date;
   grade?: string;
 }
@@ -268,6 +273,12 @@ const EducationSchema = new Schema<IEducation>({
   degree: { type: String, required: true },
   institution: { type: String, required: true },
   field: String,
+  // Onboarding asks for the course and its type as separate required answers.
+  // Without these paths Mongoose strict mode dropped the course outright and
+  // the type was smuggled into `grade`, which is a different question.
+  course: String,
+  courseType: String,
+  startYear: Number,
   graduationDate: Date,
   grade: String,
 });

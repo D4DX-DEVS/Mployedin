@@ -25,6 +25,7 @@ import connectDB from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import Invoice from "@/models/Invoice";
 import Agent from "@/models/Agent";
+import { resolveBillToFallback } from "@/lib/invoices/billToFallback";
 import SuperAgent from "@/models/SuperAgent";
 import Employer from "@/models/Employer";
 import type { UserRole } from "@/types/user";
@@ -121,7 +122,12 @@ async function getHandler(
     senderContext = { name: createdByUser.name, role: createdByUser.role, label };
   }
 
-  return NextResponse.json({ invoice, senderContext });
+  // Subscription invoices carry no employer link and no billing snapshot, so
+  // the dialog had nothing to show under "Billed to". Resolve the payer here
+  // once, the same way the PDF route does.
+  const billToFallback = await resolveBillToFallback(invoice);
+
+  return NextResponse.json({ invoice, senderContext, billToFallback: billToFallback ?? null });
 }
 
 // ── PATCH ────────────────────────────────────────────────────────────────────

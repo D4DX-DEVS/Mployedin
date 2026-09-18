@@ -28,6 +28,7 @@ const educationEntrySchema = z.object({
   degree: z.string().min(1).max(200),
   institution: z.string().min(1).max(200).optional(),
   field: z.string().max(200).optional(),
+  course: z.string().max(200).optional(),
   startYear: z.number().int().min(1950).max(2050).optional(),
   passingYear: z.number().int().min(1950).max(2050).optional(),
   courseType: z.string().max(50).optional(),
@@ -47,6 +48,11 @@ const profileUpdateSchema = z.object({
   noticePeriod: z.number().int().min(0).optional(),
   skills: z.array(z.string().min(1).max(100)).max(30).optional(),
   industry: z.string().max(200).optional(),
+  // Onboarding asks for these three; they live under `careerProfile` on the
+  // document and are mapped there below rather than set at the root.
+  department: z.string().max(200).optional(),
+  roleCategory: z.string().max(200).optional(),
+  jobRole: z.string().max(200).optional(),
   experience: z.array(experienceEntrySchema).max(20).optional(),
 
   // Education (Step 2)
@@ -55,7 +61,9 @@ const profileUpdateSchema = z.object({
   // Preferences (Step 3)
   headline: z.string().max(500).trim().optional(),
   preferredLocations: z.array(z.string().max(100)).max(10).optional(),
-  preferredSalary: z.object({ min: z.number().min(0), max: z.number().min(0), currency: z.string().max(10) }).optional(),
+  // `max` is optional: onboarding asks for a single expected figure, and
+  // writing max: 0 alongside it produced ranges whose top was below the bottom.
+  preferredSalary: z.object({ min: z.number().min(0), max: z.number().min(0).optional(), currency: z.string().max(10) }).optional(),
   gender: z.string().max(50).optional(),
 
   // Completion flag
@@ -81,7 +89,11 @@ async function GET(_req: NextRequest, ctx: { userId: string; role: string }) {
   if (!profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
-  return NextResponse.json({ profile });
+  // Phone is stored on User, not JobSeeker. Onboarding pre-fills from this
+  // response, so without it a seeker resuming the wizard was asked to retype a
+  // number we already had.
+  const account = await User.findById(ctx.userId).select("phone").lean<{ phone?: string } | null>();
+  return NextResponse.json({ profile: { ...profile, phone: account?.phone ?? null } });
 }
 
 // ── PATCH — update own profile ────────────────────────────────────────────────
@@ -92,7 +104,12 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
 
   const parsedData = await validateBody(req, profileUpdateSchema);
 
-  const { name, phone, onboardingComplete, education: eduInput, experience: expInput, ...seekerData } = parsedData;
+  const {
+    name, phone, onboardingComplete,
+    education: eduInput, experience: expInput,
+    department, roleCategory, jobRole,
+    ...seekerData
+  } = parsedData;
 
   await connectDB();
 
@@ -124,14 +141,24 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     jsUpdate.isOnboarded = true;
   }
 
+  // Career profile lives in a subdocument. Dot-paths so that setting one answer
+  // doesn't wipe the others a previous save already stored.
+  if (department !== undefined) jsUpdate["careerProfile.department"] = department;
+  if (roleCategory !== undefined) jsUpdate["careerProfile.roleCategory"] = roleCategory;
+  if (jobRole !== undefined) jsUpdate["careerProfile.jobRole"] = jobRole;
+
   // Transform education entries for storage
   if (eduInput) {
     jsUpdate.education = eduInput.map((e) => ({
       degree: e.degree,
       institution: e.institution ?? "",
       field: e.field,
-      graduationDate: e.passingYear ? new Date(e.passingYear, 11, 31) : undefined,
-      grade: e.courseType,
+      course: e.course,
+      courseType: e.courseType,
+      startYear: e.startYear,
+      // UTC: `new Date(y, 11, 31)` is midnight in the *server's* zone, which
+      // east of UTC lands on 30 December and renders as the wrong year-end.
+      graduationDate: e.passingYear ? new Date(Date.UTC(e.passingYear, 11, 31)) : undefined,
     }));
   }
 

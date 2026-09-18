@@ -18,7 +18,6 @@ import {
   CreditCard,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   Send,
   Banknote,
   Receipt,
@@ -27,7 +26,6 @@ import {
   ShieldCheck,
   Zap,
   Smartphone,
-  Globe,
   HelpCircle,
   ReceiptText,
 } from "lucide-react";
@@ -50,8 +48,52 @@ import {
 } from "@/components/ui/dialog";
 import { useTranslations } from "next-intl";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import {
+  paymentState,
+  invoiceFacts,
+  resolveBillTo,
+  resolveLineItems,
+  resolveTotalRows,
+  type BillToFallback,
+  type InvoiceFactKey,
+  type TotalRow,
+} from "@/lib/invoices/presentation";
+
+/** Translation keys for the category-aware fact list. */
+const FACT_LABEL_KEYS: Record<InvoiceFactKey, string> = {
+  plan: "factPlan",
+  billingCycle: "factBillingCycle",
+  servicePeriod: "factServicePeriod",
+  renewalType: "factRenewalType",
+  job: "factJob",
+  category: "factCategory",
+  currency: "factCurrency",
+  paymentTerms: "factPaymentTerms",
+};
 
 // ── Types ────────────────────────────────────────────────────────────────────
+/** Per-currency totals from /api/invoices — the only figures safe to label. */
+interface CurrencyTotals {
+  currency: string;
+  totalAmount: number;
+  totalPaid: number;
+  totalBalance: number;
+  count: number;
+}
+
+interface InvoiceSummary {
+  /** Per-status figures are AMOUNTS; `counts` holds the invoice counts. */
+  issued: number;
+  paid: number;
+  partially_paid: number;
+  overdue: number;
+  counts?: Record<string, number>;
+  totalAmount: number;
+  totalPaid: number;
+  totalBalance: number;
+  byCurrency?: CurrencyTotals[];
+}
+
 interface Invoice {
   _id: string;
   invoiceNumber: string;
@@ -112,16 +154,23 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
   const [disputeLoading, setDisputeLoading] = useState(false);
   // Sender context
   const [senderContext, setSenderContext] = useState<{ name: string; role: string; label: string } | null>(null);
+  // Payer details for invoices that carry none of their own — subscription
+  // renewals are written against a userId with no employer link, which is why
+  // the Billed to block used to disappear on them.
+  const [billToFallback, setBillToFallback] = useState<BillToFallback | undefined>(undefined);
 
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Fetch sender context when dialog opens
   useEffect(() => {
-    if (!open || !invoice) { setSenderContext(null); return; }
+    if (!open || !invoice) { setSenderContext(null); setBillToFallback(undefined); return; }
     fetch(`/api/invoices/${invoice._id}`)
       .then(r => r.json())
-      .then(d => setSenderContext(d.senderContext ?? null))
-      .catch(() => setSenderContext(null));
+      .then(d => {
+        setSenderContext(d.senderContext ?? null);
+        setBillToFallback(d.billToFallback ?? undefined);
+      })
+      .catch(() => { setSenderContext(null); setBillToFallback(undefined); });
   }, [open, invoice]);
 
   // Check gateway availability when dialog opens
@@ -136,11 +185,17 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
   if (!invoice) return null;
   const fmt = (v: number) => `${invoice.currency} ${formatCount(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const isPaid = invoice.status === "paid";
-  const isOverdue = invoice.status === "overdue";
-  const canPay = !isPaid && invoice.status !== "void" && invoice.status !== "draft" && invoice.status !== "pending_approval";
-  const balanceDue = invoice.balanceDue ?? (invoice.totalAmount - (invoice.paidAmount ?? 0));
-  const daysUntilDue = invoice.dueDate ? Math.ceil((new Date(invoice.dueDate).getTime() - Date.now()) / 86400000) : null;
+  // One reading of the invoice, shared with the PDF generator, so the document
+  // an employer downloads always says what the dialog said.
+  const state = paymentState(invoice);
+  const facts = invoiceFacts(invoice, { formatDate: (d) => formatDate(d) });
+  const billTo = resolveBillTo(invoice, billToFallback);
+  const items = resolveLineItems(invoice);
+  const totalRows = resolveTotalRows(invoice);
+
+  const isPaid = state.isPaid;
+  const canPay = state.canPay;
+  const balanceDue = state.balanceDue;
 
   const handleDownloadPdf = async () => {
     setDownloading(true);
@@ -242,124 +297,131 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
     }
   };
 
+  const dueChip = (() => {
+    if (state.isPaid) return null;
+    if (state.overdueDays > 0) return { tone: "bad" as const, text: t("overdueByDays", { days: state.overdueDays }) };
+    if (state.daysUntilDue === 0) return { tone: "warn" as const, text: t("dueToday") };
+    if (state.daysUntilDue !== null) return { tone: "ok" as const, text: t("dueInDays", { days: state.daysUntilDue }) };
+    return null;
+  })();
+
+  /** Totals labels; the PDF renders the same rows with English equivalents. */
+  const totalRowLabel = (row: TotalRow) => {
+    switch (row.key) {
+      case "subtotal": return t("subtotal");
+      case "discount": return t("discount", { percent: row.meta?.discountPercent ?? 0 });
+      case "tax": {
+        const name = row.meta?.taxType ?? t("tax");
+        return row.meta?.taxPercent ? `${name} (${row.meta.taxPercent}%)` : name;
+      }
+      case "serviceCharge": return t("serviceCharge");
+      case "paid": return t("paid");
+      case "balance": return t("balance");
+      case "total": default: return t("total");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setActiveTab("details"); setDisputeOpen(false); } }}>
-      <DialogContent ref={dialogRef} className="max-h-[90vh] max-w-2xl overflow-y-auto scrollbar-none">
+      <DialogContent ref={dialogRef} mobileSheet className="max-h-[90vh] max-w-2xl overflow-y-auto scrollbar-none">
         <DialogHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <DialogTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                {t("invoiceNumber", { number: invoice.invoiceNumber })}
-              </DialogTitle>
-              <div className="mt-1.5 flex items-center gap-2">
-                <StatusBadge status={invoice.status} />
-                {invoice.issuedAt && (
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(new Date(invoice.issuedAt))}
-                  </span>
-                )}
-                {isOverdue && (
-                  <Badge variant="outline" className="gap-1 border-status-rejected/20 bg-status-rejected-bg text-rose-700 text-[11px]">
-                    <AlertTriangle className="h-2.5 w-2.5" /> {t("overdueStatus")}
-                  </Badge>
-                )}
-              </div>
-            </div>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate">{t("invoiceNumber", { number: invoice.invoiceNumber })}</span>
+          </DialogTitle>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {/* One status badge only — an overdue invoice used to carry this
+                one and a second badge repeating the same word beside it. */}
+            <StatusBadge status={invoice.status} />
+            {invoice.issuedAt && (
+              <span className="text-xs text-muted-foreground">
+                {t("issuedOn", { date: formatDate(new Date(invoice.issuedAt)) })}
+              </span>
+            )}
           </div>
         </DialogHeader>
 
-        {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-secondary/20 chip-pad">
-          <Button
-            variant="outline" size="sm"
-            className="gap-1.5 rounded-lg"
-            disabled={downloading}
-            onClick={handleDownloadPdf}
-          >
-            <Download className="h-3.5 w-3.5" />
-            {downloading ? t("downloading") : t("downloadPdf")}
-          </Button>
+        {/* Hero: what is owed, by when, and what can be done about it. Replaces
+            a four-card money strip that printed the same zero three times over
+            on a free-plan renewal, plus a separate actions bar and due alert. */}
+        <div className="rounded-2xl border border-border/70 bg-secondary/20 card-pad">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {state.hasBalance ? t("balanceDueLabel") : state.isZeroValue ? t("nothingToPay") : t("totalLabel")}
+          </p>
+          <p className={`mt-0.5 text-2xl font-bold tracking-tight ${state.overdueDays > 0 ? "text-rose-700" : state.isPaid ? "text-emerald-700" : "text-foreground"}`}>
+            {fmt(state.hasBalance ? state.balanceDue : state.totalAmount)}
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            {dueChip && (
+              <span className={`inline-flex items-center gap-1 font-medium ${
+                dueChip.tone === "bad" ? "text-rose-700" : dueChip.tone === "warn" ? "text-status-shortlisted" : "text-status-applied"
+              }`}>
+                <Clock className="h-3 w-3" /> {dueChip.text}
+              </span>
+            )}
+            {state.isPaid && (
+              <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
+                <CheckCircle2 className="h-3 w-3" /> {t("fullyPaid")}
+              </span>
+            )}
+            {invoice.dueDate && !state.isPaid && (
+              <span className="text-muted-foreground">{t("dueOn", { date: formatDate(new Date(invoice.dueDate)) })}</span>
+            )}
+            {state.hasBalance && state.totalAmount !== state.balanceDue && (
+              <span className="text-muted-foreground">{t("ofTotal", { amount: fmt(state.totalAmount) })}</span>
+            )}
+          </div>
 
-          {canPay && balanceDue > 0 && (
-            <Button
-              size="sm"
-              className="gap-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={gatewayLoading}
-              onClick={handlePayNow}
-            >
-              <Zap className="h-3.5 w-3.5" />
-              {gatewayLoading ? t("processing") : t("payNow")}
-            </Button>
+          {state.isPartiallyPaid && (
+            <div className="mt-3 space-y-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <div className="h-full rounded-full bg-status-selected" style={{ width: `${state.progressPercent}%` }} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t("paidOfTotal", { paid: fmt(state.paidAmount), total: fmt(state.totalAmount), percent: state.progressPercent })}
+              </p>
+            </div>
           )}
 
-          {canPay && balanceDue > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+            {state.canPay && (
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={gatewayLoading}
+                onClick={handlePayNow}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {gatewayLoading ? t("processing") : t("payNow")}
+              </Button>
+            )}
+            {state.canPay && (
+              <Button
+                variant="outline" size="sm"
+                className="gap-1.5 rounded-lg border-status-selected/20 text-emerald-700 hover:bg-status-selected-bg"
+                onClick={() => setActiveTab("pay")}
+              >
+                <Send className="h-3.5 w-3.5" />
+                {t("notifyPayment")}
+              </Button>
+            )}
             <Button
               variant="outline" size="sm"
-              className="gap-1.5 rounded-lg border-status-selected/20 text-emerald-700 hover:bg-status-selected-bg"
-              onClick={() => setActiveTab("pay")}
+              className="gap-1.5 rounded-lg"
+              disabled={downloading}
+              onClick={handleDownloadPdf}
             >
-              <Send className="h-3.5 w-3.5" />
-              {t("notifyPayment")}
+              <Download className="h-3.5 w-3.5" />
+              {downloading ? t("downloading") : t("downloadPdf")}
             </Button>
-          )}
-
-          <Button
-            variant="ghost" size="sm"
-            className="gap-1.5 rounded-lg text-muted-foreground hover:text-foreground"
-            onClick={() => { setDisputeOpen(true); setActiveTab("support"); }}
-          >
-            <HelpCircle className="h-3.5 w-3.5" />
-            {t("billingQuery")}
-          </Button>
-
-          {isPaid && (
-            <Badge variant="outline" className="ml-auto gap-1 border-status-selected/20 bg-status-selected-bg text-emerald-700">
-              <CheckCircle2 className="h-3 w-3" /> {t("fullyPaid")}
-            </Badge>
-          )}
-        </div>
-
-        {/* Due Date Alert */}
-        {canPay && balanceDue > 0 && daysUntilDue !== null && (
-          <div className={`flex items-center gap-3 rounded-xl border text-sm ${ daysUntilDue < 0 ? "border-status-rejected/20 bg-status-rejected-bg/50" : daysUntilDue <= 7 ? "border-status-shortlisted/20 bg-status-shortlisted-bg/50" : "border-status-applied/20 bg-status-applied-bg/50" } chip-pad`}>
-            <Clock className={`h-4 w-4 shrink-0 ${
-              daysUntilDue < 0 ? "text-status-rejected" : daysUntilDue <= 7 ? "text-status-shortlisted" : "text-status-applied"
-            }`} />
-            <span className={
-              daysUntilDue < 0
-                ? "text-rose-700"
-                : daysUntilDue <= 7
-                  ? "text-status-shortlisted"
-                  : "text-status-applied"
-            }>
-              {daysUntilDue < 0
-                ? t("overdueBy", { days: Math.abs(daysUntilDue) })
-                : daysUntilDue === 0
-                  ? t("dueToday")
-                  : t("dueIn", { days: daysUntilDue })
-              } — {t("outstanding", { amount: fmt(balanceDue) })}
-            </span>
-          </div>
-        )}
-
-        {/* Amount Summary Cards */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-xl border border-border/70 text-center chip-pad">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryTotal")}</p>
-            <p className="mt-0.5 text-base font-bold">{fmt(invoice.totalAmount)}</p>
-          </div>
-          <div className="rounded-xl border border-status-selected/20 bg-status-selected-bg/30 text-center chip-pad">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-status-selected">{t("summaryPaid")}</p>
-            <p className="mt-0.5 text-base font-bold text-emerald-700">{fmt(invoice.paidAmount ?? 0)}</p>
-          </div>
-          <div className="rounded-xl border border-status-shortlisted/20 bg-status-shortlisted-bg/30 text-center chip-pad">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-status-shortlisted">{t("summaryBalance")}</p>
-            <p className="mt-0.5 text-base font-bold text-status-shortlisted">{fmt(balanceDue)}</p>
-          </div>
-          <div className="rounded-xl border border-border/70 text-center chip-pad">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryDue")}</p>
-            <p className="mt-0.5 text-sm font-semibold">{invoice.dueDate ? formatDate(new Date(invoice.dueDate)) : "—"}</p>
+            <Button
+              variant="ghost" size="sm"
+              className="gap-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+              onClick={() => { setDisputeOpen(true); setActiveTab("support"); }}
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              {t("billingQuery")}
+            </Button>
           </div>
         </div>
 
@@ -382,102 +444,133 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
           {/* ──── Details Tab ──── */}
           <TabsContent value="details" className="space-y-4">
-            {/* Billing Details */}
-            {invoice.billingDetails && (
+            {/* What the invoice is for. A subscription renewal carries a plan,
+                a billing cycle and a service period and used to show none of
+                them, which is what left this view looking empty. */}
+            {facts.length > 0 && (
+              <div className="rounded-xl border border-border/70 card-pad">
+                <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("invoiceDetailsSection")}</p>
+                <dl className="grid gap-x-4 gap-y-2.5 sm:grid-cols-2">
+                  {facts.map((fact) => (
+                    <div key={fact.key} className="min-w-0">
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{t(FACT_LABEL_KEYS[fact.key])}</dt>
+                      <dd className={`text-sm ${fact.key === "servicePeriod" ? "" : "capitalize"}`}>{fact.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
+            {/* Parties */}
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-border/70 card-pad">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("billedTo")}</p>
-                <div className="grid gap-1 text-sm">
-                  {invoice.billingDetails.companyName && <p className="font-medium">{invoice.billingDetails.companyName}</p>}
-                  {invoice.billingDetails.contactPerson && <p className="text-muted-foreground">{invoice.billingDetails.contactPerson}</p>}
-                  {invoice.billingDetails.email && <p className="text-muted-foreground">{invoice.billingDetails.email}</p>}
-                  {invoice.billingDetails.phone && <p className="text-muted-foreground">{invoice.billingDetails.phone}</p>}
-                  {invoice.billingDetails.address && <p className="text-muted-foreground">{invoice.billingDetails.address}</p>}
-                  {(invoice.billingDetails.country || invoice.billingDetails.taxId) && (
-                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {invoice.billingDetails.country && (
-                        <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> {invoice.billingDetails.country}</span>
-                      )}
-                      {invoice.billingDetails.taxId && (
-                        <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> {t("taxIdLabel", { id: invoice.billingDetails.taxId })}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Issued By */}
-            {senderContext && (
-              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 chip-pad">
-                <ReceiptText className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("issuedBy")}</p>
-                  <p className="text-sm font-medium">{senderContext.name} <span className="text-muted-foreground">— {senderContext.label}</span></p>
-                </div>
-              </div>
-            )}
-
-            {/* Line Items */}
-            {invoice.lineItems && invoice.lineItems.length > 0 && (
-              <div className="rounded-xl border border-border/70 card-pad">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("items")}</p>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-xs text-muted-foreground">
-                      <th className="pb-2 text-left">{t("descriptionCol")}</th>
-                      <th className="pb-2 text-right">{t("qty")}</th>
-                      <th className="pb-2 text-right">{t("price")}</th>
-                      <th className="pb-2 text-right">{t("amount")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.lineItems.map((li, i) => (
-                      <tr key={i} className="border-b border-border/50">
-                        <td className="py-2">{li.description}</td>
-                        <td className="py-2 text-right">{li.quantity}</td>
-                        <td className="py-2 text-right">{fmt(li.unitPrice)}</td>
-                        <td className="py-2 text-right font-medium">{fmt(li.amount)}</td>
-                      </tr>
+                {billTo.isEmpty ? (
+                  <p className="text-sm text-muted-foreground">{t("billedToEmpty")}</p>
+                ) : (
+                  <div className="grid gap-1 text-sm">
+                    {billTo.companyName && <p className="font-medium">{billTo.companyName}</p>}
+                    {billTo.contactPerson && <p className="text-muted-foreground">{billTo.contactPerson}</p>}
+                    {billTo.email && <p className="break-all text-muted-foreground">{billTo.email}</p>}
+                    {billTo.phone && <p className="text-muted-foreground">{billTo.phone}</p>}
+                    {billTo.lines.map((line) => (
+                      <p key={line} className="text-muted-foreground">{line}</p>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Totals */}
-            <div className="rounded-xl border border-border/70 bg-secondary/10 card-pad">
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span>{fmt(invoice.subtotal)}</span></div>
-                {invoice.discountAmount && invoice.discountAmount > 0 && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t("discount", { percent: invoice.discountPercent ?? 0 })}</span><span className="text-status-rejected">-{fmt(invoice.discountAmount)}</span></div>
-                )}
-                {invoice.taxAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      {t("tax")} {invoice.taxType ? `(${invoice.taxType.toUpperCase()}` : ""}
-                      {invoice.taxPercent ? ` ${invoice.taxPercent}%` : ""}
-                      {invoice.taxType ? ")" : ""}
-                    </span>
-                    <span>{fmt(invoice.taxAmount)}</span>
+                    {billTo.taxId && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <ShieldCheck className="h-3 w-3" /> {t("taxIdLabel", { id: billTo.taxId })}
+                      </p>
+                    )}
                   </div>
                 )}
-                <div className="flex justify-between border-t pt-1.5 font-bold"><span>{t("total")}</span><span className="text-primary">{fmt(invoice.totalAmount)}</span></div>
+              </div>
+
+              <div className="rounded-xl border border-border/70 card-pad">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("issuedBy")}</p>
+                {senderContext ? (
+                  <div className="flex items-start gap-2.5 text-sm">
+                    <ReceiptText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="font-medium">{senderContext.name}</p>
+                      <p className="text-muted-foreground">{senderContext.label}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("issuedByPlatform")}</p>
+                )}
               </div>
             </div>
 
-            {/* Notes & Terms */}
-            <div className="grid gap-3 sm:grid-cols-2 text-sm">
-              {invoice.paymentTerms && (
-                <div><p className="text-xs text-muted-foreground">{t("paymentTerms")}</p><p className="capitalize">{invoice.paymentTerms.replace(/_/g, " ")}</p></div>
-              )}
-              {invoice.jobId?.title && (
-                <div><p className="text-xs text-muted-foreground">{t("job")}</p><p>{invoice.jobId.title}</p></div>
-              )}
-              <div><p className="text-xs text-muted-foreground">{t("currencyLabel")}</p><p>{invoice.currency}</p></div>
-              <div><p className="text-xs text-muted-foreground">{t("categoryCol")}</p><p className="capitalize">{invoice.category?.replace(/_/g, " ")}</p></div>
+            {/* Line items — always at least one row. An invoice whose only
+                charge lives in its description used to render no Items
+                section at all. */}
+            <div className="rounded-xl border border-border/70 card-pad">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("items")}</p>
+
+              {/* Phone: a block per item; the four-column table does not fit */}
+              <ul className="space-y-3 sm:hidden">
+                {items.map((li, i) => (
+                  <li key={i} className="space-y-1 border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                    <p className="text-sm">{li.description}</p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{t("qtyTimesPrice", { qty: li.quantity, price: fmt(li.unitPrice) })}</span>
+                      <span className="font-medium text-foreground">{fmt(li.amount)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <table className="hidden w-full text-sm sm:table">
+                <thead>
+                  <tr className="border-b text-xs text-muted-foreground">
+                    <th className="pb-2 text-left font-medium">{t("descriptionCol")}</th>
+                    <th className="pb-2 text-right font-medium">{t("qty")}</th>
+                    <th className="pb-2 text-right font-medium">{t("price")}</th>
+                    <th className="pb-2 text-right font-medium">{t("amount")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((li, i) => (
+                    <tr key={i} className="border-b border-border/50 last:border-0">
+                      <td className="py-2 pe-3">{li.description}</td>
+                      <td className="py-2 text-right tabular-nums">{li.quantity}</td>
+                      <td className="py-2 text-right tabular-nums">{fmt(li.unitPrice)}</td>
+                      <td className="py-2 text-right font-medium tabular-nums">{fmt(li.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            {/* Totals, built from a list — a zero discount cannot leak a stray
+                "0" between rows the way the inline && used to. */}
+            <div className="rounded-xl border border-border/70 bg-secondary/10 card-pad">
+              <dl className="space-y-1.5 text-sm">
+                {totalRows.map((row) => (
+                  <div
+                    key={row.key}
+                    className={`flex items-center justify-between gap-4 ${row.key === "total" ? "border-t pt-1.5 font-bold" : ""}`}
+                  >
+                    <dt className={row.key === "total" ? "" : "text-muted-foreground"}>{totalRowLabel(row)}</dt>
+                    <dd className={`tabular-nums ${row.key === "total" ? "text-primary" : row.negative ? "text-status-rejected" : ""}`}>
+                      {row.negative ? "-" : ""}{fmt(row.amount)}
+                    </dd>
+                  </div>
+                ))}
+                {state.hasBalance && (
+                  <div className="flex items-center justify-between gap-4 border-t pt-1.5 font-semibold">
+                    <dt>{t("amountPayable")}</dt>
+                    <dd className="tabular-nums text-status-shortlisted">{fmt(state.balanceDue)}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
             {invoice.notes && (
-              <div className="rounded-lg bg-muted/30 p-3 text-sm"><p className="mb-1 text-xs text-muted-foreground">{t("notes")}</p><p>{invoice.notes}</p></div>
+              <div className="rounded-xl border border-border/70 bg-muted/30 card-pad text-sm">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("notes")}</p>
+                <p>{invoice.notes}</p>
+              </div>
             )}
           </TabsContent>
 
@@ -714,7 +807,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     <p className="font-semibold text-emerald-700">{t("fullyPaidEvent")}</p>
                   </div>
                 )}
-                {isOverdue && (
+                {state.stamp === "overdue" && (
                   <div className="flex items-start gap-3 text-sm">
                     <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-rose-500 bg-rose-500" />
                     <p className="font-semibold text-rose-700">{t("overdueEvent")}</p>
@@ -829,7 +922,7 @@ export default function EmployerInvoicesPage() {
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  const [summary, setSummary] = useState({ issued: 0, paid: 0, partially_paid: 0, overdue: 0, totalAmount: 0, totalPaid: 0, totalBalance: 0 });
+  const [summary, setSummary] = useState<InvoiceSummary>({ issued: 0, paid: 0, partially_paid: 0, overdue: 0, totalAmount: 0, totalPaid: 0, totalBalance: 0 });
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -859,7 +952,14 @@ export default function EmployerInvoicesPage() {
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || dateFrom || dateTo);
-  const fmt = (v: number) => `${displayCurrency} ${formatCount(v)}`;
+  // The API totals add every currency together as one number. Labelling that
+  // sum with the viewer's *display* currency read "INR 3,150" over a table of
+  // AED invoices — nothing converts, so the honest figure is one per currency.
+  const currencyTotals: CurrencyTotals[] = summary.byCurrency?.length
+    ? summary.byCurrency
+    : [{ currency: displayCurrency, totalAmount: summary.totalAmount, totalPaid: summary.totalPaid, totalBalance: summary.totalBalance, count: 0 }];
+  const moneyStrip = (pick: (row: CurrencyTotals) => number) =>
+    currencyTotals.map((row) => `${row.currency} ${formatCount(pick(row), { maximumFractionDigits: 0 })}`).join(" · ");
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("invoiceHash"), key: "invoiceNumber" },
@@ -923,19 +1023,22 @@ export default function EmployerInvoicesPage() {
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-border/70 bg-card card-pad">
           <p className="text-xs text-muted-foreground">{t("totalBilled")}</p>
-          <p className="mt-1 text-xl font-bold">{fmt(summary.totalAmount)}</p>
+          <p className="mt-1 text-xl font-bold">{moneyStrip((r) => r.totalAmount)}</p>
         </div>
         <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/50 card-pad">
           <p className="text-xs text-status-selected">{t("totalPaid")}</p>
-          <p className="mt-1 text-xl font-bold text-emerald-700">{fmt(summary.totalPaid)}</p>
+          <p className="mt-1 text-xl font-bold text-emerald-700">{moneyStrip((r) => r.totalPaid)}</p>
         </div>
         <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/50 card-pad">
           <p className="text-xs text-status-shortlisted">{t("outstandingBalance")}</p>
-          <p className="mt-1 text-xl font-bold text-status-shortlisted">{fmt(summary.totalBalance)}</p>
+          <p className="mt-1 text-xl font-bold text-status-shortlisted">{moneyStrip((r) => r.totalBalance)}</p>
         </div>
         <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/50 card-pad">
           <p className="text-xs text-status-rejected">{t("overdue")}</p>
-          <p className="mt-1 text-xl font-bold text-rose-700">{summary.overdue}</p>
+          {/* A count, not money. This printed `summary.overdue` — the summed
+              overdue AMOUNT — so an AED 3,150 invoice showed as a bare "3150"
+              under a label promising a number of invoices. */}
+          <p className="mt-1 text-xl font-bold text-rose-700">{formatCount(summary.counts?.overdue ?? 0)}</p>
         </div>
       </div>
 
