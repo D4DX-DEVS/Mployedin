@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { websiteSchema } from "./website";
 
 /** PATCH /api/agent/settings & /api/super-agent/settings */
 const VALID_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -94,6 +95,34 @@ export const systemSettingsUpdateSchema = z.object({
       smtpPort: z.number().int().min(1).max(65535).optional(),
       smtpSecure: z.boolean().optional(),
       smtpAppPassword: z.string().max(500).optional(),
+    })
+    .optional(),
+  // The FROM block and payment instructions printed on every invoice PDF.
+  // Every field is optional: the PDF omits whatever is blank rather than
+  // printing an empty label.
+  invoiceIssuer: z
+    .object({
+      legalName: z.string().max(200).trim().optional(),
+      addressLines: z.array(z.string().max(200).trim()).max(6).optional(),
+      country: z.string().max(60).trim().optional(),
+      taxRegNo: z.string().max(60).trim().optional(),
+      email: z.union([z.string().email().max(254), z.literal("")]).optional(),
+      phone: z.string().max(50).trim().optional(),
+      // z.string().url() rejects "www.mployedin.com" and accepts
+      // "javascript:…" — websiteSchema normalises instead.
+      website: websiteSchema.optional(),
+      bank: z
+        .object({
+          bankName: z.string().max(200).trim().optional(),
+          accountName: z.string().max(200).trim().optional(),
+          accountNumber: z.string().max(60).trim().optional(),
+          iban: z.string().max(60).trim().optional(),
+          swift: z.string().max(30).trim().optional(),
+          branch: z.string().max(200).trim().optional(),
+          instructions: z.string().max(500).trim().optional(),
+        })
+        .optional(),
+      footerNote: z.string().max(300).trim().optional(),
     })
     .optional(),
   commissionOverrides: z

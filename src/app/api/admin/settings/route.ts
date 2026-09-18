@@ -41,7 +41,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const body = await validateBody(req, systemSettingsUpdateSchema);
-  const allowed: (keyof ISystemSettings)[] = ["platformName", "supportEmail", "maintenanceMode", "defaultCurrency", "subscriptionEnforcementEnabled", "commissionOverrides"];
+  const allowed: (keyof ISystemSettings)[] = ["platformName", "supportEmail", "maintenanceMode", "defaultCurrency", "subscriptionEnforcementEnabled", "commissionOverrides", "invoiceIssuer"];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if ((body as Record<string, unknown>)[key] !== undefined) update[key] = (body as Record<string, unknown>)[key];

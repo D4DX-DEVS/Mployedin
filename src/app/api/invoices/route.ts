@@ -229,7 +229,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   ]);
 
   const summary = {
+    // NOTE: these per-status figures are AMOUNTS, not counts — `counts` below
+    // holds the invoice counts. A page that printed `summary.overdue` beside an
+    // "Overdue" label showed an unlabelled sum of money as though it were a
+    // number of invoices.
     draft: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0, void: 0,
+    /** Number of invoices per status. */
+    counts: { draft: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0, void: 0 } as Record<string, number>,
     totalAmount: 0, totalCount: 0, totalTax: 0, totalPaid: 0, totalBalance: 0,
     /** Per-currency totals, largest first; the only figures safe to label with a currency code. */
     byCurrency: currencyAgg.map((row) => ({
@@ -242,8 +248,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   };
   for (const row of summaryAgg) {
     const s = row._id as string;
-    if (s in summary && s !== "byCurrency") {
+    if (s in summary && s !== "byCurrency" && s !== "counts") {
       (summary as unknown as Record<string, number>)[s] = row.total;
+    }
+    if (s in summary.counts) {
+      summary.counts[s] = row.count as number;
     }
     summary.totalAmount += row.total;
     summary.totalCount += row.count;

@@ -20,11 +20,44 @@ export interface ICommissionOverride {
   label?: string;
 }
 
+/**
+ * The party that issues invoices — printed as the FROM block on every PDF.
+ *
+ * Invoices used to carry only a logo: no legal name, no registered address, no
+ * tax registration and no way for the payer to know where to send money. All
+ * of it is editable here rather than compiled in, because a legal entity's
+ * address or tax number changing should not need a deploy.
+ */
+export interface IInvoiceBankDetails {
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  iban?: string;
+  swift?: string;
+  branch?: string;
+  /** Free-form extra instruction, e.g. "Quote the invoice number as reference". */
+  instructions?: string;
+}
+
+export interface IInvoiceIssuer {
+  legalName?: string;
+  addressLines?: string[];
+  country?: string;
+  taxRegNo?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  bank?: IInvoiceBankDetails;
+  /** Replaces the generic "computer-generated invoice" footer when set. */
+  footerNote?: string;
+}
+
 export interface ISystemSettings extends Document {
   platformName: string;
   supportEmail: string;
   maintenanceMode: boolean;
   defaultCurrency: string;
+  invoiceIssuer?: IInvoiceIssuer;
   /** When false (default), subscription enforcement is bypassed and all users get full access.
    *  Flip to true once payment integration is live to enforce plan limits / feature gates. */
   subscriptionEnforcementEnabled: boolean;
@@ -46,6 +79,25 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       smtpHost: { type: String, default: "smtp.gmail.com" },
       smtpPort: { type: Number, default: 587 },
       smtpSecure: { type: Boolean, default: false },
+    },
+    invoiceIssuer: {
+      legalName: { type: String, maxlength: 200 },
+      addressLines: { type: [String], default: undefined },
+      country: { type: String, maxlength: 60 },
+      taxRegNo: { type: String, maxlength: 60 },
+      email: { type: String, maxlength: 254 },
+      phone: { type: String, maxlength: 50 },
+      website: { type: String, maxlength: 2048 },
+      bank: {
+        bankName: { type: String, maxlength: 200 },
+        accountName: { type: String, maxlength: 200 },
+        accountNumber: { type: String, maxlength: 60 },
+        iban: { type: String, maxlength: 60 },
+        swift: { type: String, maxlength: 30 },
+        branch: { type: String, maxlength: 200 },
+        instructions: { type: String, maxlength: 500 },
+      },
+      footerNote: { type: String, maxlength: 300 },
     },
     commissionOverrides: [
       {

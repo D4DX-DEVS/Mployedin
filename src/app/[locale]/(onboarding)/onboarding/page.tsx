@@ -63,7 +63,8 @@ interface Step3Data {
   gender: string;
   /** Writes to the existing JobSeeker.profileVisibility — the single source of
    *  truth also edited from the profile page. Not a second preference. */
-  discoverable: boolean;
+  /** null until the seeker answers — consent is never assumed for them. */
+  discoverable: boolean | null;
 }
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -188,6 +189,46 @@ const QUALIFICATION_OPTIONS = [
   { value: "10th", label: "10th" },
   { value: "below_10th", label: "Below 10th" },
 ];
+
+/**
+ * Split a stored E.164 number back into the dial-code select and the national
+ * part. The field only ever holds the national digits — feeding it the full
+ * "+971501234567" would re-prefix on save and store "+971+971501234567".
+ * Longest dial code wins, so +971 is not mistaken for +9.
+ */
+function splitPhone(raw: string): { countryCode: string; phone: string } | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed.startsWith("+")) return null;
+  const match = [...COUNTRY_CODES]
+    .map((c) => c.code)
+    .filter((code) => trimmed.startsWith(code))
+    .sort((a, b) => b.length - a.length)[0];
+  if (!match) return null;
+  return { countryCode: match, phone: trimmed.slice(match.length).replace(/\D/g, "") };
+}
+
+/** Stored label → option value, so a saved qualification comes back selected. */
+const QUALIFICATION_BY_LABEL: Record<string, string> = Object.fromEntries(
+  QUALIFICATION_OPTIONS.map((q) => [q.label, q.value]),
+);
+
+/**
+ * Best-effort map from a CV's free-text degree ("B.Tech", "MSc", "Bachelor of
+ * Commerce") onto one of the six qualification levels. Returns "" when nothing
+ * matches, which leaves the chips unselected so the seeker answers it — better
+ * than pre-selecting the wrong level for them.
+ */
+function qualificationLevelFrom(degree?: string): string {
+  const d = (degree ?? "").toLowerCase();
+  if (!d) return "";
+  if (QUALIFICATION_BY_LABEL[degree!]) return QUALIFICATION_BY_LABEL[degree!];
+  if (/\b(ph\.?d|doctor|dphil)\b/.test(d)) return "doctorate";
+  if (/\b(m\.?tech|m\.?sc|m\.?a|m\.?com|mba|mca|master|post.?grad|pg)\b/.test(d)) return "masters";
+  if (/\b(b\.?tech|b\.?e|b\.?sc|b\.?a|b\.?com|bba|bca|llb|bachelor|under.?grad|diploma)\b/.test(d)) return "graduation";
+  if (/\b(12th|higher secondary|hsc|intermediate|a.?level)\b/.test(d)) return "12th";
+  if (/\b(10th|secondary|ssc|o.?level|matric)\b/.test(d)) return "10th";
+  return "";
+}
 
 const COURSE_SUGGESTIONS: Record<string, string[]> = {
   graduation: ["B.Tech/B.E.", "B.A", "BCA", "B.B.A/B.M.S", "B.Com", "B.Ed", "B.Pharma", "B.Sc", "LLB", "Diploma"],
@@ -327,6 +368,11 @@ const NOTICE_PERIOD_DAYS: Record<string, number> = {
   "Serving Notice Period": 0,
 };
 
+/** Days → chip label, so a saved notice period comes back selected. */
+const NOTICE_PERIOD_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(NOTICE_PERIOD_DAYS).map(([label, days]) => [String(days), label]),
+);
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function JobSeekerOnboardingPage() {
   const t = useTranslations("onboarding");
@@ -363,6 +409,8 @@ export default function JobSeekerOnboardingPage() {
   const [aiImportError, setAiImportError] = useState("");
   const [cvParsing, setCvParsing] = useState(false);
   const [cvParsed, setCvParsed] = useState(false);
+  /** Set when a CV import finishes, so the skip effect runs against fresh state. */
+  const [pendingCvSkip, setPendingCvSkip] = useState(false);
   const [cvParseError, setCvParseError] = useState("");
 
   const [step0, setStep0] = useState<Step0Data>({
@@ -401,10 +449,13 @@ export default function JobSeekerOnboardingPage() {
           const p = data.profile;
 
           // Pre-fill step0
+          const storedPhone = splitPhone(p.phone ?? "");
           setStep0((prev) => ({
             ...prev,
             name: p.fullName || prev.name || userName,
-            phone: p.phone ?? prev.phone,
+            ...(storedPhone
+              ? { countryCode: storedPhone.countryCode, phone: storedPhone.phone }
+              : { phone: p.phone ?? prev.phone }),
             workStatus: p.workStatus || prev.workStatus,
             marketingConsent: p.marketingConsent ?? prev.marketingConsent,
           }));
@@ -416,24 +467,80 @@ export default function JobSeekerOnboardingPage() {
             setStep0((prev) => ({ ...prev, workStatus: prev.workStatus || "experienced" }));
           }
 
-          // Pre-fill step1 from LinkedIn extras (headline used as job title hint, location)
-          if (isLinkedIn && p.currentLocation) {
-            setStep1((prev) => ({
+          // Restore anything already saved. This used to run only for LinkedIn
+          // users, so anyone who left and came back was shown blank Employment
+          // and Education steps and had to retype answers we already held.
+          const firstExp = Array.isArray(p.experience) ? p.experience[0] : undefined;
+          setStep1((prev) => ({
+            ...prev,
+            currentCity: p.currentLocation || prev.currentCity,
+            // Truthiness, not != null: the schema defaults both to 0, so a
+            // brand-new profile is indistinguishable from someone who answered
+            // "0 years". Restoring that 0 would pre-answer the one field this
+            // step actually enforces.
+            experienceYears: p.totalExperienceYears ? String(p.totalExperienceYears) : prev.experienceYears,
+            experienceMonths: p.totalExperienceMonths ? String(p.totalExperienceMonths) : prev.experienceMonths,
+            skills: p.skills?.length ? p.skills : prev.skills,
+            industry: p.industry || prev.industry,
+            department: p.careerProfile?.department || prev.department,
+            roleCategory: p.careerProfile?.roleCategory || prev.roleCategory,
+            jobRole: p.careerProfile?.jobRole || prev.jobRole,
+            noticePeriod: NOTICE_PERIOD_LABELS[String(p.noticePeriod)] ?? prev.noticePeriod,
+            annualSalary: p.currentSalary?.amount != null ? String(p.currentSalary.amount) : prev.annualSalary,
+            // currentSalary.currency defaults to "USD" in the schema, so it
+            // hydrates on documents that hold no salary at all. Only trust it
+            // when there is an amount beside it, or it silently overwrites the
+            // seeker's regional default.
+            salaryCurrency: p.currentSalary?.amount != null
+              ? (p.currentSalary.currency || prev.salaryCurrency)
+              : prev.salaryCurrency,
+            ...(firstExp ? {
+              companyName: firstExp.company || prev.companyName,
+              jobTitle: firstExp.jobTitle || prev.jobTitle,
+              isCurrentlyEmployed: firstExp.isCurrent ?? prev.isCurrentlyEmployed,
+              startYear: firstExp.startDate ? String(firstExp.startDate).slice(0, 4) : prev.startYear,
+              startMonth: firstExp.startDate ? String(firstExp.startDate).slice(5, 7) : prev.startMonth,
+            } : {}),
+          }));
+
+          const firstEdu = Array.isArray(p.education) ? p.education[0] : undefined;
+          if (firstEdu) {
+            setStep2((prev) => ({
               ...prev,
-              currentCity: p.currentLocation || prev.currentCity,
+              qualification: QUALIFICATION_BY_LABEL[firstEdu.degree ?? ""] ?? firstEdu.degree ?? prev.qualification,
+              course: firstEdu.course || prev.course,
+              courseType: firstEdu.courseType || prev.courseType,
+              specialization: firstEdu.field || prev.specialization,
+              university: firstEdu.institution || prev.university,
+              startYear: firstEdu.startYear != null ? String(firstEdu.startYear) : prev.startYear,
+              passingYear: firstEdu.graduationDate
+                ? String(new Date(firstEdu.graduationDate).getUTCFullYear())
+                : prev.passingYear,
             }));
+            // The cascade below each of these is gated on its confirmed flag —
+            // without this a restored education stopped the step dead.
+            if (firstEdu.course) setCourseConfirmed(true);
+            if (firstEdu.field) setSpecConfirmed(true);
           }
 
-          // Pre-fill step3 from LinkedIn extras (headline, preferred locations)
-          if (isLinkedIn) {
-            setStep3((prev) => ({
-              ...prev,
-              headline: p.headline || prev.headline,
-              preferredLocations: p.currentLocation && !prev.preferredLocations.length
-                ? [p.currentLocation]
-                : prev.preferredLocations,
-            }));
-          }
+          setStep3((prev) => ({
+            ...prev,
+            headline: p.headline || prev.headline,
+            preferredLocations: p.preferredLocations?.length
+              ? p.preferredLocations
+              : (p.currentLocation && !prev.preferredLocations.length ? [p.currentLocation] : prev.preferredLocations),
+            preferredSalary: p.preferredSalary?.min != null ? String(p.preferredSalary.min) : prev.preferredSalary,
+            // Same nested-default caution as currentSalary above.
+            salaryCurrency: p.preferredSalary?.min != null
+              ? (p.preferredSalary.currency || prev.salaryCurrency)
+              : prev.salaryCurrency,
+            gender: p.gender || prev.gender,
+            // profileVisibility is deliberately NOT restored here. The schema
+            // defaults it to "visible", so every document reports "visible"
+            // whether or not the seeker ever answered — reading it back would
+            // re-tick the consent box on their behalf, which is the thing this
+            // step exists to stop. It stays null until they choose.
+          }));
 
           // Auto-focus phone if name is already filled
           if ((p.fullName || userName) && !p.phone) {
@@ -645,14 +752,24 @@ export default function JobSeekerOnboardingPage() {
       // Pre-fill Step 2 (Education)
       const firstEdu = extracted.education?.[0];
       if (firstEdu) {
+        // A CV says "B.Tech" or "Bachelor of Engineering" — free text that never
+        // matched one of the six qualification slugs. Assigning it raw left the
+        // chip row with nothing selected while `qualification` read as answered,
+        // so the rest of the step never appeared. Map it to a level, and keep the
+        // original wording as the course, which is what it actually names.
+        const level = qualificationLevelFrom(firstEdu.degree);
         setStep2((p) => ({
           ...p,
-          qualification: firstEdu.degree || p.qualification,
+          qualification: level || p.qualification,
+          course: firstEdu.degree || p.course,
           university: firstEdu.institution || p.university,
           specialization: firstEdu.field || p.specialization,
           startYear: firstEdu.from?.slice(0, 4) || p.startYear,
           passingYear: firstEdu.to?.slice(0, 4) || p.passingYear,
         }));
+        // Each field below these is gated on its confirmed flag.
+        if (firstEdu.degree) setCourseConfirmed(true);
+        if (firstEdu.field) setSpecConfirmed(true);
       }
 
       // Pre-fill Step 3 (Headline)
@@ -661,6 +778,7 @@ export default function JobSeekerOnboardingPage() {
       }
 
       setCvParsed(true);
+      setPendingCvSkip(true);
     } catch (err) {
       setCvParseError((err as Error).message);
     } finally {
@@ -707,7 +825,7 @@ export default function JobSeekerOnboardingPage() {
     preferredSalary: "",
     salaryCurrency: "AED",
     gender: "",
-    discoverable: true,
+    discoverable: null,
   });
 
   // Scroll to top whenever step changes
@@ -720,23 +838,53 @@ export default function JobSeekerOnboardingPage() {
     function handle(e: MouseEvent) {
       if (industryRef.current && !industryRef.current.contains(e.target as Node)) {
         setIndustryOpen(false);
+        // Clicking away settles whatever was typed. Clicks on a dropdown option
+        // land inside the ref, so they take the option instead.
+        setIndustrySearch((typed) => {
+          if (typed.trim()) {
+            setStep1((p) => (p.industry ? p : { ...p, industry: typed.trim() }));
+            return "";
+          }
+          return typed;
+        });
       }
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
+  /** Settle a typed industry that matches no dropdown option. */
+  const commitIndustry = useCallback((raw: string) => {
+    const typed = raw.trim();
+    if (!typed) return;
+    setStep1((p) => ({ ...p, industry: typed }));
+    setIndustryOpen(false);
+    setIndustrySearch("");
+  }, []);
+
   // ── Step validation ──────────────────────────────────────────────────────
-  const canAdvance = useCallback((): boolean => {
-    switch (step) {
+  /**
+   * Whether a given step already holds everything it needs. Addressable by step
+   * number (not just the current one) so a CV import can tell which steps it has
+   * answered and skip past them.
+   *
+   * Only the answers listed here are enforced — the asterisks in the markup are
+   * kept in step with this list, because a form that stars twelve fields and
+   * blocks on two is lying to the person filling it in.
+   */
+  const stepSatisfied = useCallback((n: number): boolean => {
+    switch (n) {
       case 0: return !!step0.name.trim() && !!step0.phone.trim() && !!step0.workStatus;
       case 1: return step0.workStatus === "fresher" || (step1.isCurrentlyEmployed !== null && !!step1.experienceYears);
       case 2: return !!step2.qualification;
-      case 3: return !!step3.headline.trim();
+      // Discoverability is a consent answer, so it has no default: the seeker
+      // says yes or no themselves before this step can be submitted.
+      case 3: return !!step3.headline.trim() && step3.discoverable !== null;
       default: return true;
     }
-   
-  }, [step, step0, step1, step2, step3]);
+  }, [step0, step1, step2, step3]);
+
+  const canAdvance = useCallback((): boolean => stepSatisfied(step), [stepSatisfied, step]);
 
   // ── Save helpers ─────────────────────────────────────────────────────────
   const saveStep = async (payload: Record<string, unknown>) => {
@@ -752,54 +900,79 @@ export default function JobSeekerOnboardingPage() {
     return res.json();
   };
 
-  const handleNext = async () => {
-    setSaveError("");
-
-    // Step-specific save
-    setSaving(true);
-    try {
-      if (step === 0) {
-        await saveStep({
-          name: step0.name,
-          phone: `${step0.countryCode}${step0.phone}`,
-          workStatus: step0.workStatus,
-          marketingConsent: step0.marketingConsent,
-        });
-        // Sync session JWT with the (possibly CV-parsed) name
-        if (step0.name && step0.name !== session?.user?.name) {
-          await updateSession({ name: step0.name });
-        }
-      } else if (step === 1) {
-        const payload: Record<string, unknown> = {
+  /**
+   * What a given step would save. Split out of handleNext so that a CV import
+   * can persist the steps it answers on the seeker's behalf before skipping
+   * past them — a skipped step must still be written, or the import would look
+   * like it worked and save nothing.
+   */
+  const payloadForStep = useCallback((n: number): Record<string, unknown> | null => {
+    if (n === 0) {
+      return {
+        name: step0.name,
+        phone: `${step0.countryCode}${step0.phone}`,
+        workStatus: step0.workStatus,
+        marketingConsent: step0.marketingConsent,
+      };
+    }
+    if (n === 1) {
+      const payload: Record<string, unknown> = {
           totalExperienceYears: parseInt(step1.experienceYears) || 0,
           totalExperienceMonths: parseInt(step1.experienceMonths) || 0,
           skills: step1.skills,
           industry: step1.industry,
           noticePeriod: step1.noticePeriod ? NOTICE_PERIOD_DAYS[step1.noticePeriod] : undefined,
-        };
-        if (step1.companyName && step1.jobTitle) {
-          payload.experience = [{
-            jobTitle: step1.jobTitle,
-            company: step1.companyName,
-            startDate: step1.startYear ? `${step1.startYear}-${step1.startMonth || "01"}-01` : undefined,
-            isCurrent: step1.isCurrentlyEmployed ?? false,
-            country: step1.currentCity,
-            annualSalary: step1.annualSalary ? parseFloat(step1.annualSalary) : undefined,
-            salaryCurrency: step1.salaryCurrency,
-          }];
-        }
-        await saveStep(payload);
-      } else if (step === 2) {
-        await saveStep({
-          education: [{
-            degree: step2.qualification,
-            institution: step2.university || "",
-            field: step2.specialization || step2.course,
-            startYear: step2.startYear ? parseInt(step2.startYear) : undefined,
-            passingYear: step2.passingYear ? parseInt(step2.passingYear) : undefined,
-            courseType: step2.courseType,
-          }],
-        });
+          // Asked for on this step and previously thrown away on the way out.
+          department: step1.department || undefined,
+          roleCategory: step1.roleCategory || undefined,
+          jobRole: step1.jobRole || undefined,
+          // "Current city" is where the seeker lives. It used to be written to
+          // experience[].country, which put a city in a country field and left
+          // the seeker with no location at all.
+        currentLocation: step1.currentCity || undefined,
+      };
+      if (step1.companyName && step1.jobTitle) {
+        payload.experience = [{
+          jobTitle: step1.jobTitle,
+          company: step1.companyName,
+          startDate: step1.startYear ? `${step1.startYear}-${step1.startMonth || "01"}-01` : undefined,
+          isCurrent: step1.isCurrentlyEmployed ?? false,
+          annualSalary: step1.annualSalary ? parseFloat(step1.annualSalary) : undefined,
+          salaryCurrency: step1.salaryCurrency,
+        }];
+      }
+      return payload;
+    }
+    if (n === 2) {
+      return {
+        education: [{
+          // Store the human label. The raw slug was reaching the profile page
+          // verbatim, which read "graduation in C".
+          degree: QUALIFICATION_OPTIONS.find((q) => q.value === step2.qualification)?.label
+            ?? step2.qualification,
+          institution: step2.university || "",
+          // Course and specialization are two separate answers; the old
+          // `specialization || course` fallback silently dropped one.
+          field: step2.specialization || undefined,
+          course: step2.course || undefined,
+          startYear: step2.startYear ? parseInt(step2.startYear) : undefined,
+          passingYear: step2.passingYear ? parseInt(step2.passingYear) : undefined,
+          courseType: step2.courseType || undefined,
+        }],
+      };
+    }
+    return null;
+  }, [step0, step1, step2]);
+
+  const handleNext = async () => {
+    setSaveError("");
+    setSaving(true);
+    try {
+      const payload = payloadForStep(step);
+      if (payload) await saveStep(payload);
+      // Sync session JWT with the (possibly CV-parsed) name
+      if (step === 0 && step0.name && step0.name !== session?.user?.name) {
+        await updateSession({ name: step0.name });
       }
       setStep((s) => s + 1);
     } catch (err) {
@@ -808,6 +981,39 @@ export default function JobSeekerOnboardingPage() {
       setSaving(false);
     }
   };
+
+  /**
+   * After a CV import, jump to the first step the CV could not answer, saving
+   * everything it did answer on the way. The stepper still shows all four and
+   * Back walks through them, so nothing is hidden — the seeker just isn't asked
+   * to retype what they handed us in the file.
+   *
+   * Step 3 always stops the run: it holds the discoverability consent, which no
+   * CV can answer on someone's behalf.
+   */
+  useEffect(() => {
+    if (!pendingCvSkip) return;
+    setPendingCvSkip(false);
+
+    let target = step;
+    while (target < 3 && stepSatisfied(target)) target += 1;
+    if (target === step) return;
+
+    const merged: Record<string, unknown> = {};
+    for (let n = step; n < target; n += 1) Object.assign(merged, payloadForStep(n) ?? {});
+
+    setSaving(true);
+    saveStep(merged)
+      .then(async () => {
+        if (step0.name && step0.name !== session?.user?.name) {
+          await updateSession({ name: step0.name });
+        }
+        setStep(target);
+      })
+      .catch((err: unknown) => setSaveError((err as Error).message))
+      .finally(() => setSaving(false));
+
+  }, [pendingCvSkip]);
 
   const handleFinish = async () => {
     if (!step3.headline.trim()) {
@@ -820,8 +1026,10 @@ export default function JobSeekerOnboardingPage() {
       await saveStep({
         headline: step3.headline,
         preferredLocations: step3.preferredLocations,
+        // One expected figure, so no upper bound — `max: 0` used to store a
+        // range whose top sat below its bottom.
         preferredSalary: step3.preferredSalary
-          ? { min: parseFloat(step3.preferredSalary), max: 0, currency: step3.salaryCurrency }
+          ? { min: parseFloat(step3.preferredSalary), currency: step3.salaryCurrency }
           : undefined,
         gender: step3.gender,
         // The seeker's explicit answer, not the model default. Same field the
@@ -975,7 +1183,7 @@ export default function JobSeekerOnboardingPage() {
                 {/* Full name */}
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium text-gray-800">{t("fullName")} <span className="text-red-500">*</span></Label>
+                    <Label htmlFor="ob-fullName" className="text-sm font-medium text-gray-800">{t("fullName")} <span className="text-red-500">*</span></Label>
                     {linkedInPrefilled && step0.name.trim() && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
                         <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
@@ -983,7 +1191,7 @@ export default function JobSeekerOnboardingPage() {
                     )}
                   </div>
                   <div className="relative">
-                    <Input
+                    <Input id="ob-fullName"
                       value={step0.name}
                       onChange={(e) => setStep0((p) => ({ ...p, name: e.target.value }))}
                       placeholder={t("fullNamePlaceholder")}
@@ -999,13 +1207,13 @@ export default function JobSeekerOnboardingPage() {
                 {linkedInPrefilled && userEmail && (
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm font-medium text-gray-800">{t("email")}</Label>
+                      <Label htmlFor="ob-email" className="text-sm font-medium text-gray-800">{t("email")}</Label>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
                         <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
                       </span>
                     </div>
                     <div className="relative">
-                      <Input
+                      <Input id="ob-email"
                         value={userEmail}
                         readOnly
                         className="h-11 pr-10 border-gray-300 bg-gray-50 text-gray-600 cursor-default"
@@ -1017,7 +1225,7 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Mobile number */}
                 <div className="field">
-                  <Label className="text-sm font-medium text-gray-800">{t("mobileNumber")} <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="ob-mobileNumber" className="text-sm font-medium text-gray-800">{t("mobileNumber")} <span className="text-red-500">*</span></Label>
                   <div className="flex gap-2">
                     <CountryCodeSelect
                       value={step0.countryCode}
@@ -1025,7 +1233,7 @@ export default function JobSeekerOnboardingPage() {
                       t={t}
                     />
                     <div className="relative flex-1">
-                      <Input
+                      <Input id="ob-mobileNumber"
                         ref={phoneRef}
                         type="tel"
                         value={step0.phone}
@@ -1186,9 +1394,9 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Company name */}
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("companyName")} <span className="text-red-500">*</span></Label>
+                      <Label htmlFor="ob-companyName" className="text-sm font-medium text-gray-800">{t("companyName")}</Label>
                       <div className="relative">
-                        <Input
+                        <Input id="ob-companyName"
                           value={step1.companyName}
                           onChange={(e) => setStep1((p) => ({ ...p, companyName: e.target.value }))}
                           placeholder={t("companyNamePlaceholder")}
@@ -1200,8 +1408,8 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Job title */}
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("currentJobTitle")} <span className="text-red-500">*</span></Label>
-                      <Input
+                      <Label htmlFor="ob-currentJobTitle" className="text-sm font-medium text-gray-800">{t("currentJobTitle")}</Label>
+                      <Input id="ob-currentJobTitle"
                         value={step1.jobTitle}
                         onChange={(e) => setStep1((p) => ({ ...p, jobTitle: e.target.value }))}
                         placeholder={t("jobTitlePlaceholder")}
@@ -1212,14 +1420,14 @@ export default function JobSeekerOnboardingPage() {
                     {/* Current city */}
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium text-gray-800">{t("currentCity")} <span className="text-red-500">*</span></Label>
+                        <Label htmlFor="ob-currentCity" className="text-sm font-medium text-gray-800">{t("currentCity")}</Label>
                         {linkedInPrefilled && step1.currentCity.trim() && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
                             <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
                           </span>
                         )}
                       </div>
-                      <Autocomplete
+                      <Autocomplete id="ob-currentCity"
                         type="locations"
                         value={step1.currentCity}
                         onChange={(v) => setStep1((p) => ({ ...p, currentCity: v }))}
@@ -1231,7 +1439,7 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Duration */}
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("duration")} <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("duration")}</Label>
                       <div className="flex items-center gap-3">
                         <div className="flex gap-2 flex-1">
                           <Select value={step1.startMonth} onValueChange={(v) => setStep1((p) => ({ ...p, startMonth: v }))}>
@@ -1262,7 +1470,7 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Annual salary */}
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("annualSalary")} <span className="text-red-500">*</span></Label>
+                      <Label htmlFor="ob-annualSalary" className="text-sm font-medium text-gray-800">{t("annualSalary")}</Label>
                       <div className="flex gap-2">
                         <Select value={step1.salaryCurrency} onValueChange={(v) => setStep1((p) => ({ ...p, salaryCurrency: v }))}>
                           <SelectTrigger className="h-11 w-24 shrink-0">
@@ -1275,6 +1483,7 @@ export default function JobSeekerOnboardingPage() {
                           </SelectContent>
                         </Select>
                         <Input
+                          id="ob-annualSalary"
                           type="number"
                           min="0"
                           value={step1.annualSalary}
@@ -1290,7 +1499,7 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Notice period */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-800">{t("noticePeriod")} <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("noticePeriod")}</Label>
                       <div className="flex flex-wrap gap-2">
                         {NOTICE_PERIODS.map((np) => (
                           <ChipButton
@@ -1305,8 +1514,8 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Key skills */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-800">{t("keySkills")} <span className="text-red-500">*</span></Label>
-                      <TagAutocomplete
+                      <Label htmlFor="ob-keySkills" className="text-sm font-medium text-gray-800">{t("keySkills")}</Label>
+                      <TagAutocomplete id="ob-keySkills"
                         type="skills"
                         value={step1.skills}
                         onChange={(next) => setStep1((p) => ({ ...p, skills: next }))}
@@ -1318,17 +1527,26 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Industry */}
                     <div className="space-y-1.5" ref={industryRef}>
-                      <Label className="text-sm font-medium text-gray-800">{t("industry")} <span className="text-red-500">*</span></Label>
+                      <Label htmlFor="ob-industry" className="text-sm font-medium text-gray-800">{t("industry")}</Label>
                       <div className="relative">
                         {step1.industry ? (
                           <div className="flex flex-wrap gap-2 rounded-lg border border-gray-300 min-h-[44px] chip-pad">
                             <TagChip label={step1.industry} onRemove={() => setStep1((p) => ({ ...p, industry: "" }))} />
                           </div>
                         ) : (
-                          <Input
+                          <Input id="ob-industry"
                             value={industrySearch}
                             onChange={(e) => { setIndustrySearch(e.target.value); setIndustryOpen(true); }}
                             onFocus={() => setIndustryOpen(true)}
+                            // This box only ever filtered the dropdown. Typing an
+                            // industry that isn't on the list left step1.industry
+                            // empty, so the field looked answered and saved blank.
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && industrySearch.trim()) {
+                                e.preventDefault();
+                                commitIndustry(industrySearch);
+                              }
+                            }}
                             placeholder={t("industryPlaceholder")}
                             className={`h-11 border-gray-300 focus:border-blue-500 ${!step1.industry ? "border-red-300" : ""}`}
                           />
@@ -1352,8 +1570,8 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Department */}
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("department")}</Label>
-                      <Input
+                      <Label htmlFor="ob-department" className="text-sm font-medium text-gray-800">{t("department")}</Label>
+                      <Input id="ob-department"
                         value={step1.department}
                         onChange={(e) => setStep1((p) => ({ ...p, department: e.target.value }))}
                         placeholder={t("departmentPlaceholder")}
@@ -1369,8 +1587,8 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Role category */}
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("roleCategory")} <span className="text-red-500">*</span></Label>
-                      <Input
+                      <Label htmlFor="ob-roleCategory" className="text-sm font-medium text-gray-800">{t("roleCategory")}</Label>
+                      <Input id="ob-roleCategory"
                         value={step1.roleCategory}
                         onChange={(e) => setStep1((p) => ({ ...p, roleCategory: e.target.value }))}
                         placeholder={t("roleCategoryPlaceholder")}
@@ -1380,8 +1598,8 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Job role */}
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("jobRole")} <span className="text-red-500">*</span></Label>
-                      <Input
+                      <Label htmlFor="ob-jobRole" className="text-sm font-medium text-gray-800">{t("jobRole")}</Label>
+                      <Input id="ob-jobRole"
                         value={step1.jobRole}
                         onChange={(e) => setStep1((p) => ({ ...p, jobRole: e.target.value }))}
                         placeholder={t("jobRolePlaceholder")}
@@ -1429,10 +1647,20 @@ export default function JobSeekerOnboardingPage() {
                 {["graduation", "masters", "doctorate"].includes(step2.qualification) && (
                   <>
                     <div className="field">
-                      <Label className="text-sm font-medium text-gray-800">{t("course")} <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("course")}</Label>
                       {step2.course && courseConfirmed ? (
                         <div className="flex flex-wrap gap-2 rounded-lg border border-gray-300 min-h-[44px] chip-pad">
-                          <TagChip label={step2.course} onRemove={() => { setStep2((p) => ({ ...p, course: "" })); setCourseConfirmed(false); }} />
+                          {/* Everything below course is scoped to it, so clear
+                              the dependants too rather than leaving a
+                              specialization attached to no course. */}
+                          <TagChip
+                            label={step2.course}
+                            onRemove={() => {
+                              setStep2((p) => ({ ...p, course: "", courseType: "", specialization: "", university: "", startYear: "", passingYear: "" }));
+                              setCourseConfirmed(false);
+                              setSpecConfirmed(false);
+                            }}
+                          />
                         </div>
                       ) : (
                         <>
@@ -1468,7 +1696,7 @@ export default function JobSeekerOnboardingPage() {
                     {/* Course type */}
                     {step2.course && courseConfirmed && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-800">{t("courseType")} <span className="text-red-500">*</span></Label>
+                        <Label className="text-sm font-medium text-gray-800">{t("courseType")}</Label>
                         <div className="flex flex-wrap gap-2">
                           {COURSE_TYPES.map((ct) => (
                             step2.courseType === ct ? (
@@ -1484,16 +1712,20 @@ export default function JobSeekerOnboardingPage() {
                     {/* Specialization */}
                     {step2.courseType && (
                       <div className="space-y-1.5">
-                        <Label className="text-sm font-medium text-gray-800">{t("specialization")} <span className="text-red-500">*</span></Label>
+                        <Label htmlFor="ob-specialization" className="text-sm font-medium text-gray-800">{t("specialization")}</Label>
                         {step2.specialization && specConfirmed ? (
                           <div className="flex flex-wrap gap-2 rounded-lg border border-gray-300 min-h-[44px] chip-pad">
                             <TagChip label={step2.specialization} onRemove={() => { setStep2((p) => ({ ...p, specialization: "" })); setSpecConfirmed(false); }} />
                           </div>
                         ) : (
-                          <Autocomplete
+                          <Autocomplete id="ob-specialization"
                             type="specializations"
                             value={step2.specialization}
-                            onChange={(v) => { setStep2((p) => ({ ...p, specialization: v })); setSpecConfirmed(true); }}
+                            // onChange fires per keystroke — confirming here
+                            // swapped this input for a chip after one letter,
+                            // so "Computer Science" was stored as "C".
+                            onChange={(v) => setStep2((p) => ({ ...p, specialization: v }))}
+                            onCommit={(v) => { setStep2((p) => ({ ...p, specialization: v })); setSpecConfirmed(true); }}
                             placeholder={t("specializationPlaceholder")}
                             inputClassName="h-11 border-gray-300 focus:border-blue-500"
                           />
@@ -1504,8 +1736,8 @@ export default function JobSeekerOnboardingPage() {
                     {/* University */}
                     {step2.specialization && specConfirmed && (
                       <div className="field">
-                        <Label className="text-sm font-medium text-gray-800">{t("university")} <span className="text-red-500">*</span></Label>
-                        <Input
+                        <Label htmlFor="ob-university" className="text-sm font-medium text-gray-800">{t("university")}</Label>
+                        <Input id="ob-university"
                           value={step2.university}
                           onChange={(e) => setStep2((p) => ({ ...p, university: e.target.value }))}
                           placeholder={t("universityPlaceholder")}
@@ -1518,9 +1750,9 @@ export default function JobSeekerOnboardingPage() {
                     {step2.university && (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="field">
-                          <Label className="text-sm font-medium text-gray-800">{t("startingYear")} <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="ob-startingYear" className="text-sm font-medium text-gray-800">{t("startingYear")}</Label>
                           <div className="relative">
-                            <Input
+                            <Input id="ob-startingYear"
                               type="number"
                               value={step2.startYear}
                               onChange={(e) => setStep2((p) => ({ ...p, startYear: e.target.value }))}
@@ -1533,9 +1765,9 @@ export default function JobSeekerOnboardingPage() {
                           </div>
                         </div>
                         <div className="field">
-                          <Label className="text-sm font-medium text-gray-800">{t("passingYear")} <span className="text-red-500">*</span></Label>
+                          <Label htmlFor="ob-passingYear" className="text-sm font-medium text-gray-800">{t("passingYear")}</Label>
                           <div className="relative">
-                            <Input
+                            <Input id="ob-passingYear"
                               type="number"
                               value={step2.passingYear}
                               onChange={(e) => setStep2((p) => ({ ...p, passingYear: e.target.value }))}
@@ -1568,14 +1800,14 @@ export default function JobSeekerOnboardingPage() {
                 {/* Resume headline */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium text-gray-800">{t("resumeHeadline")}</Label>
+                    <Label htmlFor="ob-resumeHeadline" className="text-sm font-medium text-gray-800">{t("resumeHeadline")} <span className="text-red-500">*</span></Label>
                     {linkedInPrefilled && step3.headline.trim() && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
                         <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
                       </span>
                     )}
                   </div>
-                  <textarea
+                  <textarea id="ob-resumeHeadline"
                     value={step3.headline}
                     onChange={(e) => setStep3((p) => ({ ...p, headline: e.target.value }))}
                     rows={3}
@@ -1605,8 +1837,8 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Preferred work locations */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-800">{t("preferredLocations")} <span className="text-gray-400 font-normal">{t("maximum10")}</span></Label>
-                  <TagAutocomplete
+                  <Label htmlFor="ob-preferredLocations" className="text-sm font-medium text-gray-800">{t("preferredLocations")} <span className="text-gray-400 font-normal">{t("maximum10")}</span></Label>
+                  <TagAutocomplete id="ob-preferredLocations"
                     type="locations"
                     value={step3.preferredLocations}
                     onChange={(next) => setStep3((p) => ({ ...p, preferredLocations: next }))}
@@ -1617,7 +1849,7 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Preferred salary */}
                 <div className="field">
-                  <Label className="text-sm font-medium text-gray-800">{t("preferredSalary")}</Label>
+                  <Label htmlFor="ob-preferredSalary" className="text-sm font-medium text-gray-800">{t("preferredSalary")}</Label>
                   <div className="flex items-center gap-2">
                     <Select value={step3.salaryCurrency} onValueChange={(v) => setStep3((p) => ({ ...p, salaryCurrency: v }))}>
                       <SelectTrigger className="h-11 w-24 shrink-0">
@@ -1630,6 +1862,7 @@ export default function JobSeekerOnboardingPage() {
                       </SelectContent>
                     </Select>
                     <Input
+                      id="ob-preferredSalary"
                       type="number"
                       min="0"
                       value={step3.preferredSalary}
@@ -1767,7 +2000,7 @@ export default function JobSeekerOnboardingPage() {
                 ) : (
                   <Button size="lg"
                     onClick={handleFinish}
-                    disabled={saving}
+                    disabled={saving || !canAdvance()}
                     className="rounded-full px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50"
                   >
                     {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
