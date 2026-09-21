@@ -6,6 +6,7 @@ import { validateBody } from "@/lib/validators";
 import { jobSeekerSettingsSchema } from "@/lib/validators/job-seekers";
 import { logActivity } from "@/lib/audit/log";
 import NotificationPreference from "@/models/NotificationPreference";
+import { recomputeCompleteness } from "@/lib/jobSeeker/persistCompleteness";
 
 interface JobSeekerSettings {
   autoApply: boolean;
@@ -165,13 +166,19 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     return NextResponse.json({ success: true });
   }
 
-  await (JobSeeker as unknown as {
+  const saved = await (JobSeeker as unknown as {
     findOneAndUpdate: (q: object, update: object, opts: object) => Promise<unknown>
   }).findOneAndUpdate(
     { userId: ctx.userId },
     { $set: update },
-    { upsert: true }
+    { upsert: true, returnDocument: "after" }
   );
+
+  // This route writes seeker fields (preferred locations, nationality, …) and
+  // never recomputed completeness, so the stored figure drifted away from what
+  // the profile page renders — 23 live seekers sat at a stored 0 while their
+  // real score was 10–25, and the reminder email mailed them that 0.
+  await recomputeCompleteness(ctx.userId, saved);
 
   await logActivity({
     actorId: ctx.userId,

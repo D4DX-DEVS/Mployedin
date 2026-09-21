@@ -6,6 +6,7 @@ import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
+import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (ctx.role !== "job_seeker") {
@@ -75,17 +76,7 @@ Return ONLY the summary text. No quotes, no labels, no extra formatting.`;
 
   if (updated) {
     const doc = updated.toObject ? updated.toObject() : updated;
-    let completeness = 0;
-    if (doc.userId)                                             completeness += 10;
-    if (doc.nationality)                                        completeness += 10;
-    if (doc.currentLocation)                                    completeness += 5;
-    if (doc.summary)                                            completeness += 10;
-    if (Array.isArray(doc.skills)     && doc.skills.length)    completeness += 20;
-    if (Array.isArray(doc.experience) && doc.experience.length) completeness += 20;
-    if (Array.isArray(doc.education)  && doc.education.length) completeness += 15;
-    if (Array.isArray(doc.languages)  && doc.languages.length) completeness += 5;
-    if (doc.linkedin || doc.socialLinks?.some((l: { label?: string }) => l.label?.toLowerCase() === "linkedin")) completeness += 5;
-    completeness = Math.min(100, completeness);
+    const completeness = profileCompletenessScore(doc);
     await JobSeeker.updateOne({ userId: ctx.userId }, { $set: { profileCompleteness: completeness } });
   }
 

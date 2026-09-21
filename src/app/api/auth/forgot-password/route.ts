@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { User } from "@/models/User";
-import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
-import { sendEmail, EmailTemplates } from "@/lib/communications/email";
+import { issuePasswordReset } from "@/lib/auth/passwordReset";
 import { z } from "zod";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
@@ -46,35 +45,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "If an account exists, a reset link has been sent." });
   }
 
-  // Generate secure token
-  const resetToken = crypto.randomBytes(32).toString("hex");
-  const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-
-  user.passwordResetToken = hashedToken;
-  user.passwordResetExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-  user.passwordResetAttempts = 0;
-  await user.save();
-
-  const appUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const userLocale = (user.locale as string) ?? "en";
-  const resetUrl = `${appUrl}/${userLocale}/reset-password?token=${encodeURIComponent(resetToken)}`;
-
-  try {
-    const template = EmailTemplates.passwordReset(resetUrl);
-    await sendEmail({ to: user.email as string, ...template });
-  } catch (emailErr) {
-    logger.error({ err: emailErr }, "[ForgotPassword] Reset email could not be sent");
-    // Queryable next to every other auth event: a reset that never reached the
-    // inbox used to leave nothing behind but a line in the server log.
-    logActivity({
-      actorId: user._id.toString(),
-      actorRole: user.role,
-      action: "password_reset.email_failed",
-      resource: "auth",
-      meta: { email: user.email, error: emailErr instanceof Error ? emailErr.message : "unknown" },
-    });
-    // Still return success — don't leak delivery failures to the caller
-  }
+  // Token minting, TTL and delivery are shared with the admin-triggered reset
+  // (POST /api/admin/users/password-reset) so both produce a link the
+  // reset-password route will accept.
+  await issuePasswordReset(user, {
+    actor: { actorId: user._id.toString(), actorRole: user.role },
+    req,
+  });
 
   logActivity({
     actorId: user._id.toString(),

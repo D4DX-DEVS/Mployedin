@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { digestGateFor, MIN_HOURS_BETWEEN_DIGESTS } from "@/lib/notifications/digestGate";
+import { digestGateFor, isWithinDigestCooldown, MIN_HOURS_BETWEEN_DIGESTS } from "@/lib/notifications/digestGate";
 
 const NOW = new Date("2026-09-10T09:00:00.000Z");
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 60 * 60 * 1000);
@@ -65,5 +65,41 @@ describe("digestGateFor", () => {
     );
     expect(gate.send).toBe(false);
     expect(gate.reason).toBe("all digest categories disabled");
+  });
+});
+
+describe("isWithinDigestCooldown", () => {
+  it("is false when the seeker has never had a digest", () => {
+    expect(isWithinDigestCooldown(undefined, NOW)).toBe(false);
+    expect(isWithinDigestCooldown(null, NOW)).toBe(false);
+  });
+
+  it("is false for an unparseable timestamp rather than blocking forever", () => {
+    expect(isWithinDigestCooldown("not a date", NOW)).toBe(false);
+  });
+
+  it("suppresses a second digest inside the window", () => {
+    expect(isWithinDigestCooldown(hoursAgo(1), NOW)).toBe(true);
+    expect(isWithinDigestCooldown(hoursAgo(MIN_HOURS_BETWEEN_DIGESTS - 1), NOW)).toBe(true);
+  });
+
+  it("allows the next day's digest once the window has passed", () => {
+    expect(isWithinDigestCooldown(hoursAgo(MIN_HOURS_BETWEEN_DIGESTS), NOW)).toBe(false);
+    expect(isWithinDigestCooldown(hoursAgo(24), NOW)).toBe(false);
+  });
+
+  it("accepts an ISO string as well as a Date, since Mongo round-trips both", () => {
+    expect(isWithinDigestCooldown(hoursAgo(1).toISOString(), NOW)).toBe(true);
+  });
+
+  it("agrees with the eligibility gate it shares a definition with", () => {
+    // The producer's atomic claim and digestGateFor must never disagree about
+    // whether today's digest already went out — that disagreement is what let
+    // a failed send be retried and re-sent.
+    for (const h of [0, 1, 12, MIN_HOURS_BETWEEN_DIGESTS - 0.5, MIN_HOURS_BETWEEN_DIGESTS, 48]) {
+      const last = hoursAgo(h);
+      const gate = digestGateFor({ lastDigestSentAt: last }, { now: NOW });
+      expect(gate.send).toBe(!isWithinDigestCooldown(last, NOW));
+    }
   });
 });

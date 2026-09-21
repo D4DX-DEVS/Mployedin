@@ -30,12 +30,23 @@ export interface NotificationDailyDigestEvent {
       company: string;
       location: string;
       matchScore: number;
-      salary?: { min: number; max: number };
+      /**
+       * The job's own pay figures. `currency` and `period` travel with them
+       * because the email used to render every salary as AED — 46 of 62 live
+       * jobs are priced in something else, so an INR figure was shown as a
+       * dirham amount roughly 35x too large.
+       */
+      salary?: { min: number; max: number; currency?: string; period?: string };
     }>;
     profileViews: {
       count: number;
       viewers: Array<{ name: string; role: string }>;
     };
+    /**
+     * What the seeker's profile actually states, so the digest can invite them
+     * to improve their matches instead of implying the inputs were complete.
+     */
+    profile?: { completeness: number; signals: number };
   };
 }
 

@@ -9,6 +9,7 @@ import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
+import { recomputeCompleteness } from "@/lib/jobSeeker/persistCompleteness";
 
 export const runtime = "nodejs";
 
@@ -185,6 +186,11 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     { $set: jsUpdate },
     { upsert: true, returnDocument: "after" }
   );
+
+  // This route writes scored fields (nationality, skills, experience, …) but
+  // never recomputed completeness, so the stored figure went stale the moment a
+  // seeker edited here instead of through /api/job-seeker/profile.
+  await recomputeCompleteness(ctx.userId, updated);
 
   if (typeof requestedConsent === "boolean" && previousConsent?.marketingConsent !== requestedConsent) {
     await ConsentLog.create({

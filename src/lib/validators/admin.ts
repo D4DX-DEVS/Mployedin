@@ -137,3 +137,8 @@ export const adminUserDeleteSchema = z.object({
   userId: commonSchemas.objectId,
   permanent: z.boolean().optional(),
 });
+
+/** POST /api/admin/users/password-reset */
+export const adminUserPasswordResetSchema = z.object({
+  userId: commonSchemas.objectId,
+});

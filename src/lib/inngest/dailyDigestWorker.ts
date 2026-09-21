@@ -9,7 +9,8 @@
 import { inngest } from "./client";
 import { connectDB } from "@/lib/db/mongoose";
 import NotificationPreference from "@/models/NotificationPreference";
-import { sendEmail } from "@/lib/communications/email";
+import { sendEmail, isUndeliverableAddress } from "@/lib/communications/email";
+import { emailHeader, emailFooter } from "@/lib/communications/emailLayout";
 import type { NotificationDailyDigestEvent } from "./events";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -31,6 +32,14 @@ export const dailyDigestWorker = inngest.createFunction(
 
     await connectDB();
 
+    // A reserved-domain recipient makes sendEmail throw, which Inngest reads as
+    // a transient failure and retries. The producer already filters these out;
+    // this is the backstop that keeps any other emitter from reopening that
+    // retry loop. Returning (rather than throwing) marks the run succeeded.
+    if (isUndeliverableAddress(email)) {
+      return { sent: false, skipped: "undeliverable recipient", userId };
+    }
+
     // Build and send the combined digest email
     await step.run("send-digest-email", async () => {
       const html = buildDigestEmail({
@@ -38,6 +47,7 @@ export const dailyDigestWorker = inngest.createFunction(
         locale,
         jobs,
         profileViews,
+        profile: event.data.profile,
       });
 
       const jobCount = jobs.length;
@@ -67,16 +77,15 @@ export const dailyDigestWorker = inngest.createFunction(
       });
     });
 
-    // Update last digest timestamp
-    await step.run("update-digest-timestamp", async () => {
+    // `lastDigestSentAt` is deliberately NOT written here any more. The producer
+    // claims it atomically before emitting, so the 23-hour gate closes whether
+    // or not this send succeeds. Writing it here as well was the original
+    // defect: a failed send skipped this step, left the gate open, and every
+    // retry sent again.
+    await step.run("update-last-email-timestamp", async () => {
       await NotificationPreference.updateOne(
         { userId },
-        {
-          $set: {
-            lastDigestSentAt: new Date(),
-            lastEmailSentAt: new Date(),
-          },
-        },
+        { $set: { lastEmailSentAt: new Date() } },
         { upsert: true },
       );
     });
@@ -94,12 +103,14 @@ interface DigestEmailData {
     company: string;
     location: string;
     matchScore: number;
-    salary?: { min: number; max: number };
+    salary?: { min: number; max: number; currency?: string; period?: string };
   }>;
   profileViews: {
     count: number;
     viewers: Array<{ name: string; role: string }>;
   };
+  /** Omitted for older events still in flight; the block is then skipped. */
+  profile?: { completeness: number; signals: number };
 }
 
 function companyInitials(name: string): string {
@@ -118,8 +129,38 @@ function logoColor(name: string): string {
   return LOGO_COLORS[hash % LOGO_COLORS.length];
 }
 
-function buildDigestEmail(data: DigestEmailData): string {
-  const { userName, locale, jobs, profileViews } = data;
+const PERIOD_LABEL: Record<string, { en: string; ar: string }> = {
+  monthly: { en: "/mo", ar: "/شهر" },
+  yearly: { en: "/yr", ar: "/سنة" },
+  lpa: { en: "/yr", ar: "/سنة" },
+};
+
+/**
+ * One salary line, in the job's own currency.
+ *
+ * Every figure used to be suffixed with a hardcoded "AED" — but only 16 of 62
+ * live jobs are priced in dirhams, so an INR annual figure was presented as a
+ * dirham amount roughly thirty times too large. The period matters for the
+ * same reason: a yearly range rendered bare reads as a monthly one.
+ */
+function salaryLine(
+  salary: { min: number; max: number; currency?: string; period?: string } | undefined,
+  isAr: boolean,
+): string {
+  if (!salary || !(salary.max > 0 || salary.min > 0)) return "";
+  const code = (salary.currency ?? "").toUpperCase().trim() || "AED";
+  const period = PERIOD_LABEL[salary.period ?? "monthly"] ?? PERIOD_LABEL.monthly;
+  const range =
+    salary.min > 0 && salary.max > salary.min
+      ? `${formatCount(salary.min)}–${formatCount(salary.max)}`
+      : formatCount(salary.max > 0 ? salary.max : salary.min);
+  // Code before the amount, and the whole thing kept on one line: the old
+  // trailing "AED" wrapped onto its own row on a phone.
+  return `${code} ${range}${isAr ? period.ar : period.en}`;
+}
+
+export function buildDigestEmail(data: DigestEmailData): string {
+  const { userName, locale, jobs, profileViews, profile } = data;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
   const isAr = locale === "ar";
   const dir = isAr ? "rtl" : "ltr";
@@ -133,13 +174,24 @@ function buildDigestEmail(data: DigestEmailData): string {
     ? "مسؤولو التوظيف شاهدوا ملفك"
     : "Recruiters viewed your profile";
 
+  // The old copy promised "great job matches based on your profile" on every
+  // digest — including the ones that carry no jobs at all, and the ones whose
+  // percentages came entirely from neutral defaults. Say what is actually in
+  // the email. (Seekers whose profile states too little to rank against are no
+  // longer sent a job section at all; see dailyRecommendations.ts.)
+  const intro =
+    jobs.length > 0
+      ? isAr
+        ? `إليك أقرب ${jobs.length} وظائف مطابقة لملفك الشخصي اليوم:`
+        : `Here ${jobs.length === 1 ? "is the closest match" : `are the ${jobs.length} closest matches`} to your profile today:`
+      : isAr
+        ? "إليك آخر مستجدات ملفك الشخصي:"
+        : "Here's the latest activity on your profile:";
+
   // Bayt-style job cards with company logos
   const jobCards = jobs
     .map((j) => {
-      const salaryText =
-        j.salary && j.salary.max > 0
-          ? `${formatCount(j.salary.min)}–${formatCount(j.salary.max)} AED`
-          : "";
+      const salaryText = salaryLine(j.salary, isAr);
       const matchColor =
         j.matchScore >= 80
           ? "#059669"
@@ -162,10 +214,10 @@ function buildDigestEmail(data: DigestEmailData): string {
               <td style="padding-${isAr ? "right" : "left"}: 12px; vertical-align: top;">
                 <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${esc(j.title)}</a>
                 <p style="margin: 2px 0 0; color: #374151; font-size: 13px; font-weight: 500;">${esc(j.company)}</p>
-                <p style="margin: 2px 0 0; color: #6b7280; font-size: 12px;">📍 ${esc(j.location || "Remote")}${salaryText ? ` · 💰 ${salaryText}` : ""}</p>
+                <p style="margin: 3px 0 0; color: #6b7280; font-size: 12px; line-height: 18px;">📍 ${esc(j.location || "Remote")}${salaryText ? ` · <span style="white-space: nowrap;">${esc(salaryText)}</span>` : ""}</p>
               </td>
-              <td style="text-align: ${isAr ? "left" : "right"}; vertical-align: top; width: 80px;">
-                <span style="background: ${matchColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-block;">${j.matchScore}% ${isAr ? "تطابق" : "match"}</span>
+              <td style="text-align: ${isAr ? "left" : "right"}; vertical-align: top; width: 62px;">
+                <span style="background: ${matchColor}; color: #ffffff; padding: 2px 7px; border-radius: 10px; font-size: 11px; line-height: 16px; font-weight: 600; white-space: nowrap; display: inline-block;">${j.matchScore}%</span>
               </td>
             </tr>
           </table>
@@ -174,41 +226,60 @@ function buildDigestEmail(data: DigestEmailData): string {
     })
     .join("");
 
-  // Profile views section
+  // Profile activity — a secondary insight, so it reads as a compact strip
+  // rather than a second full-width section competing with the jobs.
+  const namedViewers = profileViews.viewers.slice(0, 2).map((v) => esc(v.name));
+  const extraViewers = profileViews.count - namedViewers.length;
   const viewsSection =
     profileViews.count > 0
       ? `
-    <div style="margin-top: 24px;">
-      <h3 style="color: #111827; font-size: 16px; margin: 0 0 12px;">👁 ${viewsTitle}</h3>
-      <div style="background: #eff6ff; padding: 16px; border-radius: 8px; border-left: 4px solid #0D6FD8;">
-        <p style="margin: 0; color: #1e40af; font-size: 20px; font-weight: 700;">${profileViews.count}</p>
-        <p style="margin: 4px 0 0; color: #374151; font-size: 14px;">
-          ${isAr ? `مسؤولو توظيف شاهدوا ملفك خلال الـ 24 ساعة الماضية` : `recruiters viewed your profile in the last 24 hours`}
-        </p>
-        ${profileViews.viewers
-          .slice(0, 3)
-          .map((v) => `<p style="margin: 2px 0 0; color: #6b7280; font-size: 13px;">• ${esc(v.name)} (${v.role})</p>`)
-          .join("")}
-        ${profileViews.count > 3 ? `<p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">+ ${profileViews.count - 3} ${isAr ? "آخرين" : "more"}</p>` : ""}
-      </div>
-    </div>`
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin-top: 24px; background-color: #eff6ff; border-radius: 8px;">
+          <tr>
+            <td style="padding: 14px 16px; border-${isAr ? "right" : "left"}: 4px solid #0D6FD8; border-radius: 8px;">
+              <div style="color: #1e3a8a; font-size: 13px; font-weight: 700; line-height: 18px;">&#128065; ${viewsTitle}</div>
+              <div style="color: #374151; font-size: 13px; line-height: 19px; margin-top: 4px;">
+                <strong style="color: #1e40af;">${profileViews.count}</strong>
+                ${isAr ? "خلال الـ 24 ساعة الماضية" : "in the last 24 hours"}${
+                  namedViewers.length
+                    ? ` — ${namedViewers.join(", ")}${extraViewers > 0 ? ` +${extraViewers} ${isAr ? "آخرين" : "more"}` : ""}`
+                    : ""
+                }
+              </div>
+              <a href="${baseUrl}/${locale}/job-seeker/profile" style="color: #0D6FD8; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; margin-top: 6px;">${isAr ? "عرض ملفي &#8592;" : "View profile &#8594;"}</a>
+            </td>
+          </tr>
+        </table>`
+      : "";
+
+  // Improve your matches — the honest counterpart to the percentages above.
+  // A match score is only as good as what the profile states, so when it states
+  // little, say so and link to the fix rather than implying the inputs were
+  // complete. Hidden once the profile is in good shape.
+  const improveSection =
+    profile && profile.completeness < 70
+      ? `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin-top: 16px; background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;">
+          <tr>
+            <td style="padding: 14px 16px;">
+              <div style="color: #92400e; font-size: 13px; font-weight: 700; line-height: 18px;">${isAr ? "حسّن نتائج المطابقة" : "Improve your matches"}</div>
+              <div style="color: #78350f; font-size: 13px; line-height: 19px; margin-top: 4px;">
+                ${isAr
+                  ? `ملفك الشخصي مكتمل بنسبة ${profile.completeness}%. أضف مهاراتك والدول المفضلة لديك للحصول على توصيات أدق.`
+                  : `Your profile is ${profile.completeness}% complete. Add your skills and preferred countries to get more relevant recommendations.`}
+              </div>
+              <a href="${baseUrl}/${locale}/job-seeker/preferences" style="color: #b45309; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; margin-top: 6px;">${isAr ? "تحسين ملفي &#8592;" : "Improve profile &#8594;"}</a>
+            </td>
+          </tr>
+        </table>`
       : "";
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">
-      <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0a2a6e 100%); padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px; letter-spacing: 1px;">MPLOYEDIN</h1>
-        <p style="color: #bfdbfe; margin: 8px 0 0; font-size: 14px;">
-          ${isAr ? "ملخصك اليومي" : "Your Daily Digest"}
-        </p>
-      </div>
+      ${emailHeader(isAr ? "ملخصك اليومي" : "Your Daily Digest", { baseUrl })}
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
         <p style="color: #374151; line-height: 1.6;">${greeting},</p>
         <p style="color: #6b7280; font-size: 14px;">
-          ${isAr
-            ? `وجدنا لك ${jobs.length} وظائف مطابقة بناءً على ملفك الشخصي 👀`
-            : `We found some great job matches based on your profile 👀:`
-          }
+          ${intro}
         </p>
 
         ${
@@ -229,14 +300,16 @@ function buildDigestEmail(data: DigestEmailData): string {
         }
 
         ${viewsSection}
+        ${improveSection}
       </div>
-      <div style="padding: 16px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background: #f9fafb;">
-        <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
-          ${isAr ? "تتلقى هذا البريد بناءً على إعداداتك." : "You're receiving this based on your notification settings."}
-          <a href="${baseUrl}/${locale}/job-seeker/settings/notifications" style="color: #6b7280;">${isAr ? "إدارة التفضيلات" : "Manage preferences"}</a> |
-          <a href="${baseUrl}/api/unsubscribe?ref=digest" style="color: #6b7280;">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>
-        </p>
-      </div>
+      ${emailFooter({
+        locale,
+        baseUrl,
+        reason: isAr
+          ? "تتلقى هذا البريد لأنك فعّلت توصيات الوظائف."
+          : "You're receiving this because you enabled job recommendations.",
+        unsubRef: "digest",
+      })}
     </div>
   `;
 }

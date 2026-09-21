@@ -36,6 +36,13 @@ export interface INotificationPreference extends Document {
   lastEmailSentAt?: Date;
   lastDigestSentAt?: Date;
   lastReEngagementSentAt?: Date;
+  /**
+   * Cooldown clock for the profile-completion reminder. The cron documented a
+   * 14-day gap and computed the threshold, but never had a field to compare
+   * against — so the reminder went out every single day to every seeker under
+   * the completeness threshold.
+   */
+  lastProfileReminderSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -139,6 +146,7 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
     lastEmailSentAt: Date,
     lastDigestSentAt: Date,
     lastReEngagementSentAt: Date,
+    lastProfileReminderSentAt: Date,
   },
   { timestamps: true },
 );

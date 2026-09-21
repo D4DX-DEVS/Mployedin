@@ -8,6 +8,7 @@ import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiProfileFillSchema } from "@/lib/validators/ai";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 
 type SectionId = "summary" | "skills" | "experience" | "education" | "languages";
 
@@ -147,17 +148,7 @@ ${sectionPrompt}`;
   let completeness = 0;
   if (updated) {
     const doc = updated.toObject ? updated.toObject() : updated;
-    if (doc.userId) completeness += 10;
-    if (doc.nationality) completeness += 10;
-    if (doc.currentLocation) completeness += 5;
-    if (doc.summary) completeness += 10;
-    if (Array.isArray(doc.skills) && doc.skills.length) completeness += 20;
-    if (Array.isArray(doc.experience) && doc.experience.length) completeness += 20;
-    if (Array.isArray(doc.education) && doc.education.length) completeness += 15;
-    if (Array.isArray(doc.languages) && doc.languages.length) completeness += 5;
-    const socialLinks = doc.socialLinks as Array<{ label?: string }> | undefined;
-    if (doc.linkedin || socialLinks?.some((l: { label?: string }) => l.label?.toLowerCase() === "linkedin")) completeness += 5;
-    completeness = Math.min(100, completeness);
+    completeness = profileCompletenessScore(doc);
     await JobSeeker.updateOne({ userId: ctx.userId }, { $set: { profileCompleteness: completeness } });
   }
 
