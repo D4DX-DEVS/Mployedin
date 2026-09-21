@@ -6,6 +6,7 @@ import { validateBody } from "@/lib/validators";
 import SkillConfirmation from "@/models/SkillConfirmation";
 import JobSeeker from "@/models/JobSeeker";
 import type { UserRole } from "@/models/User";
+import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -19,20 +20,7 @@ const confirmationSchema = z.object({
 async function recalcCompleteness(userId: string) {
   const doc = await JobSeeker.findOne({ userId }).lean();
   if (!doc) return;
-  let completeness = 0;
-  if (doc.userId) completeness += 10;
-  if (doc.nationality) completeness += 10;
-  if (doc.currentLocation) completeness += 5;
-  if (doc.summary) completeness += 10;
-  if (Array.isArray(doc.skills) && doc.skills.length) completeness += 20;
-  if (Array.isArray(doc.experience) && doc.experience.length) completeness += 20;
-  if (Array.isArray(doc.education) && doc.education.length) completeness += 15;
-  if (Array.isArray(doc.languages) && doc.languages.length) completeness += 5;
-  const hasLinkedin = doc.socialLinks?.some(
-    (l: { label?: string }) => l.label?.toLowerCase() === "linkedin",
-  );
-  if (hasLinkedin) completeness += 5;
-  completeness = Math.min(100, completeness);
+  const completeness = profileCompletenessScore(doc);
   await JobSeeker.updateOne({ userId }, { $set: { profileCompleteness: completeness } });
 }
 

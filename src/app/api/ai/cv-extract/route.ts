@@ -15,6 +15,7 @@ import { uploadBuffer } from "@/lib/storage/spaces";
 import mammoth from "mammoth";
 import { createHash } from "crypto";
 import logger from "@/lib/logger";
+import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -300,7 +301,7 @@ Rules:
     );
 
     // Recalculate profile completeness
-    const completeness = calculateCompleteness(seeker.toObject(), extracted);
+    const completeness = profileCompletenessScore(seeker.toObject(), extracted);
     await JobSeeker.updateOne({ userId }, { $set: { profileCompleteness: completeness } });
 
     await logActivity({
@@ -334,26 +335,3 @@ Rules:
   }
 }
 
-function calculateCompleteness(seeker: Record<string, unknown>, extracted: Record<string, unknown>): number {
-  let score = 0;
-  const fields = [
-    { key: "userId", weight: 10 },
-    { key: "nationality", weight: 10 },
-    { key: "currentLocation", weight: 5 },
-    { key: "summary", weight: 10 },
-    { key: "skills", weight: 20, isArray: true },
-    { key: "experience", weight: 20, isArray: true },
-    { key: "education", weight: 15, isArray: true },
-    { key: "languages", weight: 5, isArray: true },
-    { key: "socialLinks", weight: 5, isArray: true },
-  ];
-
-  for (const f of fields) {
-    const val = seeker[f.key] ?? extracted[f.key === "summary" ? "headline" : f.key];
-    if (f.isArray ? Array.isArray(val) && (val as unknown[]).length > 0 : val) {
-      score += f.weight;
-    }
-  }
-
-  return Math.min(100, score);
-}

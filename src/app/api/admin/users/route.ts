@@ -295,11 +295,30 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
+  /* The bulk path has always refused these against the caller's own account;
+     the single-user path did not, so the row controls on the users table could
+     sign the admin out of their own session (isActive: false) or strip their
+     own admin role, with no way back through the UI. */
+  if (String(userId) === String(ctx.userId)) {
+    if (isActive === false) {
+      return NextResponse.json({ error: "You cannot deactivate your own account." }, { status: 400 });
+    }
+    if (role && role !== ctx.role) {
+      return NextResponse.json({ error: "You cannot change your own role." }, { status: 400 });
+    }
+  }
+
   const updateData: Record<string, unknown> = {};
+  /* `$set: { customPermissions: undefined }` is a no-op — Mongoose drops
+     undefined values from the update, so a map built for the OLD role survived
+     both a role change and a switch back to role defaults. It stayed inert
+     (canAccess only reads it in custom mode) but the editor prefilled from it
+     the next time custom was switched on. Unset the field for real. */
+  const unsetData: Record<string, unknown> = {};
   if (role) {
     updateData.role = role;
     updateData.permissionMode = "role_default";
-    updateData.customPermissions = undefined;
+    unsetData.customPermissions = "";
   }
   if (isActive !== undefined) updateData.isActive = isActive;
   if (name) updateData.name = name;
@@ -320,9 +339,19 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     updateData.permissionMode = permissionMode;
     if (permissionMode === "custom" && customPermissions) {
       updateData.customPermissions = customPermissions;
+      delete unsetData.customPermissions;
     } else if (permissionMode === "role_default") {
-      updateData.customPermissions = undefined;
+      delete updateData.customPermissions;
+      unsetData.customPermissions = "";
     }
+  }
+
+  /* An address already on another account used to reach Mongo and come back as
+     an E11000 the UI could only show as an unexpected error. The admin editing
+     a user sees the conflict named instead. */
+  if (email) {
+    const clash = await User.findOne({ email, _id: { $ne: userId } }).select("_id").lean();
+    if (clash) return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }
 
   const oldUser = await User.findById(userId)
@@ -330,7 +359,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     .lean<Record<string, unknown> | null>();
   const updated = await User.findByIdAndUpdate(
     userId,
-    { $set: updateData },
+    {
+      $set: updateData,
+      ...(Object.keys(unsetData).length ? { $unset: unsetData } : {}),
+    },
     { returnDocument: "after" }
   ).select("-passwordHash").lean();
 
@@ -353,7 +385,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   // `role: "employer"` with no way to tell what the role had been, or whether
   // the field changed at all. Snapshot the same keys from the pre-update doc.
   const before: Record<string, unknown> = {};
-  for (const key of Object.keys(updateData)) {
+  for (const key of [...Object.keys(updateData), ...Object.keys(unsetData)]) {
     before[key] = oldUser?.[key] ?? null;
   }
 
@@ -501,6 +533,9 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
   const { userId, permanent } = body as { userId: string; permanent?: boolean };
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  if (String(userId) === String(ctx.userId)) {
+    return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
+  }
 
   const user = await User.findById(userId);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });

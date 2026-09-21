@@ -48,6 +48,7 @@ jest.mock("@/lib/notifications/trigger", () => ({
 const userUpdateOneMock = jest.fn().mockResolvedValue({ modifiedCount: 1 });
 const userFindByIdMock = jest.fn();
 const userFindByIdAndUpdateMock = jest.fn();
+const userFindOneMock = jest.fn();
 
 jest.mock("@/models/User", () => ({
   __esModule: true,
@@ -56,7 +57,7 @@ jest.mock("@/models/User", () => ({
     findById: (...a: unknown[]) => userFindByIdMock(...a),
     findByIdAndUpdate: (...a: unknown[]) => userFindByIdAndUpdateMock(...a),
     deleteOne: jest.fn(),
-    findOne: jest.fn(),
+    findOne: (...a: unknown[]) => userFindOneMock(...a),
     find: jest.fn(),
     countDocuments: jest.fn().mockResolvedValue(5),
   },
@@ -237,5 +238,125 @@ describe("PATCH /api/admin/users - role conversion archives, never deletes", () 
         $unset: { customPermissions: "" },
       },
     );
+  });
+});
+
+/**
+ * The single-user PATCH cleared `customPermissions` by assigning `undefined`
+ * to it, which Mongoose strips out of the update entirely — so switching a
+ * user back to role defaults, or changing their role, left the old map on the
+ * document. It was inert (canAccess only reads it in custom mode), but the
+ * permission editor prefilled from it the next time custom mode was enabled,
+ * offering an admin a map built for a role the user no longer has.
+ */
+describe("PATCH /api/admin/users - leaving custom mode clears the map", () => {
+  let PATCH: (req: NextRequest, ctx?: unknown) => Promise<Response>;
+
+  beforeAll(async () => {
+    const route = await import("@/app/api/admin/users/route");
+    PATCH = route.PATCH as typeof PATCH;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    employerExistsMock.mockResolvedValue({ _id: "emp_1" });
+  });
+
+  it("unsets customPermissions when the mode goes back to role_default", async () => {
+    mockOldUser({ _id: TARGET_ID, role: "agent", permissionMode: "custom" });
+    mockUpdatedUser({ _id: TARGET_ID, role: "agent", permissionMode: "role_default" });
+
+    await PATCH(patchRequest({ userId: TARGET_ID, permissionMode: "role_default" }));
+
+    const [, update] = userFindByIdAndUpdateMock.mock.calls.at(-1)!;
+    expect(update.$set).toMatchObject({ permissionMode: "role_default" });
+    expect(update.$set).not.toHaveProperty("customPermissions");
+    expect(update.$unset).toEqual({ customPermissions: "" });
+  });
+
+  it("unsets customPermissions when the role changes", async () => {
+    mockOldUser({ _id: TARGET_ID, role: "agent", permissionMode: "custom" });
+    mockUpdatedUser({ _id: TARGET_ID, role: "employer", permissionMode: "role_default" });
+
+    await PATCH(patchRequest({ userId: TARGET_ID, role: "employer" }));
+
+    const [, update] = userFindByIdAndUpdateMock.mock.calls.at(-1)!;
+    expect(update.$set).toMatchObject({ role: "employer", permissionMode: "role_default" });
+    expect(update.$unset).toEqual({ customPermissions: "" });
+  });
+
+  it("writes the map, and no $unset, when custom mode is turned on", async () => {
+    mockOldUser({ _id: TARGET_ID, role: "agent", permissionMode: "role_default" });
+    mockUpdatedUser({ _id: TARGET_ID, role: "agent", permissionMode: "custom" });
+
+    await PATCH(
+      patchRequest({
+        userId: TARGET_ID,
+        permissionMode: "custom",
+        customPermissions: { jobs: ["read"] },
+      }),
+    );
+
+    const [, update] = userFindByIdAndUpdateMock.mock.calls.at(-1)!;
+    expect(update.$set).toMatchObject({ permissionMode: "custom", customPermissions: { jobs: ["read"] } });
+    expect(update.$unset).toBeUndefined();
+  });
+});
+
+/** Shapes `User.findOne(...).select(...).lean()` for the email-conflict check. */
+function mockEmailClash(doc: Record<string, unknown> | null) {
+  userFindOneMock.mockReturnValue({
+    select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(doc) }),
+  });
+}
+
+describe("PATCH /api/admin/users - editing name and email", () => {
+  let PATCH: (req: NextRequest, ctx?: unknown) => Promise<Response>;
+
+  beforeAll(async () => {
+    const route = await import("@/app/api/admin/users/route");
+    PATCH = route.PATCH as typeof PATCH;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockEmailClash(null);
+  });
+
+  it("saves a name and email change and audits it as a plain user update", async () => {
+    mockOldUser({ role: "employer", name: "Old Name", email: "old@example.com" });
+    mockUpdatedUser({ _id: TARGET_ID, role: "employer", name: "New Name", email: "new@example.com" });
+
+    const res = await PATCH(patchRequest({ userId: TARGET_ID, name: "New Name", email: "new@example.com" }));
+
+    expect(res.status).toBe(200);
+    expect(userFindByIdAndUpdateMock).toHaveBeenCalledWith(
+      TARGET_ID,
+      expect.objectContaining({ $set: expect.objectContaining({ name: "New Name", email: "new@example.com" }) }),
+      expect.anything(),
+    );
+    expect(logActivityMock).toHaveBeenCalledWith(expect.objectContaining({ action: "user.update" }));
+  });
+
+  /* Without this the duplicate reaches Mongo and returns an E11000 the dialog
+     can only render as an unexpected error. */
+  it("rejects an address that belongs to another account with a 409", async () => {
+    mockEmailClash({ _id: "507f1f77bcf86cd799439022" });
+    mockOldUser({ role: "employer", email: "old@example.com" });
+
+    const res = await PATCH(patchRequest({ userId: TARGET_ID, email: "taken@example.com" }));
+
+    expect(res.status).toBe(409);
+    expect(userFindByIdAndUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("does not run the conflict query when no email is being changed", async () => {
+    mockOldUser({ role: "employer", name: "Old Name" });
+    mockUpdatedUser({ _id: TARGET_ID, role: "employer", name: "Renamed" });
+
+    const res = await PATCH(patchRequest({ userId: TARGET_ID, name: "Renamed" }));
+
+    expect(res.status).toBe(200);
+    expect(userFindOneMock).not.toHaveBeenCalled();
   });
 });

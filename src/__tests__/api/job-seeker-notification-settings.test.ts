@@ -14,7 +14,8 @@ let role = "job_seeker";
 let seekerDoc: Record<string, unknown> | null = null;
 let prefDoc: Record<string, unknown> | null = null;
 
-const jobSeekerUpdate = jest.fn(async (..._args: unknown[]) => ({}));
+const jobSeekerUpdate = jest.fn(async (..._args: unknown[]): Promise<Record<string, unknown>> => ({ userId: SEEKER_USER }));
+const jobSeekerCompletenessUpdate = jest.fn(async (..._args: unknown[]) => ({}));
 const prefUpdate = jest.fn(async (..._args: unknown[]) => ({}));
 
 jest.mock("@/lib/db/mongoose", () => ({
@@ -34,6 +35,9 @@ jest.mock("@/models/JobSeeker", () => ({
   default: {
     findOne: () => ({ select: () => ({ lean: async () => seekerDoc }) }),
     findOneAndUpdate: (...args: unknown[]) => jobSeekerUpdate(...args),
+    // Saving settings also refreshes profileCompleteness; without this the
+    // recompute threw into its own catch and the path went untested.
+    updateOne: (...args: unknown[]) => jobSeekerCompletenessUpdate(...args),
   },
 }));
 jest.mock("@/models/NotificationPreference", () => ({
@@ -139,5 +143,24 @@ describe("job seeker settings — notification switches", () => {
   it("does not touch preferences when the body carries no switches", async () => {
     await patch({ settings: { instantBooking: false } });
     expect(prefUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("profile completeness on settings save", () => {
+  it("refreshes the stored figure, which this route never used to do", async () => {
+    // /api/job-seekers/settings wrote seeker fields without recomputing, so the
+    // stored completeness drifted from what the profile page renders.
+    jobSeekerUpdate.mockResolvedValueOnce({
+      userId: SEEKER_USER,
+      skills: ["welding"],
+      education: [{ degree: "B.Com" }],
+    });
+
+    await patch({ settings: { instantBooking: false } });
+
+    expect(jobSeekerCompletenessUpdate).toHaveBeenCalledWith(
+      { userId: SEEKER_USER },
+      { $set: { profileCompleteness: 45 } }, // userId 10 + skills 20 + education 15
+    );
   });
 });

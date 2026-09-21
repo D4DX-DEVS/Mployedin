@@ -5,11 +5,13 @@
  *   1. Resolve the digest gate (see digestGate.ts) — each half of the digest is
  *      switched on or off on its own, so "Job Match Alerts: off" silences the
  *      job section without also hiding who viewed the profile
- *   2. Run match scoring against active jobs (reuses matchScore.ts)
- *   3. Pick top 5 jobs scoring ≥ 40
- *   4. Aggregate profile views from last 24h
- *   5. Raise the in-app "new jobs matching you" bell entry
- *   6. Emit "notification/daily-digest" event with combined data
+ *   2. Skip the job half entirely when the profile states fewer than
+ *      MIN_PROFILE_SIGNALS things — its percentages would be neutral defaults
+ *   3. Run match scoring against active jobs (reuses matchScore.ts)
+ *   4. Pick top 5 jobs scoring ≥ MIN_MATCH_SCORE
+ *   5. Aggregate profile views from last 24h
+ *   6. Raise the in-app "new jobs matching you" bell entry
+ *   7. Emit "notification/daily-digest" event with combined data
  *
  * This is the platform's ONLY "new jobs for you" push. A second daily cron
  * (/api/cron/job-alerts, 07:00 UTC) used to send its own, weaker version of the
@@ -31,11 +33,18 @@ import {
   calculateMatchScore,
   seekerProfileFromDoc,
   jobProfileFromDoc,
+  profileSignalCount,
+  MIN_PROFILE_SIGNALS,
   SEEKER_MATCH_FIELDS,
   type JobProfile,
 } from "@/lib/matchScore";
+import { isUndeliverableAddress } from "@/lib/communications/email";
+import {
+  profileCompletenessScore,
+  PROFILE_COMPLETENESS_FIELDS,
+} from "@/lib/jobSeeker/profileCompleteness";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
-import { digestGateFor, type DigestGate } from "@/lib/notifications/digestGate";
+import { digestGateFor, isWithinDigestCooldown, type DigestGate } from "@/lib/notifications/digestGate";
 import { notify } from "@/lib/notifications/trigger";
 
 interface ActiveJob {
@@ -44,13 +53,20 @@ interface ActiveJob {
   company: string;
   location: string;
   isRemote: boolean;
-  salary?: { min?: number; max?: number };
+  salary?: { min?: number; max?: number; currency?: string; period?: string };
   requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number };
   jobProfile: JobProfile;
 }
 
 const BATCH_SIZE = 50;
-const MIN_MATCH_SCORE = 40;
+/**
+ * Strictly above `NO_SIGNAL_CEILING` (46): at 40 a profile that had stated
+ * nothing still cleared the bar against 26 of 62 live jobs, because every
+ * component scores an unknown field as neutral. Five "46% match" cards then
+ * went out every morning to seekers who had never entered a skill, a country
+ * or a salary. See matchScore.ts for the arithmetic.
+ */
+const MIN_MATCH_SCORE = 50;
 const TOP_JOBS_COUNT = 5;
 
 export const dailyRecommendationsCron = inngest.createFunction(
@@ -147,8 +163,12 @@ export const dailyRecommendationsCron = inngest.createFunction(
           for (const { userId, gate } of batch) {
             try {
               // Fetch seeker profile
+              // Both projections: the match fields feed scoring, the
+              // completeness fields feed the "improve your matches" block. A
+              // field missing from a projection scores as absent rather than
+              // erroring, so neither list may be dropped.
               const seeker = await JobSeeker.findOne({ userId })
-                .select(SEEKER_MATCH_FIELDS)
+                .select(`${SEEKER_MATCH_FIELDS} ${PROFILE_COMPLETENESS_FIELDS}`)
                 .lean();
 
               if (!seeker) continue;
@@ -167,8 +187,14 @@ export const dailyRecommendationsCron = inngest.createFunction(
               );
 
               // Score and rank jobs — skipped outright when the seeker turned
-              // job match alerts off.
-              const scoredJobs = !gate.jobs
+              // job match alerts off, and when the profile states too little
+              // for a match percentage to mean anything. Those seekers are
+              // already covered by the profile-completion reminder, so the
+              // honest move is to send them nothing here rather than five
+              // cards built out of neutral defaults.
+              const hasProfileSignal =
+                profileSignalCount(seekerProfile) >= MIN_PROFILE_SIGNALS;
+              const scoredJobs = !gate.jobs || !hasProfileSignal
                 ? []
                 : activeJobs
                     .filter((j) => !appliedJobIds.has(j._id))
@@ -212,6 +238,34 @@ export const dailyRecommendationsCron = inngest.createFunction(
                 .select("name email locale")
                 .lean();
               if (!user?.email) continue;
+              // Seed/QA accounts sit on reserved domains that sendEmail refuses
+              // by throwing. Emitting for them anyway meant the digest worker
+              // failed, Inngest retried it, and — because the failure skipped
+              // the step that stamps lastDigestSentAt — the 23-hour gate never
+              // closed either. 116 of today's 310 digest rows were that loop.
+              if (isUndeliverableAddress(user.email)) continue;
+
+              // Claim today's digest for this seeker before emitting anything.
+              //
+              // The 23-hour gate used to be *read* here and *written* by the
+              // digest worker after a successful send, so any failure left it
+              // open: the worker retried, this batch step retried, and each
+              // attempt sent again. Across the 10–16 September SMTP outage that
+              // produced 872 delivery attempts a day for ~224 seekers — four
+              // per person, all failing, deepening the Gmail login throttle
+              // that caused the outage. (No seeker was ever *delivered* two
+              // digests in a day; the duplicates were all failed retries.)
+              //
+              // One atomic findOneAndUpdate is the claim: whoever flips the
+              // timestamp wins, everyone else sees a fresh pre-image and backs
+              // off. Upsert covers seekers with no preference document yet.
+              const claimedAt = new Date();
+              const before = await NotificationPreference.findOneAndUpdate(
+                { userId },
+                { $set: { lastDigestSentAt: claimedAt } },
+                { upsert: true, returnDocument: "before", projection: { lastDigestSentAt: 1 } },
+              ).lean<{ lastDigestSentAt?: Date } | null>();
+              if (isWithinDigestCooldown(before?.lastDigestSentAt, claimedAt)) continue;
 
               // Emit digest event
               await inngest.send({
@@ -230,6 +284,10 @@ export const dailyRecommendationsCron = inngest.createFunction(
                     salary: j.salary,
                   })),
                   profileViews,
+                  profile: {
+                    completeness: profileCompletenessScore(seeker),
+                    signals: profileSignalCount(seekerProfile),
+                  },
                 },
               });
 

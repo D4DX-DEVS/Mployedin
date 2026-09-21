@@ -22,7 +22,12 @@ import {
   jobProfileFromDoc,
   SEEKER_MATCH_FIELDS,
 } from "@/lib/matchScore";
-import { sendEmail } from "@/lib/communications/email";
+import { sendEmail, isUndeliverableAddress } from "@/lib/communications/email";
+import { emailHeader, emailProgressBar, emailFooter } from "@/lib/communications/emailLayout";
+import {
+  profileCompleteness,
+  type ProfileCompletenessItem,
+} from "@/lib/jobSeeker/profileCompleteness";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
 
 interface ActiveJobDoc {
@@ -222,21 +227,33 @@ export const profileCompletionCron = inngest.createFunction(
     const incompleteSeekers = await step.run(
       "find-incomplete-seekers",
       async () => {
+        // Query wide, decide narrow. The stored `profileCompleteness` is only
+        // as fresh as the last write path that bothered to recompute it, and
+        // several that edit seeker fields never did — so a stored value is
+        // evidence of nothing on its own. Pull the fields the formula reads and
+        // score each document live below.
         const seekers = await JobSeeker.find({
-          profileCompleteness: { $lt: PROFILE_COMPLETION_THRESHOLD },
           createdAt: { $lt: minAgeThreshold },
         })
-          .select("userId profileCompleteness")
+          .select(
+            "userId profileCompleteness nationality currentLocation summary " +
+              "skills experience education languages linkedin socialLinks",
+          )
           .lean();
 
         const userIds = seekers.map((s) =>
           (s.userId as { toString(): string }).toString(),
         );
 
-        // Filter by preferences and cooldown
+        // Filter by preferences and cooldown. The cooldown clause is the one
+        // that was missing: this cron computed `cooldownThreshold` and then
+        // never compared anything against it, so its documented 14-day gap was
+        // never enforced and every seeker under the threshold was reminded
+        // again every single morning.
         const excludePrefs = await NotificationPreference.find({
           userId: { $in: userIds },
           $or: [
+            { lastProfileReminderSentAt: { $gte: cooldownThreshold } },
             { unsubscribedAll: true },
             { "categories.marketing.enabled": false },
           ],
@@ -248,12 +265,40 @@ export const profileCompletionCron = inngest.createFunction(
           excludePrefs.map((p) => p.userId.toString()),
         );
 
-        return seekers.filter(
-          (s) =>
-            !excludeSet.has(
-              (s.userId as { toString(): string }).toString(),
-            ),
-        );
+        const targets: Array<{
+          userId: string;
+          score: number;
+          missing: ProfileCompletenessItem[];
+          done: number;
+          total: number;
+        }> = [];
+
+        for (const s of seekers) {
+          const userId = (s.userId as { toString(): string }).toString();
+          if (excludeSet.has(userId)) continue;
+
+          const result = profileCompleteness(s as Parameters<typeof profileCompleteness>[0]);
+
+          // Heal the drift we just measured, so the profile page, the admin
+          // seeker lists and the talent-search sort all agree with this email.
+          if (result.score !== (s.profileCompleteness ?? -1)) {
+            await JobSeeker.updateOne(
+              { userId: s.userId },
+              { $set: { profileCompleteness: result.score } },
+            );
+          }
+
+          if (result.score >= PROFILE_COMPLETION_THRESHOLD) continue;
+          targets.push({
+            userId,
+            score: result.score,
+            missing: result.missing,
+            done: result.done.length,
+            total: result.total,
+          });
+        }
+
+        return targets;
       },
     );
 
@@ -262,23 +307,29 @@ export const profileCompletionCron = inngest.createFunction(
     for (const seeker of incompleteSeekers.slice(0, 50)) {
       try {
         await step.run(
-          `profile-reminder-${(seeker.userId as { toString(): string }).toString()}`,
+          `profile-reminder-${seeker.userId}`,
           async () => {
-            const userId = (seeker.userId as { toString(): string }).toString();
-            const user = await User.findById(userId)
+            const user = await User.findById(seeker.userId)
               .select("name email locale")
               .lean();
             if (!user?.email) return;
+            // sendEmail throws on reserved domains, which Inngest would retry.
+            // Skip seed accounts here so a permanent failure never becomes a
+            // retry loop. (Same guard as the daily digest producer.)
+            if (isUndeliverableAddress(user.email)) return;
 
             const isAr = user.locale === "ar";
             const baseUrl =
               process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
-            const completeness = seeker.profileCompleteness ?? 0;
+            const completeness = seeker.score;
 
             const html = buildProfileCompletionEmail({
               userName: user.name,
               locale: user.locale ?? "en",
               completeness,
+              done: seeker.done,
+              total: seeker.total,
+              missing: seeker.missing,
               baseUrl,
             });
 
@@ -289,6 +340,15 @@ export const profileCompletionCron = inngest.createFunction(
                 : `Your profile is ${completeness}% complete — finish it now`,
               html,
             });
+
+            // Start the cooldown only once the send actually succeeded, so a
+            // failed reminder is retried tomorrow rather than suppressed for
+            // a fortnight.
+            await NotificationPreference.updateOne(
+              { userId: seeker.userId },
+              { $set: { lastProfileReminderSentAt: new Date() } },
+              { upsert: true },
+            );
 
             sent++;
           },
@@ -333,9 +393,7 @@ function buildReEngagementEmail(data: ReEngagementEmailData): string {
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">
-      <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
-      </div>
+      ${emailHeader(undefined, { baseUrl })}
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
         <p>${isAr ? `مرحباً <strong>${esc(userName)}</strong>` : `Hi <strong>${esc(userName)}</strong>`},</p>
         <p style="color: #374151; font-size: 16px;">
@@ -350,43 +408,95 @@ function buildReEngagementEmail(data: ReEngagementEmailData): string {
           </a>
         </div>
       </div>
-      <div style="padding: 16px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background: #f9fafb;">
-        <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
-          <a href="${baseUrl}/${locale}/job-seeker/settings/notifications" style="color: #6b7280;">${isAr ? "إدارة التفضيلات" : "Manage preferences"}</a> |
-          <a href="${baseUrl}/api/unsubscribe?ref=re-engagement" style="color: #6b7280;">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>
-        </p>
-      </div>
+      ${emailFooter({
+        locale,
+        baseUrl,
+        reason: isAr
+          ? "تتلقى هذا البريد لأن توصيات الوظائف مفعّلة لديك."
+          : "You're receiving this because you have job recommendations enabled.",
+        unsubRef: "re-engagement",
+      })}
     </div>
   `;
 }
 
-interface ProfileCompletionEmailData {
+export interface ProfileCompletionEmailData {
   userName: string;
   locale: string;
   completeness: number;
+  /** How many scored fields are already filled in. */
+  done: number;
+  /** How many scored fields exist in total. */
+  total: number;
+  /** The fields still outstanding, heaviest first. */
+  missing: ProfileCompletenessItem[];
   baseUrl: string;
 }
 
-function buildProfileCompletionEmail(data: ProfileCompletionEmailData): string {
-  const { userName, locale, completeness, baseUrl } = data;
+/**
+ * Copy for each scored field. The old email hardcoded four actions with invented
+ * boosts — it promised "Attach Resume ↑ Boost 10%" even though the CV is not part
+ * of the completeness formula at all, and offered "Add Skills ↑ 8%" when skills
+ * are worth 20. Every row here is generated from the real missing fields and
+ * carries that field's real weight, so the numbers add up to the percentage
+ * shown at the top of the email.
+ */
+const COMPLETION_COPY: Record<
+  ProfileCompletenessItem["key"],
+  { en: { label: string; desc: string }; ar: { label: string; desc: string } }
+> = {
+  userId: {
+    en: { label: "Create your profile", desc: "Your account is the starting point" },
+    ar: { label: "أنشئ ملفك الشخصي", desc: "حسابك هو نقطة البداية" },
+  },
+  nationality: {
+    en: { label: "Add your nationality", desc: "Employers filter by work eligibility" },
+    ar: { label: "أضف جنسيتك", desc: "يصفّي أصحاب العمل حسب أهلية العمل" },
+  },
+  currentLocation: {
+    en: { label: "Add your current location", desc: "Surfaces roles near you" },
+    ar: { label: "أضف موقعك الحالي", desc: "يُظهر الوظائف القريبة منك" },
+  },
+  summary: {
+    en: { label: "Write a profile summary", desc: "The first thing recruiters read" },
+    ar: { label: "اكتب نبذة عنك", desc: "أول ما يقرأه مسؤولو التوظيف" },
+  },
+  skills: {
+    en: { label: "Add your skills", desc: "The single biggest factor in job matching" },
+    ar: { label: "أضف مهاراتك", desc: "العامل الأكبر في مطابقة الوظائف" },
+  },
+  experience: {
+    en: { label: "Add your work experience", desc: "Showcase your roles & responsibilities" },
+    ar: { label: "أضف خبراتك المهنية", desc: "اعرض أدوارك ومسؤولياتك" },
+  },
+  education: {
+    en: { label: "Add your education", desc: "Many roles screen on qualifications" },
+    ar: { label: "أضف مؤهلاتك الدراسية", desc: "تعتمد وظائف كثيرة على المؤهلات" },
+  },
+  languages: {
+    en: { label: "Add languages you speak", desc: "Essential for Gulf and multilingual roles" },
+    ar: { label: "أضف اللغات التي تتحدثها", desc: "أساسية لوظائف الخليج والوظائف متعددة اللغات" },
+  },
+  linkedin: {
+    en: { label: "Link your LinkedIn profile", desc: "Adds credibility to your application" },
+    ar: { label: "اربط حسابك على لينكدإن", desc: "يضيف مصداقية لطلبك" },
+  },
+};
+
+export function buildProfileCompletionEmail(data: ProfileCompletionEmailData): string {
+  const { userName, locale, completeness, done, total, missing, baseUrl } = data;
   const isAr = locale === "ar";
   const dir = isAr ? "rtl" : "ltr";
-  const remaining = 100 - completeness;
 
-  // Profile action items with boost percentages (Naukri-style gamification)
-  const actions = isAr
-    ? [
-        { label: "أرفق سيرتك الذاتية", boost: 10, desc: "أول ما ينظر إليه مسؤولو التوظيف" },
-        { label: "أضف مهاراتك", boost: 8, desc: "تطابق أفضل مع الوظائف" },
-        { label: "أكمل خبراتك المهنية", boost: 8, desc: "اعرض أدوارك ومسؤولياتك" },
-        { label: "أضف تفضيلاتك الوظيفية", boost: 5, desc: "احصل على توصيات أدق" },
-      ]
-    : [
-        { label: "Attach Resume", boost: 10, desc: "It is the first thing recruiters look at" },
-        { label: "Add Skills", boost: 8, desc: "Better matching with relevant jobs" },
-        { label: "Complete Work Experience", boost: 8, desc: "Showcase your role & responsibilities" },
-        { label: "Set Job Preferences", boost: 5, desc: "Get more accurate recommendations" },
-      ];
+  // Only ever ask for what is actually missing, heaviest first, capped so the
+  // email stays a nudge rather than a form.
+  const actions = missing
+    .filter((item) => item.key !== "userId")
+    .slice(0, 5)
+    .map((item) => {
+    const copy = COMPLETION_COPY[item.key][isAr ? "ar" : "en"];
+    return { label: copy.label, boost: item.weight, desc: copy.desc };
+  });
 
   const actionRows = actions
     .map(
@@ -412,44 +522,36 @@ function buildProfileCompletionEmail(data: ProfileCompletionEmailData): string {
     )
     .join("");
 
-  const completedActions = Math.round(completeness / 100 * 15);
-  const pendingActions = 15 - completedActions;
+  // Counts are a fraction of the fields the formula actually scores. The old
+  // copy divided the percentage into a fictitious 15 actions and zero-padded
+  // the result, so an untouched profile read "00 actions completed + 15 actions
+  // pending" — two numbers that corresponded to nothing.
+  const pendingActions = total - done;
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">
-      <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0a2a6e 100%); padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px; letter-spacing: 1px;">MPLOYEDIN</h1>
-      </div>
+      ${emailHeader(undefined, { baseUrl })}
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
         <p style="color: #374151; line-height: 1.6;">${isAr ? `مرحباً <strong>${esc(userName)}</strong>` : `Hi <strong>${esc(userName)}</strong>`},</p>
 
-        <!-- Gamification section -->
+        <!-- Progress section -->
         <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 16px 0; text-align: center; border: 1px solid #e5e7eb;">
           <p style="margin: 0 0 4px; color: #111827; font-size: 16px; font-weight: 600;">
             ${isAr ? `ملفك الشخصي مكتمل بنسبة ${completeness}%، لماذا يجب أن تصل لـ 100%` : `Your profile is ${completeness}% complete, here is why you should aim for a 100%`}
           </p>
 
-          <!-- Circular-style progress indicator -->
-          <div style="margin: 16px auto; width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(#0D6FD8 ${completeness * 3.6}deg, #e5e7eb ${completeness * 3.6}deg); display: flex; align-items: center; justify-content: center;">
-            <div style="width: 60px; height: 60px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center;">
-              <span style="color: #d97706; font-size: 18px; font-weight: 700;">${completeness}%</span>
-            </div>
-          </div>
+          ${emailProgressBar(completeness, { rtl: isAr })}
 
-          <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px;">
-            <div>
-              <span style="color: #059669; font-size: 14px;">✅</span>
-              <span style="color: #374151; font-size: 13px; margin-${isAr ? "right" : "left"}: 4px;">
-                ${String(completedActions).padStart(2, "0")} ${isAr ? "إجراءات مكتملة" : "actions completed"}
-              </span>
-            </div>
-            <div>
-              <span style="color: #d97706; font-size: 14px;">➕</span>
-              <span style="color: #374151; font-size: 13px; margin-${isAr ? "right" : "left"}: 4px;">
-                ${String(pendingActions).padStart(2, "0")} ${isAr ? "إجراءات معلقة" : "actions pending"}
-              </span>
-            </div>
-          </div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin-top: 14px;">
+            <tr>
+              <td align="center" style="color: #374151; font-size: 13px; line-height: 20px; font-family: Arial, sans-serif;">
+                <span style="color: #059669;">&#10004;</span>
+                ${isAr ? `${done} من ${total} مكتملة` : `${done} of ${total} completed`}
+                <span style="color: #9ca3af;">&nbsp;·&nbsp;</span>
+                <span style="color: #b45309;">${isAr ? `${pendingActions} متبقية` : `${pendingActions} to go`}</span>
+              </td>
+            </tr>
+          </table>
         </div>
 
         <!-- Benefits -->
@@ -513,12 +615,14 @@ function buildProfileCompletionEmail(data: ProfileCompletionEmailData): string {
           </a>
         </div>
       </div>
-      <div style="padding: 16px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background: #f9fafb;">
-        <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
-          <a href="${baseUrl}/${locale}/job-seeker/settings/notifications" style="color: #6b7280;">${isAr ? "إدارة التفضيلات" : "Manage preferences"}</a> |
-          <a href="${baseUrl}/api/unsubscribe?ref=profile" style="color: #6b7280;">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>
-        </p>
-      </div>
+      ${emailFooter({
+        locale,
+        baseUrl,
+        reason: isAr
+          ? "تتلقى هذا البريد لأن ملفك الشخصي غير مكتمل."
+          : "You're receiving this because your profile is incomplete.",
+        unsubRef: "profile",
+      })}
     </div>
   `;
 }

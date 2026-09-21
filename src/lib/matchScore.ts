@@ -18,6 +18,17 @@ export interface SeekerProfile {
   /** All preferred countries (lower-cased). Falls back to [location] when omitted. */
   locations?: string[];
   experienceYears: number;
+  /**
+   * Whether `experienceYears` is a stated figure or merely the absence of one.
+   *
+   * A profile that has never been filled in and a declared fresher both arrive
+   * as `experienceYears: 0`, and most jobs leave `experienceMin` at 0 — so the
+   * blank profile used to land inside "0 to 30" and score a *perfect* 100 on
+   * experience. Omit this field to keep the literal reading (the default);
+   * `seekerProfileFromDoc` sets it to false only when the document says
+   * nothing, which scores neutral instead.
+   */
+  experienceKnown?: boolean;
   salaryExpectation: number; // mid-point of preferred salary range, 0 disables salary component
   /** ISO currency code of salaryExpectation (e.g. "USD", "INR"). "" if unknown. */
   salaryCurrency?: string;
@@ -318,6 +329,61 @@ export interface MatchScoreWeights {
   salary?: number;     // fraction, typically 0.2
 }
 
+/**
+ * True when the seeker has told us anything at all about their career length.
+ *
+ * Absent means "assume stated" so a hand-built profile keeps its literal
+ * `experienceYears`; only `seekerProfileFromDoc` — which can see whether the
+ * document is silent — ever sets this to false.
+ */
+function hasExperienceSignal(seeker: SeekerProfile): boolean {
+  return seeker.experienceKnown !== false;
+}
+
+/**
+ * How many independent things this profile actually tells us. Every component
+ * of the score treats an unstated field as neutral rather than as a zero — the
+ * right call for ranking, but it means a profile that says *nothing* still
+ * produces a plausible-looking percentage against every job on the platform.
+ * Count the real signals instead of reading that percentage as evidence.
+ *
+ * Used to decide whether a seeker has enough of a profile to be sent job
+ * matches at all; it is not part of the score.
+ */
+export function profileSignalCount(seeker: SeekerProfile): number {
+  const signals = [
+    seeker.skills.length > 0,
+    (seeker.locations?.length ? seeker.locations : [seeker.location]).some(Boolean),
+    hasExperienceSignal(seeker),
+    seeker.salaryExpectation > 0,
+    (seeker.preferredRoles?.length ?? 0) > 0,
+    (seeker.educationLevel ?? 0) > 0,
+    (seeker.cvText ?? "").trim().length > 0,
+  ];
+  return signals.filter(Boolean).length;
+}
+
+/**
+ * Below this many stated signals, a seeker's match percentages are made almost
+ * entirely of neutral defaults, so "here are your matches" would be a claim the
+ * data cannot support. Such a seeker gets the profile-completion nudge
+ * (`profileCompletionCron`) instead of a job digest.
+ */
+export const MIN_PROFILE_SIGNALS = 2;
+
+/**
+ * The highest score a profile with no stated signals can reach: skills fall to
+ * the no-evidence floor (0.15) while location, experience and salary all sit at
+ * their neutral 0.5 — except location, which a fully remote job takes to 1.0.
+ *
+ *   0.15·0.4 + 1.0·0.2 + 0.5·0.2 + 0.5·0.2 = 0.46
+ *
+ * Any digest threshold must sit strictly above this, or an empty profile
+ * qualifies for every remote job on the platform. `digestMatchFloor.test.ts`
+ * pins it against the whole job matrix.
+ */
+export const NO_SIGNAL_CEILING = 46;
+
 /** Opposite modes cost this many points; a hybrid step costs the smaller one. */
 const WORK_MODE_OPPOSITE_PENALTY = 15;
 const WORK_MODE_ADJACENT_PENALTY = 6;
@@ -431,6 +497,13 @@ export function calculateMatchDetail(seeker: SeekerProfile, job: JobProfile, wei
   // ── Experience (default 20%) ─────────────────────────────────────────────────
   const experienceScore = (() => {
     const { minExp, maxExp } = job;
+    // An empty profile states no experience at all, and most jobs leave
+    // `experienceMin` unset (0) — so "0 years" used to land inside "0 to 30"
+    // and score a *perfect* 100. That single line was the biggest contributor
+    // to the 46% floor every blank profile scored against every job. Unknown
+    // is unknown: neutral, the same treatment location and salary already give
+    // an unstated preference.
+    if (!hasExperienceSignal(seeker)) return 0.5;
     // Prefer years spent in *related* roles over raw career length, floored at
     // half the total so a differently-worded job title can't wipe out a real
     // career. Falls back to total years when there's no role history.
@@ -547,7 +620,8 @@ export function blendBehaviorScore(
  */
 export const SEEKER_MATCH_FIELDS =
   "skills preferredCountries preferredRoles preferredSalary preferredJobType " +
-  "experience education preferredLocations currentLocation cv.rawText";
+  "experience education preferredLocations currentLocation cv.rawText " +
+  "totalExperienceYears workStatus";
 
 /**
  * Build a SeekerProfile from a Mongoose JobSeeker lean document.
@@ -561,6 +635,8 @@ export function seekerProfileFromDoc(seeker: {
   preferredRoles?: string[];
   preferredLocations?: string[];
   currentLocation?: string;
+  totalExperienceYears?: number;
+  workStatus?: "experienced" | "fresher" | null;
   cv?: { rawText?: string };
   experience?: Array<{
     jobTitle?: string;
@@ -582,7 +658,18 @@ export function seekerProfileFromDoc(seeker: {
     };
   });
 
-  const experienceYears = roleHistory.reduce((total, role) => total + role.years, 0);
+  // Career length came only from dated `experience` entries, so a seeker who
+  // filled in "8 years total" on the profile form but added no entries scored
+  // as though they had none. Fall back to the stated total, then to the
+  // declared work status.
+  const entryYears = roleHistory.reduce((total, role) => total + role.years, 0);
+  const statedTotal = seeker.totalExperienceYears ?? 0;
+  const experienceYears = roleHistory.length > 0 ? entryYears : statedTotal;
+  // `totalExperienceYears` defaults to 0 on every document, so it cannot by
+  // itself distinguish "fresher" from "never answered" — `workStatus` is only
+  // ever present when the seeker actually chose one.
+  const experienceKnown =
+    roleHistory.length > 0 || statedTotal > 0 || Boolean(seeker.workStatus);
 
   const salMin = seeker.preferredSalary?.min ?? 0;
   const salMax = seeker.preferredSalary?.max ?? 0;
@@ -600,6 +687,7 @@ export function seekerProfileFromDoc(seeker: {
     location: (seeker.preferredCountries ?? [])[0]?.toLowerCase() ?? "",
     locations: (seeker.preferredCountries ?? []).map((c) => c.toLowerCase()),
     experienceYears: Math.round(experienceYears * 10) / 10,
+    experienceKnown,
     salaryExpectation,
     salaryCurrency: seeker.preferredSalary?.currency ?? "",
     jobType: seeker.preferredJobType ?? "any",
