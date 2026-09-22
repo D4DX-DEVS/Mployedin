@@ -1,4 +1,5 @@
 import { useQueries } from "@tanstack/react-query";
+import { getJson } from "@/lib/http/getJson";
 
 /** One hired candidate on a job, joined from applications + placements + background checks. */
 export interface HireRow {
@@ -90,11 +91,6 @@ export function composeHires(apps: HiredApplicationRow[], placements: PlacementR
   return rows.sort((a, b) => String(b.hiredAt ?? "").localeCompare(String(a.hiredAt ?? "")));
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Request to ${url} returned ${res.status}`);
-  return res.json() as Promise<T>;
-}
 
 export const jobHiresKeys = {
   all: ["job-hires"] as const,

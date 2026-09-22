@@ -20,6 +20,7 @@ import {
   skillsOverlap,
   type SeekerProfile,
 } from "@/lib/matchScore";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 /**
  * How far an off-profile job sinks in the ranking. It stays in the list (the
@@ -66,8 +67,6 @@ const NAMES_BY_REGION_CODE: Map<string, string[]> = (() => {
 })();
 
 const REGION_CODES = new Set(Object.values(COUNTRY_REGION_CODES));
-
-const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** "Remote / Global" is a work-mode wish, not a country; the query's remote clause already covers it. */
 function isRemotePreference(value: string): boolean {

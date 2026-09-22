@@ -16,10 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { cn } from "@/lib/utils";
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { escapeRegex } from "@/lib/security/sanitize";
 
 /** Split text into segments with matched portions wrapped in <strong> */
 function highlightMatch(text: string, query: string): ReactNode[] {

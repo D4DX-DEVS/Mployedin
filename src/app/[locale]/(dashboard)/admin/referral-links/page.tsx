@@ -19,6 +19,7 @@ import {
   useReferralLinks,
   useUpdateReferralLink,
   ReferralLinkItem,
+  linkStatus,
 } from "@/hooks/useReferralLinks";
 import {
   Building2,
@@ -50,12 +51,6 @@ function formatDate(d: string | undefined): string {
   });
 }
 
-function linkStatus(link: ReferralLinkItem): "active" | "expired" | "maxed" | "inactive" {
-  if (!link.isActive) return "inactive";
-  if (link.expiresAt && new Date(link.expiresAt) < new Date()) return "expired";
-  if (link.maxUses > 0 && link.usedCount >= link.maxUses) return "maxed";
-  return "active";
-}
 
 function getStatusLabelKey(s: ReturnType<typeof linkStatus>): string {
   switch (s) {

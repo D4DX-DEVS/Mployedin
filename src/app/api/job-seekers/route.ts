@@ -8,6 +8,7 @@ import SuperAgent from "@/models/SuperAgent";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { decorateReferralSummaries, type ReferralViewer } from "@/lib/referrals/summary";
 import mongoose from "mongoose";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   // ── Authorization — staff-only route ──────────────────────
@@ -109,7 +110,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     filterConditions.push({ profileCompleteness: { $gte: minProfile, $lte: maxProfile } });
   }
   if (skills && skills.length > 0) {
-    filterConditions.push({ skills: { $in: skills.map(s => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")) } });
+    filterConditions.push({ skills: { $in: skills.map(s => new RegExp(escapeRegex(s), "i")) } });
   }
   if (hasCV === "1") filterConditions.push({ "cv.originalUrl": { $exists: true, $ne: "" } });
   if (jobType) filterConditions.push({ preferredJobType: jobType });
@@ -148,7 +149,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         degreeRegexParts.push(`(${synonyms.join("|")})`);
       } else {
         // This is a field/subject term
-        fieldTerms.push(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        fieldTerms.push(escapeRegex(term));
       }
     }
 
@@ -178,7 +179,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     // Fallback: if no synonym match and no field terms, just regex the whole string
     if (degreeRegexParts.length === 0 && fieldTerms.length === 0) {
-      const escapedEdu = education.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedEdu = escapeRegex(education);
       filterConditions.push({
         $or: [
           { "education.degree": { $regex: escapedEdu, $options: "i" } },
@@ -189,7 +190,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
   }
   if (nationality) {
-    const escapedNat = nationality.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedNat = escapeRegex(nationality);
     filterConditions.push({ nationality: { $regex: escapedNat, $options: "i" } });
   }
   if (experienceYears > 0) {
@@ -206,8 +207,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const sortOption = sortMap[sort] ?? sortMap.newest;
 
   if (search || location) {
-    const escapedSearch = search ? search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "";
-    const escapedLocation = location ? location.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : "";
+    const escapedSearch = search ? escapeRegex(search) : "";
+    const escapedLocation = location ? escapeRegex(location) : "";
 
     // Build search match conditions
     const searchConditions: Record<string, unknown>[] = [];

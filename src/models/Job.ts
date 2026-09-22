@@ -11,6 +11,16 @@ export type WorkflowMode = "auto" | "manual";
 export interface IJobRequirements {
   skills: string[];
   preferredSkills?: string[];
+  /**
+   * Skills read out of the description by `extractJobSkills`, used only when
+   * the employer typed none. Kept apart from `skills` so a human's stated
+   * requirement always outranks a model's guess, and so an extraction can be
+   * redone or discarded without touching employer data.
+   */
+  aiSkills?: string[];
+  aiPreferredSkills?: string[];
+  /** When the extraction last ran, so a backfill can skip what it has done. */
+  aiSkillsAt?: Date;
   experienceMin: number;
   experienceMax: number;
   education?: string;
@@ -35,6 +45,21 @@ export interface IJobLocation {
   country: string;
   city: string;
   isRemote: boolean;
+  /**
+   * Where a remote job may actually be worked from.
+   *
+   * `isRemote` on its own says nothing about eligibility: a remote job can
+   * still be limited by work authorisation, payroll entity or timezone, and
+   * the matcher used to read `isRemote` as "anyone, anywhere" and skip the
+   * country check entirely.
+   *
+   * Unset is not "worldwide" — it means the employer has never been asked.
+   * Jobs posted before this field existed keep whatever `country` says, which
+   * is the only thing about them we actually know.
+   */
+  remoteScope?: "worldwide" | "countries";
+  /** Countries a `remoteScope: "countries"` job will hire from. */
+  remoteCountries?: string[];
 }
 
 export interface IJobPoster {
@@ -157,6 +182,9 @@ const JobSchema = new Schema<IJob>(
     requirements: {
       skills: [String],
       preferredSkills: [String],
+      aiSkills: [String],
+      aiPreferredSkills: [String],
+      aiSkillsAt: Date,
       experienceMin: { type: Number, default: 0 },
       experienceMax: { type: Number, default: 30 },
       education: String,
@@ -190,6 +218,11 @@ const JobSchema = new Schema<IJob>(
       country: { type: String, required: true },
       city: { type: String, required: true },
       isRemote: { type: Boolean, default: false },
+      // No default: absent has to stay distinguishable from a chosen value,
+      // the same rule availabilityStatusSetAt follows on JobSeeker. A default
+      // of "worldwide" here would silently re-create the bug this replaces.
+      remoteScope: { type: String, enum: ["worldwide", "countries"] },
+      remoteCountries: { type: [String], default: undefined },
     },
     status: {
       type: String,

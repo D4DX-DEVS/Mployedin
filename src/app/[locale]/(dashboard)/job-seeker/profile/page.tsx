@@ -28,14 +28,10 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { JobSeekerSectionNav, PROFILE_SECTION_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { getCsrfToken } from "@/lib/security/csrf-client";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function getCsrfToken(): string {
-  if (typeof document === "undefined") return "";
-  const match = document.cookie.split("; ").find((c) => c.startsWith("csrf-token="));
-  return match?.split("=")[1] ?? "";
-}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

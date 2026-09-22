@@ -1,11 +1,22 @@
 /**
- * Guards for the Gemini API provider (replaced Muse AI and OpenRouter, 2026-09-16).
+ * Guards for the AI provider split.
  *
- * What these protect: one key (`GEMINI_API_KEY`), the cheapest text model as the
- * default, thinking off unless a surface opts in, the embedding model the Atlas
- * index was built with, and no trace of the two previous providers anywhere in
- * the AI code — a stale `openrouter.ai` or `api.meta.ai` URL would fail only at
- * runtime, against a key that no longer exists.
+ * History: OpenRouter -> Muse AI (one day) -> Gemini direct (2026-09-16) ->
+ * OpenRouter for text, Gemini direct for embeddings (2026-09-22).
+ *
+ * The current arrangement is deliberate and easy to undo by accident:
+ *   - TEXT goes to OpenRouter, because Google answers 404 for the 2.5 family
+ *     on this project and 2.5-flash-lite is 2.5x cheaper than what we can
+ *     reach directly.
+ *   - EMBEDDINGS stay on Google, because OpenRouter sells none and the Atlas
+ *     vector index is built on gemini-embedding-001 at 3072 dimensions.
+ *     Pointing embeddings anywhere else silently produces vectors that cannot
+ *     be compared with the ones already stored.
+ *   - The native generateContent calls (image generation, PDF input) are
+ *     Google-only whatever serves text.
+ *
+ * Muse remains retired; a stale `api.meta.ai` URL would fail only at runtime,
+ * against a key that no longer exists.
  */
 
 import fs from "node:fs";
@@ -27,6 +38,12 @@ import {
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
 import { SMALL_MODEL, LARGE_MODEL } from "@/lib/ai/copilot/modelRouter";
 import { EMBEDDING_DIMENSIONS } from "@/lib/ai/embeddings";
+import {
+  OPENROUTER_MODELS,
+  isOpenRouterTextProvider,
+  toOpenRouterModel,
+  isPastTextSunset,
+} from "@/lib/ai/openRouter";
 
 const ROOT = process.cwd();
 const SCAN_TARGETS = [
@@ -35,7 +52,9 @@ const SCAN_TARGETS = [
   path.join(ROOT, "src", "lib", "security", "headers.ts"),
   path.join(ROOT, "scripts", "translate-missing.mjs"),
 ];
-const RETIRED_PROVIDER_MARKERS = ["openrouter.ai", "api.meta.ai", "OPENROUTER_API_KEY", "MUSE_API_KEY", "@/lib/ai/muse"];
+// OpenRouter is a supported provider again as of 2026-09-22, so its URL and
+// key are no longer offenders. Muse is still gone for good.
+const RETIRED_PROVIDER_MARKERS = ["api.meta.ai", "MUSE_API_KEY", "@/lib/ai/muse"];
 
 function listFiles(target: string): string[] {
   const stat = fs.statSync(target);
@@ -91,9 +110,13 @@ describe("Gemini API key resolution", () => {
     expect(getGoogleAiApiKey()).toBe("ours");
   });
 
-  it("names the key in the 401 copy so the fix is obvious", () => {
-    expect(providerErrorMessage(401, "")).toMatch(/GEMINI_API_KEY/);
-    expect(providerErrorMessage(429, "")).toMatch(/rate limit/i);
+  it("names the right key in the 401 copy so the fix is obvious", () => {
+    // Which key to check depends on which provider answered. Getting this
+    // wrong sends whoever is debugging to the wrong dashboard.
+    expect(providerErrorMessage(401, "", "request", "google")).toMatch(/GEMINI_API_KEY/);
+    expect(providerErrorMessage(401, "", "request", "openrouter")).toMatch(/OPENROUTER_API_KEY/);
+    expect(providerErrorMessage(429, "", "request", "google")).toMatch(/rate limit/i);
+    expect(providerErrorMessage(429, "", "request", "openrouter")).toMatch(/rate limit/i);
   });
 });
 
@@ -131,8 +154,95 @@ describe("Thinking defaults", () => {
   });
 });
 
-describe("Retired providers", () => {
-  it("leaves no OpenRouter or Muse reference in the AI code, CSP or scripts", () => {
+describe("Provider split", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it("keeps embeddings on Google — OpenRouter sells none", () => {
+    // The Atlas index is 3072-dim gemini-embedding-001. Routing embeddings
+    // anywhere else yields vectors that cannot be compared with the stored
+    // ones, and the failure is silent: cosines just become meaningless.
+    const source = fs.readFileSync(path.join(ROOT, "src", "lib", "ai", "embeddings.ts"), "utf8");
+    expect(source).toContain("GOOGLE_AI_OPENAI_BASE");
+    expect(source).not.toContain("openRouter");
+    expect(source).not.toContain("OPENROUTER");
+    expect(EMBEDDING_DIMENSIONS).toBe(3072);
+    expect(GOOGLE_AI_MODELS.embedding).toBe("gemini-embedding-001");
+  });
+
+  it("routes text to OpenRouter when a key is present, and honours the override", () => {
+    process.env.OPENROUTER_API_KEY = "k";
+    delete process.env.AI_TEXT_PROVIDER;
+    expect(isOpenRouterTextProvider()).toBe(true);
+
+    // One env var reverts the whole thing without a deploy.
+    process.env.AI_TEXT_PROVIDER = "google";
+    expect(isOpenRouterTextProvider()).toBe(false);
+
+    process.env.AI_TEXT_PROVIDER = "openrouter";
+    expect(isOpenRouterTextProvider()).toBe(true);
+
+    delete process.env.AI_TEXT_PROVIDER;
+    delete process.env.OPENROUTER_API_KEY;
+    expect(isOpenRouterTextProvider()).toBe(false);
+  });
+
+  it("translates Google model ids at the transport boundary only", () => {
+    // ~20 routes index into GEMINI_MODELS by logical name. Rather than touch
+    // them all, the id is mapped here — so the mapping must cover both tiers.
+    process.env.GEMINI_SMART_MODEL = "gemini-3.8-flash";
+    expect(toOpenRouterModel("gemini-3.8-flash")).toBe(OPENROUTER_MODELS.smart);
+    expect(toOpenRouterModel("gemini-3.1-flash-lite")).toBe(OPENROUTER_MODELS.text);
+    // An already-namespaced id is an explicit override and passes through.
+    expect(toOpenRouterModel("x-ai/grok-4.7")).toBe("x-ai/grok-4.7");
+  });
+
+  it("points the decision model at Jev", () => {
+    expect(OPENROUTER_MODELS.decision).toContain("jev");
+  });
+
+  it("defaults to models that are not scheduled for retirement", () => {
+    // 2.5-flash-lite was the default until 2026-09-22. Two things moved us:
+    // OpenRouter retires the whole 2.5 family on 2026-10-20, and a benchmark on
+    // this codebase's own extraction prompt showed 2.5 inventing skills off the
+    // job title (45% of what it returned was supported by the text it read,
+    // against 100% for 3.1-flash-lite). Skills are 60% of the relevance score,
+    // so an invented one is not a cosmetic problem.
+    delete process.env.OPENROUTER_TEXT_MODEL;
+    delete process.env.OPENROUTER_SMART_MODEL;
+    expect(OPENROUTER_MODELS.text).toBe("google/gemini-3.1-flash-lite");
+    expect(OPENROUTER_MODELS.smart).toBe("google/gemini-3.8-flash");
+    expect(OPENROUTER_MODELS.text).not.toContain("2.5");
+    expect(OPENROUTER_MODELS.smart).not.toContain("2.5");
+  });
+
+  it("knows the date OpenRouter retires the 2.5 family", () => {
+    expect(isPastTextSunset(new Date("2026-10-19T00:00:00Z"))).toBe(false);
+    expect(isPastTextSunset(new Date("2026-10-21T00:00:00Z"))).toBe(true);
+    // Read per call, not frozen at import: a server started in September must
+    // not still be honouring a retired pin in November.
+    expect(typeof Object.getOwnPropertyDescriptor(OPENROUTER_MODELS, "text")?.get).toBe("function");
+  });
+
+  it("honours a model override, but drops one that names a retired model", () => {
+    process.env.OPENROUTER_TEXT_MODEL = "x-ai/grok-4.7";
+    expect(OPENROUTER_MODELS.text).toBe("x-ai/grok-4.7");
+
+    // A pin on 2.5 works right up until the morning it doesn't. Past the
+    // sunset it is ignored rather than left to 404 inside a 06:00 cron.
+    process.env.OPENROUTER_TEXT_MODEL = "google/gemini-2.5-flash-lite";
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-21T00:00:00Z"));
+    expect(OPENROUTER_MODELS.text).toBe("google/gemini-3.1-flash-lite");
+    jest.setSystemTime(new Date("2026-10-19T00:00:00Z"));
+    expect(OPENROUTER_MODELS.text).toBe("google/gemini-2.5-flash-lite");
+    jest.useRealTimers();
+
+    delete process.env.OPENROUTER_TEXT_MODEL;
+  });
+
+  it("leaves no Muse reference in the AI code, CSP or scripts", () => {
     const offenders: string[] = [];
     for (const target of SCAN_TARGETS) {
       for (const file of listFiles(target)) {

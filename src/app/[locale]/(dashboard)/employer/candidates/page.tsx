@@ -66,6 +66,7 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { cn } from "@/lib/utils";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { useContainerWide } from "@/hooks/useContainerWide";
 
 const MATCH_SESSION_STORAGE_KEY = "employer-candidate-matching-session-v1";
 const MAX_AI_MATCH_BATCH_SIZE = 20;
@@ -227,26 +228,6 @@ function getCandidateDisplayName(candidate: Candidate): string {
   return accountName || "Unknown candidate"; // dynamic fallback, translated via caller
 }
 
-/**
- * Tracks whether the observed container is at least `minWidth` px wide.
- * Container-based (not viewport-based) so the layout reacts to the real space
- * left after the dashboard nav rail, instead of the full window width.
- */
-function useContainerWide(minWidth: number) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [isWide, setIsWide] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? 0;
-      setIsWide(width >= minWidth);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [minWidth]);
-  return [ref, isWide] as const;
-}
 
 interface CandidateCardProps {
   candidate: Candidate;

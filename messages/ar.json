@@ -7301,7 +7301,15 @@
         "onsite": "حضوري",
         "hybrid": "هجين",
         "remote": "عن بُعد"
-      }
+      },
+      "remoteScopeLabel": "من يمكنك توظيفه لهذه الوظيفة عن بُعد؟",
+      "remoteScopeHint": "العمل عن بُعد يحدد طريقة العمل، وهذا الخيار يحدد مكان إقامة الموظف قانونياً — تصريح العمل أو الرواتب أو فارق التوقيت. نرشّح فقط من يمكنك توظيفه فعلاً.",
+      "remoteScopeWorldwide": "من أي مكان في العالم",
+      "remoteScopeCountries": "من دول محددة فقط",
+      "remoteCountriesLabel": "الدول التي يمكنك التوظيف منها",
+      "remoteCountriesPlaceholder": "أضف دولة",
+      "remoteCountriesEmpty": "أضف دولة واحدة على الأقل يمكنك التوظيف منها.",
+      "remoteScopeUnsetHint": "لم يُحدد بعد — حتى تختار، تُطابَق هذه الوظيفة مع المرشّحين في {country} فقط."
     },
     "quality": {
       "title": "جودة الإعلان",
@@ -8655,7 +8663,7 @@
     "frequencyOff": "إيقاف",
     "frequencyOffDesc": "بدون بريد (إشعارات داخلية فقط)",
     "catJobs": "توصيات الوظائف",
-    "catJobsDesc": "وظائف يومية مطابقة لمهاراتك وتفضيلاتك",
+    "catJobsDesc": "وظائف مطابقة لمهاراتك وتفضيلاتك",
     "catApplications": "تحديثات الطلبات",
     "catApplicationsDesc": "تغييرات الحالة والقائمة المختصرة وتحديثات الرفض",
     "catInterviews": "تنبيهات المقابلات",
@@ -9728,7 +9736,17 @@
     "niceToHave": "مهارات مرغوبة",
     "aiMatching": "مطابقة الذكاء الاصطناعي",
     "charCount": "{count} / 5000 حرف",
-    "jobNotFound": "الوظيفة غير موجودة"
+    "jobNotFound": "الوظيفة غير موجودة",
+    "remoteScope": "من يمكنك توظيفه لهذه الوظيفة عن بُعد؟",
+    "remoteScopeHint": "العمل عن بُعد يحدد طريقة العمل، وهذا يحدد مكان إقامة الموظف قانونياً. نرشّح فقط من يمكنك توظيفه فعلاً.",
+    "remoteScopeWorldwide": "من أي مكان في العالم",
+    "remoteScopeCountries": "من دول محددة فقط",
+    "remoteCountries": "الدول التي يمكنك التوظيف منها",
+    "remoteCountriesHint": "أضف كل دولة يمكن أن يقيم فيها الموظف عن بُعد.",
+    "remoteCountriesEmpty": "أضف دولة واحدة على الأقل يمكنك التوظيف منها.",
+    "remoteScopeUnset": "غير محدد — حتى تختار، تُطابَق هذه الوظيفة مع المرشّحين في الدولة أعلاه فقط.",
+    "placeholderRemoteCountry": "اكتب اسم دولة ثم اضغط Enter",
+    "removeCountry": "إزالة {country}"
   },
   "employerPanel": {
     "title": "مراجعة لجنة التوظيف",

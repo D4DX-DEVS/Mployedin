@@ -688,6 +688,20 @@ export async function ensureIndexes() {
     { key: { userId: 1 } },
   ]);
 
+  // Cached skill embeddings. `canonical` is unique because two crons can meet
+  // on the same new skill; the upsert relies on the constraint to converge.
+  await safeCreateIndexes(db, "skillvectors", [
+    { key: { canonical: 1 }, unique: true },
+  ]);
+
+  // What was already recommended to whom. The TTL is what lets an ignored job
+  // legitimately resurface later instead of being suppressed for good.
+  await safeCreateIndexes(db, "jobrecommendations", [
+    { key: { userId: 1, jobId: 1 }, name: "seeker_job_dedup" },
+    { key: { userId: 1, sentAt: -1 } },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
   await safeCreateIndexes(db, "referrallinks", [
     { key: { createdBy: 1 } },
     { key: { agentId: 1 } },

@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityCalendar, type DayAvailability } from "@/components/features/job-seeker/settings/AvailabilityCalendar";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
+import { getCsrfToken } from "@/lib/security/csrf-client";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -251,16 +252,12 @@ function TagInput({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-function getCsrfToken(): string {
-  if (typeof document === "undefined") return "";
-  const match = document.cookie.split("; ").find((c) => c.startsWith("csrf-token="));
-  return match?.split("=")[1] ?? "";
-}
 
 export default function JobSeekerSettingsPage() {
   const { data: session, update: updateSession } = useSession();
-  const router = useRouter();
   const locale = useLocale();
+  // Deep-linked seekers (email footers, bookmarks) have nothing to pop.
+  const { goBack } = useBackNavigation(`/${locale}/job-seeker`);
   const t = useTranslations("jobSeekerExtra.settings");
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -456,7 +453,7 @@ export default function JobSeekerSettingsPage() {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => router.back()}
+          onClick={goBack}
           className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />

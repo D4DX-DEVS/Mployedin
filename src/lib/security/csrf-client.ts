@@ -4,7 +4,7 @@ const CSRF_COOKIE = "csrf-token";
 const CSRF_HEADER = "x-csrf-token";
 const MUTATING_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
 
-function getCsrfToken(): string {
+export function getCsrfToken(): string {
   const match = document.cookie
     .split("; ")
     .find((c) => c.startsWith(`${CSRF_COOKIE}=`));

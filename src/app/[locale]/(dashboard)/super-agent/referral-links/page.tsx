@@ -18,6 +18,7 @@ import {
   ReferralLinkStatus,
   ReferralCreatorRole,
   ReferralSortField,
+  linkStatus,
 } from "@/hooks/useReferralLinks";
 import {
   SuperAgentPageIntro,
@@ -67,12 +68,6 @@ import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
 import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
 import { registrationDisplayName } from "@/lib/referrals/display";
 
-function linkStatus(link: ReferralLinkItem): "active" | "expired" | "maxed" | "inactive" {
-  if (!link.isActive) return "inactive";
-  if (link.expiresAt && new Date(link.expiresAt) < new Date()) return "expired";
-  if (link.maxUses > 0 && link.usedCount >= link.maxUses) return "maxed";
-  return "active";
-}
 
 function statusLabel(s: ReturnType<typeof linkStatus>, t: ReturnType<typeof useTranslations<"superAgentReferralLinks">>): string {
   switch (s) {

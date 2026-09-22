@@ -126,7 +126,8 @@ export async function generateMultimodal(
   );
   if (!res.ok) {
     const err = await res.text().catch(() => "");
-    throw new Error(providerErrorMessage(res.status, err, "request"));
+    // Native generateContent — always Google, whatever serves plain text.
+    throw new Error(providerErrorMessage(res.status, err, "request", "google"));
   }
   const data = (await res.json()) as NativeGenerateContentResponse;
   logUsage(model, nativeUsage(data), start);

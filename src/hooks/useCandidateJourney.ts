@@ -1,4 +1,5 @@
 import { useQueries } from "@tanstack/react-query";
+import { getJson } from "@/lib/http/getJson";
 
 export interface JourneyInterview {
   _id: string;
@@ -50,11 +51,6 @@ export function summarizeJourney(
   };
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Request to ${url} returned ${res.status}`);
-  return res.json() as Promise<T>;
-}
 
 export const candidateJourneyKeys = {
   all: ["candidate-journey"] as const,

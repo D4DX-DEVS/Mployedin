@@ -102,6 +102,7 @@ import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
 import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom, type PipelineStage } from "@/lib/hiring/pipeline";
 import type { ApplicationStatus } from "@/models/Application";
 import { CandidateJourney } from "@/components/features/employer/applications/CandidateJourney";
+import { useContainerWide } from "@/hooks/useContainerWide";
 
 /**
  * Verification state that travels with the candidate.
@@ -269,24 +270,6 @@ function getCandidateInitials(name: string): string {
   return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
 }
 
-// Measures the rendered width of a container element so the layout can switch
-// between an inline split view (wide) and a full-screen modal (narrow) without
-// relying on viewport breakpoints (the dashboard nav rail consumes ~436px).
-function useContainerWide(minWidth: number) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [isWide, setIsWide] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? 0;
-      setIsWide(width >= minWidth);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [minWidth]);
-  return [ref, isWide] as const;
-}
 
 /**
  * `stageLock` pins the list to one stage and everything after it, and takes the

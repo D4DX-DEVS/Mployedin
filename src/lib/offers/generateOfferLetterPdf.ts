@@ -1,6 +1,5 @@
 import { jsPDF } from "jspdf";
-import fs from "fs";
-import path from "path";
+import { getLogoBase64 } from "@/lib/pdf/logo";
 
 /**
  * Offer-letter PDF generator (FG-6).
@@ -25,19 +24,6 @@ export interface OfferLetterData {
   signature?: { fullName?: string; signedAt?: Date | string | null };
 }
 
-let cachedLogoBase64: string | null | undefined;
-
-function getLogoBase64(): string | null {
-  if (cachedLogoBase64 !== undefined) return cachedLogoBase64;
-  try {
-    const logoPath = path.join(process.cwd(), "public", "logo.png");
-    const logoData = fs.readFileSync(logoPath);
-    cachedLogoBase64 = `data:image/png;base64,${logoData.toString("base64")}`;
-  } catch {
-    cachedLogoBase64 = null;
-  }
-  return cachedLogoBase64;
-}
 
 function safeDate(value?: Date | string | null): string {
   if (!value) return "—";

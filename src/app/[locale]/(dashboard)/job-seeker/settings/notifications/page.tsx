@@ -20,7 +20,7 @@ import {
   ChevronLeft,
   Smartphone,
 } from "lucide-react";
-import Link from "next/link";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -139,7 +139,11 @@ const CHANNEL_LABELS: Record<Channel, { labelKey: string; icon: typeof Mail }> =
 export default function NotificationSettingsPage() {
   const { locale } = useParams<{ locale: string }>();
   const isAr = locale === "ar";
+  // Popping, not pushing: a <Link> back to settings would stack a second
+  // settings entry and settings' own back button would return here forever.
+  const { goBack } = useBackNavigation(`/${locale}/job-seeker/settings`);
   const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
 
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
@@ -247,15 +251,17 @@ export default function NotificationSettingsPage() {
   }
 
   return (
-    <div className="page-container max-w-3xl mx-auto" dir={isAr ? "rtl" : "ltr"}>
+    <div className="page-container max-w-3xl mx-auto pb-32 lg:pb-24" dir={isAr ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Link
-          href={`/${locale}/job-seeker/settings`}
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label={tCommon("back")}
           className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors"
         >
           <ChevronLeft className={`w-4 h-4 ${isAr ? "rotate-180" : ""}`} />
-        </Link>
+        </button>
         <div>
           <h1 className="text-xl font-bold tracking-tight">
             {t("title")}
@@ -414,8 +420,19 @@ export default function NotificationSettingsPage() {
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex items-center gap-3 sticky bottom-4">
+      {/* Save bar.
+          Two things were wrong with the original `sticky bottom-4` on a bare
+          flex row. It had no background, so the page showed straight through
+          it and on a short window the button painted on top of the last
+          category row. And `bottom-4` is 16px off the viewport, which on a
+          phone is underneath `WorkspaceBottomNav` (`fixed bottom-0 z-40`) —
+          the button would have been unreachable there.
+
+          So: a real surface, and the same bottom offset the assistant FAB
+          already uses to clear that nav. `z-10` stays below the nav's `z-40`
+          on purpose, so the nav is never covered. `pb-32` on the container
+          reserves the lane so the bar never has to overlap anything. */}
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:bottom-4">
         <Button
           onClick={handleSave}
           disabled={saving || !hasChanges}

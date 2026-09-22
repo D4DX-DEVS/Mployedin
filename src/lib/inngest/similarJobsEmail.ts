@@ -12,11 +12,26 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import NotificationPreference from "@/models/NotificationPreference";
 import { sendEmail } from "@/lib/communications/email";
+import { seekerProfileFromDoc, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import {
-  calculateMatchScore,
-  seekerProfileFromDoc,
-  jobProfileFromDoc,
-} from "@/lib/matchScore";
+  recommendJobsFor,
+  toCandidateJob,
+  JOB_MATCH_FIELDS,
+} from "@/lib/matching/recommend";
+import { prepareSkillVectors } from "@/lib/matching/skillVectors";
+import { resolveMatchThreshold } from "@/models/SystemConfig";
+
+/** What find-similar-jobs hands to the email builder. */
+interface ScoredSimilarJob {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  score: number;
+  /** False when there was no profile to score against, so no badge is drawn. */
+  showScore: boolean;
+  createdAt?: Date | string;
+}
 
 export const similarJobsAfterApply = inngest.createFunction(
   {
@@ -69,25 +84,41 @@ export const similarJobsAfterApply = inngest.createFunction(
         ],
       })
         .populate("employerId", "companyName")
-        .select("title requirements salary location employerId tags createdAt")
+        .select(`${JOB_MATCH_FIELDS} tags`)
         .sort({ createdAt: -1 })
         .limit(20)
         .lean();
 
       if (similarJobs.length === 0) return null;
 
-      // Score them against seeker profile
-      const seeker = await JobSeeker.findOne({ userId }).lean();
-      if (!seeker) return { jobs: similarJobs.slice(0, 5) };
+      // Score them against the seeker profile.
+      //
+      // Without a profile there is nothing to score against, so the five most
+      // recent similar jobs are the honest answer — but they go out without a
+      // match percentage, because a number we did not compute must not be
+      // printed as if we had.
+      const seeker = await JobSeeker.findOne({ userId }).select(SEEKER_MATCH_FIELDS).lean();
+      const candidates = similarJobs.map((j) => toCandidateJob(j as unknown as Record<string, unknown>));
+      if (!seeker) {
+        return { jobs: candidates.slice(0, 5).map((j) => ({ ...j, score: 0, showScore: false })) };
+      }
 
       const seekerProfile = seekerProfileFromDoc(seeker);
-      const scored = similarJobs.map((j) => ({
-        ...j,
-        matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(j)),
-      }));
+      const vectors = await prepareSkillVectors(candidates, [seekerProfile]);
+      const threshold = await resolveMatchThreshold();
 
-      scored.sort((a, b) => b.matchScore - a.matchScore);
-      return { jobs: scored.slice(0, 5) };
+      // This mail is anchored on a job the seeker chose to apply to, so the
+      // bar is lower than an unsolicited digest: they already told us this is
+      // the kind of work they want. Half the digest floor, and never zero —
+      // it previously had no floor at all and mailed whatever came back.
+      const recommendation = await recommendJobsFor(seekerProfile, candidates, {
+        threshold: Math.round(threshold / 2),
+        limit: 5,
+        useAi: false,
+        vectors,
+      });
+      if (recommendation.jobs.length === 0) return null;
+      return { jobs: recommendation.jobs.map((j) => ({ ...j, showScore: true })) };
     });
 
     if (!result || result.jobs.length === 0) {
@@ -108,15 +139,16 @@ export const similarJobsAfterApply = inngest.createFunction(
         locale,
         appliedJobTitle: jobTitle,
         appliedCompany: companyName,
-        similarJobs: result.jobs.map((j: Record<string, unknown>) => ({
-          jobId: String((j as { _id: unknown })._id),
-          title: (j as { title: string }).title,
-          company: ((j as { employerId?: { companyName?: string } | null }).employerId as { companyName?: string })?.companyName ?? "Company",
-          location: ((j as { location?: { city?: string; country?: string; isRemote?: boolean } }).location?.isRemote
-            ? "Remote"
-            : [(j as { location?: { city?: string } }).location?.city, (j as { location?: { country?: string } }).location?.country].filter(Boolean).join(", ")) || "Flexible",
-          matchScore: (j as { matchScore?: number }).matchScore ?? 0,
-          postedAgo: relativeAge((j as { createdAt?: string }).createdAt),
+        // The pipeline already resolved company, location and score; this
+        // block used to re-derive them from the raw document, which is how the
+        // two drifted apart in the first place.
+        similarJobs: (result.jobs as ScoredSimilarJob[]).map((j) => ({
+          jobId: j.id,
+          title: j.title,
+          company: j.company,
+          location: j.location || "Flexible",
+          matchScore: j.showScore ? j.score : undefined,
+          postedAgo: relativeAge(j.createdAt),
         })),
         baseUrl,
       });
@@ -139,7 +171,7 @@ export const similarJobsAfterApply = inngest.createFunction(
   },
 );
 
-function relativeAge(createdAt?: string): string {
+function relativeAge(createdAt?: Date | string): string {
   if (!createdAt) return "";
   const diff = Date.now() - new Date(createdAt).getTime();
   const days = Math.floor(diff / 86400000);
@@ -160,7 +192,8 @@ interface SimilarJobsEmailData {
     title: string;
     company: string;
     location: string;
-    matchScore: number;
+    /** Omitted when we had no profile to score against — see find-similar-jobs. */
+    matchScore?: number;
     postedAgo: string;
   }>;
   baseUrl: string;
@@ -186,7 +219,8 @@ function buildSimilarJobsEmail(data: SimilarJobsEmailData): string {
     .map((j) => {
       const bgColor = logoColor(j.company);
       const initials = companyInitials(j.company);
-      const matchBg = j.matchScore >= 80 ? "#059669" : j.matchScore >= 60 ? "#0D6FD8" : "#d97706";
+      const score = j.matchScore;
+      const matchBg = score === undefined ? "#9ca3af" : score >= 80 ? "#059669" : score >= 60 ? "#0D6FD8" : "#d97706";
 
       return `
       <tr>
@@ -205,7 +239,7 @@ function buildSimilarJobsEmail(data: SimilarJobsEmailData): string {
                 ${j.postedAgo ? `<p style="margin: 2px 0 0; color: #9ca3af; font-size: 11px;">${j.postedAgo}</p>` : ""}
               </td>
               <td style="text-align: ${isAr ? "left" : "right"}; vertical-align: top; width: 80px;">
-                <span style="background: ${matchBg}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-block;">${j.matchScore}%</span>
+                ${score === undefined ? "" : `<span style="background: ${matchBg}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-block;">${score}%</span>`}
               </td>
             </tr>
           </table>

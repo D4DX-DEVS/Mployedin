@@ -8,12 +8,9 @@ import { validateBody } from "@/lib/validators";
 import { blogUpdateSchema } from "@/lib/validators/cms";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { slugify } from "@/lib/slug";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
-
-function slugify(str: string): string {
-  return str.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-}
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });

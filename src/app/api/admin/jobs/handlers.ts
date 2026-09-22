@@ -6,12 +6,9 @@ import Employer from "@/models/Employer";
 import SuperAgent from "@/models/SuperAgent";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
-
-function escapeRegex(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (!["admin", "super_agent"].includes(ctx.role)) {

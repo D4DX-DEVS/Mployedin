@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { formatFileSize } from "@/lib/ui/fileSize";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
 interface Resource {
@@ -38,11 +39,6 @@ const SORT_OPTIONS = [
   { value: "newest", label: "Newest" }, { value: "popular", label: "Most Downloaded" }, { value: "a-z", label: "A \u2192 Z" },
 ];
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export default function ResourceDownloadsPage() {
   const t = useTranslations("resources");

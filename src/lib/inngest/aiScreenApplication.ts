@@ -17,17 +17,10 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import { Employer } from "@/models/Employer";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
-import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
+import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput, sanitizeAiList } from "@/lib/ai/sanitize";
 import { calculateMatchDetail, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
 import { resolveHiringRulesForJob, shouldAutoReject, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 
-function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
-  const cleaned = (values ?? [])
-    .map((value) => sanitizeAIInput(value, maxLength))
-    .filter(Boolean)
-    .slice(0, maxItems);
-  return cleaned.length > 0 ? cleaned.join(", ") : "Not specified";
-}
 
 export const aiScreenApplication = inngest.createFunction(
   {

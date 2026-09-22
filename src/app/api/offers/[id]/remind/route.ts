@@ -4,7 +4,6 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Offer from "@/models/Offer";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
-import Agent from "@/models/Agent";
 import Job from "@/models/Job";
 import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
@@ -13,6 +12,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import { agentOwnsOffer } from "@/lib/offers/access";
 
 interface AuthCtx {
   userId: string;
@@ -23,11 +23,6 @@ interface AuthCtx {
 /** Minimum hours between reminders for the same offer. */
 const REMINDER_COOLDOWN_HOURS = 12;
 
-async function agentOwnsOffer(userId: string, employerId: unknown): Promise<boolean> {
-  const agentDoc = await Agent.findOne({ userId }).select("assignedEmployerIds").lean();
-  const assigned = (agentDoc?.assignedEmployerIds ?? []).map((id: unknown) => String(id));
-  return assigned.includes(String(employerId));
-}
 
 // POST /api/offers/[id]/remind — employer or assigned agent nudges the candidate
 async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {

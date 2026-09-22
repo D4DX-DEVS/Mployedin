@@ -5,6 +5,7 @@ import State from "@/models/State";
 import City from "@/models/City";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 /**
  * GET /api/filters/locations
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
       // Search cities across all countries
       const cities = await City.find({
         isActive: true,
-        name: new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+        name: new RegExp(escapeRegex(search), "i"),
       })
         .sort({ name: 1 })
         .limit(50)

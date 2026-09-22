@@ -180,6 +180,13 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     }
   }
 
+  // Stamp when the seeker actually chose their availability. The field itself
+  // defaults to "immediately" at signup, so the stored value alone cannot say
+  // whether they answered — and the digest cadence depends on knowing.
+  if (jsUpdate.availabilityStatus !== undefined) {
+    jsUpdate.availabilityStatusSetAt = new Date();
+  }
+
   // Upsert so social-login users who never registered via email still get a doc
   const updated = await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },

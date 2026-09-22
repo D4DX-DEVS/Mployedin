@@ -9,13 +9,8 @@ import mongoose from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { dmSendMessageSchema } from "@/lib/validators/dm";
 import { logActivity } from "@/lib/audit/log";
+import { assertParticipant } from "@/lib/dm/access";
 
-async function assertParticipant(conversationId: string, userId: string) {
-  const conv = await Conversation.findById(conversationId).lean();
-  if (!conv) return null;
-  const isParticipant = conv.participants.some((p) => p.toString() === userId);
-  return isParticipant ? conv : null;
-}
 
 /**
  * GET /api/dm/[conversationId]/messages

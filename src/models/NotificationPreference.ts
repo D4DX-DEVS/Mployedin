@@ -37,6 +37,12 @@ export interface INotificationPreference extends Document {
   lastDigestSentAt?: Date;
   lastReEngagementSentAt?: Date;
   /**
+   * When the seeker was last told "nothing cleared the bar today".
+   * Rate-limits the near-miss section so a high match threshold produces one
+   * honest note a week rather than a daily reminder of having no matches.
+   */
+  lastNearMissSentAt?: Date;
+  /**
    * Cooldown clock for the profile-completion reminder. The cron documented a
    * 14-day gap and computed the threshold, but never had a field to compare
    * against — so the reminder went out every single day to every seeker under
@@ -146,6 +152,7 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
     lastEmailSentAt: Date,
     lastDigestSentAt: Date,
     lastReEngagementSentAt: Date,
+    lastNearMissSentAt: Date,
     lastProfileReminderSentAt: Date,
   },
   { timestamps: true },

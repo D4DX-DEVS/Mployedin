@@ -78,7 +78,13 @@ interface FormData {
   title: string;
   description: string;
   category: string;
-  location: { country: string; city: string; isRemote: boolean };
+  location: {
+    country: string;
+    city: string;
+    isRemote: boolean;
+    remoteScope?: "worldwide" | "countries";
+    remoteCountries?: string[];
+  };
   requirements: { skills: string[]; preferredSkills: string[]; experienceMin: number; experienceMax: number };
   salary: { min: number; max: number; currency: string; period: string; isNegotiable: boolean };
   applicationMode: "auto" | "manual";
@@ -267,7 +273,7 @@ export function SharedJobEditPage({
     title: "",
     description: "",
     category: "",
-    location: { country: "", city: "", isRemote: false },
+    location: { country: "", city: "", isRemote: false, remoteCountries: [] },
     requirements: { skills: [], preferredSkills: [], experienceMin: 0, experienceMax: 5 },
     salary: { min: 0, max: 0, currency: "USD", period: "monthly", isNegotiable: false },
     applicationMode: "manual",
@@ -303,6 +309,7 @@ export function SharedJobEditPage({
   const [countryQuery, setCountryQuery] = useState("");
   const { data: countryResults = [], isLoading: countryLoading } = useCountrySearch(countryQuery);
   const [countryDropOpen, setCountryDropOpen] = useState(false);
+  const [remoteCountryInput, setRemoteCountryInput] = useState("");
   const countryRef = useRef<HTMLDivElement>(null);
 
   // Load job via React Query
@@ -316,12 +323,24 @@ export function SharedJobEditPage({
     if (!jobData || formLoaded) return;
 
     const job = jobData;
-    let loc = { country: "", city: "", isRemote: false };
+    let loc: FormData["location"] = { country: "", city: "", isRemote: false, remoteCountries: [] };
     if (job.location && typeof job.location === "object") {
+      const saved = job.location as {
+        country?: string;
+        city?: string;
+        isRemote?: boolean;
+        remoteScope?: "worldwide" | "countries";
+        remoteCountries?: string[];
+      };
       loc = {
-        country: (job.location as { country?: string }).country ?? "",
-        city: (job.location as { city?: string }).city ?? "",
-        isRemote: (job.location as { isRemote?: boolean }).isRemote ?? false,
+        country: saved.country ?? "",
+        city: saved.city ?? "",
+        isRemote: saved.isRemote ?? false,
+        // Carried through even when this page shows no control for them: the
+        // PATCH handler Object.assigns `location` wholesale, so anything not
+        // read back here is silently deleted on the next save.
+        remoteScope: saved.remoteScope,
+        remoteCountries: saved.remoteCountries ?? [],
       };
     }
 
@@ -505,10 +524,20 @@ export function SharedJobEditPage({
     };
 
     if (form.location.country.trim() && form.location.city.trim()) {
+      const remote = form.workMode === "remote";
       payload.location = {
         country: form.location.country.trim(),
         city: form.location.city.trim(),
-        isRemote: form.workMode === "remote",
+        isRemote: remote,
+        // A scope on a non-remote job is data the API refuses and the matcher
+        // would ignore, so switching away from remote clears it.
+        ...(remote && form.location.remoteScope
+          ? {
+              remoteScope: form.location.remoteScope,
+              remoteCountries:
+                form.location.remoteScope === "countries" ? (form.location.remoteCountries ?? []) : [],
+            }
+          : {}),
       };
     }
 
@@ -730,7 +759,13 @@ export function SharedJobEditPage({
                     type="button"
                     onClick={() => {
                       setField("workMode", mode.value);
-                      setField("location", { ...form.location, isRemote: mode.value === "remote" });
+                      setField("location", {
+                        ...form.location,
+                        isRemote: mode.value === "remote",
+                        ...(mode.value === "remote"
+                          ? {}
+                          : { remoteScope: undefined, remoteCountries: [] }),
+                      });
                     }}
                     className={cn(
                       "rounded-full px-4 py-2 text-xs font-medium transition-colors",
@@ -744,6 +779,89 @@ export function SharedJobEditPage({
                 ))}
               </div>
             </Field>
+
+            {/* Remote hiring scope. `isRemote` says how the work is done, not
+                who may be hired to do it — a remote job can still be limited by
+                work authorisation, payroll entity or timezone. Until an
+                employer answers, the matcher keeps the job on its own country
+                rather than guessing "worldwide". */}
+            {form.workMode === "remote" && (
+              <Field label={t("remoteScope")} hint={t("remoteScopeHint")}>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["worldwide", "countries"] as const).map((scope) => (
+                    <button
+                      key={scope}
+                      type="button"
+                      onClick={() =>
+                        setField("location", {
+                          ...form.location,
+                          remoteScope: scope,
+                          remoteCountries: scope === "worldwide" ? [] : (form.location.remoteCountries ?? []),
+                        })
+                      }
+                      className={cn(
+                        "rounded-full px-4 py-2 text-xs font-medium transition-colors",
+                        form.location.remoteScope === scope
+                          ? "bg-primary text-primary-foreground"
+                          : "border border-border text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      {scope === "worldwide" ? t("remoteScopeWorldwide") : t("remoteScopeCountries")}
+                    </button>
+                  ))}
+                </div>
+
+                {!form.location.remoteScope && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t("remoteScopeUnset")}</p>
+                )}
+
+                {form.location.remoteScope === "countries" && (
+                  <div className="mt-3 space-y-1.5">
+                    <Input
+                      placeholder={t("placeholderRemoteCountry")}
+                      value={remoteCountryInput}
+                      onChange={(e) => setRemoteCountryInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        const name = remoteCountryInput.trim();
+                        const existing = form.location.remoteCountries ?? [];
+                        if (!name || existing.some((c) => c.toLowerCase() === name.toLowerCase())) return;
+                        setField("location", { ...form.location, remoteCountries: [...existing, name] });
+                        setRemoteCountryInput("");
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">{t("remoteCountriesHint")}</p>
+                    {(form.location.remoteCountries ?? []).length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {(form.location.remoteCountries ?? []).map((country) => (
+                          <Badge key={country} variant="secondary" className="gap-1">
+                            {country}
+                            <button
+                              type="button"
+                              aria-label={t("removeCountry", { country })}
+                              onClick={() =>
+                                setField("location", {
+                                  ...form.location,
+                                  remoteCountries: (form.location.remoteCountries ?? []).filter(
+                                    (c) => c !== country
+                                  ),
+                                })
+                              }
+                              className="tap-target-box text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-destructive">{t("remoteCountriesEmpty")}</p>
+                    )}
+                  </div>
+                )}
+              </Field>
+            )}
           </Section>
 
           {/* ③ Job Description */}

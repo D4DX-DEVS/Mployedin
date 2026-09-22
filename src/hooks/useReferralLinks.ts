@@ -195,3 +195,11 @@ export function useDeleteReferralLink() {
     },
   });
 }
+
+/** Effective display status of a referral link, derived from its own fields. */
+export function linkStatus(link: ReferralLinkItem): "active" | "expired" | "maxed" | "inactive" {
+  if (!link.isActive) return "inactive";
+  if (link.expiresAt && new Date(link.expiresAt) < new Date()) return "expired";
+  if (link.maxUses > 0 && link.usedCount >= link.maxUses) return "maxed";
+  return "active";
+}

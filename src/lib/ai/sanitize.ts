@@ -104,3 +104,17 @@ export function redactPII(text: string): string {
   }
   return result;
 }
+
+/**
+ * Sanitise a list of user-supplied strings into a single comma-separated
+ * prompt fragment. Empty input becomes "Not specified" so prompts never
+ * contain a dangling label.
+ */
+export function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
+  const cleaned = (values ?? [])
+    .map((value) => sanitizeAIInput(value, maxLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+
+  return cleaned.length > 0 ? cleaned.join(", ") : "Not specified";
+}

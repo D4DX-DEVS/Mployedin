@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import mongoose from "mongoose";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 void User; // ensure User model is registered for populate
 
@@ -33,8 +34,6 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0");
   const skills = searchParams.get("skills")?.split(",").map((s) => s.trim()).filter(Boolean);
 
-  const escape = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
   // Only discoverable candidates are ever sourced through this endpoint.
   const conditions: Record<string, unknown>[] = [{ profileVisibility: "visible" }];
 
@@ -43,14 +42,14 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   // (s.9, race including national origin) — not offered as a sourcing filter.
   if (experienceYears > 0) conditions.push({ totalExperienceYears: { $gte: experienceYears } });
   if (skills && skills.length > 0) {
-    conditions.push({ skills: { $in: skills.map((s) => new RegExp(escape(s), "i")) } });
+    conditions.push({ skills: { $in: skills.map((s) => new RegExp(escapeRegex(s), "i")) } });
   }
   if (location) {
-    const re = new RegExp(escape(location), "i");
+    const re = new RegExp(escapeRegex(location), "i");
     conditions.push({ $or: [{ currentLocation: re }, { preferredLocations: re }] });
   }
   if (search) {
-    const re = new RegExp(escape(search), "i");
+    const re = new RegExp(escapeRegex(search), "i");
     conditions.push({
       $or: [
         { fullName: re },

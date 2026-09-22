@@ -14,12 +14,12 @@ import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import NotificationPreference, { getOrCreatePreferences } from "@/models/NotificationPreference";
 import User from "@/models/User";
-import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import ProfileView from "@/models/ProfileView";
 import JobSeeker from "@/models/JobSeeker";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
+import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
+import { recentRecommendations } from "@/lib/matching/recommendationLog";
 import { sendEmail } from "@/lib/communications/email";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
 import type { NotificationWeeklyDigestEvent } from "./events";
@@ -77,23 +77,6 @@ export const weeklyDigestCron = inngest.createFunction(
 
     if (!seekerUsers.length) return { sent: 0, reason: "no weekly subscribers" };
 
-    // Fetch active jobs for matching (reuse across seekers)
-    const activeJobs = await step.run("fetch-active-jobs", async () => {
-      const jobs = await Job.find({ status: "active" })
-        .select("title employerName location salaryRange skills experienceLevel")
-        .limit(500)
-        .lean();
-      return jobs.map((j: any) => ({
-        _id: String(j._id),
-        title: j.title,
-        company: j.employerName ?? "",
-        location: j.location,
-        salaryRange: j.salaryRange,
-        skills: j.skills,
-        experienceLevel: j.experienceLevel,
-      }));
-    });
-
     // Process in batches of 30
     const BATCH_SIZE = 30;
     let totalSent = 0;
@@ -105,14 +88,22 @@ export const weeklyDigestCron = inngest.createFunction(
       const count = await step.run(`process-batch-${batchIndex}`, async () => {
         let sent = 0;
 
+        // One query for the whole batch instead of one per seeker.
+        const batchSeekers = await JobSeeker.find({
+          userId: { $in: batch.map((u: { userId: string }) => u.userId) },
+        })
+          .select(`userId ${SEEKER_MATCH_FIELDS}`)
+          .lean();
+        const seekerByUser = new Map(
+          batchSeekers.map((d) => [String((d as { userId: unknown }).userId), d]),
+        );
+
         for (const user of batch) {
           try {
             // Gather weekly stats. Application/Interview are keyed by the JobSeeker
             // profile _id, ProfileView by the User id — resolve the profile once and
             // scope each query to the id space it actually stores.
-            const seeker = await JobSeeker.findOne({ userId: user.userId })
-              .select(SEEKER_MATCH_FIELDS)
-              .lean();
+            const seeker = seekerByUser.get(user.userId);
 
             const [appCount, interviewCount, viewCount] = await Promise.all([
               seeker
@@ -136,27 +127,18 @@ export const weeklyDigestCron = inngest.createFunction(
               }),
             ]);
 
-            // Match top 3 jobs for the "new matching jobs" section
-            let topJobs: { title: string; company: string; matchScore: number }[] = [];
-            let newMatchingJobs = 0;
-
-            if (seeker && activeJobs.length > 0) {
-              const seekerProfile = seekerProfileFromDoc(seeker);
-              const scored = activeJobs.map((j: any) => ({
-                ...j,
-                score: calculateMatchScore(seekerProfile, jobProfileFromDoc(j)),
-              })).filter((j: any) => j.score >= 40);
-
-              newMatchingJobs = scored.length;
-              topJobs = scored
-                .sort((a: any, b: any) => b.score - a.score)
-                .slice(0, 3)
-                .map((j: any) => ({
-                  title: j.title,
-                  company: j.company,
-                  matchScore: j.score,
-                }));
-            }
+            // Jobs we actually recommended this week — read from the log, not
+            // re-scored here.
+            //
+            // This section used to run its own matching, at its own floor of
+            // 40, against a projection of four fields that do not exist on the
+            // Job schema. Now that a seeker's job matches arrive on their own
+            // cadence (see digestGate.ts), re-scoring here would also mean two
+            // emails carrying the same jobs in the same week. One email, one
+            // meaning: this one summarises the week, the recommendation digest
+            // carries the jobs.
+            const topJobs = await recentRecommendations(user.userId, weekAgo);
+            const newMatchingJobs = topJobs.length;
 
             // Skip if nothing to report
             if (appCount === 0 && interviewCount === 0 && viewCount === 0 && newMatchingJobs === 0) {

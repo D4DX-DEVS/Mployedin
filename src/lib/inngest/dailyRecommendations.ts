@@ -1,21 +1,36 @@
 /**
- * Daily Job Recommendations — Inngest Cron Function
+ * Job Recommendations — Inngest Cron Function
  *
- * Runs daily at 9 AM UTC. For each active job seeker:
- *   1. Resolve the digest gate (see digestGate.ts) — each half of the digest is
- *      switched on or off on its own, so "Job Match Alerts: off" silences the
- *      job section without also hiding who viewed the profile
+ * The cron fires every morning at 9 AM UTC, but that is the *check* interval,
+ * not the send interval. Each seeker has a cadence — weekly by default, daily
+ * if they ask for it — and the gate holds them until it has elapsed. A weekly
+ * seeker is therefore released on the first morning after seven days that
+ * actually has something worth sending, rather than being pinned to a fixed
+ * weekday that may have nothing on it.
+ *
+ * That is one step better than the boards we benchmarked (Indeed, Naukri,
+ * Bayt, LinkedIn all offer daily-or-weekly, and LinkedIn's weekly digest is a
+ * fixed Tuesday 10:00 slot). Weekly is our default because the board carries
+ * ~62 active jobs against a relevance floor of 80: a daily send has something
+ * to say to roughly ten people and nothing for the other two hundred.
+ *
+ * Per seeker:
+ *   1. Resolve the digest gate (see digestGate.ts) — cadence, plus each half
+ *      of the digest switched on or off on its own, so "Job Match Alerts: off"
+ *      silences the job section without also hiding who viewed the profile
  *   2. Skip the job half entirely when the profile states fewer than
  *      MIN_PROFILE_SIGNALS things — its percentages would be neutral defaults
- *   3. Run match scoring against active jobs (reuses matchScore.ts)
- *   4. Pick top 5 jobs scoring ≥ MIN_MATCH_SCORE
- *   5. Aggregate profile views from last 24h
+ *   3. Rank eligible jobs through the shared pipeline (lib/matching)
+ *   4. Keep the top 5 clearing SystemConfig.matching.minScore
+ *   5. Aggregate profile views since the last digest
  *   6. Raise the in-app "new jobs matching you" bell entry
  *   7. Emit "notification/daily-digest" event with combined data
  *
  * This is the platform's ONLY "new jobs for you" push. A second daily cron
  * (/api/cron/job-alerts, 07:00 UTC) used to send its own, weaker version of the
- * same email two hours earlier; it was deleted rather than kept in sync.
+ * same email two hours earlier; it was deleted rather than kept in sync. Saved
+ * *searches* are separate and still run hourly — the seeker asked for that
+ * exact query, which is the distinction every major board draws too.
  *
  * Processes users in batches of 50 for reliability (Inngest retries per batch).
  */
@@ -30,44 +45,48 @@ import Application from "@/models/Application";
 import ProfileView from "@/models/ProfileView";
 import NotificationPreference from "@/models/NotificationPreference";
 import {
-  calculateMatchScore,
   seekerProfileFromDoc,
-  jobProfileFromDoc,
   profileSignalCount,
   MIN_PROFILE_SIGNALS,
   SEEKER_MATCH_FIELDS,
-  type JobProfile,
 } from "@/lib/matchScore";
+import {
+  recommendJobsFor,
+  toCandidateJob,
+  JOB_MATCH_FIELDS,
+  type CandidateJob,
+} from "@/lib/matching/recommend";
+import { prepareSkillVectors } from "@/lib/matching/skillVectors";
+import { MAX_RECOMMENDATIONS } from "@/lib/matching/constants";
+import { markRecommended, alreadyRecommendedJobIds } from "@/lib/matching/recommendationLog";
 import { isUndeliverableAddress } from "@/lib/communications/email";
 import {
   profileCompletenessScore,
   PROFILE_COMPLETENESS_FIELDS,
 } from "@/lib/jobSeeker/profileCompleteness";
-import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
+import {
+  isCronEnabled,
+  updateCronRunStatus,
+  resolveMatchThreshold,
+  isAiRerankEnabled,
+  resolveDefaultDigestCadence,
+} from "@/models/SystemConfig";
+import { RECOMMENDATION_COOLDOWN_DAYS } from "@/lib/matching/constants";
 import { digestGateFor, isWithinDigestCooldown, type DigestGate } from "@/lib/notifications/digestGate";
 import { notify } from "@/lib/notifications/trigger";
 
-interface ActiveJob {
-  _id: string;
-  title: string;
-  company: string;
-  location: string;
-  isRemote: boolean;
-  salary?: { min?: number; max?: number; currency?: string; period?: string };
-  requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number };
-  jobProfile: JobProfile;
-}
-
 const BATCH_SIZE = 50;
+const TOP_JOBS_COUNT = MAX_RECOMMENDATIONS;
+
 /**
- * Strictly above `NO_SIGNAL_CEILING` (46): at 40 a profile that had stated
- * nothing still cleared the bar against 26 of 62 live jobs, because every
- * component scores an unknown field as neutral. Five "46% match" cards then
- * went out every morning to seekers who had never entered a skill, a country
- * or a salary. See matchScore.ts for the arithmetic.
+ * How long to wait before telling a seeker again that nothing cleared the bar.
+ *
+ * Deliberately longer than the weekly digest cadence. A weekly seeker who
+ * clears nothing would otherwise receive a "we found you nothing" note every
+ * single cycle, which is the same nagging the cadence change set out to stop.
+ * Once a fortnight keeps it honest without making emptiness the routine.
  */
-const MIN_MATCH_SCORE = 50;
-const TOP_JOBS_COUNT = 5;
+const NEAR_MISS_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 
 export const dailyRecommendationsCron = inngest.createFunction(
   {
@@ -90,6 +109,15 @@ export const dailyRecommendationsCron = inngest.createFunction(
     // Resolve, per seeker, which halves of the digest they still want. A seeker
     // is dropped here only when they want neither — the jobs/profile-view
     // switches are applied inside the batch so one can be off without the other.
+    // How often a seeker with no saved preference hears from us. Admin-set;
+    // weekly by default. The cron still runs every morning — a weekly seeker
+    // is simply held by a seven-day cooldown and released on the first day
+    // after it that has something worth sending, rather than being pinned to
+    // a fixed weekday that may have nothing.
+    const platformDefault = await step.run("resolve-default-cadence", () =>
+      resolveDefaultDigestCadence(),
+    );
+
     const gates = await step.run("fetch-eligible-seekers", async () => {
       // Get all job_seeker users who are active
       const seekerUsers = await User.find({
@@ -107,11 +135,36 @@ export const dailyRecommendationsCron = inngest.createFunction(
         .select("userId unsubscribedAll emailFrequency lastDigestSentAt categories")
         .lean();
 
+      // Stated availability is the fallback cadence signal when the seeker
+      // never touched their notification settings — which is all of them, the
+      // preference documents being created lazily. Only an answer counts:
+      // `availabilityStatus` defaults to "immediately" at signup, so the
+      // timestamp is what separates intent from the default.
+      const availabilities = await JobSeeker.find({ userId: { $in: userIds } })
+        .select("userId availabilityStatus availabilityStatusSetAt")
+        .lean();
+      const availByUser = new Map(
+        availabilities.map((a) => [
+          String((a as { userId: unknown }).userId),
+          {
+            status: (a as { availabilityStatus?: string }).availabilityStatus,
+            setAt: (a as { availabilityStatusSetAt?: Date }).availabilityStatusSetAt,
+          },
+        ]),
+      );
+
       const prefByUser = new Map(prefs.map((p) => [p.userId.toString(), p]));
       const now = new Date();
 
       return userIds
-        .map((userId) => ({ userId, gate: digestGateFor(prefByUser.get(userId), { now }) }))
+        .map((userId) => ({
+          userId,
+          gate: digestGateFor(prefByUser.get(userId), {
+            now,
+            platformDefault,
+            availability: availByUser.get(userId),
+          }),
+        }))
         .filter((entry) => entry.gate.send);
     });
 
@@ -119,30 +172,28 @@ export const dailyRecommendationsCron = inngest.createFunction(
       return { processed: 0, reason: "no eligible seekers" };
     }
 
-    // Fetch active jobs once (shared across all batches)
-    const activeJobs: ActiveJob[] = await step.run("fetch-active-jobs", async () => {
+    // The relevance floor and the AI switch are admin-controlled, and every
+    // surface must use the same values — they were hard-coded three different
+    // ways before (50 here, 40 in the weekly digest and the re-engagement
+    // mail, none in similar-jobs).
+    const threshold = await step.run("resolve-threshold", () => resolveMatchThreshold());
+    const useAi = await step.run("resolve-ai-rerank", () => isAiRerankEnabled());
+
+    // Fetch active jobs once (shared across all batches). The projection must
+    // cover every field jobProfileFromDoc reads — `workMode` was missing, so
+    // the seeker's remote/onsite preference was collected and never enforced.
+    const activeJobs: CandidateJob[] = await step.run("fetch-active-jobs", async () => {
       const now = new Date();
       const jobs = await Job.find({
         status: "active",
         $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
       })
-        .select("title requirements salary location employerId")
+        .select(JOB_MATCH_FIELDS)
         .populate("employerId", "companyName")
         .limit(500)
         .lean();
 
-      return jobs.map((j): ActiveJob => ({
-        _id: (j._id as { toString(): string }).toString(),
-        title: j.title,
-        company:
-          (j.employerId as { companyName?: string } | null)?.companyName ??
-          "Company",
-        location: j.location?.country ?? "",
-        isRemote: j.location?.isRemote ?? false,
-        salary: j.salary,
-        requirements: j.requirements,
-        jobProfile: jobProfileFromDoc(j),
-      }));
+      return jobs.map((j) => toCandidateJob(j as unknown as Record<string, unknown>));
     });
 
     // Process in batches
@@ -160,20 +211,36 @@ export const dailyRecommendationsCron = inngest.createFunction(
         async () => {
           let emitted = 0;
 
+          // One query for the whole batch instead of one per seeker.
+          // Both projections: the match fields feed scoring, the completeness
+          // fields feed the "improve your matches" block. A field missing from
+          // a projection scores as absent rather than erroring, so neither
+          // list may be dropped.
+          const seekerDocs = await JobSeeker.find({
+            userId: { $in: batch.map((b) => b.userId) },
+          })
+            .select(`userId ${SEEKER_MATCH_FIELDS} ${PROFILE_COMPLETENESS_FIELDS}`)
+            .lean();
+          const seekerByUser = new Map(
+            seekerDocs.map((d) => [String((d as { userId: unknown }).userId), d]),
+          );
+
+          // Skill vectors are loaded here rather than in a step of their own:
+          // 800-odd 3072-float vectors would be serialised into Inngest's step
+          // state on every resume. Loading them inside the step keeps them in
+          // memory, and the Mongo cache means only the first batch of the
+          // first ever run pays for embedding.
+          const skillVectors = await prepareSkillVectors(
+            activeJobs,
+            seekerDocs.map((d) => seekerProfileFromDoc(d as never)),
+          );
+
           for (const { userId, gate } of batch) {
             try {
-              // Fetch seeker profile
-              // Both projections: the match fields feed scoring, the
-              // completeness fields feed the "improve your matches" block. A
-              // field missing from a projection scores as absent rather than
-              // erroring, so neither list may be dropped.
-              const seeker = await JobSeeker.findOne({ userId })
-                .select(`${SEEKER_MATCH_FIELDS} ${PROFILE_COMPLETENESS_FIELDS}`)
-                .lean();
-
+              const seeker = seekerByUser.get(userId);
               if (!seeker) continue;
 
-              const seekerProfile = seekerProfileFromDoc(seeker);
+              const seekerProfile = seekerProfileFromDoc(seeker as never);
               const seekerId = (seeker as unknown as { _id: unknown })._id;
 
               // Get already-applied job IDs
@@ -194,17 +261,69 @@ export const dailyRecommendationsCron = inngest.createFunction(
               // cards built out of neutral defaults.
               const hasProfileSignal =
                 profileSignalCount(seekerProfile) >= MIN_PROFILE_SIGNALS;
-              const scoredJobs = !gate.jobs || !hasProfileSignal
-                ? []
-                : activeJobs
-                    .filter((j) => !appliedJobIds.has(j._id))
-                    .map((j) => ({
-                      ...j,
-                      matchScore: calculateMatchScore(seekerProfile, j.jobProfile),
-                    }))
-                    .filter((j) => j.matchScore >= MIN_MATCH_SCORE)
-                    .sort((a, b) => b.matchScore - a.matchScore)
-                    .slice(0, TOP_JOBS_COUNT);
+
+              // Jobs already mailed inside the cooldown window. Without this
+              // the same top five went out every morning until the seeker
+              // applied — and the stricter the relevance floor, the more
+              // stable that winning set becomes.
+              const recentlySent = !gate.jobs || !hasProfileSignal
+                ? new Set<string>()
+                : await alreadyRecommendedJobIds(userId);
+
+              const candidates =
+                !gate.jobs || !hasProfileSignal
+                  ? []
+                  : activeJobs.filter(
+                      (j) => !appliedJobIds.has(j.id) && !recentlySent.has(j.id),
+                    );
+
+              const recommendation = await recommendJobsFor(seekerProfile, candidates, {
+                threshold,
+                limit: TOP_JOBS_COUNT,
+                useAi,
+                vectors: skillVectors,
+              });
+              const scoredJobs = recommendation.jobs;
+
+              // A high floor means most seekers clear nothing, most days. That
+              // is the intended behaviour — but going permanently silent is
+              // not, so the digest carries an honest "nothing strong enough
+              // today, here is what would change that" section instead.
+              //
+              // `limitingFactor` names the real cause rather than the biggest
+              // gate. A seeker who has never listed a skill has a ceiling of
+              // 40% and was being told "most openings are outside your
+              // countries" — true of the jobs that were dropped, useless as
+              // advice, and it blames the job board for an empty profile.
+              const nearMiss =
+                gate.jobs && hasProfileSignal && scoredJobs.length === 0
+                  ? {
+                      bestScore: recommendation.bestScore,
+                      threshold: recommendation.threshold,
+                      considered: recommendation.considered,
+                      /** What is actually holding them back. See diagnoseLimitingFactor. */
+                      topBlocker: recommendation.limitingFactor ?? null,
+                    }
+                  : null;
+
+              // Atomic claim, same pattern as the digest cooldown below:
+              // whoever flips the timestamp sends, everyone else backs off.
+              let sendNearMiss = false;
+              if (nearMiss) {
+                const nearMissCutoff = new Date(Date.now() - NEAR_MISS_COOLDOWN_MS);
+                const claimed = await NotificationPreference.findOneAndUpdate(
+                  {
+                    userId,
+                    $or: [
+                      { lastNearMissSentAt: { $exists: false } },
+                      { lastNearMissSentAt: { $lte: nearMissCutoff } },
+                    ],
+                  },
+                  { $set: { lastNearMissSentAt: new Date() } },
+                  { new: true, projection: { _id: 1 } },
+                ).lean();
+                sendNearMiss = claimed !== null;
+              }
 
               // Aggregate profile views from last 24h
               const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -228,8 +347,10 @@ export const dailyRecommendationsCron = inngest.createFunction(
                 })),
               };
 
-              // Skip if nothing to send
-              if (scoredJobs.length === 0 && profileViews.count === 0) {
+              // Skip if nothing to send. The near-miss note counts as
+              // something: it is the only thing standing between a strict
+              // threshold and indefinite silence.
+              if (scoredJobs.length === 0 && profileViews.count === 0 && !sendNearMiss) {
                 continue;
               }
 
@@ -265,7 +386,9 @@ export const dailyRecommendationsCron = inngest.createFunction(
                 { $set: { lastDigestSentAt: claimedAt } },
                 { upsert: true, returnDocument: "before", projection: { lastDigestSentAt: 1 } },
               ).lean<{ lastDigestSentAt?: Date } | null>();
-              if (isWithinDigestCooldown(before?.lastDigestSentAt, claimedAt)) continue;
+              // Claim with the seeker's own cadence, or a weekly seeker released
+              // today would be re-released tomorrow by a 23-hour check.
+              if (isWithinDigestCooldown(before?.lastDigestSentAt, claimedAt, gate.cadence)) continue;
 
               // Emit digest event
               await inngest.send({
@@ -276,18 +399,25 @@ export const dailyRecommendationsCron = inngest.createFunction(
                   email: user.email,
                   locale: user.locale ?? "en",
                   jobs: scoredJobs.map((j) => ({
-                    jobId: j._id,
+                    jobId: j.id,
                     title: j.title,
                     company: j.company,
                     location: j.location,
-                    matchScore: j.matchScore,
+                    matchScore: j.score,
                     salary: j.salary,
+                    // The skills that earned the score. A percentage with no
+                    // reasoning behind it is the thing seekers distrust most.
+                    matchedSkills: j.breakdown.matchedSkills.slice(0, 5),
                   })),
                   profileViews,
                   profile: {
                     completeness: profileCompletenessScore(seeker),
                     signals: profileSignalCount(seekerProfile),
                   },
+                  // Present only when nothing cleared the bar. Lets the email
+                  // say "your closest match today was 71%, we only send 80%+"
+                  // rather than quietly sending nothing.
+                  ...(sendNearMiss && nearMiss ? { nearMiss } : {}),
                 },
               });
 
@@ -313,6 +443,17 @@ export const dailyRecommendationsCron = inngest.createFunction(
                   // consolidation set out to remove.
                   sendEmail: false,
                 });
+              }
+
+              // Remember what went out, so tomorrow's run picks different
+              // jobs instead of re-sending today's.
+              if (scoredJobs.length > 0) {
+                await markRecommended(
+                  userId,
+                  scoredJobs.map((j) => ({ id: j.id, score: j.score })),
+                  "daily_digest",
+                  RECOMMENDATION_COOLDOWN_DAYS * 24 * 60 * 60 * 1000,
+                );
               }
 
               // Mark profile views as notified
