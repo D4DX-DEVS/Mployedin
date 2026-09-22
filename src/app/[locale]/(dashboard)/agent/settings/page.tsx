@@ -26,11 +26,11 @@ import {
 } from "@/lib/currency";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const COUNTRIES = Object.entries(COUNTRY_CURRENCIES).map(([code, info]) => ({
   code,
-  label: `${code} â€” ${info.label} (${info.code})`,
+  label: `${code} — ${info.label} (${info.code})`,
 }));
 
 type TabKey = "profile" | "region" | "commission" | "invoice" | "notifications" | "availability" | "security";
@@ -88,7 +88,7 @@ const TIMEZONES = [
 
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// â”€â”€â”€ Sub-Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sub-Components ───────────────────────────────────────────────────────────
 
 function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -133,7 +133,7 @@ function SaveFeedback({ saving, saved, hasChanges, onSave, label }: {
   );
 }
 
-// â”€â”€â”€ Helper: CSRF Token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helper: CSRF Token ───────────────────────────────────────────────────────
 
 function getCsrfToken(): string {
   const match = document.cookie
@@ -142,7 +142,7 @@ function getCsrfToken(): string {
   return match?.split("=")[1] ?? "";
 }
 
-// â”€â”€â”€ Tab: Profile & Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tab: Profile & Avatar ────────────────────────────────────────────────────
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -426,7 +426,7 @@ function ProfileTab() {
   );
 }
 
-// â”€â”€â”€ Tab: Region & Currency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tab: Region & Currency ───────────────────────────────────────────────────
 
 function RegionTab() {
   const t = useTranslations("agentSettings");
@@ -569,7 +569,7 @@ function RegionTab() {
   );
 }
 
-// â”€â”€â”€ Tab: Commission Rate (read-only for agents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tab: Commission Rate (read-only for agents) ─────────────────────────────
 
 function CommissionTab() {
   const t = useTranslations("agentSettings");
@@ -643,7 +643,7 @@ function CommissionTab() {
   );
 }
 
-// â”€â”€â”€ Tab: Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tab: Notifications ───────────────────────────────────────────────────────
 
 function NotificationsTab() {
   const t = useTranslations("agentSettings");
@@ -878,7 +878,7 @@ function NotificationsTab() {
   );
 }
 
-// â”€â”€â”€ Tab: Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tab: Availability ────────────────────────────────────────────────────────
 
 function AvailabilityTab() {
   const t = useTranslations("agentSettings");
@@ -1015,7 +1015,7 @@ function AvailabilityTab() {
   );
 }
 
-// â”€â”€â”€ Tab: Invoice Defaults â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tab: Invoice Defaults ────────────────────────────────────────────────────
 
 const INVOICE_CATEGORIES = [
   "recruitment",
@@ -1342,7 +1342,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
   );
 }
 
-// â”€â”€â”€ Tab: Account & Security â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Tab: Account & Security ──────────────────────────────────────────────────
 
 function SecurityTab() {
   const t = useTranslations("agentSettings");
@@ -1407,7 +1407,7 @@ function SecurityTab() {
   );
 }
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AgentSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");

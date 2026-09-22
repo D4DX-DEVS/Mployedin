@@ -14,6 +14,8 @@ import Notification from "@/models/Notification";
 import { inngest } from "@/lib/inngest/client";
 import logger from "@/lib/logger";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { formatZonedDateTime } from "@/lib/datetime/zone";
+import { resolveRecipientTimeZone } from "@/lib/notifications/recipientZone";
 
 // Mirrors the enum on the Notification model. A member missing here is a
 // compile error at the call site, not a runtime one, so the two lists have
@@ -180,7 +182,11 @@ export async function notifyInterviewScheduled(
   location: string,
   interviewId: string
 ): Promise<void> {
-  const dateStr = scheduledAt.toLocaleString("en-AE", { timeZone: "Asia/Dubai" });
+  // The email/WhatsApp bodies are this stored string, so it has to be written
+  // in the *recipient's* zone and say which zone that is. `dateIso` and
+  // `timeZone` ride along so the in-app copy can re-render the same instant.
+  const timeZone = await resolveRecipientTimeZone(jobSeekerId);
+  const dateStr = formatZonedDateTime(scheduledAt, { timeZone, dateStyle: "long" });
   await notify({
     userId: jobSeekerId,
     type: "interview_scheduled",
@@ -191,7 +197,13 @@ export async function notifyInterviewScheduled(
     metadata: { jobTitle, scheduledAt, location, interviewId },
     titleKey: "interviewScheduledTitle",
     bodyKey: "interviewScheduledBody",
-    params: { jobTitle, location, dateIso: scheduledAt.toISOString(), date: dateStr },
+    params: {
+      jobTitle,
+      location,
+      dateIso: scheduledAt.toISOString(),
+      date: dateStr,
+      timeZone,
+    },
   });
 }
 

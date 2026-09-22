@@ -127,6 +127,15 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/mcp/register",
   "/api/mcp/token",
   "/api/mcp/revoke", // RFC 7009 token revocation — server-to-server, bearer-authenticated
+  // Interview invitation responses, reached from a link in an email. The
+  // candidate has no session and so no CSRF cookie; the unguessable token in
+  // the path is the anti-forgery guard, the same arrangement as one-click
+  // unsubscribe above. Anyone able to forge the request already holds the
+  // token, in which case they could simply call it directly. The route is
+  // rate-limited per IP and refuses anything but a live, future interview.
+  // NOTE: this deliberately does NOT cover /api/interviews/[id]/respond, the
+  // authenticated dashboard action, which stays CSRF-protected.
+  "/api/interviews/response/",
 ];
 
 /**

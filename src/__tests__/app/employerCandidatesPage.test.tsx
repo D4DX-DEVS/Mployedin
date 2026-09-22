@@ -313,7 +313,11 @@ describe("EmployerCandidatesPage", () => {
     expect(screen.getByDisplayValue("Dubai")).toBeInTheDocument();
     expect(screen.getByDisplayValue("React, TypeScript")).toBeInTheDocument();
     expect(screen.getByText("Showing ready-now frontend candidates in Dubai.")).toBeInTheDocument();
-  });
+  // `user.type` dispatches one keystroke at a time and re-renders between
+  // each, so this case runs for several seconds on its own. Under a full
+  // parallel run it exceeded jest's 5s default and took the next test with
+  // it, because the timeout aborts before the mocks are reset.
+  }, 20_000);
 
   it("shows the empty candidate state when no results are available", () => {
     useCandidatesMock.mockReturnValue({

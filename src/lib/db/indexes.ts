@@ -170,6 +170,9 @@ export async function ensureIndexes() {
       // Active only — completed/rescheduled rounds can legitimately repeat
       partialFilterExpression: { status: { $in: ["scheduled", "confirmed"] } },
     },
+    // Email response links resolve by token on an unauthenticated route, so
+    // this has to be an index hit. Sparse: rows predating the field have none.
+    { key: { responseToken: 1 }, unique: true, sparse: true },
   ]);
 
   // ── Placements ─────────────────────────────────────────────────────────────

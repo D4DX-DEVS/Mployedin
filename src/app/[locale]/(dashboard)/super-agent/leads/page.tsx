@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { localDateString } from "@/lib/interviews/availabilitySlots";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilters } from "@/hooks/useUrlFilter";
@@ -597,7 +598,7 @@ export default function SuperAgentLeadsPage() {
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFiltersLabel")}</span>
                 {[
                   { label: t("quickFilterOverdueFollowUps"), action: () => { updateFilter("hasFollowUp", "overdue"); } },
-                  { label: t("quickFilterThisWeek"), action: () => { const d = new Date(); const start = new Date(d); start.setDate(d.getDate() - d.getDay()); updateFilter("dateFrom", start.toISOString().split("T")[0]); } },
+                  { label: t("quickFilterThisWeek"), action: () => { const d = new Date(); const start = new Date(d); start.setDate(d.getDate() - d.getDay()); updateFilter("dateFrom", localDateString(start)); } },
                   { label: t("quickFilterConverted"), action: () => { updateFilter("status", "converted"); } },
                   { label: t("quickFilterLostLeads"), action: () => { updateFilter("status", "lost"); } },
                   { label: t("quickFilterWithNotes"), action: () => { updateFilter("hasNotes", "true"); } },
