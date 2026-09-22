@@ -17220,6 +17220,30 @@
     "alreadyHaveAccountTitle": "You already have an account",
     "alreadyHaveAccountBody": "An account already exists for {email}. Sign in to accept this invitation.",
     "goToSignIn": "Go to sign in"
+  },
+  "interviewResponse": {
+    "title": "Your interview invitation",
+    "forRole": "For the {role} role",
+    "whenLabel": "When",
+    "durationLabel": "Length",
+    "formatLabel": "Format",
+    "minutes": "{count} minutes",
+    "videoCall": "Video call",
+    "inPerson": "In person",
+    "hybrid": "Hybrid",
+    "confirm": "Confirm attendance",
+    "requestReschedule": "Request another time",
+    "decline": "Decline",
+    "noteLabel": "Why do you need a different time?",
+    "notePlaceholder": "Let the employer know what suits you better.",
+    "answeredConfirmed": "Thanks — your attendance is confirmed.",
+    "answeredDeclined": "Thanks — we have let the employer know you cannot attend.",
+    "answeredReschedule": "Thanks — the employer has been asked for another time.",
+    "answeredHint": "You can close this page. The employer has been notified.",
+    "noLongerAnswerable": "This interview can no longer be answered. Please contact the employer directly.",
+    "loading": "Loading your invitation...",
+    "linkInvalidTitle": "This link no longer works",
+    "linkInvalid": "We could not find this invitation. It may have been cancelled, or the link may have expired.",
+    "genericError": "We could not save your response. Please try again."
   }
 }
-

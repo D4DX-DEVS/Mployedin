@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { generateResponseToken } from "@/lib/interviews/responseToken";
 
 export type InterviewType = "video" | "offline" | "hybrid";
 export type InterviewStatus =
@@ -37,6 +38,8 @@ export interface IInterview extends Document {
   candidateResponse: CandidateResponse;
   candidateResponseAt?: Date;
   candidateRescheduleNote?: string;
+  responseToken?: string;
+  icsSequence?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -104,6 +107,19 @@ const InterviewSchema = new Schema<IInterview>(
     },
     candidateResponseAt: Date,
     candidateRescheduleNote: { type: String, maxlength: 500 },
+    /**
+     * Secret that lets the candidate answer this invitation from their email
+     * without signing in. `select: false` so it never rides along on an
+     * ordinary read — see lib/interviews/responseToken.
+     */
+    responseToken: { type: String, select: false, default: () => generateResponseToken() },
+    /**
+     * iCalendar SEQUENCE. Raised on every material change — time, duration,
+     * type, place or cancellation — because a calendar client ignores an
+     * update whose sequence has not moved. Reschedule count is NOT a
+     * substitute: moving the meeting link is material too.
+     */
+    icsSequence: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -113,6 +129,10 @@ InterviewSchema.index({ jobSeekerId: 1 });
 InterviewSchema.index({ employerId: 1 });
 InterviewSchema.index({ scheduledAt: 1 });
 InterviewSchema.index({ status: 1 });
+// Token lookups come from an unauthenticated route, so this must be an index
+// hit, and the uniqueness is what makes a collision a write error not a
+// cross-candidate leak. Sparse: interviews predating the field have none.
+InterviewSchema.index({ responseToken: 1 }, { unique: true, sparse: true });
 // Prevent duplicate active interviews for same application + round (race condition guard)
 InterviewSchema.index(
   { applicationId: 1, interviewRound: 1 },

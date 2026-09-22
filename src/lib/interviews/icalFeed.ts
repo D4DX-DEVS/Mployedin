@@ -16,6 +16,9 @@ import type { UserRole } from "@/models/User";
 // Ensure Mongoose model registration for populate
 void Job;
 
+/** How long a cancelled interview keeps its tombstone in the feed. */
+const CANCELLED_TOMBSTONE_DAYS = 30;
+
 function escapeIcal(text: string): string {
   return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
@@ -51,7 +54,20 @@ export async function buildInterviewIcal(userId: string, role: UserRole): Promis
   }
   // admin/super_agent: all interviews (matches existing export behavior)
 
-  query.status = { $in: ["scheduled", "confirmed"] };
+  // Cancelled interviews stay in the feed as tombstones for a while.
+  // Dropping a row makes a subscriber delete the event only on its next poll
+  // and only if it notices; an explicit STATUS:CANCELLED is immediate and
+  // unambiguous. Bounded so the feed does not grow without limit.
+  const tombstoneFrom = new Date(Date.now() - CANCELLED_TOMBSTONE_DAYS * 24 * 60 * 60 * 1000);
+  query.$and = [
+    ...(Array.isArray(query.$and) ? query.$and : []),
+    {
+      $or: [
+        { status: { $in: ["scheduled", "confirmed"] } },
+        { status: "cancelled", scheduledAt: { $gte: tombstoneFrom } },
+      ],
+    },
+  ];
 
   const interviews = await Interview.find(query)
     .sort({ scheduledAt: 1 })
@@ -96,10 +112,13 @@ export async function buildInterviewIcal(userId: string, role: UserRole): Promis
     lines.push(`DTSTAMP:${formatIcalDate(new Date(iv.updatedAt ?? iv.createdAt ?? Date.now()))}`);
     lines.push(`DTSTART:${formatIcalDate(start)}`);
     lines.push(`DTEND:${formatIcalDate(end)}`);
+    // Subscribers need this to accept a changed event rather than keep the
+    // one they already have. Same counter the emailed invitation uses.
+    lines.push(`SEQUENCE:${iv.icsSequence ?? 0}`);
     lines.push(`SUMMARY:${escapeIcal(summary)}`);
     lines.push(`DESCRIPTION:${escapeIcal(description)}`);
     if (location) lines.push(`LOCATION:${escapeIcal(location)}`);
-    lines.push("STATUS:CONFIRMED");
+    lines.push(`STATUS:${iv.status === "cancelled" ? "CANCELLED" : "CONFIRMED"}`);
     lines.push("END:VEVENT");
   }
 

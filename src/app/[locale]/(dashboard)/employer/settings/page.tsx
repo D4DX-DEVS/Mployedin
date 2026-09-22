@@ -30,7 +30,7 @@ import { useCountrySearch } from "@/hooks/useCountrySearch";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 import { useTranslations } from "next-intl";
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const COMPANY_SIZES = [
   "1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001+",
@@ -59,7 +59,7 @@ const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Buildi
   { key: "account", label: "accountSecurity", desc: "accountSecurityDesc", icon: Shield },
 ];
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface FormData {
   companyName: string;
@@ -119,7 +119,7 @@ function buildInitialForm(emp?: CompanyData | null): FormData {
   };
 }
 
-// â”€â”€â”€ Sub-Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sub-Components ───────────────────────────────────────────────────────────
 
 function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -183,7 +183,7 @@ function NotificationRow({
   );
 }
 
-// â”€â”€â”€ Page Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function CompanySettingsPageWrapper() {
   return (
@@ -382,7 +382,7 @@ function CompanySettingsPage() {
     }
   }
 
-  // â”€â”€ Loading Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Loading Skeleton ────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="page-container">
@@ -426,10 +426,10 @@ function CompanySettingsPage() {
   return (
     <div className={`page-container${hasChanges ? " pb-20" : ""}`}>
       {ConfirmDialogNode}
-      {/* â”€â”€ Page Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Page Title ─────────────────────────────────────────────────── */}
       <WorkspaceHeader title={t("title")} context={t("description")} />
 
-      {/* â”€â”€ Hero Identity Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Hero Identity Card ─────────────────────────────────────────── */}
       <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.02] shadow-sm overflow-hidden">
         <div className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
@@ -510,7 +510,7 @@ function CompanySettingsPage() {
         </div>
       </div>
 
-      {/* â”€â”€ Publishing gate (admin-converted accounts only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Publishing gate (admin-converted accounts only) ──────────────── */}
       {publishBlocked && (
         <div
           role="status"
@@ -529,7 +529,7 @@ function CompanySettingsPage() {
         </div>
       )}
 
-      {/* â”€â”€ Toast Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Toast Messages ─────────────────────────────────────────────── */}
       {success && (
         <div className="flex items-center gap-3 p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 animate-in slide-in-from-top-2 fade-in duration-300">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -549,11 +549,11 @@ function CompanySettingsPage() {
         </div>
       )}
 
-      {/* â”€â”€ Sidebar + Content Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Sidebar + Content Layout ───────────────────────────────────── */}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
 
-          {/* â”€â”€ Left Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ── Left Navigation ────────────────────────────────────────── */}
           <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-1.5 lg:mx-0 lg:sticky lg:top-4 lg:self-start">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
@@ -591,10 +591,10 @@ function CompanySettingsPage() {
             })}
           </nav>
 
-          {/* â”€â”€ Right Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ── Right Content ──────────────────────────────────────────── */}
           <div className="space-y-3 sm:space-y-5 min-w-0">
 
-            {/* â”€â”€ Profile Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Profile Tab ──────────────────────────────────────────── */}
             {activeTab === "profile" && (
               <>
                 {/* Logo Upload */}
@@ -747,7 +747,7 @@ function CompanySettingsPage() {
               </>
             )}
 
-            {/* â”€â”€ Contact & Social Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Contact & Social Tab ─────────────────────────────────── */}
             {activeTab === "contact" && (
               <>
                 <SectionCard>
@@ -869,7 +869,7 @@ function CompanySettingsPage() {
               </>
             )}
 
-            {/* â”€â”€ Hiring Preferences Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Hiring Preferences Tab ───────────────────────────────── */}
             {activeTab === "hiring" && (
               <SectionCard>
                 <SectionHeader icon={Briefcase} title={t("hiringPreferences")} description={t("hiringPrefsSectionDesc")} />
@@ -917,12 +917,12 @@ function CompanySettingsPage() {
               </SectionCard>
             )}
 
-            {/* â”€â”€ Notifications Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Notifications Tab ────────────────────────────────────── */}
             {activeTab === "notifications" && (
               <EmployerNotificationsTab />
             )}
 
-            {/* â”€â”€ Account Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Account Tab ──────────────────────────────────────────── */}
             {activeTab === "account" && (
               <>
                 <SectionCard>
@@ -1097,7 +1097,7 @@ function CompanySettingsPage() {
           </div>
         </div>
 
-        {/* â”€â”€ Sticky Save Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Sticky Save Bar ──────────────────────────────────────────── */}
         <div
           className={`
             fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out
@@ -1126,7 +1126,7 @@ function CompanySettingsPage() {
                 </Button>
                 <Button type="submit" size="sm" disabled={saving} className="px-6 shadow-sm">
                   <Save className="w-4 h-4 me-2" />
-                  {saving ? "Savingâ€¦" : t("saveChanges")}
+                  {saving ? "Saving…" : t("saveChanges")}
                 </Button>
               </div>
             </div>
@@ -1137,7 +1137,7 @@ function CompanySettingsPage() {
   );
 }
 
-// â”€â”€â”€ Employer Notifications Tab (API-connected) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Employer Notifications Tab (API-connected) ──────────────────────────────
 
 type Channel = "in_app" | "email";
 type CategoryKey = "applications" | "interviews" | "offers" | "jobs" | "system";
@@ -1341,7 +1341,7 @@ function EmployerNotificationsTab() {
   );
 }
 
-// â”€â”€â”€ Employer SMTP Override (Premium Feature) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Employer SMTP Override (Premium Feature) ────────────────────────────────
 
 function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
   const t = useTranslations("employerSettings");
@@ -1479,7 +1479,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="••••••••••••••••"
                 value={smtp.smtpAppPassword}
                 onChange={(e) => setSmtp((s) => ({ ...s, smtpAppPassword: e.target.value }))}
                 className="pr-10"
@@ -1538,7 +1538,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
             variant="outline"
             size="sm"
             onClick={handleTest}
-            disabled={testing || !smtp.smtpEmail || !smtp.smtpAppPassword || smtp.smtpAppPassword === "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"}
+            disabled={testing || !smtp.smtpEmail || !smtp.smtpAppPassword || smtp.smtpAppPassword === "••••••••"}
           >
             <Send className="w-3.5 h-3.5 me-1.5" />
             {testing ? t("sending") : t("testEmail")}

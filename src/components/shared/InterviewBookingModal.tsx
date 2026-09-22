@@ -23,6 +23,8 @@ import {
   Briefcase,
 } from "lucide-react";
 import type { CalendarEvent, BookingCandidate, BookingPayload, JobOption } from "./MployedinCalendar";
+import { bookingSlots } from "@/lib/interviews/bookingSlots";
+import { resolveViewerTimeZone, timeZoneLabel } from "@/lib/datetime/zone";
 
 /* ================================================================== */
 /*  Helpers                                                            */
@@ -38,6 +40,14 @@ function isSameDay(a: Date, b: Date) {
 
 function formatDateLocale(date: Date, locale: string, opts: Intl.DateTimeFormatOptions) {
   return date.toLocaleDateString(locale, opts);
+}
+
+/** "14:30" → "02:30 PM" in the reader's locale. Wall time only, no zone shift. */
+function formatSlotLabel(hhmm: string, locale: string) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
 /* ================================================================== */
@@ -67,7 +77,7 @@ export function InterviewBookingModal({
   const locale = useLocale();
   const isRtl = locale === "ar";
 
-  // Steps: "candidate" â†’ "details" â†’ "confirmation"
+  // Steps: "candidate" → "details" → "confirmation"
   const initialStep = prefilledCandidate ? "details" : fetchCandidates ? "candidate" : "details";
   const [step, setStep] = useState<"candidate" | "details" | "confirmation">(initialStep);
 
@@ -201,6 +211,13 @@ export function InterviewBookingModal({
     setStep("details");
   };
 
+  // One slot per selected candidate, staggered by duration. Drives both the
+  // confirmation preview and the submitted payload, so they cannot disagree.
+  const slots = useMemo(
+    () => bookingSlots(date, time, duration, Math.max(selectedCandidates.length, 1)),
+    [date, time, duration, selectedCandidates.length],
+  );
+
   const handleGoToConfirmation = () => {
     if (conflicts.length > 0) {
       setError(t("conflictTitle"));
@@ -215,21 +232,17 @@ export function InterviewBookingModal({
     setSubmitting(true);
     setBookingProgress({ done: 0, total: selectedCandidates.length });
 
-    const baseDate = new Date(`${date.toISOString().split("T")[0]}T${time}:00`);
     let successCount = 0;
     const failures: string[] = [];
 
     for (let i = 0; i < selectedCandidates.length; i++) {
       const candidate = selectedCandidates[i];
-      // Stagger time slots for bulk: each subsequent candidate gets +duration offset
-      const slotDate = new Date(baseDate.getTime() + i * duration * 60000);
-      const slotTime = `${String(slotDate.getHours()).padStart(2, "0")}:${String(slotDate.getMinutes()).padStart(2, "0")}`;
 
       try {
         await onSubmit({
           applicationId: candidate.applicationId,
-          date: date.toISOString().split("T")[0],
-          time: slotTime,
+          date: slots[i].date,
+          time: slots[i].time,
           duration,
           type,
           notes: notes.trim() || undefined,
@@ -257,6 +270,14 @@ export function InterviewBookingModal({
     return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
   })();
 
+  // The employer books in their own zone; say which one on the confirmation
+  // step, where the time is actually committed to. Safe to read the runtime's
+  // zone here — the calendar that mounts this modal is `ssr: false`.
+  const viewerZoneLabel = useMemo(
+    () => timeZoneLabel(date, resolveViewerTimeZone(), locale),
+    [date, locale],
+  );
+
   const endTimeLabel = (() => {
     const [h, m] = time.split(":").map(Number);
     const d = new Date();
@@ -283,7 +304,7 @@ export function InterviewBookingModal({
         className="animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-300 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/20"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* â”€â”€ Header â”€â”€ */}
+        {/* ── Header ── */}
         <div className="flex items-center justify-between border-b px-5 py-4 shrink-0">
           <div className="flex items-center gap-2">
             {step === "details" && fetchCandidates && !prefilledCandidate && (
@@ -314,7 +335,7 @@ export function InterviewBookingModal({
           </button>
         </div>
 
-        {/* â”€â”€ Step 1: Candidate Selection (Table with Filters) â”€â”€ */}
+        {/* ── Step 1: Candidate Selection (Table with Filters) ── */}
         {step === "candidate" && (
           <div className="flex flex-col min-h-0 flex-1">
             {/* Filters toolbar */}
@@ -484,7 +505,7 @@ export function InterviewBookingModal({
                                 {c.matchScore}%
                               </span>
                             ) : (
-                              <span className="text-muted-foreground">â€”</span>
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </td>
                           <td className="px-3 py-2.5 hidden sm:table-cell">
@@ -524,7 +545,7 @@ export function InterviewBookingModal({
           </div>
         )}
 
-        {/* â”€â”€ Step 2: Interview Details â”€â”€ */}
+        {/* ── Step 2: Interview Details ── */}
         {step === "details" && (
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* Selected candidates chip(s) */}
@@ -680,11 +701,11 @@ export function InterviewBookingModal({
               </p>
               <p className="mt-1 text-xs text-foreground">
                 {selectedCandidates.length > 1
-                  ? `${selectedCandidates.length} interviews Â· `
+                  ? `${selectedCandidates.length} interviews · `
                   : selectedCandidates[0]
-                    ? `${selectedCandidates[0].candidateName} Â· `
+                    ? `${selectedCandidates[0].candidateName} · `
                     : ""}
-                {selectedTimeLabel} â€“ {endTimeLabel} Â· {t("min", { count: duration })} each Â· {type === "video" ? t("videoCall") : type === "offline" ? t("inPerson") : t("hybrid")}
+                {selectedTimeLabel} – {endTimeLabel} · {t("min", { count: duration })} each · {type === "video" ? t("videoCall") : type === "offline" ? t("inPerson") : t("hybrid")}
               </p>
               {selectedCandidates.length > 1 && (
                 <p className="mt-1 text-[11px] text-muted-foreground">
@@ -731,7 +752,7 @@ export function InterviewBookingModal({
           </div>
         )}
 
-        {/* â”€â”€ Step 3: Confirmation â”€â”€ */}
+        {/* ── Step 3: Confirmation ── */}
         {step === "confirmation" && (
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* Candidate list */}
@@ -741,10 +762,8 @@ export function InterviewBookingModal({
               </p>
               <div className="space-y-2 max-h-[160px] overflow-y-auto">
                 {selectedCandidates.map((c, idx) => {
-                  const slotDate = new Date(
-                    new Date(`${date.toISOString().split("T")[0]}T${time}:00`).getTime() + idx * duration * 60000
-                  );
-                  const slotLabel = slotDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
+                  const slot = slots[idx];
+                  const slotLabel = formatSlotLabel(slot.time, locale);
                   return (
                     <div key={c.applicationId} className="flex items-center gap-2.5 rounded-lg bg-background/60 p-2">
                       <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -778,7 +797,8 @@ export function InterviewBookingModal({
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">{t("timeLabel")}</span>
                 <span className="text-xs font-semibold text-foreground">
-                  {selectedTimeLabel} â€“ {endTimeLabel}
+                  {selectedTimeLabel} – {endTimeLabel}
+                  {viewerZoneLabel ? ` ${viewerZoneLabel}` : ""}
                 </span>
               </div>
               <div className="h-px bg-border/50" />
@@ -786,7 +806,7 @@ export function InterviewBookingModal({
                 <span className="text-xs text-muted-foreground">{t("duration")}</span>
                 <span className="text-xs font-semibold text-foreground">
                   {selectedCandidates.length > 1
-                    ? `${t("min", { count: duration })} Ã— ${selectedCandidates.length} = ${duration * selectedCandidates.length} min total`
+                    ? `${t("min", { count: duration })} × ${selectedCandidates.length} = ${duration * selectedCandidates.length} min total`
                     : t("minutes", { count: duration })}
                 </span>
               </div>

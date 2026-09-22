@@ -17220,5 +17220,30 @@
     "alreadyHaveAccountTitle": "لديك حساب بالفعل",
     "alreadyHaveAccountBody": "يوجد حساب بالفعل لـ {email}. سجّل الدخول لقبول هذه الدعوة.",
     "goToSignIn": "الانتقال إلى تسجيل الدخول"
+  },
+  "interviewResponse": {
+    "title": "دعوة المقابلة الخاصة بك",
+    "forRole": "لوظيفة {role}",
+    "whenLabel": "الموعد",
+    "durationLabel": "المدة",
+    "formatLabel": "النوع",
+    "minutes": "{count} دقيقة",
+    "videoCall": "مكالمة فيديو",
+    "inPerson": "حضوري",
+    "hybrid": "هجين",
+    "confirm": "تأكيد الحضور",
+    "requestReschedule": "طلب موعد آخر",
+    "decline": "اعتذار",
+    "noteLabel": "لماذا تحتاج إلى موعد آخر؟",
+    "notePlaceholder": "أخبر صاحب العمل بالموعد المناسب لك.",
+    "answeredConfirmed": "شكرًا — تم تأكيد حضورك.",
+    "answeredDeclined": "شكرًا — أبلغنا صاحب العمل بعدم تمكنك من الحضور.",
+    "answeredReschedule": "شكرًا — طلبنا من صاحب العمل موعدًا آخر.",
+    "answeredHint": "يمكنك إغلاق هذه الصفحة. تم إشعار صاحب العمل.",
+    "noLongerAnswerable": "لم يعد بالإمكان الرد على هذه المقابلة. يرجى التواصل مع صاحب العمل مباشرة.",
+    "loading": "جارٍ تحميل الدعوة...",
+    "linkInvalidTitle": "هذا الرابط لم يعد يعمل",
+    "linkInvalid": "لم نتمكن من العثور على هذه الدعوة. ربما تم إلغاؤها أو انتهت صلاحية الرابط.",
+    "genericError": "لم نتمكن من حفظ ردك. يرجى المحاولة مرة أخرى."
   }
 }

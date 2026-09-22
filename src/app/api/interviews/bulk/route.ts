@@ -10,6 +10,8 @@ import { validateBody } from "@/lib/validators";
 import { interviewBulkSchema } from "@/lib/validators/interviews";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
+import { conflictWindow, findOverlap, type ExistingInterview } from "@/lib/interviews/conflict";
+import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
 import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import logger from "@/lib/logger";
 
@@ -195,21 +197,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         continue;
       }
 
-      // ── Collision guard: don't double-book the employer's calendar. Slide the
-      // slot forward until it doesn't overlap any existing active interview.
-      // ponytail: 4h lookback covers realistic durations; 20 tries caps the loop.
+      // ── Collision guard: slide the slot forward until it clashes with
+      // nothing on EITHER calendar. Scoping this to `employerId` alone only
+      // protected the booking company; a candidate already interviewing with
+      // another employer — the normal case on a multi-employer platform — was
+      // booked straight over. Overlap maths is shared with the single-booking
+      // route (lib/interviews/conflict).
+      // ponytail: 20 tries caps the loop.
       for (let attempts = 0; attempts < 20; attempts++) {
-        const slotEnd = new Date(candidateTime.getTime() + slotDuration * 60_000);
+        const { from, to } = conflictWindow(candidateTime, slotDuration, 0);
         const nearby = await Interview.find({
-          employerId: application.employerId,
+          $or: [
+            { employerId: application.employerId },
+            { jobSeekerId: application.jobSeekerId },
+          ],
           status: { $in: ["scheduled", "confirmed"] },
-          scheduledAt: { $gte: new Date(candidateTime.getTime() - 4 * 60 * 60_000), $lt: slotEnd },
-        }).select("scheduledAt duration").lean() as { scheduledAt: Date; duration?: number }[];
-        const clash = nearby.some((n) => {
-          const nStart = new Date(n.scheduledAt).getTime();
-          const nEnd = nStart + (n.duration ?? 60) * 60_000;
-          return nStart < slotEnd.getTime() && nEnd > candidateTime.getTime();
-        });
+          scheduledAt: { $gte: from, $lt: to },
+        }).select("scheduledAt duration").lean() as ExistingInterview[];
+        const clash = findOverlap(candidateTime, slotDuration, 0, nearby) !== null;
         if (!clash) break;
         candidateTime = nextAvailableSlot(
           new Date(candidateTime.getTime() + (slotDuration + gapMinutes) * 60_000),
@@ -258,6 +263,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         ).catch((err) =>
           logger.error({ err, interviewId: String(interview._id) }, "failed to notify interview scheduled (bulk)"));
       }
+
+      // Calendar invitation with the tokenised response link, same as the
+      // single-booking route. Non-blocking: a mail failure must not abandon
+      // the rest of the batch.
+      void sendInterviewInvite(String(interview._id), ctx.locale).catch(() => {});
 
       created.push(String(interview._id));
       schedule.push({

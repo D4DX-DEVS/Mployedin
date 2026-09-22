@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { formatZonedTimeRange, resolveViewerTimeZone } from "@/lib/datetime/zone";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
@@ -71,7 +72,7 @@ interface MployedinCalendarProps {
   onMonthChange?: (year: number, month: number) => void;
   /** Extra detail lines rendered inside event detail panel */
   renderEventExtra?: (event: CalendarEvent) => React.ReactNode;
-  /** Enable booking mode â€” shows "Book Interview" button on future dates */
+  /** Enable booking mode — shows "Book Interview" button on future dates */
   bookingEnabled?: boolean;
   /** Callback when user submits a booking (single or bulk) */
   onBookInterview?: (payload: BookingPayload) => Promise<void>;
@@ -79,7 +80,7 @@ interface MployedinCalendarProps {
   fetchCandidates?: (search: string, filters?: { jobId?: string; scoreMin?: number }) => Promise<BookingCandidate[]>;
   /** Fetch employer's jobs for the job filter */
   fetchJobs?: () => Promise<JobOption[]>;
-  /** Pre-fill with a specific application â€” skips candidate selection step */
+  /** Pre-fill with a specific application — skips candidate selection step */
   prefilledApplicationId?: string;
   /** Pre-filled candidate data (required when prefilledApplicationId is set) */
   prefilledCandidate?: BookingCandidate;
@@ -388,6 +389,9 @@ function EventDetail({
   const endTime = event.duration
     ? new Date(dt.getTime() + event.duration * 60000)
     : null;
+  // Safe to read the runtime's zone: every call site mounts this calendar with
+  // `ssr: false`, so there is no server render to disagree with.
+  const viewerZone = useMemo(() => resolveViewerTimeZone(), []);
 
   return (
     <div className="workspace-glass-panel card-pad animate-in fade-in-0 zoom-in-95 rounded-2xl border shadow-lg">
@@ -420,8 +424,7 @@ function EventDetail({
             month: "short",
             day: "numeric",
           })}{" "}
-          Â· {formatTime(dt, locale)}
-          {endTime ? ` â€“ ${formatTime(endTime, locale)}` : ""}
+          · {formatZonedTimeRange(dt, endTime, { timeZone: viewerZone, locale })}
           {event.duration ? ` (${t("min", { count: event.duration })})` : ""}
         </p>
 
@@ -596,7 +599,7 @@ function MonthView({
                     className={`flex cursor-pointer items-center gap-1 rounded-lg border-s-2 text-[11px] font-medium leading-tight transition-all duration-150 hover:opacity-90 hover:shadow-sm hover:translate-x-0.5 ${ isPast ? "opacity-50" : "" } ${EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"} chip-pad`}
                   >
                     <span className="truncate">
-                      {formatTime(new Date(e.scheduledAt), locale).replace(/\s?(AM|PM|Øµ|Ù…)/, "").trim()}{" "}
+                      {formatTime(new Date(e.scheduledAt), locale).replace(/\s?(AM|PM|ص|م)/, "").trim()}{" "}
                       {e.title}
                     </span>
                   </div>
@@ -787,7 +790,7 @@ function TimeGridView({
                         {heightMin >= 40 && (
                           <p className="truncate text-[11px] opacity-75 leading-tight mt-0.5">
                             {formatTime(evtDate, locale)}
-                            {evt.subtitle ? ` Â· ${evt.subtitle}` : ""}
+                            {evt.subtitle ? ` · ${evt.subtitle}` : ""}
                           </p>
                         )}
                       </button>
@@ -872,7 +875,7 @@ function UpcomingList({
                 <p className="mt-1 flex items-center gap-1 text-[11px] opacity-70">
                   <Clock className="h-2.5 w-2.5" />
                   {formatTime(new Date(e.scheduledAt), locale)}
-                  {e.duration ? ` Â· ${t("min", { count: e.duration })}` : ""}
+                  {e.duration ? ` · ${t("min", { count: e.duration })}` : ""}
                 </p>
                 {e.subtitle && (
                   <p className="mt-0.5 truncate text-[11px] opacity-60">
@@ -914,7 +917,7 @@ function UpcomingList({
                         month: "short",
                         day: "numeric",
                       })}{" "}
-                      Â· {formatTime(dt, locale)}
+                      · {formatTime(dt, locale)}
                     </p>
                   </div>
                 </button>
@@ -1016,9 +1019,9 @@ export default function MployedinCalendar({
       const start = weekDates[0];
       const end = weekDates[6];
       if (start.getMonth() === end.getMonth()) {
-        return `${t(`months.${MONTH_KEYS[start.getMonth()]}`)} ${start.getDate()} â€“ ${end.getDate()}, ${start.getFullYear()}`;
+        return `${t(`months.${MONTH_KEYS[start.getMonth()]}`)} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
       }
-      return `${t(`monthsShort.${MONTH_SHORT_KEYS[start.getMonth()]}`)} ${start.getDate()} â€“ ${t(`monthsShort.${MONTH_SHORT_KEYS[end.getMonth()]}`)} ${end.getDate()}, ${end.getFullYear()}`;
+      return `${t(`monthsShort.${MONTH_SHORT_KEYS[start.getMonth()]}`)} ${start.getDate()} – ${t(`monthsShort.${MONTH_SHORT_KEYS[end.getMonth()]}`)} ${end.getDate()}, ${end.getFullYear()}`;
     }
     return formatDateLocale(currentDate, locale, {
       weekday: "long",
@@ -1033,7 +1036,7 @@ export default function MployedinCalendar({
 
   return (
     <div className="flex flex-col gap-5" dir={isRtl ? "rtl" : "ltr"}>
-      {/* â”€â”€ Toolbar â”€â”€ */}
+      {/* ── Toolbar ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <Button variant="outline" size="sm" onClick={goToToday} className="rounded-xl font-semibold">
@@ -1102,7 +1105,7 @@ export default function MployedinCalendar({
         </div>
       </div>
 
-      {/* â”€â”€ Main Layout â”€â”€ */}
+      {/* ── Main Layout ── */}
       <div className="grid gap-5 xl:grid-cols-[1fr_280px]">
         {/* Calendar Area */}
         <div className="workspace-panel-surface overflow-hidden rounded-3xl">
@@ -1182,7 +1185,7 @@ export default function MployedinCalendar({
         </div>
       </div>
 
-      {/* â”€â”€ Booking Modal â”€â”€ */}
+      {/* ── Booking Modal ── */}
       {showBooking && bookingEnabled && onBookInterview && (
         <InterviewBookingModal
           date={selectedDate}

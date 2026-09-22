@@ -9,6 +9,12 @@
  * falls back to the stored literal text when keys are missing (legacy docs).
  */
 
+import {
+  FALLBACK_TIME_ZONE,
+  formatZonedDateTime,
+  isValidTimeZone,
+} from "@/lib/datetime/zone";
+
 type Translator = {
   (key: string, values?: Record<string, string | number | Date>): string;
   has: (key: string) => boolean;
@@ -52,16 +58,19 @@ export function resolveNotificationText(
     params.scoreLabel = tc(rawParams.scoreLabelKey);
   }
 
-  // Format an ISO date param using the active locale
+  // Format an ISO date param in the zone the notification recorded for its
+  // recipient. Rows written before that param existed were composed in
+  // FALLBACK_TIME_ZONE, so falling back to it keeps them reading as written —
+  // and keeps this deterministic, which the server pre-render requires.
   if (typeof rawParams.dateIso === "string") {
-    const parsed = new Date(rawParams.dateIso);
-    if (!Number.isNaN(parsed.getTime())) {
-      params.date = parsed.toLocaleString(locale === "ar" ? "ar" : "en-AE", {
-        timeZone: "Asia/Dubai",
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
-    }
+    const timeZone =
+      typeof rawParams.timeZone === "string" && isValidTimeZone(rawParams.timeZone)
+        ? rawParams.timeZone
+        : FALLBACK_TIME_ZONE;
+    // Only assign on success: an unparseable value leaves `date` unset, which
+    // is what this did before. Changing that copy is a separate question.
+    const formatted = formatZonedDateTime(rawParams.dateIso, { timeZone, locale });
+    if (formatted) params.date = formatted;
   }
 
   const title = titleKey && tc.has(titleKey) ? tc(titleKey, params) : n.title;

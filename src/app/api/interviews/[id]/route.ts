@@ -13,6 +13,8 @@ import { interviewUpdateSchema } from "@/lib/validators/interviews";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { generateMeetingLink } from "@/lib/interviews/meetingLink";
+import { isMaterialChange } from "@/lib/interviews/materialChange";
+import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
@@ -125,8 +127,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     update.meetLink = generateMeetingLink();
   }
 
+  // A calendar client ignores an update whose SEQUENCE has not moved, so any
+  // change the reader can see has to raise it — and then the invitation is
+  // reissued so their calendar actually follows.
+  const material = isMaterialChange(update);
+  if (material) update.icsSequence = (interview.icsSequence ?? 0) + 1;
+
   Object.assign(interview, update);
   await interview.save();
+
+  if (material) {
+    // Fire and forget: the interview is already saved, and a mail failure
+    // must not turn a successful edit into an error for the employer.
+    void sendInterviewInvite(String(interview._id), ctx.locale).catch(() => {});
+  }
 
   // Notify candidate when interview is rescheduled (in-place)
   if (body.scheduledAt && !body.status) {

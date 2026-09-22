@@ -12,6 +12,14 @@ import { validateBody } from "@/lib/validators";
 import { interviewCreateSchema } from "@/lib/validators/interviews";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
+import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
+import {
+  DEFAULT_INTERVIEW_MINUTES,
+  conflictWindow,
+  findOverlap,
+  type ExistingInterview,
+} from "@/lib/interviews/conflict";
+import { FALLBACK_TIME_ZONE } from "@/lib/datetime/zone";
 import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { addMinutes } from "date-fns";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -342,9 +350,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     .select("settings userId")
     .lean() as { settings?: { instantBooking?: boolean; weeklyAvailability?: string[]; availableHours?: { day: string; startTime: string; endTime: string }[]; timeBuffer?: number; timezone?: string }; userId?: unknown } | null;
 
+  const reqDate = new Date(scheduledAt);
+
+  // The published-availability rules ARE the instant-booking feature: they say
+  // when an employer may book without asking first. With it off the employer
+  // proposes and the candidate confirms, so the window is not enforced.
   if (seekerDoc?.settings?.instantBooking) {
-    const reqDate = new Date(scheduledAt);
-    const tz = seekerDoc.settings.timezone ?? "Asia/Dubai";
+    const tz = seekerDoc.settings.timezone ?? FALLBACK_TIME_ZONE;
 
     // Convert the requested UTC time to the seeker's local timezone
     const localDayName = (() => {
@@ -389,19 +401,27 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       }
     }
 
-    // Check for conflicting interviews (including buffer)
-    const timeBuffer = seekerDoc.settings.timeBuffer ?? 30;
-    const interviewDuration = duration ?? 30;
-    const windowStart = addMinutes(reqDate, -timeBuffer);
-    const windowEnd = addMinutes(reqDate, interviewDuration + timeBuffer);
+  }
 
-    const conflict = await Interview.findOne({
+  // ── Double-booking guard ─────────────────────────────────────────────────
+  // Deliberately OUTSIDE the instantBooking gate. Which hours a candidate
+  // publishes is a preference; not being in two interviews at once is not.
+  // This used to sit inside the gate, so turning instant booking off removed
+  // the protection entirely.
+  {
+    const timeBuffer = seekerDoc?.settings?.timeBuffer ?? 30;
+    const interviewDuration = duration ?? DEFAULT_INTERVIEW_MINUTES;
+    const { from, to } = conflictWindow(reqDate, interviewDuration, timeBuffer);
+
+    const nearby = await Interview.find({
       jobSeekerId: app.jobSeekerId,
       status: { $in: ["scheduled", "confirmed"] },
-      scheduledAt: { $gte: windowStart, $lt: windowEnd },
-    }).lean();
+      scheduledAt: { $gte: from, $lt: to },
+    })
+      .select("scheduledAt duration")
+      .lean();
 
-    if (conflict) {
+    if (findOverlap(reqDate, interviewDuration, timeBuffer, nearby as ExistingInterview[])) {
       return NextResponse.json(
         { error: "Time slot conflicts with an existing interview (including buffer time)." },
         { status: 409 },
@@ -458,6 +478,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     reminderSent: false,
     rescheduleCount: 0,
   });
+
+  // Calendar invitation with the tokenised response link. Fire and forget —
+  // the booking is already committed and must not fail on a mail error.
+  void sendInterviewInvite(String(interview._id), ctx.locale).catch(() => {});
 
   // Increment agent performance counter
   if (resolvedAgentId) {
