@@ -251,7 +251,7 @@ export default function NotificationSettingsPage() {
   }
 
   return (
-    <div className="page-container max-w-3xl mx-auto" dir={isAr ? "rtl" : "ltr"}>
+    <div className="page-container max-w-3xl mx-auto pb-32 lg:pb-24" dir={isAr ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button
@@ -420,8 +420,19 @@ export default function NotificationSettingsPage() {
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex items-center gap-3 sticky bottom-4">
+      {/* Save bar.
+          Two things were wrong with the original `sticky bottom-4` on a bare
+          flex row. It had no background, so the page showed straight through
+          it and on a short window the button painted on top of the last
+          category row. And `bottom-4` is 16px off the viewport, which on a
+          phone is underneath `WorkspaceBottomNav` (`fixed bottom-0 z-40`) —
+          the button would have been unreachable there.
+
+          So: a real surface, and the same bottom offset the assistant FAB
+          already uses to clear that nav. `z-10` stays below the nav's `z-40`
+          on purpose, so the nav is never covered. `pb-32` on the container
+          reserves the lane so the bar never has to overlap anything. */}
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:bottom-4">
         <Button
           onClick={handleSave}
           disabled={saving || !hasChanges}
