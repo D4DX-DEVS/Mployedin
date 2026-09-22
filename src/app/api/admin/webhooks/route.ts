@@ -11,6 +11,7 @@ import { validateBody } from "@/lib/validators";
 import { webhookCreateSchema } from "@/lib/validators/webhooks";
 import Webhook from "@/models/Webhook";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: string; locale: string }
 
@@ -28,7 +29,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const event = searchParams.get("event");
   const query: Record<string, unknown> = {};
   if (search) {
-    const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const safeSearch = escapeRegex(search);
     query.$or = [
       { name: { $regex: safeSearch, $options: "i" } },
       { url: { $regex: safeSearch, $options: "i" } },

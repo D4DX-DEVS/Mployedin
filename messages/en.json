@@ -7301,7 +7301,15 @@
         "onsite": "On-site",
         "hybrid": "Hybrid",
         "remote": "Remote"
-      }
+      },
+      "remoteScopeLabel": "Who can you hire for this remote role?",
+      "remoteScopeHint": "Remote says how the work is done. This says where a hire may legally be based — work authorisation, payroll or timezone. We only match candidates you can actually hire.",
+      "remoteScopeWorldwide": "Anywhere in the world",
+      "remoteScopeCountries": "Only certain countries",
+      "remoteCountriesLabel": "Countries you can hire from",
+      "remoteCountriesPlaceholder": "Add a country",
+      "remoteCountriesEmpty": "Add at least one country you can hire from.",
+      "remoteScopeUnsetHint": "Not set yet — until you choose, this job is only matched to candidates in {country}."
     },
     "quality": {
       "title": "Listing Health",
@@ -9728,7 +9736,17 @@
     "niceToHave": "Nice to Have",
     "aiMatching": "AI Matching",
     "charCount": "{count} / 5000 characters",
-    "jobNotFound": "Job not found"
+    "jobNotFound": "Job not found",
+    "remoteScope": "Who can you hire for this remote role?",
+    "remoteScopeHint": "Remote says how the work is done. This says where a hire may legally be based. We only match candidates you can actually hire.",
+    "remoteScopeWorldwide": "Anywhere in the world",
+    "remoteScopeCountries": "Only certain countries",
+    "remoteCountries": "Countries you can hire from",
+    "remoteCountriesHint": "Add every country a remote hire could be based in.",
+    "remoteCountriesEmpty": "Add at least one country you can hire from.",
+    "remoteScopeUnset": "Not set — until you choose, this job is only matched to candidates in the country above.",
+    "placeholderRemoteCountry": "Type a country, then press Enter",
+    "removeCountry": "Remove {country}"
   },
   "employerPanel": {
     "title": "Hiring Panel Review",

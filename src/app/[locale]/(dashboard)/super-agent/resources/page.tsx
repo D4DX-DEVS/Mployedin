@@ -19,6 +19,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { formatFileSize } from "@/lib/ui/fileSize";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
 interface Resource {
@@ -33,11 +34,6 @@ const CATEGORY_KEYS = [
   "vendor_documents", "travel_templates", "branding_assets", "compliance_docs", "other",
 ];
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export default function ResourceDownloadsPage() {
   const t = useTranslations("resources");

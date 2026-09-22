@@ -7,7 +7,7 @@ import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
-import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
+import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput, sanitizeAiList } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiMatchSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -15,14 +15,6 @@ import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { calculateMatchDetail, seekerProfileFromDoc, jobProfileFromDoc, type MatchScoreWeights } from "@/lib/matchScore";
 
-function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
-  const cleaned = (values ?? [])
-    .map((value) => sanitizeAIInput(value, maxLength))
-    .filter(Boolean)
-    .slice(0, maxItems);
-
-  return cleaned.length > 0 ? cleaned.join(", ") : "Not specified";
-}
 
 /**
  * POST /api/ai/match

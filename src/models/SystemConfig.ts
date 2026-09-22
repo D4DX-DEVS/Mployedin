@@ -1,4 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { DEFAULT_MIN_RELEVANCE } from "@/lib/matching/constants";
+import type { DigestCadence } from "@/lib/notifications/digestGate";
 
 /**
  * SystemConfig — platform-wide settings controlled by admin.
@@ -37,6 +39,20 @@ export interface ISystemConfig extends Document {
     maintenanceMessage?: string;
   };
 
+  /**
+   * Job-matching policy. One threshold for every surface that decides whether
+   * a job is good enough to put in front of a human — the digests, the
+   * re-engagement mail, the similar-jobs mail and the in-app list. It used to
+   * be hard-coded three different ways (50 / 40 / 40 / none), so the same job
+   * could be withheld by one surface and mailed by another on the same day.
+   */
+  matching: {
+    /** Minimum relevance (0–100) to list or email a job. */
+    minScore: number;
+    /** Let Jev re-rank the shortlist. Off falls back to the deterministic score alone. */
+    aiRerank: boolean;
+  };
+
   // Admin-managed overrides (force-unsubscribe abusive users, etc.)
   userOverrides: Array<{
     userId: string;
@@ -73,10 +89,16 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
       emailSequenceSender: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
     },
     globalDefaults: {
-      defaultFrequency: { type: String, enum: ["instant", "daily", "weekly", "none"], default: "daily" },
+      // Weekly, not daily: see resolveDefaultDigestCadence() for why. Changing
+      // this in the admin UI now actually changes what seekers receive.
+      defaultFrequency: { type: String, enum: ["instant", "daily", "weekly", "none"], default: "weekly" },
       maxEmailsPerUserPerDay: { type: Number, default: 10 },
       maintenanceMode: { type: Boolean, default: false },
       maintenanceMessage: String,
+    },
+    matching: {
+      minScore: { type: Number, default: DEFAULT_MIN_RELEVANCE, min: 0, max: 100 },
+      aiRerank: { type: Boolean, default: true },
     },
     userOverrides: [
       {
@@ -115,6 +137,61 @@ export async function isCronEnabled(
   const config = await getSystemConfig();
   if (config.globalDefaults.maintenanceMode) return false;
   return config.cronJobs[cronKey]?.enabled !== false;
+}
+
+/**
+ * The relevance floor every recommendation surface must honour.
+ *
+ * Falls back to the compiled default when the config document predates this
+ * field or the value is nonsense, so a bad admin edit degrades to the product
+ * default instead of mailing everything (0) or nothing (100).
+ */
+export async function resolveMatchThreshold(): Promise<number> {
+  try {
+    const config = await getSystemConfig();
+    const raw = config.matching?.minScore;
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0 && raw <= 100) return raw;
+  } catch {
+    // Config unreadable — the default is the safe answer, not an exception
+    // thrown into a cron batch.
+  }
+  return DEFAULT_MIN_RELEVANCE;
+}
+
+/**
+ * How often a seeker with no saved preference hears from the recommendation
+ * engine.
+ *
+ * `globalDefaults.defaultFrequency` was admin-editable from
+ * /admin/settings/notifications but read by nothing — every seeker got the
+ * schema default of daily regardless of what the admin picked. It is wired
+ * here, and the default is now weekly: on a 62-job board with an 80% relevance
+ * floor, a daily run has something to say to about ten people, and mails the
+ * other two hundred nothing while still paying to score them.
+ *
+ * Seekers who want daily can still choose it; that matches what Indeed,
+ * Naukri, Bayt and LinkedIn all offer.
+ */
+export async function resolveDefaultDigestCadence(): Promise<DigestCadence> {
+  try {
+    const config = await getSystemConfig();
+    const raw = config.globalDefaults?.defaultFrequency;
+    if (raw === "weekly" || raw === "none") return raw;
+    if (raw === "daily" || raw === "instant") return "daily";
+  } catch {
+    // Unreadable config must not throw into a cron batch.
+  }
+  return "weekly";
+}
+
+/** Whether Jev may re-rank the shortlist. Defaults to on. */
+export async function isAiRerankEnabled(): Promise<boolean> {
+  try {
+    const config = await getSystemConfig();
+    return config.matching?.aiRerank !== false;
+  } catch {
+    return false;
+  }
 }
 
 /**

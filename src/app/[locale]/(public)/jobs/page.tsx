@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
+import { closesInDays } from "@/lib/jobs/expiry";
 
 // Revalidate every 60 seconds — fresh job listings without blocking every request
 export const revalidate = 60;
@@ -85,12 +86,6 @@ function salaryLabel(
 
 
 
-function closesInDays(expiresAt?: Date | null): number | null {
-  if (!expiresAt) return null;
-  const diff = new Date(expiresAt).getTime() - Date.now();
-  const days = Math.ceil(diff / 86400000);
-  return days > 0 ? days : null;
-}
 
 export default async function JobsPage({ params, searchParams }: PageProps) {
   const { locale } = await params;

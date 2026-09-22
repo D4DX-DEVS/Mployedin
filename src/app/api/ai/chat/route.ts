@@ -41,6 +41,7 @@ import AuditLog from "@/models/AuditLog";
 import { logActivity } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 import logger from "@/lib/logger";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 const CHAT_MODEL = GEMINI_MODELS.flash;
 
@@ -249,7 +250,7 @@ export async function POST(req: NextRequest) {
           const userSkills: string[] = profile.skills ?? [];
           // ponytail: case-insensitive skill match tolerant of ".js" suffix ("React" ↔ "React.js")
           const skillRegexes = userSkills.map((s) => {
-            const base = s.trim().replace(/\.js$/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const base = escapeRegex(s.trim().replace(/\.js$/i, ""));
             return new RegExp(`^${base}(\\.js)?$`, "i");
           });
           const skillFilter = skillRegexes.length > 0

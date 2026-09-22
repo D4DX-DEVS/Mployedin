@@ -22,6 +22,7 @@ import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import logger from "@/lib/logger";
 import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hiring/pipeline";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
@@ -253,7 +254,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (skills) {
     const skillsList = skills.split(",").map((s) => s.trim()).filter(Boolean);
     if (skillsList.length > 0) {
-      const escapedSkills = skillsList.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const escapedSkills = skillsList.map((s) => escapeRegex(s));
       const seekers = await JobSeeker.find({
         skills: { $in: escapedSkills.map((s) => new RegExp(s, "i")) },
       }).select("_id").lean();
@@ -285,7 +286,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (search) {
-    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedSearch = escapeRegex(search);
     const [matchingUsers, matchingJobs, matchingEmployers] = await Promise.all([
       User.find({
         $or: [

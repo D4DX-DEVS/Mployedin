@@ -8,6 +8,7 @@ import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { checkFeatureGate } from "@/lib/subscription/featureGate";
 import type { CopilotTool } from "../types";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 /**
  * Job creation — usable by employer, agent, admin only. super_agent is
@@ -187,7 +188,7 @@ export const searchEmployersTool: CopilotTool<{ query?: string; limit?: number }
     }
 
     if (args.query) {
-      filter.companyName = new RegExp(args.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      filter.companyName = new RegExp(escapeRegex(args.query), "i");
     }
 
     const employers = await Employer.find(filter)

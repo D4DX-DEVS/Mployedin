@@ -1,7 +1,5 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import fs from "fs";
-import path from "path";
 import {
   resolveBillTo,
   resolveLineItems,
@@ -14,6 +12,7 @@ import {
   type TotalRow,
 } from "./presentation";
 import type { ResolvedIssuer } from "./issuer";
+import { getLogoBase64 } from "@/lib/pdf/logo";
 
 /**
  * The invoice document, as printed.
@@ -88,19 +87,6 @@ function totalRowLabel(row: TotalRow): string {
   }
 }
 
-let cachedLogoBase64: string | null | undefined;
-
-function getLogoBase64(): string | null {
-  if (cachedLogoBase64 !== undefined) return cachedLogoBase64;
-  try {
-    const logoPath = path.join(process.cwd(), "public", "logo.png");
-    const logoData = fs.readFileSync(logoPath);
-    cachedLogoBase64 = `data:image/png;base64,${logoData.toString("base64")}`;
-  } catch {
-    cachedLogoBase64 = null;
-  }
-  return cachedLogoBase64;
-}
 
 export function generateInvoicePdf(
   invoice: PdfInvoice,

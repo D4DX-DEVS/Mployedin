@@ -5,14 +5,11 @@ import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import User from "@/models/User";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx {
   userId: string;
   role: UserRole;
-}
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**

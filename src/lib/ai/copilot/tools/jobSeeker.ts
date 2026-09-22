@@ -7,6 +7,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { CopilotTool } from "../types";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 async function getSeeker(userId: string) {
   return JobSeeker.findOne({ userId }).select("_id skills").lean();
@@ -72,10 +73,10 @@ export const searchJobsTool: CopilotTool<{ query?: string; country?: string; rem
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: Record<string, any> = { status: "active" };
     if (args.query) {
-      const re = new RegExp(args.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const re = new RegExp(escapeRegex(args.query), "i");
       filter.$or = [{ title: re }, { tags: re }, { "requirements.skills": re }];
     }
-    if (args.country) filter["location.country"] = new RegExp(`^${args.country.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+    if (args.country) filter["location.country"] = new RegExp(`^${escapeRegex(args.country)}$`, "i");
     if (args.remoteOnly) filter["location.isRemote"] = true;
 
     const jobs = await Job.find(filter)

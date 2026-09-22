@@ -64,7 +64,7 @@ export async function generateImage(opts: ImageGenerationOptions): Promise<Gener
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(providerErrorMessage(res.status, text, "image generation"));
+    throw new Error(providerErrorMessage(res.status, text, "image generation", "google"));
   }
 
   const data = (await res.json()) as NativeGenerateContentResponse;

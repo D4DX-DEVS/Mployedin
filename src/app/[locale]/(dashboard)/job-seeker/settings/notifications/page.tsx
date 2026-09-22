@@ -20,7 +20,7 @@ import {
   ChevronLeft,
   Smartphone,
 } from "lucide-react";
-import Link from "next/link";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -139,7 +139,11 @@ const CHANNEL_LABELS: Record<Channel, { labelKey: string; icon: typeof Mail }> =
 export default function NotificationSettingsPage() {
   const { locale } = useParams<{ locale: string }>();
   const isAr = locale === "ar";
+  // Popping, not pushing: a <Link> back to settings would stack a second
+  // settings entry and settings' own back button would return here forever.
+  const { goBack } = useBackNavigation(`/${locale}/job-seeker/settings`);
   const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
 
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
@@ -250,12 +254,14 @@ export default function NotificationSettingsPage() {
     <div className="page-container max-w-3xl mx-auto" dir={isAr ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Link
-          href={`/${locale}/job-seeker/settings`}
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label={tCommon("back")}
           className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors"
         >
           <ChevronLeft className={`w-4 h-4 ${isAr ? "rotate-180" : ""}`} />
-        </Link>
+        </button>
         <div>
           <h1 className="text-xl font-bold tracking-tight">
             {t("title")}

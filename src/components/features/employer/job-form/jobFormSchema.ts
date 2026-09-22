@@ -145,7 +145,16 @@ export const jobFormSchema = z.object({
       .min(1, "City is required")
       .refine(isPlausibleCityName, "Enter a valid city name"),
     isRemote: z.boolean().default(false),
-  }),
+    // Remote says how the work is done; this says who may be hired to do it.
+    // Optional so drafts and non-remote jobs are unaffected, but a "countries"
+    // scope with an empty list is rejected below rather than saved as data the
+    // matcher would have to interpret.
+    remoteScope: z.enum(["worldwide", "countries"]).optional(),
+    remoteCountries: z.array(z.string()).max(50).optional(),
+  }).refine(
+    (l) => !l.isRemote || l.remoteScope !== "countries" || (l.remoteCountries?.length ?? 0) > 0,
+    { message: "Add at least one country you can hire from", path: ["remoteCountries"] },
+  ),
 
   // Step 2 — Job Details
   description: z

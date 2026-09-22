@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Wifi, Sparkles, UserCog } from "lucide-react";
+import { MapPin, Wifi, Sparkles, UserCog, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +55,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   const title = watch("title");
   const workMode = watch("workMode");
   const category = watch("category");
+  const remoteScope = watch("location.remoteScope");
+  const remoteCountries = watch("location.remoteCountries") ?? [];
 
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -337,6 +339,12 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                   onClick={() => {
                     setValue("workMode", mode.value as JobFormValues["workMode"], { shouldValidate: false });
                     setValue("location.isRemote", mode.value === "remote", { shouldValidate: false });
+                    // A scope left behind on an on-site job is data the API
+                    // rejects and the matcher would have to ignore.
+                    if (mode.value !== "remote") {
+                      setValue("location.remoteScope", undefined, { shouldValidate: false });
+                      setValue("location.remoteCountries", [], { shouldValidate: false });
+                    }
                   }}
                   className={cn(
                     "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
@@ -407,6 +415,105 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             )}
           </div>
         </div>
+
+        {/* Remote hiring scope. Only shown for remote roles, because that is
+            the only case where "where is this job" stops answering "who can
+            take it" — a remote job can still be limited by work authorisation,
+            payroll entity or timezone, and the matcher will not guess. */}
+        {watch("location.isRemote") && (
+          <div className="mt-4 space-y-3 rounded-xl border border-border/70 bg-background card-pad">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">{t("remoteScopeLabel")}</Label>
+              <p className="text-xs text-muted-foreground">{t("remoteScopeHint")}</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(["worldwide", "countries"] as const).map((scope) => (
+                <button
+                  key={scope}
+                  type="button"
+                  onClick={() => {
+                    setValue("location.remoteScope", scope, { shouldValidate: true });
+                    if (scope === "worldwide") {
+                      setValue("location.remoteCountries", [], { shouldValidate: true });
+                    }
+                  }}
+                  className={cn(
+                    "min-h-11 rounded-full px-4 text-xs font-medium transition-colors sm:min-h-0 sm:py-2",
+                    remoteScope === scope
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border/70 text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {t(scope === "worldwide" ? "remoteScopeWorldwide" : "remoteScopeCountries")}
+                </button>
+              ))}
+            </div>
+
+            {/* Unset is not "worldwide" — say so, rather than let the employer
+                assume the role is reaching everyone. */}
+            {!remoteScope && (
+              <p className="text-xs text-muted-foreground">
+                {t("remoteScopeUnsetHint", {
+                  country: getLocalizedCountryName(watch("location.country") ?? "", locale, {
+                    remoteGlobalLabel: t("countries.remoteGlobal"),
+                  }),
+                })}
+              </p>
+            )}
+
+            {remoteScope === "countries" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="remote-countries" className="text-xs text-muted-foreground">
+                  {t("remoteCountriesLabel")} <span className="text-destructive">*</span>
+                </Label>
+                <SearchableSelect
+                  id="remote-countries"
+                  options={COUNTRIES.filter((c) => !remoteCountries.includes(c)).map((country) => ({
+                    value: country,
+                    label: getCountryLabel(country),
+                  }))}
+                  value=""
+                  onValueChange={(v) => {
+                    if (!v || remoteCountries.includes(v)) return;
+                    setValue("location.remoteCountries", [...remoteCountries, v], {
+                      shouldValidate: true,
+                    });
+                  }}
+                  placeholder={t("remoteCountriesPlaceholder")}
+                />
+                {remoteCountries.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {remoteCountries.map((country) => (
+                      <Badge key={country} variant="secondary" className="gap-1">
+                        {getLocalizedCountryName(country, locale, {
+                          remoteGlobalLabel: t("countries.remoteGlobal"),
+                        })}
+                        <button
+                          type="button"
+                          aria-label={`${t("remoteCountriesLabel")}: ${country}`}
+                          onClick={() =>
+                            setValue(
+                              "location.remoteCountries",
+                              remoteCountries.filter((c) => c !== country),
+                              { shouldValidate: true }
+                            )
+                          }
+                          className="tap-target-box text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {remoteCountries.length === 0 && (
+                  <p className="text-xs text-destructive">{t("remoteCountriesEmpty")}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Assign Agent (optional) */}

@@ -65,6 +65,14 @@ export interface JobProfile {
   /** Job city (lower-cased). "" if unknown. */
   city?: string;
   remote: boolean;
+  /**
+   * Where a remote job may be worked from. `undefined` means the employer was
+   * never asked — it is NOT a synonym for "worldwide", and the eligibility gate
+   * falls back to `location` when it is absent.
+   */
+  remoteScope?: "worldwide" | "countries";
+  /** Lower-cased countries a restricted remote job hires from. */
+  remoteCountries?: string[];
   salaryMin: number;
   salaryMax: number;
   /** Pay period for salaryMin/Max. Used to normalize to monthly. Defaults to "monthly". */
@@ -706,9 +714,24 @@ export function seekerProfileFromDoc(seeker: {
  * Build a JobProfile from a Mongoose Job lean document.
  */
 export function jobProfileFromDoc(job: {
-  requirements?: { skills?: string[]; preferredSkills?: string[]; experienceMin?: number; experienceMax?: number; education?: string };
+  requirements?: {
+    skills?: string[];
+    preferredSkills?: string[];
+    /** Extracted from the description when the employer typed none. See jobSkillExtraction.ts. */
+    aiSkills?: string[];
+    aiPreferredSkills?: string[];
+    experienceMin?: number;
+    experienceMax?: number;
+    education?: string;
+  };
   salary?: { min?: number; max?: number; period?: "monthly" | "yearly" | "lpa"; currency?: string };
-  location?: { country?: string; city?: string; isRemote?: boolean };
+  location?: {
+    country?: string;
+    city?: string;
+    isRemote?: boolean;
+    remoteScope?: "worldwide" | "countries";
+    remoteCountries?: string[];
+  };
   title?: string;
   workMode?: string | null;
 }): JobProfile {
@@ -719,12 +742,22 @@ export function jobProfileFromDoc(job: {
     return job.location?.isRemote ? "remote" : "";
   })();
 
+  // The employer's own list always wins; the extracted one only fills a gap.
+  // 22 of 62 live jobs state no skills at all, and skill fit is the largest
+  // component of relevance — without a fallback those jobs can never be
+  // matched to anyone.
+  const stated = job.requirements?.skills ?? [];
+  const statedPreferred = job.requirements?.preferredSkills ?? [];
+
   return {
-    skills: job.requirements?.skills ?? [],
-    preferredSkills: job.requirements?.preferredSkills ?? [],
+    skills: stated.length > 0 ? stated : (job.requirements?.aiSkills ?? []),
+    preferredSkills:
+      statedPreferred.length > 0 ? statedPreferred : (job.requirements?.aiPreferredSkills ?? []),
     location: job.location?.country?.toLowerCase() ?? "",
     city: job.location?.city?.toLowerCase() ?? "",
     remote: job.location?.isRemote ?? false,
+    remoteScope: job.location?.remoteScope,
+    remoteCountries: (job.location?.remoteCountries ?? []).map((c) => c.toLowerCase()),
     salaryMin: job.salary?.min ?? 0,
     salaryMax: job.salary?.max ?? 0,
     salaryPeriod: job.salary?.period ?? "monthly",

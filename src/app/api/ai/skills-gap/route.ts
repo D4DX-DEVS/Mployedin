@@ -11,6 +11,7 @@ import { validateBody } from "@/lib/validators";
 import { aiSkillsGapSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 type GapPriority = "high" | "medium" | "low";
 
@@ -209,7 +210,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     .map((r) => r.trim())
     .filter(Boolean);
   const titleRegex = roleKeywords.length
-    ? new RegExp(roleKeywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i")
+    ? new RegExp(roleKeywords.map((k) => escapeRegex(k)).join("|"), "i")
     : null;
 
   interface SkillDemandEntry {

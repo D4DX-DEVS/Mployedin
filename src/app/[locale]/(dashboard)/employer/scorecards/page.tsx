@@ -24,6 +24,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { FeedbackTrendsPanel } from "@/components/features/employer/FeedbackTrendsPanel";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { getScoreBadgeColor } from "@/lib/ui/scoreBadge";
 
 const RECOMMENDATION_COLORS: Record<string, string> = {
   strong_yes: "bg-emerald-100 text-emerald-700 border-emerald-300",
@@ -41,13 +42,6 @@ const RECOMMENDATION_LABELS_KEY: Record<string, string> = {
   strong_no: "strongNo",
 };
 
-function getScoreBadgeColor(score: number) {
-  if (score >= 4.5) return "bg-emerald-100 text-emerald-700";
-  if (score >= 3.5) return "bg-green-100 text-green-700";
-  if (score >= 2.5) return "bg-amber-100 text-amber-700";
-  if (score >= 1.5) return "bg-orange-100 text-orange-700";
-  return "bg-red-100 text-red-700";
-}
 
 export default function ScorecardListPage() {
   const router = useRouter();

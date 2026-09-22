@@ -53,6 +53,9 @@ export const dailyDigestWorker = inngest.createFunction(
       const jobCount = jobs.length;
       const viewCount = profileViews.count;
 
+      // A digest can now also carry only the "nothing cleared the bar" note,
+      // in which case both counts are zero and the old subject read
+      // "0 recruiters viewed your profile".
       let subject: string;
       if (locale === "ar") {
         subject =
@@ -60,14 +63,18 @@ export const dailyDigestWorker = inngest.createFunction(
             ? `${jobCount} وظائف جديدة + ${viewCount} مشاهدات لملفك الشخصي`
             : jobCount > 0
               ? `${jobCount} وظائف مطابقة لملفك الشخصي`
-              : `${viewCount} مسؤولي توظيف شاهدوا ملفك الشخصي`;
+              : viewCount > 0
+                ? `${viewCount} مسؤولي توظيف شاهدوا ملفك الشخصي`
+                : "لا توجد مطابقات قوية هذا الأسبوع";
       } else {
         subject =
           jobCount > 0 && viewCount > 0
             ? `${jobCount} new job matches + ${viewCount} profile views`
             : jobCount > 0
               ? `${jobCount} jobs matching your profile`
-              : `${viewCount} recruiters viewed your profile`;
+              : viewCount > 0
+                ? `${viewCount} recruiters viewed your profile`
+                : "No strong job matches this week";
       }
 
       await sendEmail({
@@ -104,6 +111,8 @@ interface DigestEmailData {
     location: string;
     matchScore: number;
     salary?: { min: number; max: number; currency?: string; period?: string };
+    /** The job skills the seeker demonstrably has — the reasoning behind the %. */
+    matchedSkills?: string[];
   }>;
   profileViews: {
     count: number;
@@ -111,6 +120,16 @@ interface DigestEmailData {
   };
   /** Omitted for older events still in flight; the block is then skipped. */
   profile?: { completeness: number; signals: number };
+  /**
+   * Present only when jobs were scored and none cleared the threshold. Turns
+   * a silent morning into an explanation the seeker can act on.
+   */
+  nearMiss?: {
+    bestScore: number;
+    threshold: number;
+    considered: number;
+    topBlocker: string | null;
+  };
 }
 
 function companyInitials(name: string): string {
@@ -160,7 +179,7 @@ function salaryLine(
 }
 
 export function buildDigestEmail(data: DigestEmailData): string {
-  const { userName, locale, jobs, profileViews, profile } = data;
+  const { userName, locale, jobs, profileViews, profile, nearMiss } = data;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
   const isAr = locale === "ar";
   const dir = isAr ? "rtl" : "ltr";
@@ -215,6 +234,14 @@ export function buildDigestEmail(data: DigestEmailData): string {
                 <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${esc(j.title)}</a>
                 <p style="margin: 2px 0 0; color: #374151; font-size: 13px; font-weight: 500;">${esc(j.company)}</p>
                 <p style="margin: 3px 0 0; color: #6b7280; font-size: 12px; line-height: 18px;">📍 ${esc(j.location || "Remote")}${salaryText ? ` · <span style="white-space: nowrap;">${esc(salaryText)}</span>` : ""}</p>
+                ${
+                  // Why this job scored what it did. A bare percentage is the
+                  // thing seekers distrust; naming the skills that earned it
+                  // costs one line and makes the number checkable.
+                  j.matchedSkills && j.matchedSkills.length > 0
+                    ? `<p style="margin: 3px 0 0; color: #059669; font-size: 11px; line-height: 16px;">${isAr ? "مهاراتك المطابقة" : "Your matching skills"}: ${esc(j.matchedSkills.slice(0, 4).join(", "))}</p>`
+                    : ""
+                }
               </td>
               <td style="text-align: ${isAr ? "left" : "right"}; vertical-align: top; width: 62px;">
                 <span style="background: ${matchColor}; color: #ffffff; padding: 2px 7px; border-radius: 10px; font-size: 11px; line-height: 16px; font-weight: 600; white-space: nowrap; display: inline-block;">${j.matchScore}%</span>
@@ -273,6 +300,91 @@ export function buildDigestEmail(data: DigestEmailData): string {
         </table>`
       : "";
 
+  // Nothing cleared the bar. Say so plainly, with the number, so the seeker
+  // can tell the difference between "the platform is dead" and "we hold
+  // recommendations to a standard". Blocker copy names the constraint that
+  // removed the most jobs, which is the one they can actually act on.
+  const blockerCopy: Record<string, { en: string; ar: string }> = {
+    // Profile gaps first — the only causes the seeker can fix today, and the
+    // ones that cap their score no matter what the job board does.
+    no_skills: {
+      en: "Your profile doesn't list any skills yet. Skills are the largest part of how we match you, so adding a few is the fastest way to start getting matches.",
+      ar: "ملفك الشخصي لا يتضمن أي مهارات بعد. المهارات هي الجزء الأكبر من طريقة المطابقة، وإضافة بعضها هو أسرع طريقة للبدء في تلقي الوظائف المناسبة.",
+    },
+    no_roles: {
+      en: "Your profile doesn't say what roles you're looking for, so we can only guess. Adding a job title or two sharpens every match.",
+      ar: "ملفك الشخصي لا يوضح الوظائف التي تبحث عنها، لذا لا يمكننا سوى التخمين. إضافة مسمى وظيفي أو اثنين يحسّن كل مطابقة.",
+    },
+    score: {
+      en: "Nothing on the board is a close enough fit for your profile right now. We'd rather send you nothing than a weak match.",
+      ar: "لا توجد حالياً وظائف مطابقة بدرجة كافية لملفك الشخصي. نفضّل ألا نرسل لك شيئاً على أن نرسل مطابقة ضعيفة.",
+    },
+    country: {
+      en: "Most openings right now are outside the countries on your profile.",
+      ar: "معظم الوظائف المتاحة حالياً خارج الدول المحددة في ملفك.",
+    },
+    experience: {
+      en: "Most openings right now ask for more years than your profile shows.",
+      ar: "معظم الوظائف المتاحة تطلب سنوات خبرة أكثر مما يظهر في ملفك.",
+    },
+    // The two "we can't tell" blockers. Most openings state a minimum, and we
+    // will not claim a match we cannot stand behind — so these ask for the one
+    // missing field rather than guessing at it.
+    experience_unknown: {
+      en: "Most openings state a minimum number of years, and your profile doesn't say how much experience you have. Adding it unlocks those jobs.",
+      ar: "معظم الوظائف تحدد حداً أدنى من سنوات الخبرة، وملفك لا يوضح خبرتك. إضافتها تفتح لك هذه الوظائف.",
+    },
+    education_unknown: {
+      en: "Some openings ask for a specific qualification, and your profile doesn't list one yet. Adding your education lets us include them.",
+      ar: "بعض الوظائف تطلب مؤهلاً محدداً، وملفك لا يتضمن أي مؤهل بعد. إضافة مؤهلك تتيح لنا تضمينها.",
+    },
+    salary: {
+      en: "Most openings right now pay below your stated expectation.",
+      ar: "معظم الوظائف المتاحة تقل عن الراتب المتوقع الذي حددته.",
+    },
+    work_mode: {
+      en: "Most openings right now do not match your remote or on-site preference.",
+      ar: "معظم الوظائف المتاحة لا تطابق تفضيلك للعمل عن بُعد أو من المكتب.",
+    },
+    education: {
+      en: "Most openings right now ask for a higher qualification than your profile lists.",
+      ar: "معظم الوظائف المتاحة تطلب مؤهلاً أعلى مما هو مدرج في ملفك.",
+    },
+  };
+
+  const nearMissSection = nearMiss
+    ? `
+        <div style="margin: 20px 0; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h3 style="color: #111827; font-size: 15px; margin: 0 0 8px;">${isAr ? "لا توجد مطابقات قوية بعد" : "No strong matches yet"}</h3>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 8px;">
+            ${
+              // With nothing scored there is no "closest match" to quote, and
+              // "we checked 0 openings" reads like a broken email.
+              nearMiss.considered === 0
+                ? isAr
+                  ? `لم نجد أي وظيفة تطابق تفضيلاتك الحالية. نرسل فقط المطابقات التي تبلغ ${nearMiss.threshold}% فأكثر.`
+                  : `We found no openings matching your current preferences. We only send matches of ${nearMiss.threshold}% and above.`
+                : isAr
+                  ? `راجعنا ${nearMiss.considered} وظيفة. أقربها إلى ملفك حقق ${nearMiss.bestScore}%، ونحن نرسل فقط ما يبلغ ${nearMiss.threshold}% فأكثر.`
+                  : `We checked ${nearMiss.considered} ${nearMiss.considered === 1 ? "opening" : "openings"}. The closest was a ${nearMiss.bestScore}% match, and we only send you ${nearMiss.threshold}% and above.`
+            }
+          </p>
+          ${
+            nearMiss.topBlocker && blockerCopy[nearMiss.topBlocker]
+              ? `<p style="color: #64748b; font-size: 13px; line-height: 1.6; margin: 0 0 12px;">${isAr ? blockerCopy[nearMiss.topBlocker].ar : blockerCopy[nearMiss.topBlocker].en}</p>`
+              : ""
+          }
+          ${
+            nearMiss.topBlocker === "no_skills" ||
+            nearMiss.topBlocker === "no_roles" ||
+            nearMiss.topBlocker === "experience_unknown" ||
+            nearMiss.topBlocker === "education_unknown"
+              ? `<a href="${baseUrl}/${locale}/job-seeker/profile" style="background: #0D6FD8; color: #ffffff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">${isAr ? "أكمل ملفك الشخصي" : "Complete your profile"}</a>`
+              : `<a href="${baseUrl}/${locale}/job-seeker/preferences" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 14px;">${isAr ? "حدّث تفضيلاتك ←" : "Update your preferences →"}</a>`
+          }
+        </div>`
+    : "";
+
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">
       ${emailHeader(isAr ? "ملخصك اليومي" : "Your Daily Digest", { baseUrl })}
@@ -299,6 +411,7 @@ export function buildDigestEmail(data: DigestEmailData): string {
             : ""
         }
 
+        ${nearMissSection}
         ${viewsSection}
         ${improveSection}
       </div>

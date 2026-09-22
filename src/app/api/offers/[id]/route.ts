@@ -6,15 +6,14 @@ import Offer, { type IOffer } from "@/models/Offer";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
-import Agent from "@/models/Agent";
 import User from "@/models/User";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { validateBody } from "@/lib/validators";
 import { offerRespondSchema } from "@/lib/validators/offers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import { agentOwnsOffer, superAgentOwnsOffer } from "@/lib/offers/access";
 
 interface AuthCtx {
   userId: string;
@@ -22,30 +21,7 @@ interface AuthCtx {
   locale: string;
 }
 
-/**
- * Returns true if the agent/super_agent is assigned to the offer's employer.
- * Used to scope agent access so they can only read/act on offers within their
- * assigned employer portfolio.
- */
-async function agentOwnsOffer(userId: string, employerId: unknown): Promise<boolean> {
-  const agentDoc = await Agent.findOne({ userId }).select("assignedEmployerIds").lean();
-  const assigned = (agentDoc?.assignedEmployerIds ?? []).map((id: unknown) => String(id));
-  return assigned.includes(String(employerId));
-}
 
-/**
- * Returns true if the super-agent oversees the offer's employer — i.e. the
- * employer's assigned agent is within the super-agent's effective scope (team +
- * region). Super-agents have no Agent document, so agentOwnsOffer always denied
- * them; this restores legitimate portfolio access while still scoping by region.
- */
-async function superAgentOwnsOffer(userId: string, employerId: unknown): Promise<boolean> {
-  const scope = await getSuperAgentScope(userId);
-  if (!scope || scope.effectiveAgentIds.length === 0) return false;
-  const emp = await Employer.findById(employerId).select("agentId").lean();
-  if (!emp?.agentId) return false;
-  return scope.effectiveAgentIds.map(String).includes(String(emp.agentId));
-}
 
 // GET /api/offers/[id] — get single offer
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {

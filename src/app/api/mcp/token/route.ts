@@ -8,6 +8,7 @@ import User from "@/models/User";
 import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
 import { isValidPkceVerifier } from "@/lib/mcp/oauth";
 import { defaultScopesForRole, type McpScope } from "@/lib/mcp/scopes";
+import { mintToken } from "@/lib/security/mintToken";
 
 const ACCESS_TOKEN_TTL_SECONDS = 3600; // 1h
 const AUTHORIZATION_TTL_SECONDS = 60 * 60 * 24 * 90; // fixed 90d ceiling
@@ -25,11 +26,6 @@ function tokenSuccess(body: Record<string, unknown>) {
   });
 }
 
-function mintToken(prefix: string) {
-  const token = `${prefix}${crypto.randomBytes(32).toString("hex")}`;
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
-  return { token, hash };
-}
 
 function retainAuthorizedScopes(scopes: readonly string[], role: Parameters<typeof defaultScopesForRole>[0]): McpScope[] {
   const allowed = new Set(defaultScopesForRole(role));

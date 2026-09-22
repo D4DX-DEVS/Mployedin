@@ -16,6 +16,7 @@
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import logger from "@/lib/logger";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 export type AtsCheckStatus = "pass" | "warn" | "fail";
 
@@ -137,15 +138,11 @@ function detectHeadings(text: string): string[] {
   const lower = text.toLowerCase();
   const found: string[] = [];
   for (const [category, synonyms] of Object.entries(HEADING_CATEGORIES)) {
-    if (synonyms.some((syn) => new RegExp(`(^|\\n|\\r)\\s*${escapeRe(syn)}\\b`, "i").test(lower) || lower.includes(syn))) {
+    if (synonyms.some((syn) => new RegExp(`(^|\\n|\\r)\\s*${escapeRegex(syn)}\\b`, "i").test(lower) || lower.includes(syn))) {
       found.push(category);
     }
   }
   return found;
-}
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Detects column / table layout artifacts that break ATS parsing. */

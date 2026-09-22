@@ -8,6 +8,7 @@ import { validateBody } from "@/lib/validators";
 import { z } from "zod";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { normalizeDate } from "@/lib/datetime/isoDate";
 
 const ALLOWED_ROLES: UserRole[] = ["super_agent", "admin"];
 
@@ -41,12 +42,6 @@ function normalizeString(value: unknown, maxLength = 120): string | undefined {
   return cleaned || undefined;
 }
 
-function normalizeDate(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return undefined;
-  return d.toISOString().split("T")[0];
-}
 
 function normalizeLeadSearchFilters(raw: RawLeadSearchFilters) {
   return {

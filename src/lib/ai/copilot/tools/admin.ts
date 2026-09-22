@@ -5,6 +5,7 @@ import Application from "@/models/Application";
 import Employer from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
 import type { CopilotTool } from "../types";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 export const platformStatsTool: CopilotTool<Record<string, never>> = {
   name: "platform_stats",
@@ -84,7 +85,7 @@ export const searchUsersTool: CopilotTool<{ query?: string; role?: string; limit
     const filter: Record<string, any> = {};
     if (args.role) filter.role = args.role;
     if (args.query) {
-      const re = new RegExp(args.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const re = new RegExp(escapeRegex(args.query), "i");
       filter.$or = [{ name: re }, { email: re }];
     }
     const users = await User.find(filter)

@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
 import { useConfirm } from "@/hooks/useConfirm";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
+import { formatFileSize } from "@/lib/ui/fileSize";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -63,11 +64,6 @@ const ACCESS_COLORS: Record<string, string> = {
   admin: "ring-rose-200 bg-rose-50/80 text-rose-700",
 };
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */

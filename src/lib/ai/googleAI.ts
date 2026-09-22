@@ -19,6 +19,7 @@
 
 import logger from "@/lib/logger";
 import { providerFetch } from "@/lib/ai/providerFetch";
+import { isOpenRouterTextProvider, openRouterChatFetch } from "@/lib/ai/openRouter";
 
 /** Native Gemini API base. Override only to point at a proxy/gateway. */
 export const GOOGLE_AI_BASE = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta";
@@ -157,18 +158,34 @@ export function nativeThinkingConfig(model: string, effort: ReasoningEffort): Re
   return { thinkingConfig: { thinkingBudget: 0 } };
 }
 
-/** POST to the OpenAI-compatible chat completions endpoint with our timeout rule. */
+/**
+ * POST to the OpenAI-compatible chat completions endpoint with our timeout rule.
+ *
+ * Routes to OpenRouter when that provider is configured (see
+ * `isOpenRouterTextProvider`), otherwise straight to Google. Both surfaces
+ * speak the same request/response shape, so the ~20 call sites above this are
+ * unaware of which one answered — only the model id is translated, and only at
+ * this boundary. Embeddings and the native generateContent calls below never
+ * take this branch: OpenRouter sells no embedding model, and the Atlas index is
+ * built on Google's.
+ *
+ * An explicit `apiKey` argument still forces the Google path, because the only
+ * callers that pass one are doing so to validate a Google key.
+ */
 export async function chatCompletionsFetch(
   body: Record<string, unknown>,
   label: string,
   timeoutMs?: number,
-  apiKey: string = getGoogleAiApiKey()
+  apiKey?: string
 ): Promise<Response> {
+  if (!apiKey && isOpenRouterTextProvider()) {
+    return openRouterChatFetch(body, label, timeoutMs);
+  }
   return providerFetch(
     `${GOOGLE_AI_OPENAI_BASE}/chat/completions`,
     {
       method: "POST",
-      headers: openAiCompatHeaders(apiKey),
+      headers: openAiCompatHeaders(apiKey ?? getGoogleAiApiKey()),
       body: JSON.stringify(body),
     },
     label,
@@ -267,15 +284,33 @@ export async function* sseToAsyncIterable(res: Response): AsyncIterable<string> 
 }
 
 /** Map a Gemini HTTP failure onto the user-facing wording the UI already expects. */
-export function providerErrorMessage(status: number, bodyText: string, what = "request"): string {
+export function providerErrorMessage(
+  status: number,
+  bodyText: string,
+  what = "request",
+  /**
+   * Which provider answered. Defaults to whoever serves text, but the native
+   * `generateContent` calls — image generation and PDF input — always go to
+   * Google regardless of the text provider, so they pass "google" explicitly.
+   * Getting this wrong sends whoever is debugging a 401 to the wrong
+   * dashboard and the wrong key.
+   */
+  provider: "google" | "openrouter" | "auto" = "auto",
+): string {
+  const viaOpenRouter =
+    provider === "auto" ? isOpenRouterTextProvider() : provider === "openrouter";
+  const who = viaOpenRouter ? "OpenRouter" : "Gemini";
+  const keyName = viaOpenRouter ? "OPENROUTER_API_KEY" : "GEMINI_API_KEY";
+  const topUp = viaOpenRouter ? "openrouter.ai/credits" : "Google AI Studio";
+
   if (status === 401 || status === 403) {
-    return "Gemini rejected the API key. Please check GEMINI_API_KEY.";
+    return `${who} rejected the API key. Please check ${keyName}.`;
   }
   if (status === 402) {
-    return "Gemini API billing limit reached. Please add credits in Google AI Studio.";
+    return `${who} billing limit reached. Please add credits in ${topUp}.`;
   }
   if (status === 429) {
-    return "Gemini API rate limit exceeded. Please wait a moment and try again.";
+    return `${who} rate limit exceeded. Please wait a moment and try again.`;
   }
-  return `Gemini ${what} failed (${status}): ${bodyText.slice(0, 200)}`;
+  return `${who} ${what} failed (${status}): ${bodyText.slice(0, 200)}`;
 }

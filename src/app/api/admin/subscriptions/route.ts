@@ -18,6 +18,7 @@ import Subscription from "@/models/Subscription";
 import { Employer } from "@/models/Employer";
 import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
@@ -94,7 +95,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // If search provided, we need to filter by populated user fields.
   // Since Mongoose can't filter on populated fields in .find(), we use aggregate.
   if (search) {
-    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapedSearch = escapeRegex(search);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pipeline: any[] = [

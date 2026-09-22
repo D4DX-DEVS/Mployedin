@@ -17,27 +17,24 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import NotificationPreference from "@/models/NotificationPreference";
 import {
-  calculateMatchScore,
   seekerProfileFromDoc,
-  jobProfileFromDoc,
+  profileSignalCount,
+  MIN_PROFILE_SIGNALS,
   SEEKER_MATCH_FIELDS,
 } from "@/lib/matchScore";
+import {
+  recommendJobsFor,
+  toCandidateJob,
+  JOB_MATCH_FIELDS,
+} from "@/lib/matching/recommend";
+import { prepareSkillVectors } from "@/lib/matching/skillVectors";
 import { sendEmail, isUndeliverableAddress } from "@/lib/communications/email";
 import { emailHeader, emailProgressBar, emailFooter } from "@/lib/communications/emailLayout";
 import {
   profileCompleteness,
   type ProfileCompletenessItem,
 } from "@/lib/jobSeeker/profileCompleteness";
-import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
-
-interface ActiveJobDoc {
-  _id: unknown;
-  title: string;
-  requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number };
-  salary?: { min?: number; max?: number };
-  location?: { country?: string; isRemote?: boolean };
-  employerId?: { companyName?: string } | null;
-}
+import { isCronEnabled, updateCronRunStatus, resolveMatchThreshold } from "@/models/SystemConfig";
 
 const RE_ENGAGEMENT_INACTIVE_DAYS = 7;
 const RE_ENGAGEMENT_COOLDOWN_DAYS = 14;
@@ -107,16 +104,20 @@ export const reEngagementCron = inngest.createFunction(
       return { processed: 0, reason: "no inactive users" };
     }
 
-    // Fetch active jobs for matching
-    const activeJobs: ActiveJobDoc[] = await step.run("fetch-jobs", async () => {
-      return Job.find({
+    const threshold = await step.run("resolve-threshold", () => resolveMatchThreshold());
+
+    // Fetch active jobs for matching. `workMode` joins the projection so the
+    // seeker's remote/onsite preference is actually enforced.
+    const activeJobs = await step.run("fetch-jobs", async () => {
+      const jobs = await Job.find({
         status: "active",
         $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
       })
-        .select("title requirements salary location employerId")
+        .select(JOB_MATCH_FIELDS)
         .populate("employerId", "companyName")
         .limit(200)
         .lean();
+      return jobs.map((j) => toCandidateJob(j as unknown as Record<string, unknown>));
     });
 
     let sent = 0;
@@ -134,18 +135,31 @@ export const reEngagementCron = inngest.createFunction(
 
           const seekerProfile = seekerProfileFromDoc(seeker);
 
-          // Find matching jobs
-          const matchedJobs = activeJobs
-            .map((j) => ({
-              title: j.title,
-              company:
-                (j.employerId as { companyName?: string } | null)?.companyName ??
-                "Company",
-              matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(j)),
-            }))
-            .filter((j) => j.matchScore >= 40)
-            .sort((a, b) => b.matchScore - a.matchScore)
-            .slice(0, 3);
+          // A profile that states almost nothing cannot be matched honestly —
+          // every component reads an unstated field as neutral, so the
+          // percentages would be made of defaults. Those seekers belong to the
+          // profile-completion cron below, not to a "jobs waiting for you"
+          // mail. The daily digest has applied this gate for a while; this
+          // surface never did.
+          if (profileSignalCount(seekerProfile) < MIN_PROFILE_SIGNALS) return;
+
+          // Find matching jobs through the shared pipeline. This used to score
+          // inline at a floor of 40 — below the level at which a profile that
+          // states nothing scores against every job on the board — and with no
+          // profile-signal gate, so blank profiles were told three jobs were
+          // waiting for them.
+          const vectors = await prepareSkillVectors(activeJobs, [seekerProfile]);
+          const recommendation = await recommendJobsFor(seekerProfile, activeJobs, {
+            threshold,
+            limit: 3,
+            useAi: false,
+            vectors,
+          });
+          const matchedJobs = recommendation.jobs.map((j) => ({
+            title: j.title,
+            company: j.company,
+            matchScore: j.score,
+          }));
 
           // Only send if there are matching jobs to show
           if (matchedJobs.length === 0) return;

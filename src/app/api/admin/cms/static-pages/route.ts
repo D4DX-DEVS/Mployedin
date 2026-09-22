@@ -8,12 +8,9 @@ import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { staticPageCreateSchema } from "@/lib/validators/cms";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { slugify } from "@/lib/slug";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
-
-function slugify(str: string): string {
-  return str.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-}
 
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();

@@ -224,6 +224,17 @@ export interface IJobSeeker extends Document {
   preferredJobType: "remote" | "hybrid" | "onsite" | "any";
   // Status
   availabilityStatus: "immediately" | "within_month" | "within_3_months" | "not_available";
+  /**
+   * When the seeker actually chose their availability.
+   *
+   * `availabilityStatus` defaults to "immediately" and is written at signup,
+   * so a stored "immediately" cannot be told apart from never having been
+   * asked — 228 of 239 live profiles carry it, and none of them picked it.
+   * The default stays (employer talent-search filters on the field), but
+   * anything that needs to know whether the seeker *answered* reads this
+   * timestamp instead. Absent means unanswered.
+   */
+  availabilityStatusSetAt?: Date;
   noticePeriod?: number; // in days
   applicationMode: "auto" | "manual";
   autoApplyCount: number;
@@ -508,6 +519,7 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       enum: ["immediately", "within_month", "within_3_months", "not_available"],
       default: "immediately",
     },
+    availabilityStatusSetAt: Date,
     noticePeriod: Number,
     applicationMode: { type: String, enum: ["auto", "manual"], default: "manual" },
     autoApplyCount: { type: Number, default: 0, min: 0 },

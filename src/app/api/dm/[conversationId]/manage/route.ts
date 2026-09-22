@@ -7,15 +7,10 @@ import mongoose from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { dmManageConversationSchema } from "@/lib/validators/dm";
 import { logActivity } from "@/lib/audit/log";
+import { assertParticipant } from "@/lib/dm/access";
 
 interface AuthCtx { userId: string; }
 
-async function assertParticipant(conversationId: string, userId: string) {
-  const conv = await Conversation.findById(conversationId).lean();
-  if (!conv) return null;
-  const isParticipant = conv.participants.some((p) => p.toString() === userId);
-  return isParticipant ? conv : null;
-}
 
 /**
  * PATCH /api/dm/[conversationId]/manage

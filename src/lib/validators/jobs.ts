@@ -19,12 +19,25 @@ const screeningQuestionSchema = z.object({
   { message: "select/radio questions must have at least 1 option" }
 );
 
-const locationSchema = z.object({
-  country: z.string().min(1).max(100),
-  // Must contain at least one letter (any script) — blocks numeric-only junk.
-  city: z.string().min(1).max(100).regex(/\p{L}/u, "Enter a valid city name"),
-  isRemote: z.boolean().default(false),
-});
+const locationSchema = z
+  .object({
+    country: z.string().min(1).max(100),
+    // Must contain at least one letter (any script) — blocks numeric-only junk.
+    city: z.string().min(1).max(100).regex(/\p{L}/u, "Enter a valid city name"),
+    isRemote: z.boolean().default(false),
+    // Optional so existing callers and older drafts still validate. Absent
+    // means "not stated", which the matcher treats as the job's own country.
+    remoteScope: z.enum(["worldwide", "countries"]).optional(),
+    remoteCountries: z.array(z.string().min(1).max(100)).max(50).optional(),
+  })
+  .refine((l) => l.remoteScope !== "countries" || (l.remoteCountries?.length ?? 0) > 0, {
+    message: "List at least one country a remote hire may work from",
+    path: ["remoteCountries"],
+  })
+  .refine((l) => l.isRemote || !l.remoteScope, {
+    message: "Remote hiring scope only applies to remote jobs",
+    path: ["remoteScope"],
+  });
 
 const salarySchema = z
   .object({

@@ -67,6 +67,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     await User.findByIdAndUpdate(ctx.userId, userUpdate, { runValidators: true });
   }
 
+  // Stamp when the seeker actually chose their availability. The field itself
+  // defaults to "immediately" at signup, so the stored value alone cannot say
+  // whether they answered — and the digest cadence depends on knowing.
+  if (safeUpdate.availabilityStatus !== undefined) {
+    safeUpdate.availabilityStatusSetAt = new Date();
+  }
+
   const profile = await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: safeUpdate },

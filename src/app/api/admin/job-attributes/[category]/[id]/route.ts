@@ -6,18 +6,9 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { jobAttributeUpdateSchema } from "@/lib/validators/location-data";
+import { slugify } from "@/lib/slug";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
-
-function slugify(str: string): string {
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
   const { category, id } = params ?? {};

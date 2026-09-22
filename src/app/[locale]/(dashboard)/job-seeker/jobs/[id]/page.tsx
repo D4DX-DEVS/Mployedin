@@ -16,6 +16,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { closesInDays } from "@/lib/jobs/expiry";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -60,12 +61,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 
 
-function closesInDays(expiresAt?: Date | null): number | null {
-  if (!expiresAt) return null;
-  const diff = new Date(expiresAt).getTime() - Date.now();
-  const days = Math.ceil(diff / 86400000);
-  return days > 0 ? days : null;
-}
 
 function salaryLabel(
   salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null,

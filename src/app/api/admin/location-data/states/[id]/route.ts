@@ -7,21 +7,12 @@ import State from "@/models/State";
 import { validateBody } from "@/lib/validators";
 import { stateUpdateSchema } from "@/lib/validators/location-data";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { slugify } from "@/lib/slug";
 
 interface AuthCtx {
   userId: string;
   role: UserRole;
   locale: string;
-}
-
-function slugify(str: string): string {
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 /* ── GET /api/admin/location-data/states/[id] ───────────────────────── */
