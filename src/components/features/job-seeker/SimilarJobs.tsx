@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { MapPin, Briefcase } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { cn } from "@/lib/utils";
 
 interface SimilarJob {
   _id: string;
@@ -16,8 +17,18 @@ interface SimilarJob {
   overlap: number;
 }
 
-export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }) {
+export function SimilarJobs({
+  jobId,
+  locale,
+  className,
+}: {
+  jobId: string;
+  locale: string;
+  /** Replaces the default stand-alone spacing/divider when the block sits inside a column. */
+  className?: string;
+}) {
   const t = useTranslations("similarJobs");
+  const shell = cn("@container/similar space-y-4", className ?? "mt-8 border-t border-border pt-8");
 
   const { data, isLoading } = useQuery<{ jobs: SimilarJob[] }>({
     queryKey: ["similar-jobs", jobId],
@@ -29,9 +40,9 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
 
   if (isLoading) {
     return (
-      <div className="mt-8 border-t border-border pt-8 space-y-4">
+      <div className={shell}>
         <h2 className="heading-section font-semibold text-foreground">{t("similarJobs")}</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 @md/similar:grid-cols-2 @4xl/similar:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-36 animate-pulse rounded-lg sm:rounded-3xl bg-muted" />
           ))}
@@ -43,12 +54,12 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
   if (jobs.length === 0) return null;
 
   return (
-    <div className="mt-8 border-t border-border pt-8 space-y-4">
+    <div className={shell}>
       <div>
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("keepExploring")}</div>
         <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("similarJobs")}</h2>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 @md/similar:grid-cols-2 @4xl/similar:grid-cols-3">
         {jobs.map((job) => (
           <Link
             key={job._id}
