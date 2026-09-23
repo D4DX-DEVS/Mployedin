@@ -9,7 +9,7 @@
  * All inputs are plain primitives — no Mongoose documents.
  */
 
-import { countryKey } from "@/lib/i18n/locations";
+import { countryKey, countryKeyFromLocationText } from "@/lib/i18n/locations";
 
 export interface SeekerProfile {
   skills: string[];
@@ -17,6 +17,12 @@ export interface SeekerProfile {
   location: string;
   /** All preferred countries (lower-cased). Falls back to [location] when omitted. */
   locations?: string[];
+  /**
+   * Where `locations` came from: the seeker's chosen countries, the country of
+   * their current location when they chose none, or nowhere. With "none" the
+   * engine recommends nothing — it has no place to recommend jobs in.
+   */
+  locationSource?: "preferred" | "current" | "none";
   experienceYears: number;
   /**
    * Whether `experienceYears` is a stated figure or merely the absence of one.
@@ -697,10 +703,21 @@ export function seekerProfileFromDoc(seeker: {
     0,
   );
 
+  // Where the seeker wants to work: the countries they chose, or — when they
+  // chose none — the country they live in, read off their current location.
+  // LinkedIn makes country a required profile field and Naukri asks for current
+  // and preferred location at sign-up, so neither ever recommends jobs with no
+  // place attached. Without this fallback a seeker who skipped the preference
+  // had no country filter at all and could be mailed jobs from anywhere.
+  const preferred = (seeker.preferredCountries ?? []).map((c) => c.toLowerCase()).filter(Boolean);
+  const current = preferred.length === 0 ? countryKeyFromLocationText(seeker.currentLocation) : null;
+  const locations = preferred.length > 0 ? preferred : current ? [current] : [];
+
   return {
     skills: seeker.skills ?? [],
-    location: (seeker.preferredCountries ?? [])[0]?.toLowerCase() ?? "",
-    locations: (seeker.preferredCountries ?? []).map((c) => c.toLowerCase()),
+    location: locations[0] ?? "",
+    locations,
+    locationSource: preferred.length > 0 ? "preferred" : current ? "current" : "none",
     experienceYears: Math.round(experienceYears * 10) / 10,
     experienceKnown,
     salaryExpectation,

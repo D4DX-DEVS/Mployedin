@@ -197,3 +197,55 @@ export function locationCountryRegex(countryName: string): string {
      well as used in tests, and the alias table is ASCII throughout. */
   return `(^|[^A-Za-z])(${spellings.join("|")})($|[^A-Za-z])`;
 }
+
+/** Drop the stray leading/trailing punctuation hand-typed values collect. */
+function stripEdgePunctuation(value: string | undefined): string {
+  return (value ?? "").replace(/^[^\p{L}]+/u, "").replace(/[^\p{L}]+$/u, "");
+}
+
+/**
+ * The strings worth reading a country from in a free-text location line such
+ * as `"Jeddah, Saudi Arabia (Transferable Iqama)"`, best first.
+ *
+ * `JobSeeker.currentLocation` is a single unvalidated string and the live
+ * values are messy in every way a hand-typed field can be — extra qualifiers in
+ * brackets, "N/A" city parts, three-part addresses, a stray trailing "..". The
+ * one thing they hold to is that the country comes last, so that is what is
+ * read first, then the whole string for the handful with no comma at all
+ * (`"Saudi Arabia"`, `"Malappuram Kerala"`).
+ *
+ * Bracketed asides come off before the split, not after: several live values
+ * put a comma *inside* the brackets ("N/A, Oman (Alkhuwair, Muscat)"), which
+ * would otherwise make "Muscat)" the last segment and lose the country. Each
+ * candidate is tried as written before a punctuation-trimmed form, so "U.A.E"
+ * keeps the dots that make it a key while "India.." still resolves.
+ */
+export function locationTextCandidates(value: string | null | undefined): string[] {
+  const text = (value ?? "").trim();
+  if (!text) return [];
+  const segments = text
+    .replace(/\([^)]*\)/g, " ")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const last = segments[segments.length - 1];
+  return [last, stripEdgePunctuation(last), text, stripEdgePunctuation(text)].filter(
+    (candidate): candidate is string => Boolean(candidate),
+  );
+}
+
+/**
+ * The country a free-text location line names, as a `countryKey` — or null.
+ *
+ * Only a recognised country counts. A city with no country ("Kochi"), a state
+ * ("Palakkad, Kerala") or a line naming two countries ("UAE / Oman") returns
+ * null: guessing would be inventing where somebody is, and the job-match email
+ * filters on this.
+ */
+export function countryKeyFromLocationText(value: string | null | undefined): string | null {
+  for (const candidate of locationTextCandidates(value)) {
+    const key = countryKey(candidate);
+    if (key && REGION_CODES.has(key.toUpperCase())) return key;
+  }
+  return null;
+}

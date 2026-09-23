@@ -265,6 +265,17 @@ describe("JobSeekerHomePage", () => {
     );
   });
 
+  it("asks where the seeker wants to work when no country is known, without quoting a score", async () => {
+    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "no_location")} />);
+    expect(await screen.findByText("recommendedJobs.noLocationTitle")).toBeInTheDocument();
+    expect(screen.getByText("recommendedJobs.blockers.no_location")).toBeInTheDocument();
+    expect(screen.queryByText("recommendedJobs.strongOnlyBody")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "recommendedJobs.addCountryCta" })).toHaveAttribute(
+      "href",
+      "/ar/job-seeker/preferences",
+    );
+  });
+
   it("sends a preference gate to the preferences page", async () => {
     render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "country")} />);
     expect(await screen.findByText("recommendedJobs.blockers.country")).toBeInTheDocument();

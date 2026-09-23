@@ -67,10 +67,27 @@ export interface RecommendedJob extends CandidateJob {
  * useless as advice, and it blames the job board for an empty profile.
  */
 export type LimitingFactor =
+  /** No preferred country and no recognisable current location. */
+  | "no_location"
   | "no_skills"
   | "no_roles"
   | IneligibleReason
   | "score";
+
+/**
+ * Whether the engine knows what country this seeker wants to work in — a
+ * preferred country, or the one their current location names.
+ *
+ * Without one the country gate has nothing to check, so every job on the board
+ * passes it: a seeker in Kochi who skipped the preference could be mailed jobs
+ * in Oman. LinkedIn (country is a required profile field) and Naukri (current
+ * and preferred location asked at sign-up) never recommend without a place;
+ * we recommend nothing and ask for the country instead.
+ */
+export function hasKnownLocation(seeker: SeekerProfile): boolean {
+  if (seeker.locationSource === "none") return false;
+  return (seeker.locations?.length ? seeker.locations : [seeker.location]).some(Boolean);
+}
 
 export interface RecommendationResult {
   jobs: RecommendedJob[];
@@ -99,6 +116,10 @@ export function diagnoseLimitingFactor(
   rejected: Partial<Record<IneligibleReason, number>>,
   scoredCount: number,
 ): LimitingFactor {
+  // A precondition, not a ranking problem: with no country nothing is
+  // recommended at all, whatever else the profile says.
+  if (!hasKnownLocation(seeker)) return "no_location";
+
   // A gate that removed more than it let through is the wall: when almost
   // nothing is even eligible, telling the seeker to add skills is advice that
   // would not have helped. This is checked before the profile gaps for that
@@ -381,6 +402,12 @@ export async function recommendJobsFor(
   const limit = options.limit ?? MAX_RECOMMENDATIONS;
   const vectors = options.vectors;
   const rejected: Partial<Record<IneligibleReason, number>> = {};
+
+  // No country means no recommendation — before any scoring, so nothing is
+  // spent on Jev for a list that will not be sent.
+  if (!hasKnownLocation(seeker)) {
+    return { jobs: [], considered: 0, rejected, bestScore: 0, threshold, aiUsed: false, limitingFactor: "no_location" };
+  }
 
   // ── stages 1 + 2 ───────────────────────────────────────────────────────
   const scored: RecommendedJob[] = [];

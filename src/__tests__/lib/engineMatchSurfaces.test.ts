@@ -79,6 +79,7 @@ describe("an empty recommendation list can always say why", () => {
   // A Record over the union: adding a LimitingFactor without listing it here
   // is a type error, so the locale check below cannot silently fall behind.
   const ALL_FACTORS: Record<LimitingFactor, true> = {
+    no_location: true,
     no_skills: true,
     no_roles: true,
     score: true,

@@ -25,7 +25,7 @@
  * feature work for the profiles that predate that.
  */
 
-import { canonicalCountry, countryKey } from "@/lib/i18n/locations";
+import { canonicalCountry, countryKey, locationTextCandidates } from "@/lib/i18n/locations";
 import { FALLBACK_TIME_ZONE, isValidTimeZone } from "@/lib/datetime/zone";
 
 /**
@@ -94,32 +94,14 @@ export function timeZoneForCountry(value: string | null | undefined): string | n
  * `null`: guessing which half the person is in would be inventing data.
  */
 export function timeZoneForLocationText(value: string | null | undefined): string | null {
-  const text = (value ?? "").trim();
-  if (!text) return null;
-
-  // Bracketed asides come off before the split, not after: several live values
-  // put a comma *inside* the brackets ("N/A, Oman (Alkhuwair, Muscat)"), which
-  // would otherwise make "Muscat)" the last segment and lose the country.
-  const segments = text
-    .replace(/\([^)]*\)/g, " ")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  // Last segment first, then the whole string for the comma-less values. Each
-  // is tried as written before a punctuation-trimmed form, so "U.A.E" keeps the
-  // dots that make it a key while "India.." still resolves.
-  const last = segments[segments.length - 1];
-  for (const candidate of [last, stripEdgePunctuation(last), text, stripEdgePunctuation(text)]) {
-    if (!candidate) continue;
+  // The parsing rules live with the country tables (locationTextCandidates),
+  // shared with the job-match country fallback so the two cannot disagree
+  // about where someone is.
+  for (const candidate of locationTextCandidates(value)) {
     const zone = timeZoneForCountry(candidate);
     if (zone) return zone;
   }
   return null;
-}
-
-/** Drop the stray leading/trailing punctuation hand-typed values collect. */
-function stripEdgePunctuation(value: string | undefined): string {
-  return (value ?? "").replace(/^[^\p{L}]+/u, "").replace(/[^\p{L}]+$/u, "");
 }
 
 /** Sources a seeker's send-time zone can come from, most trustworthy first. */

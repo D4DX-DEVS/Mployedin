@@ -124,7 +124,7 @@ export type InitialHomeData = {
  * roles, experience, education, or simply a low score — is fixed on the
  * profile. Mirrors the digest email's near-miss link.
  */
-const PREFERENCE_FACTORS: ReadonlySet<LimitingFactor> = new Set(["country", "salary", "work_mode"]);
+const PREFERENCE_FACTORS: ReadonlySet<LimitingFactor> = new Set(["no_location", "country", "salary", "work_mode"]);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function timeAgo(iso: string, locale: string, translate: any): string {
@@ -335,8 +335,15 @@ export function JobSeekerHomePage({
   const limitingFactor = recommendation?.limitingFactor ?? null;
   const improveOnPreferences = limitingFactor !== null && PREFERENCE_FACTORS.has(limitingFactor);
   const improveHref = `/${locale}/job-seeker/${improveOnPreferences ? "preferences" : "profile"}`;
+  // No country known: nothing was matched at all, so the empty state asks for
+  // the country instead of quoting a closest match.
+  const noLocation = limitingFactor === "no_location";
   const improveLabel = t(
-    improveOnPreferences ? "recommendedJobs.updatePreferencesCta" : "recommendedJobs.improveProfileCta",
+    noLocation
+      ? "recommendedJobs.addCountryCta"
+      : improveOnPreferences
+        ? "recommendedJobs.updatePreferencesCta"
+        : "recommendedJobs.improveProfileCta",
   );
 
   const interviewCount = stats?.upcomingInterviews?.count ?? 0;
@@ -537,8 +544,10 @@ export function JobSeekerHomePage({
             <div className="mx-auto mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
               <CheckCircle2 className="h-6 w-6" aria-hidden />
             </div>
-            <div className="text-lg font-semibold">{t("recommendedJobs.strongOnlyTitle")}</div>
-            {recommendation && (
+            <div className="text-lg font-semibold">
+              {t(noLocation ? "recommendedJobs.noLocationTitle" : "recommendedJobs.strongOnlyTitle")}
+            </div>
+            {recommendation && !noLocation && (
               <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
                 {recommendation.bestScore > 0
                   ? t("recommendedJobs.strongOnlyBody", {

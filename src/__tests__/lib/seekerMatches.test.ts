@@ -155,6 +155,14 @@ describe("an empty recommendation list says why", () => {
     expect(pool.bestScore).toBe(0);
   });
 
+  it("recommends nothing without a known country, but still scores the browse list", async () => {
+    const pool = await scoreSeekerPool(seeker({ locations: [], locationSource: "none" }), [strong()]);
+    expect(pool.recommendedCount).toBe(0);
+    expect(pool.jobs[0].recommended).toBe(false);
+    expect(pool.jobs[0].matchScore).toBeGreaterThan(0);
+    expect(pool.limitingFactor).toBe("no_location");
+  });
+
   it("points at the profile when the seeker has listed no skills", async () => {
     const pool = await scoreSeekerPool(seeker({ skills: [] }), [strong()]);
     expect(pool.limitingFactor).toBe("no_skills");

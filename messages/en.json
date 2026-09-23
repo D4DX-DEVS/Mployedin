@@ -2349,6 +2349,7 @@
       "improveProfileCta": "Improve my profile",
       "updatePreferencesCta": "Update my preferences",
       "blockers": {
+        "no_location": "Add the country you want to work in. We only recommend jobs where we know you can work, so we can’t match you until you add one.",
         "no_skills": "Your profile doesn't list any skills yet. Skills are the largest part of how we match you, so adding a few is the fastest way to start getting matches.",
         "no_roles": "Your profile doesn't say what roles you're looking for, so we can only guess. Adding a job title or two sharpens every match.",
         "score": "Nothing open right now is a close enough fit for your profile. We'd rather show you nothing than a weak match.",
@@ -2359,7 +2360,9 @@
         "salary": "Most openings right now pay below your stated expectation.",
         "work_mode": "Most openings right now do not match your remote or on-site preference.",
         "education": "Most openings right now ask for a higher qualification than your profile lists."
-      }
+      },
+      "noLocationTitle": "Where do you want to work?",
+      "addCountryCta": "Add a preferred country"
     },
     "appliedJobs": {
       "eyebrow": "Already applied",

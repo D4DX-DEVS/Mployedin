@@ -20,6 +20,7 @@ import type { IneligibleReason } from "@/lib/matching/eligibility";
 import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
 import {
   diagnoseLimitingFactor,
+  hasKnownLocation,
   scorePair,
   toCandidateJob,
   type LimitingFactor,
@@ -87,6 +88,9 @@ export async function scoreSeekerPool<T extends Record<string, unknown>>(
   );
 
   const rejected: Partial<Record<IneligibleReason, number>> = {};
+  // Every job is still scored for the browse list, but with no country known
+  // none may be called a recommendation — the same rule the email follows.
+  const located = hasKnownLocation(seeker);
   let eligibleCount = 0;
   let bestScore = 0;
   const scored = jobs.map((job, i) => {
@@ -97,7 +101,7 @@ export async function scoreSeekerPool<T extends Record<string, unknown>>(
     } else if (pair.reason) {
       rejected[pair.reason] = (rejected[pair.reason] ?? 0) + 1;
     }
-    const recommended = pair.eligible && pair.score >= options.threshold;
+    const recommended = located && pair.eligible && pair.score >= options.threshold;
     return {
       ...job,
       matchScore: pair.score,

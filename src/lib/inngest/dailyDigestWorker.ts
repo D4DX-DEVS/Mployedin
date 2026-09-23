@@ -46,6 +46,9 @@ export const dailyDigestWorker = inngest.createFunction(
 
       const jobCount = jobs.length;
       const viewCount = profileViews.count;
+      // "No strong matches" would be untrue here: nothing was matched at all,
+      // because we don't know where the seeker wants to work.
+      const noLocation = event.data.nearMiss?.topBlocker === "no_location";
 
       // A digest can now also carry only the "nothing cleared the bar" note,
       // in which case both counts are zero and the old subject read
@@ -59,7 +62,9 @@ export const dailyDigestWorker = inngest.createFunction(
               ? `${jobCount} وظائف مطابقة لملفك الشخصي`
               : viewCount > 0
                 ? `${viewCount} مسؤولي توظيف شاهدوا ملفك الشخصي`
-                : "لا توجد مطابقات قوية هذا الأسبوع";
+                : noLocation
+                  ? "أضف الدولة المفضلة لتصلك الوظائف المطابقة"
+                  : "لا توجد مطابقات قوية هذا الأسبوع";
       } else {
         subject =
           jobCount > 0 && viewCount > 0
@@ -68,7 +73,9 @@ export const dailyDigestWorker = inngest.createFunction(
               ? `${jobCount} jobs matching your profile`
               : viewCount > 0
                 ? `${viewCount} recruiters viewed your profile`
-                : "No strong job matches this week";
+                : noLocation
+                  ? "Add your preferred country to get job matches"
+                  : "No strong job matches this week";
       }
 
       await sendEmail({
@@ -354,6 +361,12 @@ export function buildDigestEmail(data: DigestEmailData): string {
   const blockerCopy: Record<string, { en: string; ar: string }> = {
     // Profile gaps first — the only causes the seeker can fix today, and the
     // ones that cap their score no matter what the job board does.
+    // Checked before anything is scored: with no country there is nowhere to
+    // recommend jobs, so this replaces the whole "closest match" note.
+    no_location: {
+      en: "Add the country you want to work in. We only recommend jobs where we know you can work, so we can't send you matches until you add one.",
+      ar: "أضف الدولة التي ترغب في العمل بها. نوصي فقط بالوظائف في مكان نعرف أنه يناسبك، لذا لا يمكننا إرسال مطابقات لك حتى تضيفها.",
+    },
     no_skills: {
       en: "Your profile doesn't list any skills yet. Skills are the largest part of how we match you, so adding a few is the fastest way to start getting matches.",
       ar: "ملفك الشخصي لا يتضمن أي مهارات بعد. المهارات هي الجزء الأكبر من طريقة المطابقة، وإضافة بعضها هو أسرع طريقة للبدء في تلقي الوظائف المناسبة.",
@@ -399,7 +412,18 @@ export function buildDigestEmail(data: DigestEmailData): string {
     },
   };
 
-  const nearMissSection = nearMiss
+  // No country known: nothing was scored, so there is no score to quote — the
+  // note is only the question and the link to answer it.
+  const noLocationSection = nearMiss?.topBlocker === "no_location"
+    ? `
+        <div style="margin: 20px 0; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h3 style="color: #111827; font-size: 15px; margin: 0 0 8px;">${isAr ? "أين ترغب في العمل؟" : "Where do you want to work?"}</h3>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 12px;">${isAr ? blockerCopy.no_location.ar : blockerCopy.no_location.en}</p>
+          <a href="${baseUrl}/${locale}/job-seeker/preferences" style="background: #0D6FD8; color: #ffffff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">${isAr ? "أضف دولة مفضلة" : "Add a preferred country"}</a>
+        </div>`
+    : null;
+
+  const nearMissSection = noLocationSection ?? (nearMiss
     ? `
         <div style="margin: 20px 0; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
           <h3 style="color: #111827; font-size: 15px; margin: 0 0 8px;">${isAr ? "لا توجد مطابقات قوية بعد" : "No strong matches yet"}</h3>
@@ -430,7 +454,7 @@ export function buildDigestEmail(data: DigestEmailData): string {
               : `<a href="${baseUrl}/${locale}/job-seeker/preferences" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 14px;">${isAr ? "حدّث تفضيلاتك ←" : "Update your preferences →"}</a>`
           }
         </div>`
-    : "";
+    : "");
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">
