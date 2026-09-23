@@ -18,6 +18,16 @@ export async function register() {
         "UPSTASH_REDIS_REST_URL not configured — rate limiting degraded"
       );
     }
+
+    // Optional in production, but each gap should be a conscious choice.
+    if (process.env.NODE_ENV === "production") {
+      if (!process.env.MALWARE_SCAN_URL) {
+        logger.warn("MALWARE_SCAN_URL not configured — uploads only get the local EICAR check");
+      }
+      if (!process.env.ERROR_ALERT_WEBHOOK_URL) {
+        logger.warn("ERROR_ALERT_WEBHOOK_URL not configured — errors are logged but nobody is alerted");
+      }
+    }
   }
 }
 
@@ -45,6 +55,15 @@ export async function onRequestError(
       renderSource: context.renderSource,
     },
     "Unhandled server request error",
+  );
+  const { sendErrorAlert } = await import("@/lib/observability/alert");
+  const name = err instanceof Error ? err.name : "Error";
+  const message = err instanceof Error ? err.message : String(err);
+  // Not awaited: Next waits for this hook before sending the error response,
+  // and a slow webhook must not add latency to every 500 during an incident.
+  void sendErrorAlert(
+    `server:${request.method} ${context.routePath} ${name}`,
+    `Server error: ${request.method} ${context.routePath} — ${name}: ${message}`,
   );
 }
 

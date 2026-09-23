@@ -1,8 +1,9 @@
 /**
  * AI Application Screening — Inngest Function
  *
- * Triggered right after an application is submitted. Computes the AI match score
- * for every application, then — and only here — applies the employer's opt-in
+ * Triggered right after an application is submitted. Scores every application
+ * with the shared matching engine — the number the seeker's email and home page
+ * show for the same pair — then — and only here — applies the employer's opt-in
  * auto-reject rule. The rule is resolved from the job's and the employer's
  * stored hiring rules (see src/lib/hiring/workflowSettings.ts); the event
  * payload carries nothing but the application id, so no caller can smuggle a
@@ -18,7 +19,10 @@ import JobSeeker from "@/models/JobSeeker";
 import { Employer } from "@/models/Employer";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput, sanitizeAiList } from "@/lib/ai/sanitize";
-import { calculateMatchDetail, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
+import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
+import { JOB_MATCH_FIELDS } from "@/lib/matching/constants";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
+import { scoreOnePair, storedBreakdown } from "@/lib/matching/seekerMatches";
 import { resolveHiringRulesForJob, shouldAutoReject, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 
 
@@ -48,11 +52,14 @@ export const aiScreenApplication = inngest.createFunction(
       if (application.aiMatchScore != null) return { skipped: true, reason: "already scored" };
 
       const [job, seeker] = await Promise.all([
+        // Every field the engine reads, plus what the narrative prompt and the
+        // hiring rules need. A short select silently drops a signal: this one
+        // used to omit preferred roles, so role fit always scored zero here.
         Job.findById(application.jobId)
-          .select("title description requirements location salary employerId workflow")
+          .select(`${JOB_MATCH_FIELDS} description workflow`)
           .lean(),
         JobSeeker.findById(application.jobSeekerId)
-          .select("skills languages experience totalExperienceYears preferredCountries preferredSalary currentLocation education cv")
+          .select(`${SEEKER_MATCH_FIELDS} userId languages`)
           .lean(),
       ]);
       if (!job || !seeker) return { skipped: true, reason: "job or seeker not found" };
@@ -64,11 +71,11 @@ export const aiScreenApplication = inngest.createFunction(
         : null;
       const rules = resolveHiringRulesForJob(job as WorkflowSettingsCarrier, employer);
 
-      // Compute deterministic score using feature-based engine
-      const seekerProfile = seekerProfileFromDoc(seeker as Parameters<typeof seekerProfileFromDoc>[0]);
-      const jobProfile = jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0]);
-      const deterministicDetail = calculateMatchDetail(seekerProfile, jobProfile);
-      const deterministicScore = deterministicDetail.overall;
+      const seekerProfile = await effectiveSeekerProfile(
+        String((seeker as { userId?: unknown }).userId ?? ""),
+        seeker as Parameters<typeof effectiveSeekerProfile>[1],
+      );
+      const pair = await scoreOnePair(seekerProfile, job as Record<string, unknown>);
 
       // LLM call for narrative fields only (optional — failures don't block score)
       const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
@@ -101,18 +108,10 @@ Languages: ${seekerLangs}
 
 Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"strengths":[],"gaps":[],"summary":""}`;
 
-      // Use deterministic score (LLM optional for narrative)
-      application.aiMatchScore = deterministicScore;
-      application.scoredVia = 'deterministic';
-      // Real component scores — these were hardcoded to 0, which is what the
-      // employer panel rendered under a perfectly good overall score.
-      application.matchBreakdown = {
-        skills: deterministicDetail.skills,
-        experience: deterministicDetail.experience,
-        location: deterministicDetail.location,
-        salary: deterministicDetail.salary,
-        overall: deterministicDetail.overall,
-      };
+      // The engine's score; the LLM below writes narrative only.
+      application.aiMatchScore = pair.score;
+      application.scoredVia = "engine";
+      application.matchBreakdown = storedBreakdown(pair);
 
       // Try to get narrative from LLM, but failure doesn't block the score
       let narrativeData = { strengths: [], gaps: [], summary: "" };

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { HOME_RECOMMENDED_JOB_COUNT } from "@/lib/jobRecommendations";
+import type { LimitingFactor } from "@/lib/matching/recommend";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
@@ -99,13 +100,31 @@ type NextActionItem = {
 };
 
 
+/** What the engine said about the seeker's pool, so an empty list can say why. */
+type RecommendationSummary = {
+  threshold: number;
+  bestScore: number;
+  recommendedCount: number;
+  limitingFactor: LimitingFactor | null;
+};
+
 /** Typed bundle passed from the server component for zero-waterfall hydration. */
 export type InitialHomeData = {
   profile: ProfileData;
   stats: DashboardStats;
+  /** Recommended jobs only: eligible and at or above the admin threshold. */
   jobs: FeedJob[];
+  recommendation?: RecommendationSummary;
   appliedJobs?: AppliedJobSnippet[];
 };
+
+/**
+ * Where the "improve" link on an empty or short list should go. Gates the
+ * seeker set themselves are preferences; everything else — missing skills,
+ * roles, experience, education, or simply a low score — is fixed on the
+ * profile. Mirrors the digest email's near-miss link.
+ */
+const PREFERENCE_FACTORS: ReadonlySet<LimitingFactor> = new Set(["no_location", "country", "salary", "work_mode"]);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function timeAgo(iso: string, locale: string, translate: any): string {
@@ -135,6 +154,9 @@ export function JobSeekerHomePage({
   const [profile, setProfile] = useState<ProfileData | null>(initialData?.profile ?? null);
   const [stats, setStats] = useState<DashboardStats | null>(initialData?.stats ?? null);
   const [jobs, setJobs] = useState<FeedJob[]>(initialData?.jobs ?? []);
+  const [recommendation, setRecommendation] = useState<RecommendationSummary | null>(
+    initialData?.recommendation ?? null,
+  );
   const [appliedJobs, setAppliedJobs] = useState<AppliedJobSnippet[]>(initialData?.appliedJobs ?? []);
   // If SSR data was provided this is false from the start — no loading flash
   const [loading, setLoading] = useState(!initialData);
@@ -164,6 +186,7 @@ export function JobSeekerHomePage({
       setProfile(initialData.profile ?? null);
       setStats(initialData.stats ?? null);
       setJobs(initialData.jobs ?? []);
+      setRecommendation(initialData.recommendation ?? null);
       setAppliedJobs(initialData.appliedJobs ?? []);
       setLoading(false);
       return;
@@ -179,7 +202,7 @@ export function JobSeekerHomePage({
         const [profileRes, statsRes, jobsRes, appsRes] = await Promise.all([
           fetch("/api/job-seeker/profile"),
           fetch("/api/dashboard/stats"),
-          fetch(`/api/jobs/recommended?limit=${HOME_RECOMMENDED_JOB_COUNT}&sort=match`),
+          fetch(`/api/jobs/recommended?limit=${HOME_RECOMMENDED_JOB_COUNT}&sort=match&recommended=true`),
           fetch("/api/applications?limit=5&page=1"),
         ]);
 
@@ -194,6 +217,14 @@ export function JobSeekerHomePage({
         if (profileData) setProfile(profileData);
         if (statsData) setStats(statsData);
         if (jobsData?.jobs) setJobs(jobsData.jobs);
+        if (jobsData && typeof jobsData.threshold === "number") {
+          setRecommendation({
+            threshold: jobsData.threshold,
+            bestScore: jobsData.bestScore ?? 0,
+            recommendedCount: jobsData.strongMatches ?? 0,
+            limitingFactor: jobsData.limitingFactor ?? null,
+          });
+        }
         const rawApps: Array<{
           jobId?: { _id?: string; title?: string; employer?: { companyName?: string; logo?: string } };
           status?: string;
@@ -300,6 +331,20 @@ export function JobSeekerHomePage({
   const hasPreferences =
     preferenceChips.length > 0 ||
     Boolean(profile?.preferredRoles?.length || profile?.preferredCountries?.length || profile?.preferredJobType || profile?.preferredSalary?.min);
+
+  const limitingFactor = recommendation?.limitingFactor ?? null;
+  const improveOnPreferences = limitingFactor !== null && PREFERENCE_FACTORS.has(limitingFactor);
+  const improveHref = `/${locale}/job-seeker/${improveOnPreferences ? "preferences" : "profile"}`;
+  // No country known: nothing was matched at all, so the empty state asks for
+  // the country instead of quoting a closest match.
+  const noLocation = limitingFactor === "no_location";
+  const improveLabel = t(
+    noLocation
+      ? "recommendedJobs.addCountryCta"
+      : improveOnPreferences
+        ? "recommendedJobs.updatePreferencesCta"
+        : "recommendedJobs.improveProfileCta",
+  );
 
   const interviewCount = stats?.upcomingInterviews?.count ?? 0;
   const pendingOfferCount = stats?.pendingOffers?.count ?? 0;
@@ -483,27 +528,50 @@ export function JobSeekerHomePage({
                 }
               />
             ))}
+            {/* Fewer strong matches than cards: say that is all there is, rather
+                than padding the list with weaker jobs under this heading. */}
+            {jobs.length < HOME_RECOMMENDED_JOB_COUNT && (
+              <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 pt-1 text-center text-sm text-muted-foreground">
+                <span>{t("recommendedJobs.noOtherStrong")}</span>
+                <Link href={improveHref} className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline">
+                  {improveLabel}
+                </Link>
+              </p>
+            )}
           </div>
         ) : hasPreferences ? (
           <div className="rounded-2xl border border-dashed border-border/80 bg-card/80 px-4 py-8 text-center shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06)] sm:px-6 sm:py-12">
             <div className="mx-auto mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
               <CheckCircle2 className="h-6 w-6" aria-hidden />
             </div>
-            <div className="text-lg font-semibold">{t("recommendedJobs.noMatchesTitle")}</div>
-            <p className="mt-1.5 text-sm text-muted-foreground">{t("recommendedJobs.noMatchesBody")}</p>
-            <div className="mt-5 flex flex-col items-center justify-center gap-2">
+            <div className="text-lg font-semibold">
+              {t(noLocation ? "recommendedJobs.noLocationTitle" : "recommendedJobs.strongOnlyTitle")}
+            </div>
+            {recommendation && !noLocation && (
+              <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
+                {recommendation.bestScore > 0
+                  ? t("recommendedJobs.strongOnlyBody", {
+                      threshold: recommendation.threshold,
+                      best: recommendation.bestScore,
+                    })
+                  : t("recommendedJobs.strongOnlyBodyNone", { threshold: recommendation.threshold })}
+              </p>
+            )}
+            {limitingFactor && (
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                {t(`recommendedJobs.blockers.${limitingFactor}`)}
+              </p>
+            )}
+            <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row">
               <Button asChild className="min-h-11 rounded-full px-6 shadow-sm">
+                <Link href={improveHref}>{improveLabel}</Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11 rounded-full px-6">
                 <Link href={`/${locale}/job-seeker/jobs`}>
                   <Search className="me-2 h-4 w-4" aria-hidden />
                   {t("recommendedJobs.browseJobsCta")}
                 </Link>
               </Button>
-              <Link
-                href={`/${locale}/job-seeker/preferences`}
-                className="mt-1 text-xs text-muted-foreground hover:text-primary hover:underline"
-              >
-                {t("recommendedJobs.noMatchesCta")}
-              </Link>
             </div>
           </div>
         ) : (

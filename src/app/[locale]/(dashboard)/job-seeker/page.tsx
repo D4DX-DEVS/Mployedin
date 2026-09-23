@@ -9,11 +9,11 @@ import Job from "@/models/Job";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import {
   buildRecommendedJobQuery,
-  rankRecommendedJobs,
   HOME_RECOMMENDED_JOB_COUNT,
   RECOMMENDATION_POOL_SIZE,
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
+import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
@@ -36,12 +36,16 @@ export default async function JobSeekerPage({
 
   await connectDB();
 
-  // Lean query — only fields needed for the home page
+  // Lean query — the fields the page paints plus every SEEKER_MATCH_FIELDS path
+  // (`cv` covers cv.rawText). A missing one silently changes the score: without
+  // totalExperienceYears a seeker with a stated total but no dated roles reads
+  // as "experience unknown" here and as known in the email.
   const seeker = await JobSeeker.findOne({ userId })
     .select(
       "_id userId skills preferredCountries preferredRoles preferredSalary preferredJobType " +
         "experience education languages summary profileCompleteness cvFileUrl cv " +
-        "nationality currentLocation preferredLocations linkedin socialLinks"
+        "nationality currentLocation preferredLocations linkedin socialLinks " +
+        "totalExperienceYears workStatus"
     )
     .lean();
 
@@ -152,16 +156,15 @@ export default async function JobSeekerPage({
 
   const seekerProfile = await effectiveSeekerProfile(userId, seeker);
 
-  // One ranking, shared with /api/jobs/recommended and the feed: score the
-  // pool, sink off-profile jobs by a fixed penalty instead of dropping them,
-  // and cut to the number of cards the page paints. The page used to run its
-  // own stricter rules (hard relevance drop, score >= 30) and ship an empty
-  // list the client then replaced with the API's answer — which is what made
-  // the "no recommendations yet" panel flash before the cards appeared.
-  const scoredJobs = rankRecommendedJobs(
-    recentJobs as Array<Record<string, unknown>>,
-    seekerProfile
-  )
+  // The engine the emails use, so the cards here are the jobs the digest would
+  // send and carry the same percentage. Only `recommended` jobs (eligible and
+  // at or above the admin threshold) may sit under "Recommended jobs"; this
+  // list used to be the top four of the whole pool, which led with a 67% job
+  // whenever nothing better existed. An empty answer is final and the page
+  // explains it with the pool's limitingFactor.
+  const pool = await scoreSeekerPool(seekerProfile, recentJobs as Array<Record<string, unknown>>);
+  const scoredJobs = pool.jobs
+    .filter((job) => job.recommended)
     .slice(0, HOME_RECOMMENDED_JOB_COUNT)
     // Fully serialize to plain primitives — populated subdocs still carry
     // Mongoose ObjectIds, which cannot cross the server/client boundary.
@@ -207,6 +210,12 @@ export default async function JobSeekerPage({
       unreadMessages: { count: Math.max(0, Number(unreadMessageCount) || 0) },
     },
     jobs: scoredJobs,
+    recommendation: {
+      threshold: pool.threshold,
+      bestScore: pool.bestScore,
+      recommendedCount: pool.recommendedCount,
+      limitingFactor: pool.limitingFactor ?? null,
+    },
     appliedJobs: (appliedApps as Array<Record<string, unknown>>).map((app) => {
       const job = app.jobId as Record<string, unknown> | null;
       const emp = job?.employerId as { companyName?: string; logo?: string } | null;

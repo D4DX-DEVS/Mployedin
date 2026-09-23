@@ -26,10 +26,28 @@ jest.mock("@/lib/ai/gemini", () => ({
 }));
 
 let score = 30;
-jest.mock("@/lib/matchScore", () => ({
-  seekerProfileFromDoc: (d: unknown) => d,
-  jobProfileFromDoc: (d: unknown) => d,
-  calculateMatchDetail: jest.fn(() => ({ skills: score, experience: score, location: score, salary: score, overall: score })),
+// The engine seam. The worker must store the engine's number and parts, not
+// compute its own — that is what makes the employer's score match the one the
+// seeker was emailed.
+const mockScoreOnePair = jest.fn(async () => ({
+  eligible: true,
+  score,
+  breakdown: {
+    overall: score - 2,
+    skills: 40,
+    role: 20,
+    experience: 90,
+    matchedSkills: [],
+    missingSkills: [],
+    skillsUnknown: false,
+  },
+}));
+jest.mock("@/lib/matching/seekerMatches", () => ({
+  scoreOnePair: (...args: unknown[]) => mockScoreOnePair(...(args as [])),
+  storedBreakdown: jest.requireActual("@/lib/matching/seekerMatches").storedBreakdown,
+}));
+jest.mock("@/lib/effectiveSeekerProfile", () => ({
+  effectiveSeekerProfile: async (_userId: string, doc: unknown) => doc,
 }));
 
 let application: Record<string, unknown> & { status: string; statusHistory: unknown[]; save: jest.Mock };
@@ -141,6 +159,27 @@ describe("aiScreenApplication worker", () => {
     jobWorkflow = { customizedAt: new Date(), settings: { autoRejectEnabled: true, autoRejectBelow: 40 } };
     await runWorker();
     expect(application.status).toBe("shortlisted");
+  });
+
+  it("stores the engine's score and parts, with overall equal to the score", async () => {
+    score = 72;
+    await runWorker();
+    expect(application.aiMatchScore).toBe(72);
+    expect(application.scoredVia).toBe("engine");
+    // overall is the final (Jev-adjusted) score, not the deterministic one the
+    // parts add up to — so the badge and the breakdown header always agree.
+    expect(application.matchBreakdown).toEqual({ skills: 40, role: 20, experience: 90, overall: 72 });
+  });
+
+  it("scores the profile it was given with every engine field loaded", async () => {
+    const JobSeeker = (await import("@/models/JobSeeker")).default as unknown as { findById: jest.Mock };
+    await runWorker();
+    const select = JobSeeker.findById.mock.results.at(-1)!.value.select as jest.Mock;
+    const fields = String(select.mock.calls[0][0]);
+    // The old select left these out, so role fit always scored zero here.
+    for (const field of ["preferredRoles", "preferredJobType", "workStatus", "cv.rawText"]) {
+      expect(fields).toContain(field);
+    }
   });
 
   it("skips an application that is already scored", async () => {

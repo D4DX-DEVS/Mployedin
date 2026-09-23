@@ -28,7 +28,7 @@ export const dailyDigestWorker = inngest.createFunction(
     triggers: [{ event: "notification/daily-digest" }],
   },
   async ({ event, step }: { event: { data: NotificationDailyDigestEvent["data"] }; step: any }) => {
-    const { userId, userName, email, locale, jobs, profileViews } = event.data;
+    const { userId, email, locale, jobs, profileViews } = event.data;
 
     await connectDB();
 
@@ -42,16 +42,13 @@ export const dailyDigestWorker = inngest.createFunction(
 
     // Build and send the combined digest email
     await step.run("send-digest-email", async () => {
-      const html = buildDigestEmail({
-        userName,
-        locale,
-        jobs,
-        profileViews,
-        profile: event.data.profile,
-      });
+      const html = buildDigestEmail(digestEmailDataFromEvent(event.data));
 
       const jobCount = jobs.length;
       const viewCount = profileViews.count;
+      // "No strong matches" would be untrue here: nothing was matched at all,
+      // because we don't know where the seeker wants to work.
+      const noLocation = event.data.nearMiss?.topBlocker === "no_location";
 
       // A digest can now also carry only the "nothing cleared the bar" note,
       // in which case both counts are zero and the old subject read
@@ -65,7 +62,9 @@ export const dailyDigestWorker = inngest.createFunction(
               ? `${jobCount} وظائف مطابقة لملفك الشخصي`
               : viewCount > 0
                 ? `${viewCount} مسؤولي توظيف شاهدوا ملفك الشخصي`
-                : "لا توجد مطابقات قوية هذا الأسبوع";
+                : noLocation
+                  ? "أضف الدولة المفضلة لتصلك الوظائف المطابقة"
+                  : "لا توجد مطابقات قوية هذا الأسبوع";
       } else {
         subject =
           jobCount > 0 && viewCount > 0
@@ -74,7 +73,9 @@ export const dailyDigestWorker = inngest.createFunction(
               ? `${jobCount} jobs matching your profile`
               : viewCount > 0
                 ? `${viewCount} recruiters viewed your profile`
-                : "No strong job matches this week";
+                : noLocation
+                  ? "Add your preferred country to get job matches"
+                  : "No strong job matches this week";
       }
 
       await sendEmail({
@@ -101,7 +102,32 @@ export const dailyDigestWorker = inngest.createFunction(
   },
 );
 
-interface DigestEmailData {
+/**
+ * The email-builder input for one digest event.
+ *
+ * A function of its own so the event → email mapping can be tested. It used to
+ * be written inline in the worker, forwarding each field by name — and it
+ * forwarded every one except `nearMiss`. The producer computed "your closest
+ * match was 37%, here is what is holding you back", claimed the 14-day
+ * near-miss cooldown for it, and the worker dropped it: on 2026-09-23 all 187
+ * "No strong job matches" emails went out with that subject over a body that
+ * never said why. Every builder test passed `nearMiss` in directly, which is
+ * why none of them caught it.
+ */
+export function digestEmailDataFromEvent(
+  data: NotificationDailyDigestEvent["data"],
+): DigestEmailData {
+  return {
+    userName: data.userName,
+    locale: data.locale,
+    jobs: data.jobs,
+    profileViews: data.profileViews,
+    profile: data.profile,
+    nearMiss: data.nearMiss,
+  };
+}
+
+export interface DigestEmailData {
   userName: string;
   locale: string;
   jobs: Array<{
@@ -161,6 +187,10 @@ const PERIOD_LABEL: Record<string, { en: string; ar: string }> = {
  * live jobs are priced in dirhams, so an INR annual figure was presented as a
  * dirham amount roughly thirty times too large. The period matters for the
  * same reason: a yearly range rendered bare reads as a monthly one.
+ *
+ * Returns escaped HTML rather than plain text, because the Arabic form needs
+ * the amount isolated from the label — see below. Callers must not escape it
+ * again.
  */
 function salaryLine(
   salary: { min: number; max: number; currency?: string; period?: string } | undefined,
@@ -175,7 +205,14 @@ function salaryLine(
       : formatCount(salary.max > 0 ? salary.max : salary.min);
   // Code before the amount, and the whole thing kept on one line: the old
   // trailing "AED" wrapped onto its own row on a phone.
-  return `${code} ${range}${isAr ? period.ar : period.en}`;
+  const amount = `${code} ${range}`;
+  // "INR 40,000–80,000" is Latin, "/شهر" is not. Left as one run inside an
+  // Arabic paragraph the bidi algorithm pushes the currency code across to the
+  // far side of the label, so the amount is isolated and the label kept out of
+  // the isolate. English is unchanged — one escaped string, as before.
+  return isAr
+    ? `<span dir="ltr">${esc(amount)}</span>${esc(period.ar)}`
+    : esc(`${amount}${period.en}`);
 }
 
 export function buildDigestEmail(data: DigestEmailData): string {
@@ -183,6 +220,23 @@ export function buildDigestEmail(data: DigestEmailData): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
   const isAr = locale === "ar";
   const dir = isAr ? "rtl" : "ltr";
+
+  /**
+   * Escape a value, isolating it as left-to-right when the digest is Arabic.
+   *
+   * Job titles, company names, cities and skill names are Latin whatever the
+   * reader's language, so an Arabic digest is a right-to-left paragraph with
+   * left-to-right runs inside it. The bidi algorithm resolves the neutral
+   * characters *between* those runs — the colon, the commas, the middot —
+   * against the paragraph, not against the run, which is why the skills line
+   * rendered as "React, Node.js, MongoDB :مهاراتك المطابقة" with the colon
+   * stranded at the wrong end.
+   *
+   * `dir` on an inline element is the one isolation mechanism Gmail, Outlook
+   * and Apple Mail all honour; `unicode-bidi: isolate` is CSS and gets stripped.
+   * A no-op for English, so those emails stay byte-identical.
+   */
+  const bidi = (text: string) => (isAr ? `<span dir="ltr">${esc(text)}</span>` : esc(text));
 
   const greeting = isAr
     ? `مرحباً <strong>${esc(userName)}</strong>`
@@ -231,15 +285,15 @@ export function buildDigestEmail(data: DigestEmailData): string {
                 </div>
               </td>
               <td style="padding-${isAr ? "right" : "left"}: 12px; vertical-align: top;">
-                <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${esc(j.title)}</a>
-                <p style="margin: 2px 0 0; color: #374151; font-size: 13px; font-weight: 500;">${esc(j.company)}</p>
-                <p style="margin: 3px 0 0; color: #6b7280; font-size: 12px; line-height: 18px;">📍 ${esc(j.location || "Remote")}${salaryText ? ` · <span style="white-space: nowrap;">${esc(salaryText)}</span>` : ""}</p>
+                <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${bidi(j.title)}</a>
+                <p style="margin: 2px 0 0; color: #374151; font-size: 13px; font-weight: 500;">${bidi(j.company)}</p>
+                <p style="margin: 3px 0 0; color: #6b7280; font-size: 12px; line-height: 18px;">📍 ${bidi(j.location || "Remote")}${salaryText ? ` · <span style="white-space: nowrap;">${salaryText}</span>` : ""}</p>
                 ${
                   // Why this job scored what it did. A bare percentage is the
                   // thing seekers distrust; naming the skills that earned it
                   // costs one line and makes the number checkable.
                   j.matchedSkills && j.matchedSkills.length > 0
-                    ? `<p style="margin: 3px 0 0; color: #059669; font-size: 11px; line-height: 16px;">${isAr ? "مهاراتك المطابقة" : "Your matching skills"}: ${esc(j.matchedSkills.slice(0, 4).join(", "))}</p>`
+                    ? `<p style="margin: 3px 0 0; color: #059669; font-size: 11px; line-height: 16px;">${isAr ? "مهاراتك المطابقة" : "Your matching skills"}: ${bidi(j.matchedSkills.slice(0, 4).join(", "))}</p>`
                     : ""
                 }
               </td>
@@ -255,7 +309,7 @@ export function buildDigestEmail(data: DigestEmailData): string {
 
   // Profile activity — a secondary insight, so it reads as a compact strip
   // rather than a second full-width section competing with the jobs.
-  const namedViewers = profileViews.viewers.slice(0, 2).map((v) => esc(v.name));
+  const namedViewers = profileViews.viewers.slice(0, 2).map((v) => bidi(v.name));
   const extraViewers = profileViews.count - namedViewers.length;
   const viewsSection =
     profileViews.count > 0
@@ -307,6 +361,12 @@ export function buildDigestEmail(data: DigestEmailData): string {
   const blockerCopy: Record<string, { en: string; ar: string }> = {
     // Profile gaps first — the only causes the seeker can fix today, and the
     // ones that cap their score no matter what the job board does.
+    // Checked before anything is scored: with no country there is nowhere to
+    // recommend jobs, so this replaces the whole "closest match" note.
+    no_location: {
+      en: "Add the country you want to work in. We only recommend jobs where we know you can work, so we can't send you matches until you add one.",
+      ar: "أضف الدولة التي ترغب في العمل بها. نوصي فقط بالوظائف في مكان نعرف أنه يناسبك، لذا لا يمكننا إرسال مطابقات لك حتى تضيفها.",
+    },
     no_skills: {
       en: "Your profile doesn't list any skills yet. Skills are the largest part of how we match you, so adding a few is the fastest way to start getting matches.",
       ar: "ملفك الشخصي لا يتضمن أي مهارات بعد. المهارات هي الجزء الأكبر من طريقة المطابقة، وإضافة بعضها هو أسرع طريقة للبدء في تلقي الوظائف المناسبة.",
@@ -352,7 +412,18 @@ export function buildDigestEmail(data: DigestEmailData): string {
     },
   };
 
-  const nearMissSection = nearMiss
+  // No country known: nothing was scored, so there is no score to quote — the
+  // note is only the question and the link to answer it.
+  const noLocationSection = nearMiss?.topBlocker === "no_location"
+    ? `
+        <div style="margin: 20px 0; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <h3 style="color: #111827; font-size: 15px; margin: 0 0 8px;">${isAr ? "أين ترغب في العمل؟" : "Where do you want to work?"}</h3>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 12px;">${isAr ? blockerCopy.no_location.ar : blockerCopy.no_location.en}</p>
+          <a href="${baseUrl}/${locale}/job-seeker/preferences" style="background: #0D6FD8; color: #ffffff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">${isAr ? "أضف دولة مفضلة" : "Add a preferred country"}</a>
+        </div>`
+    : null;
+
+  const nearMissSection = noLocationSection ?? (nearMiss
     ? `
         <div style="margin: 20px 0; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
           <h3 style="color: #111827; font-size: 15px; margin: 0 0 8px;">${isAr ? "لا توجد مطابقات قوية بعد" : "No strong matches yet"}</h3>
@@ -383,7 +454,7 @@ export function buildDigestEmail(data: DigestEmailData): string {
               : `<a href="${baseUrl}/${locale}/job-seeker/preferences" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 14px;">${isAr ? "حدّث تفضيلاتك ←" : "Update your preferences →"}</a>`
           }
         </div>`
-    : "";
+    : "");
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">

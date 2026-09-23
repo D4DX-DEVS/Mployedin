@@ -11,12 +11,17 @@
  *   stage 0  retrieval   caller supplies candidates (already-applied excluded)
  *   stage 1  eligibility hard gate, both-sides-stated rule   -> eligibility.ts
  *   stage 2  relevance   skills / role / experience          -> relevance.ts
- *   stage 3  AI re-rank  Jev, on the shortlist only          -> ai/jev.ts
+ *   stage 3  AI adjust   Jev, per pair within 10 of the bar   -> ai/jev.ts
  *   stage 4  threshold   SystemConfig.matching.minScore
  *
  * Stage 3 is the only one that costs money, which is why it runs last and only
  * on survivors. On the live corpus the gate removes ~75% of pairs before any
  * of this, taking a full run from roughly $0.38 to $0.09.
+ *
+ * `scorePair` is the same pipeline for one pair, and every surface that shows
+ * a match percentage — email, app, employer view, auto-apply — goes through one
+ * of the two. Jev verdicts are remembered per exact input (JevVerdictStore), so
+ * a pair reads the same number wherever it appears and is only paid for once.
  */
 
 import logger from "@/lib/logger";
@@ -32,6 +37,7 @@ import { MAX_RECOMMENDATIONS, DEFAULT_MIN_RELEVANCE, JOB_MATCH_FIELDS } from "@/
 // Re-exported so the mailers keep a single import from this module.
 export { JOB_MATCH_FIELDS };
 import { decide, noulValue, hasJev, type JevQuestion } from "@/lib/ai/jev";
+import { OPENROUTER_MODELS } from "@/lib/ai/openRouter";
 
 export interface CandidateJob {
   id: string;
@@ -61,10 +67,27 @@ export interface RecommendedJob extends CandidateJob {
  * useless as advice, and it blames the job board for an empty profile.
  */
 export type LimitingFactor =
+  /** No preferred country and no recognisable current location. */
+  | "no_location"
   | "no_skills"
   | "no_roles"
   | IneligibleReason
   | "score";
+
+/**
+ * Whether the engine knows what country this seeker wants to work in — a
+ * preferred country, or the one their current location names.
+ *
+ * Without one the country gate has nothing to check, so every job on the board
+ * passes it: a seeker in Kochi who skipped the preference could be mailed jobs
+ * in Oman. LinkedIn (country is a required profile field) and Naukri (current
+ * and preferred location asked at sign-up) never recommend without a place;
+ * we recommend nothing and ask for the country instead.
+ */
+export function hasKnownLocation(seeker: SeekerProfile): boolean {
+  if (seeker.locationSource === "none") return false;
+  return (seeker.locations?.length ? seeker.locations : [seeker.location]).some(Boolean);
+}
 
 export interface RecommendationResult {
   jobs: RecommendedJob[];
@@ -88,11 +111,15 @@ export interface RecommendationResult {
  * so a seeker with none has a ceiling of 40 and can never clear a threshold
  * anywhere near 80 no matter what the job board does.
  */
-function diagnoseLimitingFactor(
+export function diagnoseLimitingFactor(
   seeker: SeekerProfile,
   rejected: Partial<Record<IneligibleReason, number>>,
   scoredCount: number,
 ): LimitingFactor {
+  // A precondition, not a ranking problem: with no country nothing is
+  // recommended at all, whatever else the profile says.
+  if (!hasKnownLocation(seeker)) return "no_location";
+
   // A gate that removed more than it let through is the wall: when almost
   // nothing is even eligible, telling the seeker to add skills is advice that
   // would not have helped. This is checked before the profile gaps for that
@@ -117,16 +144,37 @@ function diagnoseLimitingFactor(
   return "score";
 }
 
+/**
+ * Jev verdicts already paid for, keyed on the exact input Jev saw.
+ *
+ * Jev is called fresh on every request, so without this the same seeker/job
+ * pair could read 92% in the morning email and 90% on the next page view, and
+ * a page load would pay for a decision the cron already bought. Keying on the
+ * input rather than on seeker + job means a verdict goes stale the moment
+ * either side's profile changes, and two identical inputs share one answer.
+ *
+ * An interface, not a Mongo model, so this module stays free of Mongoose — the
+ * implementation lives in jevVerdictStore.ts and callers pass it in.
+ */
+export interface JevVerdictStore {
+  /** Jev's genuine-fit probability for this exact input, or null if never asked. */
+  get(input: unknown): Promise<number | null>;
+  set(input: unknown, fit: number): Promise<void>;
+}
+
 export interface RecommendOptions {
   /** Relevance floor. Callers pass the resolved SystemConfig value. */
   threshold?: number;
   limit?: number;
-  /** Let Jev re-rank the shortlist. Ignored when no OpenRouter key is present. */
+  /** Let Jev adjust scores in the band where it can matter. Ignored without an OpenRouter key. */
   useAi?: boolean;
   /** Pre-loaded skill vectors, shared across a whole cron batch. */
   vectors?: SkillVectorMap;
-  /** How many top candidates to send to Jev. Each one is a billed request. */
-  aiShortlistSize?: number;
+  /**
+   * Where Jev verdicts are remembered. Pass it everywhere a score is shown —
+   * it is what makes the email, the app and the employer view agree.
+   */
+  verdicts?: JevVerdictStore;
 }
 
 /** Turn a lean Job document into the shape the pipeline works with. */
@@ -184,48 +232,156 @@ const AI_BLEND_WEIGHT = 0.35;
  */
 const AI_MAX_ADJUSTMENT = 10;
 
-async function rerankWithAi(
-  seeker: SeekerProfile,
-  shortlist: RecommendedJob[],
-): Promise<boolean> {
-  let consulted = false;
-  await Promise.all(
-    shortlist.map(async (entry) => {
-      const result = await decide(
-        {
-          job: {
-            title: entry.title,
-            required_skills: entry.profile.skills,
-            preferred_skills: entry.profile.preferredSkills,
-            experience_min_years: entry.profile.minExp,
-            experience_max_years: entry.profile.maxExp,
-            country: entry.profile.location,
-          },
-          candidate: {
-            skills: seeker.skills,
-            preferred_roles: seeker.preferredRoles,
-            total_experience_years: seeker.experienceKnown === false ? null : seeker.experienceYears,
-            recent_roles: (seeker.roleHistory ?? []).slice(0, 5).map((r) => r.title),
-          },
-        },
-        JEV_QUESTIONS,
-        `jev:recommend:${entry.id}`,
-      );
+/**
+ * Whether Jev is consulted for a pair.
+ *
+ * A property of the pair's own score, never of the list it sits in. The old
+ * rule — "the top ten of this list, if within 60% of the bar" — made a job's
+ * number depend on which surface it appeared on: the same job could be re-ranked
+ * in the email and not on the home page. The band is exactly the scores Jev can
+ * move across the bar; below it even a full +10 cannot reach the threshold, so
+ * a verdict there would change nothing that ships.
+ */
+function inJevBand(deterministic: number, threshold: number): boolean {
+  return deterministic >= threshold - AI_MAX_ADJUSTMENT;
+}
 
-      const fit = noulValue(result?.answers.genuine_fit);
-      if (fit === null) return;
-      consulted = true;
-      entry.aiConfidence = fit;
-      // Blend, then clamp. Blending alone still let a confident answer move a
-      // score by up to 35 points; the clamp is what keeps Jev advisory.
-      const blended =
-        entry.breakdown.overall * (1 - AI_BLEND_WEIGHT) + fit * 100 * AI_BLEND_WEIGHT;
-      const floor = entry.breakdown.overall - AI_MAX_ADJUSTMENT;
-      const ceiling = entry.breakdown.overall + AI_MAX_ADJUSTMENT;
-      entry.score = Math.round(Math.min(ceiling, Math.max(floor, blended)));
-    }),
-  );
-  return consulted;
+/** The facts Jev is shown about one pair. One builder, so request and cache key cannot drift. */
+function jevState(seeker: SeekerProfile, job: CandidateJob) {
+  return {
+    job: {
+      title: job.title,
+      required_skills: job.profile.skills,
+      preferred_skills: job.profile.preferredSkills,
+      experience_min_years: job.profile.minExp,
+      experience_max_years: job.profile.maxExp,
+      country: job.profile.location,
+    },
+    candidate: {
+      skills: seeker.skills,
+      preferred_roles: seeker.preferredRoles,
+      total_experience_years: seeker.experienceKnown === false ? null : seeker.experienceYears,
+      recent_roles: (seeker.roleHistory ?? []).slice(0, 5).map((r) => r.title),
+    },
+  };
+}
+
+/**
+ * Jev's genuine-fit probability for one pair — from the store when this exact
+ * input has been decided before, otherwise asked fresh and remembered.
+ *
+ * The cache key carries the model and the questions as well as the state, so
+ * changing either invalidates every stored verdict rather than serving answers
+ * to a question nobody is asking any more. Store failures are logged and
+ * ignored: a verdict we cannot cache is still a verdict.
+ */
+async function jevFit(
+  seeker: SeekerProfile,
+  job: CandidateJob,
+  verdicts?: JevVerdictStore,
+): Promise<number | null> {
+  const state = jevState(seeker, job);
+  const key = { model: OPENROUTER_MODELS.decision, questions: JEV_QUESTIONS, state };
+
+  if (verdicts) {
+    try {
+      const cached = await verdicts.get(key);
+      if (cached !== null) return cached;
+    } catch (err) {
+      logger.warn({ err }, "[recommend] Jev verdict cache read failed");
+    }
+  }
+
+  const result = await decide(state, JEV_QUESTIONS, `jev:recommend:${job.id}`);
+  const fit = noulValue(result?.answers.genuine_fit);
+
+  if (fit !== null && verdicts) {
+    try {
+      await verdicts.set(key, fit);
+    } catch (err) {
+      logger.warn({ err }, "[recommend] Jev verdict cache write failed");
+    }
+  }
+  return fit;
+}
+
+/**
+ * Blend Jev's probability into a deterministic score, then clamp. Blending
+ * alone still let a confident answer move a score by up to 35 points; the
+ * clamp is what keeps Jev advisory.
+ */
+function applyJev(deterministic: number, fit: number): number {
+  const blended = deterministic * (1 - AI_BLEND_WEIGHT) + fit * 100 * AI_BLEND_WEIGHT;
+  const floor = deterministic - AI_MAX_ADJUSTMENT;
+  const ceiling = deterministic + AI_MAX_ADJUSTMENT;
+  return Math.round(Math.min(ceiling, Math.max(floor, blended)));
+}
+
+type SeekerInput = Parameters<typeof seekerProfileFromDoc>[0] | SeekerProfile;
+
+function toSeekerProfile(seekerDoc: SeekerInput): SeekerProfile {
+  return "experienceYears" in seekerDoc && "skills" in seekerDoc && Array.isArray(seekerDoc.skills)
+    ? (seekerDoc as SeekerProfile)
+    : seekerProfileFromDoc(seekerDoc as Parameters<typeof seekerProfileFromDoc>[0]);
+}
+
+export interface PairScore {
+  /** Whether the pair clears every hard gate. Recommendation surfaces require it. */
+  eligible: boolean;
+  /** The gate that failed. Absent when eligible. */
+  reason?: IneligibleReason;
+  /** Final 0–100 — the one number every surface shows for this pair. */
+  score: number;
+  breakdown: RelevanceBreakdown;
+  /** Jev's probability that this is a real fit, when it was consulted. */
+  aiConfidence?: number;
+}
+
+/**
+ * How well one job fits one person — the single definition, used by the
+ * digests, the in-app recommendations, the employer's applicant score and
+ * auto-apply alike. Before this, the app and the employer view ran an older
+ * scorer with different weights and no gates, so one pair could read 92% in an
+ * email and 67% on the home page.
+ *
+ * Ineligible pairs are still scored: an employer looking at someone who applied
+ * anyway wants to know how close they came, and the gate result travels with
+ * the number. Recommendation surfaces drop them; this function does not decide
+ * that for its callers.
+ *
+ * Never throws. An AI failure leaves the deterministic score.
+ */
+export async function scorePair(
+  seekerDoc: SeekerInput,
+  job: CandidateJob,
+  options: Pick<RecommendOptions, "threshold" | "useAi" | "vectors" | "verdicts"> = {},
+): Promise<PairScore> {
+  const seeker = toSeekerProfile(seekerDoc);
+  const threshold = options.threshold ?? DEFAULT_MIN_RELEVANCE;
+  const gate = checkEligibility(seeker, job.profile);
+  const breakdown = calculateRelevance(seeker, job.profile, options.vectors);
+
+  let score = breakdown.overall;
+  let aiConfidence: number | undefined;
+  if (options.useAi && hasJev() && inJevBand(score, threshold)) {
+    try {
+      const fit = await jevFit(seeker, job, options.verdicts);
+      if (fit !== null) {
+        aiConfidence = fit;
+        score = applyJev(breakdown.overall, fit);
+      }
+    } catch (err) {
+      logger.warn({ err }, "[recommend] Jev scoring failed; using deterministic score");
+    }
+  }
+
+  return {
+    eligible: gate.eligible,
+    ...(gate.eligible ? {} : { reason: gate.reason }),
+    score,
+    breakdown,
+    ...(aiConfidence !== undefined ? { aiConfidence } : {}),
+  };
 }
 
 /**
@@ -240,15 +396,18 @@ export async function recommendJobsFor(
   candidates: readonly CandidateJob[],
   options: RecommendOptions = {},
 ): Promise<RecommendationResult> {
-  const seeker: SeekerProfile =
-    "experienceYears" in seekerDoc && "skills" in seekerDoc && Array.isArray(seekerDoc.skills)
-      ? (seekerDoc as SeekerProfile)
-      : seekerProfileFromDoc(seekerDoc as Parameters<typeof seekerProfileFromDoc>[0]);
+  const seeker = toSeekerProfile(seekerDoc);
 
   const threshold = options.threshold ?? DEFAULT_MIN_RELEVANCE;
   const limit = options.limit ?? MAX_RECOMMENDATIONS;
   const vectors = options.vectors;
   const rejected: Partial<Record<IneligibleReason, number>> = {};
+
+  // No country means no recommendation — before any scoring, so nothing is
+  // spent on Jev for a list that will not be sent.
+  if (!hasKnownLocation(seeker)) {
+    return { jobs: [], considered: 0, rejected, bestScore: 0, threshold, aiUsed: false, limitingFactor: "no_location" };
+  }
 
   // ── stages 1 + 2 ───────────────────────────────────────────────────────
   const scored: RecommendedJob[] = [];
@@ -266,22 +425,26 @@ export async function recommendJobsFor(
   const bestDeterministic = scored[0]?.score ?? 0;
 
   // ── stage 3 ────────────────────────────────────────────────────────────
-  // Only the shortlist is sent to Jev, and only jobs already close to the bar.
-  // Paying to re-rank a job scoring 12 changes nothing about whether it ships.
+  // Jev adjusts every eligible job in the band where it can change what ships
+  // — the same per-pair rule scorePair applies, so a job reads the same here as
+  // on any other surface. Verdicts come from the store when already paid for.
   let aiUsed = false;
-  if (options.useAi && hasJev() && scored.length > 0) {
-    const shortlistSize = options.aiShortlistSize ?? limit * 2;
-    const shortlist = scored
-      .slice(0, shortlistSize)
-      .filter((j) => j.score >= threshold * 0.6);
-    if (shortlist.length > 0) {
-      try {
-        aiUsed = await rerankWithAi(seeker, shortlist);
-        scored.sort((a, b) => b.score - a.score);
-      } catch (err) {
-        logger.warn({ err }, "[recommend] AI re-rank failed; using deterministic scores");
-      }
-    }
+  if (options.useAi && hasJev()) {
+    const band = scored.filter((j) => inJevBand(j.score, threshold));
+    await Promise.all(
+      band.map(async (entry) => {
+        try {
+          const fit = await jevFit(seeker, entry, options.verdicts);
+          if (fit === null) return;
+          aiUsed = true;
+          entry.aiConfidence = fit;
+          entry.score = applyJev(entry.breakdown.overall, fit);
+        } catch (err) {
+          logger.warn({ err, jobId: entry.id }, "[recommend] Jev scoring failed; using deterministic score");
+        }
+      }),
+    );
+    scored.sort((a, b) => b.score - a.score);
   }
 
   // ── stage 4 ────────────────────────────────────────────────────────────

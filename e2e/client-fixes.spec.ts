@@ -34,15 +34,16 @@ async function csrfCookie(page: Page): Promise<string> {
 test.describe("1+2 · Public page CSRF + anonymous quick apply", () => {
   test("anonymous visitor sees CV-first quick apply on a shared job link", async ({ page }) => {
     await page.goto("/en/jobs");
-    await page.waitForLoadState("networkidle");
 
+    // Wait for the list itself; job cards prefetch continuously, so networkidle never settles.
     const jobLink = page.locator('a[href*="/jobs/"]').first();
+    await jobLink.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
     if ((await jobLink.count()) === 0) {
       test.skip(true, "No public jobs available to open");
     }
     await jobLink.click();
     await page.waitForURL(/\/jobs\/[a-f0-9]{24}/, { timeout: 15_000 });
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // CV-first panel replaces the old bare "Sign in to Apply" button
     await expect(page.getByText("Apply in seconds")).toBeVisible({ timeout: 10_000 });
@@ -55,7 +56,9 @@ test.describe("1+2 · Public page CSRF + anonymous quick apply", () => {
 
     // Public layout page (same layout as a WhatsApp-shared job link)
     await page.goto("/en/jobs");
-    await page.waitForLoadState("networkidle");
+    // Not networkidle: every job card prefetches its page, so a long list never
+    // goes quiet. What this test needs is the fetch patch, installed on hydration.
+    await page.waitForFunction(() => !/\[native code\]/.test(String(window.fetch)), undefined, { timeout: 20_000 });
 
     const cookieToken = await csrfCookie(page);
     expect(cookieToken, "csrf-token cookie should be set on public pages").toBeTruthy();
@@ -75,15 +78,16 @@ test.describe("1+2 · Public page CSRF + anonymous quick apply", () => {
   test("logged-in job seeker sees the Easy Apply form (not sign-in) on a job page", async ({ page }) => {
     await login(page, JS_EMAIL, JS_PASS);
     await page.goto("/en/jobs");
-    await page.waitForLoadState("networkidle");
 
+    // Wait for the list itself; job cards prefetch continuously, so networkidle never settles.
     const jobLink = page.locator('a[href*="/jobs/"]').first();
+    await jobLink.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
     if ((await jobLink.count()) === 0) {
       test.skip(true, "No public jobs available to open");
     }
     await jobLink.click();
     await page.waitForURL(/\/jobs\/[a-f0-9]{24}/, { timeout: 15_000 });
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     await expect(page.getByText("Apply in seconds")).toHaveCount(0);
     // Either the apply button or the already-applied confirmation must render
@@ -206,7 +210,7 @@ test.describe("5 · Post-job auto-draft", () => {
 
     // In-app (client-side) navigation unmounts the wizard → triggers the save
     // that the old sendBeacon version always lost to a CSRF 403.
-    await page.getByRole("link", { name: /Dashboard/i }).first().click();
+    await page.getByRole("link", { name: /^Home$/i }).first().click();
     const resp = await draftResponse;
 
     expect(resp, "auto-draft request must fire on leaving the form").not.toBeNull();

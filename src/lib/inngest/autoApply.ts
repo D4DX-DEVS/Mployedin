@@ -5,15 +5,30 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
 import Employer from "@/models/Employer";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
+import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
+import { buildRecommendedJobQuery } from "@/lib/jobRecommendations";
+import { JOB_MATCH_FIELDS } from "@/lib/matching/constants";
+import { recommendJobsFor, toCandidateJob } from "@/lib/matching/recommend";
+import { resolveEngineOptions, storedBreakdown, type StoredMatchBreakdown } from "@/lib/matching/seekerMatches";
+import { prepareSkillVectors } from "@/lib/matching/skillVectors";
 
 const AUTO_APPLY_DAILY_LIMIT = 5;
-const MIN_SCORE_FOR_AUTO_APPLY = 60;
+
+/** How many of the newest candidate jobs are scored per run. */
+const AUTO_APPLY_POOL_SIZE = 100;
 
 /**
  * Inngest v4 function: auto-apply to matching jobs for a job seeker.
  * Triggers: event "job-seeker/auto-apply.triggered" or "job-seeker/auto-apply.cron"
+ *
+ * Applies only to jobs the engine would recommend — eligible on every hard
+ * gate and at or above the admin threshold — which is a stricter bar than
+ * anything else here, because this one acts in the seeker's name. It used to
+ * apply on the older scorer at 60 with no gates, and its country filter
+ * overwrote the expiry filter, so expired jobs and jobs in countries the
+ * seeker never chose were both fair game.
  */
 export const autoApplyFunction = inngest.createFunction(
   {
@@ -58,8 +73,8 @@ export const autoApplyFunction = inngest.createFunction(
     const remaining = AUTO_APPLY_DAILY_LIMIT - (seeker.autoApplyCount ?? 0);
     if (remaining <= 0) return { skipped: "daily limit reached" };
 
-    const seekerProfile = seekerProfileFromDoc(seeker);
-
+    // Withdrawn applications count here, unlike on the recommendation pages:
+    // a seeker who withdrew must not be re-applied for automatically.
     const appliedJobIds = await step.run("fetch-applied-ids", () =>
       Application.find({ jobSeekerId: seeker._id })
         .select("jobId")
@@ -67,39 +82,45 @@ export const autoApplyFunction = inngest.createFunction(
         .then((apps) => apps.map((a) => a.jobId))
     );
 
-    const jobQuery: Record<string, unknown> = {
-      status: "active",
-      _id: { $nin: appliedJobIds },
-      $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
-    };
-    if (seeker.preferredCountries?.length) {
-      jobQuery["$or"] = [
-        { "location.country": { $in: seeker.preferredCountries } },
-        { "location.isRemote": true },
-      ];
-    }
-
+    // The recommendation pages' retrieval: live, unexpired, not applied to,
+    // and in a preferred country (any spelling) or remote. The engine's gates
+    // then decide, remote jobs included.
     const candidateJobs = await step.run("fetch-jobs", () =>
-      Job.find(jobQuery)
-        .sort({ createdAt: -1 })
-        .limit(100)
-        .select("title employerId requirements salary location status")
+      Job.find(
+        buildRecommendedJobQuery({
+          preferredCountries: seeker.preferredCountries,
+          excludeJobIds: appliedJobIds,
+          now,
+        }),
+      )
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(AUTO_APPLY_POOL_SIZE)
+        .select(JOB_MATCH_FIELDS)
         .lean()
     ) as Array<Record<string, unknown>>;
 
-    const eligible = candidateJobs
-      .map((job) => ({
-        job,
-        score: calculateMatchScore(seekerProfile, jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0])),
-      }))
-      .filter(({ score }) => score >= MIN_SCORE_FOR_AUTO_APPLY)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, remaining);
+    // In a step, so the replay Inngest runs before each apply step reads the
+    // stored picks instead of scoring the pool again.
+    const picks = (await step.run("score-jobs", async () => {
+      const [profile, engine] = await Promise.all([
+        effectiveSeekerProfile(String(seeker.userId), seeker),
+        resolveEngineOptions(),
+      ]);
+      const candidates = candidateJobs.map((job) => toCandidateJob(job));
+      const vectors = await prepareSkillVectors(candidates, [profile]);
+      const result = await recommendJobsFor(profile, candidates, { ...engine, vectors, limit: remaining });
+      const byId = new Map(candidateJobs.map((job) => [String(job._id), job]));
+      return result.jobs.map((match) => ({
+        job: byId.get(match.id) as Record<string, unknown>,
+        score: match.score,
+        breakdown: storedBreakdown(match),
+      }));
+    })) as Array<{ job: Record<string, unknown>; score: number; breakdown: StoredMatchBreakdown }>;
 
-    if (eligible.length === 0) return { skipped: "no eligible jobs" };
+    if (picks.length === 0) return { skipped: "no eligible jobs" };
 
     let applied = 0;
-    for (const { job, score } of eligible) {
+    for (const { job, score, breakdown } of picks) {
       const jobId = String(job._id);
       await step.run(`apply-to-${jobId}`, async () => {
         const dupe = await Application.findOne({ jobSeekerId: seeker._id, jobId: job._id }).lean();
@@ -125,6 +146,8 @@ export const autoApplyFunction = inngest.createFunction(
           autoApplied: true,
           isAgentReferred: (seeker as { isAgentReferred?: boolean }).isAgentReferred === true,
           aiMatchScore: score,
+          scoredVia: "engine",
+          matchBreakdown: breakdown,
           appliedAt: now,
           statusHistory: [{ status: "applied", changedAt: now }],
           behaviorSignals: bSignals,

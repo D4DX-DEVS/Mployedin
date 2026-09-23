@@ -9,7 +9,7 @@
  * All inputs are plain primitives — no Mongoose documents.
  */
 
-import { countryKey } from "@/lib/i18n/locations";
+import { countryKey, countryKeyFromLocationText } from "@/lib/i18n/locations";
 
 export interface SeekerProfile {
   skills: string[];
@@ -17,6 +17,12 @@ export interface SeekerProfile {
   location: string;
   /** All preferred countries (lower-cased). Falls back to [location] when omitted. */
   locations?: string[];
+  /**
+   * Where `locations` came from: the seeker's chosen countries, the country of
+   * their current location when they chose none, or nowhere. With "none" the
+   * engine recommends nothing — it has no place to recommend jobs in.
+   */
+  locationSource?: "preferred" | "current" | "none";
   experienceYears: number;
   /**
    * Whether `experienceYears` is a stated figure or merely the absence of one.
@@ -430,10 +436,16 @@ export interface MatchBreakdown {
 }
 
 /**
- * Full match result. `calculateMatchScore` is the thin wrapper that keeps the
- * old number-only contract; anything that wants to *show* the reasoning (the
- * employer application panel) uses this instead, because a breakdown that is
- * computed and then discarded renders as a row of zeroes.
+ * Full match result from the pre-engine scorer.
+ *
+ * @deprecated Not a match percentage any surface may show. Every seeker- and
+ * employer-facing score comes from the matching engine — `scorePair` /
+ * `recommendJobsFor` in matching/recommend.ts, or the request helpers in
+ * matching/seekerMatches.ts — so one pair reads one number everywhere. This
+ * scorer has different weights, compares skills as strings and has no hard
+ * gates; mixing it back in is how the email said 92% and the app said 67%.
+ * Kept for its tests only; engineMatchSurfaces.test.ts fails if production
+ * code imports it again.
  */
 export function calculateMatchDetail(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): MatchBreakdown {
   // Defaults match industry standard (e.g., LinkedIn)
@@ -601,6 +613,7 @@ export function calculateMatchDetail(seeker: SeekerProfile, job: JobProfile, wei
   };
 }
 
+/** @deprecated Use the matching engine — see calculateMatchDetail. */
 export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): number {
   return calculateMatchDetail(seeker, job, weights).overall;
 }
@@ -690,10 +703,21 @@ export function seekerProfileFromDoc(seeker: {
     0,
   );
 
+  // Where the seeker wants to work: the countries they chose, or — when they
+  // chose none — the country they live in, read off their current location.
+  // LinkedIn makes country a required profile field and Naukri asks for current
+  // and preferred location at sign-up, so neither ever recommends jobs with no
+  // place attached. Without this fallback a seeker who skipped the preference
+  // had no country filter at all and could be mailed jobs from anywhere.
+  const preferred = (seeker.preferredCountries ?? []).map((c) => c.toLowerCase()).filter(Boolean);
+  const current = preferred.length === 0 ? countryKeyFromLocationText(seeker.currentLocation) : null;
+  const locations = preferred.length > 0 ? preferred : current ? [current] : [];
+
   return {
     skills: seeker.skills ?? [],
-    location: (seeker.preferredCountries ?? [])[0]?.toLowerCase() ?? "",
-    locations: (seeker.preferredCountries ?? []).map((c) => c.toLowerCase()),
+    location: locations[0] ?? "",
+    locations,
+    locationSource: preferred.length > 0 ? "preferred" : current ? "current" : "none",
     experienceYears: Math.round(experienceYears * 10) / 10,
     experienceKnown,
     salaryExpectation,

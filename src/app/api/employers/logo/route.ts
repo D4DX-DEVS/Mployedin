@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { Employer } from "@/models/Employer";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
+import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import { validateUploadedFile } from "@/lib/security/file-validation";
@@ -21,7 +22,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  const formData = await req.formData();
+  const formData = await readUploadForm(req);
+  if (formData instanceof NextResponse) return formData;
   const file = formData.get("logo") as File | null;
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -33,33 +35,22 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
-  // Delete old logo if exists
-  if (employer.logo) {
-    try { await deleteFile(employer.logo); } catch { /* ignore */ }
-  }
+  const previousLogo = employer.logo;
 
   let result: { url: string };
   try {
     result = await uploadFile(file, { folder: "avatars" });
   } catch (err: unknown) {
-    const code = (err as { Code?: string }).Code ?? (err as { name?: string }).name;
-    if (code === "MalwareDetectedError") {
-      return NextResponse.json({ error: "File rejected: failed malware scan." }, { status: 422 });
-    }
-    if (code === "NoSuchBucket") {
-      return NextResponse.json(
-        { error: "File storage is not configured. Please contact support." },
-        { status: 503 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Upload failed. Please try again later." },
-      { status: 500 }
-    );
+    return uploadErrorResponse(err);
   }
 
   employer.logo = result.url;
   await Employer.updateOne({ _id: employer._id }, { $set: { logo: result.url } });
+
+  // Remove the old logo only once the new one is stored.
+  if (previousLogo && previousLogo !== result.url) {
+    try { await deleteFile(previousLogo); } catch { /* ignore */ }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

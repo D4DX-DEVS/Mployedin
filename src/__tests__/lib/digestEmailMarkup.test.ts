@@ -179,6 +179,74 @@ describe("buildDigestEmail", () => {
   });
 });
 
+/**
+ * An Arabic digest is a right-to-left paragraph carrying left-to-right runs:
+ * job titles, company names, cities and skills are Latin whatever the reader's
+ * language. Bidi resolves the neutrals *between* those runs against the
+ * paragraph, so the skills line shipped as "React, Node.js :مهاراتك المطابقة"
+ * with the colon stranded at the wrong end, and the salary as the currency code
+ * pushed across the period label. Each Latin run has to be isolated.
+ */
+describe("Arabic digest bidirectional text", () => {
+  const arJobs = [
+    {
+      jobId: "j1",
+      title: "Full Stack Developer",
+      company: "TechPark Solutions",
+      location: "Ernakulam, India",
+      matchScore: 100,
+      salary: { min: 40000, max: 80000, currency: "INR", period: "monthly" },
+      matchedSkills: ["React", "Node.js", "MongoDB"],
+    },
+  ];
+  const render = (locale: string) =>
+    buildDigestEmail({ userName: "إلياس", locale, jobs: arJobs, profileViews: noViews });
+
+  it.each([
+    ["the job title", "Full Stack Developer"],
+    ["the company name", "TechPark Solutions"],
+    ["the city", "Ernakulam, India"],
+    ["the skills list", "React, Node.js, MongoDB"],
+  ])("isolates %s", (_label, text) => {
+    expect(render("ar")).toContain(`<span dir="ltr">${text}</span>`);
+  });
+
+  it("isolates the salary amount but leaves the Arabic period label outside it", () => {
+    const html = render("ar");
+    expect(html).toContain('<span dir="ltr">INR 40,000–80,000</span>/شهر');
+    // The label inside the isolate would defeat the point.
+    expect(html).not.toContain('<span dir="ltr">INR 40,000–80,000/شهر</span>');
+  });
+
+  it("isolates viewer names, which are Latin too", () => {
+    const html = buildDigestEmail({
+      userName: "إلياس",
+      locale: "ar",
+      jobs: [],
+      profileViews: { count: 2, viewers: [{ name: "Acme Recruiting", role: "employer" }] },
+    });
+    expect(html).toContain('<span dir="ltr">Acme Recruiting</span>');
+  });
+
+  it("adds nothing at all to the English digest", () => {
+    // The English email is already correct and already verified in production;
+    // the isolation must not change a byte of it.
+    expect(render("en")).not.toContain('dir="ltr"');
+    expect(render("en")).toContain("INR 40,000–80,000/mo");
+  });
+
+  it("still escapes the values it isolates", () => {
+    const html = buildDigestEmail({
+      userName: "إلياس",
+      locale: "ar",
+      jobs: [{ ...arJobs[0], company: '<script>alert("x")</script>' }],
+      profileViews: noViews,
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+});
+
 describe("buildProfileCompletionEmail", () => {
   /** The exact document behind the broken screenshot: nothing but an account. */
   const barelyStarted = profileCompleteness({ userId: "u1" });

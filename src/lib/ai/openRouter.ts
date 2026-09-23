@@ -7,9 +7,11 @@
  * models embed), and the Atlas vector index on `jobseekers.searchEmbedding` was
  * built with `gemini-embedding-001` at 3072 dimensions. Moving embeddings would
  * mean re-embedding every profile and rebuilding the index, so embeddings —
- * and the two native-API cases, PDF input and image generation — stay on Google
- * direct. Everything else can run through OpenRouter, which is OpenAI-compatible
- * and therefore a base-URL-and-headers swap rather than a rewrite.
+ * and image generation, a native-API call — stay on Google direct. Everything
+ * else runs through OpenRouter, which is OpenAI-compatible and therefore a
+ * base-URL-and-headers swap rather than a rewrite. That includes CV and
+ * job-poster extraction: OpenRouter takes a PDF as a `file` content part and
+ * hands it to Gemini's own document reader (see `toOpenRouterContent`).
  *
  * Why bother
  * ----------
@@ -49,6 +51,7 @@
  */
 
 import { providerFetch } from "@/lib/ai/providerFetch";
+import type { ChatContentPart, NativePart } from "@/lib/ai/googleAI";
 
 /** OpenAI-compatible surface. Override only to point at a proxy. */
 export const OPENROUTER_BASE = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
@@ -202,4 +205,40 @@ export async function openRouterChatFetch(
     label,
     timeoutMs,
   );
+}
+
+/**
+ * OpenRouter's PDF handling, pinned to the model's own reader.
+ *
+ * Left unset, OpenRouter uses the model's native file input when it has one and
+ * otherwise falls back to Mistral OCR at $2 per 1,000 pages — a charge nobody
+ * would notice until the bill. Gemini reads PDFs natively (billed as input
+ * tokens, as on Google direct), so the engine is named rather than inferred.
+ */
+export const PDF_NATIVE_PARSER = { id: "file-parser", pdf: { engine: "native" } } as const;
+
+const FILE_EXTENSIONS: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+/**
+ * Gemini native parts -> OpenAI-style chat content parts, as OpenRouter wants
+ * them: text stays text, an image becomes `image_url`, anything else (in
+ * practice a PDF) becomes a `file` part. Both carry the bytes as a base64 data
+ * URL, so nothing is uploaded anywhere first.
+ */
+export function toOpenRouterContent(parts: readonly NativePart[]): ChatContentPart[] {
+  return parts.flatMap((part): ChatContentPart[] => {
+    if (part.inlineData) {
+      const { mimeType, data } = part.inlineData;
+      const dataUrl = `data:${mimeType};base64,${data}`;
+      if (mimeType.startsWith("image/")) return [{ type: "image_url", image_url: { url: dataUrl } }];
+      const ext = FILE_EXTENSIONS[mimeType] ?? "bin";
+      return [{ type: "file", file: { filename: `document.${ext}`, file_data: dataUrl } }];
+    }
+    return part.text ? [{ type: "text", text: part.text }] : [];
+  });
 }

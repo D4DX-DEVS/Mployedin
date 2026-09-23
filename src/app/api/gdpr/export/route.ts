@@ -11,6 +11,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 import GdprRequest from "@/models/GdprRequest";
 import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
+import { redactUserMessages } from "@/lib/gdpr/redactMessages";
 
 /**
  * Record a completed self-service request in the GDPR register the admin page
@@ -123,23 +124,46 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
           passportNumber: 1,
           bankAccountNumber: 1,
           iban: 1,
+          documents: 1,
         },
       }
-    ).select("cv").lean<{ cv?: { originalUrl?: string } } | null>(),
+    ).select("cv documents").lean<{ _id?: unknown; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
     // Delete notifications
     Notification.deleteMany({ userId: ctx.userId }),
   ]);
 
-  // Hard-delete the CV file from storage — DB erasure alone left the S3 object
+  // Messages the user wrote, and their name on other people's conversation lists.
+  try {
+    await redactUserMessages(ctx.userId);
+  } catch (err) {
+    // The account is already deactivated, so the user can't retry: record it for staff.
+    logger.error({ err, userId: ctx.userId }, "[gdpr] message redaction failed during erasure");
+  }
+
+  // Hard-delete uploaded files from storage — DB erasure alone left the objects
   // behind. Best-effort: a storage failure must not fail the erasure itself
-  // (fields are already unset; the bucket is private).
-  const cvUrl = seekerBefore?.cv?.originalUrl;
-  if (cvUrl) {
+  // (fields are already unset; the bucket is private). Besides the CV, the
+  // seeker's document library and every application attachment are theirs too,
+  // and stayed downloadable by employers after erasure.
+  const fileUrls = [
+    seekerBefore?.cv?.originalUrl,
+    ...(seekerBefore?.documents ?? []).map((d) => d.url),
+  ];
+  if (seekerBefore?._id) {
+    const applications = await Application.find({ jobSeekerId: seekerBefore._id })
+      .select("documents")
+      .lean<{ documents?: { url?: string }[] }[]>();
+    fileUrls.push(...applications.flatMap((a) => (a.documents ?? []).map((d) => d.url)));
+    await Application.updateMany({ jobSeekerId: seekerBefore._id }, { $set: { documents: [] } });
+  }
+  const { deleteFile } = await import("@/lib/storage/spaces");
+  for (const url of new Set(fileUrls.filter((u): u is string => Boolean(u)))) {
     try {
-      const { deleteFile } = await import("@/lib/storage/spaces");
-      await deleteFile(cvUrl);
-    } catch {
-      /* best-effort */
+      await deleteFile(url);
+    } catch (err) {
+      // Best-effort, but the DB no longer references this object: the log line
+      // is the only record left of what still needs deleting from the bucket.
+      logger.warn({ err, userId: ctx.userId, url }, "[gdpr] erasure could not delete stored file");
     }
   }
 

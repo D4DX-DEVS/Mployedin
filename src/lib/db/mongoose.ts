@@ -12,7 +12,7 @@ interface MongooseCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var mongooseCache: MongooseCache | undefined;
 }
 
@@ -53,9 +53,14 @@ export async function connectDB(): Promise<typeof mongoose> {
 
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
-      .then(async (mongooseInstance) => {
+      .then((mongooseInstance) => {
         logger.info("MongoDB connected");
-        await ensureIndexes();
+        // Reconcile in the background: it takes ~17s against the hosted DB and
+        // used to hold every request after a deploy for that long. Indexes
+        // persist in MongoDB, so requests don't need to wait for the check.
+        ensureIndexes().catch((err) => {
+          logger.error({ err }, "[DB] ensureIndexes failed");
+        });
         return mongooseInstance;
       })
       .catch((err) => {

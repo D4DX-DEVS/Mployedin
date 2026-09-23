@@ -176,7 +176,7 @@ export interface Applicant {
   isAgentReferred?: boolean;
   appliedAt: string;
   coverLetter?: string;
-  matchBreakdown?: { skills?: number; experience?: number; location?: number; salary?: number; overall?: number };
+  matchBreakdown?: { skills?: number; role?: number; experience?: number; location?: number; salary?: number; overall?: number };
   matchStrengths?: string[];
   matchGaps?: string[];
   otherApplicationsCount?: number;
@@ -380,7 +380,7 @@ export function ApplicationsWorkspace({
     jobId?: string;
     candidate?: { role?: string; experience?: number; skills?: string[]; location?: string };
     aiMatchScore?: number;
-    matchBreakdown?: { skills?: number; experience?: number; location?: number; salary?: number; overall?: number };
+    matchBreakdown?: { skills?: number; role?: number; experience?: number; location?: number; salary?: number; overall?: number };
   } | null>(null);
   const [bulkMatchProgress, setBulkMatchProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -2471,6 +2471,9 @@ function ApplicationDetailsPanel({
   const matchItems = app.matchBreakdown && breakdownMeasured
     ? ([
         { label: t("skills"), value: app.matchBreakdown.skills },
+        // Engine rows carry role fit and no location / salary (those are
+        // gates there, not parts); older rows the reverse. Absent ones drop out.
+        { label: t("roleFit"), value: app.matchBreakdown.role },
         { label: t("experience"), value: app.matchBreakdown.experience },
         { label: t("location"), value: app.matchBreakdown.location },
         { label: t("salary"), value: app.matchBreakdown.salary },

@@ -8,6 +8,17 @@ body {
   max-width: 100vw;
 }
 
+/* Radix menus/dialogs lock scroll via react-remove-scroll, which sets
+   body { overflow: hidden } and pads body with margin-right equal to the
+   scrollbar width. Because <html> has overflow-x: clip above, the viewport
+   scrollbar belongs to <html>, not <body>, so it never disappears — the
+   margin then just shrinks the page and everything jumps left while a menu
+   is open. Cancel the compensation; the lock itself stays. Specificity must
+   beat the library's injected body[data-scroll-locked] !important rule. */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+}
+
 /* Tailwind v4's generated `font-sans` fallback is independent of the legacy
    config file. Bind it explicitly to the Next.js Manrope variable so every
    workspace uses the selected product typeface. Locale wrappers below still

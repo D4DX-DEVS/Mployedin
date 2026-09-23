@@ -391,25 +391,37 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // Optionally return employer's jobs list for the job filter dropdown
   let employerJobs: Array<{ _id: string; title: string; requirements: { skills: string[]; experienceMin: number; experienceMax: number; education?: string; languages?: string[] }; salary: { min: number; max: number; currency: string; period?: string }; location: { country: string; city: string; isRemote: boolean }; employmentType?: string; workMode?: string; status: string; createdAt?: Date }> = [];
   if (fetchJobs && (ctx.role === "employer" || ctx.role === "agent" || ctx.role === "super_agent" || ctx.role === "admin")) {
-    const jobQuery: Record<string, unknown> = {};
-    if (ctx.role === "employer") {
+    // Default-deny: only admin sees every job. A super-agent (no branch here
+    // before) and an employer/agent whose profile is missing used to fall
+    // through to {} — up to 200 jobs from across the platform, salaries included.
+    let jobQuery: Record<string, unknown> | null = null;
+    if (ctx.role === "admin") {
+      jobQuery = {};
+    } else if (ctx.role === "employer") {
       const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-      if (emp) jobQuery.employerId = emp._id;
+      if (emp) jobQuery = { employerId: emp._id };
     } else if (ctx.role === "agent") {
       const { Agent } = await import("@/models/Agent");
       const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
       if (agentDoc) {
-        jobQuery.$or = [
-          { agentId: agentDoc._id },
-          ...(agentDoc.assignedEmployerIds?.length ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }] : []),
-        ];
+        jobQuery = {
+          $or: [
+            { agentId: agentDoc._id },
+            ...(agentDoc.assignedEmployerIds?.length ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }] : []),
+          ],
+        };
       }
+    } else if (ctx.role === "super_agent") {
+      const { getSuperAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
+      jobQuery = { employerId: { $in: await getSuperAgentEmployerIds(ctx.userId) } };
     }
-    employerJobs = await Job.find({ ...jobQuery, status: { $in: ["active", "closed"] } })
-      .select("title requirements salary location employmentType workMode status createdAt")
-      .sort({ createdAt: -1 })
-      .limit(200)
-      .lean();
+    if (jobQuery) {
+      employerJobs = await Job.find({ ...jobQuery, status: { $in: ["active", "closed"] } })
+        .select("title requirements salary location employmentType workMode status createdAt")
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+    }
   }
 
   // For job_seeker: enrich applications with latest interview, offer, and placement data
@@ -479,9 +491,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Fetch all employers for the filter dropdown (admin/super_agent only)
+  // Fetch all employers for the filter dropdown. Admin only: both of these run
+  // platform-wide, and a super-agent calling them directly saw every employer
+  // and platform totals (only the admin applications page sends these params).
   let allEmployers: Array<{ _id: string; companyName: string }> = [];
-  if (fetchEmployers && (ctx.role === "admin" || ctx.role === "super_agent")) {
+  if (fetchEmployers && ctx.role === "admin") {
     allEmployers = await Employer.find({})
       .select("companyName")
       .sort({ companyName: 1 })
@@ -489,9 +503,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .lean();
   }
 
-  // Fetch aggregate stats (admin/super_agent only)
+  // Fetch aggregate stats (admin only, see above)
   let stats: Record<string, unknown> | null = null;
-  if (fetchStats && (ctx.role === "admin" || ctx.role === "super_agent")) {
+  if (fetchStats && ctx.role === "admin") {
     const [statusCounts, sourceCounts, avgScore, todayCount, weekCount] = await Promise.all([
       Application.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
       Application.aggregate([{ $group: { _id: "$source", count: { $sum: 1 } } }]),

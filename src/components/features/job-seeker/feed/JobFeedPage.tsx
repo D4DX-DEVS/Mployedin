@@ -38,6 +38,8 @@ interface JobPage {
   matchedCount: number;
   strongMatches: number;
   newThisWeek: number;
+  /** The admin's recommendation threshold, as the engine applied it. */
+  threshold?: number;
 }
 
 // ── Filter logic ──────────────────────────────────────────────────────────────
@@ -349,6 +351,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const matchedCount = data?.pages[0]?.matchedCount ?? 0;
   const strongMatches = data?.pages[0]?.strongMatches ?? 0;
   const newThisWeek = data?.pages[0]?.newThisWeek ?? 0;
+  const threshold = data?.pages[0]?.threshold ?? 80;
   const hasMorePoolPages = poolPage < totalPoolPages;
 
   const visibleJobs = allJobs
@@ -400,7 +403,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   {strongMatches}
                 </div>
                 <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
-                  {t("stats.strongMatchesHint")}
+                  {t("stats.strongMatchesHint", { threshold })}
                 </p>
               </div>
               <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-2.5">
@@ -660,9 +663,20 @@ export function JobFeedPage({ locale }: { locale: string }) {
               )}
 
               {(() => {
-                const HIGH_MATCH_THRESHOLD = 60;
-                const highMatch = visibleJobs.filter((j) => j.matchScore >= HIGH_MATCH_THRESHOLD);
-                const otherJobs = visibleJobs.filter((j) => j.matchScore < HIGH_MATCH_THRESHOLD);
+                // The split comes from the engine's `recommended` flag — the rule
+                // the emails and the home page use. A local 60% cut-off here put
+                // jobs the digest would never send under the recommended group.
+                const highMatch = visibleJobs.filter((j) => j.recommended);
+                const otherJobs = visibleJobs.filter((j) => !j.recommended);
+                const divider = (label: string) => (
+                  <div className="flex items-center gap-3 py-2">
+                    <div className="h-px flex-1 bg-border/60" />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      {label}
+                    </span>
+                    <div className="h-px flex-1 bg-border/60" />
+                  </div>
+                );
                 const renderCard = (job: FeedJob) => (
                   <JobFeedCard
                     key={job._id}
@@ -678,16 +692,22 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 );
                 return (
                   <>
+                    {highMatch.length > 0 && divider(t("divider.recommended"))}
                     {highMatch.map(renderCard)}
-                    {highMatch.length > 0 && otherJobs.length > 0 && (
-                      <div className="flex items-center gap-3 py-2">
-                        <div className="h-px flex-1 bg-border/60" />
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                          {t("divider.moreJobs")}
-                        </span>
-                        <div className="h-px flex-1 bg-border/60" />
-                      </div>
+                    {/* Pool-wide count, not the visible list: a seeker filtering to
+                        60–79% has strong matches, just not on screen. */}
+                    {strongMatches === 0 && otherJobs.length > 0 && (
+                      <p className="flex flex-wrap items-center justify-center gap-x-2 text-center text-sm text-muted-foreground">
+                        <span>{t("divider.noStrong")}</span>
+                        <Link
+                          href={`/${locale}/job-seeker/profile`}
+                          className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline"
+                        >
+                          {t("actions.improveProfile")}
+                        </Link>
+                      </p>
                     )}
+                    {highMatch.length > 0 && otherJobs.length > 0 && divider(t("divider.moreJobs"))}
                     {otherJobs.map(renderCard)}
                   </>
                 );

@@ -12,6 +12,7 @@ import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerCreateSchema } from "@/lib/validators/offers";
 import { defaultOfferExpiry } from "@/lib/offers/expiry";
+import { CLOSED_APPLICATION_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
@@ -254,10 +255,27 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Block duplicate active offers for the same application.
-  const existing = await Offer.findOne({ applicationId, status: "pending" }).select("_id").lean();
+  // A hired, rejected or withdrawn application is closed. Offering on it used to
+  // succeed and then flip the application back to "offer".
+  if (CLOSED_APPLICATION_STATUSES.includes(application.status)) {
+    return NextResponse.json({ error: "This application is closed and can't receive an offer" }, { status: 409 });
+  }
+
+  // One open offer per application, and none once an offer has been accepted.
+  // A countered offer is still open: revising it turns it back into "pending".
+  const existing = await Offer.findOne({
+    applicationId,
+    status: { $in: [...OPEN_OFFER_STATUSES, "accepted"] },
+  }).select("_id status").lean();
   if (existing) {
-    return NextResponse.json({ error: "An active offer already exists for this application" }, { status: 409 });
+    return NextResponse.json(
+      {
+        error: existing.status === "accepted"
+          ? "The candidate has already accepted an offer for this application"
+          : "An active offer already exists for this application",
+      },
+      { status: 409 },
+    );
   }
 
   // Default the expiry to a week out, clamped to the start date so it can
@@ -265,28 +283,38 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const expiryDate = expiresAt || defaultOfferExpiry(startDate);
 
   const creator = await User.findById(ctx.userId).select("name").lean();
-  const offer = await Offer.create({
-    applicationId,
-    jobId: application.jobId,
-    jobSeekerId: application.jobSeekerId,
-    employerId: offerEmployerId,
-    salary,
-    startDate,
-    benefits,
-    notes,
-    status: "pending",
-    expiresAt: expiryDate,
-    revisionNumber: 1,
-    reminderCount: 0,
-    events: [
-      {
-        type: "created",
-        at: new Date(),
-        actorRole: ctx.role,
-        actorName: (creator as { name?: string } | null)?.name ?? ctx.role,
-      },
-    ],
-  });
+  // The findOne above is check-then-act; the partial unique index in
+  // ensureIndexes() settles concurrent submissions.
+  let offer;
+  try {
+    offer = await Offer.create({
+      applicationId,
+      jobId: application.jobId,
+      jobSeekerId: application.jobSeekerId,
+      employerId: offerEmployerId,
+      salary,
+      startDate,
+      benefits,
+      notes,
+      status: "pending",
+      expiresAt: expiryDate,
+      revisionNumber: 1,
+      reminderCount: 0,
+      events: [
+        {
+          type: "created",
+          at: new Date(),
+          actorRole: ctx.role,
+          actorName: (creator as { name?: string } | null)?.name ?? ctx.role,
+        },
+      ],
+    });
+  } catch (err) {
+    if ((err as { code?: number }).code === 11000) {
+      return NextResponse.json({ error: "An active offer already exists for this application" }, { status: 409 });
+    }
+    throw err;
+  }
 
   // Update application status to "offer"
   await Application.findByIdAndUpdate(applicationId, { status: "offer" });

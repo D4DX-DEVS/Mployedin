@@ -1,45 +1,10 @@
 /**
  * @jest-environment node
  */
-import {
-  buildRecommendedJobQuery,
-  countryPatterns,
-  isRelevantJob,
-  rankRecommendedJobs,
-  IRRELEVANT_SORT_PENALTY,
-} from "@/lib/jobRecommendations";
-import type { SeekerProfile } from "@/lib/matchScore";
+import { buildRecommendedJobQuery, countryPatterns } from "@/lib/jobRecommendations";
 
-const seekerProfile: SeekerProfile = {
-  skills: ["React", "TypeScript"],
-  location: "uae",
-  locations: ["uae"],
-  experienceYears: 3,
-  salaryExpectation: 10000,
-  salaryCurrency: "AED",
-  preferredRoles: ["frontend developer"],
-  educationLevel: 3,
-  city: "dubai",
-  cities: ["dubai"],
-};
-
-const reactJob = {
-  _id: "job-react",
-  title: "Frontend Developer",
-  requirements: { skills: ["React", "TypeScript"], experienceMin: 2, experienceMax: 5 },
-  salary: { min: 9000, max: 11000, currency: "AED" },
-  location: { country: "UAE", city: "Dubai", isRemote: false },
-  createdAt: new Date("2026-09-01"),
-};
-
-const salesJob = {
-  _id: "job-sales",
-  title: "Sales Support Staff",
-  requirements: { skills: ["Cold Calling"], experienceMin: 2, experienceMax: 5 },
-  salary: { min: 9000, max: 11000, currency: "AED" },
-  location: { country: "UAE", city: "Dubai", isRemote: false },
-  createdAt: new Date("2026-09-02"),
-};
+// Ranking and the recommend/don't verdict moved to the matching engine; their
+// guarantees are pinned in seekerMatches.test.ts.
 
 describe("buildRecommendedJobQuery", () => {
   const now = new Date("2026-09-09T00:00:00.000Z");
@@ -84,69 +49,6 @@ describe("buildRecommendedJobQuery", () => {
   it("adds no country clause when the seeker stated no country", () => {
     const query = buildRecommendedJobQuery({ now });
     expect(JSON.stringify(query)).not.toContain("location.country");
-  });
-});
-
-describe("isRelevantJob", () => {
-  it("accepts a job that overlaps on skills", () => {
-    expect(isRelevantJob(reactJob, seekerProfile)).toBe(true);
-  });
-
-  it("accepts a job that matches a preferred role title with no skill overlap", () => {
-    expect(
-      isRelevantJob({ ...salesJob, title: "Frontend Developer" }, seekerProfile)
-    ).toBe(true);
-  });
-
-  it("rejects a job with neither skill overlap nor role match", () => {
-    expect(isRelevantJob(salesJob, seekerProfile)).toBe(false);
-  });
-
-  it("stays relevant on a single signal — skills only, no preferred roles", () => {
-    expect(isRelevantJob(reactJob, { ...seekerProfile, preferredRoles: [] })).toBe(true);
-    expect(isRelevantJob(salesJob, { ...seekerProfile, preferredRoles: [] })).toBe(false);
-  });
-
-  it("accepts everything when the seeker has no skills and no roles", () => {
-    expect(isRelevantJob(salesJob, { ...seekerProfile, skills: [], preferredRoles: [] })).toBe(true);
-  });
-
-  it("rejects a job demanding two qualification levels above the seeker", () => {
-    const phdJob = { ...reactJob, requirements: { ...reactJob.requirements, education: "PhD" } };
-    expect(isRelevantJob(phdJob, { ...seekerProfile, educationLevel: 3 })).toBe(false);
-  });
-});
-
-describe("rankRecommendedJobs", () => {
-  it("ranks a relevant job above an irrelevant one", () => {
-    const ranked = rankRecommendedJobs([salesJob, reactJob], seekerProfile);
-    expect(ranked.map((j) => j._id)).toEqual(["job-react", "job-sales"]);
-  });
-
-  it("keeps irrelevant jobs in the list and only penalizes their sort position", () => {
-    const [, sales] = rankRecommendedJobs([reactJob, salesJob], seekerProfile);
-    expect(sales._id).toBe("job-sales");
-    expect(sales.sortScore).toBe(Math.max(0, sales.matchScore - IRRELEVANT_SORT_PENALTY));
-    expect(sales.sortScore).toBeLessThan(sales.matchScore);
-  });
-
-  it("leaves the displayed match score of a relevant job unpenalized", () => {
-    const [react] = rankRecommendedJobs([reactJob], seekerProfile);
-    expect(react.sortScore).toBe(react.matchScore);
-    expect(react.matchScore).toBeGreaterThan(80);
-  });
-
-  it("reports matched skills using the job's own wording", () => {
-    const [ranked] = rankRecommendedJobs(
-      [{ ...reactJob, requirements: { skills: ["React.js", "GraphQL"] } }],
-      seekerProfile
-    );
-    expect(ranked.matchedSkills).toEqual(["React.js"]);
-  });
-
-  it("never returns a negative sort score", () => {
-    const ranked = rankRecommendedJobs([salesJob], { ...seekerProfile, skills: ["React"], salaryExpectation: 0 });
-    expect(ranked[0].sortScore).toBeGreaterThanOrEqual(0);
   });
 });
 

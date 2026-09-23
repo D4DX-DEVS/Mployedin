@@ -33,7 +33,7 @@ export interface ErrorContext {
  */
 export function reportError(error: unknown, context: ErrorContext = {}): void {
   const label = context.source ? `[${context.source}]` : "[error]";
-  // eslint-disable-next-line no-console
+   
   console.error(label, error, context);
 
   const sentry = (globalThis as GlobalWithSentry).Sentry;
@@ -43,5 +43,36 @@ export function reportError(error: unknown, context: ErrorContext = {}): void {
     } catch {
       /* never let reporting throw */
     }
+  }
+
+  sendToServer(error, context);
+}
+
+// A boundary re-renders; report each distinct error once per page load.
+const sent = new Set<string>();
+
+/** Forward to /api/client-errors so the crash lands in the server log (and alerts). */
+function sendToServer(error: unknown, context: ErrorContext): void {
+  if (typeof window === "undefined" || typeof fetch !== "function") return;
+  const message = error instanceof Error ? error.message : String(error);
+  const key = `${context.source ?? ""}|${context.digest ?? ""}|${message}`;
+  if (sent.has(key)) return;
+  sent.add(key);
+  try {
+    const csrf = document.cookie.match(/(?:^|;\s*)csrf-token=([^;]+)/)?.[1] ?? "";
+    fetch("/api/client-errors", {
+      method: "POST",
+      keepalive: true,
+      headers: { "Content-Type": "application/json", "x-csrf-token": decodeURIComponent(csrf) },
+      body: JSON.stringify({
+        message,
+        stack: error instanceof Error ? error.stack : undefined,
+        source: context.source,
+        digest: context.digest,
+        url: window.location.pathname,
+      }),
+    }).catch(() => {});
+  } catch {
+    /* never let reporting throw */
   }
 }

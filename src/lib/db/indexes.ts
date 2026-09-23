@@ -295,6 +295,13 @@ export async function ensureIndexes() {
   ]);
 
   // ── PendingSignins (quick-apply email codes awaiting redemption) ──────────
+  // Signed-out sessions (src/lib/auth/sessionRevocation.ts). Looked up by sid on
+  // session refresh; each row expires with the token it revokes.
+  await safeCreateIndexes(db, "revokedsessions", [
+    { key: { sid: 1 }, unique: true },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
   // One live code per address; rows vanish on their own after the 10-minute
   // window, so an abandoned "send code" leaves nothing behind.
   await safeCreateIndexes(db, "pendingsignins", [
@@ -305,6 +312,10 @@ export async function ensureIndexes() {
   // ── Offers ────────────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "offers", [
     { key: { applicationId: 1 } },
+    // No two pending (or two countered) offers per application. POST /api/offers
+    // also refuses any existing open or accepted offer; this index settles the
+    // race where three parallel submits all passed that check (2026-09-23).
+    { key: { applicationId: 1, status: 1 }, unique: true, partialFilterExpression: { status: { $in: ["pending", "countered"] } }, name: "unique_open_offer_per_application" },
     { key: { jobSeekerId: 1 } },
     { key: { employerId: 1 } },
     { key: { status: 1 } },
@@ -699,6 +710,14 @@ export async function ensureIndexes() {
   await safeCreateIndexes(db, "jobrecommendations", [
     { key: { userId: 1, jobId: 1 }, name: "seeker_job_dedup" },
     { key: { userId: 1, sentAt: -1 } },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  // Jev verdicts, keyed on a hash of the exact input. Unique so two surfaces
+  // deciding the same pair at once converge on one row; the TTL retires a
+  // verdict long after the inputs behind it have usually changed anyway.
+  await safeCreateIndexes(db, "jevverdicts", [
+    { key: { key: 1 }, unique: true },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
   ]);
 

@@ -7,6 +7,7 @@ import NotificationPreference, {
 import { validateBody } from "@/lib/validators";
 import { notificationPreferencesUpdateSchema } from "@/lib/validators/settings";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { resolveDefaultDigestCadence } from "@/models/SystemConfig";
 
 /**
  * GET /api/user/notification-preferences
@@ -15,7 +16,18 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   await connectDB();
   const prefs = await getOrCreatePreferences(ctx.userId);
-  return NextResponse.json({ success: true, data: prefs });
+
+  // `emailFrequency` is stored only once the user picks one, so a settings page
+  // reading it raw would render an unselected radio group for everybody who
+  // never has. Report the cadence that would actually be used — the admin's
+  // platform default — so the control shows the truth rather than a guess.
+  // A PATCH then writes the choice and this stops applying to them.
+  const data = prefs.toObject();
+  if (!data.emailFrequency) {
+    data.emailFrequency = await resolveDefaultDigestCadence();
+  }
+
+  return NextResponse.json({ success: true, data });
 });
 
 /**

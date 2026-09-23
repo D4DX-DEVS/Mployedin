@@ -39,11 +39,32 @@ export {
 const EMBED_BATCH_SIZE = 64;
 
 /**
+ * Vectors this process has already read or embedded.
+ *
+ * A stored vector never changes: the key is the canonical skill, and anything
+ * from another embedding model is rejected by the dims check before it gets
+ * here. So nothing in this map can go stale. It exists because the in-app
+ * recommendation feed scores its whole pool on every scroll page, and without
+ * it each page re-read ~15 MB of vectors from Mongo (821 skills, 3,072 doubles
+ * each). Cleared wholesale past the cap rather than LRU-evicted: the whole
+ * platform vocabulary is well under it today.
+ */
+const MEMO_CAP = 3000;
+const memo: SkillVectorMap = new Map();
+
+function remember(canonical: string, vector: number[]): void {
+  if (memo.size >= MEMO_CAP) memo.clear();
+  memo.set(canonical, vector);
+}
+
+/**
  * Load vectors for the given skills, embedding and caching any that are new.
  *
- * `allowEmbedding: false` returns only what is already cached — the read-only
- * mode request paths should use, so a user-facing page never pays for an
- * embedding round trip.
+ * `allowEmbedding: false` returns only what is already cached. Pages that show
+ * a match percentage do NOT use it: a seeker who has just added a skill would
+ * see it scored lexically in the app and semantically in that morning's email.
+ * Job skills are embedded by the hourly digest run, so in practice a request
+ * only ever embeds the handful of skills a seeker has just typed, once.
  */
 export async function loadSkillVectors(
   rawSkills: Iterable<string>,
@@ -61,6 +82,14 @@ export async function loadSkillVectors(
   if (wanted.size === 0) return EMPTY_SKILL_VECTORS;
 
   const out: SkillVectorMap = new Map();
+  for (const key of [...wanted.keys()]) {
+    const known = memo.get(key);
+    if (known) {
+      out.set(key, known);
+      wanted.delete(key);
+    }
+  }
+  if (wanted.size === 0) return out;
 
   let cached: Array<{ canonical: string; vector: number[]; dims: number }> = [];
   try {
@@ -77,6 +106,7 @@ export async function loadSkillVectors(
     // one. Treat it as absent rather than mixing dimensionalities.
     if (row.dims === EMBEDDING_DIMENSIONS && row.vector?.length) {
       out.set(row.canonical, row.vector);
+      remember(row.canonical, row.vector);
       wanted.delete(row.canonical);
     }
   }
@@ -92,7 +122,10 @@ export async function loadSkillVectors(
         .map(([canonical, raw], idx) => ({ canonical, raw, vector: vectors[idx] }))
         .filter((d) => d.vector?.length === EMBEDDING_DIMENSIONS);
 
-      for (const d of docs) out.set(d.canonical, d.vector);
+      for (const d of docs) {
+        out.set(d.canonical, d.vector);
+        remember(d.canonical, d.vector);
+      }
 
       if (docs.length > 0) {
         // Upsert rather than insert: two crons embedding the same new skill at

@@ -17,7 +17,6 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import NotificationPreference from "@/models/NotificationPreference";
 import {
-  seekerProfileFromDoc,
   profileSignalCount,
   MIN_PROFILE_SIGNALS,
   SEEKER_MATCH_FIELDS,
@@ -28,13 +27,15 @@ import {
   JOB_MATCH_FIELDS,
 } from "@/lib/matching/recommend";
 import { prepareSkillVectors } from "@/lib/matching/skillVectors";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import { sendEmail, isUndeliverableAddress } from "@/lib/communications/email";
 import { emailHeader, emailProgressBar, emailFooter } from "@/lib/communications/emailLayout";
 import {
   profileCompleteness,
   type ProfileCompletenessItem,
 } from "@/lib/jobSeeker/profileCompleteness";
-import { isCronEnabled, updateCronRunStatus, resolveMatchThreshold } from "@/models/SystemConfig";
+import { isCronEnabled, updateCronRunStatus, resolveMatchThreshold, isAiRerankEnabled } from "@/models/SystemConfig";
+import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
 
 const RE_ENGAGEMENT_INACTIVE_DAYS = 7;
 const RE_ENGAGEMENT_COOLDOWN_DAYS = 14;
@@ -105,6 +106,9 @@ export const reEngagementCron = inngest.createFunction(
     }
 
     const threshold = await step.run("resolve-threshold", () => resolveMatchThreshold());
+    // The same admin switch the daily digest reads. This mail prints a match
+    // percentage, and it has to be the number the digest and the app show.
+    const useAi = await step.run("resolve-ai-rerank", () => isAiRerankEnabled());
 
     // Fetch active jobs for matching. `workMode` joins the projection so the
     // seeker's remote/onsite preference is actually enforced.
@@ -133,7 +137,8 @@ export const reEngagementCron = inngest.createFunction(
 
           if (!seeker) return;
 
-          const seekerProfile = seekerProfileFromDoc(seeker);
+          // Effective profile (base + confirmed skills), as every surface uses.
+          const seekerProfile = await effectiveSeekerProfile(String(user._id), seeker);
 
           // A profile that states almost nothing cannot be matched honestly —
           // every component reads an unstated field as neutral, so the
@@ -152,8 +157,9 @@ export const reEngagementCron = inngest.createFunction(
           const recommendation = await recommendJobsFor(seekerProfile, activeJobs, {
             threshold,
             limit: 3,
-            useAi: false,
+            useAi,
             vectors,
+            verdicts: mongoJevVerdictStore,
           });
           const matchedJobs = recommendation.jobs.map((j) => ({
             title: j.title,

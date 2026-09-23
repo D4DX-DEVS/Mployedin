@@ -83,7 +83,15 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     note: revisionNote,
   });
 
-  await offer.save();
+  try {
+    await offer.save();
+  } catch (err) {
+    // unique_open_offer_per_application: another open offer already exists.
+    if ((err as { code?: number }).code === 11000) {
+      return NextResponse.json({ error: "Another open offer already exists for this application" }, { status: 409 });
+    }
+    throw err;
+  }
 
   // Notify the candidate that the offer was updated.
   const jobSeeker = await JobSeeker.findById(offer.jobSeekerId).select("userId").lean();

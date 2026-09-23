@@ -113,12 +113,20 @@ const ERROR_MARKERS = [
 ];
 
 async function login(page: Page, email: string, password: string) {
-  await page.goto("/en/login", { waitUntil: "domcontentloaded" });
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(password);
-  await page.locator('button[type="submit"]').first().click();
-  // Wait until we leave the login page (dashboard redirect)
-  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20_000 });
+  // Typing before hydration gets wiped when React takes over the form, so wait
+  // for load and retry once if the submit never left the login page.
+  for (let attempt = 1; ; attempt++) {
+    await page.goto("/en/login", { waitUntil: "load" });
+    await page.locator("#email").fill(email);
+    await page.locator("#password").fill(password);
+    await page.locator('button[type="submit"]').first().click();
+    try {
+      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20_000 });
+      return;
+    } catch (err) {
+      if (attempt >= 2) throw err;
+    }
+  }
 }
 
 async function sweepPage(page: Page, path: string): Promise<string | null> {

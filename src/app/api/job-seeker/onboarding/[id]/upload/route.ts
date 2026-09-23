@@ -6,6 +6,7 @@ import { Employer } from "@/models/Employer";
 import User from "@/models/User";
 import OnboardingChecklist from "@/models/OnboardingChecklist";
 import { uploadFile } from "@/lib/storage/spaces";
+import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
@@ -44,7 +45,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const formData = await req.formData();
+  const formData = await readUploadForm(req);
+  if (formData instanceof NextResponse) return formData;
   const file = formData.get("file") as File | null;
   const docIndexRaw = formData.get("documentIndex");
   const docIndex = Number(docIndexRaw);
@@ -74,17 +76,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   try {
     result = await uploadFile(file, { folder: "documents" });
   } catch (err: unknown) {
-    const code = (err as { Code?: string }).Code ?? (err as { name?: string }).name;
-    if (code === "MalwareDetectedError") {
-      return NextResponse.json({ error: "File rejected: failed malware scan." }, { status: 422 });
-    }
-    if (code === "NoSuchBucket") {
-      return NextResponse.json(
-        { error: "File storage is not configured. Please contact support." },
-        { status: 503 }
-      );
-    }
-    return NextResponse.json({ error: "Upload failed. Please try again later." }, { status: 500 });
+    return uploadErrorResponse(err);
   }
 
   doc.url = result.url;

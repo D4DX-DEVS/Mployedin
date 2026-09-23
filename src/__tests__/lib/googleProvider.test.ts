@@ -12,8 +12,10 @@
  *     vector index is built on gemini-embedding-001 at 3072 dimensions.
  *     Pointing embeddings anywhere else silently produces vectors that cannot
  *     be compared with the ones already stored.
- *   - The native generateContent calls (image generation, PDF input) are
- *     Google-only whatever serves text.
+ *   - Image generation is a native generateContent call and Google-only.
+ *   - CV / job-poster extraction (PDF and image input) follows the text
+ *     provider: OpenRouter's Gemini by default, Google's native API only when
+ *     AI_TEXT_PROVIDER=google.
  *
  * Muse remains retired; a stale `api.meta.ai` URL would fail only at runtime,
  * against a key that no longer exists.
@@ -318,5 +320,110 @@ describe("Gemini image generation", () => {
 
     const { generateImage } = await import("@/lib/ai/openai");
     await expect(generateImage({ prompt: "x" })).rejects.toThrow(/no image/i);
+  });
+});
+
+describe("Multimodal input — CV and job-poster extraction", () => {
+  const saved = { ...process.env };
+  const PDF_B64 = Buffer.from("%PDF-1.4 test").toString("base64");
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env.OPENROUTER_API_KEY = "or-test-key";
+    process.env.GEMINI_API_KEY = "g-test-key";
+    delete process.env.AI_TEXT_PROVIDER;
+    delete process.env.OPENROUTER_TEXT_MODEL;
+  });
+
+  afterEach(() => {
+    process.env = { ...saved };
+    jest.restoreAllMocks();
+  });
+
+  const okCompletion = (content: string | null, finish_reason = "stop") =>
+    jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content }, finish_reason }],
+        usage: { prompt_tokens: 900, completion_tokens: 120, total_tokens: 1020 },
+      }),
+    });
+
+  it("sends a PDF CV to OpenRouter's Gemini as a file part, with Gemini's own reader pinned", async () => {
+    const fetchMock = okCompletion('{"fullName":"Test"}');
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { generateMultimodal, GEMINI_MODELS } = await import("@/lib/ai/gemini");
+    const text = await generateMultimodal(
+      [{ text: "Extract this CV" }, { inlineData: { mimeType: "application/pdf", data: PDF_B64 } }],
+      GEMINI_MODELS.flash,
+      1000,
+    );
+
+    expect(text).toBe('{"fullName":"Test"}');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect((init as RequestInit).headers).toMatchObject({ Authorization: "Bearer or-test-key" });
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.model).toBe("google/gemini-3.1-flash-lite");
+    expect(body.messages[0].content).toEqual([
+      { type: "text", text: "Extract this CV" },
+      { type: "file", file: { filename: "document.pdf", file_data: `data:application/pdf;base64,${PDF_B64}` } },
+    ]);
+    // Named, not inferred: without it OpenRouter may fall back to paid OCR.
+    expect(body.plugins).toEqual([{ id: "file-parser", pdf: { engine: "native" } }]);
+    expect(body.reasoning_effort).toBe("none");
+    expect(body.max_tokens).toBe(1000);
+  });
+
+  it("sends an image CV as image_url, with no PDF parser", async () => {
+    const fetchMock = okCompletion("{}");
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { generateMultimodal } = await import("@/lib/ai/gemini");
+    await generateMultimodal([{ text: "Extract" }, { inlineData: { mimeType: "image/png", data: "aGk=" } }]);
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.messages[0].content[1]).toEqual({ type: "image_url", image_url: { url: "data:image/png;base64,aGk=" } });
+    expect(body.plugins).toBeUndefined();
+  });
+
+  it("falls back to Google's native API when text is forced back to Google", async () => {
+    process.env.AI_TEXT_PROVIDER = "google";
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: "{}" }] } }] }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { generateMultimodal } = await import("@/lib/ai/gemini");
+    await generateMultimodal([{ text: "Extract" }, { inlineData: { mimeType: "application/pdf", data: PDF_B64 } }]);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain(":generateContent");
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.contents[0].parts[1]).toEqual({ inlineData: { mimeType: "application/pdf", data: PDF_B64 } });
+  });
+
+  it("names the OpenRouter key when OpenRouter rejects it", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => "No auth credentials found",
+    }) as unknown as typeof fetch;
+
+    const { generateMultimodal } = await import("@/lib/ai/gemini");
+    await expect(
+      generateMultimodal([{ inlineData: { mimeType: "application/pdf", data: PDF_B64 } }]),
+    ).rejects.toThrow(/OPENROUTER_API_KEY/);
+  });
+
+  it("fails loudly on an empty answer instead of handing the route an empty string", async () => {
+    global.fetch = okCompletion(null, "content_filter") as unknown as typeof fetch;
+
+    const { generateMultimodal } = await import("@/lib/ai/gemini");
+    await expect(
+      generateMultimodal([{ inlineData: { mimeType: "application/pdf", data: PDF_B64 } }]),
+    ).rejects.toThrow(/no text \(content_filter\)/);
   });
 });

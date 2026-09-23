@@ -64,6 +64,8 @@ async function buildIdentityToken(userId: string, provider: string) {
     // Fresh token — DO NOT carry over pending2fa / pending2faUserId.
     pending2fa: undefined as unknown as undefined,
     pending2faUserId: undefined as unknown as undefined,
+    // Per-sign-in id, so sign-out can revoke this session (see sessionRevocation.ts).
+    sid: globalThis.crypto.randomUUID(),
     // Identity:
     id: dbUser._id.toString(),
     role: dbUser.role as UserRole,

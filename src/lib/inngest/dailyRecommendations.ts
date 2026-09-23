@@ -1,12 +1,18 @@
 /**
  * Job Recommendations — Inngest Cron Function
  *
- * The cron fires every morning at 9 AM UTC, but that is the *check* interval,
- * not the send interval. Each seeker has a cadence — weekly by default, daily
- * if they ask for it — and the gate holds them until it has elapsed. A weekly
- * seeker is therefore released on the first morning after seven days that
- * actually has something worth sending, rather than being pinned to a fixed
- * weekday that may have nothing on it.
+ * The cron fires hourly, but that is the *check* interval, not the send
+ * interval. Two independent gates decide who a given run actually mails:
+ *
+ *   - the clock: a seeker is due only when their own local time reads 9am, so
+ *     the Riyadh, Dubai, Muscat and India cohorts each get a morning email
+ *     rather than one fixed UTC hour that is midday for most of them. The zone
+ *     is derived from the profile — see lib/datetime/countryZone.ts;
+ *   - the cadence: weekly by default, daily if they ask for it, held by a
+ *     cooldown until it has elapsed. A weekly seeker is therefore released on
+ *     the first morning after seven days that actually has something worth
+ *     sending, rather than being pinned to a fixed weekday that may have
+ *     nothing on it.
  *
  * That is one step better than the boards we benchmarked (Indeed, Naukri,
  * Bayt, LinkedIn all offer daily-or-weekly, and LinkedIn's weekly digest is a
@@ -36,6 +42,7 @@
  */
 
 import { inngest } from "./client";
+import { isDigestHourFor } from "@/lib/datetime/countryZone";
 import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import User from "@/models/User";
@@ -59,6 +66,8 @@ import {
 import { prepareSkillVectors } from "@/lib/matching/skillVectors";
 import { MAX_RECOMMENDATIONS } from "@/lib/matching/constants";
 import { markRecommended, alreadyRecommendedJobIds } from "@/lib/matching/recommendationLog";
+import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
+import { loadConfirmedSkills, withConfirmedSkills } from "@/lib/effectiveSeekerProfile";
 import { isUndeliverableAddress } from "@/lib/communications/email";
 import {
   profileCompletenessScore,
@@ -94,7 +103,13 @@ export const dailyRecommendationsCron = inngest.createFunction(
     name: "Daily Job Recommendations",
     retries: 2,
     concurrency: { limit: 5 },
-    triggers: [{ cron: "0 9 * * *" }], // 9 AM UTC daily
+    // Hourly, not daily: the send time is 9am *where the seeker is*, and this
+    // audience spans Riyadh, the UAE, Oman and India. A single UTC hour cannot
+    // be morning for all of them — "0 9 * * *" was 09:00 UTC, which arrives at
+    // 12:00 in Riyadh and 14:30 in India. Each run mails only the seekers whose
+    // own clock reads DIGEST_LOCAL_HOUR, and exits immediately when that is
+    // nobody, so 24 cheap checks replace one badly-timed send.
+    triggers: [{ cron: "0 * * * *" }],
   },
   async ({ step }: { step: any }) => {
     await connectDB();
@@ -110,10 +125,10 @@ export const dailyRecommendationsCron = inngest.createFunction(
     // is dropped here only when they want neither — the jobs/profile-view
     // switches are applied inside the batch so one can be off without the other.
     // How often a seeker with no saved preference hears from us. Admin-set;
-    // weekly by default. The cron still runs every morning — a weekly seeker
-    // is simply held by a seven-day cooldown and released on the first day
-    // after it that has something worth sending, rather than being pinned to
-    // a fixed weekday that may have nothing.
+    // weekly by default. The cron still checks every hour — a weekly seeker is
+    // simply held by a seven-day cooldown and released on the first of their
+    // own mornings after it that has something worth sending, rather than
+    // being pinned to a fixed weekday that may have nothing.
     const platformDefault = await step.run("resolve-default-cadence", () =>
       resolveDefaultDigestCadence(),
     );
@@ -141,7 +156,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
       // `availabilityStatus` defaults to "immediately" at signup, so the
       // timestamp is what separates intent from the default.
       const availabilities = await JobSeeker.find({ userId: { $in: userIds } })
-        .select("userId availabilityStatus availabilityStatusSetAt")
+        .select("userId availabilityStatus availabilityStatusSetAt currentLocation settings.timezone")
         .lean();
       const availByUser = new Map(
         availabilities.map((a) => [
@@ -152,11 +167,29 @@ export const dailyRecommendationsCron = inngest.createFunction(
           },
         ]),
       );
+      // Where each seeker's morning is. See countryZone.ts for why this is
+      // derived from the profile rather than read from a timezone field.
+      const zoneSourcesByUser = new Map(
+        availabilities.map((a) => [
+          String((a as { userId: unknown }).userId),
+          {
+            profileTimeZone: (a as { settings?: { timezone?: string } }).settings?.timezone,
+            currentLocation: (a as { currentLocation?: string }).currentLocation,
+          },
+        ]),
+      );
 
       const prefByUser = new Map(prefs.map((p) => [p.userId.toString(), p]));
       const now = new Date();
 
       return userIds
+        .filter((userId) =>
+          // Before anything else: is it morning where this seeker is? A seeker
+          // whose local clock does not read the send hour is not due in this
+          // run, however long their cooldown has been up. Checked first because
+          // it discards ~23/24 of the list for the cost of a clock read.
+          isDigestHourFor(zoneSourcesByUser.get(userId) ?? {}, now),
+        )
         .map((userId) => ({
           userId,
           gate: digestGateFor(prefByUser.get(userId), {
@@ -225,22 +258,31 @@ export const dailyRecommendationsCron = inngest.createFunction(
             seekerDocs.map((d) => [String((d as { userId: unknown }).userId), d]),
           );
 
+          // The same effective profile the app scores — base profile plus
+          // confirmed skills. The digest used the bare profile, so for anyone
+          // with a confirmed skill the email and the home page disagreed about
+          // the same job. One query for the whole batch.
+          const confirmedByUser = await loadConfirmedSkills(batch.map((b) => b.userId));
+          const profileByUser = new Map(
+            seekerDocs.map((d) => {
+              const uid = String((d as { userId: unknown }).userId);
+              return [uid, withConfirmedSkills(seekerProfileFromDoc(d as never), confirmedByUser.get(uid) ?? [])];
+            }),
+          );
+
           // Skill vectors are loaded here rather than in a step of their own:
           // 800-odd 3072-float vectors would be serialised into Inngest's step
           // state on every resume. Loading them inside the step keeps them in
           // memory, and the Mongo cache means only the first batch of the
           // first ever run pays for embedding.
-          const skillVectors = await prepareSkillVectors(
-            activeJobs,
-            seekerDocs.map((d) => seekerProfileFromDoc(d as never)),
-          );
+          const skillVectors = await prepareSkillVectors(activeJobs, [...profileByUser.values()]);
 
           for (const { userId, gate } of batch) {
             try {
               const seeker = seekerByUser.get(userId);
               if (!seeker) continue;
 
-              const seekerProfile = seekerProfileFromDoc(seeker as never);
+              const seekerProfile = profileByUser.get(userId) ?? seekerProfileFromDoc(seeker as never);
               const seekerId = (seeker as unknown as { _id: unknown })._id;
 
               // Get already-applied job IDs
@@ -282,6 +324,9 @@ export const dailyRecommendationsCron = inngest.createFunction(
                 limit: TOP_JOBS_COUNT,
                 useAi,
                 vectors: skillVectors,
+                // Shared with every other surface, so a percentage in this
+                // email is the percentage the app shows for the same pair.
+                verdicts: mongoJevVerdictStore,
               });
               const scoredJobs = recommendation.jobs;
 

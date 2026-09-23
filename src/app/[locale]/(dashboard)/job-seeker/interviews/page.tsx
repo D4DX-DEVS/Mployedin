@@ -94,6 +94,9 @@ export default function InterviewsPage() {
       const params = pagination.paginationParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter !== "all") params.set("status", statusFilter);
+      // Newest first: oldest-first put every upcoming interview on the last
+      // page, behind a full page of "Past" (the upcoming group re-sorts below).
+      params.set("sortOrder", "desc");
       // Account-wide upcoming/past for the header, computed server-side on the
       // seeker's scope so the chips and search never move it.
       params.set("fetchCounts", "true");
@@ -155,7 +158,9 @@ export default function InterviewsPage() {
   const calendarEvents = calendarInterviews.filter((i) => i.status !== "rescheduled");
 
   const now = new Date();
-  const upcoming = activeInterviews.filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled");
+  const upcoming = activeInterviews
+    .filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled")
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
   const past = activeInterviews.filter((i) => new Date(i.scheduledAt) < now || i.status === "cancelled");
 
   const exportData = interviews.map((iv) => ({
@@ -397,7 +402,11 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
                 {t("round", { round: (iv.interviewRound ?? 1).toLocaleString(numberLocale) })}
               </Badge>
             )}
-            {responseLabel && (
+            {iv.status === "cancelled" ? (
+              <Badge variant="outline" className="text-xs text-red-600">
+                {t("status.cancelled")}
+              </Badge>
+            ) : responseLabel && (
               <Badge variant="outline" className={`text-xs ${responseColor}`}>
                 {responseLabel}
               </Badge>
@@ -422,8 +431,8 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
             </div>
           )}
 
-          {/* Meet link for video / hybrid */}
-          {iv.meetLink && (iv.type === "video" || iv.type === "hybrid") && (
+          {/* Meet link for video / hybrid — not for a cancelled interview */}
+          {iv.meetLink && iv.status !== "cancelled" && (iv.type === "video" || iv.type === "hybrid") && (
             <div className="flex items-center gap-1.5 text-xs mt-1.5">
               <Video className="w-3 h-3 shrink-0 text-primary/70" />
               <a href={iv.meetLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
