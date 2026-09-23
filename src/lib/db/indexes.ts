@@ -713,6 +713,14 @@ export async function ensureIndexes() {
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
   ]);
 
+  // Jev verdicts, keyed on a hash of the exact input. Unique so two surfaces
+  // deciding the same pair at once converge on one row; the TTL retires a
+  // verdict long after the inputs behind it have usually changed anyway.
+  await safeCreateIndexes(db, "jevverdicts", [
+    { key: { key: 1 }, unique: true },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
   await safeCreateIndexes(db, "referrallinks", [
     { key: { createdBy: 1 } },
     { key: { agentId: 1 } },

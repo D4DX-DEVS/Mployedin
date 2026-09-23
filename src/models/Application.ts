@@ -22,12 +22,19 @@ export interface INote {
 
 export interface IAIMatchBreakdown {
   skills: number;
+  /** How closely the job matches the roles the seeker is after. Engine scores only. */
+  role?: number;
   experience: number;
-  location: number;
-  salary: number;
+  /**
+   * Written by the pre-engine scorer only. The engine gates location and pay
+   * instead of scoring them, so rows it writes leave these unset.
+   */
+  location?: number;
+  salary?: number;
   /** Legacy components — no scorer writes these any more. */
   education?: number;
   availability?: number;
+  /** The final score — equal to aiMatchScore. */
   overall: number;
 }
 
@@ -55,7 +62,11 @@ export interface IApplication extends Document {
   status: ApplicationStatus;
   documents: { name: string; url: string; type: string }[];
   aiMatchScore?: number;
-  /** How the score was calculated: 'deterministic' or 'llm' (legacy). */
+  /**
+   * How the score was calculated: 'engine' (the shared matching engine every
+   * surface uses), 'deterministic' (the older scorer, before 2026-09-23) or
+   * 'llm' (legacy).
+   */
   scoredVia?: string;
   /** Set once the employer notifies this candidate via the AI-match "Notify" action. */
   aiMatchNotifiedAt?: Date;
@@ -130,6 +141,7 @@ const ApplicationSchema = new Schema<IApplication>(
     viewedByEmployerAt: Date,
     matchBreakdown: {
       skills: Number,
+      role: Number,
       experience: Number,
       location: Number,
       salary: Number,

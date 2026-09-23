@@ -26,6 +26,7 @@ import {
   type NativeGenerateContentResponse,
   type NativePart,
 } from "@/lib/ai/googleAI";
+import { isOpenRouterTextProvider, PDF_NATIVE_PARSER, toOpenRouterContent } from "@/lib/ai/openRouter";
 
 /**
  * Aliases kept because call sites and TASK_MODEL_MAP in `@/lib/ai/router` index
@@ -100,17 +101,22 @@ export async function generateStream(
 }
 
 /**
- * Generate with multimodal content (text + image/PDF).
+ * Generate with multimodal content (text + image/PDF) — CV and job-poster
+ * extraction.
  *
- * Goes through the native generateContent API rather than the OpenAI-compatible
- * one: the compat layer takes images but not PDFs, and CV / job-poster
- * extraction sends PDFs.
+ * Follows the text provider. With OpenRouter serving text (the default when
+ * its key is set) the document goes to OpenRouter's Gemini as a chat content
+ * part; with `AI_TEXT_PROVIDER=google` it goes to Google's native
+ * generateContent API, because Google's OpenAI-compatible layer takes images
+ * but not PDFs.
  */
 export async function generateMultimodal(
   parts: NativePart[],
   model: GeminiModel = GEMINI_MODELS.flash,
   maxOutputTokens?: number
 ): Promise<string> {
+  if (isOpenRouterTextProvider()) return generateMultimodalViaOpenRouter(parts, model, maxOutputTokens);
+
   const start = Date.now();
   const effort = textReasoningEffort();
   const res = await generateContentFetch(
@@ -135,6 +141,45 @@ export async function generateMultimodal(
   if (!text) {
     const why = data.promptFeedback?.blockReason ?? data.candidates?.[0]?.finishReason ?? "empty response";
     throw new Error(`Gemini returned no text (${why})`);
+  }
+  return text;
+}
+
+/**
+ * The OpenRouter half of generateMultimodal. Same request shape as every other
+ * text call — chatCompletionsFetch routes it and maps the model id — with the
+ * document as a content part and, for a PDF, the native parser pinned.
+ */
+async function generateMultimodalViaOpenRouter(
+  parts: NativePart[],
+  model: GeminiModel,
+  maxOutputTokens?: number
+): Promise<string> {
+  const start = Date.now();
+  const effort = textReasoningEffort();
+  const content = toOpenRouterContent(parts);
+  const res = await chatCompletionsFetch(
+    {
+      model,
+      messages: [{ role: "user", content } as ChatMessage],
+      ...(maxOutputTokens ? { max_tokens: completionBudget(maxOutputTokens, effort) } : {}),
+      reasoning_effort: effort,
+      ...(content.some((part) => part.type === "file") ? { plugins: [PDF_NATIVE_PARSER] } : {}),
+    },
+    `multimodal:${model}`
+  );
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(providerErrorMessage(res.status, err, "request", "openrouter"));
+  }
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string | null }; finish_reason?: string }[];
+    usage?: ChatUsage;
+  };
+  logUsage(model, data.usage, start);
+  const text = data.choices?.[0]?.message?.content ?? "";
+  if (!text) {
+    throw new Error(`OpenRouter returned no text (${data.choices?.[0]?.finish_reason ?? "empty response"})`);
   }
   return text;
 }

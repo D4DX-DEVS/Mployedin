@@ -8,17 +8,17 @@ import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import {
   buildRecommendedJobQuery,
-  isRelevantJob,
-  rankRecommendedJobs,
   RECOMMENDATION_POOL_SIZE,
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
+import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
 
 /**
  * GET /api/job-seeker/recommended-jobs
  *
- * Returns up to 5 recommended active jobs scored by local matching
- * (skills overlap, location match, salary range, job type).
+ * The seeker's recommended jobs — eligible and at or above the admin threshold,
+ * scored by the engine the emails use — best first, up to `limit` (default 5).
+ * `totalMatches` counts every recommended job in the pool.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (ctx.role !== "job_seeker") {
@@ -60,15 +60,21 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .populate("employerId", "companyName logo")
     .lean();
 
-  // Score using the shared algorithm (single source of truth), including
-  // confirmed skills so the % matches every other surface.
+  // Score with the engine, including confirmed skills, so the % matches every
+  // other surface and the email.
   const seekerProfile = await effectiveSeekerProfile(ctx.userId, seeker);
-  const ranked = rankRecommendedJobs(candidateJobs, seekerProfile);
+  const pool = await scoreSeekerPool(seekerProfile, candidateJobs);
 
-  // totalMatches drives the skills page's "jobs matching your profile" figure,
-  // so it counts on-profile jobs only — not the whole live pool.
-  const totalMatches = ranked.filter((job) => isRelevantJob(job, seekerProfile)).length;
-  const items = ranked.slice(0, itemLimit);
+  // Both pages that call this present the result as "jobs matching you", so
+  // it lists and counts recommended jobs only. It used to return the top of
+  // the whole pool, and count anything sharing one skill as a match.
+  const recommended = pool.jobs.filter((job) => job.recommended);
+  const items = recommended.slice(0, itemLimit);
 
-  return NextResponse.json({ items, totalMatches });
+  return NextResponse.json({
+    items,
+    totalMatches: pool.recommendedCount,
+    threshold: pool.threshold,
+    limitingFactor: pool.limitingFactor ?? null,
+  });
 });

@@ -7,11 +7,10 @@ import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import {
   buildRecommendedJobQuery,
-  isRelevantJob,
-  rankRecommendedJobs,
   RECOMMENDATION_POOL_SIZE,
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
+import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -19,15 +18,20 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 /**
  * GET /api/jobs/recommended
  *
- * Returns job recommendations using the shared matchScore algorithm.
+ * The seeker's job feed, scored by the matching engine the emails use, so a
+ * job reads the same percentage here as in the digest. Every job in the pool
+ * is returned with its score; the ones flagged `recommended` (eligible and at
+ * or above the admin threshold) are the only ones any surface may present as
+ * a recommendation.
  * Supports hybrid pagination: cursor-based infinite scroll within pool pages.
  *
  * Query params:
- *   cursor     — last job _id from previous page (within current pool)
- *   limit      — items per infinite-scroll batch, default 10, max 20
- *   sort       — "match" (default) | "latest" | "salary"
- *   min_score  — minimum match score filter (default 0 = all jobs)
- *   pool_page  — macro page number (1-based), each pool holds up to POOL_SIZE jobs
+ *   cursor      — last job _id from previous page (within current pool)
+ *   limit       — items per infinite-scroll batch, default 10, max 20
+ *   sort        — "match" (default) | "latest" | "salary"
+ *   min_score   — minimum match score filter (default 0 = all jobs)
+ *   pool_page   — macro page number (1-based), each pool holds up to POOL_SIZE jobs
+ *   recommended — "true" returns recommended jobs only (the home page's list)
  */
 
 const POOL_SIZE = RECOMMENDATION_POOL_SIZE;
@@ -47,6 +51,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const minScore = Number(sp.get("min_score") ?? "0");
   const poolPageParam = Number(sp.get("pool_page") ?? "1");
   const poolPage = Number.isFinite(poolPageParam) ? Math.max(1, Math.round(poolPageParam)) : 1;
+  const recommendedOnly = sp.get("recommended") === "true";
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
     .select(SEEKER_MATCH_FIELDS)
@@ -92,16 +97,21 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .populate("employerId", "companyName logo")
     .lean();
 
-  // Score and order the pool with the shared ranker: off-profile jobs take a
-  // fixed sort penalty so they sink below genuine matches but stay visible
-  // (LinkedIn / Indeed behaviour), and the displayed matchScore is never
-  // altered so the same job reads the same percentage on every surface.
-  const scoredWithBoost = rankRecommendedJobs(candidateJobs, seekerProfile);
+  // Score with the engine. Recommended jobs lead; jobs that fail a hard gate
+  // sink by a fixed penalty but stay visible (LinkedIn / Indeed behaviour), and
+  // the displayed matchScore is never altered by the ordering.
+  const pool = await scoreSeekerPool(seekerProfile, candidateJobs);
+  const scoredWithBoost = pool.jobs;
 
-  // Apply the minimum-score filter (defaults to 0, meaning all jobs show).
-  let scored = scoredWithBoost.filter((j) => j.sortScore >= minScore);
-  if (scored.length === 0 && scoredWithBoost.length > 0) {
-    scored = [...scoredWithBoost].sort((a, b) => b.sortScore - a.sortScore);
+  let scored: typeof scoredWithBoost;
+  if (recommendedOnly) {
+    // No fallback here: an empty answer is the truthful one, and the page says
+    // why using limitingFactor.
+    scored = scoredWithBoost.filter((j) => j.recommended);
+  } else {
+    // Apply the minimum-score filter (defaults to 0, meaning all jobs show).
+    scored = scoredWithBoost.filter((j) => j.sortScore >= minScore);
+    if (scored.length === 0 && scoredWithBoost.length > 0) scored = [...scoredWithBoost];
   }
 
   // Sort within pool (the shared ranker already ordered by sortScore)
@@ -118,8 +128,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // pool so they reflect genuine profile fit, not the raw active-job count).
   const WEEK_MS = 7 * 24 * 3600_000;
   const now = Date.now();
-  const matchedCount = scoredWithBoost.filter((j) => isRelevantJob(j, seekerProfile)).length;
-  const strongMatches = scoredWithBoost.filter((j) => j.matchScore >= 80).length;
+  // matchedCount = jobs that clear every hard gate; strongMatches = the ones
+  // we recommend. Both over the whole pool, not the page.
+  const matchedCount = pool.eligibleCount;
+  const strongMatches = pool.recommendedCount;
+  const matchSummary = {
+    threshold: pool.threshold,
+    bestScore: pool.bestScore,
+    limitingFactor: pool.limitingFactor ?? null,
+  };
   const newThisWeek = scoredWithBoost.filter(
     (j) => now - new Date(j.createdAt as string | Date).getTime() <= WEEK_MS,
   ).length;
@@ -142,6 +159,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         matchedCount,
         strongMatches,
         newThisWeek,
+        ...matchSummary,
       });
     }
     startIndex = idx + 1;
@@ -163,6 +181,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     matchedCount,
     strongMatches,
     newThisWeek,
+    ...matchSummary,
   });
 }
 

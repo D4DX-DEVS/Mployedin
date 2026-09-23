@@ -430,10 +430,16 @@ export interface MatchBreakdown {
 }
 
 /**
- * Full match result. `calculateMatchScore` is the thin wrapper that keeps the
- * old number-only contract; anything that wants to *show* the reasoning (the
- * employer application panel) uses this instead, because a breakdown that is
- * computed and then discarded renders as a row of zeroes.
+ * Full match result from the pre-engine scorer.
+ *
+ * @deprecated Not a match percentage any surface may show. Every seeker- and
+ * employer-facing score comes from the matching engine — `scorePair` /
+ * `recommendJobsFor` in matching/recommend.ts, or the request helpers in
+ * matching/seekerMatches.ts — so one pair reads one number everywhere. This
+ * scorer has different weights, compares skills as strings and has no hard
+ * gates; mixing it back in is how the email said 92% and the app said 67%.
+ * Kept for its tests only; engineMatchSurfaces.test.ts fails if production
+ * code imports it again.
  */
 export function calculateMatchDetail(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): MatchBreakdown {
   // Defaults match industry standard (e.g., LinkedIn)
@@ -601,6 +607,7 @@ export function calculateMatchDetail(seeker: SeekerProfile, job: JobProfile, wei
   };
 }
 
+/** @deprecated Use the matching engine — see calculateMatchDetail. */
 export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): number {
   return calculateMatchDetail(seeker, job, weights).overall;
 }

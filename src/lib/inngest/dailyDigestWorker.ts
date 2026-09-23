@@ -28,7 +28,7 @@ export const dailyDigestWorker = inngest.createFunction(
     triggers: [{ event: "notification/daily-digest" }],
   },
   async ({ event, step }: { event: { data: NotificationDailyDigestEvent["data"] }; step: any }) => {
-    const { userId, userName, email, locale, jobs, profileViews } = event.data;
+    const { userId, email, locale, jobs, profileViews } = event.data;
 
     await connectDB();
 
@@ -42,13 +42,7 @@ export const dailyDigestWorker = inngest.createFunction(
 
     // Build and send the combined digest email
     await step.run("send-digest-email", async () => {
-      const html = buildDigestEmail({
-        userName,
-        locale,
-        jobs,
-        profileViews,
-        profile: event.data.profile,
-      });
+      const html = buildDigestEmail(digestEmailDataFromEvent(event.data));
 
       const jobCount = jobs.length;
       const viewCount = profileViews.count;
@@ -101,7 +95,32 @@ export const dailyDigestWorker = inngest.createFunction(
   },
 );
 
-interface DigestEmailData {
+/**
+ * The email-builder input for one digest event.
+ *
+ * A function of its own so the event → email mapping can be tested. It used to
+ * be written inline in the worker, forwarding each field by name — and it
+ * forwarded every one except `nearMiss`. The producer computed "your closest
+ * match was 37%, here is what is holding you back", claimed the 14-day
+ * near-miss cooldown for it, and the worker dropped it: on 2026-09-23 all 187
+ * "No strong job matches" emails went out with that subject over a body that
+ * never said why. Every builder test passed `nearMiss` in directly, which is
+ * why none of them caught it.
+ */
+export function digestEmailDataFromEvent(
+  data: NotificationDailyDigestEvent["data"],
+): DigestEmailData {
+  return {
+    userName: data.userName,
+    locale: data.locale,
+    jobs: data.jobs,
+    profileViews: data.profileViews,
+    profile: data.profile,
+    nearMiss: data.nearMiss,
+  };
+}
+
+export interface DigestEmailData {
   userName: string;
   locale: string;
   jobs: Array<{

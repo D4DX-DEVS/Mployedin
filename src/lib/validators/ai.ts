@@ -42,15 +42,8 @@ export const aiMatchSchema = z.object({
     .array(z.string().regex(/^[a-f\d]{24}$/i))
     .max(100, "Maximum 100 candidates per match request")
     .optional(),
-  /** Optional deterministic scoring weights (fractions). Normalized to sum ~1. */
-  weights: z
-    .object({
-      skills: z.number().min(0).max(1).optional(),
-      location: z.number().min(0).max(1).optional(),
-      experience: z.number().min(0).max(1).optional(),
-      salary: z.number().min(0).max(1).optional(),
-    })
-    .optional(),
+  // No `weights`: the score is the shared engine's, the same number on every
+  // surface, so a caller cannot re-weight it. No client ever sent them.
 });
 
 export const aiSkillsGapSchema = z.object({

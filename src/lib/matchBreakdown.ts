@@ -10,14 +10,21 @@
  */
 export interface MatchBreakdown {
   skills?: number;
+  /** Engine rows only. */
+  role?: number;
   experience?: number;
   location?: number;
   salary?: number;
   overall?: number;
 }
 
-/** The component keys shown to users — `overall` only repeats the headline. */
-export const MATCH_COMPONENT_KEYS = ["skills", "experience", "location", "salary"] as const;
+/**
+ * The component keys shown to users — `overall` only repeats the headline.
+ * Engine rows carry skills / role / experience; rows from the older scorer
+ * carry skills / experience / location / salary. Either set is a real
+ * measurement.
+ */
+export const MATCH_COMPONENT_KEYS = ["skills", "role", "experience", "location", "salary"] as const;
 
 /**
  * True when the breakdown carries at least one recorded component score.

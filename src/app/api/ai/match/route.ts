@@ -13,15 +13,20 @@ import { aiMatchSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { calculateMatchDetail, seekerProfileFromDoc, jobProfileFromDoc, type MatchScoreWeights } from "@/lib/matchScore";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
+import { scoreOnePair, storedBreakdown } from "@/lib/matching/seekerMatches";
 
 
 /**
  * POST /api/ai/match
  * Body: { jobId: string, jobSeekerId?: string }
  *
- * Returns an AI-computed match score (0-100) + reasoning breakdown for the
- * job seeker vs a job posting.
+ * Returns the match score (0-100) for the job seeker vs a job posting, with
+ * its breakdown and an AI-written narrative. The score comes from the shared
+ * matching engine — the number the seeker's email and home page show for the
+ * same pair — and `eligible` / `ineligibleReason` say whether the pair clears
+ * the hard gates (country, pay, minimum experience, ...). The narrative is
+ * commentary only and never moves the score.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_job_matching" });
@@ -36,7 +41,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   await connectDB();
-  const { jobId, jobSeekerId: bodyJobSeekerId, applicationId, weights } = await validateBody(req, aiMatchSchema);
+  const { jobId, jobSeekerId: bodyJobSeekerId, applicationId } = await validateBody(req, aiMatchSchema);
 
   if (!jobId) return NextResponse.json({ error: "jobId required" }, { status: 400 });
 
@@ -89,19 +94,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
-  // Compute deterministic score using feature-based engine
-  const seekerProfile = seekerProfileFromDoc(seeker as Parameters<typeof seekerProfileFromDoc>[0]);
-  const jobProfile = jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0]);
-
-  const scoreWeights: MatchScoreWeights = {
-    skills: weights?.skills,
-    location: weights?.location,
-    experience: weights?.experience,
-    salary: weights?.salary,
-  };
-
-  const deterministicDetail = calculateMatchDetail(seekerProfile, jobProfile, scoreWeights);
-  const deterministicScore = deterministicDetail.overall;
+  // The engine, on the seeker's effective profile (confirmed skills included),
+  // so the employer sees the number the seeker was shown.
+  const seekerProfile = await effectiveSeekerProfile(
+    String(seeker.userId ?? ""),
+    seeker as Parameters<typeof effectiveSeekerProfile>[1],
+  );
+  const pair = await scoreOnePair(seekerProfile, job);
+  const breakdown = storedBreakdown(pair);
 
   // Safely extract nested fields for LLM narrative (optional)
   const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
@@ -172,16 +172,12 @@ Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no m
   }
 
   const matchData = {
-    score: deterministicScore,
-    // Real per-component scores. These used to be hardcoded zeroes, so every
-    // application panel showed "Skills 0% / Experience 0%" next to a healthy
-    // overall score.
-    breakdown: {
-      skills: deterministicDetail.skills,
-      experience: deterministicDetail.experience,
-      location: deterministicDetail.location,
-      salary: deterministicDetail.salary,
-    },
+    score: pair.score,
+    // The engine's own parts. Location and pay are gates, not parts, so they
+    // come back as eligible / ineligibleReason rather than as a percentage.
+    breakdown: { skills: breakdown.skills, role: breakdown.role, experience: breakdown.experience },
+    eligible: pair.eligible,
+    ineligibleReason: pair.reason ?? null,
     strengths,
     gaps,
     summary,
@@ -197,14 +193,10 @@ Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no m
 
     await Application.findByIdAndUpdate(applicationId, {
       aiMatchScore: matchData.score,
-      scoredVia: 'deterministic',
-      matchBreakdown: {
-        skills: deterministicDetail.skills,
-        experience: deterministicDetail.experience,
-        location: deterministicDetail.location,
-        salary: deterministicDetail.salary,
-        overall: deterministicDetail.overall,
-      },
+      scoredVia: "engine",
+      // Replaces the whole subdocument, so an older scorer's location / salary
+      // parts cannot linger beside the engine's.
+      matchBreakdown: breakdown,
       matchStrengths: matchData.strengths ?? [],
       matchGaps: matchData.gaps ?? [],
     });

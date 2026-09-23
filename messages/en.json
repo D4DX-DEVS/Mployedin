@@ -507,7 +507,7 @@
       "searchReturned": "Jobs returned for this search",
       "profileAligned": "Jobs aligned to your profile",
       "strongMatches": "Strong matches",
-      "strongMatchesHint": "Roles scoring 80% or higher",
+      "strongMatchesHint": "Roles that fit your profile and score {threshold}% or higher",
       "newThisWeek": "New this week",
       "newThisWeekHint": "Matched roles posted in the last 7 days"
     },
@@ -559,7 +559,8 @@
       "editPreferences": "Edit preferences",
       "setPreferences": "Set Preferences",
       "mobileFilters": "Filters",
-      "filters": "Filters"
+      "filters": "Filters",
+      "improveProfile": "Improve my profile"
     },
     "tabs": {
       "eyebrow": "AI Matching",
@@ -608,7 +609,9 @@
       "jobHidden": "Job hidden"
     },
     "divider": {
-      "moreJobs": "More available jobs"
+      "moreJobs": "More available jobs",
+      "recommended": "Recommended for you",
+      "noStrong": "No strong matches right now"
     },
     "sidebar": {
       "profileSignal": "Profile signal",
@@ -2338,10 +2341,25 @@
       "emptyTitle": "No recommendations yet",
       "emptyBody": "Finish your profile and preferences to unlock stronger job suggestions.",
       "emptyCta": "Set preferences",
-      "noMatchesTitle": "No matching roles right now",
-      "noMatchesBody": "You're all caught up! There are currently no new unapplied jobs matching your preferences.",
-      "noMatchesCta": "Edit preferences",
-      "browseJobsCta": "Browse all jobs"
+      "browseJobsCta": "Browse all jobs",
+      "strongOnlyTitle": "No strong matches right now",
+      "strongOnlyBody": "We only recommend jobs that are a {threshold}% match or better. Your closest match right now is {best}%.",
+      "strongOnlyBodyNone": "We only recommend jobs that are a {threshold}% match or better, and none of the open jobs fit your profile yet.",
+      "noOtherStrong": "No other strong matches right now.",
+      "improveProfileCta": "Improve my profile",
+      "updatePreferencesCta": "Update my preferences",
+      "blockers": {
+        "no_skills": "Your profile doesn't list any skills yet. Skills are the largest part of how we match you, so adding a few is the fastest way to start getting matches.",
+        "no_roles": "Your profile doesn't say what roles you're looking for, so we can only guess. Adding a job title or two sharpens every match.",
+        "score": "Nothing open right now is a close enough fit for your profile. We'd rather show you nothing than a weak match.",
+        "country": "Most openings right now are outside the countries on your profile.",
+        "experience": "Most openings right now ask for more years than your profile shows.",
+        "experience_unknown": "Most openings state a minimum number of years, and your profile doesn't say how much experience you have. Adding it unlocks those jobs.",
+        "education_unknown": "Some openings ask for a specific qualification, and your profile doesn't list one yet. Adding your education lets us include them.",
+        "salary": "Most openings right now pay below your stated expectation.",
+        "work_mode": "Most openings right now do not match your remote or on-site preference.",
+        "education": "Most openings right now ask for a higher qualification than your profile lists."
+      }
     },
     "appliedJobs": {
       "eyebrow": "Already applied",
@@ -5000,7 +5018,8 @@
     "breakdownSalary": "Salary",
     "freeSlotsFor": "{name} is free at these times (shown in your time zone). Tap one to set the start.",
     "noFreeSlots": "{name} has no free slots in the next 7 days.",
-    "freeSlotsLabel": "Free slots for {name}"
+    "freeSlotsLabel": "Free slots for {name}",
+    "roleFit": "Role fit"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",

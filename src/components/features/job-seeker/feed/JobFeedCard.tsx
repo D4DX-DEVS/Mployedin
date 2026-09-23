@@ -27,6 +27,8 @@ export interface FeedJob {
   expiresAt?: string;
   matchScore: number;
   matchedSkills?: string[];
+  /** Set by the engine: eligible and at or above the admin threshold. Absent in search results. */
+  recommended?: boolean;
   views?: number;
   uniqueViews?: number;
 }

@@ -12,14 +12,16 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import NotificationPreference from "@/models/NotificationPreference";
 import { sendEmail } from "@/lib/communications/email";
-import { seekerProfileFromDoc, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
+import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import {
   recommendJobsFor,
   toCandidateJob,
   JOB_MATCH_FIELDS,
 } from "@/lib/matching/recommend";
 import { prepareSkillVectors } from "@/lib/matching/skillVectors";
-import { resolveMatchThreshold } from "@/models/SystemConfig";
+import { resolveMatchThreshold, isAiRerankEnabled } from "@/models/SystemConfig";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
+import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
 
 /** What find-similar-jobs hands to the email builder. */
 interface ScoredSimilarJob {
@@ -103,19 +105,24 @@ export const similarJobsAfterApply = inngest.createFunction(
         return { jobs: candidates.slice(0, 5).map((j) => ({ ...j, score: 0, showScore: false })) };
       }
 
-      const seekerProfile = seekerProfileFromDoc(seeker);
+      // Effective profile (base + confirmed skills), as every surface uses.
+      const seekerProfile = await effectiveSeekerProfile(String(userId), seeker);
       const vectors = await prepareSkillVectors(candidates, [seekerProfile]);
       const threshold = await resolveMatchThreshold();
+      const useAi = await isAiRerankEnabled();
 
-      // This mail is anchored on a job the seeker chose to apply to, so the
-      // bar is lower than an unsolicited digest: they already told us this is
-      // the kind of work they want. Half the digest floor, and never zero —
-      // it previously had no floor at all and mailed whatever came back.
+      // The same floor as every other recommendation. This mail used half of
+      // it — anchored on a job the seeker applied to, the reasoning went, so a
+      // lower bar was fair — but it printed those 40% matches with the same
+      // percentage badge the digest uses for 80%+, and the product rule is that
+      // nothing under the floor is recommended anywhere. Fewer of these mails
+      // will go out; the ones that do mean what they say.
       const recommendation = await recommendJobsFor(seekerProfile, candidates, {
-        threshold: Math.round(threshold / 2),
+        threshold,
         limit: 5,
-        useAi: false,
+        useAi,
         vectors,
+        verdicts: mongoJevVerdictStore,
       });
       if (recommendation.jobs.length === 0) return null;
       return { jobs: recommendation.jobs.map((j) => ({ ...j, showScore: true })) };

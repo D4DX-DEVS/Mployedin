@@ -13,8 +13,9 @@
  * Text, tool calling, streaming and embeddings go through Google's
  * OpenAI-compatible endpoint, so the routes keep the request/response shapes
  * they already had. Only two things use the native `generateContent` API:
- * multimodal input (the compat layer accepts images but not PDFs, and CV / job
- * poster extraction sends PDFs) and image generation.
+ * image generation, and multimodal input (CV / job-poster PDFs and images) —
+ * the latter only when Google also serves text. When OpenRouter serves text,
+ * PDFs and images go there too, as chat content parts (see gemini.ts).
  */
 
 import logger from "@/lib/logger";
@@ -71,9 +72,11 @@ export function nativeHeaders(apiKey: string = getGoogleAiApiKey()): Record<stri
 }
 
 export interface ChatContentPart {
-  type: "text" | "image_url";
+  type: "text" | "image_url" | "file";
   text?: string;
   image_url?: { url: string };
+  /** OpenRouter's document part: a PDF as a base64 data URL. */
+  file?: { filename: string; file_data: string };
 }
 
 export interface ChatMessage {
@@ -290,10 +293,10 @@ export function providerErrorMessage(
   what = "request",
   /**
    * Which provider answered. Defaults to whoever serves text, but the native
-   * `generateContent` calls — image generation and PDF input — always go to
-   * Google regardless of the text provider, so they pass "google" explicitly.
-   * Getting this wrong sends whoever is debugging a 401 to the wrong
-   * dashboard and the wrong key.
+   * `generateContent` calls — image generation, and PDF / image input when
+   * Google serves text — always go to Google, so they pass "google"
+   * explicitly. Getting this wrong sends whoever is debugging a 401 to the
+   * wrong dashboard and the wrong key.
    */
   provider: "google" | "openrouter" | "auto" = "auto",
 ): string {

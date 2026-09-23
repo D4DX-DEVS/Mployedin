@@ -37,6 +37,8 @@ export interface NotificationDailyDigestEvent {
        * dirham amount roughly 35x too large.
        */
       salary?: { min: number; max: number; currency?: string; period?: string };
+      /** The job skills the seeker demonstrably has — the reasoning behind the %. */
+      matchedSkills?: string[];
     }>;
     profileViews: {
       count: number;
@@ -47,6 +49,20 @@ export interface NotificationDailyDigestEvent {
      * to improve their matches instead of implying the inputs were complete.
      */
     profile?: { completeness: number; signals: number };
+    /**
+     * Present only when jobs were scored and none cleared the threshold — the
+     * "we checked 28 openings, your closest was 37%, here is why" section.
+     *
+     * Missing from this type until 2026-09-23, so the worker never forwarded
+     * it: the producer computed it and claimed its 14-day cooldown, and every
+     * one of the day's 187 "No strong job matches" emails went out without it.
+     */
+    nearMiss?: {
+      bestScore: number;
+      threshold: number;
+      considered: number;
+      topBlocker: string | null;
+    };
   };
 }
 

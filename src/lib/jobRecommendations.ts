@@ -1,31 +1,27 @@
 /**
- * The single source of truth for "which jobs do we recommend to this seeker,
- * and in what order".
+ * Candidate retrieval for the seeker's recommendation surfaces: which jobs are
+ * even considered, and the shared pool and page sizes.
  *
- * Four surfaces used to answer that question with four different sets of rules
- * — the seeker home page (SSR), /api/jobs/recommended,
+ * Four surfaces used to answer "which jobs do we recommend" with four
+ * different sets of rules — the seeker home page (SSR), /api/jobs/recommended,
  * /api/job-seeker/recommended-jobs and a leftover diagnostic route — which is
  * how the home page could server-render "no recommendations yet" and then
- * replace it a moment later with jobs the API was happy to return. Every
- * surface now builds its candidate query, its relevance verdict and its
- * ranking here, so they can only ever disagree about page size.
+ * replace it a moment later with jobs the API was happy to return. They all
+ * build their candidate query here; scoring and the recommend/don't verdict
+ * belong to the matching engine (matching/seekerMatches.ts), the one the
+ * emails use.
+ *
+ * No Mongoose in this module: the seeker home page's client component imports
+ * HOME_RECOMMENDED_JOB_COUNT from it.
  */
 
 import { COUNTRY_REGION_CODES, canonicalCountry } from "@/lib/i18n/locations";
-import {
-  calculateMatchScore,
-  educationRank,
-  getMatchedJobSkills,
-  jobProfileFromDoc,
-  skillsOverlap,
-  type SeekerProfile,
-} from "@/lib/matchScore";
 import { escapeRegex } from "@/lib/security/sanitize";
 
 /**
- * How far an off-profile job sinks in the ranking. It stays in the list (the
- * seeker still sees it, the way LinkedIn and Indeed keep showing adjacent
- * roles) but cannot outrank a job that genuinely fits. The *displayed* match
+ * How far a job that fails a hard gate sinks in a browse list. It stays in the
+ * list (the seeker still sees it, the way LinkedIn and Indeed keep showing
+ * adjacent roles) but sits below the jobs that fit. The *displayed* match
  * score is never touched — the same job must read the same percentage on every
  * page.
  */
@@ -130,84 +126,4 @@ export function buildRecommendedJobQuery(opts: {
 
   query.$and = and;
   return query;
-}
-
-/** The shape every caller's lean job document already satisfies. */
-export interface RecommendableJob {
-  title?: string | null;
-  requirements?: { skills?: string[]; education?: string } | null;
-  [key: string]: unknown;
-}
-
-export interface RankedJob<T> {
-  matchScore: number;
-  matchedSkills: string[];
-  /** matchScore minus the off-profile penalty. Ordering only — never shown. */
-  sortScore: number;
-  job: T;
-}
-
-/**
- * Is this job on-profile for the seeker?
- *
- * One signal is enough: a skill overlap OR a preferred-role title match. A job
- * demanding a qualification two or more levels above the seeker's is off-
- * profile whatever else matches — no amount of skill overlap makes a PhD role
- * reachable for a bachelor's holder.
- */
-export function isRelevantJob(job: RecommendableJob, seeker: SeekerProfile): boolean {
-  const requiredLevel = educationRank(job.requirements?.education);
-  const seekerLevel = seeker.educationLevel ?? 0;
-  if (requiredLevel > 0 && seekerLevel > 0 && requiredLevel - seekerLevel >= 2) return false;
-
-  const roles = (seeker.preferredRoles ?? []).map((role) => role.toLowerCase());
-  const hasSkillSignal = seeker.skills.length > 0;
-  const hasRoleSignal = roles.length > 0;
-  // Nothing to compare against — everything is fair game rather than nothing.
-  if (!hasSkillSignal && !hasRoleSignal) return true;
-
-  if (hasSkillSignal && skillsOverlap(seeker.skills, job.requirements?.skills ?? [])) return true;
-
-  const title = (job.title ?? "").toLowerCase();
-  return (
-    hasRoleSignal &&
-    title.length > 0 &&
-    roles.some((role) => title.includes(role) || role.includes(title))
-  );
-}
-
-/** Score one job without ordering it. */
-export function scoreRecommendedJob<T extends RecommendableJob>(
-  job: T,
-  seeker: SeekerProfile,
-): RankedJob<T> {
-  const matchScore = calculateMatchScore(
-    seeker,
-    jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0]),
-  );
-  return {
-    matchScore,
-    matchedSkills: getMatchedJobSkills(seeker.skills, job.requirements?.skills ?? []),
-    sortScore: isRelevantJob(job, seeker)
-      ? matchScore
-      : Math.max(0, matchScore - IRRELEVANT_SORT_PENALTY),
-    job,
-  };
-}
-
-/**
- * Score a candidate pool and order it best-first. Returns the job documents
- * with matchScore/matchedSkills/sortScore merged in, so callers can serialize
- * whichever fields their page needs.
- */
-export function rankRecommendedJobs<T extends RecommendableJob>(
-  jobs: T[],
-  seeker: SeekerProfile,
-): Array<T & { matchScore: number; matchedSkills: string[]; sortScore: number }> {
-  return jobs
-    .map((job) => {
-      const { matchScore, matchedSkills, sortScore } = scoreRecommendedJob(job, seeker);
-      return { ...job, matchScore, matchedSkills, sortScore };
-    })
-    .sort((a, b) => b.sortScore - a.sortScore);
 }

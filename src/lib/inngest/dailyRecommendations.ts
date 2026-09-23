@@ -66,6 +66,8 @@ import {
 import { prepareSkillVectors } from "@/lib/matching/skillVectors";
 import { MAX_RECOMMENDATIONS } from "@/lib/matching/constants";
 import { markRecommended, alreadyRecommendedJobIds } from "@/lib/matching/recommendationLog";
+import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
+import { loadConfirmedSkills, withConfirmedSkills } from "@/lib/effectiveSeekerProfile";
 import { isUndeliverableAddress } from "@/lib/communications/email";
 import {
   profileCompletenessScore,
@@ -256,22 +258,31 @@ export const dailyRecommendationsCron = inngest.createFunction(
             seekerDocs.map((d) => [String((d as { userId: unknown }).userId), d]),
           );
 
+          // The same effective profile the app scores — base profile plus
+          // confirmed skills. The digest used the bare profile, so for anyone
+          // with a confirmed skill the email and the home page disagreed about
+          // the same job. One query for the whole batch.
+          const confirmedByUser = await loadConfirmedSkills(batch.map((b) => b.userId));
+          const profileByUser = new Map(
+            seekerDocs.map((d) => {
+              const uid = String((d as { userId: unknown }).userId);
+              return [uid, withConfirmedSkills(seekerProfileFromDoc(d as never), confirmedByUser.get(uid) ?? [])];
+            }),
+          );
+
           // Skill vectors are loaded here rather than in a step of their own:
           // 800-odd 3072-float vectors would be serialised into Inngest's step
           // state on every resume. Loading them inside the step keeps them in
           // memory, and the Mongo cache means only the first batch of the
           // first ever run pays for embedding.
-          const skillVectors = await prepareSkillVectors(
-            activeJobs,
-            seekerDocs.map((d) => seekerProfileFromDoc(d as never)),
-          );
+          const skillVectors = await prepareSkillVectors(activeJobs, [...profileByUser.values()]);
 
           for (const { userId, gate } of batch) {
             try {
               const seeker = seekerByUser.get(userId);
               if (!seeker) continue;
 
-              const seekerProfile = seekerProfileFromDoc(seeker as never);
+              const seekerProfile = profileByUser.get(userId) ?? seekerProfileFromDoc(seeker as never);
               const seekerId = (seeker as unknown as { _id: unknown })._id;
 
               // Get already-applied job IDs
@@ -313,6 +324,9 @@ export const dailyRecommendationsCron = inngest.createFunction(
                 limit: TOP_JOBS_COUNT,
                 useAi,
                 vectors: skillVectors,
+                // Shared with every other surface, so a percentage in this
+                // email is the percentage the app shows for the same pair.
+                verdicts: mongoJevVerdictStore,
               });
               const scoredJobs = recommendation.jobs;
 
