@@ -85,14 +85,17 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const agentDoc = await Agent.findOne({ userId: ctx.userId })
       .select("_id assignedEmployerIds")
       .lean();
-    if (agentDoc) {
-      const conditions: Record<string, unknown>[] = [{ agentId: agentDoc._id }];
-      if (!invoiceableOnly && agentDoc.assignedEmployerIds?.length) {
-        conditions.push({ employerId: { $in: agentDoc.assignedEmployerIds } });
-      }
-      query.$or = conditions;
-      ownershipScoped = true;
+    // No profile = no scope. Without this the query stayed { deletedAt: null }:
+    // every job on the platform, drafts included, with commission rates.
+    if (!agentDoc) {
+      return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     }
+    const conditions: Record<string, unknown>[] = [{ agentId: agentDoc._id }];
+    if (!invoiceableOnly && agentDoc.assignedEmployerIds?.length) {
+      conditions.push({ employerId: { $in: agentDoc.assignedEmployerIds } });
+    }
+    query.$or = conditions;
+    ownershipScoped = true;
   } else if (ctx.role === "super_agent") {
     // Portfolio-scoped, default-deny on an empty scope.
     query.employerId = { $in: await getSuperAgentEmployerIds(ctx.userId) };
@@ -230,6 +233,35 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const seesCommissionTerms =
     ctx.role === "admin" || ctx.role === "agent" || ctx.role === "super_agent";
 
+  // Portfolio-wide employer + applicant totals for the stat cards (ignores the
+  // status tab so the cards stay stable while filtering). Uses the full query
+  // scope, not just the current page, so it runs alongside the page query
+  // instead of after it (each stage is a DB round trip).
+  const portfolioPromise = canFilterManagedJobs
+    ? (async () => {
+        const baseQuery = { ...query, ...(status ? { status: { $exists: true } } : {}) };
+        const portfolioJobs = await Job.find(baseQuery).select("_id employerId vacancies status").limit(1000).lean();
+        const employerSet = new Set(
+          portfolioJobs.map((j) => (j.employerId ? String(j.employerId) : null)).filter(Boolean),
+        );
+        const portfolioJobIds = portfolioJobs.map((j) => j._id);
+        // The openings figure follows the status tab, unlike the tab badges beside
+        // it (which must stay whole-set to be worth reading). Leaving it global
+        // printed "41 open positions" above six drafts — numbers that visibly
+        // disagree, and the same figure did move when a search was typed.
+        const vacancies = portfolioJobs
+          .filter((j) => !status || (j as { status?: string }).status === status)
+          .reduce((sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 0), 0);
+        const totalApplicants = portfolioJobIds.length
+          ? await Application.countDocuments({ jobId: { $in: portfolioJobIds } })
+          : 0;
+        return { stats: { employerCount: employerSet.size, totalApplicants }, vacancies };
+      })()
+    : Promise.resolve(undefined);
+  // If the page query below throws first, this is never awaited; don't let its
+  // own failure surface as an unhandled rejection. Awaiting it still throws.
+  portfolioPromise.catch(() => {});
+
   const [jobs, total, statusAgg] = await Promise.all([
     baseJobQuery
       .populate("employerId", "companyName country industry logo")
@@ -260,8 +292,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       : Promise.resolve(undefined),
   ]);
   // Aggregate real application counts from Application collection for managed job views
-  let portfolioStats: { employerCount: number; totalApplicants: number } | undefined;
-  let totalVacancies: number | undefined;
   if (canFilterManagedJobs && jobs.length > 0) {
     const jobIds = jobs.map((j) => j._id);
     const appCounts = await Application.aggregate([
@@ -273,28 +303,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       (job as Record<string, unknown>).applicationCount = countMap.get(String(job._id)) ?? 0;
     }
   }
-  // Portfolio-wide employer + applicant totals for the stat cards (ignores the
-  // status tab so the cards stay stable while filtering). Uses the full query
-  // scope, not just the current page.
-  if (canFilterManagedJobs) {
-    const baseQuery = { ...query, ...(status ? { status: { $exists: true } } : {}) };
-    const portfolioJobs = await Job.find(baseQuery).select("_id employerId vacancies status").limit(1000).lean();
-    const employerSet = new Set(
-      portfolioJobs.map((j) => (j.employerId ? String(j.employerId) : null)).filter(Boolean),
-    );
-    const portfolioJobIds = portfolioJobs.map((j) => j._id);
-    // The openings figure follows the status tab, unlike the tab badges beside
-    // it (which must stay whole-set to be worth reading). Leaving it global
-    // printed "41 open positions" above six drafts — numbers that visibly
-    // disagree, and the same figure did move when a search was typed.
-    totalVacancies = portfolioJobs
-      .filter((j) => !status || (j as { status?: string }).status === status)
-      .reduce((sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 0), 0);
-    const totalApplicants = portfolioJobIds.length
-      ? await Application.countDocuments({ jobId: { $in: portfolioJobIds } })
-      : 0;
-    portfolioStats = { employerCount: employerSet.size, totalApplicants };
-  }
+  const portfolio = await portfolioPromise;
+  const portfolioStats = portfolio?.stats;
+  const totalVacancies = portfolio?.vacancies;
 
   // The feed goes to any signed-in user, so anything employer-only — the other
   // applicants' ids above all — is stripped unless the caller manages the job.

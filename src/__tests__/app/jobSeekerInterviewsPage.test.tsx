@@ -68,7 +68,7 @@ describe("InterviewsPage", () => {
   it("asks the API for journey counts and shows them, inside the shared shell", async () => {
     render(<InterviewsPage />);
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/interviews?page=1&limit=10&fetchCounts=true");
+      expect(fetchMock).toHaveBeenCalledWith("/api/interviews?page=1&limit=10&sortOrder=desc&fetchCounts=true");
     });
     expect(screen.getByRole("heading", { level: 1, name: "My Applications" })).toBeInTheDocument();
     expect(await screen.findByText("1 upcoming · 8 past")).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("InterviewsPage", () => {
     // carries no counts and must not blank the header.
     await userEvent.click(screen.getByRole("tab", { name: "Confirmed" }));
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/interviews?page=1&limit=10&status=confirmed&fetchCounts=true");
+      expect(fetchMock).toHaveBeenCalledWith("/api/interviews?page=1&limit=10&status=confirmed&sortOrder=desc&fetchCounts=true");
     });
     expect(screen.getByText("1 upcoming · 8 past")).toBeInTheDocument();
   });
@@ -130,6 +130,44 @@ describe("InterviewsPage", () => {
     // The silent version re-enabled the button and moved nothing, so the seeker
     // had no way to tell the interview was never confirmed.
     expect(toastSuccessMock).not.toHaveBeenCalled();
+  });
+
+  // The API used to be read oldest-first, so a seeker with ten past interviews
+  // found "1 upcoming" in the header and nothing but "Past" on page 1.
+  it("puts upcoming interviews first, soonest first, ahead of past ones", async () => {
+    const at = (hours: number) => new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    const row = (id: string, jobTitle: string, hours: number) => ({
+      ...upcomingInterview(), _id: id, jobTitle, scheduledAt: at(hours), candidateResponse: "accepted",
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      // Newest first, as requested with sortOrder=desc.
+      json: async () => ({
+        interviews: [row("a", "Later Role", 72), row("b", "Sooner Role", 24), row("c", "Old Role", -240)],
+        total: 3,
+        counts: { upcoming: 2, past: 1 },
+      }),
+    });
+    render(<InterviewsPage />);
+    await screen.findByText("Later Role");
+    const titles = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(titles).toEqual(["Sooner Role", "Later Role", "Old Role"]);
+  });
+
+  it("marks a cancelled interview and drops its meeting link", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        interviews: [{ ...upcomingInterview(), status: "cancelled", meetLink: "https://meet.example/abc" }],
+        total: 1,
+        counts: { upcoming: 0, past: 1 },
+      }),
+    });
+    render(<InterviewsPage />);
+    await screen.findByText("Backend Engineer");
+    const badges = screen.getAllByText("Cancelled").filter((el) => !el.closest('[role="tab"]'));
+    expect(badges).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: /Meeting Link/ })).toBeNull();
   });
 
   it("confirms the response when the server accepts it", async () => {

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const BASE = "http://localhost:3888";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3888";
 const ADMIN = { email: "admin@mployedin.com", pass: "Admin@1234" };
 
 // Destinations that had no desktop sidebar path before the flyout fix.

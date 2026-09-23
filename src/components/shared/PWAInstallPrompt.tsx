@@ -13,6 +13,39 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+const DISMISS_KEY = "pwa-install-dismissed";
+// Stored instead of a timestamp once the app is installed: never offer again.
+const INSTALLED = "installed";
+const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Storage can throw outright (blocked cookies/site data), so every access is guarded.
+function isSnoozed(): boolean {
+  try {
+    const stored = window.localStorage.getItem(DISMISS_KEY);
+    if (stored === INSTALLED) return true;
+    const at = parseInt(stored ?? "", 10);
+    return Number.isFinite(at) && Date.now() - at < SNOOZE_MS;
+  } catch {
+    return false;
+  }
+}
+
+function remember(value: string) {
+  try {
+    window.localStorage.setItem(DISMISS_KEY, value);
+  } catch {
+    /* the in-memory flag still keeps it closed for this session */
+  }
+}
+
+// Survives client-side navigation (the component remounts; this module doesn't).
+let dismissedThisSession = false;
+
+function markClosed(marker: string) {
+  dismissedThisSession = true;
+  remember(marker);
+}
+
 export function PWAInstallPrompt() {
   const t = useTranslations("pwaInstallPrompt");
   const pathname = usePathname();
@@ -57,6 +90,11 @@ export function PWAInstallPrompt() {
   }, []);
 
   useEffect(() => {
+    // Hydration marker for e2e/pwa-install-prompt.spec.ts: set before any early
+    // return, so every case (installed, snoozed, iOS) can be told apart from
+    // "not hydrated yet". The listener below is attached in this same effect.
+    document.body.dataset.pwaPromptReady = "1";
+
     // Check if already installed
     if (window.matchMedia("(display-mode: standalone)").matches) return;
 
@@ -65,12 +103,8 @@ export function PWAInstallPrompt() {
     const isiOS = /iPad|iPhone|iPod/.test(ua) && !("MSStream" in window);
     setIsIOS(isiOS);
 
-    // Check if user dismissed before (respect for 7 days)
-    const dismissed = localStorage.getItem("pwa-install-dismissed");
-    if (dismissed) {
-      const dismissedAt = parseInt(dismissed, 10);
-      if (Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return;
-    }
+    // Respect a dismissal for 7 days
+    if (dismissedThisSession || isSnoozed()) return;
 
     if (isiOS) {
       // Show iOS-specific instructions after a delay
@@ -78,30 +112,51 @@ export function PWAInstallPrompt() {
       return () => clearTimeout(timer);
     }
 
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const handler = (e: Event) => {
       e.preventDefault();
+      // Chrome re-fires this on client-side navigation, so the dismissal is
+      // re-checked on every event, not only on mount.
+      if (dismissedThisSession || isSnoozed()) return;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Show prompt after user has been on the page for a bit
-      setTimeout(() => setShowPrompt(true), 3000);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!dismissedThisSession && !isSnoozed()) setShowPrompt(true);
+      }, 3000);
+    };
+
+    // Installed from the browser menu instead of the card.
+    const onInstalled = () => {
+      markClosed(INSTALLED);
+      setShowPrompt(false);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
   }, []);
+
+  function closeCard(marker: string) {
+    markClosed(marker);
+    setShowPrompt(false);
+  }
+
+  const handleDismiss = () => closeCard(Date.now().toString());
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setShowPrompt(false);
-    }
     setDeferredPrompt(null);
-  };
-
-  const handleDismiss = () => {
-    setShowPrompt(false);
-    localStorage.setItem("pwa-install-dismissed", Date.now().toString());
+    // Either way the card has done its job: the prompt event is single-use, so
+    // leaving the card up left an Install button that did nothing. Cancelling
+    // snoozes it like a dismissal; accepting suppresses it for good.
+    closeCard(outcome === "accepted" ? INSTALLED : Date.now().toString());
   };
 
   if (!showPrompt || suppressed) return null;

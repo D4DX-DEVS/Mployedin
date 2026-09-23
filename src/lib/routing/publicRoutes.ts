@@ -17,6 +17,8 @@ const PUBLIC_ROUTES = [
   "/api/public",
   "/api/jobs",
   "/api/image-proxy",
+  // Browser crash reports: errors happen for signed-out visitors too.
+  "/api/client-errors",
   "/about",
   "/contact",
   "/blog",

@@ -161,6 +161,10 @@ const PERIOD_LABEL: Record<string, { en: string; ar: string }> = {
  * live jobs are priced in dirhams, so an INR annual figure was presented as a
  * dirham amount roughly thirty times too large. The period matters for the
  * same reason: a yearly range rendered bare reads as a monthly one.
+ *
+ * Returns escaped HTML rather than plain text, because the Arabic form needs
+ * the amount isolated from the label — see below. Callers must not escape it
+ * again.
  */
 function salaryLine(
   salary: { min: number; max: number; currency?: string; period?: string } | undefined,
@@ -175,7 +179,14 @@ function salaryLine(
       : formatCount(salary.max > 0 ? salary.max : salary.min);
   // Code before the amount, and the whole thing kept on one line: the old
   // trailing "AED" wrapped onto its own row on a phone.
-  return `${code} ${range}${isAr ? period.ar : period.en}`;
+  const amount = `${code} ${range}`;
+  // "INR 40,000–80,000" is Latin, "/شهر" is not. Left as one run inside an
+  // Arabic paragraph the bidi algorithm pushes the currency code across to the
+  // far side of the label, so the amount is isolated and the label kept out of
+  // the isolate. English is unchanged — one escaped string, as before.
+  return isAr
+    ? `<span dir="ltr">${esc(amount)}</span>${esc(period.ar)}`
+    : esc(`${amount}${period.en}`);
 }
 
 export function buildDigestEmail(data: DigestEmailData): string {
@@ -183,6 +194,23 @@ export function buildDigestEmail(data: DigestEmailData): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
   const isAr = locale === "ar";
   const dir = isAr ? "rtl" : "ltr";
+
+  /**
+   * Escape a value, isolating it as left-to-right when the digest is Arabic.
+   *
+   * Job titles, company names, cities and skill names are Latin whatever the
+   * reader's language, so an Arabic digest is a right-to-left paragraph with
+   * left-to-right runs inside it. The bidi algorithm resolves the neutral
+   * characters *between* those runs — the colon, the commas, the middot —
+   * against the paragraph, not against the run, which is why the skills line
+   * rendered as "React, Node.js, MongoDB :مهاراتك المطابقة" with the colon
+   * stranded at the wrong end.
+   *
+   * `dir` on an inline element is the one isolation mechanism Gmail, Outlook
+   * and Apple Mail all honour; `unicode-bidi: isolate` is CSS and gets stripped.
+   * A no-op for English, so those emails stay byte-identical.
+   */
+  const bidi = (text: string) => (isAr ? `<span dir="ltr">${esc(text)}</span>` : esc(text));
 
   const greeting = isAr
     ? `مرحباً <strong>${esc(userName)}</strong>`
@@ -231,15 +259,15 @@ export function buildDigestEmail(data: DigestEmailData): string {
                 </div>
               </td>
               <td style="padding-${isAr ? "right" : "left"}: 12px; vertical-align: top;">
-                <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${esc(j.title)}</a>
-                <p style="margin: 2px 0 0; color: #374151; font-size: 13px; font-weight: 500;">${esc(j.company)}</p>
-                <p style="margin: 3px 0 0; color: #6b7280; font-size: 12px; line-height: 18px;">📍 ${esc(j.location || "Remote")}${salaryText ? ` · <span style="white-space: nowrap;">${esc(salaryText)}</span>` : ""}</p>
+                <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${bidi(j.title)}</a>
+                <p style="margin: 2px 0 0; color: #374151; font-size: 13px; font-weight: 500;">${bidi(j.company)}</p>
+                <p style="margin: 3px 0 0; color: #6b7280; font-size: 12px; line-height: 18px;">📍 ${bidi(j.location || "Remote")}${salaryText ? ` · <span style="white-space: nowrap;">${salaryText}</span>` : ""}</p>
                 ${
                   // Why this job scored what it did. A bare percentage is the
                   // thing seekers distrust; naming the skills that earned it
                   // costs one line and makes the number checkable.
                   j.matchedSkills && j.matchedSkills.length > 0
-                    ? `<p style="margin: 3px 0 0; color: #059669; font-size: 11px; line-height: 16px;">${isAr ? "مهاراتك المطابقة" : "Your matching skills"}: ${esc(j.matchedSkills.slice(0, 4).join(", "))}</p>`
+                    ? `<p style="margin: 3px 0 0; color: #059669; font-size: 11px; line-height: 16px;">${isAr ? "مهاراتك المطابقة" : "Your matching skills"}: ${bidi(j.matchedSkills.slice(0, 4).join(", "))}</p>`
                     : ""
                 }
               </td>
@@ -255,7 +283,7 @@ export function buildDigestEmail(data: DigestEmailData): string {
 
   // Profile activity — a secondary insight, so it reads as a compact strip
   // rather than a second full-width section competing with the jobs.
-  const namedViewers = profileViews.viewers.slice(0, 2).map((v) => esc(v.name));
+  const namedViewers = profileViews.viewers.slice(0, 2).map((v) => bidi(v.name));
   const extraViewers = profileViews.count - namedViewers.length;
   const viewsSection =
     profileViews.count > 0

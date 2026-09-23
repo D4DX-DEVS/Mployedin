@@ -24,11 +24,20 @@ const CREDS = {
 const JOB_TITLE = `E2E Pipeline QA Engineer ${Date.now()}`;
 
 async function login(page: Page, email: string, password: string) {
-  await page.goto("/en/login", { waitUntil: "domcontentloaded" });
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(password);
-  await page.locator('button[type="submit"]').first().click();
-  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20_000 });
+  // Typing before hydration gets wiped when React takes over the form, so wait
+  // for load and retry once if the submit never left the login page.
+  for (let attempt = 1; ; attempt++) {
+    await page.goto("/en/login", { waitUntil: "load" });
+    await page.locator("#email").fill(email);
+    await page.locator("#password").fill(password);
+    await page.locator('button[type="submit"]').first().click();
+    try {
+      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 20_000 });
+      return;
+    } catch (err) {
+      if (attempt >= 2) throw err;
+    }
+  }
 }
 
 /** JSON API call through the page's session, with the double-submit CSRF header. */
@@ -50,12 +59,17 @@ async function api(
 
 /** Next Tuesday 10:00 Asia/Dubai (06:00 UTC), minutes jittered per run to avoid
  *  instant-booking conflicts across repeated runs. */
+// A Tuesday slot that varies by run over 8 weeks × 8 hours × 4 quarter-hours.
+// A 45-minute window on the next Tuesday collided with the interview a failed
+// earlier run left behind, and the double-booking guard (correctly) 409'd.
 function interviewSlot(): string {
+  const n = Math.floor(Date.now() / 60_000);
   const d = new Date();
-  d.setUTCHours(6, Math.floor(Date.now() / 60_000) % 45, 0, 0);
+  d.setUTCHours(6 + (n % 8), (Math.floor(n / 8) % 4) * 15, 0, 0);
   do {
     d.setUTCDate(d.getUTCDate() + 1);
   } while (d.getUTCDay() !== 2);
+  d.setUTCDate(d.getUTCDate() + 7 * (Math.floor(n / 32) % 8));
   return d.toISOString();
 }
 

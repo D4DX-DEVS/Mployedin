@@ -29,7 +29,8 @@ test.describe("Job Seeker Support Ticket", () => {
   });
 
   test("support page renders correctly", async ({ page }) => {
-    await page.goto("/en/job-seeker/messages");
+    // Tickets live on the Support tab of the unified messages page.
+    await page.goto("/en/job-seeker/messages?tab=support");
     await page.waitForLoadState("networkidle");
 
     // Should see the Support title and "New Ticket" button
@@ -38,7 +39,8 @@ test.describe("Job Seeker Support Ticket", () => {
   });
 
   test("can open new ticket dialog", async ({ page }) => {
-    await page.goto("/en/job-seeker/messages");
+    // Tickets live on the Support tab of the unified messages page.
+    await page.goto("/en/job-seeker/messages?tab=support");
     await page.waitForLoadState("networkidle");
 
     // Click "New Ticket" button
@@ -46,13 +48,15 @@ test.describe("Job Seeker Support Ticket", () => {
 
     // Dialog should appear with Category and Message fields
     await expect(page.getByText("New Support Ticket")).toBeVisible();
-    await expect(page.getByText("Category")).toBeVisible();
-    await expect(page.getByText("Message")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("Category", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Message", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Submit Ticket/i })).toBeVisible();
   });
 
   test("can create a support ticket and send a message", async ({ page }) => {
-    await page.goto("/en/job-seeker/messages");
+    // Tickets live on the Support tab of the unified messages page.
+    await page.goto("/en/job-seeker/messages?tab=support");
     await page.waitForLoadState("networkidle");
 
     // Open ticket dialog
@@ -85,7 +89,8 @@ test.describe("Job Seeker Support Ticket", () => {
   });
 
   test("duplicate ticket returns existing conversation", async ({ page }) => {
-    await page.goto("/en/job-seeker/messages");
+    // Tickets live on the Support tab of the unified messages page.
+    await page.goto("/en/job-seeker/messages?tab=support");
     await page.waitForLoadState("networkidle");
 
     // Create first ticket

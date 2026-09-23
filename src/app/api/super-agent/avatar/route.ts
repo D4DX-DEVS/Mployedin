@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
+import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import type { UserRole } from "@/models/User";
@@ -21,7 +22,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const formData = await req.formData();
+  const formData = await readUploadForm(req);
+  if (formData instanceof NextResponse) return formData;
   const file = formData.get("avatar") as File | null;
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -33,29 +35,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
-  // Remove old avatar if it's a hosted URL (not from OAuth providers)
-  if (user.avatar && user.avatar.startsWith("http") && !user.avatar.includes("googleusercontent") && !user.avatar.includes("linkedin")) {
-    try { await deleteFile(user.avatar); } catch { /* ignore */ }
-  }
+  const previousAvatar = user.avatar;
 
   let result: { url: string };
   try {
     result = await uploadFile(file, { folder: "avatars" });
   } catch (err: unknown) {
-    const code = (err as { Code?: string }).Code ?? (err as { name?: string }).name;
-    if (code === "MalwareDetectedError") {
-      return NextResponse.json({ error: "File rejected: failed malware scan." }, { status: 422 });
-    }
-    if (code === "NoSuchBucket") {
-      return NextResponse.json(
-        { error: "File storage is not configured. Please contact support." },
-        { status: 503 },
-      );
-    }
-    return NextResponse.json({ error: "Upload failed. Please try again later." }, { status: 500 });
+    return uploadErrorResponse(err);
   }
 
   await User.updateOne({ _id: user._id }, { $set: { avatar: result.url } });
+
+  // Remove the old avatar only once the new one is stored (never OAuth-hosted images).
+  if (previousAvatar && previousAvatar.startsWith("http") && !previousAvatar.includes("googleusercontent") && !previousAvatar.includes("linkedin")) {
+    try { await deleteFile(previousAvatar); } catch { /* ignore */ }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

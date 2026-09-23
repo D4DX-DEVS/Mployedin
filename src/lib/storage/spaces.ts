@@ -24,6 +24,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import { validateUploadedFile, ALLOWED_FILE_TYPES, validateMagicBytes, MAX_FILE_SIZES } from "@/lib/security/file-validation";
 import { scanForMalware, MalwareDetectedError } from "@/lib/security/malware-scan";
+import { FileValidationError } from "@/lib/storage/uploadErrors";
 
 // ─── Client singleton ────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ export async function uploadBuffer(
     const file = new File([new Uint8Array(arrayBuf)], options.fileName ?? "upload", { type: options.contentType ?? "application/octet-stream" });
     const validationError = validateUploadedFile(file, options.validateAs, arrayBuf);
     if (validationError) {
-      throw new Error(validationError);
+      throw new FileValidationError(validationError);
     }
   }
 
@@ -194,7 +195,7 @@ export async function uploadLarge(
   if (Buffer.isBuffer(stream)) {
     const maxSize = options.maxSize ?? 100 * 1024 * 1024; // 100MB default
     if (stream.byteLength > maxSize) {
-      throw new Error(`File too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB.`);
+      throw new FileValidationError(`File too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB.`);
     }
 
     if (options.validateAs) {
@@ -202,7 +203,7 @@ export async function uploadLarge(
       const detected = validateMagicBytes(firstChunk.buffer);
       const allowed = Object.values(ALLOWED_FILE_TYPES[options.validateAs] ?? []) as string[];
       if (!detected || !allowed.includes(detected)) {
-        throw new Error("File type not allowed or corrupted.");
+        throw new FileValidationError("File type not allowed or corrupted.");
       }
     }
 
@@ -262,7 +263,7 @@ export async function uploadFile(
   const arrayBuf = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
   const validationError = validateUploadedFile(file, category, arrayBuf);
   if (validationError) {
-    throw new Error(validationError);
+    throw new FileValidationError(validationError);
   }
 
   return uploadBuffer(buffer, {

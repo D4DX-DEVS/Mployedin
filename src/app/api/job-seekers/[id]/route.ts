@@ -3,12 +3,11 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
-import Agent from "@/models/Agent";
 import ProfileView from "@/models/ProfileView";
 import Employer from "@/models/Employer";
 import { notify } from "@/lib/notifications/trigger";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { canStaffAccessSeeker, type SeekerOwnership } from "@/lib/jobSeeker/staffAccess";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { jobSeekerAdminUpdateSchema } from "@/lib/validators/job-seekers";
@@ -19,33 +18,13 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 /**
  * Staff-only object-ownership guard for the plural /api/job-seekers/[id] route.
  * Self-service lives at /api/job-seeker/profile (singular). This route is for
- * staff management only and must never expose another user's PII by id.
- *  - admin: global access
- *  - agent: scoped to seekers assigned to this agent (seeker.agentId === agent._id)
- *  - super_agent: scoped to seekers whose agent is within their jurisdiction (read)
- *  - job_seeker / employer: denied
- * Returns a 403 NextResponse when access is not allowed, otherwise null.
+ * staff management only and must never expose another user's PII by id; who
+ * owns which seeker is decided by canStaffAccessSeeker, the same rule the list
+ * at /api/job-seekers applies. Returns a 403 NextResponse when access is not
+ * allowed, otherwise null.
  */
-async function verifySeekerStaffAccess(seekerAgentId: unknown, ctx: AuthCtx): Promise<NextResponse | null> {
-  if (ctx.role === "admin") return null;
-
-  if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!agent || !seekerAgentId || String(seekerAgentId) !== String(agent._id)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    return null;
-  }
-
-  if (ctx.role === "super_agent") {
-    const scope = await getSuperAgentScope(ctx.userId);
-    const ok = Boolean(
-      seekerAgentId && scope?.effectiveAgentIds.some((id) => String(id) === String(seekerAgentId))
-    );
-    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    return null;
-  }
-
+async function verifySeekerStaffAccess(seeker: SeekerOwnership, ctx: AuthCtx): Promise<NextResponse | null> {
+  if (await canStaffAccessSeeker(seeker, ctx)) return null;
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }
 
@@ -55,7 +34,7 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
   const seeker = await JobSeeker.findById(params?.id).populate("userId", "name email").lean();
   if (!seeker) return NextResponse.json({ error: "Job seeker not found" }, { status: 404 });
 
-  const accessError = await verifySeekerStaffAccess(seeker.agentId, _ctx);
+  const accessError = await verifySeekerStaffAccess(seeker as SeekerOwnership, _ctx);
   if (accessError) return accessError;
 
   // Track profile view when employer/agent views a job seeker (deduplicate per 24h)
@@ -109,7 +88,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const seeker = await JobSeeker.findById(params?.id);
   if (!seeker) return NextResponse.json({ error: "Job seeker not found" }, { status: 404 });
 
-  const accessError = await verifySeekerStaffAccess(seeker.agentId, ctx);
+  const accessError = await verifySeekerStaffAccess(seeker as SeekerOwnership, ctx);
   if (accessError) return accessError;
 
   const body = await validateBody(req, jobSeekerAdminUpdateSchema) as Record<string, unknown>;
@@ -152,7 +131,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
 
   // Same staff-ownership guard as GET/PATCH — was missing, letting any agent
   // with delete permission deactivate seekers outside their scope.
-  const accessError = await verifySeekerStaffAccess(seeker.agentId, ctx);
+  const accessError = await verifySeekerStaffAccess(seeker as SeekerOwnership, ctx);
   if (accessError) return accessError;
 
   const permanent = new URL(req.url).searchParams.get("permanent") === "true";

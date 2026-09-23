@@ -14,6 +14,7 @@ import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { agentOwnsOffer, superAgentOwnsOffer } from "@/lib/offers/access";
+import { CLOSED_APPLICATION_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
 
 interface AuthCtx {
   userId: string;
@@ -139,8 +140,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         status === "accepted" ? "hired" :
         status === "declined" ? "selected" :
         "offer";
+      // A closed application must not be reopened or hired twice by a stale
+      // sibling offer.
       const applicationUpdate = await Application.updateOne(
-        { _id: offer.applicationId },
+        { _id: offer.applicationId, status: { $nin: [...CLOSED_APPLICATION_STATUSES] } },
         {
           $set: { status: applicationStatus },
           $push: {
@@ -155,7 +158,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         { session },
       );
       if (applicationUpdate.matchedCount !== 1) {
-        throw new Error("OFFER_APPLICATION_MISSING");
+        throw new Error("OFFER_APPLICATION_CLOSED");
+      }
+      if (status === "accepted") {
+        await Offer.updateMany(
+          { applicationId: offer.applicationId, _id: { $ne: offer._id }, status: { $in: [...OPEN_OFFER_STATUSES] } },
+          {
+            $set: { status: "withdrawn", respondedAt },
+            $push: { events: { type: "withdrawn", at: respondedAt, actorRole: "system", note: "Another offer was accepted" } },
+          },
+          { session },
+        );
       }
       return updatedOffer;
     });
@@ -165,6 +178,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (error instanceof Error && error.message === "OFFER_STATE_CONFLICT") {
       return NextResponse.json(
         { error: "This offer has already been responded to or withdrawn" },
+        { status: 409 },
+      );
+    }
+    if (error instanceof Error && error.message === "OFFER_APPLICATION_CLOSED") {
+      return NextResponse.json(
+        { error: "This application is closed, so the offer can no longer be answered" },
         { status: 409 },
       );
     }

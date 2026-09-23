@@ -5,7 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
-import { MalwareDetectedError } from "@/lib/security/malware-scan";
+import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 
 // POST /api/job-seeker/cv — upload resume/CV file
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
@@ -15,7 +15,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   await connectDB();
 
-  const formData = await req.formData();
+  const formData = await readUploadForm(req);
+  if (formData instanceof NextResponse) return formData;
   const file = (formData.get("cv") ?? formData.get("file")) as File | null;
 
   if (!file || !(file instanceof File)) {
@@ -33,26 +34,13 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
-  // Remove old CV file if it exists in storage
-  if (seeker.cv?.originalUrl) {
-    try { await deleteFile(seeker.cv.originalUrl); } catch { /* ignore */ }
-  }
+  const previousUrl = seeker.cv?.originalUrl;
 
   let result: { url: string };
   try {
     result = await uploadFile(file, { folder: "cvs", private: true });
   } catch (err: unknown) {
-    const code = (err as { Code?: string }).Code ?? (err as { name?: string }).name;
-    if (code === "MalwareDetectedError") {
-      return NextResponse.json({ error: "File rejected: failed malware scan." }, { status: 422 });
-    }
-    if (code === "NoSuchBucket") {
-      return NextResponse.json(
-        { error: "File storage is not configured. Please contact support." },
-        { status: 503 }
-      );
-    }
-    return NextResponse.json({ error: "Upload failed. Please try again later." }, { status: 500 });
+    return uploadErrorResponse(err);
   }
 
   await JobSeeker.updateOne(
@@ -63,6 +51,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       $unset: { "cv.atsScore": "", "cv.atsReport": "", "cv.rawText": "", "cv.atsAnalyzedAt": "" },
     }
   );
+
+  // Only now that the new CV is stored and recorded is the old object disposable.
+  if (previousUrl && previousUrl !== result.url) {
+    try { await deleteFile(previousUrl); } catch { /* ignore */ }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

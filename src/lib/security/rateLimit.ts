@@ -35,18 +35,22 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
+// Each preset needs its own prefix. Without one they all counted in the same
+// "rl:<ip>" / "rl:user:<id>" bucket, so browsing (api, 100/min) used up the
+// budget that applying (10/min) or creating an employer (3/min) is checked
+// against — a seeker who opened a few job lists got 429 on Apply.
 const DEFAULTS: Record<string, RateLimitConfig> = {
-  api: { limit: 100, windowSec: 60 },
-  ai: { limit: 20, windowSec: 60 },
-  auth: { limit: 10, windowSec: 60 },
-  upload: { limit: 5, windowSec: 60 },
-  bulk: { limit: 5, windowSec: 60 },
-  leads: { limit: 20, windowSec: 60 },
-  applications: { limit: 10, windowSec: 60 },
-  employers: { limit: 3, windowSec: 60 },
+  api: { limit: 100, windowSec: 60, prefix: "rl-api" },
+  ai: { limit: 20, windowSec: 60, prefix: "rl-ai" },
+  auth: { limit: 10, windowSec: 60, prefix: "rl-auth" },
+  upload: { limit: 5, windowSec: 60, prefix: "rl-upload" },
+  bulk: { limit: 5, windowSec: 60, prefix: "rl-bulk" },
+  leads: { limit: 20, windowSec: 60, prefix: "rl-leads" },
+  applications: { limit: 10, windowSec: 60, prefix: "rl-applications" },
+  employers: { limit: 3, windowSec: 60, prefix: "rl-employers" },
   // Checkout creates gateway orders and touches billing state. Nobody legitimately
   // starts a subscription more than a handful of times a minute.
-  checkout: { limit: 5, windowSec: 60 },
+  checkout: { limit: 5, windowSec: 60, prefix: "rl-checkout" },
 };
 
 // ── In-memory fallback store (per-instance) ─────────────────────────────────
@@ -140,7 +144,9 @@ export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig = DEFAULTS.api
 ): Promise<RateLimitResult> {
-  const key = `${config.prefix ?? "rl"}:${identifier}`;
+  // An ad-hoc config without a prefix still gets a bucket per budget, so it
+  // can't share a counter with a looser limit on the same identifier.
+  const key = `${config.prefix ?? `rl:${config.limit}:${config.windowSec}`}:${identifier}`;
 
   const limiter = await getUpstashLimiter(config);
   if (!limiter && config.failClosed) {

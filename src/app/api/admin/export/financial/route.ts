@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { csvCell } from "@/lib/export/csvCell";
 import Invoice from "@/models/Invoice";
 import Commission from "@/models/Commission";
 import "@/models/Employer";
@@ -21,6 +22,8 @@ import "@/models/Agent";
 import "@/models/SuperAgent";
 
 interface AuthCtx { userId: string; role: string; locale: string }
+
+const EXPORT_ROW_CAP = 20_000;
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
@@ -41,6 +44,27 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const end = new Date(dateTo);
     end.setHours(23, 59, 59, 999);
     dateFilter.$lte = end;
+  }
+  if (Object.values(dateFilter).some((d) => Number.isNaN((d as Date).getTime()))) {
+    return NextResponse.json({ error: "dateFrom and dateTo must be dates (YYYY-MM-DD)." }, { status: 400 });
+  }
+
+  // The export loads every matching row into memory. Past the cap, ask for a
+  // narrower range instead of silently truncating a financial record.
+  const wantInvoices = type === "invoices" || type === "both";
+  const wantCommissions = type === "commissions" || type === "both";
+  const hasRange = Object.keys(dateFilter).length > 0;
+  const [invoiceCount, commissionCount] = await Promise.all([
+    wantInvoices ? Invoice.countDocuments(hasRange ? { issuedAt: dateFilter } : {}) : 0,
+    wantCommissions ? Commission.countDocuments(hasRange ? { createdAt: dateFilter } : {}) : 0,
+  ]);
+  if (invoiceCount > EXPORT_ROW_CAP || commissionCount > EXPORT_ROW_CAP) {
+    return NextResponse.json(
+      {
+        error: `This range has ${Math.max(invoiceCount, commissionCount).toLocaleString("en-US")} rows; an export is limited to ${EXPORT_ROW_CAP.toLocaleString("en-US")}. Narrow the date range.`,
+      },
+      { status: 422 },
+    );
   }
 
   let invoices: Record<string, unknown>[] = [];
@@ -82,7 +106,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const lines: string[] = [];
 
     if (type === "invoices" || type === "both") {
-      lines.push("--- INVOICES ---");
+      lines.push("INVOICES");
       lines.push("InvoiceNumber,Category,Type,Amount,Currency,Status,IssuedAt,Employer,Description");
       for (const inv of invoices) {
         const employer = inv.employerId as { companyName?: string } | undefined;
@@ -95,8 +119,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
             inv.currency,
             inv.status,
             inv.issuedAt ? new Date(inv.issuedAt as string).toISOString() : "",
-            csvEscape(employer?.companyName ?? ""),
-            csvEscape((inv.description as string) ?? ""),
+            csvCell(employer?.companyName ?? ""),
+            csvCell((inv.description as string) ?? ""),
           ].join(","),
         );
       }
@@ -105,7 +129,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     }
 
     if (type === "commissions" || type === "both") {
-      lines.push("--- COMMISSIONS ---");
+      lines.push("COMMISSIONS");
       lines.push("Type,Amount,Currency,Rate,Status,CreatedAt,PaidAt,PaymentRef,Notes");
       for (const c of commissions) {
         lines.push(
@@ -117,8 +141,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
             c.status,
             c.createdAt ? new Date(c.createdAt as string).toISOString() : "",
             c.paidAt ? new Date(c.paidAt as string).toISOString() : "",
-            csvEscape((c.paymentRef as string) ?? ""),
-            csvEscape((c.notes as string) ?? ""),
+            csvCell((c.paymentRef as string) ?? ""),
+            csvCell((c.notes as string) ?? ""),
           ].join(","),
         );
       }
@@ -149,11 +173,5 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
-function csvEscape(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
 
 export const GET = withAuth(handler, { resource: "reports", action: "export" });

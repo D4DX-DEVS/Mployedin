@@ -73,21 +73,33 @@ export async function POST(req: NextRequest) {
     referredBy: referralCode || undefined,
   });
 
-  /* Create agent profile */
-  await Agent.create({
-    userId: user._id,
-    commissionRate: 10,
-    specialization: specialization || "general",
-    languages: languages ? languages.split(",").map((l: string) => l.trim()) : [],
-    performance: {
-      leadsGenerated: 0,
-      employersCreated: 0,
-      vacanciesPosted: 0,
-      jobSeekersSubmitted: 0,
-      interviewsScheduled: 0,
-      placementsCompleted: 0,
-    },
-  });
+  /* Create agent profile — roll the User back if this fails, or an admin could
+     later activate an "agent" with no profile for agent-scoped queries to use. */
+  try {
+    await Agent.create({
+      userId: user._id,
+      commissionRate: 10,
+      specialization: specialization || "general",
+      languages: languages ? languages.split(",").map((l: string) => l.trim()) : [],
+      performance: {
+        leadsGenerated: 0,
+        employersCreated: 0,
+        vacanciesPosted: 0,
+        jobSeekersSubmitted: 0,
+        interviewsScheduled: 0,
+        placementsCompleted: 0,
+      },
+    });
+  } catch (err) {
+    logger.error({ err, userId: String(user._id) }, "agent profile creation failed; rolling back user");
+    await User.findByIdAndDelete(user._id).catch((cleanupErr) =>
+      logger.error({ err: cleanupErr, userId: String(user._id) }, "agent register rollback failed"),
+    );
+    return NextResponse.json(
+      { error: "We couldn't create your account. Please try again." },
+      { status: 500 },
+    );
+  }
 
   /* Log activity */
   await logActivity({

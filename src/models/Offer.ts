@@ -162,6 +162,10 @@ const OfferSchema = new Schema<IOffer>(
 );
 
 OfferSchema.index({ applicationId: 1 });
+OfferSchema.index(
+  { applicationId: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: { $in: ["pending", "countered"] } }, name: "unique_open_offer_per_application" },
+);
 OfferSchema.index({ jobSeekerId: 1 });
 OfferSchema.index({ employerId: 1 });
 OfferSchema.index({ status: 1 });

@@ -23,6 +23,7 @@ import { attachJobSeekerReferral } from "@/lib/referrals/attachJobSeeker";
 import { hashOtp, otpHashesMatch } from "@/lib/auth/emailVerification";
 import PendingSignin, { PENDING_SIGNIN_MAX_ATTEMPTS } from "@/models/PendingSignin";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
+import { isSessionRevoked, revokeSession } from "@/lib/auth/sessionRevocation";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -776,8 +777,23 @@ export const authConfig: NextAuthConfig = {
     signIn: "/en/login",
     error: "/en/login",
   },
+  events: {
+    async signOut(message) {
+      const token = "token" in message ? message.token : null;
+      if (token && typeof token.sid === "string") {
+        const exp = typeof token.exp === "number" ? token.exp : Math.floor(Date.now() / 1000) + 3 * 24 * 60 * 60;
+        await revokeSession(token.sid, exp, typeof token.id === "string" ? token.id : undefined);
+      }
+    },
+  },
   callbacks: {
     async jwt({ token, user, account, trigger, session: updateData }) {
+      // Signed-out sessions stay dead: the JWT itself would stay valid until it
+      // expires, so a cookie copied before sign-out used to keep working.
+      if (!user && typeof token.sid === "string" && (await isSessionRevoked(token.sid))) {
+        return null;
+      }
+
       // Client called update() — merge the new values into the token.
       //
       // SECURITY: update() is a client-controlled POST to /api/auth/session, so
@@ -813,6 +829,8 @@ export const authConfig: NextAuthConfig = {
       }
       if (user) {
         token.id = user.id;
+        // One id per sign-in, so sign-out can revoke exactly this session.
+        token.sid = globalThis.crypto.randomUUID();
         token.picture = user.image ?? token.picture;
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
@@ -840,6 +858,8 @@ export const authConfig: NextAuthConfig = {
       // logged in up to the 3-day max. We throttle to once per updateAge window
       // via token.lastDbCheck so this does not add a DB round-trip per request.
       if (token.id && !user) {
+        // Tokens issued before session ids existed get one on their next refresh.
+        if (typeof token.sid !== "string") token.sid = globalThis.crypto.randomUUID();
         const nowSec = Math.floor(Date.now() / 1000);
         const pcaSec = (token.pca as number | null) ?? 0;
         const lastCheck = (token.lastDbCheck as number | undefined) ?? (token.iat as number | undefined) ?? 0;

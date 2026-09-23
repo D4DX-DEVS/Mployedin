@@ -89,8 +89,16 @@ test("T6 — super_agent creates a job in tenant view despite lacking jobs:creat
   });
   const bodyTxt = (await job.text()).slice(0, 500);
   console.log("T6 RESULT — POST /api/jobs as super_agent in tenant view:", job.status(), bodyTxt);
+  // Close the probe so repeated runs don't pile up listings on the employer.
+  const createdId = job.status() === 201 ? ((await job.json()).job?._id as string | undefined) : undefined;
+  if (createdId) {
+    await page.request.patch(`/api/jobs/${createdId}`, { data: { status: "closed" }, headers: await csrf(page) });
+  }
   await page.request.post("/api/tenant/switch", { data: { exit: true }, headers: await csrf(page) });
-  expect(job.status(), "T6: matrix withholds jobs:create from super_agent, so this should be 403").toBe(403);
+  // 2026-09-14 decision: super_agent holds jobs:create for tenant view only (see
+  // src/lib/permissions/matrix.ts), so posting inside an overseen employer succeeds.
+  // Outside tenant view the POST /api/jobs handler still refuses a super_agent.
+  expect(job.status(), "T6: a super_agent can post a job inside tenant view").toBe(201);
 });
 
 test("T9 — the acting agent gets credit for a job posted in tenant view", async ({ browser }) => {

@@ -3,6 +3,7 @@ import connectDB from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
+import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { randomUUID } from "crypto";
 
@@ -45,7 +46,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   await connectDB();
 
-  const formData = await req.formData();
+  const formData = await readUploadForm(req);
+  if (formData instanceof NextResponse) return formData;
   const file = formData.get("file") as File | null;
   const category = (formData.get("category") as string) || "other";
 
@@ -78,17 +80,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   try {
     result = await uploadFile(file, { folder: "documents", private: true });
   } catch (err: unknown) {
-    const code = (err as { Code?: string }).Code ?? (err as { name?: string }).name;
-    if (code === "MalwareDetectedError") {
-      return NextResponse.json({ error: "File rejected: failed malware scan." }, { status: 422 });
-    }
-    if (code === "NoSuchBucket") {
-      return NextResponse.json(
-        { error: "File storage is not configured. Please contact support." },
-        { status: 503 }
-      );
-    }
-    return NextResponse.json({ error: "Upload failed. Please try again later." }, { status: 500 });
+    return uploadErrorResponse(err);
   }
 
   const doc = {

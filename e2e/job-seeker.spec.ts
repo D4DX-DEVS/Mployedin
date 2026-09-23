@@ -33,7 +33,8 @@ test.describe("Job Seeker Journey", () => {
     await page.waitForURL(/job-seeker|dashboard/, { timeout: 20_000 });
     // Dashboard should have the MPLOYEDIN branding
     await expect(page.locator("body")).not.toContainText("Error");
-    await expect(page.getByTestId("site-footer")).toBeVisible();
+    // The seeker area is the job-board shell (no public footer): its nav is the landmark.
+    await expect(page.getByRole("link", { name: /^Applications$/i }).first()).toBeVisible();
   });
 
   test("job seeker can access search page", async ({ page }) => {

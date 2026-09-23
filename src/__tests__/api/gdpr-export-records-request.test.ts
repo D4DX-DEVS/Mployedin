@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 
 const USER_ID = "64e000000000000000000001";
 
+jest.mock("@/lib/gdpr/redactMessages", () => ({ redactUserMessages: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/audit/log", () => ({
   actorFromCtx: jest.fn((ctx) => ({ actorId: ctx.userId, actorRole: ctx.role })),

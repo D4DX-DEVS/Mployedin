@@ -11,7 +11,21 @@ export interface CategoryPreference {
 export interface INotificationPreference extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  emailFrequency: EmailFrequency;
+  /**
+   * How often this user wants batched email — **only when they chose it**.
+   *
+   * Deliberately optional and without a schema default. It used to default to
+   * `"daily"`, which meant every lazily-created document arrived carrying an
+   * answer nobody had given: 208 of the 224 live documents held `"daily"` and
+   * not one of those users had picked it. `resolveDigestCadence` reads this
+   * field *first*, so that default silently overrode both the seeker's stated
+   * availability and the admin's platform default, and the product's intended
+   * weekly default could never apply to anyone.
+   *
+   * Absent now means "never chose", which is what lets the fallback chain in
+   * digestGate.ts work as designed.
+   */
+  emailFrequency?: EmailFrequency;
   categories: {
     jobs: CategoryPreference;
     applications: CategoryPreference;
@@ -102,7 +116,8 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
     emailFrequency: {
       type: String,
       enum: ["instant", "daily", "weekly", "none"],
-      default: "daily",
+      // No default — see the interface. An absent value has to stay
+      // distinguishable from a chosen one, or the fallback chain is dead.
     },
     categories: {
       jobs: {

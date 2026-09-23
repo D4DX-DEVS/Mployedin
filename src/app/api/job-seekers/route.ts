@@ -39,7 +39,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0"); // minimum experience years
   const referred = searchParams.get("referred")?.trim();                // any | agent | super_agent | none | mine
 
-  // ── Agent scoping — agents with explicit assignments see only their job seekers ───
+  // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
   const viewer: ReferralViewer = { role: ctx.role as ReferralViewer["role"] };
   if (ctx.role === "agent") {
@@ -47,22 +47,23 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       .select("assignedJobSeekerIds")
       .lean();
     const agentDocId = agent?._id;
-    if (agentDocId) viewer.selfAgentId = String(agentDocId);
-    const assignedIds = (agent?.assignedJobSeekerIds as mongoose.Types.ObjectId[]) ?? [];
-    const hasAssignedById = await JobSeeker.exists({ agentId: agentDocId });
-    if (assignedIds.length > 0 || hasAssignedById) {
-      // Agent has explicit assignments — scope to those, plus anyone who joined
-      // through their own referral link. A referral is provenance, not an
-      // assignment, so it never writes `agentId`; it has to be unioned here.
-      const orConds: Record<string, unknown>[] = [];
+    if (!agentDocId) {
+      agentScopeFilter = { _id: { $in: [] } }; // no profile: nothing, never everything
+    } else {
+      viewer.selfAgentId = String(agentDocId);
+      // Assigned seekers plus anyone who joined through their own referral link
+      // (a referral is provenance, not an assignment, so it never writes
+      // `agentId`). Always applied: an agent with no assignments used to get no
+      // scope at all — every seeker on the platform, hidden profiles included,
+      // none of which job-seekers/[id] would then let them open.
+      const assignedIds = (agent?.assignedJobSeekerIds as mongoose.Types.ObjectId[]) ?? [];
+      const orConds: Record<string, unknown>[] = [
+        { agentId: agentDocId },
+        { "referral.agentId": agentDocId },
+      ];
       if (assignedIds.length > 0) orConds.push({ _id: { $in: assignedIds } });
-      if (agentDocId) {
-        orConds.push({ agentId: agentDocId });
-        orConds.push({ "referral.agentId": agentDocId });
-      }
       agentScopeFilter = { $or: orConds };
     }
-    // else: no explicit assignments — agent sees all job seekers
   } else if (ctx.role === "super_agent") {
     // Match the per-record rule in job-seekers/[id]: a super-agent may only see
     // seekers owned by an agent inside their scope, seekers those agents

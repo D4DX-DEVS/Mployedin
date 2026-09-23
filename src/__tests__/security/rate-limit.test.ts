@@ -138,3 +138,27 @@ describe("RATE_LIMIT_CONFIGS", () => {
     }
   });
 });
+
+describe("preset buckets are independent", () => {
+  // Every preset used to share the key "rl:<ip>" / "rl:user:<id>", so ordinary
+  // browsing (api, 100/min) filled the counter that applying (10/min) and
+  // creating an employer (3/min) are checked against: a seeker who opened a few
+  // job lists got 429 on Apply.
+  test("each preset namespaces its own key", () => {
+    const prefixes = Object.values(RATE_LIMIT_CONFIGS).map((cfg) => cfg.prefix);
+    expect(prefixes.every(Boolean)).toBe(true);
+    expect(new Set(prefixes).size).toBe(prefixes.length);
+  });
+
+  test("browsing traffic does not use up the apply budget", async () => {
+    const user = `user:${Date.now()}-${Math.random()}`;
+    for (let i = 0; i < 15; i++) await checkRateLimit(user, RATE_LIMIT_CONFIGS.api);
+    expect((await checkRateLimit(user, RATE_LIMIT_CONFIGS.applications)).allowed).toBe(true);
+  });
+
+  test("ad-hoc configs without a prefix don't share a bucket when their budgets differ", async () => {
+    const id = `ip-${Date.now()}-${Math.random()}`;
+    for (let i = 0; i < 5; i++) await checkRateLimit(id, { limit: 100, windowSec: 60 });
+    expect((await checkRateLimit(id, { limit: 3, windowSec: 60 })).allowed).toBe(true);
+  });
+});

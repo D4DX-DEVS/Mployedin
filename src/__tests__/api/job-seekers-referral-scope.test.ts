@@ -62,6 +62,25 @@ describe("GET /api/job-seekers — referral scoping", () => {
     expect(cond()).toContain(`"referral.agentId":"${AGENT_DOC}"`);
   });
 
+  // An agent with no assignments used to get NO scope at all: every seeker on
+  // the platform, including ones who hid their profile — and the detail route
+  // then 403'd on all of them.
+  it("agent with no assignments still sees only their own seekers", async () => {
+    ctxRole = "agent"; seekerExists = false;
+    await list();
+    const c = cond();
+    expect(c).toContain(`"agentId":"${AGENT_DOC}"`);
+    expect(c).toContain(`"referral.agentId":"${AGENT_DOC}"`);
+  });
+
+  it("agent with no Agent profile sees nothing", async () => {
+    ctxRole = "agent";
+    const Agent = (await import("@/models/Agent")).default as unknown as { findOne: jest.Mock };
+    Agent.findOne.mockImplementationOnce(() => ({ select: () => ({ lean: async () => null }) }));
+    await list();
+    expect(cond()).toContain(`"_id":{"$in":[]}`);
+  });
+
   it("agent referred=mine narrows to their own referrals", async () => {
     ctxRole = "agent";
     await list("referred=mine");
