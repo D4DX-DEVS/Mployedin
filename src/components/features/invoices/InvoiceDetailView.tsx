@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { getInvoiceDeliveryState, type InvoiceDeliveryState } from "@/lib/invoices/status";
+import { getInvoiceDeliveryState, VOID_REASON_MIN_LENGTH, type InvoiceDeliveryState } from "@/lib/invoices/status";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -159,6 +159,8 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [showVoidForm, setShowVoidForm] = useState(false);
+  const [voidReason, setVoidReason] = useState("");
 
   const fetchInvoice = useCallback(async () => {
     if (!invoiceId) return;
@@ -212,6 +214,17 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
       rejectionReason: trimmedReason || undefined,
       voidReason: trimmedReason || undefined,
     });
+  };
+
+  // Voiding is irreversible, so it takes two steps and a recorded reason; the
+  // API refuses a void without one (VOID_REASON_MIN_LENGTH).
+  const handleVoidInvoice = async () => {
+    if (!invoice) return;
+    const trimmedReason = voidReason.trim();
+    if (trimmedReason.length < VOID_REASON_MIN_LENGTH) return;
+    await handleStatusUpdate("void", { voidReason: trimmedReason });
+    setShowVoidForm(false);
+    setVoidReason("");
   };
 
   const handleRecordPayment = async () => {
@@ -295,12 +308,14 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
               {(["details", "payments", "commissions"] as const).map(tab => (
                 <button
                   key={tab}
+                  type="button"
+                  aria-pressed={activeTab === tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`border-b-2 px-4 py-2.5 text-sm font-medium capitalize transition-colors ${
+                  className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                     activeTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab}
+                  {tab === "details" ? t("tabDetails") : tab === "payments" ? t("tabPayments") : t("tabCommissions")}
                 </button>
               ))}
             </div>
@@ -491,12 +506,14 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       {invoice.commissions.map((c, i) => (
                         <div key={i} className="flex items-center justify-between rounded-lg border border-border/70 bg-secondary/20 chip-pad">
                           <div>
-                            <p className="text-sm font-medium capitalize">{c.role?.replace(/_/g, " ")} — {c.rate}%</p>
+                            <p className="text-sm font-medium">{c.role === "super_agent" ? t("commissionRoleSuperAgent", { rate: c.rate }) : t("commissionRoleAgent", { rate: c.rate })}</p>
                             <p className="text-xs text-muted-foreground">{c.notes}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-bold">{fmt(c.amount)}</p>
-                            <StatusBadge status={c.status} />
+                            {/* Voiding deletes the unpaid Commission records; the lines kept
+                                on the invoice would otherwise still read "Pending". */}
+                            <StatusBadge status={invoice.status === "void" && (c.status === "pending" || c.status === "approved") ? "void" : c.status} />
                           </div>
                         </div>
                       ))}
@@ -521,6 +538,14 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   <div className="rounded-xl border border-rose-200 bg-rose-50/70 chip-pad">
                     <Label className="text-xs text-rose-700">{t("rejectionReason")}</Label>
                     <Textarea className="mt-1 rounded-lg" rows={2} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder={t("rejectionReasonPlaceholder")} />
+                  </div>
+                )}
+                {showVoidForm && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 chip-pad">
+                    <p className="text-xs font-semibold text-rose-700">{t("voidIrreversible")}</p>
+                    <Label htmlFor="invoice-void-reason" className="mt-3 text-xs text-rose-700">{t("voidReasonLabel")}</Label>
+                    <Textarea id="invoice-void-reason" className="mt-1 rounded-lg" rows={2} maxLength={500} value={voidReason} onChange={e => setVoidReason(e.target.value)} placeholder={t("voidReasonPlaceholder")} aria-describedby="invoice-void-reason-hint" />
+                    <p id="invoice-void-reason-hint" className="mt-1 text-xs text-rose-600">{t("voidReasonHint", { min: VOID_REASON_MIN_LENGTH })}</p>
                   </div>
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -562,9 +587,20 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                     </Button>
                   )}
                   {!["pending_approval", "void", "cancelled", "refunded", "paid", "credit_note"].includes(invoice.status) && (
-                    <Button size="sm" variant="outline" onClick={() => handleStatusUpdate("void")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
-                      <XCircle className="h-3.5 w-3.5" /> {t("void")}
-                    </Button>
+                    showVoidForm ? (
+                      <>
+                        <Button size="dense" variant="outline" onClick={handleVoidInvoice} disabled={updatingStatus || voidReason.trim().length < VOID_REASON_MIN_LENGTH} className="gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
+                          <XCircle className="h-3.5 w-3.5" /> {t("confirmVoid")}
+                        </Button>
+                        <Button size="dense" variant="ghost" onClick={() => { setShowVoidForm(false); setVoidReason(""); }} disabled={updatingStatus} className="rounded-lg text-xs">
+                          {tCommon("cancel")}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setShowVoidForm(true)} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
+                        <XCircle className="h-3.5 w-3.5" /> {t("void")}
+                      </Button>
+                    )
                   )}
                   </div>
                   <Button variant="outline" size="dense" onClick={onClose} className="rounded-lg text-xs">{tCommon("close")}</Button>

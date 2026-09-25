@@ -20,6 +20,7 @@ import {
   typeToCategory,
 } from "@/models/NotificationPreference";
 import { sendEmail } from "@/lib/communications/email";
+import { unsubscribeUrl, notificationSettingsPath } from "@/lib/communications/unsubscribeLink";
 import { sendWhatsApp } from "@/lib/communications/whatsapp";
 import { sendPushToUser, isPushEnabled } from "@/lib/push";
 import { getSystemConfig, getUserOverride } from "@/models/SystemConfig";
@@ -99,13 +100,18 @@ export const notificationOrchestrator = inngest.createFunction(
     const shouldEmail = wantEmail && categoryPref.channels.includes("email");
     if (shouldEmail) {
       await step.run("send-email", async () => {
-        const user = await User.findById(userId).select("name email").lean();
+        const user = await User.findById(userId).select("name email role locale").lean();
         if (!user?.email) return;
 
         await sendEmail({
           to: user.email,
           subject: title,
-          html: buildNotificationEmailHtml(title, message, link),
+          html: buildNotificationEmailHtml(title, message, link, {
+            userId,
+            category,
+            role: (user as { role?: string }).role,
+            locale: (user as { locale?: string }).locale,
+          }),
           userId,
           source: "orchestrator",
           category,
@@ -145,14 +151,22 @@ export const notificationOrchestrator = inngest.createFunction(
 
 /**
  * Build a branded notification email HTML.
- * Includes unsubscribe footer with placeholder for token-based link.
+ *
+ * The unsubscribe link turns off just this notification's category. It used
+ * to be `?ref=email` with no token, which the route answers with an error page.
  */
 function buildNotificationEmailHtml(
   title: string,
   message: string,
-  link?: string,
+  link: string | undefined,
+  recipient: { userId: string; category: string; role?: string; locale?: string },
 ): string {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
+  const unsubHref = unsubscribeUrl(baseUrl, recipient.userId, { category: recipient.category, ref: "email" });
+  const unsubLink = unsubHref
+    ? ` |
+          <a href="${unsubHref.replace(/&/g, "&amp;")}" style="color: #6b7280;">Unsubscribe</a>`
+    : "";
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
@@ -169,8 +183,7 @@ function buildNotificationEmailHtml(
       <div style="padding: 16px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background: #f9fafb;">
         <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
           You're receiving this because of your notification settings.
-          <a href="${baseUrl}/en/settings/notifications" style="color: #6b7280;">Manage preferences</a> |
-          <a href="${baseUrl}/api/unsubscribe?ref=email" style="color: #6b7280;">Unsubscribe</a>
+          <a href="${baseUrl}${notificationSettingsPath(recipient.role, recipient.locale ?? "en")}" style="color: #6b7280;">Manage preferences</a>${unsubLink}
         </p>
       </div>
     </div>

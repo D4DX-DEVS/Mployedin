@@ -13,6 +13,8 @@ export const PRIVATE_JOB_FIELDS = [
   "workflow",
   "workflowMode",
   "matchingWeights",
+  // Which screening answers qualify — shipping it would hand seekers the key.
+  "screeningKnockouts",
   "pauseReason",
   "preDeletionStatus",
   "clonedFrom",

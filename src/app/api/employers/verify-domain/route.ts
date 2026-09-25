@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { domainVerifyRequestSchema } from "@/lib/validators/team";
 import { Employer } from "@/models/Employer";
 import { CompanyUser } from "@/models/CompanyUser";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { canManageTeam } from "@/lib/permissions/team";
+import { actingUserId, canManageTeam } from "@/lib/permissions/team";
 import { sendEmail } from "@/lib/communications/email";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import logger from "@/lib/logger";
@@ -15,7 +16,7 @@ import logger from "@/lib/logger";
 /**
  * POST /api/employers/verify-domain — send domain verification email
  */
-async function postHandler(req: NextRequest, ctx: { userId: string; role: string }) {
+async function postHandler(req: NextRequest, ctx: { userId: string; role: string; member?: AuthContext["member"] }) {
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -43,14 +44,18 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return NextResponse.json({ error: "Domain already verified" }, { status: 400 });
   }
 
-  // Verify caller is owner or admin
+  // Verify caller is owner or admin, or a colleague granted company settings —
+  // judged on their own membership, never the owner's row ctx.userId points at.
   const callerMember = await CompanyUser.findOne({
     companyId: employer._id,
-    userId: ctx.userId,
+    userId: actingUserId(ctx),
     status: "active",
   }).lean();
 
-  if (!callerMember || !canManageTeam(callerMember.companyRole)) {
+  if (
+    !callerMember ||
+    !(canManageTeam(callerMember.companyRole) || (ctx.member && callerMember.permissions?.canManageCompanySettings))
+  ) {
     return NextResponse.json({ error: "Only owners and admins can verify domain" }, { status: 403 });
   }
 

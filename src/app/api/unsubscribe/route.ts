@@ -4,8 +4,10 @@ import { connectDB } from "@/lib/db/mongoose";
 import NotificationPreference from "@/models/NotificationPreference";
 import SavedSearch from "@/models/SavedSearch";
 import logger from "@/lib/logger";
+import { unsubscribeSecret } from "@/lib/communications/unsubscribeLink";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET;
+// Shared with the signer so the two can never disagree about the secret.
+const JWT_SECRET = unsubscribeSecret();
 
 interface UnsubscribePayload {
   userId: string;

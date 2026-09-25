@@ -5,9 +5,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useId, useMemo } from "react";
-import { ChevronDown, X, Upload, Phone, Search, FileText } from "lucide-react";
+import { Check, ChevronDown, X, Upload, Phone, Search, FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
@@ -218,25 +219,21 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
     return map;
   }, [options, popularOptions]);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch("");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  useEffect(() => {
-    if (open && searchable && searchInputRef.current) {
+  const focusInitial = () => {
+    if (searchable && searchInputRef.current) {
       searchInputRef.current.focus();
-    } else if (open && !searchable) {
+    } else if (!searchable) {
       const selectedIndex = visibleOptions.findIndex((option) => value.includes(option.value));
       optionRefs.current[Math.max(selectedIndex, 0)]?.focus();
     }
-  }, [open, searchable, value, visibleOptions]);
+  };
+
+  // The list mounts through a portal a render after `open` flips, so the first
+  // focus happens in PopoverContent's onOpenAutoFocus; this keeps it in place
+  // while the list is open.
+  useEffect(() => {
+    if (open) focusInitial();
+  }, [open, searchable, value, visibleOptions]);  
 
   const closeAndRestoreFocus = () => {
     setOpen(false);
@@ -244,69 +241,135 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
     triggerRef.current?.focus();
   };
 
+  // Escape must close only this list. Radix Dialog listens for Escape on the
+  // document in the capture phase, so the element handlers below run too late
+  // and the whole dialog closed with it, discarding what was typed. A window
+  // capture listener runs before the dialog's.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      setSearch("");
+      triggerRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [open]);
+
   const focusOption = (currentIndex: number, direction: 1 | -1) => {
     if (!visibleOptions.length) return;
     const nextIndex = (currentIndex + direction + visibleOptions.length) % visibleOptions.length;
     optionRefs.current[nextIndex]?.focus();
   };
 
+  /* The list is a Radix popover portalled to <body>. Rendered in place it sat
+     inside whatever scrolled around it — a DialogContent is overflow-y-auto —
+     so opening it grew the dialog's scroll height and the list was clipped at
+     the dialog's bottom edge (employer Team → Job access). A plain portal is
+     not enough inside a Radix Dialog: its focus trap pulls focus back out of
+     the search box. Radix's own popover layer is what the dialog lets through,
+     and it has to be `modal` — the dialog's scroll lock only exempts the
+     dialog's own content, so a non-modal list ignored the mouse wheel. */
   return (
-    <div className="space-y-1 relative" ref={containerRef}>
-      {label && (
-        <label id={labelId} htmlFor={controlId} className="block text-xs font-medium text-muted-foreground">
-          {label} {required && <RequiredMark />}
-          {maxSelections && <span className="text-muted-foreground/60 font-normal"> ({t("maxSelections", { max: maxSelections })})</span>}
-        </label>
-      )}
-      <div
-        className={`min-h-10 rounded-lg border text-sm flex flex-wrap items-center gap-1 ${ error ? "border-destructive" : "" } chip-pad`}
-      >
-        {value.map((v) => {
-          const selectedLabel = allOptionsMap.get(v) ?? v;
-          return (
+    <Popover
+      modal
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) {
+          setOpen(false);
+          setSearch("");
+        }
+      }}
+    >
+      <div className="space-y-1" ref={containerRef}>
+        {label && (
+          <label id={labelId} htmlFor={controlId} className="block text-xs font-medium text-muted-foreground">
+            {label} {required && <RequiredMark />}
+            {maxSelections && <span className="text-muted-foreground/60 font-normal"> ({t("maxSelections", { max: maxSelections })})</span>}
+          </label>
+        )}
+        {/* The modal list sets pointer-events:none on <body>; the chips'
+            remove buttons and the trigger must stay usable while it is open. */}
+        <PopoverAnchor asChild>
+          <div
+            style={{ pointerEvents: "auto" }}
+            className={`min-h-10 rounded-lg border text-sm flex flex-wrap items-center gap-1 ${ error ? "border-destructive" : "" } chip-pad`}
+          >
+            {value.map((v) => {
+              const selectedLabel = allOptionsMap.get(v) ?? v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => toggle(v)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  aria-label={t("removeSkill", { skill: selectedLabel })}
+                >
+                  <span aria-hidden="true">{selectedLabel}</span>
+                  <X aria-hidden="true" className="h-3 w-3" />
+                </button>
+              );
+            })}
             <button
-              key={v}
+              ref={triggerRef}
+              id={controlId}
               type="button"
-              onClick={() => toggle(v)}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("removeSkill", { skill: selectedLabel })}
+              role="combobox"
+              aria-haspopup="listbox"
+              aria-expanded={open}
+              aria-controls={listboxId}
+              aria-labelledby={label ? labelId : undefined}
+              /* Unlabelled, it used to announce the placeholder ("All Jobs (no
+                 restriction)") even with jobs picked — say what is selected. */
+              aria-label={label ? undefined : value.length > 0
+                ? options.filter((o) => value.includes(o.value)).map((o) => o.label).join(", ")
+                : placeholder ?? t("selectOptions")}
+              aria-describedby={error ? errorId : hint ? hintId : undefined}
+              aria-invalid={error ? true : undefined}
+              aria-required={required || undefined}
+              onClick={() => setOpen((current) => !current)}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setOpen(true);
+                } else if (event.key === "Escape" && open) {
+                  event.preventDefault();
+                  closeAndRestoreFocus();
+                }
+              }}
+              className="flex min-h-7 min-w-24 flex-1 items-center text-start text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
-              <span aria-hidden="true">{selectedLabel}</span>
-              <X aria-hidden="true" className="h-3 w-3" />
+              {value.length === 0 ? placeholder ?? t("selectOptions") : null}
+              <ChevronDown aria-hidden="true" className={`ms-auto h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
             </button>
-          );
-        })}
-        <button
-          ref={triggerRef}
-          id={controlId}
-          type="button"
-          role="combobox"
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={listboxId}
-          aria-labelledby={label ? labelId : undefined}
-          aria-label={label ? undefined : placeholder ?? t("selectOptions")}
-          aria-describedby={error ? errorId : hint ? hintId : undefined}
-          aria-invalid={error ? true : undefined}
-          aria-required={required || undefined}
-          onClick={() => setOpen((current) => !current)}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-              event.preventDefault();
-              setOpen(true);
-            } else if (event.key === "Escape" && open) {
-              event.preventDefault();
-              closeAndRestoreFocus();
-            }
+          </div>
+        </PopoverAnchor>
+        <PopoverContent
+          align="start"
+          sideOffset={4}
+          /* Focus goes to the search box or the selected option, not Radix's
+             default first tabbable. On close it returns to the combobox — here,
+             not in closeAndRestoreFocus, because until the list unmounts its
+             focus trap pulls a direct focus() straight back. */
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            focusInitial();
           }}
-          className="flex min-h-7 min-w-24 flex-1 items-center text-start text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            triggerRef.current?.focus();
+          }}
+          /* A press on a chip or the trigger is this control's own, not an
+             outside click: removing a chip keeps the list open, and the
+             trigger's own onClick does the closing. */
+          onInteractOutside={(event) => {
+            if (containerRef.current?.contains(event.target as Node)) event.preventDefault();
+          }}
+          className="w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg border-border bg-background p-0 shadow-black/10"
         >
-          {value.length === 0 ? placeholder ?? t("selectOptions") : null}
-          <ChevronDown aria-hidden="true" className={`ms-auto h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
-        </button>
-      </div>
-      {open && (
-        <div className="absolute z-[99] w-full top-full mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
           {searchable && (
             <div className="p-2 border-b">
               <div className="relative">
@@ -357,7 +420,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
                     }`}
                   >
                     {o.label}
-                    {value.includes(o.value) && <span aria-hidden="true" className="text-primary text-xs">✓</span>}
+                    {value.includes(o.value) && <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary" />}
                   </button>
                 ))}
                 <div role="presentation" className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{groupLabel ?? t("all")}</div>
@@ -389,16 +452,16 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
                   }`}
                 >
                   {o.label}
-                  {value.includes(o.value) && <span aria-hidden="true" className="text-primary text-xs">✓</span>}
+                  {value.includes(o.value) && <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary" />}
                 </button>
                 );
               })
             )}
           </div>
-        </div>
-      )}
-      <FieldFeedback hint={hint} error={error} hintId={hintId} errorId={errorId} />
-    </div>
+        </PopoverContent>
+        <FieldFeedback hint={hint} error={error} hintId={hintId} errorId={errorId} />
+      </div>
+    </Popover>
   );
 }
 

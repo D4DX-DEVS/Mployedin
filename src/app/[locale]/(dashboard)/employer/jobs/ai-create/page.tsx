@@ -238,7 +238,7 @@ function getDetectedLanguageLabel(language: string | null, t: (key: string) => s
 }
 
 const VOICE_LANGUAGES = [
-  { code: "auto", labelKey: "langAuto", flag: "🌐" },
+  { code: "auto", labelKey: "langAuto", flag: "" },
   { code: "en", labelKey: "langEnglish", flag: "🇬🇧" },
   { code: "ar", labelKey: "langArabic", flag: "🇸🇦" },
   { code: "ml", labelKey: "langMalayalam", flag: "🇮🇳" },
@@ -886,7 +886,7 @@ export default function EmployerAIJobCreatePage() {
                       title={t("voiceLanguage")}
                     >
                       <Globe className="h-3 w-3" />
-                      <span>{(VOICE_LANGUAGES.find((l) => l.code === voiceLanguage) ?? VOICE_LANGUAGES[0]).flag} {voiceLanguage.toUpperCase()}</span>
+                      <span>{[(VOICE_LANGUAGES.find((l) => l.code === voiceLanguage) ?? VOICE_LANGUAGES[0]).flag, voiceLanguage.toUpperCase()].filter(Boolean).join(" ")}</span>
                     </button>
                     {showLangPicker && (
                       <div className="absolute bottom-full right-0 mb-1 z-50 w-36 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
@@ -899,7 +899,7 @@ export default function EmployerAIJobCreatePage() {
                               lang.code === voiceLanguage && "bg-primary/10 text-primary font-medium"
                             )}
                           >
-                            <span>{lang.flag}</span>
+                            {lang.flag ? <span>{lang.flag}</span> : <Globe className="h-3.5 w-3.5" aria-hidden="true" />}
                             <span>{t(`jobCreator.${lang.labelKey}`)}</span>
                           </button>
                         ))}

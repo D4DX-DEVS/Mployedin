@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Send, Loader2, MessageSquare, AlertTriangle, MoreVertical, Trash2, Eraser } from "lucide-react";
+import { Send, Loader2, MessageSquare, AlertTriangle, MoreVertical, Trash2, Eraser, CheckCheck } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -362,7 +362,7 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   <p className={cn("text-[11px] mt-1 opacity-60", isMine ? "text-right" : "")}>
                     {new Date(msg.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
-                    {isMine && msg.readAt && " ✓✓"}
+                    {isMine && msg.readAt && <CheckCheck className="ms-1 inline h-3 w-3 align-[-2px]" aria-hidden="true" />}
                   </p>
                 </div>
               </div>

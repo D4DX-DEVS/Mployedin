@@ -21,11 +21,14 @@ export function SimilarJobs({
   jobId,
   locale,
   className,
+  isPublic = false,
 }: {
   jobId: string;
   locale: string;
   /** Replaces the default stand-alone spacing/divider when the block sits inside a column. */
   className?: string;
+  /** When true (on public job pages), links point to /jobs/[id] instead of /job-seeker/jobs/[id]. */
+  isPublic?: boolean;
 }) {
   const t = useTranslations("similarJobs");
   const shell = cn("@container/similar space-y-4", className ?? "mt-8 border-t border-border pt-8");
@@ -63,7 +66,7 @@ export function SimilarJobs({
         {jobs.map((job) => (
           <Link
             key={job._id}
-            href={`/${locale}/job-seeker/jobs/${job._id}`}
+            href={isPublic ? `/${locale}/jobs/${job._id}` : `/${locale}/job-seeker/jobs/${job._id}`}
             className="group block rounded-lg sm:rounded-3xl border border-border/70 bg-card transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)] card-pad"
           >
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

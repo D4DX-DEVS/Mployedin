@@ -82,6 +82,13 @@ export const dailyDigestWorker = inngest.createFunction(
         to: email,
         subject,
         html,
+        // userId adds the RFC 8058 List-Unsubscribe header — the "Unsubscribe"
+        // button Gmail and Yahoo show beside the sender, which they expect on
+        // recurring mail. Category + source also stop this logging as a
+        // "system / direct" email in the admin email log.
+        userId,
+        category: "jobs",
+        source: "daily-digest",
       });
     });
 
@@ -118,6 +125,7 @@ export function digestEmailDataFromEvent(
   data: NotificationDailyDigestEvent["data"],
 ): DigestEmailData {
   return {
+    userId: data.userId,
     userName: data.userName,
     locale: data.locale,
     jobs: data.jobs,
@@ -128,6 +136,8 @@ export function digestEmailDataFromEvent(
 }
 
 export interface DigestEmailData {
+  /** The recipient. Signs the footer's unsubscribe link; without it the link is left out. */
+  userId?: string;
   userName: string;
   locale: string;
   jobs: Array<{
@@ -493,6 +503,10 @@ export function buildDigestEmail(data: DigestEmailData): string {
           ? "تتلقى هذا البريد لأنك فعّلت توصيات الوظائف."
           : "You're receiving this because you enabled job recommendations.",
         unsubRef: "digest",
+        // Turns off job recommendations only — the category digestGate reads —
+        // not interview invites or password resets.
+        userId: data.userId,
+        unsubCategory: "jobs",
       })}
     </div>
   `;

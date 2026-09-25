@@ -273,6 +273,7 @@ export default function AgentJobsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("filters.searchPlaceholder")}
+                aria-label={t("filters.searchPlaceholder")}
                 className="h-10 rounded-xl border-border bg-background ps-9 text-sm shadow-none"
               />
             </div>

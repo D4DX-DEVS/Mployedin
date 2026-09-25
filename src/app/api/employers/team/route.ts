@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import { withSubscription } from "@/lib/subscription/withSubscription";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
@@ -12,8 +13,7 @@ import { User } from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { sendEmail } from "@/lib/communications/email";
-import { canManageTeam } from "@/lib/permissions/team";
-import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
+import { getTeamActorRole } from "@/lib/permissions/team";
 import { escapeRegex } from "@/lib/security/sanitize";
 import logger from "@/lib/logger";
 import { escapeHtml, sanitizeEmailSubject } from "@/lib/security/html-escape";
@@ -21,7 +21,7 @@ import { escapeHtml, sanitizeEmailSubject } from "@/lib/security/html-escape";
 /**
  * GET /api/employers/team — list team members for the employer's company
  */
-async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
+async function getHandler(req: NextRequest, ctx: { userId: string; role: string; member?: AuthContext["member"] }) {
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -32,29 +32,11 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  // Verify caller is owner or admin
-  let callerMember: { companyRole: CompanyRole } | null = await CompanyUser.findOne({
-    companyId: employer._id,
-    userId: ctx.userId,
-    status: "active",
-  }).select("companyRole").lean();
+  // Verify caller can manage team — a colleague on their own membership, never
+  // the owner's row that ctx.userId points at.
+  const actorRole = await getTeamActorRole(ctx, employer);
 
-  if (!callerMember) {
-    callerMember = await ensureEmployerOwnerMembership({
-      companyId: employer._id,
-      userId: ctx.userId,
-      email: employer.companyEmail,
-    });
-
-    if (!callerMember) {
-      return NextResponse.json(
-        { error: "Account verification failed. Please contact support." },
-        { status: 403 },
-      );
-    }
-  }
-
-  if (!callerMember || !canManageTeam(callerMember.companyRole)) {
+  if (!actorRole) {
     return NextResponse.json({ error: "Only owners and admins can view team" }, { status: 403 });
   }
 
@@ -123,7 +105,7 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
 /**
  * POST /api/employers/team — invite a new team member
  */
-async function postHandler(req: NextRequest, ctx: { userId: string; role: string }) {
+async function postHandler(req: NextRequest, ctx: { userId: string; role: string; member?: AuthContext["member"] }) {
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -136,29 +118,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  // Verify caller can manage team
-  let callerMember: { companyRole: CompanyRole } | null = await CompanyUser.findOne({
-    companyId: employer._id,
-    userId: ctx.userId,
-    status: "active",
-  }).select("companyRole").lean();
+  // Verify caller can manage team — a colleague on their own membership, never
+  // the owner's row that ctx.userId points at.
+  const actorRole = await getTeamActorRole(ctx, employer);
 
-  if (!callerMember) {
-    callerMember = await ensureEmployerOwnerMembership({
-      companyId: employer._id,
-      userId: ctx.userId,
-      email: employer.companyEmail,
-    });
-
-    if (!callerMember) {
-      return NextResponse.json(
-        { error: "Account verification failed. Please contact support." },
-        { status: 403 },
-      );
-    }
-  }
-
-  if (!callerMember || !canManageTeam(callerMember.companyRole)) {
+  if (!actorRole) {
     return NextResponse.json({ error: "Insufficient permissions to invite" }, { status: 403 });
   }
 
@@ -187,7 +151,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   }
 
   // Admin cannot invite another admin (only owner can)
-  if (callerMember.companyRole === "admin" && resolvedRoles.includes("admin")) {
+  if (actorRole === "admin" && resolvedRoles.includes("admin")) {
     return NextResponse.json({ error: "Only owners can invite admins" }, { status: 403 });
   }
 
@@ -225,11 +189,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       try {
         await sendEmail({
           to: email,
-          subject: sanitizeEmailSubject(`You're invited to join ${employer.companyName} on mployedin`),
+          subject: sanitizeEmailSubject(`You're invited to join ${employer.companyName} on MPLOYEDIN`),
           html: `
             <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
               <h2>Team Invitation</h2>
-              <p>You've been invited to join <strong>${safeCompanyName}</strong> as a <strong>${safeRoleName}</strong> on mployedin.</p>
+              <p>You've been invited to join <strong>${safeCompanyName}</strong> as a <strong>${safeRoleName}</strong> on MPLOYEDIN.</p>
               <p>This invitation expires in 48 hours.</p>
               <a href="${safeAcceptUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Accept Invitation</a> <!-- nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- safeAcceptUrl is HTML attribute-escaped above -->
               <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">If you didn't expect this invitation, you can safely ignore this email.</p>

@@ -154,6 +154,8 @@ export default function AdminJobsPage() {
   const [status, setStatus] = useUrlFilter("status", "all");
   /** "none" — jobs with no applications, the dashboard's demand alert. */
   const [applicationsFilter, setApplicationsFilter] = useUrlFilter("applications", "all");
+  /** "7d" — active jobs closing within a week, the dashboard's Jobs card. */
+  const [expiring, setExpiring] = useUrlFilter("expiring", "", { allow: ["7d"] });
   const [showFilters, setShowFilters] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -218,6 +220,7 @@ export default function AdminJobsPage() {
       if (locationFilter) params.set("location", locationFilter);
       if (skillsFilter) params.set("skills", skillsFilter);
       if (applicationsFilter === "none") params.set("applications", "none");
+      if (expiring) params.set("expiring", expiring);
 
       const res = await fetch(`/api/admin/jobs?${params}`);
       if (!res.ok) throw new Error(t("jobLoadFailed"));
@@ -234,7 +237,7 @@ export default function AdminJobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, status, selectedEmployer, selectedAgent, workMode, employmentType, locationFilter, skillsFilter, applicationsFilter, page, limit, updateTotal]);
+  }, [search, status, selectedEmployer, selectedAgent, workMode, employmentType, locationFilter, skillsFilter, applicationsFilter, expiring, page, limit, updateTotal]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -264,7 +267,7 @@ export default function AdminJobsPage() {
   const draftJobs = statusCounts.draft ?? jobs.filter((j) => j.status === "draft").length;
   const totalApplicants = serverApplicants ?? jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
 
-  const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter || applicationsFilter !== "all";
+  const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter || applicationsFilter !== "all" || Boolean(expiring);
 
   const statusOptionsList = getStatusOptions(t);
   const workModeOptionsList = getWorkModeOptions(t);
@@ -280,6 +283,7 @@ export default function AdminJobsPage() {
     locationFilter ? { key: "location", label: locationFilter, clear: () => setLocationFilter("") } : null,
     skillsFilter ? { key: "skills", label: skillsFilter, clear: () => setSkillsFilter("") } : null,
     applicationsFilter === "none" ? { key: "applications", label: t("filterChipNoApplications"), clear: () => setApplicationsFilter("all") } : null,
+    expiring ? { key: "expiring", label: t("filterChipExpiringSoon"), clear: () => setExpiring("") } : null,
   ].filter((chip): chip is { key: string; label: string; clear: () => void } => chip !== null);
   const activeFilterCount = activeFilterChips.length;
 
@@ -310,6 +314,7 @@ export default function AdminJobsPage() {
     setLocationFilter("");
     setSkillsFilter("");
     setApplicationsFilter("all");
+    setExpiring("");
     setAiQuery("");
     setAiSummary(null);
     resetPage();
@@ -609,7 +614,7 @@ export default function AdminJobsPage() {
       ) : (
         <div className="space-y-4">
           {jobs.map((job) => {
-            const posted = new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            const posted = formatDate(new Date(job.createdAt), { month: "short", day: "numeric", year: "numeric" }, locale);
             const salaryLabel = formatSalary(job, t);
             const jobSummary = getJobSummary(job);
             const isExpanded = expandedJobs.has(job._id);

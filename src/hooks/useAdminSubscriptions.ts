@@ -48,6 +48,8 @@ export interface AdminSubscriptionsFilters {
   autoRenew?: string;
   dateFrom?: string;
   dateTo?: string;
+  /** "7d" | "30d" — active subscriptions ending inside that window. */
+  expiring?: string;
 }
 
 interface AdminSubscriptionsResponse {
@@ -82,6 +84,7 @@ async function fetchAdminSubscriptions(
   if (filters.autoRenew) params.set("autoRenew", filters.autoRenew);
   if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
   if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  if (filters.expiring) params.set("expiring", filters.expiring);
 
   const res = await fetch(`/api/admin/subscriptions?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to load subscriptions");

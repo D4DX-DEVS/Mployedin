@@ -12,6 +12,7 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import NotificationPreference from "@/models/NotificationPreference";
 import { sendEmail } from "@/lib/communications/email";
+import { unsubscribeUrl } from "@/lib/communications/unsubscribeLink";
 import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import {
   recommendJobsFor,
@@ -142,6 +143,7 @@ export const similarJobsAfterApply = inngest.createFunction(
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
 
       const html = buildSimilarJobsEmail({
+        userId: String(userId),
         userName: user.name,
         locale,
         appliedJobTitle: jobTitle,
@@ -190,6 +192,8 @@ function relativeAge(createdAt?: Date | string): string {
 }
 
 interface SimilarJobsEmailData {
+  /** Signs the footer's unsubscribe link; without it the link is left out. */
+  userId?: string;
   userName: string;
   locale: string;
   appliedJobTitle: string;
@@ -221,6 +225,15 @@ function buildSimilarJobsEmail(data: SimilarJobsEmailData): string {
   const { userName, locale, appliedJobTitle, appliedCompany, similarJobs, baseUrl } = data;
   const isAr = locale === "ar";
   const dir = isAr ? "rtl" : "ltr";
+  // Scoped to `jobs`, the category the check-prefs step above reads. Was
+  // `?ref=similar-jobs` with no token, which the route rejects.
+  const unsubHref = data.userId
+    ? unsubscribeUrl(baseUrl, data.userId, { category: "jobs", ref: "similar-jobs" })
+    : null;
+  const unsubLink = unsubHref
+    ? ` |
+          <a href="${unsubHref.replace(/&/g, "&amp;")}" style="color: #6b7280;">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>`
+    : "";
 
   const jobRows = similarJobs
     .map((j) => {
@@ -285,8 +298,7 @@ function buildSimilarJobsEmail(data: SimilarJobsEmailData): string {
       </div>
       <div style="padding: 16px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background: #f9fafb;">
         <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
-          <a href="${baseUrl}/${locale}/job-seeker/settings/notifications" style="color: #6b7280;">${isAr ? "إدارة التفضيلات" : "Manage preferences"}</a> |
-          <a href="${baseUrl}/api/unsubscribe?ref=similar-jobs" style="color: #6b7280;">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>
+          <a href="${baseUrl}/${locale}/job-seeker/settings/notifications" style="color: #6b7280;">${isAr ? "إدارة التفضيلات" : "Manage preferences"}</a>${unsubLink}
         </p>
       </div>
     </div>

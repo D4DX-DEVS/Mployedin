@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
-import { uploadFile, deleteFile } from "@/lib/storage/spaces";
+import { uploadFile } from "@/lib/storage/spaces";
 import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import { cvStatusesFor, registerCvDocument, releaseSeekerFile } from "@/lib/cv/cvDocuments";
+import { limitCvUpload } from "@/lib/cv/uploadLimit";
+import logger from "@/lib/logger";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -33,9 +36,22 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
   }
 
   await connectDB();
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("documents").lean();
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents cv.originalUrl").lean();
+  if (!seeker) return NextResponse.json({ documents: [], profileCv: null });
 
-  return NextResponse.json({ documents: seeker?.documents ?? [] });
+  // Whether each resume — and the profile CV — has been read. A file with no
+  // record yet predates CV reading and is waiting for the backfill.
+  const docs = (seeker.documents ?? []) as Array<{ category?: string; url: string }>;
+  const profileUrl = (seeker as { cv?: { originalUrl?: string } }).cv?.originalUrl ?? null;
+  const urls = docs.filter((d) => d.category === "resume").map((d) => d.url);
+  if (profileUrl) urls.push(profileUrl);
+  const statuses = await cvStatusesFor(seeker._id, urls);
+  const statusOf = (url: string) => statuses.get(url)?.status ?? "uploaded";
+
+  return NextResponse.json({
+    documents: docs.map((d) => (d.category === "resume" ? { ...d, cvStatus: statusOf(d.url) } : d)),
+    profileCv: profileUrl ? { cvStatus: statusOf(profileUrl) } : null,
+  });
 }
 
 // POST /api/job-seeker/documents — upload a document
@@ -68,12 +84,20 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   }
 
   // Limit to 20 documents per user
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("documents");
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents");
   if (!seeker) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
   if ((seeker.documents?.length ?? 0) >= 20) {
     return NextResponse.json({ error: "Maximum 20 documents allowed" }, { status: 400 });
+  }
+
+  // A resume is read by the AI like the profile CV, so it is limited like one.
+  const fingerprint =
+    category === "resume" ? createHash("sha256").update(Buffer.from(await file.arrayBuffer())).digest("hex") : null;
+  if (fingerprint) {
+    const limited = await limitCvUpload({ userId: ctx.userId, role: ctx.role, jobSeekerId: seeker._id, fingerprint });
+    if (limited) return limited;
   }
 
   let result: { url: string };
@@ -97,6 +121,24 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     { $push: { documents: doc } }
   );
 
+  // A resume can be sent with an application, so it is read like the profile CV.
+  if (fingerprint) {
+    try {
+      await registerCvDocument({
+        jobSeekerId: seeker._id,
+        userId: ctx.userId,
+        fileUrl: result.url,
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        fingerprint,
+        source: "document",
+      });
+    } catch (err) {
+      logger.error({ err, userId: ctx.userId }, "[cv] failed to record uploaded resume");
+    }
+  }
+
   await logActivity({
     ...actorFromCtx(ctx),
     action: "job_seeker.upload_document",
@@ -106,7 +148,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     req,
   });
 
-  return NextResponse.json({ document: doc });
+  return NextResponse.json({ document: category === "resume" ? { ...doc, cvStatus: "uploaded" } : doc });
 }
 
 // DELETE /api/job-seeker/documents?id=xxx — remove a document
@@ -122,7 +164,7 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
 
   await connectDB();
 
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("documents");
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents");
   if (!seeker) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
@@ -132,9 +174,10 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  // Delete from storage
+  // Delete from storage — unless an application was sent with it: the
+  // employer keeps what they received.
   if (doc.url) {
-    try { await deleteFile(doc.url); } catch { /* ignore */ }
+    await releaseSeekerFile(seeker._id, doc.url);
   }
 
   await JobSeeker.updateOne(

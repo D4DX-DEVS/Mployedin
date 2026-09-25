@@ -8,7 +8,7 @@ import { FORMAT_DIMENSIONS, POSTER_FONTS, TEMPLATES, POSTER_ELEMENTS, POSTER_SWA
 import { PosterOverlay } from "./PosterOverlay";
 import { buildPosterShareUrl, buildQrTrackingUrl } from "@/lib/composer/branding";
 import { exportPosterPng } from "./exportPoster";
-import { Download, Copy, Share2, Save, Undo2, Redo2 } from "lucide-react";
+import { Download, Copy, Share2, Save, Undo2, Redo2, ArrowLeft } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 
 interface PosterPreviewPanelProps {
@@ -217,7 +217,7 @@ export function PosterPreviewPanel({
               {POSTER_ELEMENTS.find((e) => e.id === selectedId)?.label}
             </p>
             <button type="button" onClick={() => setSelectedId(null)} className="text-[11px] text-muted-foreground underline">
-              ← {t("backToSettings")}
+              <ArrowLeft className="me-0.5 inline h-3 w-3 align-[-2px] rtl:rotate-180" aria-hidden="true" />{t("backToSettings")}
             </button>
           </div>
 

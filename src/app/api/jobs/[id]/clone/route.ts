@@ -89,6 +89,7 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     workflow: source.workflow,
     matchingWeights: source.matchingWeights,
     screeningQuestions: source.screeningQuestions,
+    screeningKnockouts: source.screeningKnockouts,
     status: "draft",
   });
   await clone.save({ validateBeforeSave: false });

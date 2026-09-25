@@ -557,6 +557,7 @@ export default function JobSeekerSkillsPage() {
                 setSelectedRoles([]);
               }}
               placeholder={t("targetRolePlaceholder")}
+              aria-label={t("targetRole")}
               className="h-11"
             />
             <div className="flex flex-wrap gap-1.5">
@@ -615,6 +616,7 @@ export default function JobSeekerSkillsPage() {
                   }
                 }}
                 placeholder={t("addSkillPlaceholder")}
+                aria-label={t("addSkillPlaceholder")}
                 className="h-11"
               />
               <Button

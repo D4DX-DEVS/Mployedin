@@ -142,6 +142,12 @@ export function useUrlFilters<T extends Record<string, string>>(
     return next;
   });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The latest filters, updated synchronously by every write so two changes in
+  // one tick both land. setFilter reads this instead of a setState updater:
+  // writing the URL from inside an updater runs router.replace mid-render
+  // ("Cannot update a component while rendering a different component") and
+  // twice under StrictMode.
+  const latest = useRef(filters);
 
   const commit = useCallback(
     (next: T) => {
@@ -159,13 +165,12 @@ export function useUrlFilters<T extends Record<string, string>>(
 
   const setFilter = useCallback(
     (key: keyof T & string, value: string) => {
-      setFilters((previous) => {
-        const next = { ...previous, [key]: value } as T;
-        if (timer.current) clearTimeout(timer.current);
-        if (debounceKeys.includes(key)) timer.current = setTimeout(() => commit(next), debounceMs);
-        else commit(next);
-        return next;
-      });
+      const next = { ...latest.current, [key]: value } as T;
+      latest.current = next;
+      setFilters(next);
+      if (timer.current) clearTimeout(timer.current);
+      if (debounceKeys.includes(key)) timer.current = setTimeout(() => commit(next), debounceMs);
+      else commit(next);
     },
     // debounceKeys is a literal array at every call site; depending on the
     // joined form keeps the callback stable instead of new on every render.
@@ -174,6 +179,7 @@ export function useUrlFilters<T extends Record<string, string>>(
   );
 
   const resetFilters = useCallback(() => {
+    latest.current = defaultsRef.current;
     setFilters(defaultsRef.current);
     commit(defaultsRef.current);
   }, [commit]);

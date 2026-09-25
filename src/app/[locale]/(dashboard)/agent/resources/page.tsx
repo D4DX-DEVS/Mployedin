@@ -93,7 +93,7 @@ export default function ResourceDownloadsPage() {
       <div className="flex w-full flex-col gap-2" data-table-toolbar="simple">
         <div className="relative toolbar-search-field">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full pl-9 text-sm" />
+          <Input placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full pl-9 text-sm" />
         </div>
         <div className="flex min-w-0 gap-2 sm:items-center">
           <div className="flex-1 min-w-0">

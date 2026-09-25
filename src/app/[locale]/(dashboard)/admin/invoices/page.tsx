@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
@@ -12,13 +12,15 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { INVOICE_STATUSES } from "@/lib/invoices/status";
 import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox,
   Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList, Download,
-  Clock, CheckCircle2, TrendingUp,
+  Clock, CheckCircle2, TrendingUp, X,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -75,11 +77,17 @@ export default function AdminInvoicesPage() {
   const t = useTranslations("adminInvoices");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
-  const [activeView, setActiveView] = useState<"queue" | "table" | "analytics">("queue");
+  const searchParams = useSearchParams();
+  // A filtered link (the admin dashboard's "4 overdue invoices") is about the
+  // ledger, so it opens there instead of on the uninvoiced-placements queue.
+  const [activeView, setActiveView] = useState<"queue" | "table" | "analytics">(() =>
+    searchParams.get("status") || searchParams.get("attention") ? "table" : "queue",
+  );
 
   const STATUS_OPTIONS = [
     { value: "all", label: t("statusAllStatuses") },
     { value: "draft", label: t("statusDraft") },
+    { value: "pending_approval", label: t("statusPendingApproval") },
     { value: "issued", label: t("statusIssued") },
     { value: "sent", label: t("statusSent") },
     { value: "paid", label: t("statusPaid") },
@@ -123,7 +131,10 @@ export default function AdminInvoicesPage() {
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  // In the URL so dashboard rows can deep-link and back/refresh keep the view.
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "", { allow: INVOICE_STATUSES });
+  /** Rows needing a person: an unverified payment notice, or an open dispute. */
+  const [attentionFilter, setAttentionFilter] = useUrlFilter("attention", "", { allow: ["payment_notice", "dispute"] });
   const [categoryFilter, setCategoryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -159,6 +170,7 @@ export default function AdminInvoicesPage() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (statusFilter) params.set("status", statusFilter);
+      if (attentionFilter) params.set("attention", attentionFilter);
       if (categoryFilter) params.set("category", categoryFilter);
       if (typeFilter) params.set("type", typeFilter);
       if (searchTerm.trim()) params.set("search", searchTerm.trim());
@@ -178,7 +190,7 @@ export default function AdminInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, categoryFilter, typeFilter, searchTerm, dateFrom, dateTo, page, limit, updateTotal]);
+  }, [statusFilter, attentionFilter, categoryFilter, typeFilter, searchTerm, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { document.title = "Finance · MPLOYEDIN"; }, []);
@@ -199,7 +211,7 @@ export default function AdminInvoicesPage() {
     }
   };
 
-  const hasActiveFilters = Boolean(statusFilter || categoryFilter || typeFilter || searchTerm || dateFrom || dateTo);
+  const hasActiveFilters = Boolean(statusFilter || attentionFilter || categoryFilter || typeFilter || searchTerm || dateFrom || dateTo);
   // Analytics is scoped to one currency at a time (nothing converts between
   // them), so label these with the currency the figures are actually in — not
   // the platform default, which had no relationship to the numbers.
@@ -271,6 +283,49 @@ export default function AdminInvoicesPage() {
         metrics={invoiceMetrics}
       />
 
+      {/* Ledger / analytics / uninvoiced queue. The switcher was deleted once and
+          left the ledger — and approving pending invoices — unreachable. */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          <button
+            type="button"
+            aria-pressed={activeView === "table"}
+            onClick={() => setActiveView("table")}
+            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeView === "table"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t("viewLedger")}
+          </button>
+          <button
+            type="button"
+            aria-pressed={activeView === "analytics"}
+            onClick={() => setActiveView("analytics")}
+            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeView === "analytics"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t("viewAnalytics")}
+          </button>
+          <button
+            type="button"
+            aria-pressed={activeView === "queue"}
+            onClick={() => setActiveView("queue")}
+            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeView === "queue"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t("viewQueue")}
+          </button>
+        </div>
+      </div>
+
       {/* Queue View — Uninvoiced Placements */}
       {activeView === "queue" && (
         <UninvoicedPlacementsQueue
@@ -323,6 +378,19 @@ export default function AdminInvoicesPage() {
                 </div>
                 <SearchableSelect id="adm-inv-status" className="h-9 w-32 sm:w-40 rounded-lg text-sm" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("statusAllStatuses")} />
                 <SearchableSelect id="adm-inv-cat" className="h-9 w-32 sm:w-40 rounded-lg text-sm" options={CATEGORY_OPTIONS} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("categoryAllCategories")} />
+                {/* No dropdown for this filter — it only arrives from a dashboard link —
+                    so it shows as a chip the admin can see and remove. */}
+                {attentionFilter && (
+                  <button
+                    type="button"
+                    onClick={() => { setAttentionFilter(""); resetPage(); }}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary hover:bg-primary/10"
+                    aria-label={t("attentionClearAria")}
+                  >
+                    {attentionFilter === "payment_notice" ? t("attentionPaymentNotice") : t("attentionDispute")}
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                )}
                 {invoices.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Button size="sm" variant="outline" onClick={handleExportCsv} className="h-9 text-xs rounded-lg">{t("exportLabel")}</Button>

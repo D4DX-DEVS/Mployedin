@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { toast } from "sonner";
-import { Search, Clock } from "lucide-react";
+import { Search, Clock, CornerDownRight } from "lucide-react";
+import { formatActionCode } from "@/lib/admin/actionLabels";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -108,7 +109,8 @@ export default function AuditLogsPage() {
   const [actorSearch, setActorSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [actorRole, setActorRole] = useUrlFilter("actorRole", "all");
   const [resource, setResource] = useState("all");
-  const [action, setAction] = useState("");
+  // In the URL so the dashboard's Authentication check can open failed sign-ins.
+  const [action, setAction] = useUrlFilter("action", "", { debounceMs: 400 });
   const [country, setCountry] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -334,7 +336,7 @@ export default function AuditLogsPage() {
                           <p className="text-muted-foreground">{log.actorId.email}</p>
                           {log.onBehalfOfId && (
                             <p className="text-amber-600">
-                              ↳ {t("onBehalfOf")} {log.onBehalfOfId.name ?? log.onBehalfOfId.email ?? log.onBehalfOfRole}
+                              <CornerDownRight className="me-1 inline h-3.5 w-3.5 align-[-2px] rtl:-scale-x-100" aria-hidden="true" />{t("onBehalfOf")} {log.onBehalfOfId.name ?? log.onBehalfOfId.email ?? log.onBehalfOfRole}
                             </p>
                           )}
                         </div>
@@ -342,7 +344,7 @@ export default function AuditLogsPage() {
                         <span className="text-muted-foreground">{t("system")}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-foreground">{log.action}</td>
+                    <td className="px-4 py-3 text-foreground">{formatActionCode(log.action)}</td>
                     <td className="px-4 py-3">
                       <Badge className={`${RESOURCE_COLOR[log.resource] ?? "bg-muted text-muted-foreground"} border-0 text-xs`}>
                         {log.resource}

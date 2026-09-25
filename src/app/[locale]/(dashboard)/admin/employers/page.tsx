@@ -31,7 +31,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2, UserCog } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AssignAgentDialog } from "./_components/AssignAgentDialog";
+import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
 import { useConfirm } from "@/hooks/useConfirm";
 import { formatDate } from "@/lib/ui/intlFormat";
 
@@ -51,6 +54,8 @@ interface Employer {
   domainVerified?: boolean;
   verificationDocs?: string[];
   employerProfileId?: string;
+  /** The agent running this account (null = none), with their super-agent. */
+  assignedAgent?: EmployerAgentSummary | null;
 }
 
 export default function AdminEmployersPage() {
@@ -67,6 +72,9 @@ export default function AdminEmployersPage() {
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  // "none" surfaces employers waiting for an agent — e.g. super-agent link signups.
+  const [agentFilter, setAgentFilter] = useUrlFilter("agent", "all", { allow: ["all", "none", "any"] });
+  const [assignItem, setAssignItem] = useState<Employer | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Employer | null>(null);
@@ -109,6 +117,7 @@ export default function AdminEmployersPage() {
     { header: t("exportColumnCompany"), key: "companyName" },
     { header: t("exportColumnEmail"), key: "email" },
     { header: t("exportColumnIndustry"), key: "industry" },
+    { header: t("exportColumnAgent"), key: "assignedAgent", formatter: (v, r) => r.assignedAgent?.name ?? "—" },
     { header: t("exportColumnStatus"), key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
     { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
@@ -124,6 +133,7 @@ export default function AdminEmployersPage() {
     setError(null);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
+    if (agentFilter !== "all") params.set("agentId", agentFilter);
     params.set("status", "all");
     try {
       const res = await fetch(`/api/employers?${params}`);
@@ -141,7 +151,7 @@ export default function AdminEmployersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, page, limit, t]);
+  }, [search, agentFilter, page, limit, t]);
 
   useEffect(() => { fetchEmployers(); }, [fetchEmployers]);
 
@@ -298,6 +308,16 @@ export default function AdminEmployersPage() {
                 className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
               />
             </div>
+            <Select value={agentFilter} onValueChange={(v) => { setAgentFilter(v); resetPage(); }}>
+              <SelectTrigger aria-label={t("agentFilterLabel")} className="h-11 w-44 rounded-lg text-sm sm:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("agentFilterAll")}</SelectItem>
+                <SelectItem value="none">{t("agentFilterNone")}</SelectItem>
+                <SelectItem value="any">{t("agentFilterAny")}</SelectItem>
+              </SelectContent>
+            </Select>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="dense" className="rounded-lg border-border/80">
@@ -329,6 +349,7 @@ export default function AdminEmployersPage() {
               <TableHead>{t("tableHeaderCompany")}</TableHead>
               <TableHead>{t("tableHeaderEmail")}</TableHead>
               <TableHead>{t("tableHeaderIndustry")}</TableHead>
+              <TableHead>{t("tableHeaderAgent")}</TableHead>
               <TableHead>{t("tableHeaderJoined")}</TableHead>
               {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                 <TableHead>{t("tableHeaderActions")}</TableHead>
@@ -337,10 +358,10 @@ export default function AdminEmployersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableBodySkeleton rows={5} cols={5} />
+              <TableBodySkeleton rows={5} cols={6} />
             ) : employers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="py-12">
+                <TableCell colSpan={6} className="py-12">
                   <EmptyState title={t("noEmployersFound")} icon={Inbox} />
                 </TableCell>
               </TableRow>
@@ -359,6 +380,18 @@ export default function AdminEmployersPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{emp.email ?? emp.contactEmail ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{emp.industry ?? "—"}</TableCell>
+                <TableCell>
+                  {emp.assignedAgent ? (
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{emp.assignedAgent.name}</p>
+                      {emp.assignedAgent.superAgentName && (
+                        <p className="truncate text-xs text-muted-foreground">{t("underSuperAgent", { name: emp.assignedAgent.superAgentName })}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[11px] text-amber-800">{t("noAgentBadge")}</Badge>
+                  )}
+                </TableCell>
                 <TableCell className="text-muted-foreground">{formatDate(new Date(emp.createdAt))}</TableCell>
                 {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                   <TableCell>
@@ -371,6 +404,17 @@ export default function AdminEmployersPage() {
                           title={emp.domainVerified ? t("verifiedButtonTitle") : t("verifyButtonTitle")}
                         >
                           <ShieldCheck className={`h-3.5 w-3.5 ${emp.domainVerified ? "text-emerald-600" : "text-muted-foreground"}`} />
+                        </Button>
+                      )}
+                      {can("employers", "update") && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setAssignItem(emp)}
+                          title={emp.assignedAgent ? t("changeAgentTitle") : t("assignAgentTitle")}
+                          aria-label={emp.assignedAgent ? t("changeAgentTitle") : t("assignAgentTitle")}
+                        >
+                          <UserCog className={`h-3.5 w-3.5 ${emp.assignedAgent ? "text-primary" : "text-amber-600"}`} />
                         </Button>
                       )}
                       {can("employers", "update") && (
@@ -412,6 +456,16 @@ export default function AdminEmployersPage() {
       </section>
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+
+      <AssignAgentDialog
+        employer={assignItem ? { userId: assignItem._id, companyName: assignItem.companyName || assignItem.name || "" } : null}
+        onClose={() => setAssignItem(null)}
+        onAssigned={(userId, agent) => {
+          setEmployers((prev) => prev.map((e) => (e._id === userId ? { ...e, assignedAgent: agent } : e)));
+          // Under a "No agent"/"Has agent" filter the row may no longer belong.
+          if (agentFilter !== "all") fetchEmployers();
+        }}
+      />
 
       <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title={t("addEmployerTitle")} fields={fields} onSubmit={handleCreate} />
       <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={t("editEmployerTitle")} fields={editFields}

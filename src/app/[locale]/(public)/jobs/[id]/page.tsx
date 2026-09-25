@@ -3,7 +3,7 @@ import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
+import { MapPin, Briefcase, Clock, Users, Globe, Banknote, Check } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/features/public/EasyApply";
@@ -205,7 +205,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                       description={job.description?.slice(0, 120)}
                     />
                     {(employer?.domainVerified || employer?.isAgentVerified) && (
-                      <span className="text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full font-medium">{t("verifiedBadge")}</span>
+                      <span className="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full font-medium"><Check className="h-3 w-3" aria-hidden="true" />{t("verifiedBadge")}</span>
                     )}
                   </div>
                 </div>
@@ -219,7 +219,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                   </span>
                   {salary && (
                     <span className="flex items-center gap-1.5">
-                      <span>💰</span>
+                      <Banknote className="h-4 w-4" aria-hidden="true" />
                       {salary}
                     </span>
                   )}
@@ -378,7 +378,7 @@ export default async function JobDetailPage({ params }: PageProps) {
           </div>
 
           {/* Similar Jobs - full width below */}
-          <SimilarJobs jobId={String(job._id)} locale={locale} />
+          <SimilarJobs jobId={String(job._id)} locale={locale} isPublic />
         </div>
       </div>
 

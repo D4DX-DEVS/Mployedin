@@ -135,6 +135,25 @@ describe("no-signal profiles cannot qualify for the daily digest", () => {
     expect(seeker.experienceYears).toBeCloseTo(2, 0);
   });
 
+  it("a stated total covers a job history with an undated role, never shrinks a complete one", () => {
+    // A CV whose first job gives no dates: the dated roles sum to about 3
+    // years, the CV says "6+ years". The sum is known to be short.
+    const withUndated = seekerProfileFromDoc({
+      totalExperienceYears: 6,
+      experience: [
+        { jobTitle: "Manager", startDate: "2022-01-01", endDate: "2025-01-01" },
+        { jobTitle: "Assistant Manager" },
+      ],
+    });
+    expect(withUndated.experienceYears).toBe(6);
+    // The dated sum still wins when it is the larger one.
+    const longer = seekerProfileFromDoc({
+      totalExperienceYears: 1,
+      experience: [{ jobTitle: "Manager", startDate: "2015-01-01", endDate: "2025-01-01" }, { jobTitle: "Intern" }],
+    });
+    expect(longer.experienceYears).toBeCloseTo(10, 0);
+  });
+
   it("a real fresher who states their history still scores on it", () => {
     const fresher = seekerProfileFromDoc({
       experience: [

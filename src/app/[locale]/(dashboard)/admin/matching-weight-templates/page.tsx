@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   Scale, Plus, Trash2, Edit2, Save, X, Loader2, Shield,
   ChevronDown, ChevronUp,
+  Check,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -248,7 +249,7 @@ export default function AdminMatchingWeightTemplatesPage() {
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-muted-foreground">{tr("weightDistributionLabel")}</p>
               <span className={`text-sm font-semibold ${isTotalValid ? "text-green-600" : "text-red-500"}`}>
-                {tr("totalWeightLabel", { total })} {isTotalValid ? tr("weightDistributionValid") : tr("weightDistributionInvalid")}
+                {tr("totalWeightLabel", { total })} {isTotalValid ? <><Check className="inline h-4 w-4 align-[-3px]" aria-hidden="true" /><span className="sr-only">{tr("weightDistributionValid")}</span></> : tr("weightDistributionInvalid")}
               </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

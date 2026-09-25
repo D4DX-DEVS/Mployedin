@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ interface SavedSearch {
 
 export default function SavedSearchesPage() {
   const t = useTranslations("jobSeekerExtra.savedSearches");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const expLabel = (lvl?: string) =>
     lvl === "entry" ? t("experienceEntry")
       : lvl === "mid" ? t("experienceMid")
@@ -121,12 +123,21 @@ export default function SavedSearchesPage() {
     }
   };
 
-  const deleteSearch = async (id: string) => {
+  const deleteSearch = async (search: SavedSearch) => {
+    // One tap used to delete the search and its alerts with no way back.
+    const ok = await confirm({
+      message: t("deleteConfirm", { name: search.name }),
+      confirmLabel: t("deleteSearch"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
-      const res = await csrfFetch(`/api/user/saved-searches/${id}`, { method: "DELETE" });
+      const res = await csrfFetch(`/api/user/saved-searches/${search._id}`, { method: "DELETE" });
       if (res.ok) {
         toast.success(t("deleted"));
         fetchSearches();
+      } else {
+        toast.error(t("deleteFailed"));
       }
     } catch {
       toast.error(t("deleteFailed"));
@@ -304,8 +315,8 @@ export default function SavedSearchesPage() {
                         <Bell className="h-3.5 w-3.5" />
                       )}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteSearch(s._id)}>
-                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    <Button variant="ghost" size="sm" onClick={() => deleteSearch(s)} aria-label={t("deleteSearch")}>
+                      <Trash2 aria-hidden="true" className="h-3.5 w-3.5 text-red-400" />
                     </Button>
                   </div>
                 </div>
@@ -314,6 +325,7 @@ export default function SavedSearchesPage() {
           </div>
         )}
       </section>
+      {ConfirmDialogNode}
     </div>
   );
 }

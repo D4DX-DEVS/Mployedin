@@ -20,6 +20,17 @@ const paginationState = {
   resetPage: jest.fn(),
 };
 
+/* The status filter lives in the URL (the admin dashboard deep-links to
+   ?status=pending). The router mock moves jsdom's location so urlQuery's
+   pending-write cache cannot leak one test's filter into the next. */
+const replaceMock = jest.fn((href: string) => window.history.replaceState({}, "", href));
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: replaceMock }),
+  usePathname: () => "/en/admin/commissions",
+  useSearchParams: () => new URLSearchParams(window.location.search),
+  useParams: () => ({ locale: "en" }),
+}));
+
 jest.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({
     can: () => true,
@@ -86,6 +97,8 @@ describe("AdminCommissionsPage", () => {
   const toastSuccessMock = jest.mocked(toast.success);
 
   beforeEach(() => {
+    window.history.replaceState({}, "", "/en/admin/commissions");
+    replaceMock.mockClear();
     paginationState.setPage.mockReset();
     paginationState.setLimit.mockReset();
     paginationState.updateTotal.mockReset();
@@ -117,6 +130,32 @@ describe("AdminCommissionsPage", () => {
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
+  it("opens already filtered when the URL carries a status (dashboard deep link)", async () => {
+    window.history.replaceState({}, "", "/en/admin/commissions?status=pending");
+
+    await act(async () => {
+      render(<AdminCommissionsPage />);
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/commissions?page=1&limit=10&status=pending");
+    });
+    await userEvent.setup().click(screen.getByRole("button", { name: /filter/i }));
+    expect(document.getElementById("admin-commissions-status-filter")).toHaveValue("pending");
+  });
+
+  it("writes a picked status to the URL", async () => {
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<AdminCommissionsPage />);
+    });
+
+    await user.click(screen.getByRole("button", { name: /filter/i }));
+    await user.selectOptions(document.getElementById("admin-commissions-status-filter")!, "disputed");
+
+    expect(replaceMock).toHaveBeenCalledWith("?status=disputed", { scroll: false });
+  });
+
   it("renders the modern commissions workspace shell and fetched results", async () => {
     const user = userEvent.setup();
 
@@ -145,7 +184,12 @@ describe("AdminCommissionsPage", () => {
     expect(screen.getByText("AED 18,000")).toBeInTheDocument();
     expect(screen.getByText("AED 9,500")).toBeInTheDocument();
 
-    expect(screen.getByRole("heading", { name: /review and action agent payouts/i }).closest("section")).toHaveClass("workspace-panel-surface");
+    // The hero's "records across N pages" badge and the ledger's panel head
+    // ("Review and action agent payouts · Showing N records") were dropped —
+    // both restated the "Visible records" metric and the pagination footer.
+    expect(screen.queryByText(/records across/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /review and action agent payouts/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("table").closest("section")).toHaveClass("workspace-panel-surface");
     expect(paginationState.updateTotal).toHaveBeenCalledWith(1);
 
     expect(screen.queryByLabelText("Date from")).not.toBeInTheDocument();

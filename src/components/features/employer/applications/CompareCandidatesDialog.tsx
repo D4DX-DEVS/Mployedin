@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreRing, matchBandLabel } from "@/components/features/employer/candidates/ScoreRing";
+import { RequirementsBadge } from "@/components/features/employer/applications/RequirementsChecklist";
 
 export interface CompareCandidatesDialogProps {
   open: boolean;
@@ -20,7 +21,11 @@ type Translator = ReturnType<typeof useTranslations>;
 
 const BREAKDOWN_ROWS = [
   { key: "skills", labelKey: "breakdownSkills" },
+  // Engine rows carry role fit (and education when the employer's weights
+  // scored it); older rows carry location / salary. Absent ones drop out.
+  { key: "role", labelKey: "roleFit" },
   { key: "experience", labelKey: "breakdownExperience" },
+  { key: "education", labelKey: "education" },
   { key: "location", labelKey: "breakdownLocation" },
   { key: "salary", labelKey: "breakdownSalary" },
 ] as const;
@@ -122,6 +127,7 @@ function CandidateColumn({ row, common, t, tBand }: { row: CompareCandidate; com
           bandLabel={band}
           emptyLabel={t("notScoredYet")}
         />
+        <RequirementsBadge status={row.requirementsStatus} />
       </div>
 
       {breakdownRows.length > 0 && (

@@ -322,6 +322,12 @@ body {
   border-bottom-color: hsl(var(--focus-ring));
 }
 
+/* Same for the Copilot composer: its bordered wrapper already rings on
+   focus-within, so the outline drew a second field inside the first. */
+.copilot-panel textarea:focus-visible {
+  outline: none;
+}
+
 .font-arabic {
   font-family: var(--font-arabic), var(--font-sans), system-ui, sans-serif;
 }
@@ -3830,3 +3836,15 @@ table.workspace-list-table tbody tr:focus-visible {
 
 /* touched to force a Turbopack CSS rebuild — in-place edits above do not always invalidate. */
 
+
+/* Role dashboards on phones (admin / agent / super-agent). They end on a card
+   grid, not a pagination row, so the 6rem floating-widget clearance above left
+   a ~62px empty band between the last card and the 50px tab bar (owner,
+   2026-09-24). Reserve only the tab bar; the page's own bottom gutter then
+   sets the last gap, the same size as the gaps between cards. Employer runs a
+   different shell and is not matched. */
+@media (max-width: 1023px) {
+  .dashboard-shell-admin .dashboard-main:has(.page-container.dashboard-overview-page) {
+    padding-bottom: calc(3.125rem + env(safe-area-inset-bottom));
+  }
+}

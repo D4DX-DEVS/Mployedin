@@ -4,7 +4,7 @@ import { POSTER_TYPES } from "@/lib/composer/types";
 import type { PosterType, PosterTypeAll } from "@/lib/composer/types";
 import {
   Briefcase, Users, AlertTriangle, DoorOpen,
-  Megaphone, Calendar, GraduationCap, Smartphone,
+  Megaphone, Calendar, GraduationCap, Smartphone, Check,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -35,9 +35,7 @@ export function PosterTypeSelector({ selected, onSelect }: PosterTypeSelectorPro
           >
             {isSelected && (
               <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
+                <Check className="w-3 h-3 text-white" strokeWidth={3} aria-hidden="true" />
               </div>
             )}
             {!isAvailable && (

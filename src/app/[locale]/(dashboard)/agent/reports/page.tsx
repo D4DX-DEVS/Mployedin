@@ -269,6 +269,7 @@ export default function AgentReportsPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           rows={3}
+          aria-label={t("customReport")}
           placeholder={t("customReportPlaceholder")}
           className="w-full rounded-2xl border border-border bg-secondary/65 px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
         />

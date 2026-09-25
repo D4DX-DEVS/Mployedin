@@ -75,6 +75,37 @@ describe("AppForm accessibility", () => {
     expect(screen.getByRole("option", { name: "Manama" })).toHaveAttribute("aria-selected", "false");
   });
 
+  it("lets a chip be removed while the multi-select list is open", async () => {
+    // The list is a modal popover, which sets pointer-events:none on <body>;
+    // user-event refuses to click through that, so this fails if the chips
+    // are left blocked.
+    const user = userEvent.setup();
+    function Harness() {
+      const [value, setValue] = useState<string[]>(["dubai", "manama"]);
+      return (
+        <FormMultiSelect
+          label="Locations"
+          options={[
+            { value: "dubai", label: "Dubai" },
+            { value: "manama", label: "Manama" },
+          ]}
+          value={value}
+          onChange={setValue}
+        />
+      );
+    }
+
+    render(<Harness />);
+    await user.click(screen.getByRole("combobox", { name: "Locations" }));
+    await screen.findByRole("listbox");
+
+    // While the list is open everything else is aria-hidden (modal), so the
+    // chip is found by mouse path, not by the accessibility tree.
+    await user.click(screen.getByRole("button", { name: "Remove Dubai", hidden: true }));
+    expect(screen.queryByRole("button", { name: "Remove Dubai", hidden: true })).not.toBeInTheDocument();
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+  });
+
   it("keeps rejected file feedback inline and exposes a named remove action", async () => {
     const user = userEvent.setup();
     const onChange = jest.fn();

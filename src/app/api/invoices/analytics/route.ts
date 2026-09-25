@@ -13,6 +13,7 @@ import Invoice from "@/models/Invoice";
 import Commission from "@/models/Commission";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import { NON_REVENUE_INVOICE_STATUSES, PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -23,10 +24,10 @@ interface AuthCtx { userId: string; role: UserRole; locale: string }
  * trend and category breakdown did not, so a voided invoice vanished from the
  * headline total but still inflated the chart underneath it.
  */
-const NON_REVENUE_STATUSES = ["void", "cancelled", "refunded", "credit_note"];
+const NON_REVENUE_STATUSES = NON_REVENUE_INVOICE_STATUSES;
 
 /** Statuses whose outstanding balance counts as money still owed. */
-const PENDING_STATUSES = ["issued", "sent", "partially_paid", "overdue"];
+const PENDING_STATUSES: string[] = [...PAYABLE_INVOICE_STATUSES];
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();

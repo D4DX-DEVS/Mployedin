@@ -4,7 +4,7 @@ import { User } from "@/models/User";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
-import { hashOtp } from "@/lib/auth/emailVerification";
+import { hashOtp, VERIFIABLE_ACCOUNT } from "@/lib/auth/emailVerification";
 import { z } from "zod";
 import { getClientIp } from "@/lib/security/clientIp";
 
@@ -59,13 +59,13 @@ export async function POST(req: NextRequest) {
     user = await User.findOne({
       email: (body.email as string).toLowerCase().trim(),
       emailVerificationOtp: hashedOtp,
-      isActive: true,
+      ...VERIFIABLE_ACCOUNT,
     }).select("+emailVerificationOtp +emailVerificationExpiry");
   } else {
     const hashedToken = crypto.createHash("sha256").update(body.token as string).digest("hex");
     user = await User.findOne({
       emailVerificationToken: hashedToken,
-      isActive: true,
+      ...VERIFIABLE_ACCOUNT,
     }).select("+emailVerificationToken +emailVerificationExpiry");
   }
 

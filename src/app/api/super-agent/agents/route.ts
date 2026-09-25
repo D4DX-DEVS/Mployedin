@@ -22,6 +22,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search");
   const performance = searchParams.get("performance"); // high_performer | needs_attention | slow_response | no_activity
+  const status = searchParams.get("status"); // active | inactive — the account switch, not performance
   const leadsMin = searchParams.get("leadsMin");
   const leadsMax = searchParams.get("leadsMax");
   const convRateMin = searchParams.get("convRateMin");
@@ -63,8 +64,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       { email: { $regex: escapeRegex(search), $options: "i" } },
     ];
   }
+  // Complementary halves, the same split as the super-agent home's
+  // "active agents" card and "deactivated" queue row that link here.
+  if (status === "active") filter.isActive = true;
+  else if (status === "inactive") filter.isActive = { $ne: true };
 
-  const users = await User.find(filter).select("name email createdAt").lean();
+  const users = await User.find(filter).select("name email createdAt isActive").lean();
 
   // Get lead stats per agent — Lead.agentId references Agent doc _id, not User _id
   const agentDocIds = users.map((u) => userToAgentMap.get(u._id.toString())).filter(Boolean);
@@ -104,6 +109,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       agentId: agentDocId,
       name: u.name,
       email: u.email,
+      isActive: u.isActive === true,
       country: agentProfile?.country ?? "",
       currencyCode: agentProfile?.currencyCode ?? "AED",
       leadsCount: agentLeads.length,

@@ -50,7 +50,11 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   }
   const scopeQuery = { ...query };
 
-  if (status && EXHIBITION_STATUSES.includes(status as never)) {
+  // "pending_review" = the summary's pendingReview bucket, so the queue count
+  // on the super-agent home and the list it opens are the same records.
+  if (status === "pending_review") {
+    query.status = { $in: ["submitted", "under_review"] };
+  } else if (status && EXHIBITION_STATUSES.includes(status as never)) {
     query.status = status;
   }
 

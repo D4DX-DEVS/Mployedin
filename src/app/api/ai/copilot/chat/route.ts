@@ -10,6 +10,7 @@ import { getToolsForUser, getToolByName } from "@/lib/ai/copilot/registry";
 import { toJsonSchema, validateArgs } from "@/lib/ai/copilot/paramSchema";
 import type { CopilotStreamFrame, CopilotToolContext, CopilotToolPreview } from "@/lib/ai/copilot/types";
 import { parseEmployerJobIdFromPath, buildEmployerJobContext } from "@/lib/ai/copilot/pageContext";
+import { prepareHistoryForModel } from "@/lib/ai/copilot/historyToolData";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { copilotChatSchema } from "@/lib/validators/ai";
@@ -219,10 +220,7 @@ export async function POST(req: NextRequest) {
 
     const chatMessages: CopilotMessage[] = [
       { role: "system", content: systemPrompt },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
-        content: m.content,
-      })),
+      ...prepareHistoryForModel(messages),
     ];
 
     const toolCtx: CopilotToolContext = { userId, role, locale, permissionMode, customPermissions, req, currentPage, pageJobId };

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Sparkles, Plus, X, ChevronDown, ChevronUp,
+  ArrowLeft, Lightbulb, Sparkles, Plus, X, ChevronDown, ChevronUp,
   Briefcase, MapPin, DollarSign, Settings2, Tags,
   Globe, Users, Eye, CheckCircle2, AlertCircle, Loader2,
   Search, Rocket, ClipboardList, GripVertical, Trash2,
@@ -26,6 +26,10 @@ import type { CountryOption } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
+import { KnockoutEditor, hasKnockoutProblem } from "@/components/features/employer/job-form/KnockoutEditor";
+import { KNOCKOUT_NUMBER_TYPES, KNOCKOUT_OPTION_TYPES } from "@/lib/matching/knockouts";
+
+const KNOCKOUT_TYPES = new Set<string>([...KNOCKOUT_OPTION_TYPES, ...KNOCKOUT_NUMBER_TYPES]);
 
 // ─── Constants ───────────────────────────────────────────────────
 const JOB_CATEGORIES = [
@@ -56,6 +60,11 @@ interface ScreeningQuestion {
   required: boolean;
   options: string[];
   placeholder: string;
+  /** Deal-breaker or preferred-answer rule; the API stores it privately (lib/matching/knockouts.ts). */
+  knockout?: boolean;
+  preferred?: boolean;
+  acceptedAnswers?: string[];
+  minValue?: number;
 }
 
 const QUESTION_TYPES = [
@@ -265,6 +274,7 @@ export function SharedJobEditPage({
   backLabel,
 }: SharedJobEditPageProps) {
   const t = useTranslations("employerJobEdit");
+  const tAts = useTranslations("employerAts");
   const router = useRouter();
   // Setup-guide steps deep-link here with ?highlight=requirements|salary.
   useFieldHighlight();
@@ -380,6 +390,11 @@ export function SharedJobEditPage({
         required: q.required ?? false,
         options: q.options ?? [],
         placeholder: q.placeholder || "",
+        // The owner's GET merges each question's answer rule back in.
+        knockout: q.knockout ?? false,
+        preferred: q.preferred ?? false,
+        acceptedAnswers: q.acceptedAnswers ?? [],
+        ...(typeof q.minValue === "number" ? { minValue: q.minValue } : {}),
       })),
     });
 
@@ -470,6 +485,12 @@ export function SharedJobEditPage({
     else if (form.description.trim().length < 20) errors.description = t("errorDescLength");
     if (forPublish && !form.location.country) errors.country = t("errorCountry");
     if (form.salary.max > 0 && form.salary.max < form.salary.min) errors.salary = t("errorSalary");
+    // A deal-breaker with nothing that qualifies would be refused by the API;
+    // the question card already says what is missing.
+    const ruleProblem = form.screeningQuestions.find((q) => q.label.trim() && hasKnockoutProblem(q));
+    if (ruleProblem) {
+      errors.screening = tAts(ruleProblem.knockout ? "knockout.pickOne" : "knockout.pickOnePreferred");
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -1130,7 +1151,13 @@ export function SharedJobEditPage({
                         value={q.type}
                         onValueChange={(value) => {
                           const updated = [...form.screeningQuestions];
-                          updated[qIdx] = { ...updated[qIdx], type: value as ScreeningQuestion["type"], options: NEEDS_OPTIONS.has(value) ? (updated[qIdx].options.length ? updated[qIdx].options : [""]) : [] };
+                          updated[qIdx] = {
+                            ...updated[qIdx],
+                            type: value as ScreeningQuestion["type"],
+                            options: NEEDS_OPTIONS.has(value) ? (updated[qIdx].options.length ? updated[qIdx].options : [""]) : [],
+                            // Answer rules only exist on choice and number questions.
+                            ...(KNOCKOUT_TYPES.has(value) ? {} : { knockout: false, preferred: false }),
+                          };
                           setField("screeningQuestions", updated);
                         }}
                       >
@@ -1230,10 +1257,30 @@ export function SharedJobEditPage({
                         )}
                       </div>
                     )}
+                    <KnockoutEditor
+                      idPrefix={`edit-sq-${q.id}`}
+                      type={q.type}
+                      options={q.options}
+                      knockout={q.knockout}
+                      preferred={q.preferred}
+                      acceptedAnswers={q.acceptedAnswers}
+                      minValue={q.minValue}
+                      onChange={(patch) => {
+                        const updated = [...form.screeningQuestions];
+                        updated[qIdx] = { ...updated[qIdx], ...patch };
+                        setField("screeningQuestions", updated);
+                      }}
+                    />
                   </div>
                 </div>
               </div>
             ))}
+            {fieldErrors.screening ? (
+              <p className="flex items-center gap-1.5 text-xs text-destructive" role="alert">
+                <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+                {fieldErrors.screening}
+              </p>
+            ) : null}
             {form.screeningQuestions.length < 20 && (
               <Button
                 type="button" variant="outline" size="sm"
@@ -1396,7 +1443,7 @@ export function SharedJobEditPage({
               </div>
             </div>
             <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-800 space-y-1">
-              <p className="font-semibold">💡 Pro Tips</p>
+              <p className="flex items-center gap-1.5 font-semibold"><Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />Pro Tips</p>
               <ul className="space-y-1 text-amber-700 list-disc list-inside">
                 <li>Adding salary → 2× more applies</li>
                 <li>Remote option → +40% reach</li>

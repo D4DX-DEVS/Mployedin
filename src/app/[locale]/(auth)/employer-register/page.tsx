@@ -499,7 +499,7 @@ export default function EmployerRegisterPage() {
               </div>
             </div>
             <div data-registration-field="website">
-              <FormInput label={t("websiteOptional")} value={step1.website} placeholder="talindia.co"
+              <FormInput label={t("websiteOptional")} value={step1.website} placeholder="yourcompany.com"
                 error={fieldErrors.website}
                 hint={t("websiteHint")}
                 onChange={(e) => {

@@ -21,16 +21,18 @@ import {
   Zap,
   Building2,
   ChevronRight,
+  Globe,
+  Shuffle,
 } from "lucide-react";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 
 const CURRENCIES = ["USD", "INR", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
 
 const JOB_TYPES = [
-  { value: "remote", label: "Remote", emoji: "🌐" },
-  { value: "hybrid", label: "Hybrid", emoji: "🔄" },
-  { value: "onsite", label: "Onsite", emoji: "🏢" },
-  { value: "any", label: "Any", emoji: "✨" },
+  { value: "remote", label: "Remote", Icon: Globe },
+  { value: "hybrid", label: "Hybrid", Icon: Shuffle },
+  { value: "onsite", label: "Onsite", Icon: Building2 },
+  { value: "any", label: "Any", Icon: Sparkles },
 ];
 
 const AVAILABILITY_OPTIONS = [
@@ -299,7 +301,7 @@ function RecommendedJobCard({ job }: { job: RecommendedJob }) {
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 hover:border-primary/30 hover:shadow-sm transition-all">
       <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
         {job.employerId?.logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
+           
           <img
             src={job.employerId.logo}
             alt={job.employerId.companyName ?? ""}
@@ -479,6 +481,7 @@ export default function JobPreferencesPage() {
             value={prefs.preferredRoles}
             onChange={(next) => setPrefs((p) => ({ ...p, preferredRoles: next }))}
             placeholder={t("rolesPlaceholder")}
+            ariaLabel={t("preferredRoles")}
             max={10}
           />
         </Section>
@@ -494,6 +497,7 @@ export default function JobPreferencesPage() {
             value={prefs.preferredCountries}
             onChange={(next) => setPrefs((p) => ({ ...p, preferredCountries: next }))}
             placeholder={t("locationsPlaceholder")}
+            ariaLabel={t("preferredLocations")}
             max={10}
           />
         </Section>
@@ -516,6 +520,7 @@ export default function JobPreferencesPage() {
                   <button
                     key={preset.label}
                     type="button"
+                    aria-pressed={active}
                     onClick={() =>
                       setPrefs((p) => ({
                         ...p,
@@ -546,6 +551,7 @@ export default function JobPreferencesPage() {
                 {t("minimum")}
               </label>
               <Input
+                aria-label={t("minimum")}
                 type="number"
                 min={0}
                 value={prefs.preferredSalary.min || ""}
@@ -567,6 +573,7 @@ export default function JobPreferencesPage() {
                 {t("maximum")}
               </label>
               <Input
+                aria-label={t("maximum")}
                 type="number"
                 min={0}
                 value={prefs.preferredSalary.max || ""}
@@ -613,6 +620,7 @@ export default function JobPreferencesPage() {
               <button
                 key={type.value}
                 type="button"
+                aria-pressed={prefs.preferredJobType === type.value}
                 onClick={() =>
                   setPrefs((p) => ({ ...p, preferredJobType: type.value }))
                 }
@@ -622,7 +630,7 @@ export default function JobPreferencesPage() {
                     : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 }`}
               >
-                <span className="text-base">{type.emoji}</span>
+                <type.Icon className="h-5 w-5" aria-hidden="true" />
                 <span className="text-xs">{t(`jobTypes.${type.value}`)}</span>
               </button>
             ))}
@@ -651,6 +659,7 @@ export default function JobPreferencesPage() {
                 </span>
               )}
               <Switch
+                aria-label={t("activelyLooking")}
                 checked={activelyLooking}
                 onCheckedChange={(v) =>
                   setPrefs((p) => ({
@@ -682,6 +691,7 @@ export default function JobPreferencesPage() {
                   {t("noticePeriod")}
                 </label>
                 <Input
+                  aria-label={t("noticePeriod")}
                   type="number"
                   min={0}
                   max={365}

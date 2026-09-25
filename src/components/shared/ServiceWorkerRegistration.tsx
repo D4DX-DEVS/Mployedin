@@ -47,12 +47,21 @@ export function ServiceWorkerRegistration() {
     // the deploy has already dropped from the CDN — every later lazy import
     // (the Google sign-in chunk among them) then 404s on a page that looks
     // fine, and the navigation itself fails with Serwist's `no-response`.
-    // Reload once when control changes so document and worker are one build.
-    // `hadController` keeps the very first registration from reloading.
+    // Reload once when control changes so document and worker are one build —
+    // unless the visitor has typed into the page: reloading then wiped a
+    // half-filled form mid-session. In that case the next navigation brings in
+    // the new build instead (Next falls back to a full page load when a chunk
+    // of the old build is gone). `hadController` keeps the very first
+    // registration from reloading.
     const hadController = Boolean(navigator.serviceWorker.controller);
     let reloading = false;
+    let userHasTyped = false;
+    const markTyped = () => {
+      userHasTyped = true;
+    };
+    document.addEventListener("input", markTyped, { capture: true, once: true });
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (!hadController || reloading) return;
+      if (!hadController || reloading || userHasTyped) return;
       reloading = true;
       window.location.reload();
     });
@@ -67,24 +76,6 @@ export function ServiceWorkerRegistration() {
           },
           60 * 60 * 1000,
         );
-
-        // Listen for updates
-        registration.addEventListener("updatefound", () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
-
-          newWorker.addEventListener("statechange", () => {
-            if (
-              newWorker.state === "activated" &&
-              navigator.serviceWorker.controller
-            ) {
-              // New version available — user will get it on next navigation
-              console.log(
-                "[SW] New content available; will be used on next reload.",
-              );
-            }
-          });
-        });
       })
       .catch((error) => {
         console.error("[SW] Registration failed:", error);

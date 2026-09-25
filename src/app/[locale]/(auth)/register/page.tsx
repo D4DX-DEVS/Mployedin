@@ -155,7 +155,7 @@ export default function RegisterPage() {
     const passwordIssue = validatePasswordForForm(password, { locale, t: tf });
     if (passwordIssue) nextErrors.password = passwordIssue;
 
-    if (!confirmPassword) nextErrors.confirmPassword = tf("passwordRequired");
+    if (!confirmPassword) nextErrors.confirmPassword = tf("confirmPasswordRequired");
     else if (password !== confirmPassword) nextErrors.confirmPassword = t("passwordsDoNotMatch");
 
     if (!agreedToTerms) nextErrors.terms = t("mustAgreeToTerms");

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import Interview from "@/models/Interview";
+import Application from "@/models/Application";
+import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
+import { getMemberJobRestriction } from "@/lib/permissions/team";
 import { isValidObjectId } from "mongoose";
 import { addMinutes, addDays } from "date-fns";
 
-type AuthCtx = { userId: string; role: string };
+type AuthCtx = { userId: string; role: string; member?: AuthContext["member"] };
 
 interface AvailableSlot {
   day: string;
@@ -79,6 +83,30 @@ async function handler(
   const rangeDays = Math.min(Math.max(Number(rangeParam) || 1, 1), 14);
 
   await connectDB();
+
+  // The busy windows reveal when this candidate interviews elsewhere, so only
+  // the hiring side of one of their applications may read them: the employer
+  // it was made to, or the agent / super-agent whose book covers that employer.
+  // Checked before the seeker lookup so an outsider can't probe which ids exist.
+  if (ctx.role !== "admin") {
+    const employerIds = await getScopedEmployerIds(ctx);
+    // A colleague limited to some jobs only sees candidates of those jobs.
+    const jobRestriction =
+      ctx.role === "employer" && employerIds?.length
+        ? await getMemberJobRestriction(ctx, employerIds[0])
+        : null;
+    const related =
+      employerIds !== null &&
+      employerIds.length > 0 &&
+      (await Application.exists({
+        jobSeekerId: seekerId,
+        employerId: { $in: employerIds },
+        ...(jobRestriction && { jobId: { $in: jobRestriction } }),
+      }));
+    if (!related) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
 
   const seeker = await (JobSeeker as unknown as {
     findById: (id: string) => {

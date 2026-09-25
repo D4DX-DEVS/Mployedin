@@ -13,6 +13,8 @@
  * drops `border-radius` and most background shorthands outright.
  */
 
+import { unsubscribeUrl } from "@/lib/communications/unsubscribeLink";
+
 const BRAND_DARK = "#0a2a6e";
 
 /** Escape text destined for an HTML attribute or text node. */
@@ -74,16 +76,31 @@ export function emailHeader(subtitle?: string, opts: { baseUrl?: string } = {}):
  *
  * @param opts.reason  one line explaining why this specific email was sent
  * @param opts.unsubRef `?ref=` tag so unsubscribes can be attributed
+ * @param opts.userId  the recipient; without it no signed unsubscribe link can
+ *   be built, and the footer offers "Manage preferences" alone rather than a
+ *   link to the route's "Missing unsubscribe token" page
+ * @param opts.unsubCategory the NotificationPreference category the link turns
+ *   off (`jobs` for the digest); omit to unsubscribe from everything
  */
 export function emailFooter(opts: {
   locale: string;
   baseUrl?: string;
   reason: string;
   unsubRef: string;
+  userId?: string;
+  unsubCategory?: string;
 }): string {
   const base = resolveBaseUrl(opts.baseUrl);
   const isAr = opts.locale === "ar";
   const year = new Date().getFullYear();
+  const unsubHref = opts.userId
+    ? unsubscribeUrl(base, opts.userId, { category: opts.unsubCategory, ref: opts.unsubRef })
+    : null;
+  const unsubLink = unsubHref
+    ? `
+              <span style="color: #d1d5db;">&nbsp;·&nbsp;</span>
+              <a href="${escapeHtml(unsubHref)}" style="color: #6b7280;">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>`
+    : "";
 
   return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; background-color: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
@@ -91,9 +108,7 @@ export function emailFooter(opts: {
           <td align="center" style="padding: 16px 24px; font-family: Arial, sans-serif;">
             <div style="color: #9ca3af; font-size: 12px; line-height: 18px;">${escapeHtml(opts.reason)}</div>
             <div style="margin-top: 6px; font-size: 12px; line-height: 18px;">
-              <a href="${base}/${opts.locale}/job-seeker/settings/notifications" style="color: #6b7280;">${isAr ? "إدارة التفضيلات" : "Manage preferences"}</a>
-              <span style="color: #d1d5db;">&nbsp;·&nbsp;</span>
-              <a href="${base}/api/unsubscribe?ref=${encodeURIComponent(opts.unsubRef)}" style="color: #6b7280;">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>
+              <a href="${base}/${opts.locale}/job-seeker/settings/notifications" style="color: #6b7280;">${isAr ? "إدارة التفضيلات" : "Manage preferences"}</a>${unsubLink}
             </div>
             <div style="margin-top: 10px; color: #b6bcc6; font-size: 11px; line-height: 16px;">
               ${isAr ? "أُرسل هذا البريد تلقائياً — يُرجى عدم الرد عليه." : "This email was sent automatically — please don't reply."}

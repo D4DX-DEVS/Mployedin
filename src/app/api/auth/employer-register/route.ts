@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const websiteResult = normalizeWebsiteUrl(get("website"));
     if (!websiteResult.ok) {
       return NextResponse.json(
-        { message: "We couldn't read that website address. Enter it like talindia.co, or leave it blank." },
+        { message: "We couldn't read that website address. Enter it like yourcompany.com, or leave it blank." },
         { status: 400 },
       );
     }
@@ -219,14 +219,14 @@ export async function POST(req: NextRequest) {
             verifiedByAgentId = agentRef.userId.toString();
           }
         } else if (rl.superAgentId) {
-          const saRef = await SuperAgent.findById(rl.superAgentId).select("userId agentIds").lean();
+          const saRef = await SuperAgent.findById(rl.superAgentId).select("userId").lean();
           if (saRef) {
             isAgentVerified = true;
             verifiedByAgentId = saRef.userId.toString();
-            // Assign to the first agent under this SuperAgent, or leave unset if none exist
-            if (saRef.agentIds && saRef.agentIds.length > 0) {
-              referrerAgentId = saRef.agentIds[0].toString();
-            }
+            // No agent: a super-agent link does not say which agent should
+            // run the account. It used to hand every signup to the first
+            // agent on the team; an admin now assigns one from the Employers
+            // page (the admin "new employer" notification links there).
           }
         }
       } else {
@@ -240,14 +240,11 @@ export async function POST(req: NextRequest) {
           const fallbackRl = await ReferralLink.findOne({ code: referralCode });
           if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
         } else {
-          const saRef = await SuperAgent.findOne({ referralCode }).select("userId agentIds").lean();
+          const saRef = await SuperAgent.findOne({ referralCode }).select("userId").lean();
           if (saRef) {
             isAgentVerified = true;
             verifiedByAgentId = saRef.userId.toString();
-            // Assign to the first agent under this SuperAgent
-            if (saRef.agentIds && saRef.agentIds.length > 0) {
-              referrerAgentId = saRef.agentIds[0].toString();
-            }
+            // No agent — same rule as super-agent ReferralLinks above.
             const fallbackRl = await ReferralLink.findOne({ code: referralCode });
             if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
           }
@@ -369,7 +366,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
     const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(contactEmail)}`;
-    const dashboardUrl = `${baseUrl}/${locale}/employer/dashboard`;
+    const dashboardUrl = `${baseUrl}/${locale}/employer`;
 
     const [verifyResult, welcomeResult] = await Promise.allSettled([
       sendEmail({ to: contactEmail, ...EmailTemplates.verifyEmailOtp(contactName, otp, verifyUrl), source: "registration", category: "system" }),

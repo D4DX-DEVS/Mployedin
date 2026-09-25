@@ -122,6 +122,9 @@ export function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel ?? placeholder}
+          // Names (jobs, members, events) can outrun any fixed trigger width;
+          // hovering reveals the full label the truncated text hides.
+          title={selectedLabel ?? placeholder}
           disabled={disabled}
           className={cn(
             // Phones fit three of these on one filter row, so the trigger gives

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronRight, ChevronDown, Search, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2 } from "lucide-react";
+import { Check, ChevronRight, ChevronDown, Search, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { TagAutocomplete, Autocomplete } from "@/components/ui/tag-autocomplete"
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
+import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -325,23 +326,25 @@ function ChipButton({ label, selected, onClick }: { label: string; selected: boo
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={selected}
       className={`px-4 py-2 rounded-full border text-sm transition-all ${
         selected
           ? "border-blue-600 bg-blue-50 text-blue-700 font-medium"
           : "border-gray-300 bg-white text-gray-700 hover:border-blue-400"
       }`}
     >
-      {selected && <span className="mr-1">×</span>}
+      {selected && <X className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />}
       {label}
     </button>
   );
 }
 
 function TagChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  const tc = useTranslations("common");
   return (
     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 border border-gray-200 text-sm text-gray-700">
       {label}
-      <button type="button" onClick={onRemove} className="text-gray-400 hover:text-gray-700 ml-1">×</button>
+      <button type="button" onClick={onRemove} className="text-gray-400 hover:text-gray-700 ml-1" aria-label={tc("removeSkill", { skill: label })}><X className="h-3.5 w-3.5" aria-hidden="true" /></button>
     </span>
   );
 }
@@ -876,13 +879,25 @@ export default function JobSeekerOnboardingPage() {
     switch (n) {
       case 0: return !!step0.name.trim() && !!step0.phone.trim() && !!step0.workStatus;
       case 1: return step0.workStatus === "fresher" || (step1.isCurrentlyEmployed !== null && !!step1.experienceYears);
-      case 2: return !!step2.qualification;
+      case 2: {
+        // Qualification is always required
+        if (!step2.qualification) return false;
+        // For graduation and above, course must be confirmed
+        if (["graduation", "masters", "doctorate"].includes(step2.qualification)) {
+          if (!courseConfirmed) return false;
+          // After course is confirmed, specialization must be confirmed
+          if (!specConfirmed) return false;
+          // After specialization is confirmed, university is required
+          if (!step2.university.trim()) return false;
+        }
+        return true;
+      }
       // Discoverability is a consent answer, so it has no default: the seeker
       // says yes or no themselves before this step can be submitted.
       case 3: return !!step3.headline.trim() && step3.discoverable !== null;
       default: return true;
     }
-  }, [step0, step1, step2, step3]);
+  }, [step0, step1, step2, step3, courseConfirmed, specConfirmed]);
 
   const canAdvance = useCallback((): boolean => stepSatisfied(step), [stepSatisfied, step]);
 
@@ -1023,9 +1038,20 @@ export default function JobSeekerOnboardingPage() {
     setSaving(true);
     setSaveError("");
     try {
+      // Derive preferred countries from the selected locations
+      const derivedCountries: string[] = [];
+      for (const location of step3.preferredLocations) {
+        const country = countryKeyFromLocationText(location);
+        if (country && !derivedCountries.includes(country)) {
+          derivedCountries.push(country);
+        }
+      }
+
       await saveStep({
         headline: step3.headline,
         preferredLocations: step3.preferredLocations,
+        // Save derived countries so job recommendations can use them
+        preferredCountries: derivedCountries.length > 0 ? derivedCountries : undefined,
         // One expected figure, so no upper bound — `max: 0` used to store a
         // range whose top sat below its bottom.
         preferredSalary: step3.preferredSalary
@@ -1679,7 +1705,7 @@ export default function JobSeekerOnboardingPage() {
                                 onClick={() => setCourseConfirmed(true)}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded"
                               >
-                                ✓ {t("confirm")}
+                                <Check className="inline h-3 w-3 me-1 align-[-2px]" aria-hidden="true" />{t("confirm")}
                               </button>
                             )}
                           </div>
@@ -1736,13 +1762,16 @@ export default function JobSeekerOnboardingPage() {
                     {/* University */}
                     {step2.specialization && specConfirmed && (
                       <div className="field">
-                        <Label htmlFor="ob-university" className="text-sm font-medium text-gray-800">{t("university")}</Label>
+                        <Label htmlFor="ob-university" className="text-sm font-medium text-gray-800">{t("university")} <span className="text-red-500">*</span></Label>
                         <Input id="ob-university"
                           value={step2.university}
                           onChange={(e) => setStep2((p) => ({ ...p, university: e.target.value }))}
                           placeholder={t("universityPlaceholder")}
-                          className="h-11 border-gray-300 focus:border-blue-500"
+                          className={`h-11 focus:border-blue-500 ${step2.university.trim() ? "border-gray-300" : "border-red-400"}`}
                         />
+                        {!step2.university.trim() && (
+                          <p className="text-xs text-red-500 mt-1">{t("universityRequired")}</p>
+                        )}
                       </div>
                     )}
 
@@ -1951,7 +1980,7 @@ export default function JobSeekerOnboardingPage() {
                   onClick={() => { setStep((s) => s - 1); setSaveError(""); }}
                   className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
                 >
-                  ← {t("back")}
+                  <ArrowLeft className="me-1 inline h-4 w-4 align-[-3px] rtl:rotate-180" aria-hidden="true" />{t("back")}
                 </button>
               ) : <div />}
               <div className="flex items-center gap-3">

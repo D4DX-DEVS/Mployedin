@@ -61,6 +61,13 @@ jest.mock("@/lib/agents/workQueue", () => ({
   },
 }));
 
+// Region names come from City/State/Country; mocked for the same bson reason.
+const resolveAssignedRegionsMock = jest.fn();
+jest.mock("@/lib/agents/assignedRegion", () => ({
+  __esModule: true,
+  resolveAssignedRegions: (...args: unknown[]) => resolveAssignedRegionsMock(...args),
+}));
+
 jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: {
@@ -87,8 +94,40 @@ jest.mock("@/models/Placement", () => ({
   },
 }));
 
+// This month's target and commission, the two header figures that replaced
+// the conversion rates (which repeated the pipeline's "% of applicants").
+const targetFindOneMock = jest.fn();
+const commissionAggregateMock = jest.fn();
+const monthlyAchievementsMock = jest.fn();
+
+jest.mock("@/models/TargetProfile", () => ({
+  __esModule: true,
+  default: { findOne: (...args: unknown[]) => targetFindOneMock(...args) },
+}));
+jest.mock("@/models/Commission", () => ({
+  __esModule: true,
+  default: { aggregate: (...args: unknown[]) => commissionAggregateMock(...args) },
+}));
+jest.mock("@/lib/targets/profileAchievementCalculator", () => ({
+  calculateMonthlyAchievements: (...args: unknown[]) => monthlyAchievementsMock(...args),
+}));
+
+const THIS_MONTH = new Date().getMonth() + 1;
+
 describe("AgentDashboard", () => {
   beforeEach(() => {
+    targetFindOneMock.mockReset();
+    targetFindOneMock.mockReturnValue({
+      select: () => ({
+        lean: async () => ({
+          monthlyTargets: [{ month: THIS_MONTH, employerTarget: 1, employeeTarget: 6, financeTarget: 6250 }],
+        }),
+      }),
+    });
+    commissionAggregateMock.mockReset();
+    commissionAggregateMock.mockResolvedValue([{ total: 1500 }]);
+    monthlyAchievementsMock.mockReset();
+    monthlyAchievementsMock.mockResolvedValue([{ month: THIS_MONTH, overallProgress: 42 }]);
     authMock.mockReset();
     redirectMock.mockReset();
     connectDBMock.mockReset();
@@ -99,6 +138,10 @@ describe("AgentDashboard", () => {
     resolveAgentScopeMock.mockReset();
     getAgentQueueItemsMock.mockReset();
     getAgentActionCountsMock.mockReset();
+    resolveAssignedRegionsMock.mockReset();
+    resolveAssignedRegionsMock.mockResolvedValue([
+      { id: "city-1", type: "city", name: "Tirur", parent: "Kerala, India" },
+    ]);
 
     resolveAgentScopeMock.mockResolvedValue({
       agentId: "agent-1",
@@ -172,9 +215,14 @@ describe("AgentDashboard", () => {
     // Header: same WorkspaceHeader as the employer home, greeting + one
     // context line naming the most urgent queue item, not the queue total.
     const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent(/welcome back/i);
+    // Greeting by the agent's own clock, as on the super-agent home — no emoji.
+    expect(heading).toHaveTextContent(/^good (morning|afternoon|evening), /i);
+    expect(heading.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
     expect(heading.closest("section")).toHaveClass("workspace-header");
     expect(screen.getByText("1 lead follow-up is due.")).toBeInTheDocument();
+    // The admin-assigned region leads the context line, parent chain included.
+    expect(within(heading.closest("section")!).getByTestId("assigned-region-badge")).toHaveTextContent("Tirur, Kerala, India");
+    expect(resolveAssignedRegionsMock).toHaveBeenCalledWith(expect.objectContaining({ _id: "agent-1" }), "en");
     expect(screen.getByRole("link", { name: /post a job/i })).toHaveAttribute("href", "/en/agent/jobs/new");
     // `?new=1` opens the one New Lead dialog on the pipeline page. The old
     // /agent/leads/new route was a second, smaller form and now just redirects.
@@ -190,23 +238,39 @@ describe("AgentDashboard", () => {
     expect(screen.getByText(/9 things need you today/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /view tasks/i })).toHaveAttribute("href", "/en/agent/tasks");
     expect(screen.getByRole("link", { name: /1\s*Follow-ups due/i })).toHaveAttribute("href", "/en/agent/leads?followUp=due");
+    // Only counts that need action get a chip: offers awaiting reply is 0.
+    expect(screen.queryByRole("link", { name: /offers awaiting reply/i })).toBeNull();
     // Four rows at most, so the page holds one screen.
     expect(getAgentQueueItemsMock).toHaveBeenCalledWith(expect.anything(), 4);
     expect(screen.getByRole("link", { name: /Acme Trading/ })).toHaveAttribute("href", "/en/agent/leads?followUp=due");
     expect(screen.getByText(/3 days late/i)).toBeInTheDocument();
 
     // At-a-glance figures ride the header's metric strip (no section of their
-    // own): book size, live roles and the two rates — nothing the queue or the
-    // pipeline already prints. Each is a link.
+    // own): book size, live roles, this month's target and commission —
+    // nothing the queue or the pipeline already prints. Each is a link.
     expect(screen.queryByRole("heading", { name: /at a glance/i })).toBeNull();
     expect(screen.getByRole("link", { name: "Active Accounts: 2" }).closest("section")).toHaveClass("workspace-header");
     expect(screen.getByRole("link", { name: "Active Accounts: 2" })).toHaveAttribute("href", "/en/agent/employers");
     expect(screen.getByRole("link", { name: "Live Roles: 1" })).toHaveAttribute("href", "/en/agent/jobs?status=active");
-    expect(screen.getByRole("link", { name: "Interview Rate: 100%" })).toHaveAttribute("href", "/en/agent/interviews");
-    expect(screen.getByRole("link", { name: "Offer Rate: 50%" })).toHaveAttribute("href", "/en/agent/offers");
+    expect(screen.getByRole("link", { name: "Target this month: 42%" })).toHaveAttribute("href", "/en/agent/target-report");
+    expect(targetFindOneMock).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: "user-1", assigneeRole: "agent", status: "active" }));
+    expect(monthlyAchievementsMock).toHaveBeenCalledWith("user-1", "agent", new Date().getFullYear(), [
+      expect.objectContaining({ month: THIS_MONTH }),
+    ]);
+    const commission = screen.getByRole("link", { name: /^Commission this month: / });
+    expect(commission).toHaveTextContent("1,500");
+    expect(commission.getAttribute("href")).toMatch(/^\/en\/agent\/commissions\?dateFrom=\d{4}-\d{2}-01&dateTo=\d{4}-\d{2}-\d{2}$/);
+    // The agent's own lines, the three statuses the commissions page sums.
+    const [pipelineArg] = commissionAggregateMock.mock.calls[0] as [{ $match?: Record<string, unknown> }[]];
+    expect(pipelineArg[0].$match).toMatchObject({ agentId: "agent-1", status: { $in: ["pending", "approved", "paid"] } });
+    // The rates now live only in the pipeline.
+    expect(screen.queryByRole("link", { name: /interview rate/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /offer rate/i })).toBeNull();
 
     // Pipeline: five linked stages on the employer's InteractivePipeline layout,
     // with live lead/placement counts rather than the Agent document's counters.
+    // Leads are employer prospects, not candidates; the description says so.
+    expect(screen.getByText("Employer leads you've won, then your candidates from application to hire.")).toBeInTheDocument();
     const pipeline = screen.getByRole("navigation", { name: /placement pipeline/i });
     const stages = within(pipeline).getAllByRole("link");
     expect(stages.map((a) => a.getAttribute("href"))).toEqual([
@@ -227,13 +291,16 @@ describe("AgentDashboard", () => {
       $or: [{ agentId: "agent-1" }, { employerId: { $in: ["employer-1", "employer-2"] } }],
     });
 
-    // Role performance: the whole row is the link, not just the title.
+    // Role performance: live roles only ("How each live role is converting"),
+    // read across the whole portfolio rather than the newest 20 jobs.
+    expect(jobFindMock).toHaveBeenCalledWith(expect.objectContaining({ status: "active", deletedAt: null }));
+    // The whole row is the link, not just the title.
     const roleRow = screen.getByRole("link", { name: /Senior Recruiter/ });
     expect(roleRow).toHaveAttribute("href", "/en/agent/jobs/job-1");
     expect(roleRow).toHaveTextContent("Applications2");
 
     // Nothing on the page repeats: each figure's label appears once.
-    for (const label of ["Active Accounts", "Live Roles", "Interview Rate", "Offer Rate", "Follow-ups due"]) {
+    for (const label of ["Active Accounts", "Live Roles", "Target this month", "Commission this month", "Follow-ups due"]) {
       expect(screen.getAllByText(label)).toHaveLength(1);
     }
 
@@ -243,5 +310,41 @@ describe("AgentDashboard", () => {
     expect(view.container.innerHTML).not.toContain("bg-white/95");
     expect(view.container.innerHTML).not.toContain("text-slate-950");
     expect(view.container.innerHTML).not.toMatch(/(^|[\s"])bg-(amber|sky|indigo|emerald|violet|rose)-50(?=[\s"])/);
+  });
+
+  it("shows a dash, not 0%, when the super-agent has set no target this month", async () => {
+    targetFindOneMock.mockReturnValue({ select: () => ({ lean: async () => null }) });
+    render(await AgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
+    const target = screen.getByRole("link", { name: "Target this month: no target set" });
+    expect(target).toHaveTextContent("—");
+    expect(monthlyAchievementsMock).not.toHaveBeenCalled();
+  });
+
+  it("hides the whole chip row when nothing needs action", async () => {
+    getAgentActionCountsMock.mockResolvedValue({
+      overdueTasks: 0, dueFollowUps: 0, interviewsAwaitingOutcome: 0, offersAwaitingResponse: 0, newCandidates: 0,
+    });
+    getAgentQueueItemsMock.mockResolvedValue([]);
+    render(await AgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
+    expect(screen.queryByRole("link", { name: /follow-ups due/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /new candidates/i })).toBeNull();
+  });
+
+  it("says so when no region is assigned, and collapses several to the first plus a count", async () => {
+    resolveAssignedRegionsMock.mockResolvedValueOnce([]);
+    const { unmount } = render(await AgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
+    expect(screen.getByTestId("assigned-region-badge")).toHaveTextContent("No region assigned");
+    unmount();
+
+    jobCountDocumentsMock.mockResolvedValueOnce(1).mockResolvedValueOnce(4);
+    leadCountDocumentsMock.mockResolvedValueOnce(6).mockResolvedValueOnce(3);
+    resolveAssignedRegionsMock.mockResolvedValueOnce([
+      { id: "state-1", type: "state", name: "Kerala", parent: "India" },
+      { id: "city-1", type: "city", name: "Tirur", parent: "Kerala, India" },
+    ]);
+    render(await AgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
+    const badge = screen.getByTestId("assigned-region-badge");
+    expect(badge).toHaveTextContent("Kerala +1");
+    expect(badge).toHaveAttribute("title", "Kerala, India · Tirur, Kerala, India");
   });
 });

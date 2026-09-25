@@ -8,14 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldCheck } from "lucide-react";
-
-const ROLE_REDIRECTS: Record<string, string> = {
-  admin: "admin",
-  employer: "employer",
-  job_seeker: "job-seeker",
-  agent: "agent",
-  super_agent: "super-agent",
-};
+import { roleHomePath } from "@/lib/auth/roleHome";
 
 /**
  * /verify-oauth-2fa
@@ -54,7 +47,7 @@ export default function VerifyOAuth2faPage() {
           role === "job_seeker" && isOnboarded === false
             ? `/${locale}/onboarding`
             : role
-              ? `/${locale}/${ROLE_REDIRECTS[role] ?? "job-seeker"}`
+              ? roleHomePath(locale, role)
               : `/${locale}/login`;
         router.replace(dest);
       }
@@ -127,7 +120,7 @@ export default function VerifyOAuth2faPage() {
         role === "job_seeker" && isOnboarded === false
           ? `/${locale}/onboarding`
           : role
-            ? `/${locale}/${ROLE_REDIRECTS[role] ?? "job-seeker"}`
+            ? roleHomePath(locale, role)
             : `/${locale}/login`;
       router.replace(dest);
     } catch {

@@ -24,6 +24,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
 import {
@@ -244,6 +245,8 @@ function SubscribersTable() {
   const [searchInput, setSearchInput] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  /** Only arrives from the admin dashboard's "ending within 7 days" row. */
+  const [expiring, setExpiring] = useUrlFilter("expiring", "", { allow: ["7d", "30d"] });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Search box drives the query directly — the Apply Filters button lives inside the
@@ -252,8 +255,8 @@ function SubscribersTable() {
 
   // Merge search + pagination into filters for the API call
   const queryFilters = useMemo(
-    () => ({ ...filters, search: debouncedSearch || undefined, page, limit }),
-    [filters, debouncedSearch, page, limit],
+    () => ({ ...filters, expiring: expiring || undefined, search: debouncedSearch || undefined, page, limit }),
+    [filters, expiring, debouncedSearch, page, limit],
   );
 
   const { data, isLoading } = useAdminSubscriptions(queryFilters);
@@ -273,15 +276,16 @@ function SubscribersTable() {
     return [...(employerPlans ?? []), ...(jobSeekerPlans ?? [])];
   }, [filters.role, employerPlans, jobSeekerPlans]);
 
-  const hasActiveFilters = !!(filters.status || filters.role || filters.planId || filters.autoRenew || searchInput || dateFrom || dateTo);
+  const hasActiveFilters = !!(filters.status || filters.role || filters.planId || filters.autoRenew || expiring || searchInput || dateFrom || dateTo);
 
   const clearFilters = useCallback(() => {
     setFilters({ sortBy: "createdAt", sortOrder: "desc" });
+    setExpiring("");
     setSearchInput("");
     setDateFrom("");
     setDateTo("");
     resetPage();
-  }, [resetPage]);
+  }, [resetPage, setExpiring]);
 
   // Export columns
   const subExportColumns: ExportColumn<AdminSubscriptionItem>[] = useMemo(() => [
@@ -332,6 +336,17 @@ function SubscribersTable() {
 
       {/* ── Table Card ── */}
       <div className="workspace-panel-surface overflow-hidden rounded-3xl">
+        {expiring && (
+          <button
+            type="button"
+            onClick={() => { setExpiring(""); resetPage(); }}
+            className="mb-3 inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary hover:bg-primary/10"
+            aria-label={t("expiringClearAria")}
+          >
+            {t("expiringChip", { days: expiring === "30d" ? 30 : 7 })}
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        )}
         <TableToolbar
           search={searchInput}
           onSearchChange={(v) => { setSearchInput(v); resetPage(); }}

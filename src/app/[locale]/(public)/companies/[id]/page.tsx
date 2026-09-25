@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Building2, MapPin, Globe, Users, Briefcase, CheckCircle2, Calendar, ExternalLink } from "lucide-react";
+import { Building2, MapPin, Globe, Users, Briefcase, CheckCircle2, Calendar, ExternalLink, ArrowLeft } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import CompanyReviews from "@/components/features/public/CompanyReviews";
 import { formatCount } from "@/lib/ui/intlFormat";
@@ -199,7 +199,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
 
       <div className="mt-8 text-center">
         <Link href={`/${locale}/companies`} className="text-primary hover:underline text-sm">
-          ← {t("backToAllCompanies")}
+          <ArrowLeft className="me-1 inline h-4 w-4 align-[-3px] rtl:rotate-180" aria-hidden="true" />{t("backToAllCompanies")}
         </Link>
       </div>
     </main>

@@ -50,6 +50,7 @@ import {
   Tag,
   Pause,
   CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -812,7 +813,7 @@ export default function SuperAgentJobsPage() {
                   )}
                   {(dateFrom || dateTo) && (
                     <Badge variant="secondary" className="gap-1 text-xs">
-                      {t("filterBadgeDateLabel")}: {dateFrom || "…"} → {dateTo || "…"}
+                      {t("filterBadgeDateLabel")}: {dateFrom || "…"} <ArrowRight className="h-3 w-3 rtl:rotate-180" aria-hidden="true" /> {dateTo || "…"}
                       <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5" aria-label={t("removeDateFilter")}><X className="h-3 w-3" /></button>
                     </Badge>
                   )}

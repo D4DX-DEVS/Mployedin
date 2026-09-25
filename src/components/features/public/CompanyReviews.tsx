@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Star, ThumbsUp, MessageSquare, Send } from "lucide-react";
+import { Star, ThumbsUp, ThumbsDown, MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { formatDate } from "@/lib/ui/intlFormat";
@@ -239,21 +239,21 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
         ))}
       </div>
 
-      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t("reviewTitle")} className="w-full border border-border rounded-lg bg-background text-sm chip-pad" required maxLength={200} />
+      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t("reviewTitle")} aria-label={t("reviewTitle")} className="w-full border border-border rounded-lg bg-background text-sm chip-pad" required maxLength={200} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="text-xs font-medium text-green-600">{t("pros")} *</label>
-          <textarea value={pros} onChange={e => setPros(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background text-sm chip-pad" rows={3} required maxLength={2000} placeholder={t("whatLiked")} />
+          <textarea value={pros} onChange={e => setPros(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background text-sm chip-pad" rows={3} required maxLength={2000} placeholder={t("whatLiked")} aria-label={t("whatLiked")} />
         </div>
         <div>
           <label className="text-xs font-medium text-red-600">{t("cons")} *</label>
-          <textarea value={cons} onChange={e => setCons(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background text-sm chip-pad" rows={3} required maxLength={2000} placeholder={t("whatBetter")} />
+          <textarea value={cons} onChange={e => setCons(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background text-sm chip-pad" rows={3} required maxLength={2000} placeholder={t("whatBetter")} aria-label={t("whatBetter")} />
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t("yourJobTitle")} className="border border-border rounded-lg bg-background text-sm chip-pad" />
+        <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t("yourJobTitle")} aria-label={t("yourJobTitle")} className="border border-border rounded-lg bg-background text-sm chip-pad" />
         <Select value={employmentStatus} onValueChange={setEmploymentStatus}>
           <SelectTrigger className="h-9 rounded-lg">
             <SelectValue placeholder={t("employmentStatus")} />
@@ -271,8 +271,8 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
 
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">{t("recommendQuestion")}?</span>
-        <button type="button" onClick={() => setRecommendToFriend(true)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === true ? "border-green-500 bg-green-50 text-green-600" : "border-border"}`}>👍 Yes</button>
-        <button type="button" onClick={() => setRecommendToFriend(false)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === false ? "border-red-500 bg-red-50 text-red-600" : "border-border"}`}>👎 No</button>
+        <button type="button" onClick={() => setRecommendToFriend(true)} className={`inline-flex items-center gap-1 px-3 py-1 rounded border text-xs ${recommendToFriend === true ? "border-green-500 bg-green-50 text-green-600" : "border-border"}`}><ThumbsUp className="h-3.5 w-3.5" aria-hidden="true" />{t("recommendYes")}</button>
+        <button type="button" onClick={() => setRecommendToFriend(false)} className={`inline-flex items-center gap-1 px-3 py-1 rounded border text-xs ${recommendToFriend === false ? "border-red-500 bg-red-50 text-red-600" : "border-border"}`}><ThumbsDown className="h-3.5 w-3.5" aria-hidden="true" />{t("recommendNo")}</button>
       </div>
 
       <div className="flex justify-end gap-3">

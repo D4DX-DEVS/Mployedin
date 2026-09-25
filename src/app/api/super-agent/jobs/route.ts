@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { getSuperAgentBook } from "@/lib/auth/agentRestrictions";
 import Job from "@/models/Job";
-import Agent from "@/models/Agent";
 import { routeGenerate } from "@/lib/ai/router";
 import logger from "@/lib/logger";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -70,16 +69,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
 
-  // Dual-scoping: team agents + region-based agents
-  const scope = await getSuperAgentScope(ctx.userId);
-  const agentDocIds = scope?.effectiveAgentIds ?? [];
-  const agentDocs =
-    agentDocIds.length > 0
-      ? await Agent.find({ _id: { $in: agentDocIds } })
-          .select("assignedEmployerIds")
-          .lean()
-      : [];
-  const employerIds = agentDocs.flatMap((a) => a.assignedEmployerIds ?? []);
+  // The super-agent's book (team + region agents, and every employer linked to
+  // them from either end) — the same definition /api/jobs/[id] checks, so every
+  // job listed here also opens. Admin is unscoped.
+  const book = ctx.role === "super_agent" ? await getSuperAgentBook(ctx.userId) : null;
 
   const { searchParams } = new URL(req.url);
 
@@ -112,19 +105,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { deletedAt: null };
 
-  // Scope to agents managed by this super agent
-  if (agentDocIds.length > 0) {
-    query.$or = [
-      { agentId: { $in: agentDocIds } },
-      ...(employerIds.length > 0
-        ? [{ employerId: { $in: employerIds } }]
-        : []),
-    ];
-  } else if (employerIds.length > 0) {
-    query.employerId = { $in: employerIds };
-  } else if (ctx.role === "super_agent") {
-    // Default-deny: an unscoped super-agent sees nothing, not everything.
-    query._id = { $in: [] };
+  // Scope lives in $and so the agentId / employerId filters below can only
+  // narrow it. Default-deny: a super-agent with no book sees nothing.
+  if (ctx.role === "super_agent") {
+    query.$and = [book ? book.ownershipMatch : { _id: { $in: [] } }];
   }
 
   // Status filter

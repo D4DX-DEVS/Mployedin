@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { useLocale, useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Settings, X } from "lucide-react";
+import { ChevronDown, ExternalLink, Settings, X } from "lucide-react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -27,8 +27,7 @@ export function AdvancedSettingsSection() {
   const [open, setOpen] = useState(false);
   const { register, watch, setValue } = useFormContext<JobFormValues>();
 
-  const autoScreening = watch("autoScreeningEnabled");
-  const minMatchScore = watch("minMatchScore");
+  const tAts = useTranslations("employerAts");
   const visibility = watch("visibility");
   const tags = watch("tags") ?? [];
   const applicationMode = watch("applicationMode");
@@ -90,11 +89,6 @@ export function AdvancedSettingsSection() {
             <Badge variant="secondary" className="text-[11px]">
               {t(`visibilityBadges.${visibility}`)}
             </Badge>
-            {autoScreening && (
-              <Badge variant="secondary" className="text-[11px]">
-                {t("screeningAt", { score: minMatchScore })}
-              </Badge>
-            )}
             {expiresAt && (
               <Badge variant="secondary" className="text-[11px]">
                 {t("expires", { date: formatDate(expiresAt) })}
@@ -177,63 +171,18 @@ export function AdvancedSettingsSection() {
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-xl border border-border/70 bg-background card-pad">
-                <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{t("autoScreening")}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t("autoScreeningHint")}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={autoScreening}
-                    onCheckedChange={(v) =>
-                      setValue("autoScreeningEnabled", v, { shouldValidate: false })
-                    }
-                  />
-                </div>
-
-                <AnimatePresence>
-                  {autoScreening && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="space-y-2 border-s-2 border-primary/30 ps-4">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="min-match-score" className="text-xs text-muted-foreground">
-                            {t("minMatchScore")}
-                          </Label>
-                          <span className="text-sm font-semibold text-primary">
-                            {minMatchScore}%
-                          </span>
-                        </div>
-                        <input
-                          id="min-match-score"
-                          type="range"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={minMatchScore}
-                          aria-label={t("minMatchScoreAria")}
-                          onChange={(e) =>
-                            setValue("minMatchScore", Number(e.target.value), {
-                              shouldValidate: false,
-                            })
-                          }
-                          className="w-full accent-primary"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{t("thresholdAll")}</span>
-                          <span>{t("thresholdModerate")}</span>
-                          <span>{t("thresholdExact")}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              {/* Auto-reject lives in one place — Hiring rules — and every job
+                  follows it unless the job's Setup overrides it. The switch
+                  and slider that sat here were never sent to the server. */}
+              <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 card-pad sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">{tAts("screeningRulesNote")}</p>
+                <Link
+                  href={`/${locale}/employer/workflow`}
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg text-sm font-medium text-primary hover:underline sm:min-h-0"
+                >
+                  {tAts("screeningRulesLink")}
+                  <ExternalLink className="size-3.5" aria-hidden="true" />
+                </Link>
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
@@ -301,7 +250,11 @@ export function AdvancedSettingsSection() {
                     selectedWorkflowTemplateId={selectedWorkflowTemplateId}
                     selectedMatchingWeightTemplateId={selectedMatchingWeightTemplateId}
                     onWorkflowTemplateSelect={(t: WorkflowTemplateItem | null) => setSelectedWorkflowTemplateId(t?._id ?? null)}
-                    onMatchingWeightTemplateSelect={(t: MatchingWeightTemplateItem | null) => setSelectedMatchingWeightTemplateId(t?._id ?? null)}
+                    onMatchingWeightTemplateSelect={(t: MatchingWeightTemplateItem | null) => {
+                      setSelectedMatchingWeightTemplateId(t?._id ?? null);
+                      // Saved onto the job right after it is created; they rank its applicants.
+                      setValue("matchingWeights", t ? { ...t.weights } : undefined, { shouldValidate: false });
+                    }}
                   />
                 </div>
               </div>

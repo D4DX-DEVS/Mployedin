@@ -141,6 +141,27 @@ describe("GET /api/applications — unreviewed filter", () => {
     expect(applicationQueries[0].status).toBeUndefined();
   });
 
+  /** Shortlist Top counts who is still waiting for a score across the whole
+      job; its ranked pool stops at 100 rows and sorts the unscored last, so it
+      cannot see them once 100 are scored. */
+  it("narrows to applicants without a match score when scored=false", async () => {
+    await callHandler(makeReq(`/api/applications?jobId=${JOB_ID}&scored=false&page=1&limit=1`));
+
+    expect(applicationQueries[0].aiMatchScore).toBeNull();
+  });
+
+  it("narrows to scored applicants when scored=true", async () => {
+    await callHandler(makeReq(`/api/applications?jobId=${JOB_ID}&scored=true&page=1&limit=1`));
+
+    expect(applicationQueries[0].aiMatchScore).toEqual({ $ne: null });
+  });
+
+  it("lets a score range win over scored=false", async () => {
+    await callHandler(makeReq(`/api/applications?jobId=${JOB_ID}&scored=false&scoreMin=50&page=1&limit=1`));
+
+    expect(applicationQueries[0].aiMatchScore).toEqual({ $gte: 50 });
+  });
+
   it("does not add unreviewed filter when unreviewed is not true", async () => {
     await callHandler(
       makeReq(`/api/applications?jobId=${JOB_ID}&page=1&limit=10`)

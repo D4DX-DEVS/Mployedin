@@ -81,21 +81,16 @@ import {
   resolveDefaultDigestCadence,
 } from "@/models/SystemConfig";
 import { RECOMMENDATION_COOLDOWN_DAYS } from "@/lib/matching/constants";
-import { digestGateFor, isWithinDigestCooldown, type DigestGate } from "@/lib/notifications/digestGate";
+import {
+  digestGateFor,
+  isWithinDigestCooldown,
+  hasDigestContent,
+  type DigestGate,
+} from "@/lib/notifications/digestGate";
 import { notify } from "@/lib/notifications/trigger";
 
 const BATCH_SIZE = 50;
 const TOP_JOBS_COUNT = MAX_RECOMMENDATIONS;
-
-/**
- * How long to wait before telling a seeker again that nothing cleared the bar.
- *
- * Deliberately longer than the weekly digest cadence. A weekly seeker who
- * clears nothing would otherwise receive a "we found you nothing" note every
- * single cycle, which is the same nagging the cadence change set out to stop.
- * Once a fortnight keeps it honest without making emptiness the routine.
- */
-const NEAR_MISS_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 
 export const dailyRecommendationsCron = inngest.createFunction(
   {
@@ -331,9 +326,10 @@ export const dailyRecommendationsCron = inngest.createFunction(
               const scoredJobs = recommendation.jobs;
 
               // A high floor means most seekers clear nothing, most days. That
-              // is the intended behaviour — but going permanently silent is
-              // not, so the digest carries an honest "nothing strong enough
-              // today, here is what would change that" section instead.
+              // alone is no reason to email them (see hasDigestContent), but a
+              // digest that goes out anyway — for profile views — carries an
+              // honest "nothing strong enough today, here is what would change
+              // that" section.
               //
               // `limitingFactor` names the real cause rather than the biggest
               // gate. A seeker who has never listed a skill has a ceiling of
@@ -350,25 +346,6 @@ export const dailyRecommendationsCron = inngest.createFunction(
                       topBlocker: recommendation.limitingFactor ?? null,
                     }
                   : null;
-
-              // Atomic claim, same pattern as the digest cooldown below:
-              // whoever flips the timestamp sends, everyone else backs off.
-              let sendNearMiss = false;
-              if (nearMiss) {
-                const nearMissCutoff = new Date(Date.now() - NEAR_MISS_COOLDOWN_MS);
-                const claimed = await NotificationPreference.findOneAndUpdate(
-                  {
-                    userId,
-                    $or: [
-                      { lastNearMissSentAt: { $exists: false } },
-                      { lastNearMissSentAt: { $lte: nearMissCutoff } },
-                    ],
-                  },
-                  { $set: { lastNearMissSentAt: new Date() } },
-                  { new: true, projection: { _id: 1 } },
-                ).lean();
-                sendNearMiss = claimed !== null;
-              }
 
               // Aggregate profile views from last 24h
               const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -392,10 +369,10 @@ export const dailyRecommendationsCron = inngest.createFunction(
                 })),
               };
 
-              // Skip if nothing to send. The near-miss note counts as
-              // something: it is the only thing standing between a strict
-              // threshold and indefinite silence.
-              if (scoredJobs.length === 0 && profileViews.count === 0 && !sendNearMiss) {
+              // No strong match and nobody viewed the profile: send nothing.
+              // This used to send a standalone "No strong job matches" note on
+              // a 14-day cooldown — 187 of 188 job emails on 2026-09-23.
+              if (!hasDigestContent({ jobCount: scoredJobs.length, profileViewCount: profileViews.count })) {
                 continue;
               }
 
@@ -462,7 +439,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
                   // Present only when nothing cleared the bar. Lets the email
                   // say "your closest match today was 71%, we only send 80%+"
                   // rather than quietly sending nothing.
-                  ...(sendNearMiss && nearMiss ? { nearMiss } : {}),
+                  ...(nearMiss ? { nearMiss } : {}),
                 },
               });
 

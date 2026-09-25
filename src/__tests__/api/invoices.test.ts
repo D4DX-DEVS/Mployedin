@@ -130,6 +130,30 @@ describe("Invoices API", () => {
     );
   });
 
+  it.each([
+    ["payment_notice", { paymentNotifications: { $elemMatch: { verifiedAt: null } } }],
+    ["dispute", { disputes: { $elemMatch: { status: { $in: ["open", "under_review"] } } } }],
+  ])("filters attention=%s to the rows the admin dashboard counted", async (attention, expected) => {
+    auth.mockResolvedValue({ user: { id: "admin_001", role: "admin", locale: "en" } });
+
+    const { GET } = await import("@/app/api/invoices/route");
+    const res = await GET(new NextRequest(`http://localhost:3000/api/invoices?attention=${attention}`), { params: Promise.resolve({}) });
+
+    expect(res.status).toBe(200);
+    expect(Invoice.find.mock.calls[0][0]).toEqual(expect.objectContaining(expected));
+  });
+
+  it("ignores an unknown attention value", async () => {
+    auth.mockResolvedValue({ user: { id: "admin_001", role: "admin", locale: "en" } });
+
+    const { GET } = await import("@/app/api/invoices/route");
+    await GET(new NextRequest("http://localhost:3000/api/invoices?attention=everything"), { params: Promise.resolve({}) });
+
+    const query = Invoice.find.mock.calls[0][0] as Record<string, unknown>;
+    expect(query).not.toHaveProperty("paymentNotifications");
+    expect(query).not.toHaveProperty("disputes");
+  });
+
   it("keeps staff scoping and search conditions composed together", async () => {
     auth.mockResolvedValue({ user: { id: "sa_user_001", role: "super_agent", locale: "en" } });
 

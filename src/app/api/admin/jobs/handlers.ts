@@ -7,6 +7,7 @@ import SuperAgent from "@/models/SuperAgent";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { JOB_EXPIRING_WINDOWS, jobsExpiringFilter } from "@/lib/admin/queueFilters";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -29,10 +30,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const employmentType = searchParams.get("employmentType") ?? "";
   const location = searchParams.get("location") ?? "";
   const skills = searchParams.get("skills") ?? "";
+  const expiringDays = JOB_EXPIRING_WINDOWS[searchParams.get("expiring") ?? ""];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { deletedAt: null };
   if (status) query.status = status;
+  // "expiring=7d" — the dashboard's "closing this week" count, same filter.
+  if (expiringDays) Object.assign(query, jobsExpiringFilter(expiringDays));
   if (category) query.category = { $regex: escapeRegex(category), $options: "i" };
   if (workMode) query.workMode = workMode;
   if (employmentType) query.employmentType = employmentType;

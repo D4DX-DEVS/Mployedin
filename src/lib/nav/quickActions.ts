@@ -392,7 +392,7 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
     // Palette-only: these open a filtered queue rather than making something new.
     {
       key: "saReviewExhibitions",
-      href: "/super-agent/exhibitions?status=submitted",
+      href: "/super-agent/exhibitions?status=pending_review",
       icon: "CalendarDays",
       labelKey: "saReviewExhibitions",
       descriptionKey: "saReviewExhibitionsDesc",

@@ -37,6 +37,20 @@ export function hashOtp(otp: string, purpose: OtpPurpose = "verify"): string {
 }
 
 /**
+ * Accounts allowed to verify their email address, as a User filter clause.
+ *
+ * Self-registered agents stay inactive until an admin approves them, yet their
+ * registration email asks them to verify first — requiring `isActive` made that
+ * code, its link and "Resend" all dead ends. Other inactive accounts stay out.
+ * A deactivated agent also matches, which is harmless: verifying grants nothing
+ * while sign-in still refuses inactive accounts.
+ *
+ * It is an `$or` clause: spread it only into a filter without an `$or` of its
+ * own, or one silently replaces the other.
+ */
+export const VERIFIABLE_ACCOUNT = { $or: [{ isActive: true }, { role: "agent" }] };
+
+/**
  * Constant-time comparison of two hex digests (e.g. a submitted code's hash
  * against the stored one). A plain `===` short-circuits on the first differing
  * byte, which leaks how much of the digest matched. Length mismatch is an

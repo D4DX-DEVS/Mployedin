@@ -19,6 +19,10 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate } from "@/lib/ui/intlFormat";
+
+// "Oct 1, 2026" like the rest of the app — the bare default printed "10/1/2026" (JRN-04).
+const OFFER_DATE: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
 
 interface OfferJob {
   _id: string;
@@ -82,8 +86,6 @@ export default function OffersPage() {
     document.title = t("documentTitle");
   }, [t]);
 
-  const formatDate = useCallback((date: string) => new Date(date).toLocaleDateString(locale), [locale]);
-
   const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
@@ -137,6 +139,7 @@ export default function OffersPage() {
       setAcceptingId(null);
       setSignatureName("");
       setRespondingId(null);
+      await fetchOffers();
     } catch (err) {
       console.error("Error accepting offer:", err);
       toast.error(t("errors.acceptFailed"));
@@ -168,6 +171,7 @@ export default function OffersPage() {
       );
       setRespondingId(null);
       setDeclineReason("");
+      await fetchOffers();
     } catch (err) {
       console.error("Error declining offer:", err);
       toast.error(t("errors.declineFailed"));
@@ -205,8 +209,7 @@ export default function OffersPage() {
       setCounteringId(null);
       setCounterForm({ amount: "", currency: "AED", period: "monthly", note: "" });
       await fetchOffers();
-    } catch (err) {
-      console.error("Error submitting counter-offer:", err);
+    } catch {
       toast.error(t("counter.errors.failed"));
     }
   }
@@ -241,9 +244,9 @@ export default function OffersPage() {
   const exportData = offers.map((o) => ({
     jobTitle: o.jobId?.title ?? "",
     salary: `${o.salary.currency} ${o.salary.amount.toLocaleString(locale)} / ${periodLabel(o.salary.period)}`,
-    startDate: formatDate(o.startDate),
+    startDate: formatDate(o.startDate, OFFER_DATE, locale),
     status: statusLabel(o.status),
-    expiresAt: formatDate(o.expiresAt),
+    expiresAt: formatDate(o.expiresAt, OFFER_DATE, locale),
     benefits: o.benefits ?? "",
   }));
 
@@ -350,7 +353,7 @@ export default function OffersPage() {
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 shrink-0 text-muted-foreground" />
                   <span className="text-muted-foreground">{t("labels.startDate")}</span>
-                  <span className="font-medium">{formatDate(offer.startDate)}</span>
+                  <span className="font-medium">{formatDate(offer.startDate, OFFER_DATE, locale)}</span>
                 </span>
 
                 {/* The deadline only means something while the candidate can
@@ -360,7 +363,7 @@ export default function OffersPage() {
                     the candidate had already taken. */}
                 {offer.status === "pending" && (
                   <span className="text-xs text-muted-foreground">
-                    {t("expiresOn", { date: formatDate(offer.expiresAt) })}
+                    {t("expiresOn", { date: formatDate(offer.expiresAt, OFFER_DATE, locale) })}
                     {isExpired(offer) && ` ${t("expired")}`}
                   </span>
                 )}

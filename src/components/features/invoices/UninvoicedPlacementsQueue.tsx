@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  CheckSquare, Square, FileText, Zap, Loader2, Search,
+  Check, CheckSquare, Square, FileText, Zap, Loader2, Search,
   Users, Building2, Briefcase, Receipt, AlertTriangle,
   ChevronDown, ChevronUp, Globe, Calculator,
 } from "lucide-react";
@@ -622,7 +622,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         bulkAutoDetectTax ? "border-emerald-500 bg-emerald-500 text-white" : "border-border bg-card"
                       }`}
                     >
-                      {bulkAutoDetectTax && <span className="text-xs">✓</span>}
+                      {bulkAutoDetectTax && <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />}
                     </button>
                     <span className="text-sm text-muted-foreground">{t("autoDetectByCountry")}</span>
                   </div>

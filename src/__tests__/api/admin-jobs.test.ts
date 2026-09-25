@@ -94,4 +94,27 @@ describe("Admin Jobs API", () => {
       ]),
     );
   });
+
+  it("GET /api/admin/jobs?expiring=7d lists active jobs closing within a week, as the dashboard counts them", async () => {
+    const { GET } = await import("@/app/api/admin/jobs/route");
+    const before = Date.now();
+
+    const res = await GET(makeRequest("/api/admin/jobs?expiring=7d"), { params: Promise.resolve({}) });
+
+    expect(res.status).toBe(200);
+    const query = Job.find.mock.calls[0][0];
+    expect(query.status).toBe("active");
+    expect(query.deletedAt).toBeNull();
+    const window = query.expiresAt.$lte.getTime() - query.expiresAt.$gte.getTime();
+    expect(window).toBe(7 * 24 * 60 * 60 * 1000);
+    expect(query.expiresAt.$gte.getTime()).toBeGreaterThanOrEqual(before);
+  });
+
+  it("GET /api/admin/jobs ignores an unknown expiring window", async () => {
+    const { GET } = await import("@/app/api/admin/jobs/route");
+
+    await GET(makeRequest("/api/admin/jobs?expiring=365d"), { params: Promise.resolve({}) });
+
+    expect(Job.find.mock.calls[0][0].expiresAt).toBeUndefined();
+  });
 });

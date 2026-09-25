@@ -37,6 +37,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
   if (status === "active") query.isActive = true;
   if (status === "inactive") query.isActive = false;
+  // "failing" = enabled but the last delivery failed — the dashboard health row.
+  if (status === "failing") {
+    query.isActive = true;
+    query.lastStatus = "failed";
+  }
   if (event && event !== "all") query.events = event;
 
   const [webhooks, total, active, inactive, failed, healthy] = await Promise.all([

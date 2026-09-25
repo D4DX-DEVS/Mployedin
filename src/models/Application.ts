@@ -31,11 +31,24 @@ export interface IAIMatchBreakdown {
    */
   location?: number;
   salary?: number;
-  /** Legacy components — no scorer writes these any more. */
+  /** Employer ATS: education fit, when the job names a qualification. */
   education?: number;
+  /** Employer ATS: years in the job's industry, when it names one (lib/matching/industry.ts). */
+  industry?: number;
   availability?: number;
   /** The final score — equal to aiMatchScore. */
   overall: number;
+}
+
+/** One line of the employer's requirements checklist (lib/matching/qualifications.ts). */
+export interface IQualificationCheck {
+  key: string;
+  status: "met" | "partial" | "not_met" | "unknown";
+  hard: boolean;
+  required?: string;
+  actual?: string;
+  questionId?: string;
+  label?: string;
 }
 
 export interface IBehaviorSignals {
@@ -76,6 +89,22 @@ export interface IApplication extends Document {
   matchNotes?: string;
   matchStrengths?: string[];
   matchGaps?: string[];
+  /**
+   * The engine score — what the seeker is shown for this pair. aiMatchScore
+   * is the employer's ATS ranking (lib/matching/applicantScore.ts); absent on
+   * rows scored before 2026-09-24, where aiMatchScore is the engine number.
+   */
+  seekerMatchScore?: number;
+  /** Job skills the candidate has / lacks, by the engine's evidence rules. */
+  matchedSkills?: string[];
+  missingSkills?: string[];
+  /** The requirements checklist and its roll-up; Shortlist Top excludes "not_met". */
+  qualifications?: IQualificationCheck[];
+  requirementsStatus?: "met" | "not_met" | "unverified";
+  /** True when aiMatchScore came from the employer's saved weights. */
+  weightsApplied?: boolean;
+  /** When the ATS scoring last ran — on apply, on "Score", or after a job edit. */
+  scoredAt?: Date;
   behaviorSignals?: IBehaviorSignals;
   behaviorScore?: number;
   interviewIds: mongoose.Types.ObjectId[];
@@ -146,12 +175,29 @@ const ApplicationSchema = new Schema<IApplication>(
       location: Number,
       salary: Number,
       education: Number,
+      industry: Number,
       availability: Number,
       overall: Number,
     },
     matchNotes: String,
     matchStrengths: [{ type: String }],
     matchGaps: [{ type: String }],
+    seekerMatchScore: Number,
+    matchedSkills: [{ type: String }],
+    missingSkills: [{ type: String }],
+    qualifications: [{
+      key: { type: String, required: true },
+      status: { type: String, enum: ["met", "partial", "not_met", "unknown"], required: true },
+      hard: { type: Boolean, default: false },
+      required: String,
+      actual: String,
+      questionId: String,
+      label: String,
+      _id: false,
+    }],
+    requirementsStatus: { type: String, enum: ["met", "not_met", "unverified"] },
+    weightsApplied: Boolean,
+    scoredAt: Date,
     behaviorSignals: {
       responseTime: Number,
       coverLetterCustomized: Boolean,
@@ -236,6 +282,8 @@ ApplicationSchema.index({ employerId: 1 });
 ApplicationSchema.index({ agentId: 1 });
 ApplicationSchema.index({ status: 1 });
 ApplicationSchema.index({ aiMatchScore: -1 });
+// Shortlist Top: one job's open applicants, qualified first, best score first.
+ApplicationSchema.index({ jobId: 1, status: 1, requirementsStatus: 1, aiMatchScore: -1 });
 ApplicationSchema.index({ appliedAt: -1 });
 
 export const Application =

@@ -25,6 +25,7 @@ export interface IUser extends Document {
   passwordResetExpiry?: Date;
   passwordResetAttempts?: number;
   passwordChangedAt?: Date;
+  tempPasswordIssuedAt?: Date;
   failedLoginAttempts: number;
   lockUntil?: Date;
   authProvider: "credentials" | "google" | "linkedin" | "apple";
@@ -88,6 +89,7 @@ const UserSchema = new Schema<IUser>(
     passwordResetExpiry: { type: Date, select: false },
     passwordResetAttempts: { type: Number, default: 0 },
     passwordChangedAt: { type: Date },
+    tempPasswordIssuedAt: { type: Date },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date },
     authProvider: {

@@ -11,8 +11,12 @@ export {};
 
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn(), info: jest.fn(), warn: jest.fn() } }));
+const mockInngestSend = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/inngest/client", () => ({
-  inngest: { createFunction: (config: unknown, handler: unknown) => ({ config, handler }) },
+  inngest: {
+    createFunction: (config: unknown, handler: unknown) => ({ config, handler }),
+    send: (...args: unknown[]) => mockInngestSend(...args),
+  },
 }));
 jest.mock("@/lib/behaviorSignals", () => ({ computeBehaviorSignals: () => ({ signals: {}, score: 0 }) }));
 
@@ -122,6 +126,9 @@ describe("autoApply", () => {
     expect(created.aiMatchScore).toBeGreaterThanOrEqual(80);
     expect(created.scoredVia).toBe("engine");
     expect(created.matchBreakdown).toMatchObject({ overall: created.aiMatchScore });
+    expect(created.seekerMatchScore).toBe(created.aiMatchScore);
+    // The employer's checklist comes from the screening worker, as for any application.
+    expect(mockInngestSend).toHaveBeenCalledWith(expect.objectContaining({ name: "application/ai-screen" }));
   });
 
   it("keeps the expiry filter when it adds the country filter", async () => {

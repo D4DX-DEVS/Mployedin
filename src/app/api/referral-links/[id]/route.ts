@@ -7,6 +7,7 @@ import SuperAgent from "@/models/SuperAgent";
 import { validateBody } from "@/lib/validators";
 import { referralLinkUpdateSchema } from "@/lib/validators/referral-links";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface AuthCtx {
   userId: string;
@@ -30,7 +31,7 @@ async function canSuperAgentAccess(userId: string, linkCreatorId: string): Promi
 async function handleGet(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   await connectDB();
   const id = params?.id;
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  if (!id || !isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const link = await ReferralLink.findById(id)
     .populate("createdBy", "name email")
@@ -38,11 +39,15 @@ async function handleGet(req: NextRequest, ctx: AuthCtx, params?: Record<string,
 
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Agents can only see their own links; super-agents can see own + agents' links
-  if (ctx.role === "agent" && link.createdBy?._id?.toString() !== ctx.userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (ctx.role === "super_agent" && !(await canSuperAgentAccess(ctx.userId, link.createdBy?._id?.toString()))) {
+  // Default-deny: the link carries every registrant's name and email. Admin sees
+  // any link, an agent their own, a super-agent their own + their agents'.
+  // Everyone else (employer, job seeker) is refused.
+  const creatorId = link.createdBy?._id?.toString() ?? "";
+  const allowed =
+    ctx.role === "admin" ||
+    (ctx.role === "agent" && creatorId === ctx.userId) ||
+    (ctx.role === "super_agent" && (await canSuperAgentAccess(ctx.userId, creatorId)));
+  if (!allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -56,7 +61,7 @@ async function handleGet(req: NextRequest, ctx: AuthCtx, params?: Record<string,
 async function handlePatch(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   await connectDB();
   const id = params?.id;
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  if (!id || !isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const link = await ReferralLink.findById(id);
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -102,7 +107,7 @@ async function handlePatch(req: NextRequest, ctx: AuthCtx, params?: Record<strin
 async function handleDelete(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   await connectDB();
   const id = params?.id;
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  if (!id || !isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const link = await ReferralLink.findById(id);
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });

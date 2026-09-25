@@ -320,6 +320,28 @@ describe("relevance — skills", () => {
       calculateRelevance(without, job({ skills: ["React"] })).skills,
     );
   });
+
+  it.each([
+    ["Java", "Senior JavaScript developer"],
+    ["SAP", "Ran WhatsApp marketing campaigns"],
+    ["Excel", "Excellent communication skills"],
+    ["Rust", "Built trust with enterprise clients"],
+  ])("does not read %s out of a longer word (%s)", (skill, cvText) => {
+    const result = calculateRelevance(seeker({ skills: [], cvText }), job({ skills: [skill] }));
+    expect(result.matchedSkills).toEqual([]);
+    expect(result.skills).toBe(0);
+  });
+
+  it.each([
+    ["React", "Built dashboards in ReactJS"],
+    ["Node.js", "APIs on Node.js and Express"],
+    ["ASP.NET", "Maintained ASP.NET MVC apps"],
+    ["C++", "Low-latency C++ services"],
+    ["Machine Learning", "Applied machine learning to churn"],
+  ])("still finds %s written as a whole word in the CV (%s)", (skill, cvText) => {
+    const result = calculateRelevance(seeker({ skills: [], cvText }), job({ skills: [skill] }));
+    expect(result.matchedSkills).toEqual([skill]);
+  });
 });
 
 describe("jobProfileFromDoc — extracted skills are a fallback, never an override", () => {

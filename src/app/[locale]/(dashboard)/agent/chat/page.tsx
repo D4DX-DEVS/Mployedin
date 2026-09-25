@@ -184,11 +184,13 @@ export default function AgentChatPage() {
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder={t("messageInputPlaceholder", { channel: activeChannel })}
+              aria-label={t("messageInputPlaceholder", { channel: activeChannel })}
               className="flex-1 rounded-xl border border-border bg-background/80 px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
             <button
               type="submit"
               disabled={!text.trim() || sending}
+              aria-label={t("sendMessage")}
               className="shrink-0 rounded-xl bg-primary px-3 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

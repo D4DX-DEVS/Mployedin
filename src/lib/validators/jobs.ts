@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { knockoutRuleOf } from "@/lib/matching/knockouts";
 
 const screeningQuestionSchema = z.object({
   id: z.string().min(1).max(50),
@@ -9,6 +10,14 @@ const screeningQuestionSchema = z.object({
   options: z.array(z.string().max(200)).max(20).optional(),
   placeholder: z.string().max(200).optional(),
   order: z.number().int().min(0).default(0),
+  // Deal-breaker rule (lib/matching/knockouts.ts). Split off into the private
+  // Job.screeningKnockouts on save; never stored on the public question.
+  knockout: z.boolean().optional(),
+  // A preferred answer instead: adds to the score, never excludes. Stored the
+  // same private way as a deal-breaker.
+  preferred: z.boolean().optional(),
+  acceptedAnswers: z.array(z.string().max(200)).max(20).optional(),
+  minValue: z.number().finite().optional(),
 }).refine(
   (q) => {
     if (["select", "radio"].includes(q.type)) {
@@ -17,6 +26,10 @@ const screeningQuestionSchema = z.object({
     return true;
   },
   { message: "select/radio questions must have at least 1 option" }
+).refine(
+  // The same rule the job form checks: one definition of a usable deal-breaker.
+  (q) => (!q.knockout && !q.preferred) || knockoutRuleOf(q) !== null,
+  { message: "A deal-breaker or preferred answer needs at least one answer to match (or a minimum for numbers)" }
 );
 
 const locationSchema = z

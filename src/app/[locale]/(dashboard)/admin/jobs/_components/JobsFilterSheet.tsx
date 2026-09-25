@@ -112,6 +112,7 @@ export function JobsFilterSheet(props: JobsFilterSheetProps) {
               <Label htmlFor="jobs-sheet-employer">{t("filterEmployerLabel")}</Label>
               <SearchableSelect
                 id="jobs-sheet-employer"
+                modal
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={props.employerOptions}
                 value={props.selectedEmployer}
@@ -126,6 +127,7 @@ export function JobsFilterSheet(props: JobsFilterSheetProps) {
               <Label htmlFor="jobs-sheet-agent">{t("filterAgentLabel")}</Label>
               <SearchableSelect
                 id="jobs-sheet-agent"
+                modal
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={props.agentOptions}
                 value={props.selectedAgent}

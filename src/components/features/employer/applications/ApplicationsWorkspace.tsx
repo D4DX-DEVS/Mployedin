@@ -88,9 +88,16 @@ import {
   useCreateScorecard,
   useFetchInterviewForApp,
   useUpdateApplicationStatus,
+  fetchShortlistPool,
   OpenInterviewError,
   type OpenInterviewConflict,
 } from "@/hooks/useApplications";
+import {
+  RequirementsBadge,
+  RequirementsChecklist,
+  type QualificationItem,
+  type RequirementsStatus,
+} from "@/components/features/employer/applications/RequirementsChecklist";
 import { buildJobFilterOptions } from "@/lib/jobs/duplicateJobLabels";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -103,6 +110,7 @@ import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom, type Pi
 import type { ApplicationStatus } from "@/models/Application";
 import { CandidateJourney } from "@/components/features/employer/applications/CandidateJourney";
 import { useContainerWide } from "@/hooks/useContainerWide";
+import { ViewerZoneHint, WorkspaceModal } from "@/components/features/employer/applications/WorkspaceModal";
 
 /**
  * Verification state that travels with the candidate.
@@ -176,9 +184,17 @@ export interface Applicant {
   isAgentReferred?: boolean;
   appliedAt: string;
   coverLetter?: string;
-  matchBreakdown?: { skills?: number; role?: number; experience?: number; location?: number; salary?: number; overall?: number };
+  matchBreakdown?: { skills?: number; role?: number; experience?: number; education?: number; industry?: number; location?: number; salary?: number; overall?: number };
   matchStrengths?: string[];
   matchGaps?: string[];
+  /** Employer ATS: the requirements checklist and its roll-up (lib/matching/qualifications.ts). */
+  qualifications?: QualificationItem[];
+  requirementsStatus?: RequirementsStatus;
+  matchedSkills?: string[];
+  missingSkills?: string[];
+  weightsApplied?: boolean;
+  /** Set once the ATS scoring (checklist included) has run for this row. */
+  scoredAt?: string;
   otherApplicationsCount?: number;
   screeningAnswers?: { questionId: string; questionLabel: string; answer: string | string[] | boolean }[];
   documents?: { name: string; url: string; type: string }[];
@@ -311,6 +327,7 @@ export function ApplicationsWorkspace({
   const jobPinned = Boolean(jobId);
   const { can } = usePermissions();
   const t = useTranslations("employerApplications");
+  const ta = useTranslations("employerAts");
   const tw = useTranslations("employerJobWorkspace");
   const tc = useTranslations("employerCommon");
   const pipelineStages = usePipelineStages();
@@ -405,8 +422,16 @@ export function ApplicationsWorkspace({
   // ── Shortlist confirmation & post-shortlist interview prompt ───────
   const [shortlistConfirm, setShortlistConfirm] = useState<{
     candidates: Applicant[];
+    /** How many can be picked here — the ranked rows the server returned (≤ 100). */
     total: number;
+    /** Scored, qualifying applicants across the whole job; above `total` when the pool is capped. */
+    eligibleTotal: number;
+    /** Scored applicants left out for failing a hard requirement. */
+    failingRequirements: number;
+    /** Qualifying applicants with no score yet, across the whole job, so not ranked. */
+    unscored: number;
   } | null>(null);
+  const [shortlistLoading, setShortlistLoading] = useState(false);
   const [shortlistCount, setShortlistCount] = useState(0);
   const [postShortlistPrompt, setPostShortlistPrompt] = useState<{
     shortlistedIds: string[];
@@ -615,7 +640,10 @@ export function ApplicationsWorkspace({
     // The automatic first-load pass stays limited to never-scored rows.
     const unscored = applications.filter(
       (app) => app.aiMatchScore == null
-        || (explain && !isBreakdownMeasured(app.matchBreakdown, app.aiMatchScore)),
+        || (explain && !isBreakdownMeasured(app.matchBreakdown, app.aiMatchScore))
+        // Scored before the requirements checklist existed: an explicit run
+        // fills it in, so Shortlist Top can tell whether they qualify.
+        || (explain && !app.scoredAt),
     );
     if (!unscored.length) {
       if (explain) toast.info(t("scoreAllAlreadyScored"));
@@ -679,26 +707,58 @@ export function ApplicationsWorkspace({
    *  no explanation (a disabled Button gets `pointer-events-none`, so not even
    *  a tooltip could reach it) and the handler returned silently, so an
    *  ineligible pipeline read as a broken feature. */
-  function handleAutoShortlist() {
+  async function handleAutoShortlist() {
+    if (shortlistLoading) return;
     if (!filteredApplications.length) {
       toast.info(t("shortlistNoneInView"));
       return;
     }
-    const atApplied = filteredApplications.filter((app) => app.status === "applied");
-    if (!atApplied.length) {
-      toast.info(t("shortlistAllPastApplied"));
+    // Ranked on the server across every page, not just the rows on screen —
+    // "top 5" used to mean the top 5 of whichever 10 rows were loaded. Same
+    // filters as the list; Applied stage only; anyone known to fail a hard
+    // requirement is left out and counted.
+    setShortlistLoading(true);
+    let pool: Awaited<ReturnType<typeof fetchShortlistPool<Applicant>>>;
+    try {
+      pool = await fetchShortlistPool<Applicant>({
+        jobId: jobFilter || undefined,
+        search: debouncedSearch.trim() || undefined,
+        scoreMin: debouncedScoreRange[0] > 0 ? debouncedScoreRange[0] : undefined,
+        scoreMax: debouncedScoreRange[1] < 100 ? debouncedScoreRange[1] : undefined,
+        experienceMin: debouncedExperienceRange[0] ?? undefined,
+        experienceMax: debouncedExperienceRange[1] ?? undefined,
+        skills: skillsFilter.length > 0 ? skillsFilter : undefined,
+        unreviewed: unreviewedOnly || undefined,
+      });
+    } catch {
+      toast.error(ta("shortlistLoadFailed"));
       return;
+    } finally {
+      setShortlistLoading(false);
     }
-    const scored = [...atApplied]
-      .filter((app) => app.aiMatchScore != null)
-      .sort((a, b) => (b.aiMatchScore ?? 0) - (a.aiMatchScore ?? 0));
+
+    const scored = pool.candidates.filter((app) => app.aiMatchScore != null);
+    // Whole-job counts from the server; the pool itself stops at 100 rows.
+    const unscored = pool.unscoredTotal ?? pool.candidates.length - scored.length;
     if (!scored.length) {
-      toast.info(t("shortlistNeedsScores"));
+      if (pool.failingRequirements > 0) {
+        toast.info(`${ta("shortlistNoQualified")} ${ta("shortlistExcluded", { count: pool.failingRequirements })}`);
+      } else if (unscored > 0) {
+        toast.info(t("shortlistNeedsScores"));
+      } else {
+        toast.info(t("shortlistAllPastApplied"));
+      }
       return;
     }
 
-    // Show all eligible candidates sorted by score; user picks how many
-    setShortlistConfirm({ candidates: scored, total: scored.length });
+    // Already best-first from the server; the user picks how many.
+    setShortlistConfirm({
+      candidates: scored,
+      total: scored.length,
+      eligibleTotal: Math.max(pool.eligibleTotal ?? 0, scored.length),
+      failingRequirements: pool.failingRequirements,
+      unscored,
+    });
     setShortlistCount(Math.min(shortlistTarget, scored.length)); // default: the rule's target, capped by who is eligible
   }
 
@@ -928,6 +988,34 @@ export function ApplicationsWorkspace({
   const firstSelected = applications.find((app) => selected.includes(app._id));
   const previewCandidateName = firstSelected ? getCandidateName(firstSelected) : t("candidateFallback");
   const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || (!jobPinned && !!jobFilter) || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0;
+  // Everything the Filters panel holds, counted on its button so a closed panel
+  // still says the list is narrowed. Sort orders the list; it filters nothing.
+  const activeFilterCount = [
+    !stageLock && statusFilter !== "all",
+    scoreRange[0] > 0 || scoreRange[1] < 100,
+    daysFilter !== null,
+    experienceRange[0] !== null || experienceRange[1] !== null,
+    skillsFilter.length > 0,
+    unreviewedOnly,
+  ].filter(Boolean).length;
+
+  function setUnreviewed(next: boolean) {
+    setUnreviewedOnly(next);
+    // Keep the deep link honest: ?unreviewed=1 goes when the toggle goes.
+    writeUrl((params) => {
+      if (next) params.set("unreviewed", "1"); else params.delete("unreviewed");
+      params.delete("page");
+    });
+  }
+
+  function resetPanelFilters() {
+    if (!stageLock) setStatusFilter("all");
+    setScoreRange([0, 100]);
+    setDaysFilter(null);
+    setExperienceRange([null, null]);
+    setSkillsFilter([]);
+    if (unreviewedOnly) setUnreviewed(false);
+  }
 
   async function handleBulkAction(
     action: "reject" | "move_stage" | "send_message",
@@ -1153,11 +1241,11 @@ export function ApplicationsWorkspace({
         })}
       </div>
 
-      {/* ── List toolbar — job, search, status, sort, Filters, High match, Export ──
-          Phones: search on its own row, then job + Filters + Export; status,
-          sort and High match move into the Filters panel below. */}
+      {/* ── List toolbar — search, job, Filters, Export ──
+          Same shape as Candidates: every filter (status, sort, Needs review,
+          ranges, skills) lives in the Filters panel below, never beside it. */}
       <div className={embedded ? "workspace-toolbar is-embedded" : "workspace-toolbar"}>
-        <div className="workspace-toolbar-search sm:max-w-[17rem]">
+        <div className="workspace-toolbar-search">
           <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             value={searchQuery}
@@ -1181,65 +1269,22 @@ export function ApplicationsWorkspace({
             ariaLabel={t("selectJob")}
           />
         )}
-        {!stageLock && (
-          <div className="hidden w-36 sm:block">
-            <SearchableSelect
-                className="h-10 w-full rounded-xl border-border bg-background"
-                options={[
-                  { value: "all", label: t("allStatuses") },
-                  ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
-                ]}
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-                placeholder={t("allStatuses")}
-              />
-          </div>
-        )}
-        <div className="hidden w-32 sm:block">
-          <SearchableSelect
-                className="h-10 w-full rounded-xl border-border bg-background"
-                options={[
-                  { value: "newest", label: t("sortNewest") },
-                  { value: "oldest", label: t("sortOldest") },
-                  { value: "score", label: t("sortScore") },
-                ]}
-                value={sortOption}
-                onValueChange={(v) => setSortOption(v as typeof sortOption)}
-                placeholder={t("sortLabel")}
-                ariaLabel={t("sortLabel")}
-              />
-        </div>
         <Button
           type="button"
           variant="outline"
           onClick={() => setShowFilters(!showFilters)}
           aria-expanded={showFilters}
-          aria-label={t("filters")}
+          // The label replaces the button's text, so the count has to be in it too.
+          aria-label={activeFilterCount > 0 ? `${t("filters")} (${activeFilterCount})` : t("filters")}
           className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${showFilters ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
         >
           <Filter className="h-4 w-4 sm:me-2" aria-hidden="true" />
           <span className="hidden sm:inline">{t("filters")}</span>
-          {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0 || unreviewedOnly) && (
-            <span className="ms-1.5 inline-flex h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
-          )}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          aria-pressed={unreviewedOnly}
-          onClick={() => {
-            const next = !unreviewedOnly;
-            setUnreviewedOnly(next);
-            // Keep the deep link honest: ?unreviewed=1 goes when the chip goes.
-            writeUrl((params) => {
-              if (next) params.set("unreviewed", "1"); else params.delete("unreviewed");
-              params.delete("page");
-            });
-          }}
-          className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 ${unreviewedOnly ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
-        >
-          <span className="sm:hidden">{tw("unreviewedFilterShort")}</span>
-          <span className="hidden sm:inline">{tw("unreviewedFilter")}</span>
+          {activeFilterCount > 0 ? (
+            <span className="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+              {activeFilterCount}
+            </span>
+          ) : null}
         </Button>
         <TableToolbar
           className="ms-auto"
@@ -1298,11 +1343,15 @@ export function ApplicationsWorkspace({
 
       {showFilters && (
         <section className="workspace-panel-surface rounded-2xl panel-body">
-          {/* Phones only: the controls that sit in the toolbar from sm */}
-          <div className="mb-3 grid gap-2 sm:hidden">
-            {!stageLock && (
+          {/* Row 1: status, sort, days, Needs review. Row 2: the two ranges.
+              Skills take the full width so their chips wrap across the panel
+              instead of down one narrow column. */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {!stageLock && (
+            <div className="min-w-0 space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{tc("status")}</label>
               <SearchableSelect
-                className="h-11 w-full rounded-xl border-border bg-background/70"
+                className="h-11 w-full rounded-xl border-border bg-background/80 text-sm sm:h-10"
                 options={[
                   { value: "all", label: t("allStatuses") },
                   ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
@@ -1310,38 +1359,77 @@ export function ApplicationsWorkspace({
                 value={statusFilter}
                 onValueChange={setStatusFilter}
                 placeholder={t("allStatuses")}
+                ariaLabel={tc("status")}
               />
-            )}
+            </div>
+          )}
+          <div className="min-w-0 space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("sortLabel")}</label>
             <SearchableSelect
-                className="h-11 w-full rounded-xl border-border bg-background/70"
-                options={[
-                  { value: "newest", label: t("sortNewest") },
-                  { value: "oldest", label: t("sortOldest") },
-                  { value: "score", label: t("sortScore") },
-                ]}
-                value={sortOption}
-                onValueChange={(v) => setSortOption(v as typeof sortOption)}
-                placeholder={t("sortLabel")}
-                ariaLabel={t("sortLabel")}
-              />
+              className="h-11 w-full rounded-xl border-border bg-background/80 text-sm sm:h-10"
+              options={[
+                { value: "newest", label: t("sortNewest") },
+                { value: "oldest", label: t("sortOldest") },
+                { value: "score", label: t("sortScore") },
+              ]}
+              value={sortOption}
+              onValueChange={(v) => setSortOption(v as typeof sortOption)}
+              placeholder={t("sortLabel")}
+              ariaLabel={t("sortLabel")}
+            />
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+
+          {/* Days in Pipeline */}
+          <div className="min-w-0 space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("daysInPipeline")}</label>
+            <SearchableSelect
+              className="h-11 w-full rounded-xl border-border bg-background/80 text-sm sm:h-10"
+              options={[
+                { value: "any", label: t("any") },
+                { value: "3", label: t("daysPlus", { days: 3 }) },
+                { value: "7", label: t("daysPlus", { days: 7 }) },
+                { value: "14", label: t("daysPlus", { days: 14 }) },
+                { value: "30", label: t("daysPlus", { days: 30 }) },
+              ]}
+              value={daysFilter?.toString() ?? "any"}
+              onValueChange={(v) => setDaysFilter(v === "any" ? null : +v)}
+              ariaLabel={t("daysInPipeline")}
+            />
+          </div>
+
+          {/* Needs review — a toggle, so it has no field label of its own */}
+          <div className="min-w-0 self-end">
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={unreviewedOnly}
+              onClick={() => setUnreviewed(!unreviewedOnly)}
+              className={`h-11 w-full justify-start gap-2 rounded-xl border-border bg-background/80 px-3 text-sm font-semibold sm:h-10 ${unreviewedOnly ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
+            >
+              {unreviewedOnly
+                ? <CheckSquare className="h-4 w-4 shrink-0" aria-hidden="true" />
+                : <Square className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+              <span className="min-w-0 truncate">{tw("unreviewedFilter")}</span>
+            </Button>
+          </div>
+
           {/* AI Score Range */}
-          <div className="space-y-1.5">
+          <div className="col-span-2 space-y-1.5 sm:col-span-1 lg:col-span-2">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={100} value={scoreRange[0]}
                 onChange={(e) => setScoreRange([Math.max(0, +e.target.value), scoreRange[1]])}
-                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+                className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
               <span className="text-xs text-muted-foreground">{t("rangeTo")}</span>
               <input type="number" min={0} max={100} value={scoreRange[1]}
                 onChange={(e) => setScoreRange([scoreRange[0], Math.min(100, +e.target.value)])}
-                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+                className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
               <span className="text-xs text-muted-foreground">%</span>
             </div>
           </div>
 
-          {/* Experience Range */}
+          {/* Experience Range, with Reset at the row's end */}
+          <div className="col-span-2 flex flex-wrap items-end gap-3 sm:col-span-1 lg:col-span-2">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               {t("experienceYears")}
@@ -1356,120 +1444,21 @@ export function ApplicationsWorkspace({
                 value={experienceRange[0] ?? ""}
                 placeholder={selectedJob ? String(selectedJob.requirements.experienceMin) : t("min")}
                 onChange={(e) => setExperienceRange([e.target.value ? +e.target.value : null, experienceRange[1]])}
-                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+                className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
               <span className="text-xs text-muted-foreground">{t("rangeTo")}</span>
               <input type="number" min={0} max={50}
                 value={experienceRange[1] ?? ""}
                 placeholder={selectedJob ? String(selectedJob.requirements.experienceMax) : t("max")}
                 onChange={(e) => setExperienceRange([experienceRange[0], e.target.value ? +e.target.value : null])}
-                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+                className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
               <span className="text-xs text-muted-foreground">{t("yrs")}</span>
             </div>
           </div>
-
-          {/* Days in Pipeline */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("daysInPipeline")}</label>
-            <SearchableSelect
-              className="h-9 w-40 rounded-xl border-border bg-background/80 text-sm"
-              options={[
-                { value: "any", label: t("any") },
-                { value: "3", label: t("daysPlus", { days: 3 }) },
-                { value: "7", label: t("daysPlus", { days: 7 }) },
-                { value: "14", label: t("daysPlus", { days: 14 }) },
-                { value: "30", label: t("daysPlus", { days: 30 }) },
-              ]}
-              value={daysFilter?.toString() ?? "any"}
-              onValueChange={(v) => setDaysFilter(v === "any" ? null : +v)}
-            />
+          <Button size="sm" variant="ghost" className="ms-auto h-11 rounded-lg px-3 text-xs text-muted-foreground sm:h-10"
+            onClick={resetPanelFilters}>
+            {t("resetAllFilters")}
+          </Button>
           </div>
-
-          {/* Skills Filter */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              {t("skills")}
-              {selectedJob && selectedJob.requirements.skills.length > 0 ? (
-                <span className="ms-1 font-normal normal-case text-status-applied">
-                  {t("skillsRequired", { count: selectedJob.requirements.skills.length })}
-                </span>
-              ) : null}
-            </label>
-            {selectedJob && selectedJob.requirements.skills.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {selectedJob.requirements.skills.map((skill) => {
-                  const isActive = skillsFilter.includes(skill);
-                  return (
-                    <button
-                      key={skill}
-                      type="button"
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                        isActive
-                          ? "border-sky-300 bg-status-applied-bg text-sky-800"
-                          : "border-border bg-background/70 text-muted-foreground hover:border-border hover:bg-status-applied-bg"
-                      }`}
-                      onClick={() =>
-                        setSkillsFilter((prev) =>
-                          isActive ? prev.filter((s) => s !== skill) : [...prev, skill]
-                        )
-                      }
-                    >
-                      {skill}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">{t("selectJobForSkills")}</p>
-            )}
-          </div>
-
-          {/* Quick-fill from job requirements */}
-          {selectedJob && (
-            <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
-              <span className="text-xs font-medium text-muted-foreground">{t("quickFill")}</span>
-              {(selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30) && experienceRange[0] === null && experienceRange[1] === null ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 rounded-lg border-border bg-background/80 px-2.5 text-[11px]"
-                  onClick={() => setExperienceRange([selectedJob.requirements.experienceMin, selectedJob.requirements.experienceMax])}
-                >
-                  <Clock className="me-1 h-3 w-3" />
-                  {t("experienceRangeChip", { min: selectedJob.requirements.experienceMin, max: selectedJob.requirements.experienceMax })}
-                </Button>
-              ) : null}
-              {selectedJob.requirements.skills.length > 0 && skillsFilter.length === 0 ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 rounded-lg border-border bg-background/80 px-2.5 text-[11px]"
-                  onClick={() => setSkillsFilter([...selectedJob.requirements.skills])}
-                >
-                  <Sparkles className="me-1 h-3 w-3" />
-                  {t("allRequiredSkills")}
-                </Button>
-              ) : null}
-              <div className="ms-auto">
-                <Button size="sm" variant="ghost" className="h-7 rounded-lg px-3 text-[11px] text-muted-foreground"
-                  onClick={() => {
-                    setScoreRange([0, 100]);
-                    setDaysFilter(null);
-                    setExperienceRange([null, null]);
-                    setSkillsFilter([]);
-                  }}>
-                  {t("resetAllFilters")}
-                </Button>
-              </div>
-            </div>
-          )}
-          {!selectedJob && (
-            <div className="flex items-end">
-              <Button size="sm" variant="ghost" className="rounded-xl px-4 text-sm text-muted-foreground"
-                onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); }}>
-                {t("reset")}
-              </Button>
-            </div>
-          )}
         </div>
         </section>
       )}
@@ -1570,11 +1559,25 @@ export function ApplicationsWorkspace({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
-                {t("highMatchedFound", { count: shortlistConfirm.total })}
+                {t("highMatchedFound", { count: shortlistConfirm.eligibleTotal })}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("shortlistHowMany")}
               </p>
+              {shortlistConfirm.failingRequirements > 0 || shortlistConfirm.unscored > 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {shortlistConfirm.failingRequirements > 0
+                    ? ta("shortlistExcluded", { count: shortlistConfirm.failingRequirements })
+                    : null}
+                  {shortlistConfirm.failingRequirements > 0 && shortlistConfirm.unscored > 0 ? " " : null}
+                  {shortlistConfirm.unscored > 0 ? ta("shortlistUnscored", { count: shortlistConfirm.unscored }) : null}
+                </p>
+              ) : null}
+              {shortlistConfirm.eligibleTotal > shortlistConfirm.total ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {ta("shortlistPoolCapped", { shown: shortlistConfirm.total })}
+                </p>
+              ) : null}
 
               {/* Number picker */}
               <div className="mt-3 flex items-center gap-3">
@@ -1799,11 +1802,12 @@ export function ApplicationsWorkspace({
             <Button
               size="sm"
               className="min-h-11 flex-1 justify-center rounded-xl bg-emerald-700 px-2 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:flex-none sm:px-3"
-              disabled={bulkAction.isPending}
-              onClick={handleAutoShortlist}
+              disabled={bulkAction.isPending || shortlistLoading}
+              aria-busy={shortlistLoading || undefined}
+              onClick={() => void handleAutoShortlist()}
             >
-              <CheckCheck className="me-2 hidden h-3.5 w-3.5 sm:block" />
-              {t("shortlistTop")}
+              <CheckCheck className={`me-2 hidden h-3.5 w-3.5 sm:block ${shortlistLoading ? "animate-pulse" : ""}`} />
+              {shortlistLoading ? ta("shortlistLoading") : t("shortlistTop")}
             </Button>
           
               <span className="ms-auto hidden text-xs text-muted-foreground lg:inline">
@@ -1903,42 +1907,37 @@ export function ApplicationsWorkspace({
         />
       )}
 
-      {scorecardModal && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-          <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
-            <div className="px-6 py-4 border-b border-border">
-              <h2 className="heading-section font-semibold">{t("createScorecardTitle")}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("createScorecardDesc")}
-              </p>
-            </div>
-            <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-              <FeatureGate feature="scorecardEvaluations">
-              <ScorecardForm
-                interviewId={scorecardModal.interviewId}
-                onSubmit={handleScorecardSubmit}
-                onCancel={() => setScorecardModal(null)}
-                isLoading={createScorecard.isPending}
-                embedded
-              />
-              </FeatureGate>
-            </div>
+      {scorecardModal && (
+        <WorkspaceModal
+          className="max-w-2xl"
+          title={t("createScorecardTitle")}
+          description={t("createScorecardDesc")}
+          onClose={() => setScorecardModal(null)}
+        >
+          <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <FeatureGate feature="scorecardEvaluations">
+            <ScorecardForm
+              interviewId={scorecardModal.interviewId}
+              onSubmit={handleScorecardSubmit}
+              onCancel={() => setScorecardModal(null)}
+              isLoading={createScorecard.isPending}
+              embedded
+            />
+            </FeatureGate>
           </div>
-        </div>,
-        document.body
+        </WorkspaceModal>
       )}
 
       {/* Interview Scheduling Modal */}
-      {interviewModal && createPortal(
+      {interviewModal && (
         <InterviewScheduleModal
           onSubmit={handleCreateInterview}
           onCancel={() => setInterviewModal(null)}
-        />,
-        document.body
+        />
       )}
 
       {/* Offer Creation Modal */}
-      {offerModal && createPortal(
+      {offerModal && (
         <OfferCreateModal
           jobSalary={
             applications.find((a) => a._id === offerModal.appId)?.jobId?.salary
@@ -1947,12 +1946,11 @@ export function ApplicationsWorkspace({
           check={applications.find((a) => a._id === offerModal.appId)?.latestCheck}
           onSubmit={handleCreateOffer}
           onCancel={() => setOfferModal(null)}
-        />,
-        document.body
+        />
       )}
 
       {/* Bulk Interview Scheduling Modal */}
-      {bulkInterviewModal && createPortal(
+      {bulkInterviewModal && (
         <BulkInterviewScheduleModal
           candidateCount={selected.length}
           candidateNames={selected.map((id) => {
@@ -1968,12 +1966,11 @@ export function ApplicationsWorkspace({
           onSubmit={handleBulkInterview}
           onCancel={() => setBulkInterviewModal(false)}
           isLoading={createInterview.isPending}
-        />,
-        document.body
+        />
       )}
 
       {/* Email Preview Modal */}
-      {emailPreviewModal && createPortal(
+      {emailPreviewModal && (
         <EmailPreviewModal
           action={emailPreviewModal.action}
           targetStage={emailPreviewModal.targetStage}
@@ -1991,8 +1988,7 @@ export function ApplicationsWorkspace({
           }}
           onCancel={() => setEmailPreviewModal(null)}
           isLoading={bulkAction.isPending}
-        />,
-        document.body
+        />
       )}
 
       {/* Activity Timeline Panel */}
@@ -2199,10 +2195,13 @@ function TableView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
+                  {/* Wraps so the NEW and status pills drop under the name when
+                      the column is narrow (~1024px) instead of squeezing the
+                      name to nothing and spilling into the Role column. */}
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                      className="tap-target-row truncate text-sm font-semibold text-foreground hover:text-status-applied hover:underline"
+                      className="tap-target-row min-w-0 max-w-full truncate text-sm font-semibold text-foreground hover:text-status-applied hover:underline"
                       onClick={(event) => event.stopPropagation()}
                     >
                       {candidateName}
@@ -2250,6 +2249,8 @@ function TableView({
                   ) : (
                     <p className="text-[11px] text-muted-foreground">{t("aiPending")}</p>
                   )}
+                  {/* Short form: the full wording crushed the name column on phones. */}
+                  <RequirementsBadge status={app.requirementsStatus} compact />
                   <StatusBadge status={app.status} />
                 </div>
               </div>
@@ -2265,9 +2266,11 @@ function TableView({
               {/* Match */}
               <div className="hidden lg:block">
                 {matchScore != null ? (
-                  <div className="text-center">
+                  <div className="flex flex-col items-center gap-1 text-center">
                     <p className={`text-lg font-bold leading-tight ${matchColor}`}>{matchScore}%</p>
                     <p className={`text-[11px] font-semibold ${matchColor}`}>{matchText}</p>
+                    {/* The column is 80px: the short form, full wording on hover. */}
+                    <RequirementsBadge status={app.requirementsStatus} compact />
                   </div>
                 ) : (
                   <p className="text-center text-xs text-muted-foreground">{t("aiPending")}</p>
@@ -2278,8 +2281,9 @@ function TableView({
               {!compact && (
                 <div className="hidden min-w-0 lg:flex lg:flex-wrap lg:gap-1">
                   {matchingSkills.map((skill) => (
-                    <span key={skill} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                      ✓ {skill}
+                    <span key={skill} className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                      <Check className="h-3 w-3" aria-hidden="true" />
+                      {skill}
                     </span>
                   ))}
                   {otherSkills.map((skill) => (
@@ -2475,6 +2479,9 @@ function ApplicationDetailsPanel({
         // gates there, not parts); older rows the reverse. Absent ones drop out.
         { label: t("roleFit"), value: app.matchBreakdown.role },
         { label: t("experience"), value: app.matchBreakdown.experience },
+        // Present only when the job names a qualification / an industry.
+        { label: t("education"), value: app.matchBreakdown.education },
+        { label: t("industry"), value: app.matchBreakdown.industry },
         { label: t("location"), value: app.matchBreakdown.location },
         { label: t("salary"), value: app.matchBreakdown.salary },
       ].filter((item) => typeof item.value === "number") as Array<{ label: string; value: number }>)
@@ -2937,6 +2944,16 @@ function ApplicationDetailsPanel({
               )}
             </div>
 
+            {/* Requirements checklist — what the job asks for, met or not.
+                The score says how good a fit; this says whether they qualify. */}
+            <RequirementsChecklist
+              checks={app.qualifications}
+              status={app.requirementsStatus}
+              matchedSkills={app.matchedSkills}
+              missingSkills={app.missingSkills}
+              weightsApplied={app.weightsApplied}
+            />
+
             {/* Resume lives in its own tab — no duplicate quick card here. */}
 
             {/* Row 3: Skills | Experience (2 cards) */}
@@ -3258,6 +3275,7 @@ function BulkInterviewScheduleModal({
   onCancel: () => void;
   isLoading: boolean;
 }) {
+  const [pickerContainer, setPickerContainer] = useState<HTMLDivElement | null>(null);
   const t = useTranslations("employerApplications");
   const [scheduledAt, setScheduledAt] = useState("");
   const [type, setType] = useState<"video" | "offline" | "hybrid">("video");
@@ -3438,200 +3456,197 @@ function BulkInterviewScheduleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-      <div className="bg-background rounded-lg border border-border shadow-lg max-w-lg w-full mx-4">
-        <div className="px-6 py-4 border-b border-border">
-          <h2 className="heading-section font-semibold flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-status-applied" />
-            {t("bulkIvTitle")}
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("bulkIvSubtitle", { count: candidateCount })}
-          </p>
-        </div>
-        <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-          {/* Start Date & Time */}
-          <DateTimePicker
-            label={`${t("bulkIvStartDateTime")} *`}
-            value={scheduledAt}
-            onChange={setScheduledAt}
-            minDate={new Date()}
-            placeholder={t("ivPickDateTime")}
-          />
-          {isPast && (
-            <p className="text-xs text-red-500 -mt-2">{t("bulkIvPastWarning")}</p>
-          )}
-          {singleSeeker && (
-            <AvailabilityChips seeker={singleSeeker} scheduledAt={scheduledAt} onPick={setScheduledAt} />
-          )}
+    <WorkspaceModal
+      className="max-w-lg"
+      icon={<Calendar className="h-5 w-5 text-status-applied" />}
+      title={t("bulkIvTitle")}
+      description={t("bulkIvSubtitle", { count: candidateCount })}
+      onClose={onCancel}
+      contentRef={setPickerContainer}
+    >
+      <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+        {/* Start Date & Time */}
+        <DateTimePicker container={pickerContainer} modal
+          label={`${t("bulkIvStartDateTime")} *`}
+          value={scheduledAt}
+          onChange={setScheduledAt}
+          minDate={new Date()}
+          placeholder={t("ivPickDateTime")}
+        />
+        <ViewerZoneHint at={scheduledAt} />
+        {isPast && (
+          <p className="text-xs text-red-500 -mt-2">{t("bulkIvPastWarning")}</p>
+        )}
+        {singleSeeker && (
+          <AvailabilityChips seeker={singleSeeker} scheduledAt={scheduledAt} onPick={setScheduledAt} />
+        )}
 
-          {/* Type / Duration / Gap row */}
-          <div className="grid grid-cols-3 gap-3">
+        {/* Type / Duration / Gap row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("ivType")}</label>
+            <SearchableSelect container={pickerContainer} modal
+              className="h-9"
+              options={[
+                { value: "video", label: t("ivTypeVideo") },
+                { value: "offline", label: t("ivTypeOffline") },
+                { value: "hybrid", label: t("ivTypeHybrid") },
+              ]}
+              value={type}
+              onValueChange={(v) => setType(v as typeof type)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("bulkIvPerCandidate")}</label>
+            <SearchableSelect container={pickerContainer} modal
+              className="h-9"
+              options={[
+                { value: "15", label: t("ivMinutes", { count: 15 }) },
+                { value: "30", label: t("ivMinutes", { count: 30 }) },
+                { value: "45", label: t("ivMinutes", { count: 45 }) },
+                { value: "60", label: t("ivMinutes", { count: 60 }) },
+              ]}
+              value={String(durationPerCandidate)}
+              onValueChange={(v) => setDurationPerCandidate(+v)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("bulkIvGapBetween")}</label>
+            <SearchableSelect container={pickerContainer} modal
+              className="h-9"
+              options={[
+                { value: "0", label: "No gap" },
+                { value: "5", label: "5 min" },
+                { value: "10", label: "10 min" },
+                { value: "15", label: "15 min" },
+                { value: "30", label: "30 min" },
+              ]}
+              value={String(gapMinutes)}
+              onValueChange={(v) => setGapMinutes(+v)}
+            />
+          </div>
+        </div>
+
+        {/* Working Hours */}
+        <div className="rounded-lg border border-border space-y-3 chip-pad">
+          <p className="text-xs font-medium flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            Working Hours
+          </p>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">{t("ivType")}</label>
-              <SearchableSelect
-                className="h-9"
-                options={[
-                  { value: "video", label: t("ivTypeVideo") },
-                  { value: "offline", label: t("ivTypeOffline") },
-                  { value: "hybrid", label: t("ivTypeHybrid") },
-                ]}
-                value={type}
-                onValueChange={(v) => setType(v as typeof type)}
-              />
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("bulkIvWindowStart")}</label>
+              <DateTimePicker container={pickerContainer} modal mode="time" value={whStart} onChange={setWhStart} />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">{t("bulkIvPerCandidate")}</label>
-              <SearchableSelect
-                className="h-9"
-                options={[
-                  { value: "15", label: t("ivMinutes", { count: 15 }) },
-                  { value: "30", label: t("ivMinutes", { count: 30 }) },
-                  { value: "45", label: t("ivMinutes", { count: 45 }) },
-                  { value: "60", label: t("ivMinutes", { count: 60 }) },
-                ]}
-                value={String(durationPerCandidate)}
-                onValueChange={(v) => setDurationPerCandidate(+v)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("bulkIvGapBetween")}</label>
-              <SearchableSelect
-                className="h-9"
-                options={[
-                  { value: "0", label: "No gap" },
-                  { value: "5", label: "5 min" },
-                  { value: "10", label: "10 min" },
-                  { value: "15", label: "15 min" },
-                  { value: "30", label: "30 min" },
-                ]}
-                value={String(gapMinutes)}
-                onValueChange={(v) => setGapMinutes(+v)}
-              />
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("bulkIvWindowEnd")}</label>
+              <DateTimePicker container={pickerContainer} modal mode="time" value={whEnd} onChange={setWhEnd} />
             </div>
           </div>
 
-          {/* Working Hours */}
-          <div className="rounded-lg border border-border space-y-3 chip-pad">
-            <p className="text-xs font-medium flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              Working Hours
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">{t("bulkIvWindowStart")}</label>
-                <DateTimePicker mode="time" value={whStart} onChange={setWhStart} />
+          {/* Break Windows */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{t("bulkIvBreakWindows")}</p>
+            {breaks.map((brk, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                <div>
+                  <input
+                    value={brk.label}
+                    onChange={(e) => updateBreak(idx, "label", e.target.value)}
+                    placeholder={t("bulkIvBreakPlaceholder")}
+                    className="w-full h-8 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
+                  />
+                </div>
+                <div>
+                  <DateTimePicker container={pickerContainer} modal mode="time" value={brk.start}
+                    onChange={(v) => updateBreak(idx, "start", v)} />
+                </div>
+                <div>
+                  <DateTimePicker container={pickerContainer} modal mode="time" value={brk.end}
+                    onChange={(v) => updateBreak(idx, "end", v)} />
+                </div>
+                <button onClick={() => removeBreak(idx)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-red-500 hover:bg-status-rejected-bg transition-colors">
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">{t("bulkIvWindowEnd")}</label>
-                <DateTimePicker mode="time" value={whEnd} onChange={setWhEnd} />
-              </div>
-            </div>
+            ))}
+            {breaks.length < 10 && (
+              <button onClick={addBreak}
+                className="flex items-center gap-1.5 text-xs text-status-applied hover:text-status-applied font-medium mt-1">
+                <Plus className="h-3.5 w-3.5" /> Add Break
+              </button>
+            )}
+          </div>
+        </div>
 
-            {/* Break Windows */}
-            <div className="space-y-2">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{t("bulkIvBreakWindows")}</p>
-              {breaks.map((brk, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
-                  <div>
-                    <input
-                      value={brk.label}
-                      onChange={(e) => updateBreak(idx, "label", e.target.value)}
-                      placeholder={t("bulkIvBreakPlaceholder")}
-                      className="w-full h-8 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
-                    />
-                  </div>
-                  <div>
-                    <DateTimePicker mode="time" value={brk.start}
-                      onChange={(v) => updateBreak(idx, "start", v)} />
-                  </div>
-                  <div>
-                    <DateTimePicker mode="time" value={brk.end}
-                      onChange={(v) => updateBreak(idx, "end", v)} />
-                  </div>
-                  <button onClick={() => removeBreak(idx)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-red-500 hover:bg-status-rejected-bg transition-colors">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+        {/* Location / Meeting Link */}
+        {type !== "video" && (
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("location")}</label>
+            <input value={location} onChange={(e) => setLocation(e.target.value)}
+              placeholder={t("ivLocationPlaceholder")}
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+          </div>
+        )}
+        {type !== "offline" && (
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
+            <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
+              placeholder="https://meet.google.com/..."
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+          </div>
+        )}
+
+        {/* Time slots preview */}
+        {previewItems.length > 0 && (
+          <div className="rounded-xl border border-border/60 bg-status-applied-bg/40 card-pad">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-status-applied mb-3">
+              Auto-calculated Schedule{dayCount > 1 ? ` · ${dayCount} Days` : ""}
+            </p>
+            <div className="space-y-1 max-h-56 overflow-y-auto">
+              {previewItems.map((item, i) => (
+                <div key={i}>
+                  {item.kind === "day" ? (
+                    <div className="flex items-center gap-2 py-1.5 mt-1 first:mt-0">
+                      <div className="flex-1 border-t border-sky-300/40" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-status-applied">{item.date}</span>
+                      <div className="flex-1 border-t border-sky-300/40" />
+                    </div>
+                  ) : item.kind === "break" ? (
+                    <div className="flex items-center gap-2 py-1 my-0.5 rounded-md bg-status-shortlisted-bg/60 px-3">
+                      <Clock className="h-3.5 w-3.5 text-status-shortlisted shrink-0" />
+                      <span className="flex-1 text-xs font-medium text-status-shortlisted truncate">{item.label}</span>
+                      <span className="font-mono text-[11px] text-status-shortlisted">{item.start} – {item.end}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="w-6 text-center text-xs font-bold text-status-applied">{item.index}</span>
+                      <span className="flex-1 truncate font-medium text-foreground">{item.name}</span>
+                      <span className="font-mono text-xs text-status-applied">{item.start} – {item.end}</span>
+                    </div>
+                  )}
                 </div>
               ))}
-              {breaks.length < 10 && (
-                <button onClick={addBreak}
-                  className="flex items-center gap-1.5 text-xs text-status-applied hover:text-status-applied font-medium mt-1">
-                  <Plus className="h-3.5 w-3.5" /> Add Break
-                </button>
-              )}
             </div>
-          </div>
-
-          {/* Location / Meeting Link */}
-          {type !== "video" && (
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("location")}</label>
-              <input value={location} onChange={(e) => setLocation(e.target.value)}
-                placeholder={t("ivLocationPlaceholder")}
-                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
-            </div>
-          )}
-          {type !== "offline" && (
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
-              <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
-                placeholder="https://meet.google.com/..."
-                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
-            </div>
-          )}
-
-          {/* Time slots preview */}
-          {previewItems.length > 0 && (
-            <div className="rounded-xl border border-border/60 bg-status-applied-bg/40 card-pad">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-status-applied mb-3">
-                Auto-calculated Schedule{dayCount > 1 ? ` · ${dayCount} Days` : ""}
-              </p>
-              <div className="space-y-1 max-h-56 overflow-y-auto">
-                {previewItems.map((item, i) => (
-                  <div key={i}>
-                    {item.kind === "day" ? (
-                      <div className="flex items-center gap-2 py-1.5 mt-1 first:mt-0">
-                        <div className="flex-1 border-t border-sky-300/40" />
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-status-applied">{item.date}</span>
-                        <div className="flex-1 border-t border-sky-300/40" />
-                      </div>
-                    ) : item.kind === "break" ? (
-                      <div className="flex items-center gap-2 py-1 my-0.5 rounded-md bg-status-shortlisted-bg/60 px-3">
-                        <Clock className="h-3.5 w-3.5 text-status-shortlisted shrink-0" />
-                        <span className="flex-1 text-xs font-medium text-status-shortlisted truncate">{item.label}</span>
-                        <span className="font-mono text-[11px] text-status-shortlisted">{item.start} – {item.end}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3 text-sm">
-                        <span className="w-6 text-center text-xs font-bold text-status-applied">{item.index}</span>
-                        <span className="flex-1 truncate font-medium text-foreground">{item.name}</span>
-                        <span className="font-mono text-xs text-status-applied">{item.start} – {item.end}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {lastSlotEnd && (
+              <div className="mt-3 text-xs text-muted-foreground border-t border-border/40 pt-2 space-y-0.5">
+                <p>
+                  Total: {totalMinutes} min · Interviews: {interviewMinutes} min
+                  (ends at {lastSlotEnd.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })})
+                </p>
               </div>
-              {lastSlotEnd && (
-                <div className="mt-3 text-xs text-muted-foreground border-t border-border/40 pt-2 space-y-0.5">
-                  <p>
-                    Total: {totalMinutes} min · Interviews: {interviewMinutes} min
-                    (ends at {lastSlotEnd.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })})
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Calendar className="w-3.5 h-3.5 me-1" />
-            {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
-          </Button>
-        </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+      <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
+        <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
+        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Calendar className="w-3.5 h-3.5 me-1" />
+          {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
+        </Button>
+      </div>
+    </WorkspaceModal>
   );
 }
 
@@ -3713,97 +3728,92 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
   const [body, setBody] = useState(defaultBody);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-      <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
-        <div className="px-6 py-4 border-b border-border">
-          <h2 className="heading-section font-semibold flex items-center gap-2">
-            <Mail className="h-5 w-5 text-status-applied" />
-            {action === "send_message" ? "Send Bulk Email" : `${statusLabel} — Email Preview`}
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {action === "send_message"
-              ? `Send email to ${candidateCount} candidate${candidateCount > 1 ? "s" : ""}`
-              : `This email will be sent to ${candidateCount} candidate${candidateCount > 1 ? "s" : ""} after the status change`}
+    <WorkspaceModal
+      className="max-w-2xl"
+      icon={<Mail className="h-5 w-5 text-status-applied" />}
+      title={action === "send_message" ? "Send Bulk Email" : `${statusLabel} — Email Preview`}
+      description={action === "send_message"
+        ? `Send email to ${candidateCount} candidate${candidateCount > 1 ? "s" : ""}`
+        : `This email will be sent to ${candidateCount} candidate${candidateCount > 1 ? "s" : ""} after the status change`}
+      onClose={onCancel}
+    >
+      <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-240px)] overflow-y-auto">
+        <div className="rounded-xl border border-border/60 bg-status-applied-bg/30 px-4 py-3">
+          <p className="text-xs text-muted-foreground mb-1">
+            Available placeholders: <code className="text-[11px]">{`{{candidateName}}`}</code> <code className="text-[11px]">{`{{jobTitle}}`}</code> <code className="text-[11px]">{`{{companyName}}`}</code> <code className="text-[11px]">{`{{status}}`}</code>
           </p>
         </div>
-        <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-240px)] overflow-y-auto">
-          <div className="rounded-xl border border-border/60 bg-status-applied-bg/30 px-4 py-3">
-            <p className="text-xs text-muted-foreground mb-1">
-              Available placeholders: <code className="text-[11px]">{`{{candidateName}}`}</code> <code className="text-[11px]">{`{{jobTitle}}`}</code> <code className="text-[11px]">{`{{companyName}}`}</code> <code className="text-[11px]">{`{{status}}`}</code>
-            </p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("emailSubjectLabel")}</label>
-            <input
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
-              maxLength={200}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("emailBodyLabel")}</label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              className="w-full h-40 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none font-mono chip-pad"
-              maxLength={10000}
-            />
-          </div>
-
-          {/* Live preview */}
-          <div>
-            <label className="block text-xs font-medium mb-2">{t("emailPreviewLabel")}</label>
-            <div className="rounded-xl border border-border bg-card text-sm card-pad">
-              <div className="border-b border-border pb-2 mb-3">
-                <p className="text-xs text-muted-foreground">{t("emailPreviewSubject")}</p>
-                {/* Preview with the values that will actually be sent. It used
-                    to render the literal "Company" and "John Doe", so it showed
-                    an email nobody would ever receive. */}
-                <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, companyName)}</p>
-              </div>
-              <div
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(
-                    body
-                      .replace(/\{\{candidateName\}\}/g, previewCandidateName)
-                      .replace(/\{\{jobTitle\}\}/g, jobTitle)
-                      .replace(/\{\{companyName\}\}/g, companyName)
-                      .replace(/\{\{status\}\}/g, statusLabel.toLowerCase())
-                  ),
-                }}
-              />
-            </div>
-          </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">{t("emailSubjectLabel")}</label>
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
+            maxLength={200}
+          />
         </div>
-        <div className="px-6 py-4 border-t border-border flex gap-2 justify-between">
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground"
-            onClick={() => { setSubject(defaultSubject); setBody(defaultBody); }}>
-            {t("resetToDefault")}
-          </Button>
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-            {action !== "send_message" && (
-              // `notifyCandidate: false` is what makes this button true to its
-              // name — without it the API falls back to the default template
-              // and mails the candidate anyway.
-              <Button variant="outline" onClick={() => onConfirm({ notifyCandidate: false })} disabled={isLoading} className="h-9">
-                {isLoading ? t("processing") : t("confirmWithoutEmail", { action: actionVerb })}
-              </Button>
-            )}
-            <Button
-              onClick={() => onConfirm({ emailSubject: subject, emailBody: body, notifyCandidate: true })}
-              disabled={isLoading || (!subject.trim() && action === "send_message")}
-              className="h-9"
-            >
-              <Send className="w-3.5 h-3.5 me-1" />
-              {isLoading ? t("sending") : t("confirmAndEmail", { action: actionVerb, count: candidateCount })}
-            </Button>
+        <div>
+          <label className="block text-xs font-medium mb-1">{t("emailBodyLabel")}</label>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            className="w-full h-40 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none font-mono chip-pad"
+            maxLength={10000}
+          />
+        </div>
+
+        {/* Live preview */}
+        <div>
+          <label className="block text-xs font-medium mb-2">{t("emailPreviewLabel")}</label>
+          <div className="rounded-xl border border-border bg-card text-sm card-pad">
+            <div className="border-b border-border pb-2 mb-3">
+              <p className="text-xs text-muted-foreground">{t("emailPreviewSubject")}</p>
+              {/* Preview with the values that will actually be sent. It used
+                  to render the literal "Company" and "John Doe", so it showed
+                  an email nobody would ever receive. */}
+              <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, companyName)}</p>
+            </div>
+            <div
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(
+                  body
+                    .replace(/\{\{candidateName\}\}/g, previewCandidateName)
+                    .replace(/\{\{jobTitle\}\}/g, jobTitle)
+                    .replace(/\{\{companyName\}\}/g, companyName)
+                    .replace(/\{\{status\}\}/g, statusLabel.toLowerCase())
+                ),
+              }}
+            />
           </div>
         </div>
       </div>
-    </div>
+      <div className="px-6 py-4 border-t border-border flex gap-2 justify-between">
+        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground"
+          onClick={() => { setSubject(defaultSubject); setBody(defaultBody); }}>
+          {t("resetToDefault")}
+        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
+          {action !== "send_message" && (
+            // `notifyCandidate: false` is what makes this button true to its
+            // name — without it the API falls back to the default template
+            // and mails the candidate anyway.
+            <Button variant="outline" onClick={() => onConfirm({ notifyCandidate: false })} disabled={isLoading} className="h-9">
+              {isLoading ? t("processing") : t("confirmWithoutEmail", { action: actionVerb })}
+            </Button>
+          )}
+          <Button
+            onClick={() => onConfirm({ emailSubject: subject, emailBody: body, notifyCandidate: true })}
+            disabled={isLoading || (!subject.trim() && action === "send_message")}
+            className="h-9"
+          >
+            <Send className="w-3.5 h-3.5 me-1" />
+            {isLoading ? t("sending") : t("confirmAndEmail", { action: actionVerb, count: candidateCount })}
+          </Button>
+        </div>
+      </div>
+    </WorkspaceModal>
   );
 }
 
@@ -3823,6 +3833,7 @@ function InterviewScheduleModal({
   const [meetLink, setMeetLink] = useState("");
   const [instructions, setInstructions] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pickerContainer, setPickerContainer] = useState<HTMLDivElement | null>(null);
   const t = useTranslations("employerApplications");
 
   async function handleSubmit() {
@@ -3843,81 +3854,82 @@ function InterviewScheduleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-      <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
-        <div className="px-6 py-4 border-b border-border">
-          <h2 className="heading-section font-semibold">{t("scheduleInterview")}</h2>
-          <p className="text-sm text-muted-foreground mt-1">{t("ivSubtitle")}</p>
-        </div>
-        <div className="px-6 py-4 space-y-4">
-          <DateTimePicker
-            label={`${t("ivDateTime")} *`}
-            value={scheduledAt}
-            onChange={setScheduledAt}
-            minDate={new Date()}
-            placeholder={t("ivPickDateTime")}
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("ivType")}</label>
-              <SearchableSelect
-                className="h-9"
-                options={[
-                  { value: "video", label: t("ivTypeVideo") },
-                  { value: "offline", label: t("ivTypeOffline") },
-                  { value: "hybrid", label: t("ivTypeHybrid") },
-                ]}
-                value={type}
-                onValueChange={(v) => setType(v as typeof type)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("ivDuration")}</label>
-              <SearchableSelect
-                className="h-9"
-                options={[
-                  { value: "15", label: t("ivMinutes", { count: 15 }) },
-                  { value: "30", label: t("ivMinutes", { count: 30 }) },
-                  { value: "45", label: t("ivMinutes", { count: 45 }) },
-                  { value: "60", label: t("ivMinutes", { count: 60 }) },
-                ]}
-                value={String(duration)}
-                onValueChange={(v) => setDuration(+v)}
-              />
-            </div>
-          </div>
-          {type !== "video" && (
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("location")}</label>
-              <input value={location} onChange={(e) => setLocation(e.target.value)}
-                placeholder={t("ivLocationPlaceholder")}
-                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
-            </div>
-          )}
-          {type !== "offline" && (
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
-              <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
-                placeholder="https://meet.google.com/..."
-                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
-            </div>
-          )}
+    <WorkspaceModal
+      className="max-w-md"
+      title={t("scheduleInterview")}
+      description={t("ivSubtitle")}
+      onClose={onCancel}
+      contentRef={setPickerContainer}
+    >
+      <div className="px-6 py-4 space-y-4">
+        <DateTimePicker container={pickerContainer} modal
+          label={`${t("ivDateTime")} *`}
+          value={scheduledAt}
+          onChange={setScheduledAt}
+          minDate={new Date()}
+          placeholder={t("ivPickDateTime")}
+        />
+        <ViewerZoneHint at={scheduledAt} />
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium mb-1">{t("ivInstructions")}</label>
-            <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)}
-              placeholder={t("ivInstructionsPlaceholder")}
-              maxLength={500}
-              className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
+            <label className="block text-xs font-medium mb-1">{t("ivType")}</label>
+            <SearchableSelect container={pickerContainer} modal
+              className="h-9"
+              options={[
+                { value: "video", label: t("ivTypeVideo") },
+                { value: "offline", label: t("ivTypeOffline") },
+                { value: "hybrid", label: t("ivTypeHybrid") },
+              ]}
+              value={type}
+              onValueChange={(v) => setType(v as typeof type)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("ivDuration")}</label>
+            <SearchableSelect container={pickerContainer} modal
+              className="h-9"
+              options={[
+                { value: "15", label: t("ivMinutes", { count: 15 }) },
+                { value: "30", label: t("ivMinutes", { count: 30 }) },
+                { value: "45", label: t("ivMinutes", { count: 45 }) },
+                { value: "60", label: t("ivMinutes", { count: 60 }) },
+              ]}
+              value={String(duration)}
+              onValueChange={(v) => setDuration(+v)}
+            />
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || submitting} className="">
-            {submitting ? t("ivScheduling") : t("scheduleInterview")}
-          </Button>
+        {type !== "video" && (
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("location")}</label>
+            <input value={location} onChange={(e) => setLocation(e.target.value)}
+              placeholder={t("ivLocationPlaceholder")}
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+          </div>
+        )}
+        {type !== "offline" && (
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
+            <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
+              placeholder="https://meet.google.com/..."
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+          </div>
+        )}
+        <div>
+          <label className="block text-xs font-medium mb-1">{t("ivInstructions")}</label>
+          <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)}
+            placeholder={t("ivInstructionsPlaceholder")}
+            maxLength={500}
+            className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
         </div>
       </div>
-    </div>
+      <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
+        <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
+        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || submitting} className="">
+          {submitting ? t("ivScheduling") : t("scheduleInterview")}
+        </Button>
+      </div>
+    </WorkspaceModal>
   );
 }
 
@@ -3954,6 +3966,7 @@ function OfferCreateModal({
   // The API rejects a start date in the past with a precise message. It used to
   // go nowhere, leaving the form looking like it had simply stopped working.
   const [error, setError] = useState<string | null>(null);
+  const [pickerContainer, setPickerContainer] = useState<HTMLDivElement | null>(null);
   const t = useTranslations("employerApplications");
   // Offers cannot start in the past, so the calendar must not offer it — the
   // previous month's leading cells were selectable without this.
@@ -3984,91 +3997,91 @@ function OfferCreateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-      <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
-        <div className="px-6 py-4 border-b border-border">
-          <h2 className="heading-section font-semibold">{t("offerTitle")}</h2>
-          <p className="text-sm text-muted-foreground mt-1">{t("offerSubtitle")}</p>
-        </div>
-        <div className="px-6 py-4 space-y-4">
-          {checkWarning ? (
-            <div
-              className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
-                checkWarning === "flagged"
-                  ? "border-destructive/30 bg-destructive/5 text-destructive"
-                  : "border-amber-500/40 bg-amber-500/10 text-amber-800"
-              }`}
-            >
-              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>{checkWarning === "flagged" ? t("offerCheckFlagged") : t("offerCheckPending")}</span>
-            </div>
-          ) : null}
-          <div>
-            <label className="block text-xs font-medium mb-1">{`${t("offerSalary")} *`}</label>
-            <div className="flex gap-2">
-              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
-                placeholder={t("offerAmountPlaceholder")} min="0" step="100"
-                className="flex-1 h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
-              {/* One list, shared with the job form, so an offer can always be
-                  written in the currency the job was posted in. */}
-              <SearchableSelect
-                className="w-24 h-9"
-                options={CURRENCIES.map((c) => ({ value: c.code, label: c.code }))}
-                value={currency}
-                onValueChange={setCurrency}
-                ariaLabel={t("offerCurrency")}
-              />
-              <SearchableSelect
-                className="w-28 h-9"
-                options={[
-                  { value: "monthly", label: t("offerMonthly") },
-                  { value: "annually", label: t("offerAnnually") },
-                ]}
-                value={period}
-                onValueChange={(v) => setPeriod(v as typeof period)}
-              />
-            </div>
+    <WorkspaceModal
+      className="max-w-md"
+      title={t("offerTitle")}
+      description={t("offerSubtitle")}
+      onClose={onCancel}
+      contentRef={setPickerContainer}
+    >
+      <div className="px-6 py-4 space-y-4">
+        {checkWarning ? (
+          <div
+            className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
+              checkWarning === "flagged"
+                ? "border-destructive/30 bg-destructive/5 text-destructive"
+                : "border-amber-500/40 bg-amber-500/10 text-amber-800"
+            }`}
+          >
+            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>{checkWarning === "flagged" ? t("offerCheckFlagged") : t("offerCheckPending")}</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-1">{`${t("offerStartDate")} *`}</label>
-              <DateTimePicker mode="date" value={startDate} onChange={setStartDate} minDate={today} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">{t("offerExpiresOn")}</label>
-              <DateTimePicker mode="date" value={expiresAt} onChange={setExpiresAt} minDate={today} />
-              <p className="text-[11px] text-muted-foreground mt-0.5">{t("offerExpiryDefault")}</p>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("offerBenefits")}</label>
-            <textarea value={benefits} onChange={(e) => setBenefits(e.target.value)}
-              placeholder={t("offerBenefitsPlaceholder")}
-              maxLength={2000}
-              className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("notes")}</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
-              placeholder={t("offerNotesPlaceholder")}
-              maxLength={1000}
-              className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
+        ) : null}
+        <div>
+          <label className="block text-xs font-medium mb-1">{`${t("offerSalary")} *`}</label>
+          <div className="flex gap-2">
+            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+              placeholder={t("offerAmountPlaceholder")} min="0" step="100"
+              className="flex-1 h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+            {/* One list, shared with the job form, so an offer can always be
+                written in the currency the job was posted in. */}
+            <SearchableSelect container={pickerContainer} modal
+              className="w-24 h-9"
+              options={CURRENCIES.map((c) => ({ value: c.code, label: c.code }))}
+              value={currency}
+              onValueChange={setCurrency}
+              ariaLabel={t("offerCurrency")}
+            />
+            <SearchableSelect container={pickerContainer} modal
+              className="w-28 h-9"
+              options={[
+                { value: "monthly", label: t("offerMonthly") },
+                { value: "annually", label: t("offerAnnually") },
+              ]}
+              value={period}
+              onValueChange={(v) => setPeriod(v as typeof period)}
+            />
           </div>
         </div>
-        {error && (
-          <p role="alert" className="mx-6 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!amount || !startDate || submitting} className="">
-            <DollarSign className="w-3.5 h-3.5 me-1" />
-            {submitting ? t("offerSending") : t("sendOffer")}
-          </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium mb-1">{`${t("offerStartDate")} *`}</label>
+            <DateTimePicker container={pickerContainer} modal mode="date" value={startDate} onChange={setStartDate} minDate={today} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">{t("offerExpiresOn")}</label>
+            <DateTimePicker container={pickerContainer} modal mode="date" value={expiresAt} onChange={setExpiresAt} minDate={today} />
+            <p className="text-[11px] text-muted-foreground mt-0.5">{t("offerExpiryDefault")}</p>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">{t("offerBenefits")}</label>
+          <textarea value={benefits} onChange={(e) => setBenefits(e.target.value)}
+            placeholder={t("offerBenefitsPlaceholder")}
+            maxLength={2000}
+            className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1">{t("notes")}</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+            placeholder={t("offerNotesPlaceholder")}
+            maxLength={1000}
+            className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
         </div>
       </div>
-    </div>
+      {error && (
+        <p role="alert" className="mx-6 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
+        <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
+        <Button size="sm" onClick={handleSubmit} disabled={!amount || !startDate || submitting} className="">
+          <DollarSign className="w-3.5 h-3.5 me-1" />
+          {submitting ? t("offerSending") : t("sendOffer")}
+        </Button>
+      </div>
+    </WorkspaceModal>
   );
 }
 

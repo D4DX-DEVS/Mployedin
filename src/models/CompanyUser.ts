@@ -82,7 +82,11 @@ const CompanyUserSchema = new Schema<ICompanyUser>(
   { timestamps: true }
 );
 
-CompanyUserSchema.index({ companyId: 1, userId: 1 }, { unique: true, sparse: true });
+// Unique only once an invite is claimed — pending invites all have no userId.
+CompanyUserSchema.index(
+  { companyId: 1, userId: 1 },
+  { unique: true, partialFilterExpression: { userId: { $type: "objectId" } }, name: "unique_claimed_member_per_company" },
+);
 CompanyUserSchema.index({ companyId: 1, email: 1 }, { unique: true });
 CompanyUserSchema.index({ companyId: 1, status: 1 });
 CompanyUserSchema.index({ inviteToken: 1 }, { sparse: true });

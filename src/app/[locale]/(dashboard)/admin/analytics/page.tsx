@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
-import { BarChart3, Download, FileSpreadsheet, FileText, Loader2, Sparkles, TrendingUp } from "lucide-react";
+import { AlertTriangle, BarChart3, Download, FileSpreadsheet, FileText, Loader2, Sparkles, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { exportExcelRows } from "@/lib/export";
 import { toUserFacingError } from "@/lib/errors/user-facing";
@@ -100,6 +100,7 @@ export default function AdminAnalyticsPage() {
   const t = useTranslations("adminAnalytics");
   const [query, setQuery] = useState("");
   const [result, setResult] = useState("");
+  const [resultIsError, setResultIsError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
@@ -130,6 +131,7 @@ export default function AdminAnalyticsPage() {
     activeRequestRef.current = controller;
     setLoading(true);
     setResult("");
+    setResultIsError(false);
     setActiveTemplate(q);
     // On phones the output panel sits two sections below the template that was
     // tapped; without this the generation starts with no visible feedback.
@@ -149,7 +151,8 @@ export default function AdminAnalyticsPage() {
           : res.status === 401 ? t("authenticationRequired")
           : res.status === 403 ? t("insufficientPermissions")
           : t("serverError");
-        setResult(`⚠️ ${statusMsg}`);
+        setResult(statusMsg);
+        setResultIsError(true);
       }
       setGeneratedAt(new Date());
     } catch (error: unknown) {
@@ -157,7 +160,8 @@ export default function AdminAnalyticsPage() {
         return;
       }
 
-      setResult(`⚠️ ${toUserFacingError(error, { fallback: t("reportGenerationFailed") }).message}`);
+      setResult(toUserFacingError(error, { fallback: t("reportGenerationFailed") }).message);
+      setResultIsError(true);
       setGeneratedAt(new Date());
     } finally {
       if (activeRequestRef.current === controller) {
@@ -340,6 +344,7 @@ export default function AdminAnalyticsPage() {
                     onClick={() => {
                       setQuery("");
                       setResult("");
+                      setResultIsError(false);
                       setActiveTemplate(null);
                       setGeneratedAt(null);
                     }}
@@ -381,7 +386,7 @@ export default function AdminAnalyticsPage() {
                 type="button"
                 variant="outline"
                 className="rounded-xl border-border/80 bg-card hover:bg-muted"
-                disabled={!result || exporting !== null}
+                disabled={!result || resultIsError || exporting !== null}
               >
                 {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 {t("exportButton")}
@@ -411,6 +416,11 @@ export default function AdminAnalyticsPage() {
               <div className="h-4 w-[92%] animate-pulse rounded-full bg-secondary" />
               <div className="h-4 w-[84%] animate-pulse rounded-full bg-secondary" />
             </div>
+          ) : result && resultIsError ? (
+            <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{result}</span>
+            </p>
           ) : result ? (
             /* No inner max-height: a scrollbar inside the page scroll is the
                worst reading surface on a phone — the report grows inline and

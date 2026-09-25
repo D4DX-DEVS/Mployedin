@@ -102,6 +102,7 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
           name="search"
           defaultValue={search}
           placeholder={t("searchPlaceholder")}
+          aria-label={t("searchPlaceholder")}
           className="flex-1 min-w-[200px] px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <input
@@ -109,6 +110,7 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
           name="industry"
           defaultValue={industry}
           placeholder={t("industryPlaceholder")}
+          aria-label={t("industryPlaceholder")}
           className="w-[200px] px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button type="submit" className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors">

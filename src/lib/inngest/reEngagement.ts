@@ -182,6 +182,7 @@ export const reEngagementCron = inngest.createFunction(
             process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
 
           const html = buildReEngagementEmail({
+            userId: String(user._id),
             userName: user.name,
             locale: user.locale ?? "en",
             matchCount: matchedJobs.length,
@@ -196,6 +197,10 @@ export const reEngagementCron = inngest.createFunction(
               ? `${matchedJobs.length} وظائف جديدة في انتظارك`
               : `${matchedJobs.length} new jobs waiting for you`,
             html,
+            // Adds the one-click List-Unsubscribe header; see dailyDigestWorker.
+            userId: String(user._id),
+            category: "re-engagement",
+            source: "re-engagement",
           });
 
           // Update cooldown timestamp
@@ -344,6 +349,7 @@ export const profileCompletionCron = inngest.createFunction(
             const completeness = seeker.score;
 
             const html = buildProfileCompletionEmail({
+              userId: String(seeker.userId),
               userName: user.name,
               locale: user.locale ?? "en",
               completeness,
@@ -359,6 +365,9 @@ export const profileCompletionCron = inngest.createFunction(
                 ? `ملفك الشخصي مكتمل ${completeness}% — أكمله الآن`
                 : `Your profile is ${completeness}% complete — finish it now`,
               html,
+              userId: String(seeker.userId),
+              category: "re-engagement",
+              source: "profile-reminder",
             });
 
             // Start the cooldown only once the send actually succeeded, so a
@@ -385,6 +394,8 @@ export const profileCompletionCron = inngest.createFunction(
 // ─── Email Templates ──────────────────────────────────────────────────
 
 interface ReEngagementEmailData {
+  /** Signs the footer's unsubscribe link; without it the link is left out. */
+  userId?: string;
   userName: string;
   locale: string;
   matchCount: number;
@@ -435,12 +446,17 @@ function buildReEngagementEmail(data: ReEngagementEmailData): string {
           ? "تتلقى هذا البريد لأن توصيات الوظائف مفعّلة لديك."
           : "You're receiving this because you have job recommendations enabled.",
         unsubRef: "re-engagement",
+        // The category this cron checks before sending (categories.marketing).
+        userId: data.userId,
+        unsubCategory: "marketing",
       })}
     </div>
   `;
 }
 
 export interface ProfileCompletionEmailData {
+  /** Signs the footer's unsubscribe link; without it the link is left out. */
+  userId?: string;
   userName: string;
   locale: string;
   completeness: number;
@@ -642,6 +658,8 @@ export function buildProfileCompletionEmail(data: ProfileCompletionEmailData): s
           ? "تتلقى هذا البريد لأن ملفك الشخصي غير مكتمل."
           : "You're receiving this because your profile is incomplete.",
         unsubRef: "profile",
+        userId: data.userId,
+        unsubCategory: "marketing",
       })}
     </div>
   `;

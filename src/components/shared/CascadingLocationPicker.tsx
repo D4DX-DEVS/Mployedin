@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { InlineSearchSelect, type InlineSelectOption } from "@/components/shared/InlineSearchSelect";
 import {
   MapPin,
   X,
@@ -16,8 +17,6 @@ import {
   CheckSquare,
   Square,
   Loader2,
-  Check,
-  ChevronsUpDown,
 } from "lucide-react";
 
 interface LocationItem {
@@ -30,159 +29,11 @@ interface LocationItem {
   stateId?: string;
 }
 
-/* ── Inline searchable select (no portal — works inside Dialog) ── */
-function InlineSearchSelect({
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled = false,
-  loading = false,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-  options: LocationItem[];
-  placeholder: string;
-  disabled?: boolean;
-  loading?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+const toOptions = (items: LocationItem[]): InlineSelectOption[] =>
+  items.map((o) => ({ value: o._id, label: o.name, hint: o.code }));
 
-  const filtered = query
-    ? options.filter((o) =>
-        o.name.toLowerCase().includes(query.toLowerCase()) ||
-        (o.code ?? "").toLowerCase().includes(query.toLowerCase())
-      )
-    : options;
-
-  const selectedLabel = options.find((o) => o._id === value)?.name;
-
-  useEffect(() => {
-    if (!open) return;
-    const handle = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setQuery("");
-      }
-    };
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [open]);
-
-  useEffect(() => {
-    /* preventScroll: the panel sits inside a scrolling DialogContent, and a
-       plain focus() scrolled the whole dialog to bring the input into view —
-       the modal visibly jumped every time a dropdown opened. */
-    if (open && inputRef.current) inputRef.current.focus({ preventScroll: true });
-  }, [open]);
-
-  /* Same clamp as InlineSearchSelect: a 200px panel anchored left-0 under a
-     narrow trigger ran off the right edge of a phone, cutting off the option
-     labels. */
-  useLayoutEffect(() => {
-    if (!open) return;
-    const measure = () => {
-      const el = panelRef.current;
-      const host = containerRef.current;
-      if (!el || !host) return;
-      /* Measure the trigger, not the panel: the panel opens with a zoom/slide
-         animation, so its own rect is mid-transform on the first frame and the
-         correction landed as a visible sideways jump. `offsetWidth` is the
-         layout width and ignores the transform. */
-      const hostLeft = host.getBoundingClientRect().left;
-      const width = el.offsetWidth;
-      const margin = 8;
-      let dx = 0;
-      if (hostLeft + width > window.innerWidth - margin) {
-        dx = window.innerWidth - margin - (hostLeft + width);
-      }
-      if (hostLeft + dx < margin) dx = margin - hostLeft;
-      /* Written straight to the node rather than through state: a state update
-         here re-renders and the corrected position landed one paint late, which
-         showed as the panel sliding sideways just after it opened. */
-      el.style.left = `${dx}px`;
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [open]);
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => { if (!disabled) { setOpen(!open); setQuery(""); } }}
-        className="flex h-8 w-full items-center justify-between gap-1 rounded-lg border border-border/60 bg-background px-3 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <span className={selectedLabel ? "truncate" : "truncate text-muted-foreground"}>
-          {loading ? (
-            <span className="flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" /> Loading...
-            </span>
-          ) : (
-            selectedLabel ?? placeholder
-          )}
-        </span>
-        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-40" />
-      </button>
-
-      {open && (
-        <div
-          ref={panelRef}
-          data-select-panel=""
-          /* Something upstream puts `transition: all 150ms` on this panel, so
-             the clamp below animated `left` and the panel visibly slid sideways
-             on open. It has no transition of its own to lose. */
-          style={{ transitionProperty: "none" }}
-          className="absolute left-0 top-[calc(100%+4px)] z-50 w-full min-w-[200px] max-w-[calc(100vw-1rem)] rounded-xl border border-border/50 bg-popover shadow-lg shadow-black/[0.08] animate-in fade-in-0 slide-in-from-top-2 duration-150"
-        >
-          <div className="flex items-center gap-2 border-b border-border/30 panel-head">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
-            />
-          </div>
-          <div className="max-h-52 overflow-y-auto p-1 scrollbar-none">
-            {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-muted-foreground">No results found</div>
-            ) : (
-              filtered.map((opt) => {
-                const isActive = opt._id === value;
-                return (
-                  <button
-                    key={opt._id}
-                    type="button"
-                    onClick={() => { onChange(opt._id); setOpen(false); setQuery(""); }}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors duration-100 ${
-                      isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent/40 text-foreground"
-                    }`}
-                  >
-                    <Check className={`h-3.5 w-3.5 shrink-0 ${isActive ? "opacity-100 text-primary" : "opacity-0"}`} />
-                    <span className="truncate">{opt.name}</span>
-                    {opt.code && (
-                      <span className="ml-auto text-[11px] text-muted-foreground/60 font-mono">{opt.code}</span>
-                    )}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Main location picker ── */
+/* Denser than the filter-row default: the picker already sits in its own panel. */
+const PICKER_SELECT_CLASS = "gap-1 px-3 text-sm sm:h-8 sm:py-1";
 
 interface CascadingLocationPickerProps {
   selectedCityIds: string[];
@@ -428,9 +279,11 @@ export function CascadingLocationPicker({
               <Label className="text-xs text-muted-foreground mb-1">Country</Label>
               <InlineSearchSelect
                 value={selectedCountry}
-                onChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}
-                options={countries}
+                onValueChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}
+                options={toOptions(countries)}
                 placeholder={tc("selectCountry")}
+                className={PICKER_SELECT_CLASS}
+                searchable
               />
             </div>
 
@@ -438,11 +291,13 @@ export function CascadingLocationPicker({
               <Label className="text-xs text-muted-foreground mb-1">{tc("stateRegion")}</Label>
               <InlineSearchSelect
                 value={selectedState}
-                onChange={setSelectedState}
-                options={states}
+                onValueChange={setSelectedState}
+                options={toOptions(states)}
                 placeholder={tc("selectState")}
                 disabled={!selectedCountry}
                 loading={loadingStates}
+                className={PICKER_SELECT_CLASS}
+                searchable
               />
             </div>
           </div>

@@ -1167,7 +1167,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 // ─── Voice language options ────────────────────────────────────────
 const VOICE_LANGUAGES: { code: string; label: string; flag: string }[] = [
-  { code: "auto", label: "Auto-detect", flag: "🌐" },
+  { code: "auto", label: "Auto-detect", flag: "" },
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "ar", label: "Arabic", flag: "🇸🇦" },
   { code: "ml", label: "Malayalam", flag: "🇮🇳" },
@@ -1293,7 +1293,7 @@ function InputBar({
                           lang.code === voiceLanguage && "bg-primary/10 text-primary font-medium"
                         )}
                       >
-                        <span>{lang.flag}</span>
+                        {lang.flag ? <span>{lang.flag}</span> : <Globe className="h-3.5 w-3.5" aria-hidden="true" />}
                         <span>{t(`voiceLanguages.${lang.code}`)}</span>
                       </button>
                     ))}

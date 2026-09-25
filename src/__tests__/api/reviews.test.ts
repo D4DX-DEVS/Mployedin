@@ -91,6 +91,19 @@ describe("Reviews API", () => {
       expect(data.stats).toBeDefined();
       expect(data.stats.avgRating).toBe(4.5);
     });
+
+    it("matches the rating stats on the employer's ObjectId, not the raw string", async () => {
+      const { GET } = await import("@/app/api/reviews/route");
+      const { Types } = await import("mongoose");
+      const id = "64b000000000000000000001";
+      mockAggregate.mockClear();
+
+      await GET(new NextRequest(`http://localhost/api/reviews?employerId=${id}`));
+
+      const match = mockAggregate.mock.calls[0][0][0].$match;
+      expect(match.employerId).toBeInstanceOf(Types.ObjectId);
+      expect(String(match.employerId)).toBe(id);
+    });
   });
 
   describe("POST /api/reviews", () => {

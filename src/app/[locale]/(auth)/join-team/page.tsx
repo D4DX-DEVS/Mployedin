@@ -9,7 +9,7 @@ import { Loader2, Eye, EyeOff, Users, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
+import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 
 /**
  * Where an invited colleague sets their own password and joins.
@@ -239,7 +239,9 @@ function JoinTeamForm() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground">{t("passwordHint")}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("passwordHintPrefix")} {PASSWORD_MIN_LENGTH} {t("passwordHintSuffix")}
+          </p>
         </div>
 
         {error ? (

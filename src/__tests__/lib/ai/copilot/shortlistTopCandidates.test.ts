@@ -96,12 +96,15 @@ function mockOwnedApplication() {
   };
 }
 
+let mockFailingRequirements = 0;
+
 jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: {
     findById: jest.fn(() => ({ populate: jest.fn(async () => mockOwnedApplication()) })),
     find: jest.fn(() => chain(mockApplications)),
-    countDocuments: jest.fn(({ jobId, status }) => {
+    countDocuments: jest.fn(({ jobId, status, requirementsStatus }) => {
+      if (requirementsStatus === "not_met") return Promise.resolve(mockFailingRequirements);
       if (String(jobId) === JOB_ID && status === "applied") return Promise.resolve(10);
       if (String(jobId) === JOB_ID && status === "applied" && { aiMatchScore: null }) return Promise.resolve(2);
       return Promise.resolve(0);
@@ -113,6 +116,7 @@ jest.mock("@/models/Application", () => ({
 describe("shortlist_top_candidates tool", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFailingRequirements = 0;
   });
 
   it("has correct metadata", () => {
@@ -166,6 +170,16 @@ describe("shortlist_top_candidates tool", () => {
       );
 
       expect(preview.data).toMatchObject({ count: 100 });
+    });
+
+    it("leaves out applicants who fail a hard requirement, and says how many", async () => {
+      mockFailingRequirements = 4;
+      const Application = (await import("@/models/Application")).default as unknown as { find: jest.Mock };
+      const preview = await shortlistTopCandidatesTool.preview!({ jobId: JOB_ID, count: 3 }, ctx({ userId: EMPLOYER_USER }));
+      expect(Application.find).toHaveBeenCalledWith(
+        expect.objectContaining({ requirementsStatus: { $ne: "not_met" } }),
+      );
+      expect(preview.summary).toContain("4 who don't meet the job's requirements are left out");
     });
 
     it("filters by minScore when provided", async () => {

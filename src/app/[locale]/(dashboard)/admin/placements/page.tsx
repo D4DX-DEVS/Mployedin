@@ -31,12 +31,21 @@ import type { ExportColumn } from "@/lib/export";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
+function salaryAmount(salary: Placement["salary"]): number | undefined {
+  return typeof salary === "number" ? salary : salary?.amount;
+}
+
+function salaryCurrency(p: Pick<Placement, "salary" | "currency">): string {
+  return p.currency ?? (typeof p.salary === "object" ? p.salary?.currency : undefined) ?? "AED";
+}
+
 interface Placement {
   _id: string;
   startDate: string;
   placedAt: string;
-  salary: number;
-  currency: string;
+  /** /api/placements sends { amount, currency }; a bare number is the stored shape. */
+  salary?: number | { amount: number; currency?: string };
+  currency?: string;
   visaStatus: "not_required" | "pending" | "approved" | "rejected" | "stamped";
   commissionPaid: boolean;
   commissionAmount?: number;
@@ -260,7 +269,7 @@ export default function AdminPlacementsPage() {
     { header: t("exportHeaderCompany"), key: "companyName", formatter: (v) => String(v ?? "—") },
     { header: t("exportHeaderJobTitle"), key: "jobTitle", formatter: (v) => String(v ?? "—") },
     { header: t("exportHeaderAgent"), key: "agentName", formatter: (v) => String(v ?? "—") },
-    { header: t("exportHeaderSalary"), key: "salary", formatter: (v, r) => `${v ?? 0} ${(r as unknown as Placement).currency ?? "AED"}` },
+    { header: t("exportHeaderSalary"), key: "salary", formatter: (_v, r) => `${salaryAmount((r as unknown as Placement).salary) ?? 0} ${salaryCurrency(r as unknown as Placement)}` },
     { header: t("exportHeaderVisaStatus"), key: "visaStatus" },
     { header: t("exportHeaderCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? t("exportYes") : t("exportNo") },
     { header: t("exportHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
@@ -497,8 +506,8 @@ export default function AdminPlacementsPage() {
                   <TableCell className="px-4 py-3">{p.companyName ?? t("dashSeparator")}</TableCell>
                   <TableCell className="px-4 py-3 text-muted-foreground">{p.agentName ?? t("dashSeparator")}</TableCell>
                   <TableCell className="px-4 py-3 font-medium">
-                    {formatCount(p.salary)}{" "}
-                    <span className="text-xs text-muted-foreground">{p.currency}</span>
+                    {formatCount(salaryAmount(p.salary) ?? 0)}{" "}
+                    <span className="text-xs text-muted-foreground">{salaryCurrency(p)}</span>
                   </TableCell>
                   <TableCell className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
@@ -573,8 +582,8 @@ export default function AdminPlacementsPage() {
         title={t("editPlacement")}
         fields={EDIT_FIELDS}
         initialValues={editItem ? {
-          salary: String(editItem.salary ?? ""),
-          currency: editItem.currency ?? "AED",
+          salary: String(salaryAmount(editItem.salary) ?? ""),
+          currency: salaryCurrency(editItem),
           visaStatus: editItem.visaStatus ?? "",
           notes: editItem.notes ?? "",
         } : {}}

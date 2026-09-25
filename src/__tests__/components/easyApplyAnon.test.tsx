@@ -59,6 +59,9 @@ jest.mock("next-intl", () => ({
       verify: "Verify",
       enterCode: "Enter the code",
       enterEmail: "Enter your email",
+      fullName: "Full name",
+      enterFullName: "Enter your full name",
+      "errors.nameRequired": "Please enter your full name.",
       "errors.invalidEmail": "Please enter a valid email address.",
       "errors.couldNotExtract": "We couldn't read your CV automatically. You can still apply — add your details below.",
       "errors.applyFailed": "We couldn't apply. Please try again.",
@@ -251,6 +254,8 @@ describe("EasyApply Anonymous Card", () => {
     // Enter email
     const emailInput = screen.getByPlaceholderText("Enter your email") as HTMLInputElement;
     await user.type(emailInput, "test@example.com");
+    // The account is named after this, not the email's local part.
+    await user.type(screen.getByPlaceholderText("Enter your full name"), "Test Person");
 
     // Click send code button
     const sendCodeButton = screen.getByText("Send code");
@@ -261,7 +266,7 @@ describe("EasyApply Anonymous Card", () => {
         "/api/auth/apply-otp/start",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ email: "test@example.com" }),
+          body: JSON.stringify({ email: "test@example.com", name: "Test Person" }),
         })
       );
     });
@@ -290,6 +295,8 @@ describe("EasyApply Anonymous Card", () => {
     // Enter email
     const emailInput = screen.getByPlaceholderText("Enter your email") as HTMLInputElement;
     await user.type(emailInput, "test@example.com");
+    // The account is named after this, not the email's local part.
+    await user.type(screen.getByPlaceholderText("Enter your full name"), "Test Person");
 
     // Click send code button
     const sendCodeButton = screen.getByText("Send code");
@@ -325,6 +332,8 @@ describe("EasyApply Anonymous Card", () => {
     // Enter email
     const emailInput = screen.getByPlaceholderText("Enter your email") as HTMLInputElement;
     await user.type(emailInput, "test@example.com");
+    // The account is named after this, not the email's local part.
+    await user.type(screen.getByPlaceholderText("Enter your full name"), "Test Person");
 
     // Click send code button
     const sendCodeButton = screen.getByText("Send code");
@@ -396,6 +405,7 @@ describe("EasyApply Anonymous Card", () => {
       render(<EasyApply jobId="test-job-id" jobTitle="Test Job" locale="en" screeningQuestions={[]} />);
       await user.click(screen.getByText("Continue with email"));
       await user.type(screen.getByPlaceholderText("Enter your email"), "test@example.com");
+      await user.type(screen.getByPlaceholderText("Enter your full name"), "Test Person");
       await user.click(screen.getByText("Send code"));
     }
 
@@ -410,7 +420,7 @@ describe("EasyApply Anonymous Card", () => {
       await waitFor(() => expect(csrfFetch).toHaveBeenCalled());
       expect(getRecaptchaToken).toHaveBeenCalledWith("quick_apply");
       const [, init] = csrfFetch.mock.calls[0];
-      expect(JSON.parse(init.body)).toEqual({ email: "test@example.com", captchaToken: "tok-123" });
+      expect(JSON.parse(init.body)).toEqual({ email: "test@example.com", name: "Test Person", captchaToken: "tok-123" });
     });
 
     it("sends no token field at all when reCAPTCHA is not configured", async () => {
@@ -420,7 +430,7 @@ describe("EasyApply Anonymous Card", () => {
       await sendCode();
 
       await waitFor(() => expect(csrfFetch).toHaveBeenCalled());
-      expect(JSON.parse(csrfFetch.mock.calls[0][1].body)).toEqual({ email: "test@example.com" });
+      expect(JSON.parse(csrfFetch.mock.calls[0][1].body)).toEqual({ email: "test@example.com", name: "Test Person" });
     });
 
     it("shows the bot-check copy when the server refuses the token, and stays on the email step", async () => {

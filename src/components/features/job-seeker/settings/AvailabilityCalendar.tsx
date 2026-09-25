@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Clock, Globe } from "lucide-react";
+import { Clock, Globe, CheckCircle2 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export interface DayAvailability {
@@ -170,7 +170,8 @@ export function AvailabilityCalendar({
       {/* Summary badge */}
       {selectedDays.length > 0 && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 chip-pad">
-          <p className="text-xs text-primary font-medium">
+          <p className="flex items-start gap-1.5 text-xs text-primary font-medium">
+            <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {t("availabilityActive")}
           </p>
         </div>

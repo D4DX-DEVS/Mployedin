@@ -76,10 +76,6 @@ jest.mock("@/components/features/employer/dashboard", () => ({
   DraftExtractionsCard: () => null,
 }));
 
-jest.mock("@/components/shared/CopilotLauncher", () => ({
-  CopilotLauncher: () => null,
-}));
-
 jest.mock("@/components/shared/WorkspaceHeader", () => ({
   WorkspaceHeader: ({ title, context, actions, metrics }: React.PropsWithChildren<any>) => (
     <div data-testid="workspace-header">

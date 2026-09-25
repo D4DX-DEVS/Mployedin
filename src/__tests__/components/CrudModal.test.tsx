@@ -94,4 +94,20 @@ describe("CrudModal error surfacing", () => {
     const hint = screen.getByText("At least 12 characters, with a symbol.");
     expect(input).toHaveAttribute("aria-describedby", hint.id);
   });
+
+  it("lets a password field be revealed and hidden again", async () => {
+    const user = userEvent.setup();
+    const secretFields: CrudField[] = [{ name: "password", label: "Temporary Password", type: "password", placeholder: "At least 12 characters" }];
+    render(<CrudModal open onClose={() => {}} title="Onboard" fields={secretFields} onSubmit={async () => {}} />);
+    const input = screen.getByPlaceholderText("At least 12 characters");
+    await user.type(input, "Secret#12345");
+    expect(input).toHaveAttribute("type", "password");
+
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("Secret#12345");
+
+    await user.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(input).toHaveAttribute("type", "password");
+  });
 });

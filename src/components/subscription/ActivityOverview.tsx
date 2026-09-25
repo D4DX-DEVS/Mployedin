@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { FileText, Eye, Download, Sparkles, type LucideIcon } from "lucide-react";
+import { FileText, Eye, Download, Sparkles, type LucideIcon, ArrowRight } from "lucide-react";
 
 interface ProfileViewStats {
   totalViews: number;
@@ -168,7 +168,7 @@ export function ActivityOverview({ appsUsed, appsMax }: ActivityOverviewProps) {
                       href={card.linkHref}
                       className={`text-[11px] font-medium mt-1.5 inline-block hover:underline ${card.tone}`}
                     >
-                      {card.linkLabel} →
+                      {card.linkLabel} <ArrowRight className="inline h-3 w-3 align-[-2px] rtl:rotate-180" aria-hidden="true" />
                     </Link>
                   )}
                 </>

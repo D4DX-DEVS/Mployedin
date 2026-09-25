@@ -17,7 +17,7 @@
  * exist.
  */
 
-import { tokenizeSkill, type SeekerProfile, type JobProfile } from "@/lib/matchScore";
+import { flattenText, normalizeSkill, tokenizeSkill, type SeekerProfile, type JobProfile } from "@/lib/matchScore";
 import {
   RELEVANCE_WEIGHTS,
   CORE_SKILL_COUNT,
@@ -42,6 +42,19 @@ export interface RelevanceBreakdown {
   missingSkills: string[];
   /** True when the job listed no skills, so `skills` is the no-evidence floor. */
   skillsUnknown: boolean;
+  /**
+   * Employer side: 0–100 coverage of EVERY required skill the job lists, null
+   * when it lists none. `skills` reads only the first CORE_SKILL_COUNT (and
+   * pads with preferred ones) so a seeker is not buried by a padded list; an
+   * employer who listed ten must-haves is asking about all ten.
+   */
+  requiredCoverage: number | null;
+  /** Every required skill with evidence, in the job's order. */
+  requiredMatched: string[];
+  /** Every required skill without. */
+  requiredMissing: string[];
+  /** 0–100 coverage of every preferred skill, null when it lists none. */
+  preferredCoverage: number | null;
 }
 
 /**
@@ -57,6 +70,23 @@ function coreSkills(job: JobProfile): string[] {
   if (required.length >= CORE_SKILL_COUNT) return required.slice(0, CORE_SKILL_COUNT);
   const preferred = job.preferredSkills ?? [];
   return [...required, ...preferred].slice(0, CORE_SKILL_COUNT);
+}
+
+/**
+ * The CV as whole words, each normalised the way skills are, wrapped in spaces
+ * so a lookup is a whole-phrase test: "ReactJS" reads as "react" and "Node.js"
+ * as "node js", while "JavaScript" never reads as "java", "WhatsApp" as "sap"
+ * or "Excellent" as "excel". A raw substring test awarded all three.
+ */
+function cvWords(cvText: string): string {
+  const words = flattenText(cvText).trim().split(" ").filter(Boolean).map(normalizeSkill);
+  return words.length ? ` ${words.join(" ")} ` : "";
+}
+
+/** Whether one skill token appears in the CV as a whole word or phrase. */
+function cvHasSkill(cv: string, token: string): boolean {
+  const phrase = flattenText(token).trim().split(" ").filter(Boolean).map(normalizeSkill).join(" ");
+  return phrase.length > 2 && cv.includes(` ${phrase} `);
 }
 
 /**
@@ -82,7 +112,7 @@ function creditFor(
 
   if (cvHaystack) {
     for (const token of tokenizeSkill(jobSkill)) {
-      if (token.length > 2 && cvHaystack.includes(token)) return SKILL_CREDIT_CV;
+      if (cvHasSkill(cvHaystack, token)) return SKILL_CREDIT_CV;
     }
   }
 
@@ -141,7 +171,19 @@ export function calculateRelevance(
   const core = coreSkills(job);
   const seekerSkills = seeker.skills ?? [];
   const seekerTokens = new Set(seekerSkills.flatMap(tokenizeSkill));
-  const cvHaystack = (seeker.cvText ?? "").toLowerCase();
+  const cvHaystack = cvWords(seeker.cvText ?? "");
+
+  // Cached so a skill that sits in `core` and in the required or preferred
+  // list below is judged once.
+  const credits = new Map<string, number>();
+  const creditOf = (skill: string) => {
+    let credit = credits.get(skill);
+    if (credit === undefined) {
+      credit = creditFor(skill, seekerSkills, seekerTokens, cvHaystack, vectors);
+      credits.set(skill, credit);
+    }
+    return credit;
+  };
 
   const matchedSkills: string[] = [];
   const missingSkills: string[] = [];
@@ -153,13 +195,23 @@ export function calculateRelevance(
   } else {
     let total = 0;
     for (const skill of core) {
-      const credit = creditFor(skill, seekerSkills, seekerTokens, cvHaystack, vectors);
+      const credit = creditOf(skill);
       total += credit;
       if (credit >= SKILL_CREDIT_NEAR) matchedSkills.push(skill);
       else missingSkills.push(skill);
     }
     skillsFraction = total / core.length;
   }
+
+  // Required and preferred coverage apart, over the whole lists, from the
+  // same cached credits.
+  const coverage = (list: readonly string[]) =>
+    list.length === 0 ? null : Math.round((list.reduce((sum, s) => sum + creditOf(s), 0) / list.length) * 100);
+  const required = job.skills ?? [];
+  const requiredCoverage = coverage(required);
+  const requiredMatched = required.filter((skill) => creditOf(skill) >= SKILL_CREDIT_NEAR);
+  const requiredMissing = required.filter((skill) => creditOf(skill) < SKILL_CREDIT_NEAR);
+  const preferredCoverage = coverage(job.preferredSkills ?? []);
 
   const role = roleScore(seeker, job);
   const experience = experienceScore(seeker, job);
@@ -177,5 +229,9 @@ export function calculateRelevance(
     matchedSkills,
     missingSkills,
     skillsUnknown,
+    requiredCoverage,
+    requiredMatched,
+    requiredMissing,
+    preferredCoverage,
   };
 }

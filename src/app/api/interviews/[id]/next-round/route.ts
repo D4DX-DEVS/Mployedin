@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
@@ -9,11 +10,12 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
+import { verifyInterviewAccess } from "@/lib/interviews/access";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import type { UserRole } from "@/models/User";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
 const nextRoundSchema = z.object({
   scheduledAt: z.string().datetime().refine(
@@ -38,6 +40,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!prevInterview) {
     return NextResponse.json({ error: "Previous interview not found" }, { status: 404 });
   }
+
+  // Only the hiring side that owns this interview may book the next round — the
+  // candidate never schedules their own, and nobody schedules on another
+  // company's candidate.
+  if (ctx.role === "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const accessError = await verifyInterviewAccess(prevInterview, ctx);
+  if (accessError) return accessError;
 
   if (prevInterview.status !== "completed" || prevInterview.outcome !== "passed") {
     return NextResponse.json(

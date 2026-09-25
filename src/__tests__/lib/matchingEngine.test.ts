@@ -214,3 +214,17 @@ describe("Jev still advises rather than decides", () => {
     expect(base.score - down.score).toBeLessThanOrEqual(10);
   });
 });
+
+describe("Jev reads the CV", () => {
+  it("is shown the opening of the CV, and a pair with no CV is asked exactly as before", async () => {
+    await scorePair(applicant(), job("j1"), { threshold: 80, useAi: true });
+    const [withoutCv] = mockDecide.mock.calls[0] as [{ candidate: Record<string, unknown> }];
+    expect(withoutCv.candidate).not.toHaveProperty("cv_excerpt");
+
+    const cvText = "Senior React developer. Built a Node.js platform. " + "x".repeat(5000);
+    await scorePair({ ...applicant(), cvText }, job("j1"), { threshold: 80, useAi: true });
+    const [withCv] = mockDecide.mock.calls[1] as [{ candidate: { cv_excerpt?: string } }];
+    expect(withCv.candidate.cv_excerpt?.startsWith("Senior React developer.")).toBe(true);
+    expect(withCv.candidate.cv_excerpt?.length).toBeLessThanOrEqual(2500);
+  });
+});

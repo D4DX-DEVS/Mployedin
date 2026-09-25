@@ -188,6 +188,7 @@ function getStatusOptions(t: ReturnType<typeof useTranslations>) {
   const statusLabels = getStatusLabels(t);
   return [
     { value: "all", label: t("tableHeaderStatus") },
+    { value: "pending_review", label: t("statusPendingReview") },
     { value: "submitted", label: statusLabels.submitted },
     { value: "under_review", label: statusLabels.under_review },
     { value: "approved", label: statusLabels.approved },

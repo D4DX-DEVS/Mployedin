@@ -21,10 +21,10 @@ const notoArabic = Noto_Sans_Arabic({
   display: "swap",
   preload: false, // loaded on-demand only for Arabic locale
 });
+// Variable font: one file per subset instead of four static weights.
 const notoMalayalam = Noto_Sans_Malayalam({
   subsets: ["malayalam"],
   variable: "--font-noto-malayalam",
-  weight: ["400", "500", "600", "700"],
   display: "swap",
   preload: false,
 });

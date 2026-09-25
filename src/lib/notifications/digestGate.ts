@@ -202,3 +202,18 @@ export function digestGateFor(
 
   return { send: true, cadence, jobs, profileViews };
 }
+
+/**
+ * Whether a digest has anything worth sending: jobs that cleared the bar, or
+ * recruiters who viewed the profile.
+ *
+ * "Nothing matched" is not on the list. On 2026-09-23 187 of 188 job emails
+ * said "No strong job matches this week" — the platform's main job email had
+ * become a notice that it had no jobs. Indeed only mails when a new job
+ * matches, and the owner's rule is the same: no strong match, no email. The
+ * explanation of what is holding a seeker back still appears in-app, and in a
+ * digest that is going out anyway for profile views.
+ */
+export function hasDigestContent(counts: { jobCount: number; profileViewCount: number }): boolean {
+  return counts.jobCount > 0 || counts.profileViewCount > 0;
+}

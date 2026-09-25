@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import AuditLog from "@/models/AuditLog";
 import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { User } from "@/models/User";
-import { canManageTeam } from "@/lib/permissions/team";
+import { getTeamActorRole } from "@/lib/permissions/team";
 import { escapeRegex } from "@/lib/security/sanitize";
-import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
 import type { UserRole } from "@/models/User";
-import type { CompanyRole } from "@/models/CompanyUser";
 
 interface AuthCtx {
   userId: string;
   role: UserRole;
   locale: string;
+  member?: AuthContext["member"];
 }
 
 /**
@@ -44,29 +44,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  // Verify caller is owner or admin
-  let callerMember: { companyRole: CompanyRole } | null = await CompanyUser.findOne({
-    companyId: employer._id,
-    userId: ctx.userId,
-    status: "active",
-  }).select("companyRole").lean();
+  // Verify caller can manage team — a colleague on their own membership, never
+  // the owner's row that ctx.userId points at.
+  const actorRole = await getTeamActorRole(ctx, employer);
 
-  if (!callerMember) {
-    callerMember = await ensureEmployerOwnerMembership({
-      companyId: employer._id,
-      userId: ctx.userId,
-      email: employer.companyEmail,
-    });
-
-    if (!callerMember) {
-      return NextResponse.json(
-        { error: "Account verification failed. Please contact support." },
-        { status: 403 }
-      );
-    }
-  }
-
-  if (!callerMember || !canManageTeam(callerMember.companyRole)) {
+  if (!actorRole) {
     return NextResponse.json(
       { error: "Only owners and admins can view team activity logs" },
       { status: 403 }

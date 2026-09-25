@@ -6,7 +6,9 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { roleHomePath } from "@/lib/auth/roleHome";
 
 interface PublicHeaderProps {
   locale: string;
@@ -18,6 +20,12 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
   const tNav = useTranslations("nav");
   const tLanding = useTranslations("landing");
   const tAuth = useTranslations("auth");
+  // A signed-in visitor gets a way back to their dashboard instead of Login /
+  // Get Started. No session is seeded from the server, so the first render is
+  // "loading" on both sides and hydration matches.
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const dashboardHref = role ? roleHomePath(locale, role) : null;
 
   const navLinks = [
     { href: `/${locale}/jobs`, label: tNav("jobs") },
@@ -56,16 +64,26 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
               {locale === "en" ? "العربية" : "English"}
             </Button>
           </Link>
-          <Link href={`/${locale}/login`}>
-            <Button variant="ghost" size="sm">
-              {tAuth("login")}
-            </Button>
-          </Link>
-          <Link href={`/${locale}/register`}>
-            <Button size="sm">
-              {tLanding("getStartedBtn")}
-            </Button>
-          </Link>
+          {dashboardHref ? (
+            <Link href={dashboardHref}>
+              <Button size="sm">
+                {tNav("dashboard")}
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link href={`/${locale}/login`}>
+                <Button variant="ghost" size="sm">
+                  {tAuth("login")}
+                </Button>
+              </Link>
+              <Link href={`/${locale}/register`}>
+                <Button size="sm">
+                  {tLanding("getStartedBtn")}
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -106,18 +124,26 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
             >
               {locale === "en" ? "العربية" : "English"}
             </Link>
-            <div className="flex gap-2">
-              <Link href={`/${locale}/login`} className="flex-1">
-                <Button variant="outline" size="sm" className="w-full">
-                  {tAuth("login")}
-                </Button>
-              </Link>
-              <Link href={`/${locale}/register`} className="flex-1">
+            {dashboardHref ? (
+              <Link href={dashboardHref} className="w-full" onClick={() => setMobileOpen(false)}>
                 <Button size="sm" className="w-full">
-                  {tLanding("getStartedBtn")}
+                  {tNav("dashboard")}
                 </Button>
               </Link>
-            </div>
+            ) : (
+              <div className="flex gap-2">
+                <Link href={`/${locale}/login`} className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full">
+                    {tAuth("login")}
+                  </Button>
+                </Link>
+                <Link href={`/${locale}/register`} className="flex-1">
+                  <Button size="sm" className="w-full">
+                    {tLanding("getStartedBtn")}
+                  </Button>
+                </Link>
+              </div>
+            )}
           </nav>
         </div>
       )}

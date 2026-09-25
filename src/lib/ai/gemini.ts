@@ -26,7 +26,12 @@ import {
   type NativeGenerateContentResponse,
   type NativePart,
 } from "@/lib/ai/googleAI";
-import { isOpenRouterTextProvider, PDF_NATIVE_PARSER, toOpenRouterContent } from "@/lib/ai/openRouter";
+import {
+  isOpenRouterTextProvider,
+  PDF_NATIVE_PARSER,
+  toOpenRouterContent,
+  type OpenRouterRequestOptions,
+} from "@/lib/ai/openRouter";
 
 /**
  * Aliases kept because call sites and TASK_MODEL_MAP in `@/lib/ai/router` index
@@ -48,7 +53,8 @@ async function chatFetch(
   messages: ChatMessage[],
   maxTokens?: number,
   stream = false,
-  jsonMode = false
+  jsonMode = false,
+  options?: OpenRouterRequestOptions
 ): Promise<Response> {
   const effort = textReasoningEffort();
   return chatCompletionsFetch(
@@ -62,19 +68,29 @@ async function chatFetch(
       reasoning_effort: effort,
       stream,
     },
-    `chat:${model}`
+    `chat:${model}`,
+    undefined,
+    undefined,
+    options
   );
 }
 
-/** Generate a single text response */
+/**
+ * Generate a single text response.
+ *
+ * @param options.tier `"flex"` for background work only (cron, queue workers):
+ *   half price, slower, with a standard-tier retry built in. Leave it unset for
+ *   anything a person is waiting on.
+ */
 export async function generateText(
   prompt: string,
   model: GeminiModel = GEMINI_MODELS.flash,
   maxOutputTokens?: number,
-  jsonMode = false
+  jsonMode = false,
+  options?: OpenRouterRequestOptions
 ): Promise<string> {
   const start = Date.now();
-  const res = await chatFetch(model, [{ role: "user", content: prompt }], maxOutputTokens, false, jsonMode);
+  const res = await chatFetch(model, [{ role: "user", content: prompt }], maxOutputTokens, false, jsonMode, options);
   if (!res.ok) {
     const err = await res.text().catch(() => "");
     throw new Error(providerErrorMessage(res.status, err, "request"));

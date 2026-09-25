@@ -6,8 +6,10 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Lead from "@/models/Lead";
 import Placement from "@/models/Placement";
+import Commission from "@/models/Commission";
+import TargetProfile from "@/models/TargetProfile";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { BriefcaseBusiness, Building2, CalendarCheck2, Gift } from "lucide-react";
+import { BriefcaseBusiness, Building2, Goal, Wallet } from "lucide-react";
 import type { WorkspaceMetric } from "@/components/shared/WorkspaceHeader";
 import { AgentTodayQueue, type AgentTodayQueueLabels } from "@/components/features/agent/AgentTodayQueue";
 import {
@@ -17,6 +19,11 @@ import {
   type AgentRoleMetric,
 } from "@/components/features/agent/dashboard";
 import { getAgentActionCounts, getAgentQueueItems, resolveAgentScope, EMPTY_AGENT_COUNTS } from "@/lib/agents/workQueue";
+import { resolveAssignedRegions } from "@/lib/agents/assignedRegion";
+import { calculateMonthlyAchievements } from "@/lib/targets/profileAchievementCalculator";
+import { formatCurrency } from "@/lib/currency";
+import { isValidTimeZone } from "@/lib/datetime/zone";
+import { localHourIn } from "@/lib/datetime/countryZone";
 
 /**
  * The agent home, on the employer home's shape: greeting header carrying the
@@ -36,8 +43,20 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   const userName = session.user.name?.split(" ")[0] ?? "there";
 
   const agentDoc = await Agent.findOne({ userId: session.user.id })
-    .select("_id assignedEmployerIds")
+    .select("_id assignedEmployerIds assignedCityIds assignedStateIds timezone currencyCode")
     .lean();
+
+  // Greeting by the agent's own clock, as on the super-agent home.
+  const now = new Date();
+  const timeZone = isValidTimeZone(agentDoc?.timezone) ? (agentDoc!.timezone as string) : "Asia/Dubai";
+  const hour = localHourIn(timeZone, now);
+  const greeting = t(
+    hour < 12 ? "smartHeader.greetingMorning" : hour < 17 ? "smartHeader.greetingAfternoon" : "smartHeader.greetingEvening",
+    { userName },
+  );
+
+  // The region an admin assigned, named for the header pill.
+  const assignedRegions = await resolveAssignedRegions(agentDoc, locale);
 
   const agentId = agentDoc?._id;
   const employerCount = agentDoc?.assignedEmployerIds?.length ?? 0;
@@ -101,10 +120,13 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           },
         },
       ]),
-      Job.find(jobFilter)
+      // Live roles only, across the whole portfolio. This read took the 20
+      // newest jobs of any status, so "How each live role is converting"
+      // listed closed roles and missed a busy live role posted earlier.
+      Job.find({ ...jobFilter, status: "active" })
         .select("_id title status")
         .sort({ createdAt: -1 })
-        .limit(20)
+        .limit(200)
         .lean(),
     ]);
 
@@ -128,10 +150,8 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     interviewRate = totalApps > 0 ? Math.round((totalInterviews / totalApps) * 100) : 0;
     offerRate = totalApps > 0 ? Math.round((totalOffers / totalApps) * 100) : 0;
 
-    // The busiest live roles. A draft with no applications has no performance
-    // to show and only pushed real roles off the three-row list.
+    // The three busiest live roles.
     jobMetrics = recentJobDocs
-      .filter((j) => j.status === "active" || jobMap.has(String(j._id)))
       .map((j) => {
         const counts = jobMap.get(String(j._id)) ?? {};
         const apps = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -150,6 +170,42 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       })
       .sort((a, b) => b.applications - a.applications)
       .slice(0, 3);
+  }
+
+  // ── This month: the target the super-agent split to this agent, and the
+  // commission booked against it. "This month" is the server's calendar month
+  // because the target report and the commissions page both count that way,
+  // and each card must equal the page it opens.
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const monthFrom = `${year}-${pad(month)}-01`;
+  const monthTo = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
+  let targetProgress: number | null = null;
+  let commissionThisMonth = 0;
+  if (agentId) {
+    // /api/commissions reads ?dateFrom/?dateTo exactly like this.
+    const commissionFrom = new Date(monthFrom);
+    const commissionTo = new Date(monthTo);
+    commissionTo.setHours(23, 59, 59, 999);
+    const [targetProfile, commissionRows] = await Promise.all([
+      // The same profile /api/agent/target-report reads.
+      TargetProfile.findOne({ assigneeId: session.user.id, assigneeRole: "agent", year, status: "active" })
+        .select("monthlyTargets")
+        .lean<{ monthlyTargets?: { month: number; employerTarget: number; employeeTarget: number; financeTarget: number }[] } | null>(),
+      // Pending + approved + paid: the three cards on the commissions page.
+      // Override lines carry only superAgentId, so agentId is this agent's own.
+      Commission.aggregate<{ total: number }>([
+        { $match: { agentId, createdAt: { $gte: commissionFrom, $lte: commissionTo }, status: { $in: ["pending", "approved", "paid"] } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+    ]);
+    commissionThisMonth = commissionRows[0]?.total ?? 0;
+    const monthTarget = targetProfile?.monthlyTargets?.find((m) => m.month === month);
+    if (monthTarget && (monthTarget.employerTarget > 0 || monthTarget.employeeTarget > 0 || monthTarget.financeTarget > 0)) {
+      const [achievement] = await calculateMonthlyAchievements(String(session.user.id), "agent", year, [monthTarget]);
+      targetProgress = achievement?.overallProgress ?? 0;
+    }
   }
 
   // The queue replaces a three-branch guess ("any applications at all? review
@@ -206,7 +262,9 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   };
 
   // Four figures the queue and the funnel do not already print: the size of
-  // the book, the live roles, and how well it converts. Each opens its list.
+  // the book, the live roles, this month's target and commission. (The two
+  // conversion rates used to sit here too, repeating the pipeline's
+  // "25% of applicants".) Each opens the list it counts.
   const metrics: WorkspaceMetric[] = [
     {
       label: t("overview.activeAccounts"),
@@ -227,31 +285,34 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       ariaLabel: `${t("overview.liveRoles")}: ${activeJobs}`,
     },
     {
-      label: t("overview.interviewRate"),
-      shortLabel: t("overview.interviewRateShort"),
-      value: `${interviewRate}%`,
-      href: `/${locale}/agent/interviews`,
-      icon: CalendarCheck2,
+      label: t("overview.targetThisMonth"),
+      shortLabel: t("overview.targetShort"),
+      value: targetProgress === null ? "—" : `${targetProgress}%`,
+      href: `/${locale}/agent/target-report`,
+      icon: Goal,
       tone: "warning",
-      ariaLabel: `${t("overview.interviewRate")}: ${interviewRate}%`,
+      ariaLabel: targetProgress === null
+        ? `${t("overview.targetThisMonth")}: ${t("overview.targetNotSet")}`
+        : `${t("overview.targetThisMonth")}: ${targetProgress}%`,
     },
     {
-      label: t("overview.offerRate"),
-      shortLabel: t("overview.offerRateShort"),
-      value: `${offerRate}%`,
-      href: `/${locale}/agent/offers`,
-      icon: Gift,
+      label: t("overview.commissionThisMonth"),
+      shortLabel: t("overview.commissionShort"),
+      value: formatCurrency(commissionThisMonth, agentDoc?.currencyCode ?? "AED"),
+      href: `/${locale}/agent/commissions?dateFrom=${monthFrom}&dateTo=${monthTo}`,
+      icon: Wallet,
       tone: "info",
-      ariaLabel: `${t("overview.offerRate")}: ${offerRate}%`,
+      ariaLabel: `${t("overview.commissionThisMonth")}: ${formatCurrency(commissionThisMonth, agentDoc?.currencyCode ?? "AED")}`,
     },
   ];
 
   return (
     <div className="page-container dashboard-overview-page">
       <AgentSmartHeader
-        userName={userName}
+        greeting={greeting}
         counts={queueCounts}
         activeJobs={activeJobs}
+        regions={assignedRegions}
         metrics={metrics}
         locale={locale}
       />

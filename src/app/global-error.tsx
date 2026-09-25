@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import { Manrope } from "next/font/google";
 import { reportError } from "@/lib/observability/report-error";
+
+// This boundary replaces the root layout, so the layout's Manrope variable is
+// not on <body> here — load the product typeface directly.
+const manrope = Manrope({ subsets: ["latin"], display: "swap" });
 
 const STRINGS = {
   en: {
@@ -68,8 +73,7 @@ export default function GlobalError({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily:
-            "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+          fontFamily: `${manrope.style.fontFamily}, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif`,
           background: "#0a0a0a",
           color: "#fafafa",
         }}

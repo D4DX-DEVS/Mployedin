@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
@@ -10,13 +11,14 @@ import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notifyStatusChange } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { memberMayAccessJob } from "@/lib/permissions/team";
 import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
 import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
 /**
  * Scope guard for agent / super_agent access to a single application, mirroring
@@ -70,7 +72,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   if (ctx.role === "employer") {
     emp = (await Employer.findOne({ userId: ctx.userId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
-    if (!emp || String(jobDoc.employerId) !== String(emp._id)) {
+    if (
+      !emp ||
+      String(jobDoc.employerId) !== String(emp._id) ||
+      !(await memberMayAccessJob(ctx, emp._id, (jobDoc as unknown as { _id?: unknown })._id))
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   } else if (ctx.role === "job_seeker") {
@@ -285,7 +291,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp || appEmployer !== String(emp._id)) {
+    const appJobId = (application as unknown as { jobId?: { _id?: unknown } }).jobId?._id;
+    if (!emp || appEmployer !== String(emp._id) || !(await memberMayAccessJob(ctx, emp._id, appJobId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
@@ -307,9 +314,14 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // strips these for job_seeker (handlers.ts .select("-employerNotes ...")), but
   // this detail route returned the raw document — leaking employer/agent notes,
   // the rejection reason, AI match gaps and the internal notes thread to the
-  // applicant. aiMatchScore stays: the seeker UI renders it.
+  // applicant. The seeker UI renders aiMatchScore, so it carries the seeker's
+  // own number: the engine score, not an employer's re-weighted ranking.
   if (ctx.role === "job_seeker") {
-    for (const key of ["employerNotes", "agentNotes", "rejectionReason", "matchStrengths", "matchGaps", "matchBreakdown", "notes"]) {
+    if (typeof result.seekerMatchScore === "number") result.aiMatchScore = result.seekerMatchScore;
+    for (const key of [
+      "employerNotes", "agentNotes", "rejectionReason", "matchStrengths", "matchGaps", "matchBreakdown", "notes",
+      "qualifications", "requirementsStatus", "missingSkills", "weightsApplied",
+    ]) {
       delete result[key];
     }
   }

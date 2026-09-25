@@ -35,14 +35,27 @@ export default function BlogDetailPage() {
 
   useEffect(() => {
     if (!slug) return;
+    let cancelled = false;
     fetch(`/api/public/blogs/${slug}`)
       .then((r) => {
         if (!r.ok) { setNotFound(true); return null; }
         return r.json();
       })
-      .then((d) => d && setPost(d))
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
+      .then((d: { post?: Post } | null) => {
+        if (cancelled) return;
+        // The API answers { post }; storing the wrapper rendered every article blank.
+        if (!d?.post) { setNotFound(true); return; }
+        setPost(d.post);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setNotFound(true);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [slug]);
 
   if (loading) {

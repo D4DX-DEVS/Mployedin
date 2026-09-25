@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import connectDB from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
-import { uploadFile, deleteFile } from "@/lib/storage/spaces";
+import { uploadFile } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
+import { registerCvDocument, releaseSeekerFile } from "@/lib/cv/cvDocuments";
+import { limitCvUpload } from "@/lib/cv/uploadLimit";
+import logger from "@/lib/logger";
 
 // POST /api/job-seeker/cv — upload resume/CV file
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
@@ -28,11 +32,15 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
+  const fingerprint = createHash("sha256").update(Buffer.from(bytes)).digest("hex");
 
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("cv");
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id cv");
   if (!seeker) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
+
+  const limited = await limitCvUpload({ userId: ctx.userId, role: ctx.role, jobSeekerId: seeker._id, fingerprint });
+  if (limited) return limited;
 
   const previousUrl = seeker.cv?.originalUrl;
 
@@ -46,15 +54,36 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   await JobSeeker.updateOne(
     { userId: ctx.userId },
     {
-      $set: { "cv.originalUrl": result.url, "cv.parsedAt": new Date() },
-      // New CV → old ATS analysis is stale. Clear it so the next check re-parses.
-      $unset: { "cv.atsScore": "", "cv.atsReport": "", "cv.rawText": "", "cv.atsAnalyzedAt": "" },
+      // cv.contentHash stays the auto-fill's "already extracted" marker; the
+      // file's fingerprint lives on its CV record.
+      $set: { "cv.originalUrl": result.url },
+      // New CV → old ATS analysis and text are stale. Nothing is parsed yet:
+      // the reader sets the text and parsedAt when it has read this file.
+      $unset: { "cv.atsScore": "", "cv.atsReport": "", "cv.rawText": "", "cv.atsAnalyzedAt": "", "cv.parsedAt": "" },
     }
   );
 
-  // Only now that the new CV is stored and recorded is the old object disposable.
+  // Read it off the request path; the upload succeeds even if queueing fails
+  // (the backfill reads anything left "uploaded").
+  try {
+    await registerCvDocument({
+      jobSeekerId: seeker._id,
+      userId: ctx.userId,
+      fileUrl: result.url,
+      fileName: file.name,
+      mimeType: file.type,
+      size: file.size,
+      fingerprint,
+      source: "profile",
+    });
+  } catch (err) {
+    logger.error({ err, userId: ctx.userId }, "[cv] failed to record uploaded CV");
+  }
+
+  // Only now that the new CV is stored and recorded is the old object disposable —
+  // unless an application was sent with it: the employer keeps that CV.
   if (previousUrl && previousUrl !== result.url) {
-    try { await deleteFile(previousUrl); } catch { /* ignore */ }
+    await releaseSeekerFile(seeker._id, previousUrl);
   }
 
   await logActivity({

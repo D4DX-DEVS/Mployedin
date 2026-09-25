@@ -8,6 +8,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -70,6 +71,9 @@ interface GdprStats {
 /* ------------------------------------------------------------------ */
 
 
+/** Mirrors GDPR_REQUEST_STATUSES; the model file cannot be imported client-side. */
+const GDPR_STATUS_VALUES = ["pending", "in_progress", "completed", "rejected"] as const;
+
 const DEFAULT_RETENTION: RetentionPolicy[] = [
   { _id: "1", dataCategory: "User Accounts", retentionPeriod: 3, unit: "years", autoDelete: false, lastReview: new Date().toISOString() },
   { _id: "2", dataCategory: "Application Data", retentionPeriod: 2, unit: "years", autoDelete: true, lastReview: new Date().toISOString() },
@@ -96,7 +100,8 @@ export default function AdminGdprPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  // In the URL so the dashboard's "pending GDPR requests" row lands filtered.
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: GDPR_STATUS_VALUES });
   const pagination = usePagination();
 
   // i18n option maps (moved inside component)

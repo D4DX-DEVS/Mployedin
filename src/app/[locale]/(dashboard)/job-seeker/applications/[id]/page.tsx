@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
+  Banknote,
   Building2,
   Calendar,
   Check,
@@ -22,6 +23,7 @@ import {
   Video,
   X,
   XCircle,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -187,7 +189,7 @@ export default function ApplicationDetailPage() {
           })()}
           {job?.salary && (job.salary.min || job.salary.max) && (
             <span className="flex items-center gap-1">
-              <span aria-hidden="true">💰</span>
+              <Banknote className="h-4 w-4" aria-hidden="true" />
               {job.salary.min && job.salary.max
                 ? `${job.salary.currency ?? "AED"} ${formatCount(job.salary.min)} – ${formatCount(job.salary.max)}`
                 : `From ${job.salary.currency ?? "AED"} ${formatCount((job.salary.min || job.salary.max))}`}
@@ -219,7 +221,7 @@ export default function ApplicationDetailPage() {
           <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t">
             {app.statusHistory.map((h, i) => (
               <span key={`${h.status}-${h.changedAt}`} className="flex items-center gap-1 text-xs">
-                {i > 0 && <span className="text-muted-foreground/60">→</span>}
+                {i > 0 && <ArrowRight className="h-3 w-3 text-muted-foreground/60 rtl:rotate-180" aria-hidden="true" />}
                 <StatusBadge status={h.status} size="sm" />
               </span>
             ))}

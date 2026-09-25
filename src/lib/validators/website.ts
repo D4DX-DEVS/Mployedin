@@ -65,7 +65,7 @@ export const websiteSchema = z
     if (!result.ok) {
       ctx.addIssue({
         code: "custom",
-        message: "Enter a website like talindia.co, or leave it blank.",
+        message: "Enter a website like yourcompany.com, or leave it blank.",
       });
       return z.NEVER;
     }

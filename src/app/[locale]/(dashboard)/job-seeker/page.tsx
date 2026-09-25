@@ -17,6 +17,7 @@ import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
+import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -87,6 +88,20 @@ export default async function JobSeekerPage({
     .lean()
     .then((apps) => apps.map((a) => a.jobId));
 
+  // Derive preferred countries from locations as a fallback (for seekers who have
+  // location preferences but no explicit country preference)
+  let preferredCountries = seeker.preferredCountries;
+  if ((!preferredCountries || preferredCountries.length === 0) && seeker.preferredLocations?.length) {
+    const derived: string[] = [];
+    for (const location of seeker.preferredLocations) {
+      const country = countryKeyFromLocationText(location);
+      if (country && !derived.includes(country)) {
+        derived.push(country);
+      }
+    }
+    preferredCountries = derived.length > 0 ? derived : preferredCountries;
+  }
+
   const countPromises: Promise<unknown>[] = [
     Application.countDocuments({ jobSeekerId: seekerId }),
     Interview.countDocuments({
@@ -103,7 +118,7 @@ export default async function JobSeekerPage({
     }),
     Job.find(
       buildRecommendedJobQuery({
-        preferredCountries: seeker.preferredCountries,
+        preferredCountries,
         excludeJobIds: appliedJobIds,
         now,
       })

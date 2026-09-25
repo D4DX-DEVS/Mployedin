@@ -565,6 +565,28 @@ export async function notifySuperAgentEmployerRegistered(
   });
 }
 
+/** An admin put an employer under this agent. In-app only. */
+export async function notifyAgentEmployerAssigned(
+  agentUserId: string,
+  companyName: string,
+  employerId: string,
+): Promise<void> {
+  await notify({
+    userId: agentUserId,
+    // Reuses the existing type: a new enum value needs a Notification schema
+    // change and a server restart before it validates.
+    type: "employer_registered",
+    title: "Employer assigned to you",
+    message: `An admin assigned ${companyName} to you.`,
+    link: `/agent/employers?search=${encodeURIComponent(companyName)}`,
+    sendEmail: false,
+    metadata: { companyName, employerId },
+    titleKey: "agentEmployerAssignedTitle",
+    bodyKey: "agentEmployerAssignedBody",
+    params: { companyName },
+  });
+}
+
 /** The owner of a job-seeker referral link, when a seeker registers through it. In-app only. */
 export async function notifyReferrerJobSeekerRegistered(
   referrerUserId: string,

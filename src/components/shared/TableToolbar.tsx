@@ -32,6 +32,8 @@ interface TableToolbarProps {
   onExportCsv?: () => void;
   onExportExcel?: () => void;
   onExportPdf?: () => void;
+  /** Extra export-menu items (e.g. a ZIP of files), shown after the formats. */
+  exportExtra?: React.ReactNode;
   actions?: React.ReactNode;
   filterContent?: React.ReactNode;
   hasActiveFilters?: boolean;
@@ -53,6 +55,7 @@ export function TableToolbar({
   onExportCsv,
   onExportExcel,
   onExportPdf,
+  exportExtra,
   actions,
   filterContent,
   hasActiveFilters = false,
@@ -99,7 +102,7 @@ export function TableToolbar({
           <span className="hidden sm:inline">{t("export")}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
+      <DropdownMenuContent align="end" className="min-w-40">
         <DropdownMenuLabel>{t("exportData")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {onExportCsv && (
@@ -119,6 +122,12 @@ export function TableToolbar({
             <FileText className="h-4 w-4" />
             PDF
           </DropdownMenuItem>
+        )}
+        {exportExtra && (
+          <>
+            <DropdownMenuSeparator />
+            {exportExtra}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

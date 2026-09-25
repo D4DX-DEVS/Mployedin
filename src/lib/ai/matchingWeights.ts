@@ -1,11 +1,12 @@
 /**
- * Effective matching-weights resolution for AI candidate scoring.
+ * Effective matching-weights resolution for candidate ranking.
  *
  * The employer configures scoring priorities on /employer/matching-weights
  * (persisted to Employer.matchingWeights) and can override per-job
- * (Job.matchingWeights). Both AI screening paths — auto-screen on apply and the
- * manual "Screen with AI" — must feed these weights into the LLM prompt so the
- * saved preferences actually change candidate scores instead of being a no-op.
+ * (Job.matchingWeights). Saved weights re-weight the engine's parts into the
+ * employer's applicant score (see matching/applicantScore.ts) — the number the
+ * applicant list sorts on and Shortlist Top ranks by. An employer who never
+ * saved any is ranked with DEFAULT_WEIGHTS; the seeker keeps the engine score.
  */
 
 import type { Types } from "mongoose";
@@ -73,6 +74,16 @@ function coerce(raw: unknown): MatchingWeights | null {
  */
 export function sanitizeMatchingWeights(raw: unknown): MatchingWeights {
   return coerce(raw) ?? { ...DEFAULT_WEIGHTS };
+}
+
+/**
+ * The weights an employer actually saved for this job — the job's override,
+ * else the company's — or null when neither exists. Null means "rank with
+ * DEFAULT_WEIGHTS", and `weightsApplied` stays false so the UI does not claim
+ * the employer chose them.
+ */
+export function customMatchingWeights(jobWeights: unknown, employerWeights: unknown): MatchingWeights | null {
+  return coerce(jobWeights) ?? coerce(employerWeights);
 }
 
 /**

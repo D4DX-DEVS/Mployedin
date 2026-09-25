@@ -2,7 +2,7 @@
 
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
-import { Quote } from "lucide-react";
+import { Quote, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export default function TestimonialsAdminPage() {
@@ -48,7 +48,17 @@ export default function TestimonialsAdminPage() {
     {
       key: "rating",
       label: t("columnLabelRating"),
-      render: (value: unknown) => "⭐".repeat(Number(value) || 5),
+      render: (value: unknown) => {
+        const rating = Number(value) || 5;
+        return (
+          <span className="inline-flex items-center gap-0.5 text-amber-500">
+            {Array.from({ length: rating }, (_, i) => (
+              <Star key={i} className="h-4 w-4 fill-current" aria-hidden="true" />
+            ))}
+            <span className="sr-only">{rating}/5</span>
+          </span>
+        );
+      },
     },
     { key: "sortOrder", label: t("columnLabelOrder") },
     { key: "isActive", label: t("columnLabelStatus") },

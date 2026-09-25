@@ -632,7 +632,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="instantBooking"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("interviews.instantBooking")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>
@@ -732,7 +732,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="showSalary"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("profileVisibility.showSalary")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>
@@ -745,7 +745,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="openToRelocation"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("profileVisibility.openToRelocation")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>
@@ -852,7 +852,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="autoGenerateCoverLetter"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("resumeAi.autoGenerateCoverLetters")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>
@@ -866,7 +866,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="autoAnswerScreening"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("resumeAi.autoAnswerScreening")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>
@@ -928,7 +928,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="notifications.jobMatchAlerts"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("notifications.jobMatchAlerts")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>
@@ -941,7 +941,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="notifications.applicationSubmitted"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("notifications.applicationSubmitted")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>
@@ -954,7 +954,7 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="notifications.interviewNotifications"
                   render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch aria-label={t("notifications.interviewNotifications")} checked={field.value} onCheckedChange={field.onChange} />
                   )}
                 />
               </SettingRow>

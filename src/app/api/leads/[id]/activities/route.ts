@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
-import Agent from "@/models/Agent";
+import { canAccessLead } from "@/lib/leads/access";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { z } from "zod";
@@ -16,15 +16,12 @@ const activityCreateSchema = z.object({
   note: z.string().max(2000).trim().optional(),
 });
 
-/** Verify agent owns this lead, or user is super_agent/admin */
+/** Load the lead and refuse anyone outside its scope — same rule as /api/leads/[id]. */
 async function verifyAccess(leadId: string, ctx: AuthCtx) {
   const lead = await Lead.findById(leadId);
   if (!lead) return { lead: null, error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-  if (ctx.role === "agent") {
-    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!agentDoc || String(lead.agentId) !== String(agentDoc._id)) {
-      return { lead: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-    }
+  if (!(await canAccessLead(ctx, lead))) {
+    return { lead: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
   return { lead, error: null };
 }

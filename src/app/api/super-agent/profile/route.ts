@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import SuperAgent from "@/models/SuperAgent";
 import User from "@/models/User";
+import { regionLocale, resolveAssignedRegions } from "@/lib/agents/assignedRegion";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { superAgentProfileUpdateSchema } from "@/lib/validators/settings";
@@ -13,7 +14,7 @@ interface AuthCtx {
   locale: string;
 }
 
-async function getHandler(_req: NextRequest, ctx: AuthCtx) {
+async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "super_agent" && ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -21,7 +22,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const [profile, user] = await Promise.all([
     SuperAgent.findOne({ userId: ctx.userId })
-      .select("overrideRate commissions currencyCode country")
+      .select("overrideRate commissions currencyCode country assignedCityIds assignedStateIds")
       .lean(),
     User.findById(ctx.userId).select("name phone").lean(),
   ]);
@@ -34,15 +35,24 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
         currencyCode: "AED",
         name: user?.name ?? "",
         phone: user?.phone ?? "",
+        assignedRegions: [],
       },
     });
   }
 
+  // The territory is admin-assigned; the profile shows it read-only, by name.
+  const { assignedCityIds, assignedStateIds, ...rest } = profile;
+  const assignedRegions = await resolveAssignedRegions(
+    { assignedCityIds, assignedStateIds },
+    regionLocale(req.nextUrl.searchParams.get("locale"), ctx.locale),
+  );
+
   return NextResponse.json({
     profile: {
-      ...profile,
+      ...rest,
       name: user?.name ?? "",
       phone: user?.phone ?? "",
+      assignedRegions,
     },
   });
 }

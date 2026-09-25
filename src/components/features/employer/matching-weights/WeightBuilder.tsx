@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Sliders } from "lucide-react";
+import { AlertTriangle, Check, Sliders } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 /**
@@ -82,7 +82,7 @@ export function WeightBuilderHeader({ weights, total, headingLevel = 2 }: Weight
         data-testid="weight-total"
         className={`shrink-0 self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold sm:px-3 sm:text-sm ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-status-rejected"}`}
       >
-        {t("totalLabel")} {total}% {isTotalValid ? "✓" : t("need100")}
+        {t("totalLabel")} {total}% {isTotalValid ? <Check className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /> : t("need100")}
       </span>
     </div>
   );
@@ -166,7 +166,12 @@ export function WeightDistributionPanel({ weights, total, headingLevel = 2 }: We
       </div>
 
       <div className={`mt-4 rounded-2xl p-4 text-sm ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-status-shortlisted"}`}>
-        {isTotalValid ? `✓ ${t("balancedCorrectly")}` : `⚠ ${t("totalAdjustHint", { total })}`}
+        <span className="flex items-start gap-2">
+          {isTotalValid
+            ? <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
+          <span>{isTotalValid ? t("balancedCorrectly") : t("totalAdjustHint", { total })}</span>
+        </span>
       </div>
     </section>
   );

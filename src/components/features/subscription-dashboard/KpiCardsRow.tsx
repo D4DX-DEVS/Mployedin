@@ -2,6 +2,8 @@
 
 import {
   DollarSign, CheckCircle, Users, TrendingDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { DashboardOverview, KpiComparisons, RevenueTrendPoint } from "./useSubscriptionDashboard";
@@ -94,7 +96,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
         <p className="text-2xl sm:text-3xl font-bold">{formatCurrency(overview.mrr)} <span className="text-base font-medium text-muted-foreground">AED</span></p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.mrrChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
-            {comparisons.mrrChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.mrrChange)}%
+            {comparisons.mrrChange >= 0 ? <ArrowUp className="h-3 w-3" aria-hidden="true" /> : <ArrowDown className="h-3 w-3" aria-hidden="true" />} {Math.abs(comparisons.mrrChange)}%
           </span>
           <span className="text-xs text-muted-foreground">{t("vsLastMonth")} · {formatCurrency(overview.arr)} AED ARR</span>
         </div>
@@ -115,7 +117,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
         <p className="text-2xl sm:text-3xl font-bold">{formatNumber(overview.active)}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.activeChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
-            {comparisons.activeChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.activeChange)}%
+            {comparisons.activeChange >= 0 ? <ArrowUp className="h-3 w-3" aria-hidden="true" /> : <ArrowDown className="h-3 w-3" aria-hidden="true" />} {Math.abs(comparisons.activeChange)}%
           </span>
         </div>
         <SplitBar employer={overview.employerActive} jobSeeker={overview.jobSeekerActive} t={t} />
@@ -134,7 +136,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
         <p className="text-2xl sm:text-3xl font-bold">{formatNumber(overview.total)}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.totalChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
-            {comparisons.totalChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.totalChange)}%
+            {comparisons.totalChange >= 0 ? <ArrowUp className="h-3 w-3" aria-hidden="true" /> : <ArrowDown className="h-3 w-3" aria-hidden="true" />} {Math.abs(comparisons.totalChange)}%
           </span>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
@@ -155,7 +157,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
         <p className="text-2xl sm:text-3xl font-bold text-rose-600">{overview.churnRate}%</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.churnChange <= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
-            {comparisons.churnChange <= 0 ? "↓" : "↑"} {Math.abs(comparisons.churnChange)}%
+            {comparisons.churnChange <= 0 ? <ArrowDown className="h-3 w-3" aria-hidden="true" /> : <ArrowUp className="h-3 w-3" aria-hidden="true" />} {Math.abs(comparisons.churnChange)}%
           </span>
           <span className="text-xs text-muted-foreground">{t("vsLastMonth")}</span>
         </div>

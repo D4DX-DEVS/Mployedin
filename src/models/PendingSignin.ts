@@ -22,6 +22,8 @@ export interface IPendingSignin extends Document {
   attempts: number;
   /** Requesting IP, for abuse investigation only. */
   requestIp?: string;
+  /** Full name for the account (from quick-apply). */
+  name?: string;
   expiresAt: Date;
   createdAt: Date;
 }
@@ -35,6 +37,7 @@ const PendingSigninSchema = new Schema<IPendingSignin>(
     otpHash: { type: String, required: true },
     attempts: { type: Number, default: 0, min: 0 },
     requestIp: { type: String },
+    name: { type: String },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } },

@@ -31,7 +31,8 @@ describe("JobMatchingWeightsTab", () => {
     expect(number.parentElement).toBe(range.parentElement);
     expect(number).toHaveValue(35);
 
-    expect(screen.getByTestId("weight-total")).toHaveTextContent("Total: 100% ✓");
+    expect(screen.getByTestId("weight-total")).toHaveTextContent("Total: 100%");
+    expect(screen.getByTestId("weight-total").querySelector("svg")).not.toBeNull();
     expect(screen.getByText(/Top priority: Skills Match · 35%/)).toBeInTheDocument();
     expect(screen.queryByText(/Ready to update/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Total at/)).not.toBeInTheDocument();

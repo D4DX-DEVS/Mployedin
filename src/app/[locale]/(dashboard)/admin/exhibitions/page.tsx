@@ -34,17 +34,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 import {
   AlertTriangle,
   ArrowRight,
   BarChart2,
   Building2,
   CalendarDays,
+  Check,
   CheckCheck,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Circle,
   CircleDollarSign,
+  CircleDot,
   ClipboardCheck,
   Clock,
   Download,
@@ -130,6 +135,18 @@ interface MatchedResource {
   category: string;
   files: { fileName: string; url: string; size: number }[];
 }
+
+/** Values the status filter offers — a `?status=` outside these falls back to all. */
+const EXHIBITION_STATUS_FILTER_VALUES = [
+  "submitted",
+  "under_review",
+  "approved",
+  "revision_requested",
+  "budget_approved",
+  "completed",
+  "rejected",
+  "archived",
+] as const;
 
 const STATUS_BADGES: Record<string, string> = {
   draft: "border-gray-200 bg-gray-50 text-gray-700",
@@ -321,7 +338,8 @@ export default function AdminExhibitionsPage() {
     budgetUtilized: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
+  // In the URL so the dashboard's exhibition rows land on the right status.
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: EXHIBITION_STATUS_FILTER_VALUES });
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
@@ -333,9 +351,12 @@ export default function AdminExhibitionsPage() {
 
   function setPage(next: number) {
     setPageState(next);
-    const params = new URLSearchParams(window.location.search);
+    // readQuery, not window.location: a status change writes the URL in the
+    // same tick and router.replace has not applied it yet — reading the stale
+    // string here dropped the status the admin had just picked.
+    const params = readQuery();
     if (next > 1) params.set("page", String(next)); else params.delete("page");
-    router.replace(`?${params.toString()}`, { scroll: false });
+    writeQuery(params, (href) => router.replace(href, { scroll: false }));
   }
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [actionItem, setActionItem] = useState<ExhibitionRequest | null>(null);
@@ -741,7 +762,7 @@ export default function AdminExhibitionsPage() {
               { value: "completed", label: t("completedStatus") },
               { value: "rejected", label: t("rejected") },
               { value: "archived", label: t("archivedStatus") },
-            ]} placeholder={t("status")} className="md:w-[136px]" />
+            ]} placeholder={t("status")} className="md:w-auto md:min-w-[136px] md:shrink-0" />
             <FilterSelect value={priorityFilter} onChange={setPriorityFilter} options={[
               { value: "all", label: t("allPriority") },
               { value: "low", label: t("low") },
@@ -756,7 +777,7 @@ export default function AdminExhibitionsPage() {
               { value: "super_agent", label: t("superAgentApproval") },
               { value: "admin", label: t("adminApproval") },
               { value: "completed", label: t("completedStage") },
-            ]} placeholder={t("approvalStage")} className="md:w-[140px]" />
+            ]} placeholder={t("approvalStage")} className="col-span-2 md:w-auto md:min-w-[140px] md:shrink-0" />
 
             <Popover>
               <PopoverTrigger asChild>
@@ -1122,7 +1143,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={placeholder} className={cn("h-9 rounded-lg text-sm", className)}>
+      <SelectTrigger aria-label={placeholder} className={cn("h-9 gap-2 rounded-lg text-sm", className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -1560,7 +1581,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
             <div key={step.key} className="relative flex gap-3 pb-3 last:pb-0">
               {index < steps.length - 1 && <div className="absolute left-[13px] top-7 h-[calc(100%-1.4rem)] w-px bg-border" />}
               <span className={`z-10 mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold ${tone}`}>
-                {isDone ? "✓" : isCurrent ? "●" : "○"}
+                {isDone ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : isCurrent ? <CircleDot className="h-3.5 w-3.5" aria-hidden="true" /> : <Circle className="h-3.5 w-3.5" aria-hidden="true" />}
               </span>
               <div className="min-w-0 flex-1 border-b border-border/50 pb-3 last:border-b-0">
                 <div className="flex items-start justify-between gap-3">

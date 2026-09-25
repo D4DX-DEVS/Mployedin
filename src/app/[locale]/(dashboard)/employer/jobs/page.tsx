@@ -20,7 +20,6 @@ import {
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
 import { DraftExtractionsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -386,7 +385,6 @@ export default function EmployerJobsPage() {
         }
         actions={
           <>
-            <CopilotLauncher />
             {can("jobs", "create") ? (
               <Button
                 onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}

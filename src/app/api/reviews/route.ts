@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import CompanyReview from "@/models/CompanyReview";
@@ -35,6 +36,9 @@ export async function GET(req: NextRequest) {
   }
 
   const filter = { employerId, status: "approved" };
+  // find() casts the string id; aggregate() does not, so the rating stats
+  // compared a string with the stored ObjectId and never matched a review.
+  const employerMatch = Types.ObjectId.isValid(employerId) ? new Types.ObjectId(employerId) : employerId;
 
   const [reviews, total, stats] = await Promise.all([
     CompanyReview.find(filter)
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest) {
       .lean(),
     CompanyReview.countDocuments(filter),
     CompanyReview.aggregate([
-      { $match: { employerId: employerId, status: "approved" } },
+      { $match: { employerId: employerMatch, status: "approved" } },
       {
         $group: {
           _id: null,

@@ -19,6 +19,7 @@ import {
   Crown, FileText, Download,
   Check, X, AlertTriangle, Rocket,
   CreditCard, ChevronDown, ChevronUp,
+  Circle,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -90,7 +91,7 @@ export default function JobSeekerSubscriptionPage() {
           <span>{t("displayCurrency")}</span>
           <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} ariaLabel={t("a11yDisplayCurrency")} />
           {rateSource === "live" && (
-            <span className="text-[11px] text-emerald-500" title={t("liveRates")}>● {t("live")}</span>
+            <span className="text-[11px] text-emerald-500" title={t("liveRates")}><Circle className="me-1 inline h-2 w-2 fill-current align-middle" aria-hidden="true" />{t("live")}</span>
           )}
         </div>
       </div>
@@ -192,6 +193,7 @@ function ActiveView({
             <p className="text-muted-foreground text-xs">{t("autoRenew")}</p>
             <div className="flex items-center gap-2 mt-0.5">
               <Switch
+                aria-label={t("autoRenew")}
                 checked={subscription.autoRenew}
                 onCheckedChange={() => toast.info(t("autoRenewAdminOnly"))}
               />

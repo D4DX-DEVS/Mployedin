@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { MapPin, Phone, Mail, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+const COMPANY_ADDRESS = "MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR";
+const SUPPORT_EMAIL = "support@mployedin.com";
 
 export default function ContactPage() {
   const pathname = usePathname();
@@ -22,6 +25,10 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  // Render email only after mount to prevent Cloudflare Email Obfuscation
+  // from rewriting it, which would trigger React hydration mismatch error #418
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -65,7 +72,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold">{t("addressLabel")}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{t("addressValue")}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{COMPANY_ADDRESS}</p>
                 </div>
               </div>
 
@@ -75,7 +82,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold">{t("phoneLabel2")}</h3>
-                  <p className="text-sm text-muted-foreground mt-1" dir="ltr">+971 4 XXX XXXX</p>
+                  {/* Phone number hidden (no real number configured) */}
                 </div>
               </div>
 
@@ -85,7 +92,13 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold">{t("emailLabel2")}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">info@mployedin.com</p>
+                  <a
+                    href={mounted ? `mailto:${SUPPORT_EMAIL}` : undefined}
+                    className="text-sm text-muted-foreground mt-1 transition-colors [overflow-wrap:anywhere] hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    suppressHydrationWarning
+                  >
+                    {mounted ? SUPPORT_EMAIL : t("emailLabel2")}
+                  </a>
                 </div>
               </div>
             </div>
@@ -117,35 +130,36 @@ export default function ContactPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
+                      <label htmlFor="contact-name" className="text-sm font-medium mb-1.5 block">
                         {t("fullNameLabel")} <span className="text-destructive">*</span>
                       </label>
-                      <Input name="name" value={form.name} onChange={handleChange} required placeholder={t("fullNamePlaceholder")} />
+                      <Input id="contact-name" name="name" value={form.name} onChange={handleChange} required placeholder={t("fullNamePlaceholder")} />
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
+                      <label htmlFor="contact-email" className="text-sm font-medium mb-1.5 block">
                         {t("emailLabel2")} <span className="text-destructive">*</span>
                       </label>
-                      <Input type="email" name="email" value={form.email} onChange={handleChange} required placeholder="you@example.com" />
+                      <Input id="contact-email" type="email" name="email" value={form.email} onChange={handleChange} required placeholder="you@example.com" />
                     </div>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">{t("phoneMobile")}</label>
-                      <Input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+971 50 XXX XXXX" dir="ltr" />
+                      <label htmlFor="contact-phone" className="text-sm font-medium mb-1.5 block">{t("phoneMobile")}</label>
+                      <Input id="contact-phone" type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+971 50 XXX XXXX" dir="ltr" />
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">{t("subjectField")}</label>
-                      <Input name="subject" value={form.subject} onChange={handleChange} placeholder={t("subjectPlaceholder")} />
+                      <label htmlFor="contact-subject" className="text-sm font-medium mb-1.5 block">{t("subjectField")}</label>
+                      <Input id="contact-subject" name="subject" value={form.subject} onChange={handleChange} placeholder={t("subjectPlaceholder")} />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-1.5 block">
+                    <label htmlFor="contact-message" className="text-sm font-medium mb-1.5 block">
                       {t("messageField")} <span className="text-destructive">*</span>
                     </label>
                     <textarea
+                      id="contact-message"
                       name="message"
                       value={form.message}
                       onChange={handleChange}

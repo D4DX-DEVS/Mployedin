@@ -28,6 +28,8 @@ import Agent from "@/models/Agent";
 import { resolveBillToFallback } from "@/lib/invoices/billToFallback";
 import SuperAgent from "@/models/SuperAgent";
 import Employer from "@/models/Employer";
+// assignedCityIds is populated below; register City even when no other route has.
+import "@/models/City";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -219,20 +221,26 @@ async function patchHandler(
           ? await Employer.findById(invoice.employerId).select("country").lean()
           : null;
         const employerCountry = employer?.country ?? null;
-        const billedTotal = invoice.totalAmount || invoice.amount;
+        // Commission base is the pre-tax, post-discount subtotal — the same base
+        // invoices/recruitment used at creation. Tax is a pass-through, not earnings.
+        const discountedSubtotal = (invoice.subtotal || 0) - (invoice.discountAmount || 0);
 
         for (const commission of invoice.commissions ?? []) {
+          // A rate set by hand at creation stands; re-resolving it from the profile
+          // silently discarded the override.
+          if (commission.notes?.includes(" [Manual override]")) continue;
+
           if (commission.role === "agent" && agentDoc) {
             const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
             commission.rate = resolved.rate;
-            commission.amount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
+            commission.amount = Math.round((discountedSubtotal * resolved.rate) / 100 * 100) / 100;
             if (resolved.source === "country_override") {
               commission.notes = `Agent placement commission [Country override: ${resolved.countryCode} → ${resolved.rate}%]`;
             }
           } else if (commission.role === "super_agent" && superAgentDoc) {
             const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
             commission.rate = resolved.rate;
-            commission.amount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
+            commission.amount = Math.round((discountedSubtotal * resolved.rate) / 100 * 100) / 100;
             if (resolved.source === "country_override") {
               commission.notes = `Super-agent override commission [Country override: ${resolved.countryCode} → ${resolved.rate}%]`;
             }

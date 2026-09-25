@@ -9,6 +9,7 @@ import {
   ChevronDown, ChevronUp, RotateCcw, Activity, Inbox,
   Send, Eye, ToggleLeft, ToggleRight, KeyRound, Clock, X, Info,
 } from "lucide-react";
+import { formatActionCode } from "@/lib/admin/actionLabels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -581,6 +582,8 @@ export default function AdminWebhooksPage() {
                   { value: "all", label: t("allStatuses") },
                   { value: "active", label: t("active") },
                   { value: "inactive", label: t("inactive") },
+                  // Enabled but the last delivery failed — the dashboard's health row links here.
+                  { value: "failing", label: t("failingStatus") },
                 ]}
                 value={statusFilter}
                 onValueChange={setStatusFilter}
@@ -654,8 +657,10 @@ export default function AdminWebhooksPage() {
                   <TableCell className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {wh.events.map((ev) => (
-                        <Badge key={ev} variant="secondary" className="text-[11px]">
-                          {ev}
+                        <Badge key={ev} variant="secondary" className="text-[11px]" title={ev}>
+                          {formatActionCode(ev)}
+                          {/* The raw code is what a receiver subscribes to; phones get it via title. */}
+                          <span className="ml-1 hidden font-mono text-[10px] text-muted-foreground sm:inline">({ev})</span>
                         </Badge>
                       ))}
                     </div>

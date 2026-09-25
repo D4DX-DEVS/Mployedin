@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent, ReceiptText, Banknote } from "lucide-react";
+import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent, ReceiptText, Banknote, Check } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -642,7 +642,7 @@ export default function AdminSettingsPage() {
         <Button onClick={handleSave} disabled={saving}>
           {saving ? t("savingSaving") : t("saveButton")}
         </Button>
-        {saved && <span className="text-sm text-green-600">{t("saveSuccess")}</span>}
+        {saved && <span className="inline-flex items-center gap-1 text-sm text-green-600"><Check className="h-4 w-4" aria-hidden="true" />{t("saveSuccess")}</span>}
       </div>
     </div>
   );
