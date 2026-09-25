@@ -6,7 +6,7 @@
  * was sent with (lib/cv/cvDocuments.ts). The routes used to delete it
  * outright, breaking the employer's "View CV" on earlier applications.
  */
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const USER_ID = "64e000000000000000000001";
 const SEEKER_ID = "64e0000000000000000000aa";
@@ -44,6 +44,9 @@ jest.mock("@/lib/cv/cvDocuments", () => ({
   cvStatusesFor: (...a: unknown[]) => cvStatusesFor(...a),
 }));
 
+const limitCvUpload = jest.fn();
+jest.mock("@/lib/cv/uploadLimit", () => ({ limitCvUpload: (...a: unknown[]) => limitCvUpload(...a) }));
+
 let seekerDoc: Record<string, unknown>;
 const seekerUpdateOne = jest.fn().mockResolvedValue({ modifiedCount: 1 });
 jest.mock("@/models/JobSeeker", () => {
@@ -60,6 +63,7 @@ const pdf = (name = "Antony_CV.pdf") => new File([Buffer.from("%PDF-1.4 antony")
 
 beforeEach(() => {
   jest.clearAllMocks();
+  limitCvUpload.mockResolvedValue(null);
   seekerDoc = {
     _id: SEEKER_ID,
     cv: { originalUrl: "https://cdn/cvs/january.pdf" },
@@ -95,6 +99,19 @@ describe("POST /api/job-seeker/cv", () => {
     expect(releaseSeekerFile).toHaveBeenCalledWith(SEEKER_ID, "https://cdn/cvs/january.pdf");
     expect(deleteFile).not.toHaveBeenCalled();
   });
+
+  it("stops a CV over the upload limit before it is stored or recorded", async () => {
+    limitCvUpload.mockResolvedValue(NextResponse.json({ error: "slow down" }, { status: 429 }));
+    form = new FormData();
+    form.append("cv", pdf());
+    const { POST } = await import("@/app/api/job-seeker/cv/route");
+    const res = await POST(new NextRequest("http://localhost/api/job-seeker/cv", { method: "POST" }), { params: Promise.resolve({}) });
+    expect(res.status).toBe(429);
+    expect(limitCvUpload).toHaveBeenCalledWith(expect.objectContaining({ jobSeekerId: SEEKER_ID, fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/) }));
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(registerCvDocument).not.toHaveBeenCalled();
+    expect(seekerUpdateOne).not.toHaveBeenCalled();
+  });
 });
 
 describe("/api/job-seeker/documents", () => {
@@ -117,6 +134,20 @@ describe("/api/job-seeker/documents", () => {
     const cert = await POST(new NextRequest("http://localhost/api/job-seeker/documents", { method: "POST" }), { params: Promise.resolve({}) });
     expect((await cert.json()).document).not.toHaveProperty("cvStatus");
     expect(registerCvDocument).not.toHaveBeenCalled();
+    // Only the resume counted toward the CV upload limit.
+    expect(limitCvUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops a resume over the upload limit before it is stored", async () => {
+    limitCvUpload.mockResolvedValue(NextResponse.json({ error: "slow down" }, { status: 429 }));
+    const { POST } = await import("@/app/api/job-seeker/documents/route");
+    form = new FormData();
+    form.append("file", pdf("New_Resume.pdf"));
+    form.append("category", "resume");
+    const res = await POST(new NextRequest("http://localhost/api/job-seeker/documents", { method: "POST" }), { params: Promise.resolve({}) });
+    expect(res.status).toBe(429);
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(seekerUpdateOne).not.toHaveBeenCalled();
   });
 
   it("removes a document through releaseSeekerFile, never a bare delete", async () => {

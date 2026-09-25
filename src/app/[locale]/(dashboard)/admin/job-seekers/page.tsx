@@ -19,7 +19,7 @@ import { usePagination } from "@/hooks/usePagination";
 import {
   Pencil, Trash2, Ban, ChevronDown, ChevronUp, Briefcase,
   GraduationCap, Globe, Award, Inbox, Download, Filter,
-  Sparkles, FileDown, Loader2, Eye, RotateCcw, MoreHorizontal, X,
+  FileDown, Loader2, Eye, RotateCcw, MoreHorizontal, X,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
@@ -126,13 +126,23 @@ export default function AdminJobSeekersPage() {
 
   const updateFilters = (patch: Partial<JobSeekerFilters>) => {
     setFilters((current) => ({ ...current, ...patch }));
+    setClosestTo(null);
+    resetPage();
+  };
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    setClosestTo(null);
     resetPage();
   };
 
   // ── AI search state ─────────────────────────────────────
-  const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  // The brief behind the last AI search, kept for "Show closest matches".
+  const [aiBrief, setAiBrief] = useState<string | null>(null);
+  // Set while the list shows similarity-ranked matches for this brief instead
+  // of filter results. Any filter or search edit drops back to filter results.
+  const [closestTo, setClosestTo] = useState<string | null>(null);
 
   // ── CV download state ───────────────────────────────────
   const [cvDownloading, setCvDownloading] = useState(false);
@@ -207,7 +217,13 @@ export default function AdminJobSeekersPage() {
     if (filters.experienceYears > 0) params.set("experienceYears", String(filters.experienceYears));
 
     try {
-      const res = await fetch(`/api/job-seekers?${params}`);
+      const res = closestTo
+        ? await fetch("/api/job-seekers/vector-search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: closestTo, page, limit }),
+          })
+        : await fetch(`/api/job-seekers?${params}`);
       if (!res.ok) {
         setLoadError(true);
         return;
@@ -221,7 +237,7 @@ export default function AdminJobSeekersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, filters, page, limit]);
+  }, [search, filters, closestTo, page, limit]);
 
   useEffect(() => {
     const timeout = setTimeout(fetchJobSeekers, 300);
@@ -229,64 +245,45 @@ export default function AdminJobSeekersPage() {
   }, [fetchJobSeekers]);
 
   // ── AI Search handler ───────────────────────────────────
-  const handleAiSearch = async (query?: string) => {
-    const q = (query ?? aiQuery).trim();
+  // Reads the search box as a plain-language brief ("HR managers in Dubai")
+  // and turns it into structured filters.
+  const handleAiSearch = async () => {
+    const q = search.trim();
     if (!q) return;
     setAiLoading(true);
     setAiSummary(null);
 
     try {
-      // Run AI filter extraction AND vector search in parallel
-      const [aiRes, vectorRes] = await Promise.all([
-        fetch("/api/ai/admin-jobseeker-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: q }),
-        }),
-        fetch("/api/job-seekers/vector-search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: q, page: 1, limit: 50 }),
-        }).catch(() => null), // Vector search is optional enhancement
-      ]);
-
+      // The brief becomes filters and nothing else, so the list always shows
+      // exactly what the filters match. Similarity ranking is a separate,
+      // explicit step ("Show closest matches") when the filters find nobody:
+      // loading both at once let the filter refetch wipe the ranked list
+      // while the summary still claimed its matches.
+      const aiRes = await fetch("/api/ai/admin-jobseeker-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      });
       if (!aiRes.ok) throw new Error("AI search failed");
       const aiData = await aiRes.json();
       const extracted: AiFilters = aiData.filters ?? {};
 
-      // Apply extracted filters for structured search
-      if (extracted.search) setSearch(extracted.search);
-      const patch: Partial<JobSeekerFilters> = {};
-      if (extracted.skills?.length) patch.skills = extracted.skills.join(",");
-      if (extracted.location) patch.location = extracted.location;
-      if (extracted.availability) patch.availability = extracted.availability;
-      if (extracted.referred) patch.referred = extracted.referred;
-      if (extracted.jobType) patch.jobType = extracted.jobType;
-      if (extracted.sort) patch.sort = extracted.sort;
-      if (extracted.hasCV) patch.hasCV = true;
-      if (extracted.education) patch.education = extracted.education;
-      if (extracted.nationality) patch.nationality = extracted.nationality;
-      if (extracted.experienceYears && extracted.experienceYears > 0) patch.experienceYears = extracted.experienceYears;
-      setFilters((current) => ({ ...current, ...patch }));
-
-      // If vector search returned results, merge them with upcoming structured results
-      if (vectorRes?.ok) {
-        const vectorData = await vectorRes.json();
-        if (vectorData.items?.length) {
-          // Store vector results directly if they have good relevance
-          const vectorItems = vectorData.items.filter((item: JobSeeker & { _relevanceScore?: number }) => (item._relevanceScore ?? 0) >= 50);
-          if (vectorItems.length > 0) {
-            setJobSeekers(vectorItems);
-            updateTotal(vectorItems.length);
-            setAiSummary(`${aiData.summary ?? `AI search: "${q}"`} (${vectorItems.length} ${tr("semanticMatches")})`);
-            resetPage();
-            setAiLoading(false);
-            toast.success(tr("vectorSearchLoaded"));
-            return;
-          }
-        }
-      }
-
+      // A brief describes the whole search, so it replaces earlier filters.
+      const next: JobSeekerFilters = { ...EMPTY_JOB_SEEKER_FILTERS };
+      if (extracted.skills?.length) next.skills = extracted.skills.join(",");
+      if (extracted.location) next.location = extracted.location;
+      if (extracted.availability) next.availability = extracted.availability;
+      if (extracted.referred) next.referred = extracted.referred;
+      if (extracted.jobType) next.jobType = extracted.jobType;
+      if (extracted.sort) next.sort = extracted.sort;
+      if (extracted.hasCV) next.hasCV = true;
+      if (extracted.education) next.education = extracted.education;
+      if (extracted.nationality) next.nationality = extracted.nationality;
+      if (extracted.experienceYears && extracted.experienceYears > 0) next.experienceYears = extracted.experienceYears;
+      setFilters(next);
+      setSearch(extracted.search ?? "");
+      setClosestTo(null);
+      setAiBrief(q);
       setAiSummary(aiData.summary ?? `AI search: "${q}"`);
       resetPage();
       toast.success(aiData.degraded ? tr("aiUnavailableKeywordSearch") : tr("aiFiltersApplied"));
@@ -300,9 +297,19 @@ export default function AdminJobSeekersPage() {
     }
   };
 
+  const showClosestMatches = () => {
+    if (!aiBrief) return;
+    setSearch("");
+    setFilters(EMPTY_JOB_SEEKER_FILTERS);
+    setClosestTo(aiBrief);
+    setAiSummary(tr("closestMatchesSummary", { query: aiBrief }));
+    resetPage();
+  };
+
   const clearAllFilters = () => {
     setAiSummary(null);
-    setAiQuery("");
+    setAiBrief(null);
+    setClosestTo(null);
     setSearch("");
     setFilters(EMPTY_JOB_SEEKER_FILTERS);
     resetPage();
@@ -395,25 +402,6 @@ export default function AdminJobSeekersPage() {
   };
 
   // ── Handlers ────────────────────────────────────────────
-  const handleGenerateEmbeddings = async () => {
-    toast.info(tr("embeddingGenerationStarted"));
-    try {
-      const res = await fetch("/api/job-seekers/generate-embeddings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forceAll: false }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(tr("embeddingGenerationSuccess", { count: data.generated }));
-      } else {
-        toast.error(tr("embeddingGenerationFailed"));
-      }
-    } catch {
-      toast.error(tr("embeddingGenerationError"));
-    }
-  };
-
   const handleEdit = async (values: Record<string, string>) => {
     const res = await fetch(`/api/job-seekers/${editItem!._id}`, {
       method: "PATCH",
@@ -459,8 +447,7 @@ export default function AdminJobSeekersPage() {
   const filterChips = buildJobSeekerFilterChips(tr, search, filters);
   const removeFilterChip = (chip: JobSeekerFilterChip) => {
     if (chip.clear === "search") {
-      setSearch("");
-      resetPage();
+      changeSearch("");
     } else {
       updateFilters(chip.clear);
     }
@@ -478,32 +465,6 @@ export default function AdminJobSeekersPage() {
         compactOnMobile
         title={tr("heroTitle")}
         description={tr("heroDescription")}
-        actions={(
-          <>
-            {/* Labels drop below `sm` so both actions fit beside the title. */}
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleGenerateEmbeddings}
-              aria-label={tr("indexAiButton")}
-              className="h-10 gap-2 rounded-xl px-3 max-sm:min-h-11 max-sm:min-w-11 sm:px-4"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">{tr("indexAiButton")}</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleBulkCvDownload}
-              disabled={cvDownloading}
-              aria-label={tr("downloadCvsButton")}
-              className="h-10 gap-2 rounded-xl px-3 max-sm:min-h-11 max-sm:min-w-11 sm:px-4"
-            >
-              {cvDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-              <span className="hidden sm:inline">{tr("downloadCvsButton")}</span>
-            </Button>
-          </>
-        )}
         footer={(
           <>
             <button
@@ -531,6 +492,12 @@ export default function AdminJobSeekersPage() {
                 onExportCsv={handleExportCsv}
                 onExportExcel={handleExportExcel}
                 onExportPdf={handleExportPdf}
+                exportExtra={(
+                  <DropdownMenuItem onClick={() => void handleBulkCvDownload()} disabled={cvDownloading}>
+                    {cvDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                    {tr("downloadCvsButton")}
+                  </DropdownMenuItem>
+                )}
               />
             </div>
           </>
@@ -556,14 +523,12 @@ export default function AdminJobSeekersPage() {
         {showFilters && (
           <JobSeekersFilterPanel
             search={search}
-            onSearchChange={(value) => { setSearch(value); resetPage(); }}
+            onSearchChange={changeSearch}
             filters={filters}
             onFiltersChange={updateFilters}
-            aiQuery={aiQuery}
-            onAiQueryChange={setAiQuery}
             aiLoading={aiLoading}
             aiSummary={aiSummary}
-            onAiSearch={(query) => { void handleAiSearch(query); }}
+            onAiSearch={() => { void handleAiSearch(); }}
           />
         )}
       </DashboardPageHeader>
@@ -607,7 +572,12 @@ export default function AdminJobSeekersPage() {
                     title={tr("emptyStateTitle")}
                     description={tr("emptyStateSubtitle")}
                     action={activeFilterCount > 0 || aiSummary ? (
-                      <Button variant="outline" size="sm" onClick={clearAllFilters}>{tr("clearFilters")}</Button>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {aiBrief && !closestTo && (
+                          <Button size="sm" onClick={showClosestMatches}>{tr("showClosestMatches")}</Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={clearAllFilters}>{tr("clearFilters")}</Button>
+                      </div>
                     ) : undefined}
                   />
                 </TableCell>
