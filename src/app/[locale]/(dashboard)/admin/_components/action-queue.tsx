@@ -134,7 +134,7 @@ export function AdminActionQueue({ items, groups, locale, t }: AdminActionQueueP
               <li key={item.id} className={index === sorted.length - 1 ? lastTileSpan(sorted.length) : undefined}>
                 <Link
                   href={`/${locale}${item.path}`}
-                  className={`group flex h-full min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-1.5 ring-1 ring-inset transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-16 sm:py-2 ${level.tile}`}
+                  className={`group flex h-full min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-1.5 ring-1 ring-inset transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-14 ${level.tile}`}
                   data-queue-id={item.id}
                   data-level={item.level}
                 >

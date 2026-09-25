@@ -42,28 +42,36 @@ export function countActiveJobSeekerFilters(search: string, filters: JobSeekerFi
 }
 
 /** Filters that live behind "More filters". */
-const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["skills", "nationality", "education", "jobType", "referred"];
+const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["jobType", "referred"];
+
+/**
+ * Filters with no field of their own: the search box already matches skills,
+ * nationality and degree/field, so separate inputs only repeated it. AI search
+ * still sets them (a brief can name several at once), and the page shows them
+ * as removable chips so they are never invisible.
+ */
+export const FIELDLESS_FILTER_KEYS: readonly string[] = ["skills", "nationality", "education"];
 
 type Translate = ReturnType<typeof useTranslations<"adminJobSeekers">>;
 
 function filterOptions(tr: Translate) {
   return {
     availability: [
-      { value: "", label: tr("filterPlaceholderAll") },
+      { value: "", label: tr("filterLabelAvailability") },
       { value: "immediately", label: tr("availabilityImmediately") },
       { value: "within_month", label: tr("availabilityWithinMonth") },
       { value: "within_3_months", label: tr("availabilityWithin3Months") },
       { value: "not_available", label: tr("availabilityNotAvailable") },
     ],
     referred: [
-      { value: "", label: tr("filterReferredAll") },
+      { value: "", label: tr("tableHeaderReferredBy") },
       { value: "any", label: tr("filterReferredAny") },
       { value: "agent", label: tr("filterReferredAgent") },
       { value: "super_agent", label: tr("filterReferredSuperAgent") },
       { value: "none", label: tr("filterReferredNone") },
     ],
     jobType: [
-      { value: "", label: tr("filterPlaceholderAll") },
+      { value: "", label: tr("filterLabelJobType") },
       { value: "remote", label: tr("jobTypeRemote") },
       { value: "hybrid", label: tr("jobTypeHybrid") },
       { value: "onsite", label: tr("jobTypeOnsite") },
@@ -125,15 +133,15 @@ interface JobSeekersFilterPanelProps {
   onAiSearch: () => void;
 }
 
-const FIELD_LABEL = "mb-1 block text-xs font-medium text-muted-foreground";
 const FIELD_CONTROL = "h-11 w-full rounded-xl border-border bg-card text-sm shadow-none";
 
 /**
  * Expandable filter panel for the admin job-seekers list, same shape as the
- * admin jobs / applications panels. One search box serves both modes: typing
- * filters by keyword as you go, "AI search" reads the same text as a brief.
- * Filters that narrow the list on real data sit up front; the rarely-set ones
- * (job type, referral) wait behind "More filters".
+ * admin jobs / applications panels: one search row, then one compact row of
+ * filters with no label row above it — each empty option names its field
+ * ("Availability", "Job Type"), as on those pages. One search box serves both
+ * modes: typing filters by keyword as you go, "AI search" reads the same text
+ * as a brief.
  */
 export function JobSeekersFilterPanel({
   search,
@@ -149,10 +157,12 @@ export function JobSeekersFilterPanel({
   const advancedActiveCount = ADVANCED_KEYS
     .filter((key) => filters[key] !== EMPTY_JOB_SEEKER_FILTERS[key])
     .length;
-  // Follows the filters until the admin toggles it: an AI search that sets
-  // nationality or education must not leave those fields hidden.
+  // Phones only: the two rarely-set filters wait behind "More filters". From
+  // `sm` up all seven share the row(s). Follows the filters until toggled, so
+  // an AI search that sets one never leaves it hidden.
   const [advancedToggled, setAdvancedToggled] = useState<boolean | null>(null);
   const showAdvanced = advancedToggled ?? advancedActiveCount > 0;
+  const advancedClass = showAdvanced ? "" : "max-sm:hidden";
 
   return (
     <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
@@ -186,74 +196,81 @@ export function JobSeekersFilterPanel({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <div>
-          <label htmlFor="js-filter-location" className={FIELD_LABEL}>{tr("filterLabelLocation")}</label>
-          <Input
-            id="js-filter-location"
-            value={filters.location}
-            onChange={(e) => onFiltersChange({ location: e.target.value })}
-            placeholder={tr("filterPlaceholderLocation")}
-            className={FIELD_CONTROL}
-          />
-        </div>
-        <div>
-          <label htmlFor="js-filter-availability" className={FIELD_LABEL}>{tr("filterLabelAvailability")}</label>
+      {/* xl: selects and the checkbox size to their text; the two text inputs
+          share what is left. Seven equal columns cut "Referred by" and
+          "Newest First" short at 1280px. */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-[minmax(6rem,1fr)_auto_minmax(6rem,1fr)_auto_auto_auto_auto]">
+        <Input
+          aria-label={tr("filterLabelLocation")}
+          placeholder={tr("filterLabelLocation")}
+          value={filters.location}
+          onChange={(e) => onFiltersChange({ location: e.target.value })}
+          className={FIELD_CONTROL}
+        />
+        <SearchableSelect
+          ariaLabel={tr("filterLabelAvailability")}
+          className={FIELD_CONTROL}
+          options={options.availability}
+          value={filters.availability}
+          onValueChange={(value) => onFiltersChange({ availability: value })}
+          placeholder={tr("filterLabelAvailability")}
+        />
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={50}
+          aria-label={tr("filterLabelMinExperience")}
+          placeholder={tr("filterLabelMinExperience")}
+          value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
+          onChange={(e) => onFiltersChange({ experienceYears: Math.max(0, Number(e.target.value) || 0) })}
+          className={FIELD_CONTROL}
+        />
+        <div className={advancedClass}>
           <SearchableSelect
-            id="js-filter-availability"
-            ariaLabel={tr("filterLabelAvailability")}
+            ariaLabel={tr("filterLabelJobType")}
             className={FIELD_CONTROL}
-            options={options.availability}
-            value={filters.availability}
-            onValueChange={(value) => onFiltersChange({ availability: value })}
-            placeholder={tr("filterPlaceholderAll")}
+            options={options.jobType}
+            value={filters.jobType}
+            onValueChange={(value) => onFiltersChange({ jobType: value })}
+            placeholder={tr("filterLabelJobType")}
           />
         </div>
-        <div>
-          <label htmlFor="js-filter-experience" className={FIELD_LABEL}>{tr("filterLabelMinExperience")}</label>
-          <Input
-            id="js-filter-experience"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={50}
-            value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
-            onChange={(e) => onFiltersChange({ experienceYears: Math.max(0, Number(e.target.value) || 0) })}
-            placeholder="0"
-            className={FIELD_CONTROL}
-          />
-        </div>
-        <div>
-          <label htmlFor="js-filter-sort" className={FIELD_LABEL}>{tr("filterLabelSort")}</label>
+        <div className={advancedClass}>
           <SearchableSelect
-            id="js-filter-sort"
-            ariaLabel={tr("filterLabelSort")}
+            ariaLabel={tr("tableHeaderReferredBy")}
             className={FIELD_CONTROL}
-            options={options.sort}
-            value={filters.sort}
-            onValueChange={(value) => onFiltersChange({ sort: value || "newest" })}
-            placeholder={tr("sortNewest")}
+            options={options.referred}
+            value={filters.referred}
+            onValueChange={(value) => onFiltersChange({ referred: value })}
+            placeholder={tr("tableHeaderReferredBy")}
           />
         </div>
-        <div className="flex flex-col justify-end">
-          <label className="flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm text-foreground">
-            <Checkbox
-              checked={filters.hasCV}
-              onCheckedChange={(checked) => onFiltersChange({ hasCV: checked === true })}
-            />
-            {tr("filterHasCvOnly")}
-          </label>
-        </div>
+        <SearchableSelect
+          ariaLabel={tr("filterLabelSort")}
+          className={FIELD_CONTROL}
+          options={options.sort}
+          value={filters.sort}
+          onValueChange={(value) => onFiltersChange({ sort: value || "newest" })}
+          placeholder={tr("sortNewest")}
+        />
+        <label className="flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm text-foreground">
+          <Checkbox
+            checked={filters.hasCV}
+            onCheckedChange={(checked) => onFiltersChange({ hasCV: checked === true })}
+          />
+          <span className="truncate">{tr("filterHasCvOnly")}</span>
+        </label>
       </div>
 
       <button
         type="button"
         onClick={() => setAdvancedToggled(!showAdvanced)}
         aria-expanded={showAdvanced}
-        className="flex min-h-9 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="flex min-h-9 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:hidden"
       >
         <Filter className="h-3.5 w-3.5" aria-hidden="true" />
-        {tr("moreFilters")}
+        {showAdvanced ? tr("fewerFilters") : tr("moreFilters")}
         {advancedActiveCount > 0 && (
           <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-semibold text-primary">
             {tr("activeFiltersBadge", { count: advancedActiveCount })}
@@ -261,65 +278,6 @@ export function JobSeekersFilterPanel({
         )}
         {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
-
-      {showAdvanced && (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
-          <div>
-            <label htmlFor="js-filter-skills" className={FIELD_LABEL}>{tr("filterLabelSkills")}</label>
-            <Input
-              id="js-filter-skills"
-              value={filters.skills}
-              onChange={(e) => onFiltersChange({ skills: e.target.value })}
-              placeholder={tr("filterPlaceholderSkills")}
-              className={FIELD_CONTROL}
-            />
-          </div>
-          <div>
-            <label htmlFor="js-filter-nationality" className={FIELD_LABEL}>{tr("tableHeaderNationality")}</label>
-            <Input
-              id="js-filter-nationality"
-              value={filters.nationality}
-              onChange={(e) => onFiltersChange({ nationality: e.target.value })}
-              placeholder={tr("filterPlaceholderNationality")}
-              className={FIELD_CONTROL}
-            />
-          </div>
-          <div>
-            <label htmlFor="js-filter-education" className={FIELD_LABEL}>{tr("exportColumnHeaderEducation")}</label>
-            <Input
-              id="js-filter-education"
-              value={filters.education}
-              onChange={(e) => onFiltersChange({ education: e.target.value })}
-              placeholder={tr("filterPlaceholderEducation")}
-              className={FIELD_CONTROL}
-            />
-          </div>
-          <div>
-            <label htmlFor="js-filter-job-type" className={FIELD_LABEL}>{tr("filterLabelJobType")}</label>
-            <SearchableSelect
-              id="js-filter-job-type"
-              ariaLabel={tr("filterLabelJobType")}
-              className={FIELD_CONTROL}
-              options={options.jobType}
-              value={filters.jobType}
-              onValueChange={(value) => onFiltersChange({ jobType: value })}
-              placeholder={tr("filterPlaceholderAll")}
-            />
-          </div>
-          <div>
-            <label htmlFor="js-filter-referred" className={FIELD_LABEL}>{tr("tableHeaderReferredBy")}</label>
-            <SearchableSelect
-              id="js-filter-referred"
-              ariaLabel={tr("tableHeaderReferredBy")}
-              className={FIELD_CONTROL}
-              options={options.referred}
-              value={filters.referred}
-              onValueChange={(value) => onFiltersChange({ referred: value })}
-              placeholder={tr("filterReferredAll")}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

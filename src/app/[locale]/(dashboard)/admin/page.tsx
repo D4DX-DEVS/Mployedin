@@ -8,7 +8,15 @@ import { DASHBOARD_PERIODS, resolveDashboardPeriod } from "@/lib/admin/dashboard
 import { canAccess } from "@/lib/permissions/matrix";
 import type { CustomPermissions, PermissionMode, Resource, UserRole } from "@/types/user";
 import { DashboardToolbar } from "./_components/dashboard-toolbar";
-import { SectionSkeleton } from "./_components/section-states";
+import {
+  FinanceSkeleton,
+  HealthSkeleton,
+  PeopleSkeleton,
+  QueueSkeleton,
+  RecentSkeleton,
+  RecruitmentSkeleton,
+  SnapshotSkeleton,
+} from "./_components/section-states";
 import {
   FinanceSection,
   HealthSection,
@@ -109,31 +117,31 @@ export default async function AdminDashboardPage({
         }
       />
 
-      <Suspense fallback={<SectionSkeleton label={loading(t("queue.title"))} cards={3} rows={1} className="md:grid-cols-2 xl:grid-cols-3" />}>
+      <Suspense fallback={<QueueSkeleton label={loading(t("queue.title"))} />}>
         <QueueSection {...context} />
       </Suspense>
 
-      <Suspense key={`snapshot-${period.key}`} fallback={<SectionSkeleton label={loading(t("snapshot.title"))} cards={5} rows={2} className="max-lg:grid-cols-2 lg:grid-cols-5" />}>
+      <Suspense key={`snapshot-${period.key}`} fallback={<SnapshotSkeleton label={loading(t("snapshot.title"))} />}>
         <SnapshotSection {...context} />
       </Suspense>
 
-      <Suspense key={`recruitment-${period.key}`} fallback={<SectionSkeleton label={loading(t("recruitment.title"))} cards={3} rows={6} />}>
+      <Suspense key={`recruitment-${period.key}`} fallback={<RecruitmentSkeleton label={loading(t("recruitment.title"))} />}>
         <RecruitmentSection {...context} />
       </Suspense>
 
-      <Suspense key={`people-${period.key}`} fallback={<SectionSkeleton label={loading(t("people.title"))} cards={3} rows={5} />}>
+      <Suspense key={`people-${period.key}`} fallback={<PeopleSkeleton label={loading(t("people.title"))} />}>
         <PeopleSection {...context} />
       </Suspense>
 
-      <Suspense key={`finance-${period.key}`} fallback={<SectionSkeleton label={loading(t("finance.title"))} cards={3} rows={5} />}>
+      <Suspense key={`finance-${period.key}`} fallback={<FinanceSkeleton label={loading(t("finance.title"))} />}>
         <FinanceSection {...context} />
       </Suspense>
 
-      <Suspense fallback={<SectionSkeleton label={loading(t("health.title"))} cards={4} rows={1} className="sm:grid-cols-2 xl:grid-cols-4" />}>
+      <Suspense fallback={<HealthSkeleton label={loading(t("health.title"))} />}>
         <HealthSection {...context} />
       </Suspense>
 
-      <Suspense fallback={<SectionSkeleton label={loading(t("recent.title"))} cards={1} rows={8} className="" />}>
+      <Suspense fallback={<RecentSkeleton label={loading(t("recent.title"))} />}>
         <RecentSection {...context} />
       </Suspense>
     </div>

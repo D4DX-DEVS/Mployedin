@@ -51,10 +51,27 @@ export async function getRecentEvents(categories: ReadonlySet<RecentEventCategor
       ? Job.find({ deletedAt: null }).sort({ createdAt: -1 }).limit(PER_SOURCE).select("title status createdAt").lean<(Dated & { title?: string; status?: string })[]>()
       : none,
     want("applications")
-      ? Application.find({}).sort({ appliedAt: -1 }).limit(PER_SOURCE).select("status appliedAt createdAt").lean<(Dated & { status?: string; appliedAt?: Date })[]>()
+      ? Application.find({})
+          .sort({ appliedAt: -1 })
+          .limit(PER_SOURCE)
+          .select("status appliedAt createdAt jobId jobSeekerId")
+          .populate("jobId", "title")
+          .populate("jobSeekerId", "fullName")
+          .lean<
+            (Dated & {
+              status?: string;
+              appliedAt?: Date;
+              jobId?: { title?: string } | null;
+              jobSeekerId?: { fullName?: string } | null;
+            })[]
+          >()
       : none,
-    want("applications") ? Interview.find({}).sort({ createdAt: -1 }).limit(PER_SOURCE).select("createdAt").lean<Dated[]>() : none,
-    want("applications") ? Placement.find({}).sort({ createdAt: -1 }).limit(PER_SOURCE).select("createdAt").lean<Dated[]>() : none,
+    want("applications")
+      ? Interview.find({}).sort({ createdAt: -1 }).limit(PER_SOURCE).select("createdAt jobId").populate("jobId", "title").lean<(Dated & { jobId?: { title?: string } | null })[]>()
+      : none,
+    want("applications")
+      ? Placement.find({}).sort({ createdAt: -1 }).limit(PER_SOURCE).select("createdAt jobId").populate("jobId", "title").lean<(Dated & { jobId?: { title?: string } | null })[]>()
+      : none,
     want("finance")
       ? Invoice.find({ issuedAt: { $ne: null } }).sort({ issuedAt: -1 }).limit(PER_SOURCE).select("invoiceNumber issuedAt").lean<(Dated & { invoiceNumber?: string; issuedAt?: Date })[]>()
       : none,
@@ -77,16 +94,34 @@ export async function getRecentEvents(categories: ReadonlySet<RecentEventCategor
   const candidates: Candidate[] = [
     ...users.map((user) => ({ id: `user-${String(user._id)}`, kind: "user" as const, category: "users" as const, subject: user.name ?? "", role: user.role, at: iso(user.createdAt) })),
     ...jobs.map((job) => ({ id: `job-${String(job._id)}`, kind: "job" as const, category: "jobs" as const, subject: job.title ?? "", status: job.status, at: iso(job.createdAt) })),
-    ...applications.map((application) => ({
-      id: `application-${String(application._id)}`,
-      kind: "application" as const,
+    ...applications.map((application) => {
+      // "Name · Job title" so six rows at the same timestamp are distinguishable; titleFor appends it.
+      const name = application.jobSeekerId?.fullName?.trim() ?? "";
+      const job = application.jobId?.title?.trim() ?? "";
+      const subject = name && job ? `${name} · ${job}` : name || job;
+      return {
+        id: `application-${String(application._id)}`,
+        kind: "application" as const,
+        category: "applications" as const,
+        subject,
+        status: application.status,
+        at: iso(application.appliedAt ?? application.createdAt),
+      };
+    }),
+    ...interviews.map((interview) => ({
+      id: `interview-${String(interview._id)}`,
+      kind: "interview" as const,
       category: "applications" as const,
-      subject: "",
-      status: application.status,
-      at: iso(application.appliedAt ?? application.createdAt),
+      subject: interview.jobId?.title ?? "",
+      at: iso(interview.createdAt),
     })),
-    ...interviews.map((interview) => ({ id: `interview-${String(interview._id)}`, kind: "interview" as const, category: "applications" as const, subject: "", at: iso(interview.createdAt) })),
-    ...placements.map((placement) => ({ id: `placement-${String(placement._id)}`, kind: "placement" as const, category: "applications" as const, subject: "", at: iso(placement.createdAt) })),
+    ...placements.map((placement) => ({
+      id: `placement-${String(placement._id)}`,
+      kind: "placement" as const,
+      category: "applications" as const,
+      subject: placement.jobId?.title ?? "",
+      at: iso(placement.createdAt),
+    })),
     ...invoicesIssued.map((invoice) => ({
       id: `invoice-issued-${String(invoice._id)}`,
       kind: "invoice_issued" as const,

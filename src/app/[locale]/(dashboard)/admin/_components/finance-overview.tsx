@@ -30,6 +30,13 @@ const INVOICE_STATUS_DOTS: Partial<Record<InvoiceStatusValue, string>> = {
   overdue: "bg-rose-500",
 };
 
+/**
+ * Statuses already counted in Needs your action with a direct link to the same
+ * filtered list. Showing the same count twice confused users ("is it 1 or 1?"),
+ * so Finance shows only informational states — the queue owns the actionable ones.
+ */
+const QUEUE_OWNED_STATUSES: ReadonlySet<string> = new Set(["pending_approval", "overdue"]);
+
 /** Payment and commission rows: which amount, and the list that holds exactly those records. */
 const PAYMENT_ROWS: readonly { key: keyof Omit<PaymentsMoney, "currency">; path: string; tone?: string }[] = [
   { key: "awaitingVerification", path: "/admin/invoices?attention=payment_notice" },
@@ -64,7 +71,7 @@ function money(amount: number, currency: string, locale: string): { short: strin
 function MoneyCell({ amount, currency, locale, className = "text-foreground" }: { amount: number; currency: string; locale: string; className?: string }) {
   const value = money(amount, currency, locale);
   return (
-    <td className={`truncate px-1.5 py-2 text-end tabular-nums sm:px-2.5 ${amount > 0 ? className : "text-muted-foreground"}`} title={value.full}>
+    <td className={`truncate px-1.5 py-1.5 text-end tabular-nums sm:px-2.5 ${amount > 0 ? className : "text-muted-foreground"}`} title={value.full}>
       {value.short}
     </td>
   );
@@ -78,12 +85,15 @@ function MoneyCell({ amount, currency, locale, className = "text-foreground" }: 
  * holds the amounts and distributions behind them.
  */
 export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
-  const invoiceRows = data.invoiceStatuses.filter((row) => row.count > 0);
+  const invoiceRows = data.invoiceStatuses.filter((row) => row.count > 0 && !QUEUE_OWNED_STATUSES.has(row.status));
   const maxPlan = Math.max(1, ...data.plans.map((plan) => plan.count));
   const planGroups = (["employer", "job_seeker"] as const)
     .map((role) => ({ role, plans: data.plans.filter((plan) => plan.role === role) }))
     .filter((group) => group.plans.length > 0);
   const payments = data.payments;
+  // A 5-row table of zeros (screenshot: AED 0 / ₹0 everywhere) is dead space — collapse to the empty state.
+  const hasPaymentBalances =
+    payments !== null && payments.some((row) => PAYMENT_ROWS.some((item) => row[item.key] > 0));
   // Invoices take the full row (balances beside states); subscriptions and
   // payments share the row below, or take it alone when the other is hidden.
   const pair = Number(show.subscriptions) + Number(Boolean(payments));
@@ -97,7 +107,7 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
       title={t("finance.title")}
       description={t("finance.description")}
     >
-      <div className="grid items-stretch gap-3 md:grid-cols-2">
+      <div className="grid items-stretch gap-2.5 md:grid-cols-2">
         {show.invoices && (
           <DashboardCard
             title={t("money.title")}
@@ -106,7 +116,7 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
             action={{ href: `/${locale}/admin/invoices`, label: t("finance.viewInvoices") }}
             className="md:col-span-2"
           >
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-4">
+            <div className="grid gap-2.5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-4">
             {data.money.length === 0 ? (
               <p className="rounded-lg bg-card/80 px-3 py-3 text-sm text-muted-foreground ring-1 ring-inset ring-border/60">{t("money.empty", { days })}</p>
             ) : (
@@ -141,9 +151,11 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
                 <span className="text-xs text-muted-foreground">{t("finance.invoicesSubtitle", { count: data.totalInvoices })}</span>
               </div>
               {invoiceRows.length === 0 ? (
-                <p className="mt-1.5 text-xs text-muted-foreground">{t("finance.noInvoices")}</p>
+                data.totalInvoices === 0 ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t("finance.noInvoices")}</p>
+                ) : null
               ) : (
-                <ul className="mt-1.5 grid grid-cols-2 gap-1.5">
+                <ul className={invoiceRows.length <= 3 ? "mt-1.5 grid grid-cols-1 gap-1.5" : "mt-1.5 grid grid-cols-2 gap-1.5"}>
                   {invoiceRows.map((row) => {
                     const status = row.status as InvoiceStatusValue;
                     const share = shareOf(row.count, data.totalInvoices);
@@ -217,7 +229,7 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
             action={{ href: `/${locale}/admin/commissions`, label: t("payments.viewCommissions") }}
             className={lower}
           >
-            {payments.length === 0 ? (
+            {payments.length === 0 || !hasPaymentBalances ? (
               <p className="rounded-lg bg-card/80 px-3 py-3 text-sm text-muted-foreground ring-1 ring-inset ring-border/60">{t("payments.empty", { days })}</p>
             ) : (
               <div className="flex-1 overflow-x-auto rounded-lg bg-card/80 ring-1 ring-inset ring-border/60">

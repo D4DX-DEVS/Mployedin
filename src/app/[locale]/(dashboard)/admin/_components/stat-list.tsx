@@ -6,12 +6,12 @@ import { formatCount } from "@/lib/ui/intlFormat";
 export type StatTone = "rose" | "amber" | "sky" | "violet" | "emerald" | "slate";
 
 export const TONES: Record<StatTone, string> = {
-  rose: "bg-rose-50 text-rose-600 ring-rose-100",
-  amber: "bg-amber-50 text-amber-600 ring-amber-100",
-  sky: "bg-sky-50 text-sky-600 ring-sky-100",
-  violet: "bg-violet-50 text-violet-600 ring-violet-100",
-  emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-  slate: "bg-slate-100 text-slate-600 ring-slate-200",
+  rose: "bg-rose-100 text-rose-700 ring-rose-200",
+  amber: "bg-amber-100 text-amber-800 ring-amber-200",
+  sky: "bg-sky-100 text-sky-700 ring-sky-200",
+  violet: "bg-violet-100 text-violet-700 ring-violet-200",
+  emerald: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+  slate: "bg-slate-200 text-slate-700 ring-slate-300",
 };
 
 export interface StatRow {
@@ -58,12 +58,12 @@ export function StatList({ rows }: { rows: readonly StatRow[] }) {
             {row.href ? (
               <Link
                 href={row.href}
-                className="group flex min-h-11 items-center gap-2.5 rounded-md px-1 py-1 transition-colors hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-9"
+                className="group flex min-h-9 items-center gap-2 rounded-md px-1 py-0.5 transition-colors hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {body}
               </Link>
             ) : (
-              <div className="flex min-h-11 items-center gap-2.5 px-1 py-1 [flex-wrap:nowrap] sm:min-h-9">{body}</div>
+              <div className="flex min-h-9 items-center gap-2 px-1 py-0.5 [flex-wrap:nowrap]">{body}</div>
             )}
           </li>
         );

@@ -194,12 +194,16 @@ function recentRows(events: readonly RecentEvent[], now: Date, locale: string, t
         return t("recent.userJoined", { name: event.subject || t("recent.someone"), role: t(`roles.${ROLE_KEYS[event.role ?? ""] ?? "unknown"}`) });
       case "job":
         return t("recent.jobPosted", { title: event.subject || t("recent.untitledJob") });
-      case "application":
-        return event.status === "applied" ? t("recent.applicationNew") : t("recent.applicationMoved", { status: statusLabel(event.status) });
+      case "application": {
+        const base =
+          event.status === "applied" ? t("recent.applicationNew") : t("recent.applicationMoved", { status: statusLabel(event.status) });
+        // Subject is "Name · Job title" (see recent.server); appending keeps rows distinct without new keys.
+        return event.subject ? `${base} — ${event.subject}` : base;
+      }
       case "interview":
-        return t("recent.interviewScheduled");
+        return event.subject ? `${t("recent.interviewScheduled")} — ${event.subject}` : t("recent.interviewScheduled");
       case "placement":
-        return t("recent.placementClosed");
+        return event.subject ? `${t("recent.placementClosed")} — ${event.subject}` : t("recent.placementClosed");
       case "invoice_issued":
         return t("recent.invoiceIssued", { number: event.subject || "—" });
       case "invoice_paid":

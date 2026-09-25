@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlarmClock, Briefcase, CalendarX2, FilePen, Gauge, PauseCircle, Timer, Workflow } from "lucide-react";
+import { AlarmClock, CalendarX2, FilePen, Gauge, PauseCircle, Timer, Workflow } from "lucide-react";
 import type { ApplicationStatus } from "@/models/Application";
 import type { HiringFunnel, RecruitmentOverview } from "@/lib/admin/dashboard/types";
 import { formatCount } from "@/lib/ui/intlFormat";
@@ -51,7 +51,7 @@ function Pipeline({ data, locale, t }: Pick<Props, "data" | "locale" | "t">) {
           <li key={stage.status} data-stage={stage.status}>
             <Link
               href={`/${locale}/admin/applications?status=${stage.status}`}
-              className="grid min-h-9 grid-cols-[8rem_1fr_auto] items-center gap-3 rounded-md px-1 transition-colors hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-8"
+              className="grid min-h-8 grid-cols-[8rem_1fr_auto] items-center gap-3 rounded-md px-1 transition-colors hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={t("pipeline.stageAria", { label, count: stage.count })}
             >
               <span className="truncate text-xs text-muted-foreground">{label}</span>
@@ -95,7 +95,7 @@ function Funnel({ funnel, t }: { funnel: HiringFunnel; t: DashboardTranslator })
 
   return (
     <>
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex flex-col gap-2">
         {steps.map((step) => {
           const value = rate(step.part, step.whole);
           return (
@@ -104,7 +104,7 @@ function Funnel({ funnel, t }: { funnel: HiringFunnel; t: DashboardTranslator })
                 <span className="truncate text-xs text-muted-foreground">{t(`funnel.${step.key}`)}</span>
                 <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{value === null ? "—" : `${value}%`}</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
+              <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
                 <span className="block h-full rounded-full bg-violet-500" style={{ width: `${value ?? 0}%` }} />
               </div>
               <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{t(`funnel.reached.${step.key}`, { part: step.part, whole: step.whole })}</p>
@@ -151,7 +151,7 @@ export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props)
       title={t("recruitment.title")}
       description={t("recruitment.description")}
     >
-      <div className={`grid items-stretch gap-3 ${grid.grid}`}>
+      <div className={`grid items-stretch gap-2.5 ${grid.grid}`}>
         {show.applications && (
           <DashboardCard
             title={t("recruitment.pipelineTitle")}
@@ -172,7 +172,7 @@ export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props)
           >
             <StatList
               rows={[
-                { key: "jobs-active", icon: Briefcase, tone: "emerald", value: jobs.activeJobs, label: t("jobHealth.active"), href: `/${locale}/admin/jobs?status=active` },
+                // Active total lives in Platform snapshot + card subtitle; repeating it here duplicated the same number twice.
                 {
                   key: "jobs-low-volume",
                   icon: Gauge,

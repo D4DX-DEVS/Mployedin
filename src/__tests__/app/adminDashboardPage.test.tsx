@@ -343,7 +343,10 @@ describe("Finance & subscriptions", () => {
     await show(FinanceSection(ctx()));
     const panel = sectionNamed(/^finance & subscriptions$/i);
     expect(within(panel).getByRole("rowheader", { name: "AED" })).toBeInTheDocument();
-    expect(panel.querySelector('[data-invoice-status="overdue"] a')?.getAttribute("href")).toBe("/en/admin/invoices?status=overdue");
+    // Actionable statuses live in Needs your action only — Finance shows informational states.
+    expect(panel.querySelector('[data-invoice-status="issued"] a')?.getAttribute("href")).toBe("/en/admin/invoices?status=issued");
+    expect(panel.querySelector('[data-invoice-status="overdue"]')).toBeNull();
+    expect(panel.querySelector('[data-invoice-status="pending_approval"]')).toBeNull();
     // Empty statuses are left out.
     expect(panel.querySelector('[data-invoice-status="void"]')).toBeNull();
     expect(panel.querySelector('[data-payment-row="commissionApproved"] a')?.getAttribute("href")).toBe("/en/admin/commissions?status=approved");

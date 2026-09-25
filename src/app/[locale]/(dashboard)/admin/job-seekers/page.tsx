@@ -38,7 +38,7 @@ import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import {
   JobSeekersFilterPanel, EMPTY_JOB_SEEKER_FILTERS, countActiveJobSeekerFilters,
-  buildJobSeekerFilterChips, type JobSeekerFilterChip, type JobSeekerFilters,
+  buildJobSeekerFilterChips, FIELDLESS_FILTER_KEYS, type JobSeekerFilterChip, type JobSeekerFilters,
 } from "./_components/JobSeekersFilterPanel";
 
 interface JobSeeker {
@@ -444,7 +444,12 @@ export default function AdminJobSeekersPage() {
 
   // ── Active filter count ─────────────────────────────────
   const activeFilterCount = countActiveJobSeekerFilters(search, filters);
-  const filterChips = buildJobSeekerFilterChips(tr, search, filters);
+  const allFilterChips = buildJobSeekerFilterChips(tr, search, filters);
+  // Open panel: its fields already show most filters, so only the ones without
+  // a field (set by AI search) need a chip.
+  const filterChips = showFilters
+    ? allFilterChips.filter((chip) => FIELDLESS_FILTER_KEYS.includes(chip.key))
+    : allFilterChips;
   const removeFilterChip = (chip: JobSeekerFilterChip) => {
     if (chip.clear === "search") {
       changeSearch("");
@@ -503,8 +508,9 @@ export default function AdminJobSeekersPage() {
           </>
         )}
       >
-        {/* Collapsed panel: the active filters stay visible as removable chips. */}
-        {!showFilters && filterChips.length > 0 && (
+        {/* Active filters as removable chips: all of them while the panel is
+            closed, only the fieldless ones while it is open. */}
+        {filterChips.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {filterChips.map((chip) => (
               <button
