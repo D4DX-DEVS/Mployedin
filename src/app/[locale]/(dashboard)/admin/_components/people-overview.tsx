@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CalendarCheck, Handshake, Network, SearchX, Sparkles, UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { Building2, CalendarCheck, Handshake, Network, Sparkles, UserCheck, UserMinus, UserPlus } from "lucide-react";
 import type { AgentOperations, PeopleOverview, UserRoleBucket } from "@/lib/admin/dashboard/types";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { cardGrid, DashboardCard, DashboardSection } from "./dashboard-section";
@@ -99,7 +99,7 @@ export function AdminPeopleOverview({ data, showRoles, days, locale, t }: Props)
       title={t("people.title")}
       description={t("people.description")}
     >
-      <div className={`grid items-stretch gap-3 ${grid.grid}`}>
+      <div className={`grid items-stretch gap-2.5 ${grid.grid}`}>
         {showRoles && (
           <DashboardCard
             title={t("people.usersByRole")}
@@ -123,7 +123,7 @@ export function AdminPeopleOverview({ data, showRoles, days, locale, t }: Props)
                     </span>
                   </>
                 );
-                const rowClass = "grid min-h-9 grid-cols-[6.5rem_1fr_auto] items-center gap-3 rounded-md px-1";
+                const rowClass = "grid min-h-8 grid-cols-[6.5rem_1fr_auto] items-center gap-3 rounded-md px-1";
                 return (
                   <li key={row.role} data-role={row.role}>
                     {filter ? (
@@ -179,13 +179,8 @@ export function AdminPeopleOverview({ data, showRoles, days, locale, t }: Props)
                   label: t("employers.noActiveJob"),
                   meta: shareOf(employers.withoutActiveJob, employers.companies),
                 },
-                {
-                  key: "employers-no-applications",
-                  icon: SearchX,
-                  tone: employers.activeJobsButNoApplications > 0 ? "rose" : "slate",
-                  value: employers.activeJobsButNoApplications,
-                  label: t("employers.noApplications"),
-                },
+                // "Hiring, but no applications" removed: the same backlog is already counted in the action queue as
+                // jobs (43 jobs vs 13 companies confused users — two numbers for one problem).
               ]}
             />
           </DashboardCard>

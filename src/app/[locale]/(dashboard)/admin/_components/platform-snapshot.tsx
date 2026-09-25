@@ -55,7 +55,7 @@ function ShortChange({ window, t }: { window: WindowedCount; t: DashboardTransla
   );
 }
 
-/** "Up 12% vs previous 30 days" — or "41 more than…" over a tiny baseline — with the direction as an icon and in words. */
+/** "Up 12% vs previous 30 days" as a tinted pill — or "41 more than…" over a tiny baseline — with the direction as an icon and in words. */
 function Change({ window, days, t }: { window: WindowedCount; days: number; t: DashboardTranslator }) {
   const { change, value, direction, Icon, tone } = trend(window);
   const text =
@@ -64,9 +64,19 @@ function Change({ window, days, t }: { window: WindowedCount; days: number; t: D
       : change.kind === "new"
         ? t("snapshot.changeNew", { days })
         : t(change.kind === "percent" ? "snapshot.changePercent" : "snapshot.changeCount", { value, direction, days });
+  // Filled pill like the reference KPI cards; plain text looked flat next to the colored tiles.
+  // No sparkline: only two windows (current + previous) are queried, so a series would be fabricated.
+  const pill =
+    change.kind === "none" || change.kind === "new"
+      ? "bg-secondary text-muted-foreground"
+      : direction === "up"
+        ? "bg-emerald-100 text-emerald-800"
+        : direction === "down"
+          ? "bg-rose-100 text-rose-800"
+          : "bg-secondary text-muted-foreground";
   return (
-    <span className={`mt-1 inline-flex items-start gap-0.5 text-xs font-semibold leading-4 ${tone}`}>
-      <Icon className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold leading-4 ${pill}`}>
+      <Icon className={`h-3 w-3 shrink-0 ${tone}`} aria-hidden="true" />
       {text}
     </span>
   );
@@ -105,7 +115,7 @@ export function AdminPlatformSnapshot({ data, keys, days, locale, t }: Props) {
             <li key={key} className={layout(keys.length, index).cell} data-snapshot={key}>
               <Link
                 href={`/${locale}${card.path}`}
-                className="group flex h-full min-w-0 flex-col rounded-lg bg-card/80 px-2.5 py-2 ring-1 ring-inset ring-border/60 transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-3"
+                className="group flex h-full min-w-0 flex-col rounded-lg bg-card/80 p-2.5 ring-1 ring-inset ring-border/60 transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {/* Phones: one row per metric. */}
                 <span className="flex items-center gap-2.5 [flex-wrap:nowrap] sm:hidden">
@@ -129,7 +139,7 @@ export function AdminPlatformSnapshot({ data, keys, days, locale, t }: Props) {
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{t(`snapshot.${key}`)}</span>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
                 </span>
-                <span className="mt-2 hidden flex-wrap items-baseline gap-x-2 sm:flex">
+                <span className="mt-1.5 hidden flex-wrap items-baseline gap-x-2 sm:flex">
                   <span className="text-xl font-semibold tabular-nums tracking-tight text-foreground sm:text-2xl">{formatCount(metric.total)}</span>
                   <span className="text-xs text-muted-foreground">{t(`snapshot.scope.${card.scope}`)}</span>
                 </span>

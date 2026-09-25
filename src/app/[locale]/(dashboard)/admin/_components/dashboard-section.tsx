@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
  * padding. (The surface class sits in `@layer components`; these utilities win.)
  */
 export const SECTION_PANEL =
-  "workspace-panel-surface rounded-2xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:p-5";
+  "workspace-panel-surface rounded-2xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:p-4";
 
 interface DashboardSectionProps {
   id: string;
@@ -55,7 +55,7 @@ export function DashboardSection({ id, icon: Icon, iconClassName, title, descrip
           </div>
         )}
       </div>
-      <div className="mt-3 sm:mt-4">{children}</div>
+      <div className="mt-2.5 sm:mt-3">{children}</div>
     </section>
   );
 }
@@ -86,7 +86,7 @@ interface DashboardCardProps {
 /** A card inside a section. Full height so cards in one grid row line up. */
 export function DashboardCard({ title, subtitle, subtitleOnPhone = true, action, className = "", children }: DashboardCardProps) {
   return (
-    <div className={`workspace-subtle-surface flex h-full min-w-0 flex-col rounded-xl p-3 sm:p-3.5 ${className}`} data-surface="light-card">
+    <div className={`workspace-subtle-surface flex h-full min-w-0 flex-col rounded-xl p-3 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.35)] ${className}`} data-surface="light-card">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
