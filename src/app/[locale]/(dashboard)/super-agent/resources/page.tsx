@@ -114,8 +114,8 @@ export default function ResourceDownloadsPage() {
             {/* Explicit widths: with none, SearchableSelect fills its flex line
                 and the two selects stack under the search box instead of
                 sitting beside it. */}
-            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-[170px]" />
-            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-[150px]" />
+            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-auto sm:min-w-[170px]" />
+            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-auto sm:min-w-[150px]" />
             {categoryFilter !== "all" && (
               <button onClick={() => setCategoryFilter("all")} className="text-xs text-muted-foreground underline">{t("clear")}</button>
             )}

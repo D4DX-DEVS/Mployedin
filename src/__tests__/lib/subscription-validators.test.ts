@@ -285,8 +285,13 @@ describe("invoiceUpdateSchema", () => {
     expect(invoiceUpdateSchema.safeParse({ status: "paid" }).success).toBe(true);
   });
 
-  test("accepts status void", () => {
-    expect(invoiceUpdateSchema.safeParse({ status: "void" }).success).toBe(true);
+  test("accepts status void with a reason", () => {
+    expect(invoiceUpdateSchema.safeParse({ status: "void", voidReason: "Duplicate of INV-00012" }).success).toBe(true);
+  });
+
+  test("rejects a void without a reason (it is irreversible)", () => {
+    expect(invoiceUpdateSchema.safeParse({ status: "void" }).success).toBe(false);
+    expect(invoiceUpdateSchema.safeParse({ status: "void", voidReason: "dup" }).success).toBe(false);
   });
 
   test("accepts status pending approval", () => {

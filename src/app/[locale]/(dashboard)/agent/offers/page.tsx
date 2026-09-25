@@ -329,6 +329,7 @@ export default function AgentOffersPage() {
             <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t("filters.searchPlaceholder")}
+              aria-label={t("filters.searchPlaceholder")}
               value={filters.search}
               onChange={(e) => updateFilter("search", e.target.value)}
               className="ps-9"

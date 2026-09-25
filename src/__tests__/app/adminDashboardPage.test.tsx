@@ -1,234 +1,448 @@
 /**
  * @jest-environment jsdom
  */
-import React from "react";
-import { render, screen } from "@testing-library/react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import AdminDashboardPage from "@/app/[locale]/(dashboard)/admin/page";
+import {
+  FinanceSection,
+  HealthSection,
+  PeopleSection,
+  QueueSection,
+  RecentSection,
+  RecruitmentSection,
+  SnapshotSection,
+  type SectionContext,
+} from "@/app/[locale]/(dashboard)/admin/_components/sections";
+import { buildAdminQueue } from "@/lib/admin/actionQueue";
+import { resolveDashboardPeriod } from "@/lib/admin/dashboard/period";
+import type {
+  FinanceOverview,
+  HealthCheck,
+  PeopleOverview,
+  PlatformSnapshot,
+  RecentEvent,
+  RecruitmentOverview,
+} from "@/lib/admin/dashboard/types";
+import type { Resource } from "@/types/user";
 
 const authMock = jest.fn();
 const redirectMock = jest.fn();
-const connectDBMock = jest.fn();
-const userCountDocumentsMock = jest.fn();
-const userAggregateMock = jest.fn();
-const jobCountDocumentsMock = jest.fn();
-const jobAggregateMock = jest.fn();
-const applicationCountDocumentsMock = jest.fn();
-const applicationAggregateMock = jest.fn();
-const interviewCountDocumentsMock = jest.fn();
-const placementCountDocumentsMock = jest.fn();
-const interviewAggregateMock = jest.fn();
-const placementAggregateMock = jest.fn();
+const refreshMock = jest.fn();
+const queueMock = jest.fn();
+const snapshotMock = jest.fn();
+const recruitmentMock = jest.fn();
+const peopleMock = jest.fn();
+const financeMock = jest.fn();
+const healthMock = jest.fn();
+const recentMock = jest.fn();
 
-jest.mock("@/lib/auth/config", () => ({
-  auth: () => authMock(),
-}));
+jest.mock("@/lib/auth/config", () => ({ auth: () => authMock() }));
+jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
+jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn(), warn: jest.fn(), info: jest.fn() } }));
 
 jest.mock("next/navigation", () => ({
   redirect: (url: string) => redirectMock(url),
+  useRouter: () => ({ replace: jest.fn(), refresh: refreshMock, push: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
-jest.mock("@/lib/db/mongoose", () => ({
-  __esModule: true,
-  default: () => connectDBMock(),
-  connectDB: () => connectDBMock(),
+/* The data layer is mocked at its boundary: these tests cover what each section
+   renders from its data and which permission and period it hands the loaders.
+   The queries have their own tests. */
+jest.mock("@/lib/admin/actionQueue.server", () => ({ getAdminActionQueue: (can: unknown) => queueMock(can) }));
+jest.mock("@/lib/admin/dashboard/snapshot.server", () => ({ getPlatformSnapshot: (period: unknown) => snapshotMock(period) }));
+jest.mock("@/lib/admin/dashboard/recruitment.server", () => ({ getRecruitmentOverview: (period: unknown) => recruitmentMock(period) }));
+jest.mock("@/lib/admin/dashboard/people.server", () => ({
+  getPeopleOverview: (period: unknown, access: unknown) => peopleMock(period, access),
 }));
-
-/**
- * The "needs attention" card is no longer a hardcoded ladder: it renders the
- * top of the shared platform-alert engine, ordered critical first. Mocking the
- * engine keeps this test about the page and lets it assert the ranking — the
- * previous implementation resolved to "review the audit logs" on any healthy
- * platform, which is not a task.
- */
-const platformAlertsMock = jest.fn();
-jest.mock("@/lib/admin/platformAlerts.server", () => ({
-  getPlatformAlerts: () => platformAlertsMock(),
+jest.mock("@/lib/admin/dashboard/finance.server", () => ({
+  getFinanceOverview: (period: unknown, access: unknown) => financeMock(period, access),
 }));
+jest.mock("@/lib/admin/dashboard/health.server", () => ({ getHealthChecks: (period: unknown) => healthMock(period) }));
+jest.mock("@/lib/admin/dashboard/recent.server", () => ({ getRecentEvents: (categories: unknown) => recentMock(categories) }));
 
-jest.mock("@/models/User", () => ({
-  __esModule: true,
-  default: {
-    countDocuments: (...args: unknown[]) => userCountDocumentsMock(...args),
-    aggregate: (...args: unknown[]) => userAggregateMock(...args),
+const NOW = new Date("2026-09-24T10:00:00.000Z");
+const period = resolveDashboardPeriod("30d", NOW);
+
+const snapshot: PlatformSnapshot = {
+  users: { total: 397, added: { current: 24, previous: 20 } },
+  activeJobs: { total: 68, added: { current: 12, previous: 0 } },
+  applications: { total: 180, added: { current: 35, previous: 50 } },
+  interviews: { total: 25, added: { current: 9, previous: 9 } },
+  placements: { total: 9, added: { current: 0, previous: 0 } },
+};
+
+const recruitment: RecruitmentOverview = {
+  pipeline: [
+    { status: "applied", count: 21 },
+    { status: "shortlisted", count: 12 },
+    { status: "interview_scheduled", count: 9 },
+    { status: "selected", count: 3 },
+    { status: "offer", count: 2 },
+    { status: "hired", count: 3 },
+    { status: "rejected", count: 12 },
+    { status: "withdrawn", count: 3 },
+  ],
+  jobs: { activeJobs: 68, lowVolume: 22, expiringSoon: 6, paused: 7, drafts: 21, expiredInPeriod: 12 },
+  funnel: { applications: 65, reachedInterview: 20, reachedOffer: 8, hired: 3, avgHoursToFirstReview: 72, avgDaysToHire: null },
+};
+
+const people: PeopleOverview = {
+  usersByRole: [
+    { role: "job_seeker", count: 238 },
+    { role: "employer", count: 136 },
+    { role: "agent", count: 15 },
+    { role: "super_agent", count: 4 },
+    { role: "other", count: 4 },
+  ],
+  employers: {
+    companies: 123,
+    accounts: 128,
+    accountsActive7d: 6,
+    accountsInactive7d: 122,
+    newCompaniesInPeriod: 31,
+    withoutActiveJob: 96,
+    activeJobsButNoApplications: 13,
   },
-}));
-
-jest.mock("@/models/Job", () => ({
-  __esModule: true,
-  default: {
-    countDocuments: (...args: unknown[]) => jobCountDocumentsMock(...args),
-    aggregate: (...args: unknown[]) => jobAggregateMock(...args),
+  agents: {
+    activeAgents: 14,
+    signedInThisWeek: 1,
+    notSignedInThisWeek: 13,
+    targets: { behind: 4, onPace: 2, achieved: 1 },
+    candidatesSourced: 2,
+    interviewsArranged: 0,
+    placements: 0,
   },
-}));
+};
 
-jest.mock("@/models/Application", () => ({
-  __esModule: true,
-  default: {
-    countDocuments: (...args: unknown[]) => applicationCountDocumentsMock(...args),
-    aggregate: (...args: unknown[]) => applicationAggregateMock(...args),
-  },
-}));
+const finance: FinanceOverview = {
+  money: [
+    { currency: "AED", outstanding: 46500, overdue: 3200, collected: 0 },
+    { currency: "INR", outstanding: 1400, overdue: 0, collected: 0 },
+  ],
+  invoiceStatuses: [
+    { status: "issued", count: 84 },
+    { status: "overdue", count: 1 },
+    { status: "void", count: 0 },
+  ],
+  totalInvoices: 85,
+  openDisputes: 0,
+  activeSubscriptions: 130,
+  plans: [
+    { role: "employer", name: "Gold", tier: 2, count: 43 },
+    { role: "job_seeker", name: "Basic", tier: 1, count: 8 },
+  ],
+  expiredInPeriod: 1,
+  cancelledInPeriod: 0,
+  payments: [
+    { currency: "INR", awaitingVerification: 0, commissionPending: 0, commissionApproved: 50300, commissionDisputed: 0, commissionPaid: 0 },
+  ],
+};
 
-jest.mock("@/models/Interview", () => ({
-  __esModule: true,
-  default: {
-    countDocuments: (...args: unknown[]) => interviewCountDocumentsMock(...args),
-    aggregate: (...args: unknown[]) => interviewAggregateMock(...args),
-  },
-}));
+const health: HealthCheck[] = [
+  { id: "database", status: "healthy", value: 42, path: "/admin/system-health" },
+  { id: "email", status: "warning", value: 2, path: "/admin/settings/notifications?tab=email-logs&status=failed" },
+  { id: "webhooks", status: "critical", value: 3, path: "/admin/webhooks?status=failing" },
+  { id: "authentication", status: "healthy", value: 0, secondary: 3, path: "/admin/audit-logs?action=login.failed" },
+];
 
-jest.mock("@/models/Placement", () => ({
-  __esModule: true,
-  default: {
-    countDocuments: (...args: unknown[]) => placementCountDocumentsMock(...args),
-    aggregate: (...args: unknown[]) => placementAggregateMock(...args),
-  },
-}));
+const recent: RecentEvent[] = [
+  { id: "user-1", kind: "user", category: "users", subject: "Sara Ahmed", role: "employer", at: "2026-09-24T08:00:00.000Z" },
+  { id: "job-1", kind: "job", category: "jobs", subject: "Senior Recruiter", status: "active", at: "2026-09-23T08:00:00.000Z" },
+  { id: "invoice-paid-1", kind: "invoice_paid", category: "finance", subject: "INV-0042", at: "2026-09-22T08:00:00.000Z" },
+  { id: "audit-1", kind: "system", category: "system", subject: "Omar", action: "settings.update", at: "2026-09-21T08:00:00.000Z" },
+];
 
-jest.mock("@/app/[locale]/(dashboard)/admin/_components/platform-health", () => ({
-  BadgeSkeleton: () => null,
-  InsightTextSkeleton: () => null,
-  PlatformInsightsSkeleton: () => null,
-  KpiActiveJobsInsightText: () => <span>Active jobs are healthy</span>,
-  QuickActionHealthBadge: () => <span>Healthy</span>,
-  PlatformInsightsSection: () => <div>Employer is still the dominant cohort</div>,
-}));
+const allowAll = () => true;
+const ctx = (can: (resource: Resource) => boolean = allowAll): SectionContext => ({ can, period, locale: "en" });
+const only = (...resources: Resource[]) => (resource: Resource) => resources.includes(resource);
+
+async function show(section: Promise<ReactElement | null>) {
+  const element = await section;
+  return render(<>{element}</>);
+}
+
+const sectionNamed = (name: RegExp) => screen.getByRole("heading", { name, level: 2 }).closest("section")!;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  queueMock.mockResolvedValue(
+    buildAdminQueue({
+      "exhibitions-under-review": 3,
+      "invoices-overdue": 4,
+      "payment-notices": 1,
+      "support-tickets": 0,
+      "applications-awaiting-review": 7,
+    }),
+  );
+  snapshotMock.mockResolvedValue(snapshot);
+  recruitmentMock.mockResolvedValue(recruitment);
+  peopleMock.mockResolvedValue(people);
+  financeMock.mockResolvedValue(finance);
+  healthMock.mockResolvedValue(health);
+  recentMock.mockResolvedValue(recent);
+});
+
+describe("Needs your action", () => {
+  it("lists items most urgent first and links each to the list it counted", async () => {
+    await show(QueueSection(ctx()));
+    const queue = sectionNamed(/^needs your action$/i);
+    const rows = Array.from(queue.querySelectorAll("a[data-queue-id]"));
+    expect(rows.map((a) => a.getAttribute("href"))).toEqual([
+      "/en/admin/invoices?status=overdue",
+      "/en/admin/exhibitions?status=under_review",
+      "/en/admin/invoices?attention=payment_notice",
+      "/en/admin/applications?stale=true",
+    ]);
+    expect(rows[1].textContent).toContain("3exhibition requests under review");
+    // Level and area in words on every tile, not colour alone.
+    expect(within(rows[0] as HTMLElement).getAllByText("Critical").length).toBeGreaterThan(0);
+    expect(rows[1].textContent).toContain("Decisions");
+    expect(queue.querySelector('[data-queue-id="invoices-overdue"]')?.getAttribute("data-level")).toBe("critical");
+    // Zero counts are not rendered.
+    expect(within(queue).queryByText(/support ticket/i)).not.toBeInTheDocument();
+    expect(within(queue).getByText("4 items need action")).toBeInTheDocument();
+    // Every area keeps its chip; one with nothing waiting says so.
+    const compliance = queue.querySelector('[data-queue-group="compliance"]') as HTMLElement;
+    expect(within(compliance).getByLabelText("Nothing waiting here.")).toBeInTheDocument();
+  });
+
+  it("stretches the last tile over the rest of its row", async () => {
+    await show(QueueSection(ctx()));
+    const tiles = Array.from(sectionNamed(/^needs your action$/i).querySelectorAll("a[data-queue-id]")).map((a) => a.parentElement!);
+    // Four tiles: 3 + 1 at three columns, so the last spans all three.
+    expect(tiles[3].className).toContain("xl:col-span-3");
+    expect(tiles[2].className).not.toContain("col-span");
+  });
+
+  it("says all clear when nothing is waiting instead of listing zeros", async () => {
+    queueMock.mockResolvedValue([]);
+    await show(QueueSection(ctx()));
+    expect(screen.getByText(/nothing is waiting on you right now/i)).toBeInTheDocument();
+  });
+
+  it("hides areas the admin cannot act on and skips the section when none are left", async () => {
+    await show(QueueSection(ctx(only("jobs", "applications"))));
+    expect(document.querySelector('[data-queue-group="finance"]')).toBeNull();
+    expect(document.querySelector('[data-queue-group="recruitment"]')).toBeTruthy();
+
+    expect(await QueueSection(ctx(() => false))).toBeNull();
+    expect(queueMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an error with a retry in place when its queries fail", async () => {
+    queueMock.mockRejectedValue(new Error("boom"));
+    await show(QueueSection(ctx()));
+    const failed = sectionNamed(/^needs your action$/i);
+    expect(within(failed).getByRole("alert")).toHaveTextContent("We couldn't load this section. Please try again.");
+    fireEvent.click(within(failed).getByRole("button", { name: /try again/i }));
+    expect(refreshMock).toHaveBeenCalled();
+  });
+});
+
+describe("Platform snapshot", () => {
+  it("gives each total its scope, what was added, and the change against the period before", async () => {
+    await show(SnapshotSection(ctx()));
+    const panel = sectionNamed(/^platform snapshot$/i);
+    expect(within(panel).getAllByText("24 new in 30 days").length).toBeGreaterThan(0);
+    expect(within(panel).getByText("Up 20% vs previous 30 days")).toBeInTheDocument();
+    expect(within(panel).getByText("Down 30% vs previous 30 days")).toBeInTheDocument();
+    expect(within(panel).getByText("No change vs previous 30 days")).toBeInTheDocument();
+    // No previous figure: say so rather than print an infinite percentage.
+    expect(within(panel).getByText("None in the previous 30 days")).toBeInTheDocument();
+    expect(within(panel).getByText("None in either period")).toBeInTheDocument();
+    expect(panel.querySelector('[data-snapshot="activeJobs"] a')?.getAttribute("href")).toBe("/en/admin/jobs?status=active");
+    // Jobs created in the period include drafts, so they are not called "opened".
+    expect(within(panel).getAllByText("12 created in 30 days").length).toBeGreaterThan(0);
+    expect(snapshotMock).toHaveBeenCalledWith(period);
+  });
+
+  it("gives the change as a count, not a percentage, over a tiny previous period", async () => {
+    snapshotMock.mockResolvedValue({
+      ...snapshot,
+      applications: { total: 82, added: { current: 42, previous: 1 } },
+      interviews: { total: 25, added: { current: 2, previous: 5 } },
+    });
+    await show(SnapshotSection(ctx()));
+    const panel = sectionNamed(/^platform snapshot$/i);
+    expect(within(panel).getByText("41 more than previous 30 days")).toBeInTheDocument();
+    expect(within(panel).getByText("3 fewer than previous 30 days")).toBeInTheDocument();
+    expect(within(panel).getByText("+41")).toBeInTheDocument();
+    expect(panel.textContent).not.toContain("4100%");
+  });
+
+  it("shows only the totals the admin may open", async () => {
+    await show(SnapshotSection(ctx(only("users", "jobs"))));
+    expect(Array.from(document.querySelectorAll("[data-snapshot]")).map((el) => el.getAttribute("data-snapshot"))).toEqual(["users", "activeJobs"]);
+  });
+});
+
+describe("Recruitment overview", () => {
+  it("links every pipeline status and converts stage to stage", async () => {
+    await show(RecruitmentSection(ctx()));
+    const panel = sectionNamed(/^recruitment overview$/i);
+    expect(panel.querySelector('a[href="/en/admin/applications?status=interview_scheduled"]')).toBeTruthy();
+    expect(panel.querySelector('a[href="/en/admin/applications?status=withdrawn"]')).toBeTruthy();
+    // 20 of 65 reached interview, 8 of 20 an offer, 3 of 8 were hired.
+    expect(within(panel).getByText("30.8%")).toBeInTheDocument();
+    expect(within(panel).getByText("40%")).toBeInTheDocument();
+    expect(within(panel).getByText("37.5%")).toBeInTheDocument();
+    // The funnel counts stages ever reached, and says so, unlike the pipeline's current status.
+    expect(within(panel).getByText("65 applications by current status")).toBeInTheDocument();
+    expect(within(panel).getByText("Stages ever reached by 65 applications, not their current status")).toBeInTheDocument();
+    expect(within(panel).getByText("20 of 65 applications reached interview")).toBeInTheDocument();
+    expect(within(panel).getByText("8 of 20 interviewed got an offer")).toBeInTheDocument();
+    expect(within(panel).getByText("3 of 8 offers led to a hire")).toBeInTheDocument();
+    // 72 hours reads as days; a missing average says so instead of showing 0.
+    expect(within(panel).getByText("3 d")).toBeInTheDocument();
+    expect(within(panel).getByText("Not enough data yet")).toBeInTheDocument();
+  });
+
+  it("links job-health rows only where a list filters to exactly those jobs", async () => {
+    await show(RecruitmentSection(ctx()));
+    const panel = sectionNamed(/^recruitment overview$/i);
+    expect(panel.querySelector('[data-stat="jobs-expiring"] a')?.getAttribute("href")).toBe("/en/admin/jobs?expiring=7d");
+    expect(panel.querySelector('[data-stat="jobs-low-volume"] a')).toBeNull();
+    // "No applications" is an action-queue count and is not repeated here.
+    expect(within(panel).queryByText(/no applications/i)).not.toBeInTheDocument();
+  });
+
+  it("drops job health for an admin who cannot read jobs", async () => {
+    await show(RecruitmentSection(ctx(only("applications"))));
+    expect(screen.queryByRole("heading", { name: /^job health$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^hiring funnel$/i })).toBeInTheDocument();
+  });
+});
+
+describe("People & network", () => {
+  it("links each role to the users list filtered to it", async () => {
+    await show(PeopleSection(ctx()));
+    const panel = sectionNamed(/^people & network$/i);
+    expect(panel.querySelector('[data-role="job_seeker"] a')?.getAttribute("href")).toBe("/en/admin/users?role=job_seeker");
+    // Admins and legacy roles have no single filter, so "Other" is not a link.
+    expect(panel.querySelector('[data-role="other"] a')).toBeNull();
+    expect(panel.querySelector('[data-stat="employers-inactive"]')?.textContent).toContain("122");
+    // Sign-in rows count accounts, not companies: the header names both populations.
+    expect(within(panel).getByText("123 companies · 128 active accounts")).toBeInTheDocument();
+    expect(panel.querySelector('[data-stat="employers-inactive"]')?.textContent).toContain("95%");
+    expect(within(panel).getByText("4 below target")).toBeInTheDocument();
+    expect(peopleMock).toHaveBeenCalledWith(period, { employers: true, agents: true });
+  });
+
+  it("asks only for the panels the admin may read", async () => {
+    peopleMock.mockResolvedValue({ ...people, agents: null });
+    await show(PeopleSection(ctx(only("users", "employers"))));
+    expect(peopleMock).toHaveBeenCalledWith(period, { employers: true, agents: false });
+    expect(screen.queryByRole("heading", { name: /^agent operations$/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("Finance & subscriptions", () => {
+  it("keeps money per currency and links each invoice status and payment amount", async () => {
+    await show(FinanceSection(ctx()));
+    const panel = sectionNamed(/^finance & subscriptions$/i);
+    expect(within(panel).getByRole("rowheader", { name: "AED" })).toBeInTheDocument();
+    expect(panel.querySelector('[data-invoice-status="overdue"] a')?.getAttribute("href")).toBe("/en/admin/invoices?status=overdue");
+    // Empty statuses are left out.
+    expect(panel.querySelector('[data-invoice-status="void"]')).toBeNull();
+    expect(panel.querySelector('[data-payment-row="commissionApproved"] a')?.getAttribute("href")).toBe("/en/admin/commissions?status=approved");
+    expect(financeMock).toHaveBeenCalledWith(period, { commissions: true });
+  });
+
+  it("lets payments take the row alone when subscriptions are hidden", async () => {
+    await show(FinanceSection(ctx(only("invoices", "commissions"))));
+    expect(screen.queryByRole("heading", { name: /^subscriptions by plan$/i })).not.toBeInTheDocument();
+    const payments = screen.getByRole("heading", { name: /^payments & commissions$/i, level: 3 }).closest("[data-surface]");
+    expect(payments?.className).toContain("md:col-span-2");
+  });
+});
+
+describe("System health", () => {
+  it("names each status in words and links to where it is fixed", async () => {
+    await show(HealthSection(ctx()));
+    const panel = sectionNamed(/^system health$/i);
+    expect(within(panel).getByText("2 checks need a look.")).toBeInTheDocument();
+    const webhooks = panel.querySelector('[data-health-id="webhooks"]') as HTMLElement;
+    expect(within(webhooks).getByText("Critical")).toBeInTheDocument();
+    const auth = panel.querySelector('[data-health-id="authentication"]') as HTMLElement;
+    expect(within(auth).getByText("No locked accounts · 3 failed sign-ins in 24 hours")).toBeInTheDocument();
+    expect(auth.querySelector("a")?.getAttribute("href")).toBe("/en/admin/audit-logs?action=login.failed");
+  });
+
+  it("uses the system-health page's permission", async () => {
+    expect(await HealthSection(ctx(only("users")))).toBeNull();
+    expect(healthMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("Recent platform activity", () => {
+  it("is one feed, filterable by area, with relative times", async () => {
+    await show(RecentSection(ctx()));
+    const panel = sectionNamed(/^recent platform activity$/i);
+    expect(panel.querySelectorAll("[data-recent-kind]")).toHaveLength(4);
+    expect(within(panel).getByText("2 hours ago")).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: "Finance" }));
+    expect(within(panel).getByText("Invoice INV-0042 paid")).toBeInTheDocument();
+    expect(panel.querySelectorAll("[data-recent-kind]")).toHaveLength(1);
+    fireEvent.click(within(panel).getByRole("button", { name: "System" }));
+    const change = within(panel).getByText("Omar updated platform settings").closest("a");
+    expect(change?.getAttribute("href")).toBe("/en/admin/audit-logs?action=settings.update");
+  });
+
+  it("queries and offers only the areas the admin may read", async () => {
+    recentMock.mockResolvedValue(recent.filter((event) => event.category === "jobs"));
+    await show(RecentSection(ctx(only("jobs"))));
+    expect(Array.from(recentMock.mock.calls[0][0] as Set<string>)).toEqual(["jobs"]);
+    const filters = Array.from(document.querySelectorAll("[data-recent-filter]")).map((el) => el.getAttribute("data-recent-filter"));
+    expect(filters).toEqual(["all", "jobs"]);
+    // The full timeline needs audit-log access.
+    expect(screen.queryByRole("link", { name: /view all activity/i })).not.toBeInTheDocument();
+  });
+});
 
 describe("AdminDashboardPage", () => {
-  beforeEach(() => {
-    authMock.mockReset();
-    redirectMock.mockReset();
-    connectDBMock.mockReset();
-    userCountDocumentsMock.mockReset();
-    userAggregateMock.mockReset();
-    jobCountDocumentsMock.mockReset();
-    jobAggregateMock.mockReset();
-    applicationCountDocumentsMock.mockReset();
-    applicationAggregateMock.mockReset();
-    interviewCountDocumentsMock.mockReset();
-    placementCountDocumentsMock.mockReset();
+  /** The section elements the page streams, with the context each receives. */
+  function sectionContexts(node: ReactNode, found: SectionContext[] = []): SectionContext[] {
+    if (Array.isArray(node)) node.forEach((child) => sectionContexts(child, found));
+    else if (isValidElement<{ children?: ReactNode } & Partial<SectionContext>>(node)) {
+      if (typeof node.props.can === "function") found.push(node.props as SectionContext);
+      sectionContexts(node.props.children, found);
+    }
+    return found;
+  }
 
-    authMock.mockResolvedValue({
-      user: {
-        id: "admin-1",
-      },
+  async function page(periodParam?: string) {
+    return AdminDashboardPage({
+      params: Promise.resolve({ locale: "en" }),
+      searchParams: Promise.resolve(periodParam ? { period: periodParam } : {}),
     });
-    connectDBMock.mockResolvedValue(undefined);
-    userCountDocumentsMock
-      .mockResolvedValueOnce(20)
-      .mockResolvedValueOnce(6)
-      .mockResolvedValueOnce(4)
-      .mockResolvedValueOnce(5);
-    jobCountDocumentsMock
-      .mockResolvedValueOnce(7)
-      .mockResolvedValueOnce(3)
-      .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce(2);
-    applicationCountDocumentsMock
-      .mockResolvedValueOnce(12)
-      .mockResolvedValueOnce(5)
-      .mockResolvedValueOnce(3)
-      .mockResolvedValueOnce(1);
-    interviewCountDocumentsMock.mockResolvedValue(4);
-    placementCountDocumentsMock.mockResolvedValue(2);
+  }
 
-    userAggregateMock
-      .mockResolvedValueOnce([
-        { _id: "employer", count: 8 },
-        { _id: "job_seeker", count: 5 },
-        { _id: "agent", count: 4 },
-        { _id: "admin", count: 3 },
-      ])
-      .mockResolvedValueOnce([
-        { _id: "user-1", name: "Sara Ahmed", role: "employer", createdAt: "2026-04-15T10:00:00.000Z" },
-        { _id: "user-2", name: "Nadia Ali", role: "agent", createdAt: "2026-04-13T10:00:00.000Z" },
-      ]);
+  it("hands every section the period from the URL, falling back to 30 days", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "admin", name: "Super Admin" } });
+    const contexts = sectionContexts(await page("7d"));
+    expect(contexts).toHaveLength(7);
+    expect(contexts.every((context) => context.period.key === "7d")).toBe(true);
 
-    jobAggregateMock
-      .mockResolvedValueOnce([
-        { _id: { year: 2026, month: 1 }, count: 1 },
-        { _id: { year: 2026, month: 2 }, count: 2 },
-        { _id: { year: 2026, month: 3 }, count: 2 },
-        { _id: { year: 2026, month: 4 }, count: 3 },
-      ])
-      .mockResolvedValueOnce([
-        { _id: "job-1", title: "Senior Recruiter", status: "active", createdAt: "2026-04-14T10:00:00.000Z" },
-        { _id: "job-2", title: "Sales Manager", status: "draft", createdAt: "2026-04-12T10:00:00.000Z" },
-      ]);
-
-    applicationAggregateMock
-      .mockResolvedValueOnce([
-        { _id: { year: 2026, month: 1 }, count: 2 },
-        { _id: { year: 2026, month: 2 }, count: 3 },
-        { _id: { year: 2026, month: 3 }, count: 4 },
-        { _id: { year: 2026, month: 4 }, count: 5 },
-      ])
-      .mockResolvedValueOnce([
-        { _id: "application-1", status: "applied", appliedAt: "2026-04-16T08:00:00.000Z", createdAt: "2026-04-16T08:00:00.000Z" },
-        { _id: "application-2", status: "interview_scheduled", appliedAt: "2026-04-11T08:00:00.000Z", createdAt: "2026-04-11T08:00:00.000Z" },
-      ]);
-
-    interviewAggregateMock.mockResolvedValue([
-      { _id: "interview-1", status: "scheduled", createdAt: "2026-04-16T09:00:00.000Z" },
-    ]);
-    placementAggregateMock.mockResolvedValue([
-      { _id: "placement-1", status: "active", createdAt: "2026-04-15T09:00:00.000Z" },
-    ]);
-    platformAlertsMock.mockResolvedValue([
-      { id: "stale-open-applications", level: "critical", values: { count: 7 } },
-      { id: "jobs-without-applications", level: "warning", values: { count: 3 } },
-    ]);
+    expect(sectionContexts(await page("365d"))[0].period.key).toBe("30d");
   });
 
-  it("renders the admin dashboard with key sections and data", async () => {
-    const { container } = render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
-
-    // Core headings. The "Admin workspace" eyebrow above the title was dropped —
-    // it restated the sidebar section the user had just clicked. The h1 is now
-    // a time-of-day greeting, so match whichever one the clock produces.
-    expect(screen.getByRole("heading", { name: /good (morning|afternoon|evening)/i })).toBeInTheDocument();
-    // "Recommended next" and "Platform at a glance" were renamed in the
-    // dashboard declutter to "Needs attention" and "Overview".
-    expect(screen.getByRole("heading", { name: /^needs attention$/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^overview$/i })).toBeInTheDocument();
-
-    // Key sections exist
-    expect(screen.getByRole("heading", { name: /quick actions/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /recent activity/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /hiring funnel/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /jobs vs applications/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /users by role/i })).toBeInTheDocument();
-
-    // Data from mocks renders (dominant role is computed inline from usersByRole;
-    // the "zero applications" KPI insight now streams from its own Suspense
-    // subcomponent with a separate data source, so it isn't asserted here)
-    expect(screen.getByText(/employer is still the dominant cohort/i)).toBeInTheDocument();
-    expect(screen.getByText(/sara ahmed joined as employer/i)).toBeInTheDocument();
-    expect(container.querySelector(".admin-quick-actions-grid")).toBeInTheDocument();
-    // Quick actions render as linked rows now, not clipped cards, so the old
-    // overflow-hidden assertion no longer describes them.
-    expect(container.querySelectorAll(".admin-quick-actions-grid > a").length).toBeGreaterThan(0);
+  it("builds a permission check that honours custom-narrowed admins", async () => {
+    authMock.mockResolvedValue({
+      user: { id: "admin-2", role: "admin", permissionMode: "custom", customPermissions: { jobs: ["read"] } },
+    });
+    const [{ can }] = sectionContexts(await page());
+    expect(can("jobs")).toBe(true);
+    expect(can("invoices")).toBe(false);
   });
 
-  it("promotes the most severe platform alert as the next action, and links it to the filtered list", async () => {
-    const { container } = render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
-
-    // The critical alert wins over the warning whatever order the engine
-    // returned them in, and its link carries the filter that narrows the
-    // destination to the rows the alert counted — a bare /admin/applications
-    // link loses the finding on arrival.
-    const nextAction = screen.getByRole("heading", { name: /^needs attention$/i }).closest("section");
-    const primaryLink = nextAction?.querySelector('a[href*="stale=true"]');
-    expect(primaryLink).toBeTruthy();
-    expect(primaryLink?.getAttribute("href")).toBe("/en/admin/applications?stale=true");
-  });
-
-  it("shows the remaining alerts instead of hiding them behind the first", async () => {
-    render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
-
-    const secondary = screen.getByRole("heading", { name: /also needs attention/i }).closest("section");
-    expect(secondary).toBeTruthy();
-    // The second alert is reachable, not buried behind the first.
-    expect(secondary?.querySelector('a[href="/en/admin/jobs?applications=none"]')).toBeTruthy();
+  it("redirects to login without a session", async () => {
+    authMock.mockResolvedValue(null);
+    redirectMock.mockImplementation(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+    await expect(page()).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirectMock).toHaveBeenCalledWith("/en/login");
   });
 });

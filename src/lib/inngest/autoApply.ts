@@ -146,6 +146,7 @@ export const autoApplyFunction = inngest.createFunction(
           autoApplied: true,
           isAgentReferred: (seeker as { isAgentReferred?: boolean }).isAgentReferred === true,
           aiMatchScore: score,
+          seekerMatchScore: score,
           scoredVia: "engine",
           matchBreakdown: breakdown,
           appliedAt: now,
@@ -155,6 +156,11 @@ export const autoApplyFunction = inngest.createFunction(
         });
 
         await JobSeeker.updateOne({ _id: seeker._id }, { $inc: { autoApplyCount: 1 } });
+
+        // The score above is the seeker's; the employer's checklist, skills
+        // lists and (weighted) ranking come from the screening worker, the
+        // same as for every other application.
+        await inngest.send({ name: "application/ai-screen", data: { applicationId: String(application._id) } });
 
         await ActivityEvent.create({
           jobSeekerId: seeker._id,

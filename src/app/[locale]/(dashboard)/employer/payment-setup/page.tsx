@@ -12,6 +12,7 @@ import {
   Lock,
   Banknote,
   Zap,
+  Check,
 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -186,7 +187,7 @@ export default function EmployerPaymentSetupPage() {
           <div>
             <p className="text-sm font-medium text-foreground">{t("roadmapTitle")}</p>
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc list-inside">
-              <li>{t("roadmapStep1")}</li>
+              <li>{t("roadmapStep1")} <Check className="inline h-3 w-3 align-[-2px] text-emerald-600" aria-hidden="true" /></li>
               <li>{t("roadmapStep2")}</li>
               <li>{t("roadmapStep3")}</li>
               <li>{t("roadmapStep4")}</li>

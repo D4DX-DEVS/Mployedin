@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Star, CheckCircle, Send, Loader2, AlertTriangle } from "lucide-react";
+import { Star, CheckCircle, Send, Loader2, AlertTriangle, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -16,7 +16,7 @@ interface ApplicationInfo {
 }
 
 export default function ApplicationFeedbackPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id, locale } = useParams<{ id: string; locale: string }>();
   const router = useRouter();
   const t = useTranslations("applicationFeedback");
   const tc = useTranslations("common");
@@ -36,9 +36,11 @@ export default function ApplicationFeedbackPage() {
 
   useEffect(() => {
     fetch(`/api/applications/${id}`)
-      .then((r) => r.json())
+      // A 404 body is not an application: leave app null so the page says it
+      // could not be loaded instead of "wait for a final decision".
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        setApp(data.application ?? data);
+        setApp(data ? data.application ?? data : null);
       })
       .catch(() => setError(t("errorLoadingDetails")))
       .finally(() => setLoading(false));
@@ -101,11 +103,11 @@ export default function ApplicationFeedbackPage() {
       <div className="page-container">
         <div className="max-w-lg mx-auto text-center py-8 sm:py-16 space-y-3 sm:space-y-4">
           <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto" />
-          <h2 className="heading-section font-semibold">{t("feedbackNotAvailable")}</h2>
+          <h1 className="heading-section font-semibold">{t("feedbackNotAvailable")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("feedbackOnlyAfterDecision")}
+            {app ? t("feedbackOnlyAfterDecision") : t("errorLoadingDetails")}
           </p>
-          <Button variant="outline" onClick={() => router.push(`../applications`)}>
+          <Button variant="outline" onClick={() => router.push(`/${locale}/job-seeker/applications`)}>
             {t("backToApplications")}
           </Button>
         </div>
@@ -123,11 +125,11 @@ export default function ApplicationFeedbackPage() {
           <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto sm:w-16 sm:h-16">
             <CheckCircle className="w-7 h-7 text-emerald-600 sm:w-8 sm:h-8" />
           </div>
-          <h2 className="heading-section font-semibold">{t("thankYou")}</h2>
+          <h1 className="heading-section font-semibold">{t("thankYou")}</h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
             {t("feedbackRecorded", { jobTitle, companyName })}
           </p>
-          <Button variant="outline" onClick={() => router.push(`../applications`)}>
+          <Button variant="outline" onClick={() => router.push(`/${locale}/job-seeker/applications`)}>
             {t("backToApplications")}
           </Button>
         </div>
@@ -200,8 +202,8 @@ export default function ApplicationFeedbackPage() {
           <div className="pt-2 border-t border-border">
             <p className="text-sm text-muted-foreground mb-2">{t("recommendEmployerQuestion")}</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setWouldRecommend(true)} className={`rounded-lg border text-sm ${wouldRecommend === true ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "border-border hover:bg-muted"} chip-pad`}>👍 {tc("yes")}</button>
-              <button type="button" onClick={() => setWouldRecommend(false)} className={`rounded-lg border text-sm ${wouldRecommend === false ? "border-red-500 bg-red-500/10 text-red-600" : "border-border hover:bg-muted"} chip-pad`}>👎 {tc("no")}</button>
+              <button type="button" onClick={() => setWouldRecommend(true)} className={`rounded-lg border text-sm ${wouldRecommend === true ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "border-border hover:bg-muted"} chip-pad inline-flex items-center gap-1.5`}><ThumbsUp className="h-4 w-4" aria-hidden="true" />{tc("yes")}</button>
+              <button type="button" onClick={() => setWouldRecommend(false)} className={`rounded-lg border text-sm ${wouldRecommend === false ? "border-red-500 bg-red-500/10 text-red-600" : "border-border hover:bg-muted"} chip-pad inline-flex items-center gap-1.5`}><ThumbsDown className="h-4 w-4" aria-hidden="true" />{tc("no")}</button>
             </div>
           </div>
         </div>
@@ -240,7 +242,7 @@ export default function ApplicationFeedbackPage() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => router.push(`../applications`)}
+            onClick={() => router.push(`/${locale}/job-seeker/applications`)}
             disabled={submitting}
           >
             {t("skip")}

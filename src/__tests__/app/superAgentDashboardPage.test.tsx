@@ -51,12 +51,29 @@ jest.mock("@/lib/auth/agentRestrictions", () => ({
     assignedCityIds: [],
     assignedStateIds: [],
   }),
+  getSuperAgentBook: jest.fn().mockResolvedValue({
+    agentIds: [],
+    employerIds: [],
+    saProfileId: "sa-1",
+    ownershipMatch: { employerId: { $in: [] } },
+  }),
+}));
+
+// Region names are resolved from City/State/Country, which pull in bson.
+const resolveAssignedRegionsMock = jest.fn();
+jest.mock("@/lib/agents/assignedRegion", () => ({
+  __esModule: true,
+  resolveAssignedRegions: (...args: unknown[]) => resolveAssignedRegionsMock(...args),
 }));
 
 describe("SuperAgentDashboard", () => {
   beforeEach(() => {
     authMock.mockReset();
     redirectMock.mockReset();
+    resolveAssignedRegionsMock.mockReset();
+    resolveAssignedRegionsMock.mockResolvedValue([
+      { id: "city-1", type: "city", name: "Tirur", parent: "Kerala, India" },
+    ]);
     authMock.mockResolvedValue({
       user: {
         id: "user-1",
@@ -67,9 +84,11 @@ describe("SuperAgentDashboard", () => {
   it("renders workspace heading for the super-agent dashboard", async () => {
     render(await SuperAgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
 
-    // The "Super agent workspace" eyebrow was dropped — it restated the
-    // heading directly below it.
-    expect(screen.getByRole("heading", { name: /super agent dashboard/i })).toBeInTheDocument();
+    // A greeting in the super-agent's own time zone, on the same WorkspaceHeader
+    // the agent home uses.
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(/good (morning|afternoon|evening), there/i);
+    expect(heading.closest("section")).toHaveClass("workspace-header");
     expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
     // The four region figures used to sit in their own "Region at a glance"
     // panel under the header. They now render inside the page header's metric
@@ -79,6 +98,25 @@ describe("SuperAgentDashboard", () => {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
     expect(screen.queryByRole("heading", { name: /region at a glance/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the super-agent's own assigned region in the hero", async () => {
+    render(await SuperAgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
+
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section")!;
+    // The region pill leads the hero's context line, parent chain included.
+    expect(hero.querySelector('[data-testid="assigned-region-badge"]')).toHaveTextContent("Region: Tirur, Kerala, India");
+    // Resolved from the SA's own ids on the scope, not the agents' union.
+    expect(resolveAssignedRegionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ assignedCityIds: [], assignedStateIds: [] }),
+      "en",
+    );
+  });
+
+  it("says so when the super-agent has no region yet", async () => {
+    resolveAssignedRegionsMock.mockResolvedValueOnce([]);
+    render(await SuperAgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
+    expect(screen.getByTestId("assigned-region-badge")).toHaveTextContent("No region assigned");
   });
 
   it("says nothing is waiting when no queue has work in it", async () => {
@@ -101,7 +139,7 @@ describe("SuperAgentDashboard", () => {
     // sentence: `getTranslations` is stubbed in this environment and returns
     // the raw ICU string instead of formatting the plural.
     const row = screen.getByRole("link", { name: /review requests/i });
-    expect(row).toHaveAttribute("href", "/en/super-agent/exhibitions?status=submitted");
+    expect(row).toHaveAttribute("href", "/en/super-agent/exhibitions?status=pending_review");
     // The quiet-day suggestion card steps aside once there is real work.
     expect(screen.queryByRole("heading", { name: /recommended next/i })).not.toBeInTheDocument();
   });

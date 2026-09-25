@@ -16,7 +16,8 @@ import Job from "@/models/Job";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import { escapeRegex } from "@/lib/security/sanitize";
-import { isInvoiceStatus } from "@/lib/invoices/status";
+import { isInvoiceStatus, NON_REVENUE_INVOICE_STATUSES, PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { INVOICE_DISPUTE_OPEN_FILTER, PAYMENT_NOTICE_PENDING_FILTER } from "@/lib/admin/queueFilters";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -88,6 +89,15 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const statusParam = url.searchParams.get("status");
   if (isInvoiceStatus(statusParam)) {
     filter.status = statusParam;
+  }
+
+  // "Needs a person" filters behind the admin dashboard's queue rows — the same
+  // filter objects the dashboard counts with, so the row and the list agree.
+  const attentionParam = url.searchParams.get("attention");
+  if (attentionParam === "payment_notice") {
+    Object.assign(filter, PAYMENT_NOTICE_PENDING_FILTER);
+  } else if (attentionParam === "dispute") {
+    Object.assign(filter, INVOICE_DISPUTE_OPEN_FILTER);
   }
 
   // Type filter
@@ -194,6 +204,15 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // even though the invoice list is populated). Cast the filter through the schema
   // so string ids become ObjectIds before using it as the aggregation $match stage.
   const aggregationMatch = Invoice.find(filter).cast(Invoice) as Record<string, unknown>;
+
+  // Void / cancelled / refunded / credit-note invoices are not revenue: they stay
+  // in the per-status counts but out of the money totals (as in /analytics).
+  // ANDed, not spread: the list's own status filter must still apply.
+  const revenueMatch = { $and: [aggregationMatch, { status: { $nin: NON_REVENUE_INVOICE_STATUSES } }] };
+  // "Pending" is money someone can pay now, as in /analytics: a draft or an
+  // invoice still awaiting approval has a balance but is not owed yet.
+  const payable: readonly string[] = PAYABLE_INVOICE_STATUSES;
+
   const [summaryAgg, currencyAgg] = await Promise.all([
     Invoice.aggregate([
       { $match: aggregationMatch },
@@ -214,14 +233,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // over a table of AED invoices. Nothing converts, so the honest total is
     // one per currency the invoices are actually in.
     Invoice.aggregate([
-      { $match: aggregationMatch },
+      { $match: revenueMatch },
       {
         $group: {
           _id: { $ifNull: ["$currency", "AED"] },
           total: { $sum: "$totalAmount" },
           count: { $sum: 1 },
           paidTotal: { $sum: "$paidAmount" },
-          balanceTotal: { $sum: "$balanceDue" },
+          balanceTotal: { $sum: { $cond: [{ $in: ["$status", [...payable]] }, "$balanceDue", 0] } },
         },
       },
       { $sort: { total: -1 } },
@@ -254,11 +273,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     if (s in summary.counts) {
       summary.counts[s] = row.count as number;
     }
-    summary.totalAmount += row.total;
+    // Only revenue-bearing invoices add to the money totals.
+    if (!NON_REVENUE_INVOICE_STATUSES.includes(s)) {
+      summary.totalAmount += row.total;
+      summary.totalTax += row.taxTotal || 0;
+      summary.totalPaid += row.paidTotal || 0;
+    }
+    if (payable.includes(s)) {
+      summary.totalBalance += row.balanceTotal || 0;
+    }
     summary.totalCount += row.count;
-    summary.totalTax += row.taxTotal || 0;
-    summary.totalPaid += row.paidTotal || 0;
-    summary.totalBalance += row.balanceTotal || 0;
   }
 
   return NextResponse.json({

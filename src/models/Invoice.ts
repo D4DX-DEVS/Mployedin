@@ -403,9 +403,11 @@ InvoiceSchema.pre("save", function () {
   this.paidAmount = fromCents(paidC);
   this.balanceDue = fromCents(Math.max(0, totalC - paidC - toCents(this.refundedAmount || 0)));
 
-  // Platform revenue
+  // Platform revenue = post-discount subtotal + service charge − commissions.
+  // Tax is a pass-through liability, never revenue.
   const totalCommissionC = (this.commissions || []).reduce((sum, c) => sum + toCents(c.amount), 0);
-  this.platformRevenue = fromCents(totalC - totalCommissionC);
+  const serviceChargeC = toCents(this.serviceCharge || 0);
+  this.platformRevenue = fromCents(afterDiscountC + serviceChargeC - totalCommissionC);
 
   // Auto-update status based on payments
   if (!(INVOICE_TERMINAL_STATUSES as readonly string[]).includes(this.status)) {

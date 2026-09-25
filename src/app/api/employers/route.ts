@@ -5,7 +5,7 @@ import User from "@/models/User";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
 import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
-import { escapeRegex } from "@/lib/security/sanitize";
+import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { employerAdminCreateSchema } from "@/lib/validators/employers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -16,6 +16,7 @@ import crypto from "crypto";
 import logger from "@/lib/logger";
 import { buildEmployerAdminCreatePayload } from "@/lib/employers/admin";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { resolveEmployerAgents, unassignedEmployerFilter } from "@/lib/agents/employerAssignment";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -233,12 +234,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // falls through to the admin-shaped query and can enumerate every company on
   // the platform — the profile projection below includes companyEmail, phone,
   // address, taxId and verificationDocs.
+  let ownEmployerUserId: unknown = null;
   if (ctx.role === "employer") {
     const ownProfile = await Employer.findOne({ userId: ctx.userId }).select("userId").lean();
     if (!ownProfile) {
       return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
     }
-    query._id = ownProfile.userId;
+    ownEmployerUserId = ownProfile.userId;
+    query._id = ownEmployerUserId;
   }
   if (status === "active") query.isActive = true;
   else if (status === "inactive") query.isActive = false;
@@ -250,8 +253,24 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (location) empFilter.address = { $regex: escapeRegex(location), $options: "i" };
   if (verified === "verified") empFilter.isAgentVerified = true;
   else if (verified === "unverified") empFilter.isAgentVerified = { $ne: true };
+  // agentId: "none" (no agent), "any" (has one), or an Agent doc id. Read from
+  // BOTH ends of the employer↔agent link, the way the agent dashboard does.
   const agentIdParam = searchParams.get("agentId") ?? "";
-  if (agentIdParam) empFilter.agentId = agentIdParam;
+  if (agentIdParam === "none") {
+    empFilter.$and = [await unassignedEmployerFilter()];
+  } else if (agentIdParam === "any") {
+    const linked = await Agent.distinct("assignedEmployerIds", { roleArchivedAt: null });
+    empFilter.$and = [{ $or: [{ agentId: { $ne: null } }, { _id: { $in: linked } }] }];
+  } else if (agentIdParam) {
+    const agentDoc = isValidObjectId(agentIdParam)
+      ? await Agent.findById(agentIdParam).select("assignedEmployerIds").lean()
+      : null;
+    // An unknown agent id matches nothing rather than falling back to everyone.
+    empFilter.$and = [agentDoc
+      ? { $or: [{ agentId: agentDoc._id }, { _id: { $in: agentDoc.assignedEmployerIds ?? [] } }] }
+      : { _id: null }];
+  }
+  const hasEmployerFilter = Boolean(industry || location || verified || agentIdParam);
 
   // Search spans both User (name, email) AND Employer (companyName, industry)
   // We need to find userIds from Employer matches and merge with User-level matches
@@ -279,7 +298,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // If we have employer-level filters (without search), find matching userIds first
   let userIdConstraint: unknown[] | null = null;
-  if (!search && (industry || location || verified)) {
+  if (!search && hasEmployerFilter) {
     const matchingProfiles = await Employer.find(empFilter).select("userId").lean();
     userIdConstraint = matchingProfiles.map((p) => p.userId);
     if (userIdConstraint.length === 0) {
@@ -294,7 +313,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // When search is active AND we also have employer-level filters, narrow by those too
-  if (search && (industry || location || verified)) {
+  if (search && hasEmployerFilter) {
     const filteredProfiles = await Employer.find(empFilter).select("userId").lean();
     const filteredUserIds = filteredProfiles.map((p) => p.userId);
     if (filteredUserIds.length === 0) {
@@ -308,6 +327,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // Intersect: user must match search AND be in filtered employer set
     query._id = { ...(query._id as object ?? {}), $in: filteredUserIds };
   }
+
+  // The filter blocks above assign query._id outright, which used to replace
+  // the employer's own-account pin — `?industry=x` listed every matching
+  // company to an employer. Re-pin last: an employer only ever sees itself.
+  if (ownEmployerUserId) query._id = ownEmployerUserId;
 
   // Sorting
   const VALID_SORT = new Set(["name", "email", "createdAt"]);
@@ -328,31 +352,19 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const userIds = users.map((u) => u._id);
   const employerProfiles = await Employer.find({ userId: { $in: userIds } })
     .select("userId companyName companyEmail phone address country taxId industry verificationDocs domainVerified verificationLevel isAgentVerified agentId")
-    .populate("agentId", "userId")
     .lean();
 
   const profileMap = new Map(
     employerProfiles.map((e) => [String(e.userId), e])
   );
 
-  // Look up agent user names for assignedAgent display
-  const agentUserIdSet = new Set(
-    employerProfiles.filter((e) => e.agentId).map((e) => {
-      const agent = e.agentId as { userId?: unknown } | undefined;
-      return agent?.userId ? String(agent.userId) : null;
-    }).filter(Boolean) as string[]
-  );
-  const agentUsers = agentUserIdSet.size > 0
-    ? await User.find({ _id: { $in: [...agentUserIdSet] } }).select("name").lean()
-    : [];
-  const agentNameMap = new Map(agentUsers.map((u) => [String(u._id), u.name]));
+  // The agent running each account (either end of the link) and their super-agent.
+  const agentByEmployer = await resolveEmployerAgents(employerProfiles);
 
   const employers = users
     .filter((u) => profileMap.has(String(u._id))) // exclude orphaned employer Users without Employer profile
     .map((u) => {
     const profile = profileMap.get(String(u._id))!;
-    const agentProfile = profile?.agentId as { userId?: unknown } | undefined;
-    const agentUserId = agentProfile?.userId ? String(agentProfile.userId) : null;
     return {
       ...u,
       employerProfileId: String(profile._id), // canonical Employer._id for tenant switch
@@ -368,7 +380,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       domainVerified: profile?.domainVerified ?? false,
       verificationLevel: profile?.verificationLevel,
       isAgentVerified: profile?.isAgentVerified ?? false,
-      assignedAgent: agentUserId ? { name: agentNameMap.get(agentUserId) ?? "Unknown" } : undefined,
+      assignedAgent: agentByEmployer.get(String(profile._id)) ?? null,
     };
   });
 

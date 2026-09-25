@@ -20,7 +20,11 @@
 
 import logger from "@/lib/logger";
 import { providerFetch } from "@/lib/ai/providerFetch";
-import { isOpenRouterTextProvider, openRouterChatFetch } from "@/lib/ai/openRouter";
+import {
+  isOpenRouterTextProvider,
+  openRouterChatFetch,
+  type OpenRouterRequestOptions,
+} from "@/lib/ai/openRouter";
 
 /** Native Gemini API base. Override only to point at a proxy/gateway. */
 export const GOOGLE_AI_BASE = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta";
@@ -179,10 +183,12 @@ export async function chatCompletionsFetch(
   body: Record<string, unknown>,
   label: string,
   timeoutMs?: number,
-  apiKey?: string
+  apiKey?: string,
+  /** OpenRouter only (e.g. the flex tier); ignored on the Google-direct path. */
+  options?: OpenRouterRequestOptions
 ): Promise<Response> {
   if (!apiKey && isOpenRouterTextProvider()) {
-    return openRouterChatFetch(body, label, timeoutMs);
+    return openRouterChatFetch(body, label, timeoutMs, options);
   }
   return providerFetch(
     `${GOOGLE_AI_OPENAI_BASE}/chat/completions`,

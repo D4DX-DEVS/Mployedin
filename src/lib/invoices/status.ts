@@ -1,3 +1,9 @@
+/** Invoices that are not revenue: kept in per-status counts, out of every money total. */
+export const NON_REVENUE_INVOICE_STATUSES = ["void", "cancelled", "refunded", "credit_note"];
+
+/** A void is irreversible, so it must say why; the API and the void form share this floor. */
+export const VOID_REASON_MIN_LENGTH = 10;
+
 export const INVOICE_STATUSES = [
   "draft",
   "pending_approval",

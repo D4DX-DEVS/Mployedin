@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { X, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,9 +9,14 @@ import type { TaxonomyType } from "@/lib/taxonomy/seeds";
 /**
  * Debounced taxonomy search hook. Hits the public /api/taxonomy endpoint and
  * returns suggestion strings for the given type + query.
+ *
+ * `fresh` is false while `items` still answer an earlier query — during the
+ * debounce and the request. A keyboard shortcut must not act on those: typing
+ * "React" and pressing Enter at once used to add "JavaScript", the first
+ * suggestion for "Jav…".
  */
 function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200) {
-  const [items, setItems] = React.useState<string[]>([]);
+  const [result, setResult] = React.useState<{ query: string; items: string[] }>({ query: "", items: [] });
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -25,7 +31,7 @@ function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200) 
         );
         if (!res.ok) return;
         const data = (await res.json()) as { items?: string[] };
-        if (active) setItems(data.items ?? []);
+        if (active) setResult({ query, items: data.items ?? [] });
       } catch {
         /* aborted or network error — keep previous items */
       } finally {
@@ -40,7 +46,7 @@ function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200) 
     };
   }, [type, query, debounceMs]);
 
-  return { items, loading };
+  return { items: result.items, loading, fresh: result.query === query };
 }
 
 function useOutsideClick(onOutside: () => void) {
@@ -67,6 +73,8 @@ interface TagAutocompleteProps {
   allowCustom?: boolean;
   className?: string;
   id?: string;
+  /** Accessible name when no <label htmlFor={id}> points at the input. */
+  ariaLabel?: string;
 }
 
 /**
@@ -82,11 +90,13 @@ export function TagAutocomplete({
   allowCustom = true,
   className,
   id,
+  ariaLabel,
 }: TagAutocompleteProps) {
+  const t = useTranslations("common");
   const [input, setInput] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
-  const { items, loading } = useTaxonomySearch(type, input);
+  const { items, loading, fresh } = useTaxonomySearch(type, input);
   const containerRef = useOutsideClick(() => setOpen(false));
 
   const lowerValue = value.map((v) => v.toLowerCase());
@@ -117,9 +127,15 @@ export function TagAutocomplete({
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
-      if (activeIndex >= 0 && suggestions[activeIndex]) add(suggestions[activeIndex]);
+      // Only suggestions that answer what is typed NOW count — a highlight can
+      // sit on a stale one (the mouse hovering where the old list was). Then an
+      // exact match keeps the canonical spelling, then free text, then (for
+      // closed lists) the top suggestion.
+      const exact = fresh ? suggestions.find((s) => s.toLowerCase() === input.trim().toLowerCase()) : undefined;
+      if (fresh && activeIndex >= 0 && suggestions[activeIndex]) add(suggestions[activeIndex]);
+      else if (exact) add(exact);
       else if (allowCustom) add(input);
-      else if (suggestions[0]) add(suggestions[0]);
+      else if (fresh && suggestions[0]) add(suggestions[0]);
     } else if (e.key === "Backspace" && !input && value.length) {
       remove(value[value.length - 1]);
     }
@@ -156,7 +172,8 @@ export function TagAutocomplete({
             onFocus={() => setOpen(true)}
             onBlur={() => setOpen(false)}
             onKeyDown={handleKeyDown}
-            placeholder={value.length === 0 ? placeholder : "Add more…"}
+            placeholder={value.length === 0 ? placeholder : t("addMore")}
+            aria-label={ariaLabel}
             autoComplete="off"
             className="outline-none text-sm flex-1 min-w-[90px] sm:min-w-[150px] bg-transparent text-foreground placeholder:text-muted-foreground"
           />
@@ -242,7 +259,7 @@ export function Autocomplete({
 }: AutocompleteProps) {
   const [open, setOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
-  const { items, loading } = useTaxonomySearch(type, value);
+  const { items, loading, fresh } = useTaxonomySearch(type, value);
   // Clicking away is "I'm done typing", so it settles the value. This hook does
   // not fire for clicks inside the dropdown, which is why it is used here
   // instead of the input's onBlur — blur would beat a suggestion click and
@@ -270,10 +287,11 @@ export function Autocomplete({
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
-      if (activeIndex >= 0 && suggestions[activeIndex]) {
+      // Same rule as TagAutocomplete: never commit a suggestion for an older query.
+      if (fresh && activeIndex >= 0 && suggestions[activeIndex]) {
         e.preventDefault();
         commit(suggestions[activeIndex]);
-      } else if (!allowCustom && suggestions[0]) {
+      } else if (!allowCustom && fresh && suggestions[0]) {
         e.preventDefault();
         commit(suggestions[0]);
       } else if (allowCustom && value.trim()) {

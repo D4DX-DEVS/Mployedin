@@ -215,6 +215,13 @@ export async function cascadeDeleteAgentUser(
       .lean<{ _id: Types.ObjectId } | null>();
     if (superAgent?._id) {
       const saId = superAgent._id;
+      // Otherwise the team keeps pointing at a super agent that no longer
+      // exists, and reads as "already assigned" when an admin re-homes it.
+      await track(
+        summary,
+        "agentsDetached",
+        Agent.updateMany({ superAgentId: saId }, { $unset: { superAgentId: "" } }),
+      );
       await track(
         summary,
         "leadsDetached",

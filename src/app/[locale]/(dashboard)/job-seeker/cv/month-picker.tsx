@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ export function MonthYearPicker({
   const selectedMonth = parsed ? parseInt(parsed[2], 10) : null; // 1-12
 
   const [open, setOpen] = useState(false);
+  const triggerId = useId();
   const [viewYear, setViewYear] = useState(selectedYear ?? new Date().getFullYear());
 
   const monthFmt = new Intl.DateTimeFormat(locale, { month: "short" });
@@ -57,10 +58,11 @@ export function MonthYearPicker({
 
   return (
     <div className="space-y-1.5">
-      {label && <Label className="text-xs text-muted-foreground">{label}</Label>}
+      {label && <Label htmlFor={triggerId} className="text-xs text-muted-foreground">{label}</Label>}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
+            id={triggerId}
             type="button"
             disabled={disabled}
             className={cn(

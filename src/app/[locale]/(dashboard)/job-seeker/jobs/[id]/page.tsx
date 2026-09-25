@@ -3,7 +3,7 @@ import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
+import { MapPin, Briefcase, Clock, Users, Globe, Banknote } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -257,7 +257,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   </span>
                   {salary && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
-                      <span>💰</span>
+                      <Banknote className="h-4 w-4" aria-hidden="true" />
                       {salary}
                     </span>
                   )}

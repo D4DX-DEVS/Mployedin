@@ -168,7 +168,7 @@ export default function AgentTargetManagementPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative">
           <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-11 w-28 rounded-xl border-border bg-card pl-9 text-sm" />
+          <Input type="number" aria-label={t("year")} value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-11 w-28 rounded-xl border-border bg-card pl-9 text-sm" />
         </div>
         <Button variant="outline" size="sm" onClick={() => setYearFilter(currentYear)} className="rounded-lg max-sm:min-h-11" disabled={yearFilter === currentYear}>
           <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset

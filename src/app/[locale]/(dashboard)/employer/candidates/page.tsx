@@ -830,7 +830,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
                   <p className="mt-0.5 truncate text-xs opacity-80">{candidate.summary}</p>
                 </div>
                 <span className="shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider">
-                  {candidate.recommendation}
+                  {t(candidate.recommendation)}
                 </span>
                 <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
               </button>

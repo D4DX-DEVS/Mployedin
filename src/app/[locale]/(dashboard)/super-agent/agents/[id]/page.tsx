@@ -403,9 +403,11 @@ export default function AgentDetailPage() {
                 <span className="inline-flex items-center gap-1.5">
                   <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{agent.referralCode}</code>
                   <button
+                    type="button"
                     onClick={() => navigator.clipboard.writeText(agent.referralCode)}
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    className="tap-target-box text-muted-foreground hover:text-primary transition-colors"
                     title={tc("copy")}
+                    aria-label={tc("copy")}
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>

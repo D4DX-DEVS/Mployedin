@@ -4,13 +4,22 @@ import { User } from "@/models/User";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
-import { hashOtp } from "@/lib/auth/emailVerification";
+import { hashOtp, VERIFIABLE_ACCOUNT } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
 import { z } from "zod";
 import { getClientIp } from "@/lib/security/clientIp";
+import { auth } from "@/lib/auth/config";
+
+const GENERIC_SUCCESS = "If that email exists, a verification link has been sent.";
 
 const schema = z.object({
   email: z.string().email().max(254),
+  /**
+   * Sent by the verify page on arrival. Accounts an admin or super-agent creates
+   * reach that page with no code ever issued, so it asks for one — but only when
+   * none is live, or it would replace the code a registration just sent.
+   */
+  ifMissing: z.boolean().optional(),
 });
 
 /**
@@ -18,12 +27,6 @@ const schema = z.object({
  * Re-send the email verification link. Rate-limited to prevent abuse.
  */
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req.headers);
-  const { allowed } = await checkRateLimit(`resend-verify:${ip}`, { limit: 3, windowSec: 300, prefix: "rsndv", failClosed: true });
-  if (!allowed) {
-    return NextResponse.json({ error: "Too many requests. Please wait a few minutes." }, { status: 429 });
-  }
-
   let body: z.infer<typeof schema>;
   try {
     body = schema.parse(await req.json());
@@ -31,17 +34,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  // The arrival request fires on page load, with no click, so it only counts
+  // for a signed-in user asking about their own address. Otherwise any page
+  // could have a visitor's browser mail a code to someone else.
+  if (body.ifMissing) {
+    const session = await auth();
+    if (session?.user?.email?.toLowerCase() !== body.email.toLowerCase().trim()) {
+      return NextResponse.json({ success: true, message: GENERIC_SUCCESS });
+    }
+  }
+
+  // The arrival request gets its own bucket so it never eats the user's manual
+  // Resends; it sends at most once per code lifetime, so it can't flood an inbox.
+  const ip = getClientIp(req.headers);
+  const { allowed } = body.ifMissing
+    ? await checkRateLimit(`resend-verify-auto:${ip}`, { limit: 10, windowSec: 300, prefix: "rsndva", failClosed: true })
+    : await checkRateLimit(`resend-verify:${ip}`, { limit: 3, windowSec: 300, prefix: "rsndv", failClosed: true });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests. Please wait a few minutes." }, { status: 429 });
+  }
+
   await connectDB();
 
   const user = await User.findOne({
     email: body.email.toLowerCase().trim(),
-    isActive: true,
     isEmailVerified: false,
+    ...VERIFIABLE_ACCOUNT,
   }).select("+emailVerificationOtp +emailVerificationExpiry");
 
   // Always return success to avoid email enumeration
   if (!user) {
-    return NextResponse.json({ success: true, message: "If that email exists, a verification link has been sent." });
+    return NextResponse.json({ success: true, message: GENERIC_SUCCESS });
+  }
+
+  const hasLiveCode =
+    !!user.emailVerificationOtp && !!user.emailVerificationExpiry && user.emailVerificationExpiry > new Date();
+  if (body.ifMissing && hasLiveCode) {
+    return NextResponse.json({ success: true, message: GENERIC_SUCCESS });
   }
 
   // Generate new token

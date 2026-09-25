@@ -12,6 +12,7 @@ import GdprRequest from "@/models/GdprRequest";
 import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
 import { redactUserMessages } from "@/lib/gdpr/redactMessages";
+import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
 
 /**
  * Record a completed self-service request in the GDPR register the admin page
@@ -164,6 +165,14 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
       // Best-effort, but the DB no longer references this object: the log line
       // is the only record left of what still needs deleting from the bucket.
       logger.warn({ err, userId: ctx.userId, url }, "[gdpr] erasure could not delete stored file");
+    }
+  }
+  // The CV records hold each CV's full text and what was read from it.
+  if (seekerBefore?._id) {
+    try {
+      await deleteCvRecordsOfSeeker(seekerBefore._id as string);
+    } catch (err) {
+      logger.error({ err, userId: ctx.userId }, "[gdpr] erasure could not delete CV records");
     }
   }
 

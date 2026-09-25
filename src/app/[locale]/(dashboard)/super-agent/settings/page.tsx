@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import {
   Globe, DollarSign, Save, CheckCircle2, Bell, Shield, Clock,
@@ -35,6 +35,9 @@ import {
 } from "@/lib/currency";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
+import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
+import { AssignedRegionFields } from "@/components/features/settings/AssignedRegionFields";
+import type { AssignedRegion } from "@/lib/agents/assignedRegion";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -198,6 +201,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function ProfileTab() {
   const t = useTranslations("superAgentSettings");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const { data: session, update: updateSession } = useSession();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -213,6 +217,8 @@ function ProfileTab() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileSnap, setProfileSnap] = useState("");
+  // Admin-assigned territory, shown read-only.
+  const [assignedRegions, setAssignedRegions] = useState<AssignedRegion[]>([]);
 
   const userName = session?.user?.name ?? t("superAgentRole");
   const userEmail = session?.user?.email ?? "";
@@ -224,18 +230,18 @@ function ProfileTab() {
   }, [session?.user?.image, session?.user?.name]);
 
   useEffect(() => {
-    fetch("/api/super-agent/profile")
+    fetch(`/api/super-agent/profile?locale=${locale}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.profile) {
           if (data.profile.phone) setPhone(data.profile.phone);
+          setAssignedRegions(Array.isArray(data.profile.assignedRegions) ? data.profile.assignedRegions : []);
           setProfileSnap(JSON.stringify({ name: session?.user?.name ?? "", phone: data.profile.phone ?? "" }));
         }
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false));
-   
-  }, []);
+  }, [locale]);
 
   const profileHasChanges = profileSnap ? JSON.stringify({ name, phone }) !== profileSnap : false;
 
@@ -391,6 +397,7 @@ function ProfileTab() {
                 <Shield className="w-3 h-3" />
                 {t("superAgentRole")}
               </span>
+              {!profileLoading && <AssignedRegionBadge regions={assignedRegions} />}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Button
@@ -476,6 +483,8 @@ function ProfileTab() {
                   {t("emailDesc")}
                 </p>
               </div>
+
+              <AssignedRegionFields regions={assignedRegions} />
 
               <SaveFeedback saving={profileSaving} saved={profileSaved} hasChanges={profileHasChanges} onSave={handleProfileSave} label={t("saveProfile")} />
             </>

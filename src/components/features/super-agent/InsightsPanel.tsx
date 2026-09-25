@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
-  AlertTriangle, TrendingUp, Lightbulb, Rocket, RefreshCw, Sparkles,
+  AlertTriangle, Check, TrendingUp, Lightbulb, Rocket, RefreshCw, Sparkles,
   ThumbsUp, ThumbsDown, ArrowRight, Loader2, X, Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -416,7 +416,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
                 {insight.action && insight.actionType ? (
                   isActionComplete ? (
                     <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                      ✓ {t("done")}
+                      <Check className="h-3 w-3" aria-hidden="true" />{t("done")}
                     </span>
                   ) : (
                     <button

@@ -90,11 +90,12 @@ export function generateOfferLetterPdf(data: OfferLetterData): Buffer {
   y += introLines.length * 15 + 16;
 
   // ── Terms ───────────────────────────────────────────────
+  const periodLabel = data.salary.period === "monthly" ? "month" : "year";
   const rows: Array<[string, string]> = [
     ["Position", data.jobTitle],
     [
       "Compensation",
-      `${data.salary.currency} ${data.salary.amount.toLocaleString("en-US")} / ${data.salary.period}`,
+      `${data.salary.currency} ${data.salary.amount.toLocaleString("en-US")} / ${periodLabel}`,
     ],
     ["Start date", safeDate(data.startDate)],
     ["Offer valid until", safeDate(data.expiresAt)],

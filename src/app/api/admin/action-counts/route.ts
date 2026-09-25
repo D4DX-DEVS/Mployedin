@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Conversation from "@/models/Conversation";
 import ContactSubmission from "@/models/ContactSubmission";
 import Webhook from "@/models/Webhook";
+import { OPEN_SUPPORT_TICKET_FILTER } from "@/lib/admin/queueFilters";
 
 /**
  * GET /api/admin/action-counts — what is waiting on this admin right now.
@@ -27,17 +28,10 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
 
   const [openSupportTickets, assignedSupportTickets, unreadContactSubmissions, failingWebhooks] =
     await Promise.all([
-      Conversation.countDocuments({
-        type: "customer_care",
-        "customerCare.status": { $in: ["open", "assigned"] },
-      }),
+      Conversation.countDocuments(OPEN_SUPPORT_TICKET_FILTER),
       // Tickets this particular admin owns. The badge shows the queue total, but
       // a personal count is what makes "assigned to me" actionable.
-      Conversation.countDocuments({
-        type: "customer_care",
-        "customerCare.status": { $in: ["open", "assigned"] },
-        "customerCare.assignedTo": ctx.userId,
-      }),
+      Conversation.countDocuments({ ...OPEN_SUPPORT_TICKET_FILTER, "customerCare.assignedTo": ctx.userId }),
       ContactSubmission.countDocuments({ isRead: false }),
       Webhook.countDocuments({ isActive: true, lastStatus: "failed" }),
     ]);

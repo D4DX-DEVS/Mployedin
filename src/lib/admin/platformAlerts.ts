@@ -37,14 +37,23 @@ export type PlatformAlertId =
 /** Applications older than this with no decision are considered stale. */
 export const STALE_APPLICATION_MS = 48 * 60 * 60 * 1000;
 
-/** Statuses that still need a human decision. */
-export const OPEN_APPLICATION_STATUSES = [
-  "applied",
-  "shortlisted",
-  "interview_scheduled",
-  "selected",
-  "offer",
-];
+/**
+ * Statuses that mean nobody has looked at the application yet.
+ *
+ * This used to be every open status, measured from `appliedAt`, so an offer
+ * made on day 3 of a 10-day-old application counted as "needs review" — the
+ * alert said 53 while almost none of them were waiting on a reviewer. A
+ * shortlisted or interviewing candidate has already been reviewed; only
+ * `applied` is untouched.
+ */
+export const AWAITING_REVIEW_STATUSES = ["applied"];
+
+/**
+ * Jobs the "no applications" alert counts. Drafts, paused, closed and expired
+ * jobs cannot receive applications, so counting them reported more jobs
+ * "without demand" (92) than there were active jobs (68).
+ */
+export const JOBS_WITHOUT_APPLICATIONS_MATCH = { status: "active", deletedAt: null } as const;
 
 export interface PlatformAlertInputs {
   jobsWithoutApplications: number;
@@ -128,13 +137,14 @@ export const PLATFORM_ALERT_ACTIONS: Record<
   { path: string | null; titleKey: string; descriptionKey: string; icon: string }
 > = {
   "jobs-without-applications": {
-    path: "/admin/jobs?applications=none",
+    // status=active so the list shows exactly the rows the alert counted.
+    path: "/admin/jobs?applications=none&status=active",
     titleKey: "alertJobsWithoutDemandTitle",
     descriptionKey: "alertJobsWithoutDemandDescription",
     icon: "Briefcase",
   },
   "stale-open-applications": {
-    // No status here on purpose: the API applies OPEN_APPLICATION_STATUSES
+    // No status here on purpose: the API applies AWAITING_REVIEW_STATUSES
     // for `stale=true`, so the rows on the page are exactly the rows counted.
     path: "/admin/applications?stale=true",
     titleKey: "alertStaleApplicationsTitle",

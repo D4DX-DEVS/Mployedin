@@ -74,17 +74,19 @@ describe("GET /api/applications — referred candidates first", () => {
 
   it("prefixes the default (newest) sort with isAgentReferred", async () => {
     await list(`jobId=${JOB_ID}`);
-    expect(sorts[0]).toEqual({ isAgentReferred: -1, appliedAt: -1 });
+    expect(sorts[0]).toEqual({ isAgentReferred: -1, appliedAt: -1, _id: -1 });
   });
 
   it("keeps oldest-first but still referred-first", async () => {
     await list(`jobId=${JOB_ID}&sortBy=appliedAt&sortOrder=asc`);
-    expect(sorts[0]).toEqual({ isAgentReferred: -1, appliedAt: 1 });
+    expect(sorts[0]).toEqual({ isAgentReferred: -1, appliedAt: 1, _id: 1 });
   });
 
   it("leaves the best-match order untouched", async () => {
     await list(`jobId=${JOB_ID}&sortBy=aiMatchScore`);
-    expect(sorts[0]).toEqual({ aiMatchScore: -1 });
+    // Pure score order; ties go to whoever applied first, then _id, so "top N"
+    // is the same N on every read and across page boundaries.
+    expect(sorts[0]).toEqual({ aiMatchScore: -1, appliedAt: 1, _id: 1 });
   });
 
   it("filters to referred candidates with referred=true", async () => {

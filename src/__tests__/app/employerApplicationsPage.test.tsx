@@ -17,6 +17,7 @@ const createOfferMutateAsyncMock = jest.fn();
 const fetchInterviewForAppMutateAsyncMock = jest.fn();
 const computeAiMatchMutateAsyncMock = jest.fn();
 const bulkAiMatchMutateAsyncMock = jest.fn();
+const fetchShortlistPoolMock = jest.fn();
 const updateInterviewMutateAsyncMock = jest.fn();
 
 jest.mock("next/navigation", () => ({
@@ -83,6 +84,7 @@ jest.mock("@/hooks/useApplications", () => ({
   useFetchInterviewForApp: () => ({ mutateAsync: fetchInterviewForAppMutateAsyncMock }),
   useComputeAiMatch: () => ({ mutateAsync: computeAiMatchMutateAsyncMock, isPending: false, variables: undefined }),
   useBulkAiMatch: () => ({ mutateAsync: bulkAiMatchMutateAsyncMock, isPending: false }),
+  fetchShortlistPool: (...args: unknown[]) => fetchShortlistPoolMock(...args),
 }));
 
 // The stage-move conflict path cancels a stranded interview; useMutation here
@@ -162,6 +164,8 @@ describe("EmployerApplicationsPage", () => {
     fetchInterviewForAppMutateAsyncMock.mockReset();
     computeAiMatchMutateAsyncMock.mockReset();
     bulkAiMatchMutateAsyncMock.mockReset();
+    fetchShortlistPoolMock.mockReset();
+    fetchShortlistPoolMock.mockResolvedValue({ candidates: [], failingRequirements: 0 });
     toastInfoMock.mockReset();
     updateInterviewMutateAsyncMock.mockReset();
 
@@ -182,6 +186,7 @@ describe("EmployerApplicationsPage", () => {
             },
             status: "shortlisted",
             aiMatchScore: 84,
+            scoredAt: "2026-04-08T00:05:00.000Z",
             appliedAt: "2026-04-08T00:00:00.000Z",
             coverLetter: "Delivers production-ready React features across global teams.",
             matchBreakdown: { skills: 88, experience: 80, overall: 84 },
@@ -247,6 +252,9 @@ describe("EmployerApplicationsPage", () => {
   it("keeps the Needs review deep link in the URL after the filter reset (A26)", async () => {
     const user = userEvent.setup();
     render(<ApplicationsWorkspace jobId="job-1" embedded />);
+    // Needs review lives inside the Filters panel, not in the toolbar.
+    expect(screen.queryByRole("button", { name: /needs review/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
     replaceMock.mockClear();
     await user.click(screen.getByRole("button", { name: /needs review/i }));
     // The chip writes ?unreviewed=1, then the filter-reset effect writes page=1
@@ -255,6 +263,8 @@ describe("EmployerApplicationsPage", () => {
     const last = replaceMock.mock.calls[replaceMock.mock.calls.length - 1][0] as string;
     expect(last).toContain("unreviewed=1");
     expect(last).not.toContain("page=");
+    // The badge is inside an aria-label'd button, so the label carries the count.
+    expect(screen.getByRole("button", { name: "Filters (1)" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("renders embedded mode without workspace header or job selector", () => {
@@ -275,6 +285,7 @@ describe("EmployerApplicationsPage", () => {
             },
             status: "shortlisted",
             aiMatchScore: 84,
+            scoredAt: "2026-04-08T00:05:00.000Z",
             appliedAt: "2026-04-08T00:00:00.000Z",
             coverLetter: "Delivers production-ready React features across global teams.",
             matchBreakdown: { skills: 88, experience: 80, overall: 84 },
@@ -316,22 +327,22 @@ describe("EmployerApplicationsPage", () => {
 
     it("asks for scores first when applicants sit at Applied without a match score", async () => {
       const user = userEvent.setup();
+      const unscoredApp = {
+        _id: "app-2",
+        jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+        jobSeekerId: { _id: "candidate-2", userId: { _id: "user-2", name: "Bilal Khan" }, skills: [] },
+        status: "applied",
+        aiMatchScore: null,
+        appliedAt: "2026-04-08T00:00:00.000Z",
+      };
       useApplicationsMock.mockReturnValue({
         data: {
-          applications: [
-            {
-              _id: "app-2",
-              jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
-              jobSeekerId: { _id: "candidate-2", userId: { _id: "user-2", name: "Bilal Khan" }, skills: [] },
-              status: "applied",
-              aiMatchScore: null,
-              appliedAt: "2026-04-08T00:00:00.000Z",
-            },
-          ],
+          applications: [unscoredApp],
           pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
         },
         isLoading: false,
       });
+      fetchShortlistPoolMock.mockResolvedValue({ candidates: [unscoredApp], failingRequirements: 0 });
 
       render(<ApplicationsWorkspace jobId="job-1" embedded />);
       await user.click(screen.getByRole("button", { name: /shortlist top/i }));
@@ -353,6 +364,70 @@ describe("EmployerApplicationsPage", () => {
 
       await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
       expect(toastInfoMock.mock.calls[0][0]).toMatch(/no applicants/i);
+      expect(bulkActionMutateAsyncMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Shortlist Top ranks the whole job, not the page", () => {
+    const scoredApp = (id: string, name: string, score: number) => ({
+      _id: id,
+      jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+      jobSeekerId: { _id: `c-${id}`, userId: { _id: `u-${id}`, name }, skills: [] },
+      status: "applied",
+      aiMatchScore: score,
+      requirementsStatus: "met",
+      appliedAt: "2026-04-08T00:00:00.000Z",
+    });
+
+    it("asks the server for Applied candidates who meet the requirements, and says how many were left out", async () => {
+      const user = userEvent.setup();
+      // The page shows one row; the server pool holds the job's real best two.
+      fetchShortlistPoolMock.mockResolvedValue({
+        candidates: [scoredApp("app-9", "Top Pick", 96), scoredApp("app-8", "Runner Up", 91)],
+        failingRequirements: 3,
+      });
+      bulkActionMutateAsyncMock.mockResolvedValue({ processed: 1, total: 1, errors: [] });
+
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /shortlist top/i }));
+
+      expect(await screen.findByText(/3 applicants don't meet the job's requirements/i)).toBeInTheDocument();
+      expect(fetchShortlistPoolMock).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-1" }));
+      expect(screen.getByText("Top Pick")).toBeInTheDocument();
+      expect(screen.getByText("Runner Up")).toBeInTheDocument();
+    });
+
+    /** A job with 1,000+ applicants: the server ranks all of them but hands back
+        the top 100. The dialog must count the whole job, not the 100 it holds,
+        and must not call a 63% candidate "high-matched". */
+    it("counts every eligible and unscored applicant, not just the 100 it lists", async () => {
+      const user = userEvent.setup();
+      fetchShortlistPoolMock.mockResolvedValue({
+        candidates: [scoredApp("app-9", "Top Pick", 96), scoredApp("app-8", "Runner Up", 63)],
+        failingRequirements: 0,
+        eligibleTotal: 640,
+        unscoredTotal: 300,
+      });
+
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /shortlist top/i }));
+
+      expect(await screen.findByText(/640 candidates ready to shortlist/i)).toBeInTheDocument();
+      expect(screen.queryByText(/high-matched/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/300 applicants are still being scored/i)).toBeInTheDocument();
+      expect(screen.getByText(/only the top 2 are listed/i)).toBeInTheDocument();
+      expect(screen.getByText("of 2")).toBeInTheDocument();
+    });
+
+    it("says why when every Applied candidate fails a requirement", async () => {
+      const user = userEvent.setup();
+      fetchShortlistPoolMock.mockResolvedValue({ candidates: [], failingRequirements: 2 });
+
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /shortlist top/i }));
+
+      await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
+      expect(toastInfoMock.mock.calls[0][0]).toMatch(/2 applicants don't meet/i);
       expect(bulkActionMutateAsyncMock).not.toHaveBeenCalled();
     });
   });

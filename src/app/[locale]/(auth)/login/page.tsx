@@ -14,15 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
+import { postSignInPath } from "@/lib/auth/roleHome";
 
 const REMEMBER_ME_KEY = "mployedin_remember_email";
-const ROLE_REDIRECTS: Record<string, string> = {
-  admin: "admin",
-  employer: "employer",
-  job_seeker: "job-seeker",
-  agent: "agent",
-  super_agent: "super-agent",
-};
 
 type LoginErrorKind =
   | "credentials"
@@ -37,13 +31,6 @@ type LoginErrorKind =
 interface LoginErrorState {
   kind: LoginErrorKind;
   message: string;
-}
-
-function getPostSignInPath(locale: string, role: string, isOnboarded: boolean): string {
-  if (role === "job_seeker" && !isOnboarded) {
-    return `/${locale}/onboarding`;
-  }
-  return `/${locale}/${ROLE_REDIRECTS[role] ?? "job-seeker"}`;
 }
 
 // Reads the live URL, so it is only safe inside effects and event handlers.
@@ -137,7 +124,7 @@ export default function LoginPage() {
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
-      router.replace(getSafeCallbackPath(locale) ?? getPostSignInPath(locale, role, isOnboarded));
+      router.replace(getSafeCallbackPath(locale) ?? postSignInPath(locale, role, isOnboarded));
     } catch (err) {
       // The whole "works on my machine, fails on theirs" class lives here: a
       // closed popup, a popup the browser blocked, or privacy settings that
@@ -214,7 +201,7 @@ export default function LoginPage() {
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
-      router.replace(getSafeCallbackPath(locale) ?? getPostSignInPath(locale, role, isOnboarded));
+      router.replace(getSafeCallbackPath(locale) ?? postSignInPath(locale, role, isOnboarded));
     } catch {
       setError({ kind: "service", message: t("somethingWentWrong") });
     } finally {

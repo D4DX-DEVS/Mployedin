@@ -16,6 +16,7 @@ import {
   Crown, Briefcase, Users, Eye, BarChart3,
   Check, X, AlertTriangle, FileText,
   CreditCard, ChevronDown, ChevronUp,
+  Circle,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
@@ -100,7 +101,7 @@ export default function EmployerSubscriptionPage() {
             <span className="hidden sm:inline">{t("displayCurrency")}</span>
             <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} ariaLabel={t("a11yDisplayCurrency")} />
             {rateSource === "live" && (
-              <span className="hidden text-[11px] text-emerald-500 sm:inline" title={t("a11yLiveExchangeRates")}>● live</span>
+              <span className="hidden text-[11px] text-emerald-500 sm:inline" title={t("a11yLiveExchangeRates")}><Circle className="me-1 inline h-2 w-2 fill-current align-middle" aria-hidden="true" />live</span>
             )}
           </div>
         }

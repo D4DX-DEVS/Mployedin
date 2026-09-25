@@ -7,7 +7,6 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import { CompanyUser } from "@/models/CompanyUser";
 import { autoAssignAgent } from "@/lib/agents/autoAssign";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
 import { ExtractionDraft } from "@/models/ExtractionDraft";
@@ -20,16 +19,18 @@ import logger from "@/lib/logger";
 import { checkAdvert } from "@/lib/compliance/inclusiveWording";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
+import { getMemberJobRestriction } from "@/lib/permissions/team";
 import { isPublishGated, PUBLISH_GATE_SELECT, PUBLISH_GATE_ERROR, type PublishGateFields } from "@/lib/employers/publishGate";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
 import { stripPrivateJobFields } from "@/lib/jobs/visibility";
+import { splitScreeningQuestions } from "@/lib/matching/knockouts";
 import type { AuthContext } from "@/lib/auth/withAuth";
 
 // The local shape was missing tenantView, so handlers could not tell an admin or
 // agent acting inside an employer's account from the employer themselves.
-type AuthCtx = Pick<AuthContext, "userId" | "role" | "locale" | "tenantView">;
+type AuthCtx = Pick<AuthContext, "userId" | "role" | "locale" | "tenantView" | "member">;
 
 // GET /api/jobs — paginated job search (role-scoped)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
@@ -109,21 +110,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
     query.employerId = empDoc._id;
 
-    // Enforce job-level access for team members (hiring_manager / viewer)
-    const teamMember = await CompanyUser.findOne({
-      companyId: empDoc._id,
-      userId: ctx.userId,
-      status: "active",
-    }).select("companyRole jobAccess").lean();
-
-    if (
-      teamMember &&
-      teamMember.companyRole !== "owner" &&
-      teamMember.companyRole !== "admin" &&
-      teamMember.jobAccess &&
-      teamMember.jobAccess.length > 0
-    ) {
-      query._id = { $in: teamMember.jobAccess };
+    // Enforce job-level access for team members (hiring_manager / viewer).
+    // Looked up by the colleague's own id — ctx.userId is the owner's here.
+    const restriction = await getMemberJobRestriction(ctx, empDoc._id);
+    if (restriction) {
+      query._id = { $in: restriction.map((id) => new Types.ObjectId(id)) };
     }
     ownershipScoped = true;
   } else if (myJobs && ctx.role !== "employer") {
@@ -138,7 +129,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const canFilterManagedJobs = ownershipScoped || ctx.role === "admin";
 
   if (status && canFilterManagedJobs) query.status = status;
-  if (search) query.$text = { $search: search };
+  if (search) {
+    // $text drops short terms and stop words ("a" matched nothing), so a
+    // 1–2 character search matches the title instead. Sorting by textScore
+    // below only applies when $text is actually in the query.
+    if (search.length < 3) {
+      query.title = new RegExp(escapeRegex(search), "i");
+    } else {
+      query.$text = { $search: search };
+    }
+  }
   if (category) query.category = category;
   if (workMode) query.workMode = workMode;
   if (location) {
@@ -162,19 +162,34 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (employerId && Types.ObjectId.isValid(employerId)) {
     // Expand to all employer profiles sharing the same companyName (handles duplicate profiles)
     const emp = await Employer.findById(new Types.ObjectId(employerId)).select("companyName").lean();
+    let requested: unknown;
     if (emp) {
       const sameNameIds = await Employer.find({ companyName: emp.companyName }).select("_id").lean();
-      query.employerId = sameNameIds.length > 1
+      requested = sameNameIds.length > 1
         ? { $in: sameNameIds.map(e => e._id) }
         : emp._id;
     } else {
-      query.employerId = new Types.ObjectId(employerId);
+      requested = new Types.ObjectId(employerId);
+    }
+    // A filter narrows the caller's scope; it must never replace it. Assigning
+    // query.employerId here overwrote the super-agent portfolio and the
+    // employer's own-company scope, so `myJobs=true&employerId=<other>&status=draft`
+    // returned another company's drafts.
+    if ("employerId" in query) {
+      query.$and = [...(query.$and ?? []), { employerId: requested }];
+    } else {
+      query.employerId = requested;
     }
   }
 
   if (withoutApplications) {
     const jobIdsWithApplications = await Application.distinct("jobId", {});
-    query._id = { $nin: jobIdsWithApplications };
+    // ANDed for the same reason: a colleague's job restriction lives in query._id.
+    if ("_id" in query) {
+      query.$and = [...(query.$and ?? []), { _id: { $nin: jobIdsWithApplications } }];
+    } else {
+      query._id = { $nin: jobIdsWithApplications };
+    }
   }
 
   const skip = (page - 1) * limit;
@@ -220,7 +235,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
             ? { createdAt: -1 }
             : sortBy === "oldest"
               ? { createdAt: 1 }
-              : search
+              : "$text" in query
                 ? { score: { $meta: "textScore" } }
                 : { createdAt: -1 },
         )
@@ -492,7 +507,12 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     showSalary,
     tags: tags ?? [],
     visibility: visibility ?? "public",
-    screeningQuestions: body.screeningQuestions ?? [],
+    // The qualifying answers of deal-breaker questions are the employer's
+    // private rule; they live apart from the questions seekers are served.
+    ...(() => {
+      const { questions, knockouts } = splitScreeningQuestions(body.screeningQuestions ?? []);
+      return { screeningQuestions: questions, screeningKnockouts: knockouts };
+    })(),
   });
 
   // Drafts are intentionally partial — a user can save one before filling in

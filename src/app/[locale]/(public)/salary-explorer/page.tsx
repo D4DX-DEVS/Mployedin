@@ -63,6 +63,7 @@ export default function SalaryExplorerPage() {
             value={role}
             onChange={(e) => setRole(e.target.value)}
             placeholder={t("jobTitlePlaceholder")}
+            aria-label={t("jobTitlePlaceholder")}
             className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -73,6 +74,7 @@ export default function SalaryExplorerPage() {
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             placeholder={t("countryPlaceholder")}
+            aria-label={t("countryPlaceholder")}
             className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>

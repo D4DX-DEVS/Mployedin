@@ -575,7 +575,7 @@ export const authConfig: NextAuthConfig = {
             // time, or sets one later from Settings.
             try {
               user = await User.create({
-                name: email.split("@")[0],
+                name: redeemed?.name || email.split("@")[0],
                 email,
                 role: "job_seeker",
                 isActive: true,

@@ -119,9 +119,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const tempPassword = generateShareablePassword();
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
-  // Generate email verification token
+  // Generate email verification token + 6-digit OTP (like regular registration)
   const rawToken = crypto.randomBytes(32).toString("hex");
   const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const otp = crypto.randomInt(100000, 1000000).toString();
+  const { hashOtp } = await import("@/lib/auth/emailVerification");
+  const hashedOtp = hashOtp(otp);
 
   // Generate password-setup token (sent via email link instead of plaintext password)
   const rawSetupToken = crypto.randomBytes(32).toString("hex");
@@ -136,9 +139,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     isActive: true,
     isEmailVerified: false,
     emailVerificationToken: hashedToken,
+    emailVerificationOtp: hashedOtp,
     emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
     passwordResetToken: hashedSetupToken,
     passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    tempPasswordIssuedAt: new Date(),
   });
 
   // Create Employer profile
@@ -196,9 +201,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Send welcome email with temporary credentials
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
-  const loginUrl = `${baseUrl}/login`;
-  const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
-  const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
+  const locale = ctx.locale === "ar" ? "ar" : "en";
+  const loginUrl = `${baseUrl}/${locale}/login`;
+  const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(contactEmail)}`;
+  const setupUrl = `${baseUrl}/${locale}/reset-password?token=${rawSetupToken}`;
 
   const agentUserDoc = await User.findById(ctx.userId).select("name").lean();
   const convertedByName = (agentUserDoc as { name?: string } | null)?.name ?? "Your MPLOYEDIN agent";
@@ -213,7 +219,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     }),
     sendEmail({
       to: contactEmail,
-      ...EmailTemplates.verifyEmail(contactPerson, verifyUrl),
+      ...EmailTemplates.verifyEmailOtpForEmployer(contactPerson, otp, verifyUrl),
       source: "lead-convert",
       category: "system",
     }),

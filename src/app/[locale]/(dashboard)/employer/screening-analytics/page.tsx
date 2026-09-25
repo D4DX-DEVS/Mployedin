@@ -105,7 +105,7 @@ export default function ScreeningAnalyticsPage() {
           The trigger keeps the bare title; the marker belongs in the list. */}
       <div className="workspace-toolbar">
         <SearchableSelect
-          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10 sm:basis-[26rem]"
           value={selectedJobId}
           onValueChange={setSelectedJobId}
           placeholder={t("selectJob")}

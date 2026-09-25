@@ -42,6 +42,7 @@ interface AgentRow {
   agentId: string;
   name: string;
   email: string;
+  isActive?: boolean;
   leadsCount: number;
   conversions: number;
   placements: number;
@@ -63,6 +64,7 @@ function aiRowData(a: AgentRow) {
 /* ── Filter types ── */
 interface Filters extends Record<string, string> {
   search: string;
+  status: string;
   performance: string;
   leadsMin: string;
   leadsMax: string;
@@ -73,7 +75,7 @@ interface Filters extends Record<string, string> {
 }
 
 const INITIAL_FILTERS: Filters = {
-  search: "", performance: "",
+  search: "", status: "", performance: "",
   leadsMin: "", leadsMax: "",
   convRateMin: "", convRateMax: "",
   sortBy: "name", sortOrder: "asc",
@@ -114,6 +116,7 @@ const getSortOptions = (t: ReturnType<typeof useTranslations>, tc: ReturnType<ty
 
 function countActiveFilters(f: Filters): number {
   let count = 0;
+  if (f.status) count++;
   if (f.performance) count++;
   if (f.leadsMin || f.leadsMax) count++;
   if (f.convRateMin || f.convRateMax) count++;
@@ -165,6 +168,7 @@ export default function SuperAgentAgentsPage() {
     setError(false);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (filters.search) params.set("search", filters.search);
+    if (filters.status) params.set("status", filters.status);
     if (filters.performance) params.set("performance", filters.performance);
     if (filters.leadsMin) params.set("leadsMin", filters.leadsMin);
     if (filters.leadsMax) params.set("leadsMax", filters.leadsMax);
@@ -271,6 +275,11 @@ export default function SuperAgentAgentsPage() {
   /* ── Performance badge logic ── */
   function getPerformanceBadge(agent: AgentRow) {
     const badges: { label: string; className: string }[] = [];
+    // The account switch outranks any performance reading: a deactivated
+    // agent cannot sign in, whatever their numbers say.
+    if (agent.isActive === false) {
+      badges.push({ label: t("badgeDeactivated"), className: "bg-slate-800 text-white" });
+    }
     if (agent.leadsCount === 0) {
       badges.push({ label: t("badgeNoActivity"), className: "bg-gray-100 text-gray-600" });
     } else if (agent.conversionRate >= 50) {
@@ -404,7 +413,23 @@ export default function SuperAgentAgentsPage() {
           }
           filterContent={
             <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                {/* Account status */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">{tc("status")}</label>
+                  <SearchableSelect
+                    options={[
+                      { value: "", label: tc("all") },
+                      { value: "active", label: tc("active") },
+                      { value: "inactive", label: t("badgeDeactivated") },
+                    ]}
+                    value={filters.status}
+                    onValueChange={(v) => { setFilter("status", v); resetPage(); }}
+                    placeholder={tc("all")}
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
                 {/* Performance */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterPerformance")}</label>

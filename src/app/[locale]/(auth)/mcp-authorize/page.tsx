@@ -44,7 +44,7 @@ export default async function McpAuthorizePage({
   if (!valid || !client || !role) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
-        <p className="text-sm text-muted-foreground">{t("invalidRequest")}</p>
+        <h1 className="text-sm font-normal text-muted-foreground">{t("invalidRequest")}</h1>
       </div>
     );
   }

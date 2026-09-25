@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import {
   Upload, FileText, CheckCircle, Loader2, Sparkles, X,
-  Award, GraduationCap, BookOpen, FolderOpen, Trash2, Eye,
+  Award, GraduationCap, BookOpen, FolderOpen, Trash2, Eye, Clock, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -24,6 +24,9 @@ type DocCategory = typeof DOC_CATEGORIES[number]["value"];
 
 /* ── Types ── */
 
+/** Whether our system has read a CV — what employers' match scores use. */
+type CvStatus = "uploaded" | "processing" | "processed" | "failed";
+
 interface UploadedDocument {
   id: string;
   name: string;
@@ -31,6 +34,34 @@ interface UploadedDocument {
   url: string;
   size: number;
   uploadedAt: string;
+  /** Resumes only. */
+  cvStatus?: CvStatus;
+}
+
+function CvReadingNote({ status }: { status: CvStatus }) {
+  const t = useTranslations("jobSeekerExtra.documents");
+  if (status === "processed") {
+    return (
+      <p className="mt-0.5 flex items-center gap-1 text-xs text-emerald-700">
+        <CheckCircle className="size-3.5 shrink-0" aria-hidden="true" />
+        {t("cvRead")}
+      </p>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <p className="mt-0.5 flex items-start gap-1 text-xs text-amber-800">
+        <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+        {t("cvUnreadable")}
+      </p>
+    );
+  }
+  return (
+    <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+      <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+      {t("cvReading")}
+    </p>
+  );
 }
 
 interface ExtractedSkill {
@@ -91,6 +122,7 @@ export default function JobSeekerDocumentsPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [profileCvStatus, setProfileCvStatus] = useState<CvStatus | null>(null);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -114,6 +146,7 @@ export default function JobSeekerDocumentsPage() {
       if (res.ok) {
         const data = await res.json();
         setDocuments(data.documents ?? []);
+        setProfileCvStatus(data.profileCv?.cvStatus ?? null);
       }
     } catch {
       // Non-blocking
@@ -491,6 +524,7 @@ export default function JobSeekerDocumentsPage() {
                 <input
                   type="text"
                   placeholder={t("searchPlaceholder") ?? "Search documents..."}
+                  aria-label={t("searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -498,6 +532,13 @@ export default function JobSeekerDocumentsPage() {
               </div>
             )}
           </div>
+
+          {profileCvStatus === "failed" ? (
+            <p role="status" className="flex items-start gap-2 border-b bg-amber-500/10 px-4 py-3 text-sm text-amber-900">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              {t("profileCvUnreadable")}
+            </p>
+          ) : null}
 
           {loadingDocs ? (
             <div className="p-8 flex justify-center">
@@ -525,6 +566,7 @@ export default function JobSeekerDocumentsPage() {
                         {getCategoryLabel(doc.category)} · {(doc.size / 1024).toFixed(0)} KB
                         {doc.uploadedAt && ` · ${new Date(doc.uploadedAt).toLocaleDateString(numberLocale)}`}
                       </p>
+                      {doc.category === "resume" && doc.cvStatus ? <CvReadingNote status={doc.cvStatus} /> : null}
                     </div>
                     <div className="flex items-center gap-1">
                       {doc.url && (

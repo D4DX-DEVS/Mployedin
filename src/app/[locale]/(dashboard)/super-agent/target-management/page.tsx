@@ -556,6 +556,7 @@ export default function SuperAgentTargetProfilesPage() {
           <Button
             variant="default"
             size="sm"
+            aria-label={t("go")}
             className="h-10 rounded-xl px-3"
             disabled={parseInt(yearInput) === yearFilter || !yearInput || parseInt(yearInput) < 2020}
             onClick={() => {
@@ -565,7 +566,7 @@ export default function SuperAgentTargetProfilesPage() {
           >
             <CalendarDays className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("go")}</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleResetDashboard} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
+          <Button variant="outline" size="sm" onClick={handleResetDashboard} aria-label={t("reset")} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
             <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("reset")}</span>
           </Button>
           <div className="flex rounded-xl border border-border/60 bg-background p-0.5">
@@ -579,6 +580,7 @@ export default function SuperAgentTargetProfilesPage() {
               size="sm"
               onClick={() => setShowTeamFilters((v) => !v)}
               aria-expanded={showTeamFilters}
+              aria-label={t("filters")}
               className={showTeamFilters ? "h-10 rounded-xl border-primary/30 bg-primary/10 text-primary" : "h-10 rounded-xl"}
             >
               <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("filters")}</span>
@@ -627,12 +629,12 @@ export default function SuperAgentTargetProfilesPage() {
                 placeholder={t("risk")}
                 className="h-10 w-32 rounded-xl"
               />
-              <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExport} disabled={teamProfiles.length === 0}>
+              <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExport} aria-label={t("export")} disabled={teamProfiles.length === 0}>
                 <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("export")}</span>
               </Button>
             </>
           ) : null}
-          <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)}>
+          <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)} aria-label={t("distribute")}>
             <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">{t("distribute")}</span>
           </Button>
         </div>

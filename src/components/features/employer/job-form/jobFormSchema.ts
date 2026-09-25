@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { knockoutRuleOf } from "@/lib/matching/knockouts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -204,8 +205,8 @@ export const jobFormSchema = z.object({
 
   // Advanced settings
   applicationMode: z.enum(["auto", "manual"]).default("manual"),
-  autoScreeningEnabled: z.boolean().default(false),
-  minMatchScore: z.number().int().min(0).max(100).default(70),
+  // From a matching-weight template; PATCHed onto the job after it is created.
+  matchingWeights: z.record(z.string(), z.number().min(0).max(100)).optional(),
   visibility: z.enum(["public", "private", "invite_only"]).default("public"),
   vacancies: z.number().int().min(1).max(100).optional(),
   maxApplicants: z.number().int().min(1).max(10000).optional(),
@@ -227,6 +228,15 @@ export const jobFormSchema = z.object({
       options: z.array(z.string().max(200)).max(20).optional(),
       placeholder: z.string().max(200).optional(),
       order: z.number().int().min(0).default(0),
+      // Deal-breaker rule (lib/matching/knockouts.ts). The API stores it apart
+      // from the question so candidates are never served the qualifying answer.
+      knockout: z.boolean().optional(),
+      preferred: z.boolean().optional(),
+      acceptedAnswers: z.array(z.string().max(200)).max(20).optional(),
+      minValue: z.number().finite().optional(),
+    }).refine((q) => (!q.knockout && !q.preferred) || knockoutRuleOf(q) !== null, {
+      message: "A deal-breaker needs a qualifying answer",
+      path: ["acceptedAnswers"],
     })
   ).max(20).default([]),
 });

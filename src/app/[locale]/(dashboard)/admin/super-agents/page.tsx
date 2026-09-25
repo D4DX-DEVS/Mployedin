@@ -67,6 +67,8 @@ interface AgentOption {
   _id: string; // Agent doc _id
   userId: string;
   name: string;
+  /** SuperAgent doc _id the agent already belongs to, if any. */
+  superAgentId: string | null;
 }
 
 export default function AdminSuperAgentsPage() {
@@ -80,6 +82,7 @@ export default function AdminSuperAgentsPage() {
     password: t("passwordLabel"),
     overrideCommissionRate: t("overrideCommissionRateLabel"),
     defaultAgentCommissionRate: t("defaultAgentCommissionRateLabel"),
+    agentIds: t("assignAgentsLabel"),
   };
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -116,27 +119,29 @@ export default function AdminSuperAgentsPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
 
-  // Fetch available agents (Agent doc _ids)
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/admin/agents?limit=200");
-        if (!res.ok) {
-          toast.error(t("toastFailedLoadAgents"));
-          return;
-        }
-        const data = await res.json();
-        const agents = (data.agents ?? []).map((a: { _id: string; name: string; agentProfile?: { _id?: string } }) => ({
-          _id: a.agentProfile?._id ?? a._id, // prefer Agent doc _id
-          userId: a._id,
-          name: a.name,
-        }));
-        setAvailableAgents(agents);
-      } catch (e) {
+  // Fetch available agents (Agent doc _ids). Reloaded after every save, since
+  // a save changes which super agent owns which agent.
+  const loadAgents = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/agents?limit=200");
+      if (!res.ok) {
         toast.error(t("toastFailedLoadAgents"));
+        return;
       }
-    })();
+      const data = await res.json();
+      const agents = (data.agents ?? []).map((a: { _id: string; name: string; agentProfile?: { _id?: string; superAgentId?: string | null } }) => ({
+        _id: a.agentProfile?._id ?? a._id, // prefer Agent doc _id
+        userId: a._id,
+        name: a.name,
+        superAgentId: a.agentProfile?.superAgentId ?? null,
+      }));
+      setAvailableAgents(agents);
+    } catch (e) {
+      toast.error(t("toastFailedLoadAgents"));
+    }
   }, []);
+
+  useEffect(() => { loadAgents(); }, [loadAgents]);
 
   const fetchSuperAgents = useCallback(async () => {
     setLoading(true);
@@ -230,6 +235,7 @@ export default function AdminSuperAgentsPage() {
       setAddAgentIds([]);
       toast.success(t("toastSuperAgentCreated"));
       fetchSuperAgents();
+      loadAgents();
     } catch (error) {
       const msg = t("toastFailedCreateSuperAgent");
       setAddError(msg);
@@ -282,6 +288,7 @@ export default function AdminSuperAgentsPage() {
       setEditSA(null);
       toast.success(t("toastSuperAgentUpdated"));
       fetchSuperAgents();
+      loadAgents();
     } catch (error) {
       const msg = t("toastFailedUpdateSuperAgent");
       setEditError(msg);
@@ -373,21 +380,33 @@ export default function AdminSuperAgentsPage() {
     setter((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
-  const AgentCheckboxList = ({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) => (
-    <div className="border rounded-lg max-h-48 overflow-y-auto space-y-1 chip-pad">
-      {availableAgents.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-2 text-center">{t("noAgentsAvailable")}</p>
-      ) : availableAgents.map((agent) => (
-        <label key={agent._id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
-          <Checkbox
-            checked={selected.includes(agent._id)}
-            onCheckedChange={() => onToggle(agent._id)}
-          />
-          <span>{agent.name}</span>
-        </label>
-      ))}
-    </div>
-  );
+  /* Only agents nobody owns yet, plus this super agent's own. An agent under
+     another super agent is moved from Admin → Agents → Edit, which keeps both
+     super agents' teams in step; offering it here silently took it away. */
+  const AgentCheckboxList = ({ selected, onToggle, ownSuperAgentId }: { selected: string[]; onToggle: (id: string) => void; ownSuperAgentId: string | null }) => {
+    const assignable = availableAgents.filter((a) => !a.superAgentId || a.superAgentId === ownSuperAgentId);
+    const ownedElsewhere = availableAgents.length - assignable.length;
+    return (
+      <>
+        <div className="border rounded-lg max-h-48 overflow-y-auto space-y-1 chip-pad">
+          {assignable.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2 text-center">{t("noAgentsAvailable")}</p>
+          ) : assignable.map((agent) => (
+            <label key={agent._id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
+              <Checkbox
+                checked={selected.includes(agent._id)}
+                onCheckedChange={() => onToggle(agent._id)}
+              />
+              <span>{agent.name}</span>
+            </label>
+          ))}
+        </div>
+        {ownedElsewhere > 0 && (
+          <p className="text-xs text-muted-foreground">{t("agentsOwnedElsewhereHint", { count: ownedElsewhere })}</p>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="page-container">
@@ -416,7 +435,7 @@ export default function AdminSuperAgentsPage() {
                 className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
               />
             </div>
-            <div className="w-[120px]">
+            <div className="min-w-[120px]">
               <InlineSearchSelect
                 options={[
                   { value: "all", label: t("statusFilterAll") },
@@ -598,7 +617,7 @@ export default function AdminSuperAgentsPage() {
 
             <div className="space-y-2">
               <Label>{t("assignAgentsLabel")}</Label>
-              <AgentCheckboxList selected={addAgentIds} onToggle={(id) => toggleAgentId(id, setAddAgentIds)} />
+              <AgentCheckboxList selected={addAgentIds} onToggle={(id) => toggleAgentId(id, setAddAgentIds)} ownSuperAgentId={null} />
               {addAgentIds.length > 0 && (
                 <p className="text-xs text-muted-foreground">{t("agentsSelectedCount", { count: addAgentIds.length })}</p>
               )}
@@ -675,7 +694,7 @@ export default function AdminSuperAgentsPage() {
 
             <div className="space-y-2">
               <Label>{t("assignAgentsLabel")}</Label>
-              <AgentCheckboxList selected={editAgentIds} onToggle={(id) => toggleAgentId(id, setEditAgentIds)} />
+              <AgentCheckboxList selected={editAgentIds} onToggle={(id) => toggleAgentId(id, setEditAgentIds)} ownSuperAgentId={editSA?.superAgentProfile?._id ?? null} />
               {editAgentIds.length > 0 && (
                 <p className="text-xs text-muted-foreground">{t("agentsSelectedCount", { count: editAgentIds.length })}</p>
               )}

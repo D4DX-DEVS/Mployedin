@@ -26,10 +26,12 @@
  */
 export const DEFAULT_INTL_LOCALE = "en-US";
 
-/** Arabic gets a real Arabic locale; anything else falls back to the default. */
+/** Arabic gets a real Arabic locale with Latin digits; anything else falls back to the default. */
 export function resolveIntlLocale(locale?: string): string {
   if (!locale) return DEFAULT_INTL_LOCALE;
-  if (locale === "ar" || locale.startsWith("ar-")) return "ar-SA";
+  // Use Latin digits (ar-u-nu-latn) for Arabic locale to ensure consistency
+  // with other numbers in the app that already render Latin digits
+  if (locale === "ar" || locale.startsWith("ar-")) return "ar-u-nu-latn";
   return locale.includes("-") ? locale : DEFAULT_INTL_LOCALE;
 }
 

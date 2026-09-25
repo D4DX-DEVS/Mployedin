@@ -2,7 +2,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Clock, Sparkles } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
 
 interface SmartHeaderProps {
   userName: string;
@@ -57,9 +56,14 @@ export function SmartHeader({
       ? t("lastActivity", { time: formatTimeAgo(lastActivityMinutes, t) })
       : t("freshWorkspace");
 
+  // Show "Welcome" for first-time visitors (no prior activity recorded)
+  // and "Welcome back" for returning users
+  const isFirstVisit = lastActivityMinutes === null;
+  const titleKey = isFirstVisit ? "welcome" : "welcomeBack";
+
   return (
     <WorkspaceHeader
-      title={`${t("welcomeBack", { userName })} \u{1F44B}`}
+      title={`${t(titleKey, { userName })} \u{1F44B}`}
       context={t(subtitleKey, { count: subtitleCount })}
       /* The timestamp rides the title row (leading the actions) so it reads
          inline with the heading rather than trailing the context line. It is
@@ -83,7 +87,6 @@ export function SmartHeader({
             <span className="sm:hidden">{t("createJobShort")}</span>
             <span className="hidden sm:inline">{t("createJob")}</span>
           </Link>
-          <CopilotLauncher />
         </>
       }
     />

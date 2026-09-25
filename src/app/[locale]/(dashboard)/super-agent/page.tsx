@@ -1,37 +1,37 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { connectDB } from "@/lib/db/mongoose";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
-import { EMPTY_AGENT_PERFORMANCE, getLiveAgentPerformance } from "@/lib/agentPerformance";
-import Agent from "@/models/Agent";
-import User from "@/models/User";
-import Job from "@/models/Job";
-import Application from "@/models/Application";
-import Placement from "@/models/Placement";
-import Lead from "@/models/Lead";
-import Commission from "@/models/Commission";
-import ExhibitionRequest from "@/models/ExhibitionRequest";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
-  ArrowRight,
+  Briefcase,
   Building2,
   CalendarDays,
   CheckCircle2,
-  Briefcase,
   DollarSign,
-  ShieldCheck,
   Target,
+  Trophy,
   UserX,
   Users2,
 } from "lucide-react";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 import { DashboardNextAction } from "@/components/shared/DashboardOverview";
-import {
-  SuperAgentPriorityQueue,
-  type PriorityItem,
-} from "@/components/features/super-agent/PriorityQueue";
+import { SuperAgentPriorityQueue, type PriorityItem } from "@/components/features/super-agent/PriorityQueue";
+import { SuperAgentKpiCards, type KpiCard, type KpiTrend } from "@/components/features/super-agent/dashboard/KpiCards";
+import { RegionalFunnel } from "@/components/features/super-agent/dashboard/RegionalFunnel";
+import { TopAgentsTable } from "@/components/features/super-agent/dashboard/TopAgentsTable";
+import { TeamActivityChart } from "@/components/features/super-agent/dashboard/TeamActivityChart";
+import { resolveAssignedRegions } from "@/lib/agents/assignedRegion";
+import { loadSuperAgentDashboard } from "@/lib/superAgent/dashboardData";
+import { localHourIn } from "@/lib/datetime/countryZone";
 
+/**
+ * The super-agent home, answering three questions in order: what needs me,
+ * how is my region doing, how is my team doing. Every figure is counted live
+ * and says its period; every number opens the list it counts, filtered so the
+ * list shows the same records. No shortcut tiles: the sidebar, the phone tab
+ * bar and the "+" menu already link every destination and create action.
+ */
 export default async function SuperAgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
@@ -41,389 +41,236 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   await connectDB();
 
-  // Load live data.
-  //
-  // The scope has to be the canonical one. This page used to read
-  // `saProfile.agentIds` directly — team assignments only — while every list
-  // page it links to is served by an API using getSuperAgentScope(), which is
-  // team ∪ region. A super-agent with region-inherited agents therefore saw
-  // dashboard tiles that under-counted the very lists they open.
-  const scope = await getSuperAgentScope(session.user.id as string);
-  const agentDocIds = scope?.effectiveAgentIds ?? [];
-  // `performance` is deliberately not selected — see getLiveAgentPerformance.
-  const agentDocs = await Agent.find({ _id: { $in: agentDocIds } })
-    .select("userId assignedEmployerIds")
-    .lean();
-  const agentUserIds = agentDocs.map((a) => a.userId);
-
-  const activeAgents = await User.countDocuments({
-    _id: { $in: agentUserIds },
-    isActive: true,
-  });
-
-  const allEmployerIds = agentDocs.flatMap((a) => a.assignedEmployerIds ?? []);
-  const uniqueEmployerIds = [...new Set(allEmployerIds.map(String))];
-  const totalEmployers = uniqueEmployerIds.length;
-
-  const jobFilter: Record<string, unknown> = {
-    $or: [
-      { agentId: { $in: agentDocIds } },
-      ...(uniqueEmployerIds.length > 0
-        ? [{ employerId: { $in: uniqueEmployerIds } }]
-        : []),
-    ],
-  };
-  const [totalJobs, activeJobs] = await Promise.all([
-    Job.countDocuments(jobFilter),
-    Job.countDocuments({ ...jobFilter, status: "active" }),
-  ]);
-
-  const jobIds = await Job.find(jobFilter).select("_id").lean();
-  const jobIdList = jobIds.map((j) => j._id);
-  const totalApplications = jobIdList.length > 0
-    ? await Application.countDocuments({ jobId: { $in: jobIdList } })
-    : 0;
-
-  // Lead.agentId and Placement.agentId reference the Agent doc _id (not User id),
-  // and Placement.superAgentId references the SuperAgent doc _id.
-  const saProfileId = scope?.saProfileId;
-  const totalPlacements = await Placement.countDocuments({
-    $or: [
-      { agentId: { $in: agentDocIds } },
-      ...(saProfileId ? [{ superAgentId: saProfileId }] : []),
-    ],
-  });
-
-  const totalLeads = await Lead.countDocuments({
-    agentId: { $in: agentDocIds },
-  });
-
-  // ── Work actually waiting on this super-agent ──────────────────────────
-  // Counts, not ratios. Each of these has a list page that can now be opened
-  // pre-filtered to exactly these records, so the number and the destination
-  // agree. ExhibitionRequest.agentId stores the Agent's User._id; Commission
-  // .superAgentId references the SuperAgent profile _id — the same two shapes
-  // /api/exhibitions and /api/commissions use.
   const now = new Date();
-  const [pendingExhibitions, pendingCommissions, overdueFollowUps, agentsWithLeads] =
-    await Promise.all([
-      ExhibitionRequest.countDocuments({
-        agentId: { $in: agentUserIds },
-        status: { $in: ["submitted", "under_review"] },
-        isDeleted: { $ne: true },
-      }),
-      saProfileId
-        ? Commission.countDocuments({ superAgentId: saProfileId, status: "pending" })
-        : Promise.resolve(0),
-      Lead.countDocuments({
-        agentId: { $in: agentDocIds },
-        followUpAt: { $lt: now },
-        status: { $nin: ["converted", "lost"] },
-      }),
-      Lead.distinct("agentId", { agentId: { $in: agentDocIds } }),
-    ]);
+  const data = await loadSuperAgentDashboard(session.user.id as string, now);
+  // The super-agent's OWN territory, as an admin assigned it — not the union
+  // with their agents' regions that scopes the figures.
+  const assignedRegions = await resolveAssignedRegions(data.region, locale);
+  const { kpis, funnel, queue } = data;
+  const href = (path: string) => `/${locale}/super-agent${path}`;
 
-  // Resolve agent display names for the team leaderboard.
-  const agentUsers = await User.find({ _id: { $in: agentUserIds } })
-    .select("name email")
-    .lean();
-  const agentNameMap = new Map(
-    agentUsers.map((u) => [String(u._id), (u.name as string) || (u.email as string) || "Agent"]),
-  );
+  // ── Hero ─────────────────────────────────────────────────────────────────
+  const firstName = session.user.name?.split(" ")[0] || t("hero.fallbackName");
+  const hour = localHourIn(data.timeZone, now);
+  const greeting = hour < 12
+    ? t("hero.greetingMorning", { name: firstName })
+    : hour < 17
+      ? t("hero.greetingAfternoon", { name: firstName })
+      : t("hero.greetingEvening", { name: firstName });
+  const today = new Intl.DateTimeFormat(locale, {
+    weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: data.timeZone,
+  }).format(now);
 
-  interface LeaderboardRow {
-    agentId: string;
-    name: string;
-    placements: number;
-    leads: number;
-    jobs: number;
-    employers: number;
-  }
-  // Counted from the collections, never from `Agent.performance`. The
-  // denormalized subdoc put 17 placements on this leaderboard while the
-  // Placements KPI and funnel above it — both counting real documents —
-  // correctly read 0, so one dashboard disagreed with itself by 17 records.
-  const livePerformance = await getLiveAgentPerformance(agentDocIds);
-  const leaderboard: LeaderboardRow[] = agentDocs
-    .map((a) => {
-      const perf = livePerformance.get(String(a._id)) ?? EMPTY_AGENT_PERFORMANCE;
-      return {
-        agentId: String(a._id),
-        name: agentNameMap.get(String(a.userId)) ?? "Agent",
-        placements: perf.placementsCompleted,
-        leads: perf.leadsGenerated,
-        jobs: perf.vacanciesPosted,
-        employers: perf.employersCreated,
-      };
-    })
-    .sort((a, b) => b.placements - a.placements || b.leads - a.leads)
-    .slice(0, 3);
-
-  // Conversion funnel — Leads → Employers → Jobs → CVs → Placements.
-  const funnel = [
-    { key: "leads", label: t("funnel.leads"), value: totalLeads },
-    { key: "employers", label: t("funnel.employers"), value: totalEmployers },
-    { key: "jobs", label: t("funnel.jobs"), value: totalJobs },
-    { key: "applications", label: t("funnel.applications"), value: totalApplications },
-    { key: "placements", label: t("funnel.placements"), value: totalPlacements },
-  ];
-  const funnelMax = Math.max(1, ...funnel.map((f) => f.value));
-
-  const totalAgents = agentUserIds.length;
-  const placementRate = totalApplications > 0
-    ? Math.round((totalPlacements / totalApplications) * 100)
-    : null;
-
-  // Step-over-step conversion; raw counts alone never showed where the region stalls.
-  const funnelRows = funnel.map((stage, index) => {
-    const previous = index > 0 ? funnel[index - 1].value : 0;
-    return {
-      ...stage,
-      width: stage.value > 0 ? Math.max(3, Math.round((stage.value / funnelMax) * 100)) : 0,
-      conversion: index === 0 || previous === 0 ? null : Math.round((stage.value / previous) * 100),
-    };
+  // ── KPI cards: each says its period; the trend line is this month's real count ──
+  const newThisMonth = (count: number): KpiCard["delta"] => ({
+    trend: count > 0 ? "up" : "flat",
+    text: t("kpiDelta.newThisMonth", { count }),
   });
-
-  const actions = [
-    { label: t("actions.jobOversight.label"), href: `/${locale}/super-agent/jobs`, icon: CheckCircle2 },
-    { label: t("actions.agentPerformance.label"), href: `/${locale}/super-agent/agents`, icon: Users2 },
-    { label: t("actions.leadPipeline.label"), href: `/${locale}/super-agent/leads`, icon: Target },
-    { label: t("actions.commissionReport.label"), href: `/${locale}/super-agent/commissions`, icon: DollarSign },
+  const placementDiff = kpis.placementsThisMonth - kpis.placementsLastMonth;
+  const placementTrend: KpiTrend = placementDiff > 0 ? "up" : placementDiff < 0 ? "down" : "flat";
+  const cards: KpiCard[] = [
+    {
+      key: "agents", label: t("kpis.activeAgents.label"), value: kpis.activeAgents,
+      context: t("kpiContext.activeAgents"), delta: newThisMonth(kpis.newAgentsThisMonth),
+      href: href("/agents?status=active"), icon: Users2, tone: "sky",
+    },
+    {
+      key: "employers", label: t("kpis.totalEmployers.label"), value: kpis.employers,
+      context: t("kpiContext.employers"), delta: newThisMonth(kpis.newEmployersThisMonth),
+      href: href("/employers"), icon: Building2, tone: "violet",
+    },
+    {
+      key: "jobs", label: t("kpis.activeJobs.label"), value: kpis.activeJobs,
+      context: t("kpiContext.activeJobs"),
+      delta: { trend: kpis.jobsPostedThisMonth > 0 ? "up" : "flat", text: t("kpiDelta.postedThisMonth", { count: kpis.jobsPostedThisMonth }) },
+      href: href("/jobs?status=active"), icon: Briefcase, tone: "emerald",
+    },
+    {
+      key: "placements", label: t("kpis.totalPlacements.label"), value: kpis.placementsThisMonth,
+      context: t("kpiContext.placements"),
+      delta: {
+        trend: placementTrend,
+        text: placementDiff > 0
+          ? t("kpiDelta.moreThanLastMonth", { count: placementDiff })
+          : placementDiff < 0
+            ? t("kpiDelta.fewerThanLastMonth", { count: -placementDiff })
+            : t("kpiDelta.sameAsLastMonth"),
+      },
+      href: href("/placements"), icon: Trophy, tone: "amber",
+    },
   ];
 
-  const inactiveAgents = Math.max(0, totalAgents - activeAgents);
-  const nextAction = inactiveAgents > 0
-    ? { title: t("actions.agentPerformance.label"), description: t("actions.agentPerformance.description"), href: `/${locale}/super-agent/agents`, icon: Users2, badge: t("taskFirst.attention") }
-    : totalLeads > totalEmployers
-      ? { title: t("actions.leadPipeline.label"), description: t("actions.leadPipeline.description"), href: `/${locale}/super-agent/leads`, icon: Target, badge: t("taskFirst.followUp") }
-      : { title: t("actions.jobOversight.label"), description: t("taskFirst.jobOversightDescription"), href: `/${locale}/super-agent/jobs`, icon: CheckCircle2, badge: t("taskFirst.review") };
-
-  // Idle agents are those with no lead at all — the distinct() above returns
-  // only the agents that have one, so the remainder have never been given work.
-  const idleAgents = Math.max(0, agentDocIds.length - agentsWithLeads.length);
-
+  // ── Needs your attention ───────────────────────────────────────────────
+  // Counts, not ratios. Each list page opens pre-filtered to exactly these
+  // records, so the number and the destination agree.
   const priorityItems: PriorityItem[] = [
-    pendingExhibitions > 0 && {
-      key: "exhibitions",
-      level: "urgent" as const,
-      levelLabel: t("priority.urgent"),
-      text: t("priority.exhibitions", { count: pendingExhibitions }),
-      actionLabel: t("priority.exhibitionsAction"),
-      href: `/${locale}/super-agent/exhibitions?status=submitted`,
-      icon: CalendarDays,
+    queue.pendingExhibitions > 0 && {
+      key: "exhibitions", level: "urgent" as const, levelLabel: t("priority.urgent"),
+      count: queue.pendingExhibitions,
+      title: t("priority.rows.exhibitionsTitle", { count: queue.pendingExhibitions }),
+      hint: t("priority.rows.exhibitionsHint"),
+      actionLabel: t("priority.exhibitionsAction"), href: href("/exhibitions?status=pending_review"), icon: CalendarDays,
     },
-    pendingCommissions > 0 && {
-      key: "commissions",
-      level: "urgent" as const,
-      levelLabel: t("priority.urgent"),
-      text: t("priority.commissions", { count: pendingCommissions }),
-      actionLabel: t("priority.commissionsAction"),
-      href: `/${locale}/super-agent/commissions?status=pending`,
-      icon: DollarSign,
+    queue.pendingCommissions > 0 && {
+      key: "commissions", level: "urgent" as const, levelLabel: t("priority.urgent"),
+      count: queue.pendingCommissions,
+      title: t("priority.rows.commissionsTitle", { count: queue.pendingCommissions }),
+      hint: t("priority.rows.commissionsHint"),
+      actionLabel: t("priority.commissionsAction"), href: href("/commissions?status=pending"), icon: DollarSign,
     },
-    overdueFollowUps > 0 && {
-      key: "overdueLeads",
-      level: "soon" as const,
-      levelLabel: t("priority.soon"),
-      text: t("priority.overdueLeads", { count: overdueFollowUps }),
-      actionLabel: t("priority.overdueLeadsAction"),
-      href: `/${locale}/super-agent/leads?hasFollowUp=overdue`,
-      icon: Target,
+    queue.overdueFollowUps > 0 && {
+      key: "overdueLeads", level: "soon" as const, levelLabel: t("priority.soon"),
+      count: queue.overdueFollowUps,
+      title: t("priority.rows.overdueLeadsTitle", { count: queue.overdueFollowUps }),
+      hint: t("priority.rows.overdueLeadsHint"),
+      actionLabel: t("priority.overdueLeadsAction"), href: href("/leads?hasFollowUp=overdue"), icon: Target,
     },
-    inactiveAgents > 0 && {
-      key: "inactiveAgents",
-      level: "review" as const,
-      levelLabel: t("priority.review"),
-      text: t("priority.inactiveAgents", { count: inactiveAgents }),
-      actionLabel: t("priority.inactiveAgentsAction"),
-      href: `/${locale}/super-agent/agents`,
-      icon: UserX,
+    queue.inactiveAgents > 0 && {
+      key: "inactiveAgents", level: "review" as const, levelLabel: t("priority.review"),
+      count: queue.inactiveAgents,
+      title: t("priority.rows.inactiveAgentsTitle", { count: queue.inactiveAgents }),
+      hint: t("priority.rows.inactiveAgentsHint"),
+      actionLabel: t("priority.inactiveAgentsAction"), href: href("/agents?status=inactive"), icon: UserX,
     },
-    idleAgents > 0 && {
-      key: "idleAgents",
-      level: "review" as const,
-      levelLabel: t("priority.review"),
-      text: t("priority.idleAgents", { count: idleAgents }),
-      actionLabel: t("priority.idleAgentsAction"),
-      href: `/${locale}/super-agent/agents?performance=no_activity`,
-      icon: Users2,
+    queue.idleAgents > 0 && {
+      key: "idleAgents", level: "review" as const, levelLabel: t("priority.review"),
+      count: queue.idleAgents,
+      title: t("priority.rows.idleAgentsTitle", { count: queue.idleAgents }),
+      hint: t("priority.rows.idleAgentsHint"),
+      actionLabel: t("priority.idleAgentsAction"), href: href("/agents?performance=no_activity"), icon: Users2,
     },
   ].filter(Boolean) as PriorityItem[];
 
-  const signals = [
-    { label: t("kpis.activeAgents.label"), value: activeAgents, href: `/${locale}/super-agent/agents`, icon: Users2 },
-    { label: t("kpis.totalEmployers.label"), value: totalEmployers, href: `/${locale}/super-agent/employers`, icon: Building2 },
-    { label: t("kpis.activeJobs.label"), value: activeJobs, href: `/${locale}/super-agent/jobs`, icon: Briefcase },
-    { label: t("kpis.totalPlacements.label"), value: totalPlacements, href: `/${locale}/super-agent/placements`, icon: ShieldCheck },
+  // The quiet-day nudge, only once the queue is clear (an inactive agent is
+  // itself a queue row, so it never reaches here).
+  const nextAction = funnel.leads > funnel.employers
+    ? { title: t("actions.leadPipeline.label"), description: t("actions.leadPipeline.description"), href: href("/leads"), icon: Target, badge: t("taskFirst.followUp") }
+    : { title: t("actions.jobOversight.label"), description: t("taskFirst.jobOversightDescription"), href: href("/jobs"), icon: CheckCircle2, badge: t("taskFirst.review") };
+
+  // ── Funnel: all-time volume + ratios that say what they divide ─────────
+  const ratio = (num: number, den: number, format: (v: number) => string) => (den > 0 ? format(num / den) : "—");
+  const funnelStages = [
+    { key: "leads", label: t("funnel.leads"), value: funnel.leads },
+    { key: "employers", label: t("funnel.employers"), value: funnel.employers },
+    { key: "jobs", label: t("funnel.jobs"), value: funnel.jobs },
+    { key: "applications", label: t("funnel.applications"), value: funnel.applications },
+    { key: "placements", label: t("funnel.placements"), value: funnel.placements },
   ];
+  const funnelRatios = [
+    {
+      key: "jobsPerEmployer", label: t("funnelPanel.jobsPerEmployer"),
+      value: ratio(funnel.jobs, funnel.employers, (v) => `${v.toFixed(1)}×`),
+      basis: t("funnelPanel.jobsPerEmployerBasis", { jobs: funnel.jobs, employers: funnel.employers }),
+    },
+    {
+      key: "applicationsPerJob", label: t("funnelPanel.applicationsPerJob"),
+      value: ratio(funnel.applications, funnel.jobs, (v) => v.toFixed(2)),
+      basis: t("funnelPanel.applicationsPerJobBasis", { applications: funnel.applications, jobs: funnel.jobs }),
+    },
+    {
+      key: "placementRate", label: t("funnel.placementRate"),
+      value: ratio(funnel.placements, funnel.applications, (v) => `${Math.round(v * 100)}%`),
+      basis: t("funnelPanel.placementRateBasis", { placements: funnel.placements, applications: funnel.applications }),
+    },
+  ];
+
+  // ── Team activity: localised month labels over "YYYY-MM" keys ──────────
+  const monthLabel = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+  const activityPoints = data.activity.map((m) => {
+    const [y, mo] = m.month.split("-").map(Number);
+    return { label: monthLabel.format(new Date(Date.UTC(y, mo - 1, 1))), leads: m.leads, jobs: m.jobs, applications: m.applications };
+  });
 
   return (
     <div className="page-container dashboard-overview-page">
-      <DashboardPageHeader
-        icon={ShieldCheck}
-        title={t("hero.title")}
-        description={t("hero.description")}
-        metrics={signals.map((signal) => ({
-          label: signal.label,
-          value: signal.value,
-          icon: signal.icon,
-          href: signal.href,
-        }))}
+      <WorkspaceHeader
+        title={greeting}
+        context={
+          <>
+            <AssignedRegionBadge regions={assignedRegions} className="me-2" />
+            {t("hero.subtitle")}
+          </>
+        }
+        actions={
+          <div className="hidden items-center gap-2 rounded-xl border border-border/70 bg-background/70 px-3 py-1.5 sm:flex">
+            <CalendarDays className="size-4 text-muted-foreground" aria-hidden="true" />
+            <div className="leading-tight">
+              <p className="text-[11px] font-medium text-muted-foreground">{t("hero.today")}</p>
+              <p className="text-sm font-semibold text-foreground">{today}</p>
+            </div>
+          </div>
+        }
       />
 
-      <SuperAgentPriorityQueue
-        headingId="super-agent-priority"
-        title={t("priority.title")}
-        description={t("priority.description")}
-        items={priorityItems}
-        emptyTitle={t("priority.empty")}
-        emptyHint={t("priority.emptyHint")}
-      />
+      <SuperAgentKpiCards cards={cards} />
 
-      {/* The suggestion card is a nudge for a quiet day, not a queue. With real
-          work outstanding it competed with the list above it for the same
-          attention, so it only appears once that list is clear. */}
-      {priorityItems.length === 0 && (
-        <DashboardNextAction
-          headingId="super-agent-next-action"
-          title={t("taskFirst.recommendedNext")}
-          description={t("taskFirst.nextDescription")}
-          actionTitle={nextAction.title}
-          actionDescription={nextAction.description}
-          actionLabel={t("taskFirst.openAction")}
-          href={nextAction.href}
-          icon={nextAction.icon}
-          badge={nextAction.badge}
-        />
-      )}
-
-      <section className="order-2 workspace-panel-surface overflow-hidden rounded-2xl lg:order-1">
-        <div className="panel-head justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</h2>
-          <div className="flex shrink-0 items-baseline gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("funnel.placementRate")}</span>
-            <span className="text-base font-semibold text-primary">
-              {placementRate === null ? "—" : `${placementRate}%`}
-            </span>
-            {placementRate === null ? (
-              <span className="hidden text-xs font-medium text-muted-foreground sm:inline">{t("funnel.noApplicationData")}</span>
-            ) : totalPlacements === 0 && (
-              <span className="hidden text-xs font-medium text-muted-foreground sm:inline">{t("funnel.noPlacements")}</span>
-            )}
-          </div>
-        </div>
-
-        <div className="panel-body">
-          {funnelRows.map((stage, index) => (
-            <div key={stage.key} className="flex h-9 items-center gap-3">
-              <div className="w-24 shrink-0 truncate text-xs font-medium text-muted-foreground sm:w-32 sm:text-sm">{stage.label}</div>
-              <div className="relative h-[22px] flex-1 overflow-hidden rounded-lg bg-secondary/60">
-                <div
-                  className="h-full rounded-lg bg-gradient-to-r from-sky-500/80 to-indigo-500/80"
-                  style={{ width: `${stage.width}%` }}
-                />
-              </div>
-              <div className="w-10 shrink-0 text-end text-sm font-semibold tabular-nums text-foreground">{stage.value}</div>
-              <div
-                className={`w-12 shrink-0 text-end text-xs font-semibold tabular-nums ${
-                  stage.conversion === null
-                    ? "text-muted-foreground/60"
-                    : stage.conversion >= 100
-                      ? "text-emerald-600"
-                      : stage.conversion >= 50
-                        ? "text-amber-600"
-                        : "text-rose-600"
-                }`}
-                title={stage.conversion === null
-                  ? t("funnel.ratioUnavailable")
-                  : t("funnel.ratioValue", {
-                      value: stage.conversion,
-                      current: stage.label,
-                      previous: funnel[index - 1]?.label ?? "",
-                    })}
-              >
-                {stage.conversion === null ? "—" : `${stage.conversion}%`}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Both panels stretch to the taller one — the action tiles grow with auto-rows-fr
-          instead of leaving a ragged gap under Quick actions. */}
-      <section className="panel-grid order-1 lg:order-2 xl:grid-cols-2">
-        <div className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-2xl">
-          <div className="panel-head">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</h2>
-          </div>
-          <div className="panel-body flex-1">
-            <div className="panel-grid h-full auto-rows-fr sm:grid-cols-2">
-              {actions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={action.href}
-                    href={action.href}
-                    className="workspace-subtle-surface group flex min-h-[56px] items-center gap-3 rounded-xl px-4 transition-all hover:border-primary/25 hover:bg-card"
-                  >
-                    <span className="workspace-tone-sky flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{action.label}</span>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-2xl">
-          <div className="panel-head justify-between">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.leaderboard.title")}</h2>
-            <Link
-              href={`/${locale}/super-agent/agents`}
-              className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:text-primary/85"
-            >
-              {t("sections.leaderboard.viewAll")}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          {leaderboard.length > 0 ? (
-            <div className="panel-body flex flex-1 flex-col justify-center divide-y divide-border/60 py-0">
-              {leaderboard.map((row, index) => (
-                <div key={row.agentId} className="flex items-center gap-3 py-3">
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    index === 0
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-secondary text-muted-foreground"
-                  }`}>
-                    {index + 1}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">{row.name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {t("leaderboard.summary", { leads: row.leads, jobs: row.jobs })}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-end">
-                    <span className="text-base font-semibold tabular-nums text-foreground">{row.placements}</span>
-                    <span className="ms-1 text-[11px] text-muted-foreground">{t("leaderboard.placements")}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="panel-body flex-1">
-              <div className="workspace-empty-state flex h-full flex-col items-center justify-center rounded-xl p-4 text-center">
-                <p className="text-sm font-medium text-foreground">{t("leaderboard.emptyTitle")}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("leaderboard.emptyDescription")}</p>
-              </div>
-            </div>
+      <div className="grid items-stretch gap-3 sm:gap-4 xl:grid-cols-2">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <SuperAgentPriorityQueue
+            headingId="super-agent-priority"
+            title={t("priority.title")}
+            description={t("priority.description")}
+            items={priorityItems}
+            emptyTitle={t("priority.empty")}
+            emptyHint={t("priority.emptyHint")}
+            className="flex-1"
+          />
+          {priorityItems.length === 0 && (
+            <DashboardNextAction
+              headingId="super-agent-next-action"
+              title={t("taskFirst.recommendedNext")}
+              description={t("taskFirst.nextDescription")}
+              actionTitle={nextAction.title}
+              actionDescription={nextAction.description}
+              actionLabel={t("taskFirst.openAction")}
+              href={nextAction.href}
+              icon={nextAction.icon}
+              badge={nextAction.badge}
+            />
           )}
         </div>
-      </section>
+        <RegionalFunnel
+          headingId="super-agent-funnel"
+          title={t("funnelPanel.title")}
+          description={t("funnelPanel.description")}
+          periodLabel={t("funnelPanel.period")}
+          stages={funnelStages}
+          ratios={funnelRatios}
+        />
+      </div>
+
+      <div className="grid items-stretch gap-3 sm:gap-4 xl:grid-cols-2">
+        <TeamActivityChart
+          headingId="super-agent-activity"
+          title={t("activity.title")}
+          description={t("activity.description")}
+          seriesLabels={{ leads: t("funnel.leads"), jobs: t("funnel.jobs"), applications: t("funnel.applications") }}
+          monthHeader={t("activity.month")}
+          points={activityPoints}
+          emptyTitle={t("activity.emptyTitle")}
+          emptyDescription={t("activity.emptyDescription")}
+        />
+        <TopAgentsTable
+          headingId="super-agent-top-agents"
+          title={t("topAgents.title")}
+          description={t("topAgents.description")}
+          viewAllLabel={t("sections.leaderboard.viewAll")}
+          // The full ranking, not the roster the Active Agents card opens.
+          viewAllHref={href("/agents?sortBy=placements&sortOrder=desc")}
+          agentHref={(id) => href(`/agents/${id}`)}
+          columns={{
+            rank: t("topAgents.rank"),
+            agent: t("topAgents.agent"),
+            leads: t("funnel.leads"),
+            jobs: t("topAgents.jobs"),
+            applications: t("funnel.applications"),
+            placements: t("funnel.placements"),
+          }}
+          rows={data.topAgents}
+          emptyTitle={t("leaderboard.emptyTitle")}
+          emptyDescription={t("leaderboard.emptyDescription")}
+        />
+      </div>
     </div>
   );
 }

@@ -41,12 +41,12 @@ const getEmployerFields = (t: ReturnType<typeof useTranslations>): CrudField[] =
 ];
 
 const getOnboardFields = (t: ReturnType<typeof useTranslations>, tf: ReturnType<typeof useTranslations>): CrudField[] => [
-  { name: "name", label: t("fieldContactName"), type: "text", required: true },
-  { name: "email", label: t("fieldEmail"), type: "text", required: true },
+  { name: "name", label: t("fieldContactName"), type: "text", required: true, placeholder: t("placeholderContactName") },
+  { name: "email", label: t("fieldEmail"), type: "text", required: true, placeholder: t("placeholderEmail") },
   { name: "password", label: t("fieldTemporaryPassword"), type: "password", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
-  { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
-  { name: "industry", label: t("fieldIndustry"), type: "text" },
-  { name: "phone", label: t("fieldPhone"), type: "text" },
+  { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true, placeholder: t("placeholderCompanyName") },
+  { name: "industry", label: t("fieldIndustry"), type: "text", placeholder: t("placeholderIndustry") },
+  { name: "phone", label: t("fieldPhone"), type: "text", placeholder: t("placeholderPhone") },
 ];
 
 export default function AgentEmployersPage() {
@@ -388,7 +388,7 @@ export default function AgentEmployersPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {em.isAgentVerified && (
-                    <span className="whitespace-nowrap text-[11px] bg-green-500/10 text-status-selected px-2 py-0.5 rounded-full font-medium">{tc("verified")}</span>
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] bg-green-500/10 text-status-selected px-2 py-0.5 rounded-full font-medium"><Check className="h-3 w-3" aria-hidden="true" />{tc("verified")}</span>
                   )}
                   <StatusBadge status={em.isActive ? "active" : "inactive"} />
                 </div>

@@ -347,12 +347,15 @@ export default function AdminResourcesPage() {
           {detailItem && (<>
             <DialogHeader>
               <DialogTitle className="text-xl">{detailItem.title}</DialogTitle>
-              <DialogDescription className="flex items-center gap-2 pt-2">
-                <Badge variant="outline" className="text-xs">{categoryLabels[detailItem.category as keyof typeof categoryLabels] ?? detailItem.category}</Badge>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${ACCESS_COLORS[detailItem.accessLevel]}`}>
-                  <Shield className="h-2.5 w-2.5" />{detailItem.accessLevel}
-                </span>
-                <span className="text-xs text-muted-foreground">v{detailItem.version}</span>
+              {/* A div, not the default <p>: Badge renders a <div>, which a <p> can't hold. */}
+              <DialogDescription asChild>
+                <div className="flex items-center gap-2 pt-2">
+                  <Badge variant="outline" className="text-xs">{categoryLabels[detailItem.category as keyof typeof categoryLabels] ?? detailItem.category}</Badge>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${ACCESS_COLORS[detailItem.accessLevel]}`}>
+                    <Shield className="h-2.5 w-2.5" />{detailItem.accessLevel}
+                  </span>
+                  <span className="text-xs text-muted-foreground">v{detailItem.version}</span>
+                </div>
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-5 text-sm">

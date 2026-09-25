@@ -12,6 +12,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Plus, Pencil, Trash2, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, CalendarDays, Globe } from "lucide-react";
@@ -90,7 +91,8 @@ export default function AdminCommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [status, setStatus] = useState("");
+  // In the URL so the dashboard's "pending commissions" row lands filtered.
+  const [status, setStatus] = useUrlFilter("status", "", { allow: ["pending", "approved", "paid", "disputed", "clawed_back"] });
   const [typeFilter, setTypeFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -310,11 +312,6 @@ export default function AdminCommissionsPage() {
         compactOnMobile
         title={t("commissionsTitle")}
         description={t("commissionsDescription")}
-        summary={{
-          label: t("commissionRecordsAcross"),
-          value: formatCount(total),
-          note: `${formatCount(totalPages)} ${totalPages === 1 ? t("commissionRecordsPages") : t("commissionRecordsPages_plural")}`,
-        }}
         metrics={commissionMetrics}
       />
 
@@ -432,14 +429,6 @@ export default function AdminCommissionsPage() {
       ) : null}
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="heading-subsection font-semibold text-foreground">{t("commissionLedgerTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("recordsShowing")} {formatCount(visibleCommissions)} {visibleCommissions === 1 ? t("record") : t("records")} {t("onThisPage")}</p>
-          </div>
-        </div>
-
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

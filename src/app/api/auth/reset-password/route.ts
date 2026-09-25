@@ -8,6 +8,8 @@ import { logActivity } from "@/lib/audit/log";
 import { z } from "zod";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { getClientIp } from "@/lib/security/clientIp";
+import { sendEmail, EmailTemplates } from "@/lib/communications/email";
+import logger from "@/lib/logger";
 
 const schema = z.object({
   token: z.string().min(1),
@@ -69,6 +71,11 @@ export async function POST(req: NextRequest) {
   user.passwordResetExpiry = undefined;
   user.passwordResetAttempts = 0;
   user.passwordChangedAt = new Date();
+  user.tempPasswordIssuedAt = undefined;
+  // The link was delivered to this inbox, so using it proves the address. An
+  // agent a super-agent adds sets their password this way and would otherwise
+  // land on the verify-code screen straight after.
+  user.isEmailVerified = true;
   user.failedLoginAttempts = 0;
   user.lockUntil = undefined;
   await user.save();
@@ -81,6 +88,27 @@ export async function POST(req: NextRequest) {
     meta: { email: user.email },
     req,
   });
+
+  // Send confirmation email (non-blocking — do not fail if email fails)
+  const now = new Date();
+  const dateTime = now.toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
+  sendEmail({
+    to: user.email,
+    ...EmailTemplates.passwordResetConfirmation(dateTime),
+    userId: user._id.toString(),
+    source: "password-reset",
+    category: "security",
+  }).catch((err) =>
+    logger.error({ err, userId: user._id.toString() }, "Failed to send password reset confirmation email"),
+  );
 
   return NextResponse.json({ message: "Password has been reset successfully" });
 }

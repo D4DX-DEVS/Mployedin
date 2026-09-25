@@ -331,6 +331,7 @@ export default function AgentCandidatesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("searchPlaceholder")}
+              aria-label={t("searchPlaceholder")}
               className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
           </div>
@@ -345,7 +346,7 @@ export default function AgentCandidatesPage() {
         <div className="flex flex-wrap gap-1.5 pt-3 sm:gap-2 sm:pt-4">
           {jobIdFilter && (
             <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-9 rounded-xl border-transparent px-3 hover:opacity-90">
-              {filteredJobTitle ? `✕ ${filteredJobTitle}` : t("clearJobFilter")}
+              {filteredJobTitle ? <><X className="h-3.5 w-3.5" aria-hidden="true" />{filteredJobTitle}</> : t("clearJobFilter")}
             </Button>
           )}
           {STATUS_OPTIONS.map((status) => {

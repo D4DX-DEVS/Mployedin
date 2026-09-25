@@ -3,11 +3,41 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Placement from "@/models/Placement";
 import {
+  AWAITING_REVIEW_STATUSES,
   buildPlatformAlerts,
-  OPEN_APPLICATION_STATUSES,
+  JOBS_WITHOUT_APPLICATIONS_MATCH,
   STALE_APPLICATION_MS,
   type PlatformAlert,
 } from "./platformAlerts";
+
+/** Active jobs nobody has applied to — the one definition every surface uses. */
+export async function countJobsWithoutApplications(): Promise<number> {
+  const [row] = await Job.aggregate<{ count: number }>([
+    { $match: { ...JOBS_WITHOUT_APPLICATIONS_MATCH } },
+    {
+      $lookup: {
+        from: "applications",
+        let: { jobId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$jobId", "$$jobId"] } } },
+          { $limit: 1 },
+        ],
+        as: "applications",
+      },
+    },
+    { $match: { "applications.0": { $exists: false } } },
+    { $count: "count" },
+  ]);
+  return row?.count ?? 0;
+}
+
+/** Applications still at `applied` after the review window. */
+export function countApplicationsAwaitingReview(now: Date = new Date()): Promise<number> {
+  return Application.countDocuments({
+    status: { $in: AWAITING_REVIEW_STATUSES },
+    appliedAt: { $lte: new Date(now.getTime() - STALE_APPLICATION_MS) },
+  });
+}
 
 /**
  * Runs the queries the alerts need. Deliberately narrow — the dashboard should
@@ -21,10 +51,9 @@ export async function getPlatformAlerts(periodDays = 30): Promise<PlatformAlert[
   const periodMs = periodDays * 24 * 60 * 60 * 1000;
   const currentPeriodStart = new Date(now.getTime() - periodMs);
   const previousPeriodStart = new Date(now.getTime() - periodMs * 2);
-  const staleThreshold = new Date(now.getTime() - STALE_APPLICATION_MS);
 
   const [
-    jobsWithoutApplicationsAgg,
+    jobsWithoutApplications,
     staleOpenApplications,
     currentApplications,
     previousApplications,
@@ -34,26 +63,8 @@ export async function getPlatformAlerts(periodDays = 30): Promise<PlatformAlert[
     totalApplications,
     totalPlacements,
   ] = await Promise.all([
-    Job.aggregate<{ count: number }>([
-      { $match: { deletedAt: null } },
-      {
-        $lookup: {
-          from: "applications",
-          let: { jobId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$jobId", "$$jobId"] } } },
-            { $limit: 1 },
-          ],
-          as: "applications",
-        },
-      },
-      { $match: { "applications.0": { $exists: false } } },
-      { $count: "count" },
-    ]),
-    Application.countDocuments({
-      status: { $in: OPEN_APPLICATION_STATUSES },
-      appliedAt: { $lte: staleThreshold },
-    }),
+    countJobsWithoutApplications(),
+    countApplicationsAwaitingReview(now),
     Application.countDocuments({ appliedAt: { $gte: currentPeriodStart } }),
     Application.countDocuments({ appliedAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } }),
     Placement.countDocuments({ placedAt: { $gte: currentPeriodStart } }),
@@ -64,7 +75,7 @@ export async function getPlatformAlerts(periodDays = 30): Promise<PlatformAlert[
   ]);
 
   return buildPlatformAlerts({
-    jobsWithoutApplications: jobsWithoutApplicationsAgg[0]?.count ?? 0,
+    jobsWithoutApplications,
     staleOpenApplications,
     currentApplications,
     previousApplications,

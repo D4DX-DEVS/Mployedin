@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { commonSchemas } from "./index";
-import { INVOICE_UPDATE_STATUSES, ACTIVE_RECRUITMENT_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { INVOICE_UPDATE_STATUSES, ACTIVE_RECRUITMENT_INVOICE_STATUSES, VOID_REASON_MIN_LENGTH } from "@/lib/invoices/status";
 
 // ── AI Feature Keys ──────────────────────────────────────────────────────────
 const AI_FEATURE_KEYS = [
@@ -133,7 +133,10 @@ export const invoiceUpdateSchema = z.object({
   internalNotes: z.string().max(2000).trim().optional(),
   voidReason: z.string().max(500).trim().optional(),
   rejectionReason: z.string().max(500).trim().optional(),
-});
+}).refine(
+  (data) => data.status !== "void" || (data.voidReason?.length ?? 0) >= VOID_REASON_MIN_LENGTH,
+  { message: `A reason of at least ${VOID_REASON_MIN_LENGTH} characters is required to void an invoice`, path: ["voidReason"] }
+);
 
 // ── POST /api/invoices/[id]/delivery ────────────────────────────────────────
 export const invoiceDeliverySchema = z.object({

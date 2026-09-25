@@ -4,7 +4,7 @@ import "@/models/Employer"; // register schema for .populate("employerId")
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight, X, Check, Banknote } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { closesInDays } from "@/lib/jobs/expiry";
 
@@ -170,6 +170,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                 name="search"
                 defaultValue={search}
                 placeholder={t("searchPlaceholder")}
+                aria-label={t("searchPlaceholder")}
                 className="w-full h-10 ps-9 pe-4 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
@@ -179,6 +180,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                 name="location"
                 defaultValue={location}
                 placeholder={t("locationPlaceholder")}
+                aria-label={t("locationPlaceholder")}
                 className="w-full h-10 ps-9 pe-4 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
@@ -195,12 +197,12 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
             <div className="flex flex-wrap gap-2 mt-4">
               {search && (
                 <a href={buildUrl({ search: "", page: "1" })} className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-3 py-1 rounded-full hover:bg-primary/20 transition-colors">
-                  &ldquo;{search}&rdquo; ✕
+                  &ldquo;{search}&rdquo; <X className="h-3 w-3" aria-hidden="true" />
                 </a>
               )}
               {location && (
                 <a href={buildUrl({ location: "", page: "1" })} className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-3 py-1 rounded-full hover:bg-primary/20 transition-colors">
-                  📍 {location} ✕
+                  <MapPin className="h-3 w-3" aria-hidden="true" /> {location} <X className="h-3 w-3" aria-hidden="true" />
                 </a>
               )}
             </div>
@@ -238,7 +240,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                           {job.title}
                         </h2>
                         {(employer?.domainVerified || employer?.isAgentVerified) && (
-                          <span className="shrink-0 text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ {t("verified")}</span>
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium"><Check className="h-3 w-3" aria-hidden="true" />{t("verified")}</span>
                         )}
                         {daysLeft !== null && daysLeft <= 14 && (
                           <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full font-medium ${
@@ -262,7 +264,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                         </span>
                         {salary && (
                           <span className="flex items-center gap-1">
-                            <span className="text-muted-foreground/60">💰</span>
+                            <Banknote className="h-3 w-3" aria-hidden="true" />
                             {salary}
                           </span>
                         )}

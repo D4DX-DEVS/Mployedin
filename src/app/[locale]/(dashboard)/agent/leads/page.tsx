@@ -975,6 +975,7 @@ export default function AgentLeadsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("searchPlaceholder")}
+                aria-label={t("searchPlaceholder")}
                 className="h-10 w-full rounded-xl border border-border bg-background/70 pl-9 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
             </div>
@@ -990,7 +991,10 @@ export default function AgentLeadsPage() {
               </SelectContent>
             </Select>
             <Select value={exhibitionFilter} onValueChange={setExhibitionFilter}>
-              <SelectTrigger className="h-10 w-auto min-w-[132px] max-w-[180px] shrink-0 truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
+              <SelectTrigger
+                title={exhibitions.find((e) => e._id === exhibitionFilter)?.eventName}
+                className="h-10 w-auto min-w-[132px] max-w-[280px] shrink-0 truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

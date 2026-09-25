@@ -90,6 +90,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   // Email OTP flow for anonymous users
   const [anonAuthMethod, setAnonAuthMethod] = useState<"google" | "email" | null>(null);
   const [anonEmail, setAnonEmail] = useState("");
+  const [anonName, setAnonName] = useState("");
   const [anonOtpCode, setAnonOtpCode] = useState("");
   const [anonOtpSent, setAnonOtpSent] = useState(false);
   const [anonOtpResendCountdown, setAnonOtpResendCountdown] = useState(0);
@@ -122,6 +123,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const cvInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
 
   const role = (session?.user as { role?: string })?.role;
   const isJobSeeker = role === "job_seeker";
@@ -224,6 +226,14 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
     }, 1000);
     return () => clearTimeout(timer);
   }, [anonOtpResendCountdown]);
+
+  // Scroll confirmation message into view when application is submitted
+  useEffect(() => {
+    if (applied && confirmationRef.current) {
+      confirmationRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      confirmationRef.current.focus();
+    }
+  }, [applied]);
 
   if (status === "loading" || fetchingProfile || (isJobSeeker && checkingApplied && !applied)) {
     return (
@@ -386,6 +396,10 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       setAnonError(t("errors.invalidEmail"));
       return;
     }
+    if (!anonName || !anonName.trim()) {
+      setAnonError(t("errors.nameRequired"));
+      return;
+    }
 
     try {
       // Invisible reCAPTCHA v3. Resolves to null when no site key is configured,
@@ -395,7 +409,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       const res = await csrfFetch("/api/auth/apply-otp/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: anonEmail, ...(captchaToken ? { captchaToken } : {}) }),
+        body: JSON.stringify({ email: anonEmail, name: anonName.trim(), ...(captchaToken ? { captchaToken } : {}) }),
       });
 
       const data = await res.json();
@@ -587,6 +601,22 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           </Button>
 
           <div className="field">
+            <Label htmlFor="anon-name" className="text-xs font-medium text-foreground">
+              {t("fullName")} <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="anon-name"
+              type="text"
+              value={anonName}
+              onChange={(e) => setAnonName(e.target.value)}
+              placeholder={t("enterFullName")}
+              className="rounded-xl"
+              autoComplete="name"
+              maxLength={200}
+            />
+          </div>
+
+          <div className="field">
             <Label htmlFor="anon-email" className="text-xs font-medium text-foreground">
               {t("email")}
             </Label>
@@ -603,7 +633,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           <Button
             size="lg"
             onClick={handleAnonEmailOtpStart}
-            disabled={anonPhase !== "idle" || !anonEmail}
+            disabled={anonPhase !== "idle" || !anonEmail || !anonName.trim()}
             className="w-full rounded-2xl text-base font-medium gap-2"
           >
             {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -633,6 +663,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             onClick={() => {
               setAnonAuthMethod(null);
               setAnonEmail("");
+              setAnonName("");
             }}
             className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
           >
@@ -704,6 +735,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
                 setAnonAuthMethod(null);
                 setAnonOtpSent(false);
                 setAnonEmail("");
+                setAnonName("");
                 setAnonOtpCode("");
               }}
               className="flex-1 text-center text-muted-foreground underline-offset-2 hover:underline"
@@ -886,9 +918,15 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (applied) {
     return (
-      <div className="space-y-3 w-full rounded-3xl border border-green-500/30 bg-green-500/10 card-pad">
+      <div
+        ref={confirmationRef}
+        className="space-y-3 w-full rounded-3xl border border-green-500/30 bg-green-500/10 card-pad"
+        tabIndex={-1}
+        aria-live="polite"
+        role="status"
+      >
         <div className="text-center">
-          <p className="text-sm font-semibold text-green-600">✓ {t("applicationSubmitted")}</p>
+          <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-600"><Check className="h-4 w-4" aria-hidden="true" />{t("applicationSubmitted")}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {t("sentProfile")}
           </p>
@@ -1228,13 +1266,14 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           </p>
           {sortedQuestions.map((q) => (
             <div key={q.id} className="space-y-1.5">
-              <Label className="text-sm font-medium text-foreground">
+              <Label htmlFor={`sq-${q.id}`} className="text-sm font-medium text-foreground">
                 {q.label}
                 {q.required && <span className="ml-1 text-destructive">*</span>}
               </Label>
 
               {q.type === "text" && (
                 <Input
+                  id={`sq-${q.id}`}
                   placeholder={q.placeholder || ""}
                   value={(answers[q.id] as string) ?? ""}
                   onChange={(e) => setAnswer(q.id, e.target.value)}
@@ -1245,6 +1284,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
               {q.type === "textarea" && (
                 <textarea
+                  id={`sq-${q.id}`}
                   className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background text-sm chip-pad"
                   placeholder={q.placeholder || ""}
                   value={(answers[q.id] as string) ?? ""}
@@ -1256,6 +1296,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
               {q.type === "number" && (
                 <Input
+                  id={`sq-${q.id}`}
                   type="number"
                   placeholder={q.placeholder || ""}
                   value={(answers[q.id] as string) ?? ""}
@@ -1453,7 +1494,8 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
     if (answeredCount === 0) return null;
     return (
       <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-        <p className="text-xs font-semibold text-emerald-600">
+        <p className="flex items-start gap-1.5 text-xs font-semibold text-emerald-600">
+          <Check className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {t("skillsUpdated", { count: answeredCount })}
         </p>
       </div>

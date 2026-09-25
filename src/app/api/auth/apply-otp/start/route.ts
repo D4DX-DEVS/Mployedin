@@ -7,6 +7,7 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { validateBody } from "@/lib/validators";
+import { applyOtpStartSchema } from "@/lib/validators/applyOtp";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import { verifyRecaptcha } from "@/lib/security/recaptcha";
 import logger from "@/lib/logger";
@@ -15,11 +16,7 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const schema = z.object({
-  email: z.string().email().max(254),
-  /** reCAPTCHA v3 token. Required only when RECAPTCHA_SECRET_KEY is configured. */
-  captchaToken: z.string().max(4096).optional(),
-});
+const schema = applyOtpStartSchema;
 
 /**
  * Every response after the email rate-limit check takes at least this long.
@@ -132,6 +129,7 @@ export async function POST(req: NextRequest) {
         attempts: 0,
         requestIp: ip,
         expiresAt,
+        name: body.name,
       },
     };
     try {
@@ -143,12 +141,12 @@ export async function POST(req: NextRequest) {
       await PendingSignin.findOneAndUpdate({ email: normalizedEmail }, pendingUpdate, { upsert: true });
     }
 
-    const greetingName = existing?.name ?? normalizedEmail.split("@")[0];
-    // The code is entered in place on the job page, so the template's
-    // verification-link argument is deliberately empty.
+    // The code is entered in place on the job page, so the email carries no
+    // link. The greeting is the account's name, or the name just typed —
+    // never the email's local part.
     const sendResult = await sendEmail({
       to: normalizedEmail,
-      ...EmailTemplates.verifyEmailOtp(greetingName, otp, ""),
+      ...EmailTemplates.verifyEmailOtpQuickApply(otp, existing?.name ?? body.name),
       source: "quick-apply",
       category: "system",
     }).catch((err) => {

@@ -92,16 +92,24 @@ describe("emailFooter", () => {
   });
 
   it("carries the reason, both links, the no-reply note and a copyright", () => {
-    const html = emailFooter({ locale: "en", baseUrl: "https://x.test", reason: "Because you opted in.", unsubRef: "digest" });
+    const html = emailFooter({
+      locale: "en",
+      baseUrl: "https://x.test",
+      reason: "Because you opted in.",
+      unsubRef: "digest",
+      userId: "user-1",
+    });
     expect(html).toContain("Because you opted in.");
     expect(html).toContain("https://x.test/en/job-seeker/settings/notifications");
-    expect(html).toContain("https://x.test/api/unsubscribe?ref=digest");
+    // A signed link — the tokenless `?ref=digest` form opened an error page.
+    // Token validity is pinned in unsubscribeLink.test.ts.
+    expect(html).toMatch(/https:\/\/x\.test\/api\/unsubscribe\?token=[^"&]+&amp;ref=digest/);
     expect(html).toMatch(/please don't reply/i);
     expect(html).toContain(`&copy; ${new Date().getFullYear()} MPLOYEDIN`);
   });
 
   it("escapes the reason and url-encodes the unsubscribe ref", () => {
-    const html = emailFooter({ locale: "en", reason: '<script>x</script>', unsubRef: "a b&c" });
+    const html = emailFooter({ locale: "en", reason: '<script>x</script>', unsubRef: "a b&c", userId: "user-1" });
     expect(html).not.toContain("<script>x");
     expect(html).toContain("ref=a%20b%26c");
   });

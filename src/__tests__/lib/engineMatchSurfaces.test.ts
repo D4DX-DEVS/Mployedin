@@ -43,8 +43,13 @@ describe("every surface that shows a match percentage uses the engine", () => {
     ["src/app/api/jobs/recommended/handlers.ts", /scoreSeekerPool\(/],
     ["src/app/api/job-seeker/recommended-jobs/route.ts", /scoreSeekerPool\(/],
     ["src/app/[locale]/(dashboard)/job-seeker/page.tsx", /scoreSeekerPool\(/],
-    ["src/app/api/ai/match/route.ts", /scoreOnePair\(/],
-    ["src/lib/inngest/aiScreenApplication.ts", /scoreOnePair\(/],
+    ["src/lib/ai/copilot/tools/jobSeeker.ts", /scoreSeekerPool\(/],
+    // The employer side scores through computeApplicantMatch, which runs the
+    // engine pair score and only adds the checklist and saved weights on top.
+    ["src/app/api/ai/match/route.ts", /computeApplicantMatch\(/],
+    ["src/lib/inngest/aiScreenApplication.ts", /computeApplicantMatch\(/],
+    ["src/lib/matching/scoreApplication.ts", /scoreOnePair\(/],
+    ["src/app/api/ai/screen-candidates/route.ts", /scoreApplicationsOfJob\(/],
     ["src/lib/inngest/autoApply.ts", /recommendJobsFor\(/],
     ["src/lib/inngest/dailyRecommendations.ts", /recommendJobsFor\(/],
     ["src/lib/inngest/reEngagement.ts", /recommendJobsFor\(/],
@@ -61,7 +66,7 @@ describe("every surface that shows a match percentage uses the engine", () => {
       const src = read(file);
       // Passes the Mongo store itself, takes it from the shared options, or
       // scores through a seekerMatches helper that resolves those options.
-      expect(/mongoJevVerdictStore|resolveEngineOptions|scoreOnePair\(|scoreSeekerPool\(/.test(src)).toBe(true);
+      expect(/mongoJevVerdictStore|resolveEngineOptions|scoreOnePair\(|scoreSeekerPool\(|computeApplicantMatch\(/.test(src)).toBe(true);
     },
   );
 });

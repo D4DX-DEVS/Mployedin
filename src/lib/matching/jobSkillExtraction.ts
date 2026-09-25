@@ -94,7 +94,10 @@ export async function extractJobSkills(job: {
 
   let raw: string;
   try {
-    raw = await generateText(buildPrompt(title, description, existing), GEMINI_MODELS.flash, 400, true);
+    // Enrichment, never on a request path: flex tier, half price.
+    raw = await generateText(buildPrompt(title, description, existing), GEMINI_MODELS.flash, 400, true, {
+      tier: "flex",
+    });
   } catch (err) {
     logger.warn({ err, title }, "[jobSkillExtraction] provider call failed");
     return EMPTY;

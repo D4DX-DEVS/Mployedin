@@ -22,6 +22,10 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { cn } from "@/lib/utils";
 import { checkWording, SCREENING_QUESTION_RULES } from "@/lib/compliance/inclusiveWording";
 import type { JobFormValues } from "./jobFormSchema";
+import { KnockoutEditor, type KnockoutPatch } from "./KnockoutEditor";
+import { KNOCKOUT_NUMBER_TYPES, KNOCKOUT_OPTION_TYPES } from "@/lib/matching/knockouts";
+
+const KNOCKOUT_TYPES = new Set<string>([...KNOCKOUT_OPTION_TYPES, ...KNOCKOUT_NUMBER_TYPES]);
 
 const QUESTION_TYPES = [
   "text",
@@ -281,6 +285,11 @@ export function Step5ScreeningQuestions() {
                           { shouldValidate: true }
                         );
                       }
+                      // Answer rules only exist on choice and number questions.
+                      if (!KNOCKOUT_TYPES.has(newType)) {
+                        setValue(`screeningQuestions.${index}.knockout`, false, { shouldValidate: true });
+                        setValue(`screeningQuestions.${index}.preferred`, false, { shouldValidate: true });
+                      }
                     }}
                   >
                     <SelectTrigger className="h-9 w-auto rounded-xl">
@@ -368,6 +377,27 @@ export function Step5ScreeningQuestions() {
                   </Button>
                 </div>
               )}
+
+              <div className="mt-4">
+                <KnockoutEditor
+                  idPrefix={`sq-${field.id}`}
+                  type={qType}
+                  options={questions[index]?.options ?? []}
+                  knockout={questions[index]?.knockout}
+                  preferred={questions[index]?.preferred}
+                  acceptedAnswers={questions[index]?.acceptedAnswers}
+                  minValue={questions[index]?.minValue}
+                  onChange={(patch: KnockoutPatch) => {
+                    for (const [key, value] of Object.entries(patch)) {
+                      setValue(
+                        `screeningQuestions.${index}.${key as keyof KnockoutPatch}`,
+                        value as never,
+                        { shouldValidate: true },
+                      );
+                    }
+                  }}
+                />
+              </div>
             </div>
           );
         })}

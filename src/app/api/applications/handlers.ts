@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OPEN_APPLICATION_STATUSES, STALE_APPLICATION_MS } from "@/lib/admin/platformAlerts";
+import { AWAITING_REVIEW_STATUSES, STALE_APPLICATION_MS } from "@/lib/admin/platformAlerts";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withSubscription } from "@/lib/subscription/withSubscription";
@@ -48,6 +48,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const skills = searchParams.get("skills") ?? "";
   const scoreMin = searchParams.get("scoreMin") ?? "";
   const scoreMax = searchParams.get("scoreMax") ?? "";
+  // Requirements checklist roll-up. "qualified" = everyone not known to fail a
+  // hard requirement (met, unverified, or scored before the checklist existed)
+  // — the pool Shortlist Top ranks.
+  const requirementsParam = searchParams.get("requirements") ?? "";
   const fetchJobs = searchParams.get("fetchJobs") === "true";
   const employerIdParam = searchParams.get("employerId") ?? "";
   const sourceParam = searchParams.get("source") ?? "";
@@ -78,26 +82,17 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   } else if (ctx.role === "employer") {
     // Get all jobs for this employer then filter
     const { Employer } = await import("@/models/Employer");
-    const { CompanyUser } = await import("@/models/CompanyUser");
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
 
-    // Check job-level access for team members
-    const teamMember = await CompanyUser.findOne({
-      companyId: emp._id,
-      userId: ctx.userId,
-      status: "active",
-    }).select("companyRole jobAccess").lean();
+    // Check job-level access for team members. Looked up by the colleague's
+    // own id — ctx.userId has been swapped to the owner's.
+    const { getMemberJobRestriction } = await import("@/lib/permissions/team");
+    const restriction = await getMemberJobRestriction(ctx, emp._id);
 
     let jobQuery: Record<string, unknown> = { employerId: emp._id };
-    if (
-      teamMember &&
-      teamMember.companyRole !== "owner" &&
-      teamMember.companyRole !== "admin" &&
-      teamMember.jobAccess &&
-      teamMember.jobAccess.length > 0
-    ) {
-      jobQuery = { employerId: emp._id, _id: { $in: teamMember.jobAccess } };
+    if (restriction) {
+      jobQuery = { employerId: emp._id, _id: { $in: restriction } };
     }
 
     const jobs = await Job.find(jobQuery).select("_id").lean();
@@ -193,7 +188,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const staleBefore = new Date(Date.now() - STALE_APPLICATION_MS);
     const existingAppliedAt = query.appliedAt as Record<string, Date> | undefined;
     query.appliedAt = { ...(existingAppliedAt ?? {}), $lte: staleBefore };
-    if (!status) query.status = { $in: OPEN_APPLICATION_STATUSES };
+    if (!status) query.status = { $in: AWAITING_REVIEW_STATUSES };
   }
 
   // AI score range filter
@@ -204,6 +199,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     if (!isNaN(parsedMin) && parsedMin > 0) scoreFilter.$gte = parsedMin;
     if (!isNaN(parsedMax) && parsedMax < 100) scoreFilter.$lte = parsedMax;
     if (Object.keys(scoreFilter).length > 0) query.aiMatchScore = scoreFilter;
+  }
+  // Scored / not yet scored. Shortlist Top counts the unscored across the whole
+  // job with this; a score range already implies "scored", so it wins.
+  const scoredParam = searchParams.get("scored");
+  if (!query.aiMatchScore && (scoredParam === "true" || scoredParam === "false")) {
+    query.aiMatchScore = scoredParam === "true" ? { $ne: null } : null;
+  }
+
+  if (requirementsParam === "qualified") {
+    query.requirementsStatus = { $ne: "not_met" };
+  } else if (["met", "not_met", "unverified"].includes(requirementsParam)) {
+    query.requirementsStatus = requirementsParam;
   }
 
   // Employer filter (admin/super_agent only)
@@ -352,16 +359,22 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // Referred candidates ride above the rest on every ordering that is not a
   // judgement. "Best match" stays a pure score order; there the badge alone
   // carries the signal.
+  // Ties break on who applied first, then _id, so a page boundary never
+  // splits or repeats equal scores and "top N" is the same N on every read.
   const sortSpec: Record<string, 1 | -1> = sortField === "aiMatchScore"
-    ? { [sortField]: sortOrder }
-    : { isAgentReferred: -1, [sortField]: sortOrder };
+    ? { [sortField]: sortOrder, appliedAt: 1, _id: 1 }
+    : { isAgentReferred: -1, [sortField]: sortOrder, _id: sortOrder };
 
   const [applications, total] = await Promise.all([
     Application.find(query)
       .sort(sortSpec)
       .skip(skip)
       .limit(limit)
-      .select(ctx.role === "job_seeker" ? "-employerNotes -matchStrengths -matchGaps -rejectionReason" : "")
+      // The employer's judgement stays with the employer: notes, narrative,
+      // the requirements checklist and the (possibly re-weighted) ranking.
+      .select(ctx.role === "job_seeker"
+        ? "-employerNotes -matchStrengths -matchGaps -rejectionReason -matchBreakdown -qualifications -requirementsStatus -missingSkills -weightsApplied"
+        : "")
       .populate({
         path: "jobId",
         // requirements powers the "matching skills" column in the employer list
@@ -569,6 +582,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     applications: applications.map((app) => ({
       ...app,
+      // A seeker is shown the engine's number for the pair, never an
+      // employer's re-weighted ranking (equal unless weights were saved).
+      ...(ctx.role === "job_seeker" && typeof app.seekerMatchScore === "number"
+        ? { aiMatchScore: app.seekerMatchScore }
+        : {}),
       otherApplicationsCount: Math.max(0, (crossAppCounts[String(app.jobSeekerId?._id)] ?? 1) - 1),
       ...(interviewMap[String(app._id)] ? { latestInterview: interviewMap[String(app._id)] } : {}),
       ...(offerMap[String(app._id)] ? { latestOffer: offerMap[String(app._id)] } : {}),

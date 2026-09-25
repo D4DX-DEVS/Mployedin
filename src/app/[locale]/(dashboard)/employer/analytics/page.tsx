@@ -38,6 +38,7 @@ import {
   ChevronLeft,
   ChevronRight,
   type LucideIcon,
+  ArrowRight,
 } from "lucide-react";
 import {
   BarChart,
@@ -1091,7 +1092,7 @@ function HistoricalTab({
                 <div key={d.stage}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm text-foreground/85">
-                      {d.stageName} → {d.nextStageName}
+                      {d.stageName} <ArrowRight className="inline h-3.5 w-3.5 align-[-2px] rtl:rotate-180" aria-hidden="true" /> {d.nextStageName}
                     </span>
                     <span
                       className={`text-sm font-semibold ${

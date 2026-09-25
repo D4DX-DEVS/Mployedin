@@ -5,6 +5,7 @@
 import { connectDB } from "@/lib/db/mongoose";
 import { CompanyUser } from "@/models/CompanyUser";
 import type { CompanyRole, ICompanyUser } from "@/models/CompanyUser";
+import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
 
 /**
  * Get a user's team membership for a given company.
@@ -20,6 +21,104 @@ export async function getTeamMember(
     userId,
     status: "active",
   }).lean();
+}
+
+/**
+ * The person actually making the request inside an employer company.
+ *
+ * withAuth swaps `ctx.userId` to the company OWNER for a colleague, so that
+ * every `Employer.findOne({ userId: ctx.userId })` resolves the company. The
+ * colleague themselves is `ctx.member.actorId`. Any check of the caller's own
+ * team role or job access must use this id — keyed on `ctx.userId` it finds the
+ * owner's row and a colleague is evaluated as the owner.
+ */
+export function actingUserId(ctx: { userId: string; member?: { actorId: string } }): string {
+  return ctx.member?.actorId ?? ctx.userId;
+}
+
+/**
+ * Job ids a colleague is confined to, or `null` when the caller may see every
+ * job of the company (owner, tenant view, admin role, or an empty jobAccess).
+ * A colleague whose membership is no longer active gets `[]` — no jobs.
+ */
+export async function getMemberJobRestriction(
+  ctx: { userId: string; member?: { actorId: string } },
+  companyId: unknown
+): Promise<string[] | null> {
+  if (!ctx.member) return null;
+  await connectDB();
+  const member = await CompanyUser.findOne({
+    companyId,
+    userId: ctx.member.actorId,
+    status: "active",
+  })
+    .select("companyRole companyRoles jobAccess")
+    .lean();
+  if (!member) return [];
+  const roles: CompanyRole[] = member.companyRoles?.length ? member.companyRoles : [member.companyRole];
+  if (roles.some((r) => r === "owner" || r === "admin")) return null;
+  if (!member.jobAccess || member.jobAccess.length === 0) return null;
+  return member.jobAccess.map(String);
+}
+
+/**
+ * Whether a colleague's job restriction lets them reach this job. Always true
+ * for the owner, tenant view and unrestricted colleagues.
+ */
+export async function memberMayAccessJob(
+  ctx: { userId: string; member?: { actorId: string } },
+  companyId: unknown,
+  jobId: unknown
+): Promise<boolean> {
+  const restriction = await getMemberJobRestriction(ctx, companyId);
+  return restriction === null || restriction.includes(String(jobId));
+}
+
+/**
+ * The role whose authority the caller manages the team with, or null when they
+ * may not manage it at all.
+ *
+ * The owner (and a tenant-view session) is judged on the owner's own row,
+ * backfilled if missing. A colleague is judged on their OWN live row: withAuth
+ * points `ctx.userId` at the owner, so looking a colleague up by it let anyone
+ * holding the team function act as the owner. A colleague granted the team
+ * function without an owner/admin role is capped at "admin" — they manage the
+ * lower roles and can never create or change an admin.
+ */
+export async function getTeamActorRole(
+  ctx: { userId: string; member?: { actorId: string } },
+  employer: { _id: unknown; companyEmail?: string | null }
+): Promise<CompanyRole | null> {
+  await connectDB();
+  if (!ctx.member) {
+    const owner = await ensureEmployerOwnerMembership({
+      companyId: employer._id,
+      userId: ctx.userId,
+      email: employer.companyEmail,
+    });
+    return owner && canManageTeam(owner.companyRole) ? owner.companyRole : null;
+  }
+  const row = await CompanyUser.findOne({
+    companyId: employer._id,
+    userId: ctx.member.actorId,
+    status: "active",
+  })
+    .select("companyRole companyRoles permissions")
+    .lean();
+  if (!row) return null;
+  const roles = row.companyRoles?.length ? row.companyRoles : [row.companyRole];
+  if (roles.includes("owner")) return "owner";
+  if (roles.includes("admin") || row.permissions?.canManageTeam) return "admin";
+  return null;
+}
+
+/**
+ * Whether `actorRole` may change or deactivate a member who currently holds
+ * `targetRoles` — every one of them must be a role the actor may assign, so an
+ * admin cannot demote or remove another admin.
+ */
+export function canModifyMember(actorRole: CompanyRole, targetRoles: CompanyRole[]): boolean {
+  return targetRoles.every((r) => canModifyRole(actorRole, r));
 }
 
 /**

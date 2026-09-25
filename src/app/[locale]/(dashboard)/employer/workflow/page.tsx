@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle, Loader2, Save } from "lucide-react";
+import { CheckCircle, Loader2, Save, X } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { Button } from "@/components/ui/button";
@@ -103,7 +103,7 @@ export default function EmployerWorkflowPage() {
         {error && (
           <div role="alert" className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected">
             <span>{error}</span>
-            <button type="button" onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600" aria-label={ta("close")}>✕</button>
+            <button type="button" onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600" aria-label={ta("close")}><X className="h-4 w-4" aria-hidden="true" /></button>
           </div>
         )}
 

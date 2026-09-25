@@ -148,6 +148,8 @@ export async function ensureIndexes() {
     { key: { status: 1, updatedAt: -1 } },
     // Job Workspace: "not yet reviewed" inbox count and filter
     { key: { jobId: 1, viewedByEmployerAt: 1 } },
+    // Shortlist Top: a job's open applicants, qualified first, best score first
+    { key: { jobId: 1, status: 1, requirementsStatus: 1, aiMatchScore: -1 } },
   ]);
 
   // ── Interviews ─────────────────────────────────────────────────────────────
@@ -292,6 +294,16 @@ export async function ensureIndexes() {
   await safeCreateIndexes(db, "tenantviewsessions", [
     { key: { actorId: 1 }, unique: true },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  // CV readings (src/lib/cv/cvDocuments.ts). One record per seeker file — the
+  // register upsert relies on this constraint when two uploads race; an
+  // identical file already read is found by fingerprint; the backfill reads
+  // its queue by status.
+  await safeCreateIndexes(db, "cvdocuments", [
+    { key: { jobSeekerId: 1, fileUrl: 1 }, unique: true },
+    { key: { jobSeekerId: 1, fingerprint: 1 } },
+    { key: { status: 1, updatedAt: 1 } },
   ]);
 
   // ── PendingSignins (quick-apply email codes awaiting redemption) ──────────
@@ -521,7 +533,16 @@ export async function ensureIndexes() {
   ]);
 
   await safeCreateIndexes(db, "companyusers", [
-    { key: { companyId: 1, userId: 1 }, unique: true, sparse: true },
+    // A pending invite has no userId yet. `sparse` does not skip it (companyId
+    // is present, so the row is indexed under userId: null), which capped every
+    // company at ONE pending invite. Only a claimed seat must be unique.
+    // scripts/migrate-companyuser-invite-index.mjs drops the old sparse index.
+    {
+      key: { companyId: 1, userId: 1 },
+      unique: true,
+      partialFilterExpression: { userId: { $type: "objectId" } },
+      name: "unique_claimed_member_per_company",
+    },
     { key: { companyId: 1, email: 1 }, unique: true },
     { key: { companyId: 1, status: 1 } },
     { key: { inviteToken: 1 }, sparse: true },

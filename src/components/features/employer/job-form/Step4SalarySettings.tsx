@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { DollarSign, Users } from "lucide-react";
+import { AlertTriangle, DollarSign, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -115,12 +115,15 @@ export function Step4SalarySettings() {
 
           <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
             <div className="flex-1">
-              <p className="text-sm font-medium">{t("shareSalary")}</p>
+              <Label htmlFor="show-salary" className="text-sm font-medium">
+                {t("shareSalary")}
+              </Label>
               <p className="text-xs text-muted-foreground">
                 {t("shareSalaryHint")}
               </p>
             </div>
             <Switch
+              id="show-salary"
               checked={showSalary}
               onCheckedChange={(value) => {
                 setValue("showSalary", value, { shouldValidate: false });
@@ -265,12 +268,15 @@ export function Step4SalarySettings() {
 
               <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{t("negotiable")}</p>
+                  <Label htmlFor="is-negotiable" className="text-sm font-medium">
+                    {t("negotiable")}
+                  </Label>
                   <p className="text-xs text-muted-foreground">
                     {t("negotiableHint")}
                   </p>
                 </div>
                 <Switch
+                  id="is-negotiable"
                   checked={isNegotiable}
                   onCheckedChange={(v) =>
                     setValue("salary.isNegotiable", v, { shouldValidate: false })
@@ -298,7 +304,7 @@ export function Step4SalarySettings() {
               </div>
               {salaryRequired && (
                 <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-700 chip-pad">
-                  <span className="mt-0.5">⚠️</span>
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span>{t("salaryDisclosureWarning", { location: locationStr })}</span>
                 </div>
               )}
@@ -314,7 +320,7 @@ export function Step4SalarySettings() {
 
           <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
             <div className="flex-1">
-              <Label htmlFor="vacancies" className="text-sm font-medium">
+              <Label htmlFor="track-openings" className="text-sm font-medium">
                 {t("trackOpenings")}
               </Label>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -322,6 +328,7 @@ export function Step4SalarySettings() {
               </p>
             </div>
             <Switch
+              id="track-openings"
               checked={hasVacancyCount}
               onCheckedChange={(value) =>
                 setValue("vacancies", value ? Math.max(vacancies ?? 1, 1) : undefined, {

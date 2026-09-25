@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
+import { postSignInPath } from "@/lib/auth/roleHome";
 
 type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 
@@ -19,11 +20,43 @@ function maskEmail(email: string) {
   return `${visibleLocal}${"•".repeat(Math.max(3, localPart.length - visibleLocal.length))}@${domain}`;
 }
 
+/**
+ * The verified-state CTA. A visitor who is already signed in (the usual case:
+ * register signs a job seeker straight in) goes to their dashboard — sending
+ * them to /login went nowhere, since the login page bounces a live session.
+ */
+function SuccessCTA({ callback, locale, pending }: { callback: string | null; locale: string; pending: boolean }) {
+  const { data: session } = useSession();
+  const t = useTranslations("verifyEmail");
+  const user = session?.user as { role?: string; isOnboarded?: boolean } | undefined;
+
+  const href = user?.role
+    ? withCallback(postSignInPath(locale, user.role, user.isOnboarded !== false), callback)
+    : withCallback(`/${locale}/login`, callback);
+
+  // Until the session knows the address is verified, the dashboard would bounce
+  // straight back here — hold the button for that moment.
+  if (pending) {
+    return (
+      <Button size="lg" disabled aria-busy="true" className="w-full max-w-xs">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        {t("continueToDashboard")}
+      </Button>
+    );
+  }
+
+  return (
+    <Button size="lg" asChild className="w-full max-w-xs">
+      <Link href={href}>{user?.role ? t("continueToDashboard") : t("continueToSignIn")}</Link>
+    </Button>
+  );
+}
+
 export default function VerifyEmailPage() {
   const t = useTranslations("verifyEmail");
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
-  const { update: updateSession } = useSession();
+  const { status: sessionStatus, update: updateSession } = useSession();
   const token = searchParams.get("token");
   const emailParam = searchParams.get("email");
   const emailFailed = searchParams.get("emailFailed") === "1";
@@ -46,6 +79,28 @@ export default function VerifyEmailPage() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [linkError, setLinkError] = useState("");
+
+  // Guard token verification to run exactly once per token (ref persists across
+  // updateSession re-renders that would otherwise cause the effect to re-fire)
+  const tokenVerifiedRef = useRef<string | null>(null);
+
+  // The JWT still says "unverified" after a successful verify, and the proxy
+  // keeps sending that session back here until it is refreshed. next-auth's
+  // update() is a silent no-op while the session is loading — and a link is
+  // verified on mount, before it has loaded — so the refresh used to be skipped
+  // and the user was stuck on this page. Refresh once the session is known; a
+  // signed-out visitor (verifying on another device) has nothing to refresh.
+  const [sessionStale, setSessionStale] = useState(false);
+  const refreshStartedRef = useRef(false);
+  useEffect(() => {
+    if (!sessionStale || refreshStartedRef.current || sessionStatus === "loading") return;
+    if (sessionStatus === "unauthenticated") {
+      setSessionStale(false);
+      return;
+    }
+    refreshStartedRef.current = true;
+    void updateSession({ isEmailVerified: true }).finally(() => setSessionStale(false));
+  }, [sessionStale, sessionStatus, updateSession]);
 
   const handleResend = useCallback(async () => {
     if (!emailParam || resending || resendCooldown > 0) return;
@@ -72,6 +127,30 @@ export default function VerifyEmailPage() {
       setResending(false);
     }
   }, [emailParam, resending, resendCooldown, t]);
+
+  // An account an admin or super-agent creates is sent here by the proxy with no
+  // code ever issued, while this page says one was sent. Ask for one on arrival;
+  // the server keeps any live code, so a fresh registration's is not replaced.
+  const arrivalSendRef = useRef(false);
+  useEffect(() => {
+    if (token || !emailParam || arrivalSendRef.current) return;
+    arrivalSendRef.current = true;
+    fetch("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailParam, ifMissing: true }),
+    })
+      .then(async (res) => {
+        if (res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        setResendMsg(data.error ?? t("resendFailure"));
+        setResendCooldown(0);
+      })
+      .catch(() => {
+        setResendMsg(t("networkError"));
+        setResendCooldown(0);
+      });
+  }, [token, emailParam, t]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -101,11 +180,7 @@ export default function VerifyEmailPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        // Refresh the JWT in case the user already holds a session (e.g. they
-        // logged into an unverified account before completing verification) —
-        // without this the session stays stuck on isEmailVerified:false until
-        // next login, and middleware keeps bouncing them back to this page.
-        await updateSession({ isEmailVerified: true });
+        setSessionStale(true);
         setStatus("success");
       } else {
         setOtpError(data.error ?? t("otpInvalidError"));
@@ -115,10 +190,14 @@ export default function VerifyEmailPage() {
     } finally {
       setVerifyingOtp(false);
     }
-  }, [otp, emailParam, updateSession, t]);
+  }, [otp, emailParam, t]);
 
   useEffect(() => {
     if (!token) return;
+
+    // Guard: only verify this token once, even if updateSession causes re-renders
+    if (tokenVerifiedRef.current === token) return;
+    tokenVerifiedRef.current = token;
 
     const verify = async () => {
       try {
@@ -129,7 +208,7 @@ export default function VerifyEmailPage() {
         });
         const data = await res.json();
         if (res.ok) {
-          await updateSession({ isEmailVerified: true });
+          setSessionStale(true);
           setStatus("success");
         } else {
           // Link failed (expired/already used). If we know the email — link
@@ -151,7 +230,7 @@ export default function VerifyEmailPage() {
     };
 
     verify();
-  }, [token, emailParam, updateSession, t]);
+  }, [token, emailParam, t]);
 
   return (
     <div className="w-full flex flex-col gap-8">
@@ -188,9 +267,7 @@ export default function VerifyEmailPage() {
               {t("verifiedBody")}
             </p>
           </div>
-          <Button size="lg" asChild className="w-full max-w-xs">
-            <Link href={withCallback(`/${locale ?? "en"}/login`, callback)}>{t("continueToSignIn")}</Link>
-          </Button>
+          <SuccessCTA callback={callback} locale={locale ?? "en"} pending={sessionStale} />
         </div>
       )}
 

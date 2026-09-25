@@ -224,6 +224,18 @@ export default function AdminAgentsPage() {
     setStates(sa.region.stateIds.map((s) => s._id));
   };
 
+  /* Once a super agent is chosen, the region picker lists only that super
+     agent's territory: the API rejects an agent region outside it, so a
+     full-catalogue picker let the admin fill the form and then fail on save. */
+  const regionPickerScope = (saUserId: string) => {
+    if (!saUserId) return {};
+    const sa = superAgents.find((s) => s._id === saUserId);
+    return {
+      locationsEndpoint: `/api/admin/super-agents/${saUserId}/territory/locations`,
+      emptyMessage: tr("superAgentNoTerritory", { name: sa?.name ?? "" }),
+    };
+  };
+
   const handleCreate = async () => {
     setAddError("");
     if (!addForm.name || !addForm.email || !addForm.password) {
@@ -414,7 +426,7 @@ export default function AdminAgentsPage() {
                 className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
               />
             </div>
-            <div className="w-[120px]">
+            <div className="min-w-[120px]">
               <InlineSearchSelect
                 options={[
                   { value: "all", label: tr("statusFilterAll") },
@@ -613,10 +625,12 @@ export default function AdminAgentsPage() {
             </div>
 
             <CascadingLocationPicker
+              key={addForm.superAgentId || "catalogue"}
               selectedCityIds={addCityIds}
               selectedStateIds={addStateIds}
               onChange={(cities, states) => { setAddCityIds(cities); setAddStateIds(states); }}
               label={tr("assignedRegion")}
+              {...regionPickerScope(addForm.superAgentId)}
             />
           </div>
 
@@ -700,10 +714,12 @@ export default function AdminAgentsPage() {
             </div>
 
             <CascadingLocationPicker
+              key={editForm.superAgentId || "catalogue"}
               selectedCityIds={editCityIds}
               selectedStateIds={editStateIds}
               onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
               label={tr("assignedRegion")}
+              {...regionPickerScope(editForm.superAgentId)}
             />
           </div>
 

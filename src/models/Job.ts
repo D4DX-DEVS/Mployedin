@@ -114,6 +114,15 @@ export interface IScreeningQuestion {
   order: number;
 }
 
+/** A deal-breaker rule on one screening question — employer-only (see lib/matching/knockouts.ts). */
+export interface IScreeningKnockout {
+  questionId: string;
+  acceptedAnswers?: string[];
+  minValue?: number;
+  /** A preferred answer: adds to the score, never excludes (lib/matching/knockouts.ts). */
+  preferred?: boolean;
+}
+
 export interface IJob extends Document {
   _id: mongoose.Types.ObjectId;
   employerId: mongoose.Types.ObjectId;
@@ -140,6 +149,8 @@ export interface IJob extends Document {
   workflow?: IJobWorkflow;
   matchingWeights?: IMatchingWeights;
   screeningQuestions?: IScreeningQuestion[];
+  /** Private: which answers qualify. Never served with the public questions. */
+  screeningKnockouts?: IScreeningKnockout[];
   vacancies?: number;
   applicantIds: mongoose.Types.ObjectId[];
   poster: IJobPoster;
@@ -267,6 +278,13 @@ const JobSchema = new Schema<IJob>(
       options: [{ type: String, maxlength: 200 }],
       placeholder: { type: String, maxlength: 200 },
       order: { type: Number, default: 0 },
+      _id: false,
+    }],
+    screeningKnockouts: [{
+      questionId: { type: String, required: true },
+      acceptedAnswers: [{ type: String, maxlength: 200 }],
+      minValue: Number,
+      preferred: Boolean,
       _id: false,
     }],
     vacancies: { type: Number, min: 1 },

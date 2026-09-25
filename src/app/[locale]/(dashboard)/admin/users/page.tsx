@@ -76,7 +76,8 @@ export default function AdminUsersPage() {
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
-  const [roleFilter, setRoleFilter] = useState("all");
+  // The admin dashboard's "Users by role" rows link here with `?role=`.
+  const [roleFilter, setRoleFilter] = useUrlFilter("role", "all", { allow: [...ROLES, "unknown"] });
   const [activeFilter, setActiveFilter] = useState("all");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selected, setSelected] = useState<string[]>([]);
@@ -567,7 +568,7 @@ export default function AdminUsersPage() {
                 className="h-11 w-full rounded-lg ps-8 text-xs sm:h-9 sm:w-52 sm:text-sm"
               />
             </div>
-            <div className="min-w-0 flex-1 sm:w-[130px] sm:flex-none">
+            <div className="min-w-0 flex-1 sm:w-auto sm:min-w-[130px] sm:flex-none">
               <InlineSearchSelect
                 options={[
                   { value: "all", label: t("allRoles") },
@@ -579,7 +580,7 @@ export default function AdminUsersPage() {
                 placeholder={t("allRoles")}
               />
             </div>
-            <div className="min-w-0 flex-1 sm:w-[120px] sm:flex-none">
+            <div className="min-w-0 flex-1 sm:w-auto sm:min-w-[120px] sm:flex-none">
               <InlineSearchSelect
                 options={[
                   { value: "all", label: t("allStatus") },

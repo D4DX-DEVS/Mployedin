@@ -21,6 +21,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { recentRecommendations } from "@/lib/matching/recommendationLog";
 import { sendEmail } from "@/lib/communications/email";
+import { unsubscribeUrl } from "@/lib/communications/unsubscribeLink";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
 import type { NotificationWeeklyDigestEvent } from "./events";
 
@@ -156,6 +157,7 @@ export const weeklyDigestCron = inngest.createFunction(
                 newMatchingJobs,
               },
               topJobs,
+              userId: user.userId,
             });
 
             const subject = user.locale === "ar"
@@ -196,15 +198,25 @@ function buildWeeklyDigestEmail({
   locale,
   summary,
   topJobs,
+  userId,
 }: {
   userName: string;
   locale: string;
   summary: { applicationsSubmitted: number; interviewsScheduled: number; profileViews: number; newMatchingJobs: number };
   topJobs: { title: string; company: string; matchScore: number }[];
+  userId: string;
 }): string {
   const isAr = locale === "ar";
   const dir = isAr ? "rtl" : "ltr";
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
+  // No category: this cron checks only `unsubscribedAll`, so a category-scoped
+  // link would report success and change nothing. The footer used to carry
+  // `?token=WEEKLY`, a literal no secret verifies — every click was an error page.
+  const unsubHref = unsubscribeUrl(base, userId, { ref: "weekly" });
+  const unsubLink = unsubHref
+    ? `<a href="${unsubHref.replace(/&/g, "&amp;")}" style="color:#9ca3af;text-decoration:underline">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>
+      · `
+    : "";
 
   const statRows = [
     { label: isAr ? "طلبات مقدمة" : "Applications Sent", value: summary.applicationsSubmitted, color: "#2563eb" },
@@ -262,8 +274,7 @@ function buildWeeklyDigestEmail({
   </div>
   <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb">
     <p style="color:#9ca3af;font-size:11px;margin:0">
-      <a href="${base}/api/unsubscribe?token=WEEKLY" style="color:#9ca3af;text-decoration:underline">${isAr ? "إلغاء الاشتراك" : "Unsubscribe"}</a>
-      · © ${new Date().getFullYear()} MPLOYEDIN
+      ${unsubLink}© ${new Date().getFullYear()} MPLOYEDIN
     </p>
   </div>
 </div>

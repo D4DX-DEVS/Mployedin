@@ -70,7 +70,7 @@ jest.mock("@/lib/communications/email", () => {
   return {
     sendEmail: mockSendEmail,
     EmailTemplates: {
-      verifyEmailOtp: (name: string, otp: string) => ({
+      verifyEmailOtpQuickApply: (otp: string, name: string) => ({
         subject: "Verify your email",
         html: `<p>Hi ${name}, your code is ${otp}</p>`,
       }),
@@ -147,7 +147,7 @@ describe("POST /api/auth/apply-otp/start", () => {
   it("unknown email: stores a hashed pending code and emails it, creating NO account", async () => {
     noUser();
 
-    const res = await POST(otpReq({ email: "John@Example.com" }));
+    const res = await POST(otpReq({ email: "John@Example.com", name: "John Smith" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ sent: true });
 
@@ -165,6 +165,8 @@ describe("POST /api/auth/apply-otp/start", () => {
     expect(update.$set.otpHash).toMatch(/^hashed_signin_\d{6}$/);
     expect(update.$set.attempts).toBe(0);
     expect(update.$set.requestIp).toBe("192.168.1.1");
+    // The typed name becomes the account's name when the code is redeemed.
+    expect(update.$set.name).toBe("John Smith");
     const ttl = update.$set.expiresAt.getTime() - Date.now();
     expect(ttl).toBeGreaterThan(9 * 60 * 1000);
     expect(ttl).toBeLessThanOrEqual(10 * 60 * 1000);
@@ -172,14 +174,15 @@ describe("POST /api/auth/apply-otp/start", () => {
     expect(mockSendEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "john@example.com", source: "quick-apply", category: "system" }),
     );
-    // Greeting falls back to the local part when there is no account yet.
-    expect(mockSendEmail.mock.calls[0][0].html).toContain("Hi john,");
+    // No account yet: greet by the name typed, never the email's local part.
+    expect(mockSendEmail.mock.calls[0][0].html).toContain("Hi John Smith,");
+    expect(mockSendEmail.mock.calls[0][0].html).not.toContain("Hi john,");
   });
 
   it("existing job_seeker: emails a code without touching the User document", async () => {
     existingUser({});
 
-    const res = await POST(otpReq({ email: "jane@example.com" }));
+    const res = await POST(otpReq({ email: "jane@example.com", name: "Someone Else" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ sent: true });
 

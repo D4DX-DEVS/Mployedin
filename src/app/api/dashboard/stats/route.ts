@@ -58,7 +58,8 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     Interview.countDocuments({ jobSeekerId: seekerObjId, status: { $nin: ["cancelled"] }, scheduledAt: { $gte: startOfPrevWeek, $lt: startOfWeek } }),
     Application.aggregate([
       { $match: { jobSeekerId: seekerObjId, aiMatchScore: { $exists: true, $ne: null } } },
-      { $group: { _id: null, avg: { $avg: "$aiMatchScore" } } },
+      // The seeker's own number per pair — never an employer's re-weighted ranking.
+      { $group: { _id: null, avg: { $avg: { $ifNull: ["$seekerMatchScore", "$aiMatchScore"] } } } },
     ]),
     ProfileView.countDocuments({ jobSeekerId: viewerScopeId, viewedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
     ProfileView.countDocuments({ jobSeekerId: viewerScopeId, viewedAt: { $gte: startOfWeek } }),

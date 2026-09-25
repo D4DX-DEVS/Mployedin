@@ -17,6 +17,7 @@ import {
   startOfDay,
   setHours,
   setMinutes,
+  parseISO,
 } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
@@ -36,6 +37,25 @@ interface DateTimePickerProps {
   mode?: "datetime" | "date" | "time";
   container?: HTMLElement | null;
   modal?: boolean;
+}
+
+/**
+ * Reads the picker's own value format: "HH:mm" in time mode (new Date("09:00")
+ * is Invalid Date, which left hour/minute NaN and emitted "00:NaN"), and a bare
+ * "yyyy-MM-dd" as a LOCAL day (new Date() treats it as UTC midnight — the day
+ * before, west of Greenwich). Null when the value is empty or unreadable.
+ */
+function parsePickerValue(value: string | undefined, mode: "datetime" | "date" | "time"): Date | null {
+  if (!value) return null;
+  if (mode === "time") {
+    const m = /^(\d{1,2}):(\d{2})/.exec(value);
+    if (!m) return null;
+    const d = new Date();
+    d.setHours(Number(m[1]), Number(m[2]), 0, 0);
+    return d;
+  }
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseISO(value) : new Date(value);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 export function DateTimePicker({
@@ -58,7 +78,7 @@ export function DateTimePicker({
   // English in /ar and said "time" on date-only pickers.
   const resolvedPlaceholder =
     placeholder ?? t(mode === "date" ? "pickDate" : mode === "time" ? "pickTime" : "pickDateTime");
-  const parsed = value ? new Date(value) : null;
+  const parsed = parsePickerValue(value, mode);
   const [viewMonth, setViewMonth] = React.useState(
     parsed ?? new Date()
   );
@@ -69,18 +89,16 @@ export function DateTimePicker({
 
   // Sync external value changes
   React.useEffect(() => {
-    if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        setSelectedDate(d);
-        setViewMonth(d);
-        setHour(d.getHours());
-        setMinute(d.getMinutes());
-      }
-    } else {
+    const d = parsePickerValue(value, mode);
+    if (d) {
+      setSelectedDate(d);
+      setViewMonth(d);
+      setHour(d.getHours());
+      setMinute(d.getMinutes());
+    } else if (!value) {
       setSelectedDate(null);
     }
-  }, [value]);
+  }, [value, mode]);
 
   function emitChange(date: Date | null, h: number, m: number) {
     if (!date && mode !== "time") return;
@@ -138,13 +156,8 @@ export function DateTimePicker({
 
   const displayValue = React.useMemo(() => {
     if (!value) return "";
-    if (mode === "time") {
-      const [hh, mm] = value.split(":").map(Number);
-      const d = new Date();
-      d.setHours(hh, mm);
-      return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
-    }
-    if (!parsed || isNaN(parsed.getTime())) return "";
+    if (!parsed) return "";
+    if (mode === "time") return parsed.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
     if (mode === "date") return parsed.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
     return `${parsed.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })} · ${parsed.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: true })}`;
   }, [value, mode, parsed, locale]);
@@ -297,13 +310,18 @@ export function DateTimePicker({
                   </span>
                 </div>
                 <div className="flex gap-1 flex-1 min-h-0">
-                  {/* Hour column */}
+                  {/* Hour column — 12, 01 … 11 of the half AM/PM picks. It used to
+                      list 00–23 beside the AM/PM toggle, so "14" + "AM" was a
+                      choice the screen offered (JRN-03). Values stay 0–23. */}
                   <TimeColumn
-                    items={Array.from({ length: 24 }, (_, i) => ({
-                      value: i,
-                      label: String(i).padStart(2, "0"),
-                      disabled: !!(minDate && selectedDate && isSameDay(selectedDate, minDate) && i < minDate.getHours()),
-                    }))}
+                    items={Array.from({ length: 12 }, (_, i) => {
+                      const h = (hour >= 12 ? 12 : 0) + i;
+                      return {
+                        value: h,
+                        label: String(i === 0 ? 12 : i).padStart(2, "0"),
+                        disabled: !!(minDate && selectedDate && isSameDay(selectedDate, minDate) && h < minDate.getHours()),
+                      };
+                    })}
                     selected={hour}
                     onSelect={(v) => handleTimeChange(v, minute)}
                   />
@@ -321,6 +339,7 @@ export function DateTimePicker({
                   <div className="flex flex-col gap-1 ms-1">
                     <button
                       type="button"
+                      aria-pressed={hour < 12}
                       onClick={() => {
                         const newH = hour >= 12 ? hour - 12 : hour;
                         handleTimeChange(newH, minute);
@@ -336,6 +355,7 @@ export function DateTimePicker({
                     </button>
                     <button
                       type="button"
+                      aria-pressed={hour >= 12}
                       onClick={() => {
                         const newH = hour < 12 ? hour + 12 : hour;
                         handleTimeChange(newH, minute);

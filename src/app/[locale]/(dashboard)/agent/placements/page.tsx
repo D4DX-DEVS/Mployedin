@@ -148,6 +148,7 @@ export default function AgentPlacementsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("searchPlaceholder")}
+              aria-label={t("searchPlaceholder")}
               className="h-11 sm:h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
           </div>

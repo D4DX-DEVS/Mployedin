@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { PageHero } from "@/components/shared/PageHero";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -15,30 +17,29 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Pencil, Trash2, UserX, ChevronDown, ChevronUp, Briefcase,
-  GraduationCap, Globe, Award, Search, Inbox, Download,
-  FileSpreadsheet, FileText, Sparkles, X, SlidersHorizontal,
-  FileDown, Loader2, Eye, RotateCcw,
+  Pencil, Trash2, Ban, ChevronDown, ChevronUp, Briefcase,
+  GraduationCap, Globe, Award, Inbox, Download, Filter,
+  Sparkles, FileDown, Loader2, Eye, RotateCcw, MoreHorizontal, X,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import {
+  JobSeekersFilterPanel, EMPTY_JOB_SEEKER_FILTERS, countActiveJobSeekerFilters,
+  buildJobSeekerFilterChips, type JobSeekerFilterChip, type JobSeekerFilters,
+} from "./_components/JobSeekersFilterPanel";
 
 interface JobSeeker {
   _id: string;
@@ -89,15 +90,12 @@ export default function AdminJobSeekersPage() {
   const locale = useLocale();
   const { can } = usePermissions();
 
-  // Translation maps
-  const aiSuggestions = [
-    tr("aiSuggestionElectricalEngineers"),
-    tr("aiSuggestionHrManagers"),
-    tr("aiSuggestionMbaCandidates"),
-    tr("aiSuggestionRemoteDevelopers"),
-    tr("aiSuggestionFreshGraduates"),
-    tr("aiSuggestionAccountants"),
-  ];
+  const availabilityLabels: Record<string, string> = {
+    immediately: tr("availabilityImmediately"),
+    within_month: tr("availabilityWithinMonth"),
+    within_3_months: tr("availabilityWithin3Months"),
+    not_available: tr("availabilityNotAvailable"),
+  };
 
   const editFields: CrudField[] = [
     { name: "name", label: tr("editFieldName"), type: "text", required: true },
@@ -112,6 +110,7 @@ export default function AdminJobSeekersPage() {
   // ── Data state ──────────────────────────────────────────
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
   const [viewCv, setViewCv] = useState<{ id: string; name: string } | null>(null);
@@ -120,27 +119,20 @@ export default function AdminJobSeekersPage() {
   /* In the URL so a ⌘K hit, an application row or a notification can open this
      list already narrowed to one candidate. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
-  const [skillsFilter, setSkillsFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [availabilityFilter, setAvailabilityFilter] = useState("");
-  const [jobTypeFilter, setJobTypeFilter] = useState("");
-  const [sortFilter, setSortFilter] = useState("newest");
-  const [hasCVFilter, setHasCVFilter] = useState(false);
-  const [referredFilter, setReferredFilter] = useState("");
-  const [educationFilter, setEducationFilter] = useState("");
-  const [nationalityFilter, setNationalityFilter] = useState("");
-  const [experienceYearsFilter, setExperienceYearsFilter] = useState(0);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  // Phones only: the five example queries stack into five rows above the list.
-  // They sit behind a toggle there and stay always-visible from `sm:` up.
-  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [filters, setFilters] = useState<JobSeekerFilters>(EMPTY_JOB_SEEKER_FILTERS);
+  // Open on arrival when a deep link already narrowed the list, so the search
+  // doing the narrowing is visible.
+  const [showFilters, setShowFilters] = useState(() => Boolean(search));
+
+  const updateFilters = (patch: Partial<JobSeekerFilters>) => {
+    setFilters((current) => ({ ...current, ...patch }));
+    resetPage();
+  };
 
   // ── AI search state ─────────────────────────────────────
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [aiActive, setAiActive] = useState(false);
-  const aiInputRef = useRef<HTMLInputElement>(null);
 
   // ── CV download state ───────────────────────────────────
   const [cvDownloading, setCvDownloading] = useState(false);
@@ -203,28 +195,33 @@ export default function AdminJobSeekersPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
-    if (skillsFilter) params.set("skills", skillsFilter);
-    if (locationFilter) params.set("location", locationFilter);
-    if (availabilityFilter) params.set("availability", availabilityFilter);
-    if (jobTypeFilter) params.set("jobType", jobTypeFilter);
-    if (sortFilter && sortFilter !== "newest") params.set("sort", sortFilter);
-    if (hasCVFilter) params.set("hasCV", "1");
-    if (referredFilter) params.set("referred", referredFilter);
-    if (educationFilter) params.set("education", educationFilter);
-    if (nationalityFilter) params.set("nationality", nationalityFilter);
-    if (experienceYearsFilter > 0) params.set("experienceYears", String(experienceYearsFilter));
+    if (filters.skills) params.set("skills", filters.skills);
+    if (filters.location) params.set("location", filters.location);
+    if (filters.availability) params.set("availability", filters.availability);
+    if (filters.jobType) params.set("jobType", filters.jobType);
+    if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort);
+    if (filters.hasCV) params.set("hasCV", "1");
+    if (filters.referred) params.set("referred", filters.referred);
+    if (filters.education) params.set("education", filters.education);
+    if (filters.nationality) params.set("nationality", filters.nationality);
+    if (filters.experienceYears > 0) params.set("experienceYears", String(filters.experienceYears));
 
     try {
       const res = await fetch(`/api/job-seekers?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setJobSeekers(data.items ?? data.jobSeekers ?? []);
-        updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? 1) * limit));
+      if (!res.ok) {
+        setLoadError(true);
+        return;
       }
+      const data = await res.json();
+      setJobSeekers(data.items ?? data.jobSeekers ?? []);
+      updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? 1) * limit));
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [search, skillsFilter, locationFilter, availabilityFilter, jobTypeFilter, sortFilter, hasCVFilter, referredFilter, educationFilter, nationalityFilter, experienceYearsFilter, page, limit]);
+  }, [search, filters, page, limit]);
 
   useEffect(() => {
     const timeout = setTimeout(fetchJobSeekers, 300);
@@ -255,20 +252,22 @@ export default function AdminJobSeekersPage() {
 
       if (!aiRes.ok) throw new Error("AI search failed");
       const aiData = await aiRes.json();
-      const filters: AiFilters = aiData.filters ?? {};
+      const extracted: AiFilters = aiData.filters ?? {};
 
       // Apply extracted filters for structured search
-      if (filters.search) setSearch(filters.search);
-      if (filters.skills?.length) setSkillsFilter(filters.skills.join(","));
-      if (filters.location) setLocationFilter(filters.location);
-      if (filters.availability) setAvailabilityFilter(filters.availability);
-      if (filters.referred) setReferredFilter(filters.referred);
-      if (filters.jobType) setJobTypeFilter(filters.jobType);
-      if (filters.sort) setSortFilter(filters.sort);
-      if (filters.hasCV) setHasCVFilter(true);
-      if (filters.education) setEducationFilter(filters.education);
-      if (filters.nationality) setNationalityFilter(filters.nationality);
-      if (filters.experienceYears && filters.experienceYears > 0) setExperienceYearsFilter(filters.experienceYears);
+      if (extracted.search) setSearch(extracted.search);
+      const patch: Partial<JobSeekerFilters> = {};
+      if (extracted.skills?.length) patch.skills = extracted.skills.join(",");
+      if (extracted.location) patch.location = extracted.location;
+      if (extracted.availability) patch.availability = extracted.availability;
+      if (extracted.referred) patch.referred = extracted.referred;
+      if (extracted.jobType) patch.jobType = extracted.jobType;
+      if (extracted.sort) patch.sort = extracted.sort;
+      if (extracted.hasCV) patch.hasCV = true;
+      if (extracted.education) patch.education = extracted.education;
+      if (extracted.nationality) patch.nationality = extracted.nationality;
+      if (extracted.experienceYears && extracted.experienceYears > 0) patch.experienceYears = extracted.experienceYears;
+      setFilters((current) => ({ ...current, ...patch }));
 
       // If vector search returned results, merge them with upcoming structured results
       if (vectorRes?.ok) {
@@ -280,8 +279,6 @@ export default function AdminJobSeekersPage() {
             setJobSeekers(vectorItems);
             updateTotal(vectorItems.length);
             setAiSummary(`${aiData.summary ?? `AI search: "${q}"`} (${vectorItems.length} ${tr("semanticMatches")})`);
-            setAiActive(true);
-            setShowAdvancedFilters(true);
             resetPage();
             setAiLoading(false);
             toast.success(tr("vectorSearchLoaded"));
@@ -291,8 +288,6 @@ export default function AdminJobSeekersPage() {
       }
 
       setAiSummary(aiData.summary ?? `AI search: "${q}"`);
-      setAiActive(true);
-      setShowAdvancedFilters(true);
       resetPage();
       toast.success(aiData.degraded ? tr("aiUnavailableKeywordSearch") : tr("aiFiltersApplied"));
     } catch {
@@ -305,22 +300,11 @@ export default function AdminJobSeekersPage() {
     }
   };
 
-  const clearAiFilters = () => {
-    setAiActive(false);
+  const clearAllFilters = () => {
     setAiSummary(null);
     setAiQuery("");
     setSearch("");
-    setSkillsFilter("");
-    setLocationFilter("");
-    setAvailabilityFilter("");
-    setReferredFilter("");
-    setJobTypeFilter("");
-    setSortFilter("newest");
-    setHasCVFilter(false);
-    setEducationFilter("");
-    setNationalityFilter("");
-    setExperienceYearsFilter(0);
-    setShowAdvancedFilters(false);
+    setFilters(EMPTY_JOB_SEEKER_FILTERS);
     resetPage();
   };
 
@@ -338,11 +322,11 @@ export default function AdminJobSeekersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           search: search || undefined,
-          skills: skillsFilter ? skillsFilter.split(",").map((s) => s.trim()) : undefined,
-          location: locationFilter || undefined,
-          availability: availabilityFilter || undefined,
+          skills: filters.skills ? filters.skills.split(",").map((s) => s.trim()) : undefined,
+          location: filters.location || undefined,
+          availability: filters.availability || undefined,
           hasCV: "1",
-          jobType: jobTypeFilter || undefined,
+          jobType: filters.jobType || undefined,
         }),
       });
       if (!res.ok) throw new Error("Failed to fetch CVs");
@@ -411,6 +395,25 @@ export default function AdminJobSeekersPage() {
   };
 
   // ── Handlers ────────────────────────────────────────────
+  const handleGenerateEmbeddings = async () => {
+    toast.info(tr("embeddingGenerationStarted"));
+    try {
+      const res = await fetch("/api/job-seekers/generate-embeddings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forceAll: false }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(tr("embeddingGenerationSuccess", { count: data.generated }));
+      } else {
+        toast.error(tr("embeddingGenerationFailed"));
+      }
+    } catch {
+      toast.error(tr("embeddingGenerationError"));
+    }
+  };
+
   const handleEdit = async (values: Record<string, string>) => {
     const res = await fetch(`/api/job-seekers/${editItem!._id}`, {
       method: "PATCH",
@@ -452,301 +455,126 @@ export default function AdminJobSeekersPage() {
   };
 
   // ── Active filter count ─────────────────────────────────
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (search) count++;
-    if (skillsFilter) count++;
-    if (locationFilter) count++;
-    if (availabilityFilter) count++;
-    if (jobTypeFilter) count++;
-    if (hasCVFilter) count++;
-    if (referredFilter) count++;
-    if (sortFilter !== "newest") count++;
-    return count;
-  }, [search, skillsFilter, locationFilter, availabilityFilter, jobTypeFilter, hasCVFilter, referredFilter, sortFilter]);
+  const activeFilterCount = countActiveJobSeekerFilters(search, filters);
+  const filterChips = buildJobSeekerFilterChips(tr, search, filters);
+  const removeFilterChip = (chip: JobSeekerFilterChip) => {
+    if (chip.clear === "search") {
+      setSearch("");
+      resetPage();
+    } else {
+      updateFilters(chip.clear);
+    }
+  };
+  const canUpdate = can("job_seekers", "update");
+  const canDelete = can("job_seekers", "delete");
+  const columnCount = 8;
 
   return (
     <div className="page-container">
       {ConfirmDialogNode}
 
-      <PageHero
+      <DashboardPageHeader
         compact
         compactOnMobile
         title={tr("heroTitle")}
         description={tr("heroDescription")}
-      />
-
-      {/* ── AI Search Bar ─────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <h2 className="heading-label font-semibold text-foreground">{tr("aiSearchTitle")}</h2>
-        </div>
-
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Sparkles className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/60" />
-            <Input aria-label={tr("aiSearchPlaceholder")}
-              ref={aiInputRef}
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-              placeholder={tr("aiSearchPlaceholder")}
-              className="h-11 ps-10 text-sm rounded-lg sm:h-10"
-              disabled={aiLoading}
-            />
-          </div>
-          <Button
-            onClick={() => handleAiSearch()}
-            disabled={aiLoading || !aiQuery.trim()}
-            className="h-10 rounded-lg px-4"
-          >
-            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            <span className="ml-1.5">{tr("searchButton")}</span>
-          </Button>
-          {aiActive && (
-            <Button variant="ghost" size="sm" onClick={clearAiFilters} className="h-10 rounded-lg">
-              <X className="h-4 w-4" /> {tr("clearButton")}
-            </Button>
-          )}
-        </div>
-
-        {/* AI Suggestions — revealed on tap on phones, always shown from sm: up */}
-        <button
-          type="button"
-          onClick={() => setShowAiSuggestions((open) => !open)}
-          aria-expanded={showAiSuggestions}
-          className="mt-2 flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:hidden"
-        >
-          <Sparkles className="h-3 w-3" />
-          {tr("aiSuggestionsToggle")}
-          {showAiSuggestions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        </button>
-        <div className={`mt-2 flex-wrap gap-1.5 sm:flex ${showAiSuggestions ? "flex" : "hidden"}`}>
-          {aiSuggestions.map((suggestion) => (
-            <button
-              key={suggestion}
-              onClick={() => { setAiQuery(suggestion); handleAiSearch(suggestion); }}
-              className="rounded-full border border-border/60 bg-muted/30 px-2.5 py-1 text-[0.65rem] text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+        actions={(
+          <>
+            {/* Labels drop below `sm` so both actions fit beside the title. */}
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleGenerateEmbeddings}
+              aria-label={tr("indexAiButton")}
+              className="h-10 gap-2 rounded-xl px-3 max-sm:min-h-11 max-sm:min-w-11 sm:px-4"
             >
-              {suggestion}
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">{tr("indexAiButton")}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleBulkCvDownload}
+              disabled={cvDownloading}
+              aria-label={tr("downloadCvsButton")}
+              className="h-10 gap-2 rounded-xl px-3 max-sm:min-h-11 max-sm:min-w-11 sm:px-4"
+            >
+              {cvDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+              <span className="hidden sm:inline">{tr("downloadCvsButton")}</span>
+            </Button>
+          </>
+        )}
+        footer={(
+          <>
+            <button
+              type="button"
+              onClick={() => setShowFilters((open) => !open)}
+              aria-expanded={showFilters}
+              className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50 sm:min-h-0"
+            >
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              {showFilters ? tr("hideFilters") : tr("showFilters")}
+              {activeFilterCount > 0 && (
+                <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
+                  {tr("activeFiltersBadge", { count: activeFilterCount })}
+                </Badge>
+              )}
+              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </button>
-          ))}
-        </div>
-
-        {/* AI Summary */}
-        {aiSummary && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 chip-pad">
-            <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-            <p className="text-xs text-primary">{tr("aiSummarySuffix", { summary: aiSummary })}</p>
+            <div className="flex items-center gap-2">
+              {(activeFilterCount > 0 || aiSummary) && (
+                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
+                  {tr("clearFilters")}
+                </Button>
+              )}
+              <TableToolbar
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+              />
+            </div>
+          </>
+        )}
+      >
+        {/* Collapsed panel: the active filters stay visible as removable chips. */}
+        {!showFilters && filterChips.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {filterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => removeFilterChip(chip)}
+                aria-label={tr("removeFilter", { label: chip.label })}
+                className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+              >
+                <span className="min-w-0 truncate">{chip.label}</span>
+                <X className="h-3 w-3 shrink-0" aria-hidden="true" />
+              </button>
+            ))}
           </div>
         )}
-      </section>
+        {showFilters && (
+          <JobSeekersFilterPanel
+            search={search}
+            onSearchChange={(value) => { setSearch(value); resetPage(); }}
+            filters={filters}
+            onFiltersChange={updateFilters}
+            aiQuery={aiQuery}
+            onAiQueryChange={setAiQuery}
+            aiLoading={aiLoading}
+            aiSummary={aiSummary}
+            onAiSearch={(query) => { void handleAiSearch(query); }}
+          />
+        )}
+      </DashboardPageHeader>
 
-      {/* ── Main Panel ────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        {/* Header with filters & actions */}
-        <div className="flex flex-col gap-3 border-b border-border/80 panel-head">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <PageHeader
-              title={tr("mainTitle")}
-              description={total > 0 ? tr("candidatesFound", { count: total }) : tr("mainSubtitle")}
-              headingLevel={2}
-            />
-            {/* data-table-toolbar opts this hand-rolled header into the shared
-                mobile toolbar rules: one row, icon-only action buttons. */}
-            <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2">
-              {/* Generate Embeddings (admin only) */}
-              <Button
-                variant="ghost"
-                size="dense"
-                className="text-xs text-muted-foreground hover:text-primary"
-                onClick={async () => {
-                  toast.info(tr("embeddingGenerationStarted"));
-                  try {
-                    const res = await fetch("/api/job-seekers/generate-embeddings", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ forceAll: false }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      toast.success(tr("embeddingGenerationSuccess", { count: data.generated }));
-                    } else {
-                      toast.error(tr("embeddingGenerationFailed"));
-                    }
-                  } catch {
-                    toast.error(tr("embeddingGenerationError"));
-                  }
-                }}
-              >
-                <Sparkles className="h-3 w-3" /> {tr("indexAiButton")}
-              </Button>
-              {/* Keyword search */}
-              <div className="relative toolbar-search-field">
-                <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input aria-label={tr("keywordSearchPlaceholder")}
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                  placeholder={tr("keywordSearchPlaceholder")}
-                  className="h-11 w-56 rounded-lg ps-8 text-sm sm:h-9"
-                />
-              </div>
-
-              {/* Toggle Advanced Filters */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="h-8 rounded-lg border-border/80"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                {tr("filtersButton")}
-                {activeFilterCount > 0 && (
-                  <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[0.6rem] text-primary-foreground">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </Button>
-
-              {/* CV Download */}
-              <Button
-                variant="outline"
-                size="dense"
-                onClick={handleBulkCvDownload}
-                disabled={cvDownloading}
-                className="rounded-lg border-border/80"
-              >
-                {cvDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                {tr("downloadCvsButton")}
-              </Button>
-
-              {/* Export Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="dense" className="rounded-lg border-border/80">
-                    <Download className="h-3.5 w-3.5" /> {tr("exportButton")}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>{tr("exportLabel")}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleExportCsv}>
-                    <FileText className="h-4 w-4" /> {tr("exportCsv")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportExcel}>
-                    <FileSpreadsheet className="h-4 w-4" /> {tr("exportExcel")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPdf}>
-                    <FileText className="h-4 w-4" /> {tr("exportPdf")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+      {/* ── List ──────────────────────────────────────────── */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {loadError ? (
+          <div className="p-6">
+            <ErrorState onRetry={fetchJobSeekers} />
           </div>
-
-          {/* Advanced Filters Row */}
-          {showAdvancedFilters && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-2 border-t border-border/50">
-              {/* Skills */}
-              <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelSkills")}</label>
-                <Input aria-label={tr("filterLabelSkills")}
-                  value={skillsFilter}
-                  onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
-                  placeholder={tr("filterPlaceholderSkills")}
-                  className="h-7 text-xs rounded-md"
-                />
-              </div>
-              {/* Location */}
-              <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelLocation")}</label>
-                <Input aria-label={tr("filterLabelLocation")}
-                  value={locationFilter}
-                  onChange={(e) => { setLocationFilter(e.target.value); resetPage(); }}
-                  placeholder={tr("filterPlaceholderLocation")}
-                  className="h-7 text-xs rounded-md"
-                />
-              </div>
-              {/* Availability */}
-              <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelAvailability")}</label>
-                <Select value={availabilityFilter || "all"} onValueChange={(v) => { setAvailabilityFilter(v === "all" ? "" : v); resetPage(); }}>
-                  <SelectTrigger className="h-7 text-xs rounded-md">
-                    <SelectValue placeholder={tr("filterPlaceholderAll")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{tr("filterPlaceholderAll")}</SelectItem>
-                    <SelectItem value="immediately">{tr("availabilityImmediately")}</SelectItem>
-                    <SelectItem value="within_month">{tr("availabilityWithinMonth")}</SelectItem>
-                    <SelectItem value="within_3_months">{tr("availabilityWithin3Months")}</SelectItem>
-                    <SelectItem value="not_available">{tr("availabilityNotAvailable")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Referred by */}
-              <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("tableHeaderReferredBy")}</label>
-                <Select value={referredFilter || "all"} onValueChange={(v) => { setReferredFilter(v === "all" ? "" : v); resetPage(); }}>
-                  <SelectTrigger className="h-7 text-xs rounded-md">
-                    <SelectValue placeholder={tr("filterReferredAll")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{tr("filterReferredAll")}</SelectItem>
-                    <SelectItem value="any">{tr("filterReferredAny")}</SelectItem>
-                    <SelectItem value="agent">{tr("filterReferredAgent")}</SelectItem>
-                    <SelectItem value="super_agent">{tr("filterReferredSuperAgent")}</SelectItem>
-                    <SelectItem value="none">{tr("filterReferredNone")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Job Type */}
-              <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelJobType")}</label>
-                <Select value={jobTypeFilter || "all"} onValueChange={(v) => { setJobTypeFilter(v === "all" ? "" : v); resetPage(); }}>
-                  <SelectTrigger className="h-7 text-xs rounded-md">
-                    <SelectValue placeholder={tr("filterPlaceholderAll")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{tr("filterPlaceholderAll")}</SelectItem>
-                    <SelectItem value="remote">{tr("jobTypeRemote")}</SelectItem>
-                    <SelectItem value="hybrid">{tr("jobTypeHybrid")}</SelectItem>
-                    <SelectItem value="onsite">{tr("jobTypeOnsite")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Sort */}
-              <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelSort")}</label>
-                <Select value={sortFilter} onValueChange={(v) => { setSortFilter(v); resetPage(); }}>
-                  <SelectTrigger className="h-7 text-xs rounded-md">
-                    <SelectValue placeholder={tr("sortNewest")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">{tr("sortNewest")}</SelectItem>
-                    <SelectItem value="oldest">{tr("sortOldest")}</SelectItem>
-                    <SelectItem value="profile_high">{tr("sortProfileHigh")}</SelectItem>
-                    <SelectItem value="profile_low">{tr("sortProfileLow")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Has CV */}
-              <div className="flex items-end">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={hasCVFilter}
-                    onChange={(e) => { setHasCVFilter(e.target.checked); resetPage(); }}
-                    className="h-3.5 w-3.5 rounded border-border accent-primary"
-                  />
-                  <span className="text-xs text-muted-foreground">{tr("filterHasCvOnly")}</span>
-                </label>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Table ───────────────────────────────────────── */}
+        ) : (
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -759,25 +587,29 @@ export default function AdminJobSeekersPage() {
               <TableHead>{tr("tableHeaderProfession")}</TableHead>
               <TableHead>{tr("tableHeaderNationality")}</TableHead>
               <TableHead>{tr("tableHeaderSkills")}</TableHead>
-              <TableHead>{tr("tableHeaderProfilePercent")}</TableHead>
-              <TableHead>{tr("tableHeaderJoined")}</TableHead>
+              {/* Wraps to two lines: nowrap made this the widest column. */}
+              <TableHead className="whitespace-normal">{tr("tableHeaderProfilePercent")}</TableHead>
+              {/* Gives way below ~1360px so the actions menu stays on screen;
+                  the expanded row shows the date instead. */}
+              <TableHead className="hidden min-[1360px]:table-cell">{tr("tableHeaderJoined")}</TableHead>
               <TableHead>{tr("tableHeaderReferredBy")}</TableHead>
-              {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
-                <TableHead>{tr("tableHeaderActions")}</TableHead>
-              )}
+              <TableHead>{tr("tableHeaderActions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableBodySkeleton rows={5} cols={8} />
+              <TableBodySkeleton rows={5} cols={columnCount} />
             ) : jobSeekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={8} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">{tr("emptyStateTitle")}</span>
-                    <span className="text-xs">{tr("emptyStateSubtitle")}</span>
-                  </div>
+                <TableCell colSpan={columnCount} className="py-12">
+                  <EmptyState
+                    icon={Inbox}
+                    title={tr("emptyStateTitle")}
+                    description={tr("emptyStateSubtitle")}
+                    action={activeFilterCount > 0 || aiSummary ? (
+                      <Button variant="outline" size="sm" onClick={clearAllFilters}>{tr("clearFilters")}</Button>
+                    ) : undefined}
+                  />
                 </TableCell>
               </TableRow>
             ) : jobSeekers.map((js) => (
@@ -787,14 +619,16 @@ export default function AdminJobSeekersPage() {
                     {expandedId === js._id ? <ChevronUp className="mt-1 h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="mt-1 h-3.5 w-3.5 text-muted-foreground" />}
                     <div className="flex min-w-0 flex-col items-start gap-1">
                       <span className="font-medium">{js.fullName || js.userId?.name || "—"}</span>
-                      <span className="max-w-[15rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
+                      <span className="max-w-[11rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
                       <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs max-w-[140px]">
+                <TableCell className="min-w-[9rem] max-w-[13rem] text-xs text-muted-foreground">
                   <span className="line-clamp-2 font-medium text-foreground/80">{js.experience?.[0]?.jobTitle || js.headline?.slice(0, 60) || "—"}</span>
-                  <span className="mt-1 block line-clamp-2">
+                  {/* No `block` here: it overrides line-clamp's -webkit-box and
+                      long degrees wrapped to four lines. */}
+                  <span className="mt-1 line-clamp-2">
                     {js.education?.[0]?.degree ? `${js.education[0].degree}${js.education[0].field ? ` - ${js.education[0].field}` : ""}` : "—"}
                   </span>
                 </TableCell>
@@ -807,67 +641,74 @@ export default function AdminJobSeekersPage() {
                       js.availabilityStatus === "not_available" ? "bg-rose-100 text-rose-700" :
                       "bg-blue-100 text-blue-700"
                     }`}>
-                      {js.availabilityStatus.replace(/_/g, " ")}
+                      {availabilityLabels[js.availabilityStatus] ?? js.availabilityStatus.replace(/_/g, " ")}
                     </span>
                   ) : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  <span className="block">{js.skills?.length ? `${js.skills.slice(0, 2).join(", ")}${js.skills.length > 2 ? ` +${js.skills.length - 2}` : ""}` : "—"}</span>
+                <TableCell className="max-w-[16rem] text-xs text-muted-foreground">
+                  <span className="line-clamp-2">{js.skills?.length ? `${js.skills.slice(0, 2).join(", ")}${js.skills.length > 2 ? ` +${js.skills.length - 2}` : ""}` : "—"}</span>
                   <span className="mt-1 block">{js.totalExperienceYears != null ? `${js.totalExperienceYears}y` : "—"}</span>
                 </TableCell>
-                <TableCell className="text-xs">
-                  <span className="mb-1.5 block font-semibold tabular-nums">{js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}</span>
-                  {js.cv?.originalUrl ? (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" }); }}
-                      className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-primary/10 text-primary transition-colors"
-                      title={tr("viewCvTitle")}
-                      aria-label={tr("viewCvTitle")}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                  ) : <span className="text-muted-foreground">—</span>}
+                <TableCell className="text-xs font-semibold tabular-nums">
+                  {js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs">{formatDate(new Date(js.createdAt))}</TableCell>
+                <TableCell className="hidden min-[1360px]:table-cell text-xs text-muted-foreground">{formatDate(new Date(js.createdAt))}</TableCell>
                 <TableCell className="text-xs">
                   {js.referralSummary
                     ? <ReferralSourceChip namespace="adminJobSeekers" summary={js.referralSummary} />
                     : <span className="text-muted-foreground">—</span>}
                 </TableCell>
-                {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1">
-                      {can("job_seekers", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => setEditItem(js)} title={tr("actionEditTitle")}>
-                          <Pencil className="h-3.5 w-3.5 text-primary" />
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  {js.cv?.originalUrl || canUpdate || canDelete ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11"
+                          aria-label={tr("rowActionsFor", { name: js.fullName || js.userId?.name || js.email || "" })}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      )}
-                      {can("job_seekers", "delete") && (
-                        js.userId?.isActive === false ? (
-                          <Button variant="ghost" size="xs" onClick={() => handleReactivate(js._id)} title={tr("actionReactivateTitle")} aria-label={tr("actionReactivateTitle")}>
-                            <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="xs" onClick={() => handleDelete(js._id)} title={tr("actionDeactivateTitle")}>
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        )
-                      )}
-                      {can("job_seekers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(js._id)} title={tr("actionDeletePermanentlyTitle")}>
-                          <UserX className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        {js.cv?.originalUrl && (
+                          <DropdownMenuItem onClick={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}>
+                            <Eye className="h-4 w-4" /> {tr("viewCvTitle")}
+                          </DropdownMenuItem>
+                        )}
+                        {canUpdate && (
+                          <DropdownMenuItem onClick={() => setEditItem(js)}>
+                            <Pencil className="h-4 w-4" /> {tr("actionEditTitle")}
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <>
+                            {(js.cv?.originalUrl || canUpdate) && <DropdownMenuSeparator />}
+                            {js.userId?.isActive === false ? (
+                              <DropdownMenuItem onClick={() => void handleReactivate(js._id)}>
+                                <RotateCcw className="h-4 w-4" /> {tr("actionReactivateTitle")}
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => void handleDelete(js._id)} className="text-destructive focus:text-destructive">
+                                <Ban className="h-4 w-4" /> {tr("actionDeactivateTitle")}
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => void handlePermanentDelete(js._id)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="h-4 w-4" /> {tr("actionDeletePermanentlyTitle")}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </TableCell>
               </TableRow>
 
               {/* Expanded Row */}
               {expandedId === js._id && (
                 <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableCell colSpan={8} className="p-4">
+                  <TableCell colSpan={columnCount} className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       {/* Summary */}
                       {js.summary && (
@@ -882,6 +723,7 @@ export default function AdminJobSeekersPage() {
                         <p className="text-muted-foreground text-xs">{js.email ?? js.userId?.email ?? "—"}</p>
                         {js.phone && <p className="text-muted-foreground text-xs">{js.phone}</p>}
                         {js.currentLocation && <p className="text-muted-foreground text-xs">{js.currentLocation}</p>}
+                        <p className="text-muted-foreground text-xs">{tr("tableHeaderJoined")}: {formatDate(new Date(js.createdAt))}</p>
                       </div>
                       {/* Experience */}
                       <div>
@@ -959,6 +801,7 @@ export default function AdminJobSeekersPage() {
             ))}
           </TableBody>
         </Table>
+        )}
       </section>
 
       {/* ── Pagination ────────────────────────────────────── */}

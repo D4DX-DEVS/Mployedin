@@ -105,8 +105,6 @@ const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
   benefits: [],
   learningOutcomes: [],
   applicationMode: "manual",
-  autoScreeningEnabled: false,
-  minMatchScore: 70,
   visibility: "public",
   vacancies: undefined,
   maxApplicants: undefined,
@@ -149,6 +147,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   const isAdmin = basePath === "admin";
   const [employerOptions, setEmployerOptions] = useState<EmployerOption[]>([]);
   const t = useTranslations("employerJobForm");
+  const tAts = useTranslations("employerAts");
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
@@ -408,6 +407,18 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           heldForProfile?: boolean;
         };
         const jobId = draftId ?? String(data.job._id);
+        // A matching-weight template picked in Advanced settings. Its own
+        // route checks the plan and the weights; a refusal leaves the company
+        // weights in charge, so say so instead of failing the post.
+        const { matchingWeights } = values;
+        if (matchingWeights && Object.keys(matchingWeights).length > 0) {
+          const weightsRes = await csrfFetch(`/api/jobs/${jobId}/matching-weights`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ weights: matchingWeights }),
+          }).catch(() => null);
+          if (!weightsRes?.ok) toast.warning(tAts("weightsNotSaved"));
+        }
         // Mark as published so the unmount/beforeunload auto-draft save is skipped
         // (otherwise leaving this page would recreate the just-posted job as a draft).
         publishedRef.current = true;
@@ -571,20 +582,22 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
               <span className="hidden rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground md:inline-flex">
                 {t("autoSaves")}
               </span>
-              <Button
-                ref={templateTriggerRef}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-2 bg-background/90"
-                onClick={() => {
-                  setShowTemplateModal(true);
-                  if (templates.length === 0) loadTemplates();
-                }}
-              >
-                <Copy className="w-4 h-4" />
-                {t("loadTemplate")}
-              </Button>
+              {!isAdmin && (
+                <Button
+                  ref={templateTriggerRef}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-background/90"
+                  onClick={() => {
+                    setShowTemplateModal(true);
+                    if (templates.length === 0) loadTemplates();
+                  }}
+                >
+                  <Copy className="w-4 h-4" />
+                  {t("loadTemplate")}
+                </Button>
+              )}
             </div>
           }
         />

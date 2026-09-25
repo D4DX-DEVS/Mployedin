@@ -81,11 +81,13 @@ export function resolveNotificationText(
 /**
  * Notification `actionUrl`s are stored without a locale segment ("/agent/leads").
  * Prefixing keeps the reader in the language they were already using instead of
- * bouncing through the locale redirect.
+ * bouncing through the locale redirect. Some older rows were stored WITH one
+ * ("/ar/employer/applications"); that segment is swapped for the reader's, never
+ * stacked in front of it ("/en/ar/…" is a 404).
  */
 export function localizeActionUrl(actionUrl: string | undefined, locale: string): string | null {
   if (!actionUrl) return null;
   if (!actionUrl.startsWith("/")) return null;
-  if (actionUrl === `/${locale}` || actionUrl.startsWith(`/${locale}/`)) return actionUrl;
-  return `/${locale}${actionUrl}`;
+  const path = actionUrl.replace(/^\/(?:en|ar)(?=\/|$)/, "");
+  return `/${locale}${path}`;
 }

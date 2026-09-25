@@ -32,6 +32,7 @@ import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { WorkspaceBottomNav } from "@/components/shared/WorkspaceBottomNav";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
+import { TemporaryPasswordNotice } from "@/components/shared/TemporaryPasswordNotice";
 import type { NavGroup } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import { WORKSPACE_BOTTOM_NAV_TABS } from "@/lib/nav/bottomNavTabs";
@@ -253,6 +254,8 @@ export function DashboardShell({
             </div>
           </div>
         </header>
+        {/* Offer (never force) a password change to someone still on an issued one. */}
+        {!tenantViewData && <TemporaryPasswordNotice />}
         {/* Page content */}
           {isJobSeeker ? (
             <>
@@ -262,7 +265,9 @@ export function DashboardShell({
               <JobSeekerBottomNav locale={locale} navGroups={navGroups} counts={navCounts} />
             </>
           ) : (
-            <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
+            // `relative` keeps absolute descendants (sr-only labels) inside this
+            // scroller; without it they anchor to <body> and stretch the page.
+            <main className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
               {children}
             </main>
           )}

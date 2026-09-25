@@ -112,6 +112,7 @@ function ChipGroup({
             <button
               key={item._id}
               type="button"
+              aria-pressed={selected}
               onClick={() => onChange(selected ? "" : item._id)}
               className={cn(
                 "rounded-full border px-4 py-1.5 text-sm font-medium transition-all",
@@ -437,6 +438,7 @@ export default function PersonalDetailsPage() {
                 <div className="flex-1">
                   <FormInput
                     label={idx === 0 ? t("language") : undefined}
+                    aria-label={idx === 0 ? undefined : t("language")}
                     placeholder={t("languagePlaceholder")}
                     value={entry.language}
                     onChange={(e) => updateLanguage(idx, { language: e.target.value })}

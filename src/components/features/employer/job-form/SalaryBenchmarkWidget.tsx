@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { TrendingUp, Loader2, AlertTriangle, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { TrendingUp, Loader2, AlertTriangle, ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BenchmarkResult {
@@ -88,7 +88,7 @@ export function SalaryBenchmarkWidget({
   // lastFetchRef guard inside fetchBenchmark prevents redundant API calls.
   useEffect(() => {
     if (role.trim()) fetchBenchmark();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [role, location, currency, period]);
 
   if (!role.trim()) return null;
@@ -99,21 +99,21 @@ export function SalaryBenchmarkWidget({
       bg: "bg-red-50 border-red-200",
       bar: "bg-red-400",
       label: t("below"),
-      icon: "↓",
+      Icon: ArrowDown,
     },
     competitive: {
       color: "text-emerald-600",
       bg: "bg-emerald-50 border-emerald-200",
       bar: "bg-emerald-400",
       label: t("competitive"),
-      icon: "✓",
+      Icon: Check,
     },
     above: {
       color: "text-blue-600",
       bg: "bg-blue-50 border-blue-200",
       bar: "bg-blue-400",
       label: t("above"),
-      icon: "↑",
+      Icon: ArrowUp,
     },
   };
 
@@ -139,8 +139,9 @@ export function SalaryBenchmarkWidget({
           <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="font-medium text-foreground/80">{t("title")}</span>
           {data && cfg && (
-            <span className={`font-semibold ${cfg.color}`}>
-              {cfg.icon} {cfg.label}
+            <span className={`inline-flex items-center gap-1 font-semibold ${cfg.color}`}>
+              <cfg.Icon className="h-3 w-3" aria-hidden="true" />
+              {cfg.label}
             </span>
           )}
         </div>
@@ -166,7 +167,7 @@ export function SalaryBenchmarkWidget({
               onClick={fetchBenchmark}
               disabled={loading}
             >
-              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "↻"}
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" aria-hidden="true" />}
               {t("refresh")}
             </Button>
           )}

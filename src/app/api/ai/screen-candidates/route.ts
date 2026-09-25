@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
-import { sanitizeAIInput } from "@/lib/ai/sanitize";
+import { sanitizeAIInput, sanitizeAiList } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
@@ -11,9 +11,51 @@ import { Application } from "@/models/Application";
 import { JobSeeker } from "@/models/JobSeeker";
 import { validateBody } from "@/lib/validators";
 import { aiScreenCandidatesSchema } from "@/lib/validators/ai";
-import { resolveJobMatchingWeights, formatWeightsForPrompt } from "@/lib/ai/matchingWeights";
+import { applicantMatchUpdate, scoreApplicationsOfJob } from "@/lib/matching/scoreApplication";
+import type { IQualificationCheck } from "@/models/Application";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
+
+/**
+ * POST /api/ai/screen-candidates — rank a job's applicants and explain them.
+ *
+ * The ranking, the score and the shortlist / consider / pass call come from the
+ * ATS score every other surface shows (lib/matching/scoreApplication.ts): the
+ * employer's weights, the requirements checklist, one number per candidate.
+ * The model used to invent its own 0–100 here, so a candidate could read 85 in
+ * the applicant list and 60 in this panel. It now writes the prose only, and a
+ * model failure still returns the ranking with deterministic notes.
+ */
+
+/** Recommendation bands on the ATS score, for candidates who meet the requirements. */
+const SHORTLIST_AT = 70;
+const CONSIDER_AT = 50;
+/** Applications scored inline before ranking, so a fresh job is not ranked on nulls. */
+const MAX_INLINE_SCORING = 40;
+
+type Recommendation = "shortlist" | "consider" | "pass";
+
+interface RankedApplication {
+  _id: unknown;
+  jobSeekerId: unknown;
+  aiMatchScore?: number;
+  requirementsStatus?: string;
+  qualifications?: IQualificationCheck[];
+  matchedSkills?: string[];
+  missingSkills?: string[];
+}
+
+function recommend(app: RankedApplication): Recommendation {
+  if (app.requirementsStatus === "not_met") return "pass";
+  const score = app.aiMatchScore ?? 0;
+  return score >= SHORTLIST_AT ? "shortlist" : score >= CONSIDER_AT ? "consider" : "pass";
+}
+
+function failedRequirements(app: RankedApplication): string[] {
+  return (app.qualifications ?? [])
+    .filter((check) => check.hard && check.status === "not_met")
+    .map((check) => `${check.label ?? check.key}: asks ${check.required ?? "?"}, has ${check.actual ?? "not stated"}`);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,17 +103,12 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const job = await Job.findById(jobId)
-      .select("title requirements salary location employerId matchingWeights")
+      .select("title requirements employerId")
       .lean();
 
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
-
-    const weights = await resolveJobMatchingWeights({
-      jobWeights: (job as { matchingWeights?: unknown }).matchingWeights,
-      employerId: (job as { employerId?: unknown }).employerId as string | undefined,
-    });
 
     // Ownership check — user must be the employer or admin
     const userId = (session.user as unknown as { id: string }).id;
@@ -87,91 +124,120 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fetch applications with seeker profiles (limit for cost control)
-    const applications = await Application.find({ jobId })
-      .limit(maxCandidates)
-      .select("jobSeekerId status appliedAt")
+    // Candidates still in play. Withdrawn and rejected ones are not screened.
+    const open = { jobId, status: { $nin: ["withdrawn", "rejected"] } };
+
+    // Score what has never been scored, so the ranking below never sorts a
+    // fresh applicant to the bottom for want of a number.
+    const unscored = await Application.find({ ...open, scoredAt: null })
+      .sort({ appliedAt: 1 })
+      .limit(MAX_INLINE_SCORING)
+      .select("_id")
       .lean();
+    if (unscored.length > 0) {
+      const scored = await scoreApplicationsOfJob(jobId, unscored.map((a) => String(a._id)));
+      if (scored.length > 0) {
+        await Application.bulkWrite(
+          scored.map(({ applicationId, match }) => ({
+            updateOne: { filter: { _id: applicationId }, update: { $set: applicantMatchUpdate(match) } },
+          })),
+        );
+      }
+    }
+
+    // Candidates who meet the requirements first, best score first; only then
+    // the ones who fail one, so a padded list never hides a qualified person.
+    const fields = "jobSeekerId aiMatchScore requirementsStatus qualifications matchedSkills missingSkills";
+    const sort = { aiMatchScore: -1 as const, appliedAt: 1 as const, _id: 1 as const };
+    const qualified = (await Application.find({ ...open, requirementsStatus: { $ne: "not_met" } })
+      .sort(sort)
+      .limit(maxCandidates)
+      .select(fields)
+      .lean()) as RankedApplication[];
+    const failing = qualified.length < maxCandidates
+      ? ((await Application.find({ ...open, requirementsStatus: "not_met" })
+          .sort(sort)
+          .limit(maxCandidates - qualified.length)
+          .select(fields)
+          .lean()) as RankedApplication[])
+      : [];
+    const applications = [...qualified, ...failing];
 
     if (!applications.length) {
       return NextResponse.json({ candidates: [], message: "No applications found" });
     }
 
-    const seekerIds = applications.map((a) => (a as { jobSeekerId: unknown }).jobSeekerId);
-    const seekers = await JobSeeker.find({ _id: { $in: seekerIds } })
-      .select("fullName userId totalExperienceYears skills experience education languages")
+    const seekers = await JobSeeker.find({ _id: { $in: applications.map((a) => a.jobSeekerId) } })
+      .select("fullName userId totalExperienceYears experience education")
       .populate("userId", "name")
       .lean();
+    const seekerById = new Map(
+      (seekers as Array<{ _id: unknown; fullName?: string; userId?: { name?: string } }>).map((s) => [String(s._id), s]),
+    );
 
-    // Build structured candidate summaries for the AI
-    const candidateSummaries = seekers.map((s) => {
-      const seeker = s as {
-        _id: { toString(): string };
-        fullName?: string;
-        userId?: { name?: string };
-        totalExperienceYears?: number;
-        skills?: string[];
-        experience?: Array<{ jobTitle?: string; years?: number }>;
-        education?: Array<{ degree?: string; field?: string }>;
-        languages?: Array<{ language?: string; proficiency?: string }>;
-      };
-      const totalYears = seeker.totalExperienceYears ?? (seeker.experience ?? []).reduce(
-        (acc, e) => acc + (e.years ?? 0),
-        0
-      );
-      return {
-        id: seeker._id.toString(),
-        name: sanitizeAIInput(seeker.fullName?.trim() || seeker.userId?.name?.trim() || "Unknown", 120),
-        skills: (seeker.skills ?? []).slice(0, 20).map(s => sanitizeAIInput(s, 60)),
-        experienceYears: totalYears,
-        latestRole: sanitizeAIInput(seeker.experience?.[0]?.jobTitle ?? "N/A", 120),
-        education: sanitizeAIInput(seeker.education?.[0]
-          ? `${seeker.education[0].degree ?? ""} in ${seeker.education[0].field ?? ""}`
-          : "N/A", 200),
-        languages: (seeker.languages ?? []).map((l) => sanitizeAIInput(l.language ?? "", 60)).filter(Boolean),
-      };
+    const ranked = applications.map((app) => {
+      const seeker = seekerById.get(String(app.jobSeekerId));
+      const name = seeker?.fullName?.trim() || seeker?.userId?.name?.trim() || "Unknown";
+      return { app, id: String(app.jobSeekerId), name, recommendation: recommend(app) };
     });
 
-    const jobReqs = job as {
-      title?: string;
-      requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number };
-    };
+    // The model sees the established facts and writes prose around them.
+    const facts = ranked.map(({ app, id, recommendation }) => ({
+      id,
+      score: app.aiMatchScore ?? 0,
+      recommendation,
+      skillsMatched: sanitizeAiList(app.matchedSkills, 10, 60),
+      skillsMissing: sanitizeAiList(app.missingSkills, 10, 60),
+      requirementsNotMet: failedRequirements(app).map((line) => sanitizeAIInput(line, 160)),
+    }));
 
-    const prompt = `You are a recruitment screening expert. Score and rank these candidates for the following job.
+    const prompt = `You are a recruitment screening expert writing notes for a hiring manager.
 
-JOB: ${jobReqs.title ?? "Unknown"}
-Required Skills: ${(jobReqs.requirements?.skills ?? []).join(", ") || "not specified"}
-Experience: ${jobReqs.requirements?.experienceMin ?? 0}–${jobReqs.requirements?.experienceMax ?? 99} years
+JOB: ${sanitizeAIInput(String((job as { title?: string }).title ?? "Unknown"), 120)}
+
+Each candidate below has ALREADY been scored and given a recommendation. Do not change or restate the score. For each one write:
+- strengths: up to 3 short strings, consistent with skillsMatched
+- gaps: up to 2 short strings, consistent with skillsMissing and requirementsNotMet
+- summary: one sentence explaining the recommendation
 
 CANDIDATES:
-${JSON.stringify(candidateSummaries, null, 2)}
+${JSON.stringify(facts, null, 2)}
 
-Scoring criteria (the employer's configured priorities — weight each accordingly):
-${formatWeightsForPrompt(weights)}
+Output ONLY a JSON array of {"id","strengths","gaps","summary"}, no markdown code blocks.`;
 
-For each candidate provide a JSON object with:
-- id (from input)
-- name
-- score (0-100)
-- recommendation: "shortlist" | "consider" | "pass"
-- strengths: top 3 strengths (array of strings)
-- gaps: top 2 gaps or concerns (array of strings)
-- summary: one-sentence hiring recommendation
-
-Output ONLY a JSON array, no markdown code blocks, sorted by score descending.`;
-
-    const rawText = (await generateText(prompt, GEMINI_MODELS.flash, 3000)).trim();
-
-    let ranked: unknown[] = [];
+    const notes = new Map<string, { strengths: string[]; gaps: string[]; summary: string }>();
     try {
+      const rawText = (await generateText(prompt, GEMINI_MODELS.flash, 3000)).trim();
       const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-      ranked = JSON.parse(cleaned);
-    } catch {
-      return NextResponse.json(
-        { error: "Failed to parse AI response" },
-        { status: 502 }
-      );
+      const parsed = JSON.parse(cleaned) as Array<{ id?: unknown; strengths?: unknown; gaps?: unknown; summary?: unknown }>;
+      for (const row of Array.isArray(parsed) ? parsed : []) {
+        if (typeof row?.id !== "string") continue;
+        notes.set(row.id, {
+          strengths: Array.isArray(row.strengths) ? row.strengths.map(String).filter(Boolean).slice(0, 3) : [],
+          gaps: Array.isArray(row.gaps) ? row.gaps.map(String).filter(Boolean).slice(0, 2) : [],
+          summary: typeof row.summary === "string" ? row.summary : "",
+        });
+      }
+    } catch (err) {
+      // The ranking stands without the prose; fall back to the facts below.
+      logger.warn({ err, jobId }, "[Screen Candidates] narrative unavailable; returning deterministic notes");
     }
+
+    const candidates = ranked.map(({ app, id, name, recommendation }) => {
+      const note = notes.get(id);
+      const failed = failedRequirements(app);
+      return {
+        id,
+        applicationId: String(app._id),
+        name: sanitizeAIInput(name, 120),
+        score: app.aiMatchScore ?? 0,
+        recommendation,
+        requirementsStatus: app.requirementsStatus ?? null,
+        strengths: note?.strengths.length ? note.strengths : (app.matchedSkills ?? []).slice(0, 3),
+        gaps: note?.gaps.length ? note.gaps : [...failed, ...(app.missingSkills ?? [])].slice(0, 2),
+        summary: note?.summary ?? "",
+      };
+    });
 
     await logActivity({
       actorId: userId,
@@ -179,15 +245,15 @@ Output ONLY a JSON array, no markdown code blocks, sorted by score descending.`;
       action: "ai.candidate_screening",
       resource: "applications",
       resourceId: jobId,
-      meta: { totalReviewed: candidateSummaries.length },
+      meta: { totalReviewed: candidates.length },
       req,
     });
 
     return NextResponse.json(
       {
-        candidates: ranked,
-        jobTitle: jobReqs.title,
-        totalReviewed: candidateSummaries.length,
+        candidates,
+        jobTitle: (job as { title?: string }).title,
+        totalReviewed: candidates.length,
       },
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );

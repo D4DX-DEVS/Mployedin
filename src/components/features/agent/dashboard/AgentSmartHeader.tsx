@@ -2,13 +2,17 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { BriefcaseBusiness, Target } from "lucide-react";
 import { WorkspaceHeader, type WorkspaceMetric } from "@/components/shared/WorkspaceHeader";
-import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
 import type { AgentActionCounts } from "@/lib/agents/workQueue";
+import type { AssignedRegion } from "@/lib/agents/assignedRegion";
+import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 
 interface AgentSmartHeaderProps {
-  userName: string;
+  /** "Good morning, Sam" — resolved by the page from the agent's own clock. */
+  greeting: string;
   counts: AgentActionCounts;
   activeJobs: number;
+  /** The region(s) an admin assigned, shown as a pill leading the context line. */
+  regions: readonly AssignedRegion[];
   /** The four at-a-glance figures, on the header's own metric strip. */
   metrics: readonly WorkspaceMetric[];
   locale: string;
@@ -26,7 +30,7 @@ interface AgentSmartHeaderProps {
  * than a section of their own: the home had five stacked panels and needed
  * two screens to reach the roles list.
  */
-export function AgentSmartHeader({ userName, counts, activeJobs, metrics, locale }: AgentSmartHeaderProps) {
+export function AgentSmartHeader({ greeting, counts, activeJobs, regions, metrics, locale }: AgentSmartHeaderProps) {
   const t = useTranslations("agentDashboard.smartHeader");
 
   // Same order the queue ranks its kinds: a cooling lead outranks an unlogged
@@ -61,8 +65,13 @@ export function AgentSmartHeader({ userName, counts, activeJobs, metrics, locale
 
   return (
     <WorkspaceHeader
-      title={`${t("welcomeBack", { userName })} \u{1F44B}`}
-      context={t(subtitleKey, { count: subtitleCount })}
+      title={greeting}
+      context={
+        <>
+          <AssignedRegionBadge regions={regions} className="me-2" />
+          {t(subtitleKey, { count: subtitleCount })}
+        </>
+      }
       metrics={metrics}
       actions={
         <>
@@ -76,7 +85,6 @@ export function AgentSmartHeader({ userName, counts, activeJobs, metrics, locale
             <span className="sm:hidden">{t("addLeadShort")}</span>
             <span className="hidden sm:inline">{t("addLead")}</span>
           </Link>
-          <CopilotLauncher />
         </>
       }
     />

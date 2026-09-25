@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Building2, CheckCircle, Loader2, Save, SlidersHorizontal } from "lucide-react";
+import { Building2, CheckCircle, Loader2, Save, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HiringRulesPanel } from "@/components/features/employer/workflow/HiringRulesPanel";
 import { PipelinePreview } from "@/components/features/employer/workflow/PipelinePreview";
@@ -87,7 +87,7 @@ export function JobWorkflowTab({ jobId }: Props) {
       {error && (
         <div role="alert" className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700">
           <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600" aria-label={ta("close")}>✕</button>
+          <button type="button" onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600" aria-label={ta("close")}><X className="h-4 w-4" aria-hidden="true" /></button>
         </div>
       )}
 

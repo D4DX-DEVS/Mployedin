@@ -6,7 +6,8 @@
  *   status (active|expired|cancelled|suspended),
  *   role (employer|job_seeker),
  *   planId, search (name/email), sortBy, sortOrder,
- *   autoRenew (true|false), dateFrom, dateTo
+ *   autoRenew (true|false), dateFrom, dateTo,
+ *   expiring (7d|30d) — active subscriptions whose period ends in that window
  *
  * Admin / super_agent / agent only.
  */
@@ -19,6 +20,7 @@ import { Employer } from "@/models/Employer";
 import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { SUBSCRIPTION_EXPIRING_WINDOWS, subscriptionsEndingFilter } from "@/lib/admin/queueFilters";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
@@ -59,6 +61,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   if (status && ["active", "expired", "cancelled", "suspended"].includes(status)) {
     filter.status = status;
+  }
+  // The admin dashboard's "ending within 7 days" row links here. Same filter
+  // it counts with; it pins status to active, so it wins over `status`.
+  const expiringWindow = SUBSCRIPTION_EXPIRING_WINDOWS[url.searchParams.get("expiring") ?? ""];
+  if (expiringWindow) {
+    Object.assign(filter, subscriptionsEndingFilter(expiringWindow));
   }
   if (role && ["employer", "job_seeker"].includes(role)) {
     filter.targetRole = role;

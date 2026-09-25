@@ -69,7 +69,8 @@ describe("lead conversion response", () => {
     // plaintext is written alongside it.
     const createBlock = source.slice(source.indexOf("await User.create({"), source.indexOf("// Create Employer profile"));
     expect(createBlock).toContain("passwordHash,");
-    expect(createBlock).not.toContain("tempPassword");
+    // The plaintext variable must not be stored; the tempPasswordIssuedAt flag is fine.
+    expect(createBlock).not.toMatch(/tempPassword/);
   });
 
   it("returns the credentials to the agent once", () => {
@@ -89,6 +90,6 @@ describe("lead conversion response", () => {
 
   it("still issues the setup link, so the password can be replaced", () => {
     expect(source).toContain("passwordResetToken: hashedSetupToken,");
-    expect(source).toContain("/en/reset-password?token=");
+    expect(source).toContain("/reset-password?token=");
   });
 });

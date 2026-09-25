@@ -114,7 +114,9 @@ export function AgentPipeline({
     <DashboardSection
       headingId="agent-placement-pipeline"
       title={t("title")}
-      description={t("description")}
+      // Leads are employer prospects, not candidates: the old line said
+      // "where your candidates stand, from first lead".
+      description={t("descriptionFlow")}
       action={
         <Link
           href={`/${locale}/agent/candidates`}

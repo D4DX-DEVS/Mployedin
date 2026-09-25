@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
@@ -530,7 +530,7 @@ export default function CVBuilderPage() {
         <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive text-sm mb-4">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
-          <button onClick={() => setError("")} className="ml-auto"><X className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setError("")} aria-label={t("actions.dismissError")} className="ml-auto"><X aria-hidden="true" className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -619,7 +619,7 @@ export default function CVBuilderPage() {
                     <div className="flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:items-center min-[360px]:gap-4 md:col-span-2">
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                         {form.photo ? (
-                          // eslint-disable-next-line @next/next/no-img-element
+                           
                           <img src={form.photo} alt={form.fullName || "Profile photo"} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -668,6 +668,7 @@ export default function CVBuilderPage() {
                     <div className="md:col-span-2 field">
                       <Label className="text-xs text-muted-foreground">{t("fields.profileSummary")}</Label>
                       <Textarea
+                        aria-label={t("fields.profileSummary")}
                         value={form.headline}
                         onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
                         placeholder={t("placeholders.summary")}
@@ -692,8 +693,8 @@ export default function CVBuilderPage() {
                           onChange={(v) => updateLink(i, "label", v)} placeholder={t("placeholders.linkTitle")} />
                         <FormField label={t("fields.url")} value={link.url}
                           onChange={(v) => updateLink(i, "url", v)} placeholder="https://..." />
-                        <button onClick={() => removeLink(i)} className="mb-[5px] text-muted-foreground hover:text-destructive transition-colors">
-                          <Trash2 className="w-4 h-4" />
+                        <button type="button" onClick={() => removeLink(i)} aria-label={t("actions.removeLink")} className="mb-[5px] text-muted-foreground hover:text-destructive transition-colors">
+                          <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
@@ -722,8 +723,8 @@ export default function CVBuilderPage() {
                     {form.experience.map((exp, i) => (
                       <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
                       <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
-                        <button onClick={() => removeExperience(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
+                        <button type="button" onClick={() => removeExperience(i)} aria-label={t("actions.removeExperience")} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                          <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <FormField label={t("fields.jobTitle")} value={exp.jobTitle}
@@ -789,8 +790,8 @@ export default function CVBuilderPage() {
                     {form.education.map((edu, i) => (
                       <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
                       <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
-                        <button onClick={() => removeEducation(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
+                        <button type="button" onClick={() => removeEducation(i)} aria-label={t("actions.removeEducation")} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                          <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <FormField label={t("fields.degree")} value={edu.degree}
@@ -819,6 +820,7 @@ export default function CVBuilderPage() {
                     value={form.skills}
                     onChange={(next) => setForm((f) => ({ ...f, skills: next }))}
                     placeholder={t("placeholders.skill")}
+                    ariaLabel={t("fields.skills")}
                     max={50}
                   />
                 </SectionCard>
@@ -840,8 +842,8 @@ export default function CVBuilderPage() {
                     {form.projects.map((proj, i) => (
                       <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
                       <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
-                        <button onClick={() => removeProject(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
+                        <button type="button" onClick={() => removeProject(i)} aria-label={t("actions.removeProject")} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                          <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="md:col-span-2">
@@ -865,7 +867,7 @@ export default function CVBuilderPage() {
                           </div>
                           <div className="md:col-span-2 field">
                             <Label className="text-xs text-muted-foreground">{t("fields.techStack")}</Label>
-                            <Input value={proj.techStack.join(", ")}
+                            <Input aria-label={t("fields.techStack")} value={proj.techStack.join(", ")}
                               onChange={(e) => updateProject(i, "techStack", e.target.value.split(",").map((t) => t.trim()).filter(Boolean))}
                               placeholder={t("placeholders.techStack")} className="text-sm" />
                           </div>
@@ -898,11 +900,11 @@ export default function CVBuilderPage() {
                           onChange={(v) => updateLanguage(i, "language", v)} placeholder={t("placeholders.language")} />
                         <div className="space-y-1.5">
                           <Label className="text-xs text-muted-foreground">{t("fields.proficiency")}</Label>
-                          <SearchableSelect options={proficiencyOptions} value={lang.proficiency}
+                          <SearchableSelect ariaLabel={t("fields.proficiency")} options={proficiencyOptions} value={lang.proficiency}
                             onValueChange={(v) => updateLanguage(i, "proficiency", v)} />
                         </div>
-                        <button onClick={() => removeLanguage(i)} className="mb-[5px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
+                        <button type="button" onClick={() => removeLanguage(i)} aria-label={t("actions.removeLanguage")} className="mb-[5px] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                          <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                       </div>
                       </SortableItem>
@@ -918,14 +920,14 @@ export default function CVBuilderPage() {
                     {form.certifications.map((c, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm group">
                         <span className="flex-1">{c}</span>
-                        <button onClick={() => removeCert(i)} className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                          <X className="w-3.5 h-3.5" />
+                        <button type="button" onClick={() => removeCert(i)} aria-label={t("actions.removeCertification", { name: c })} className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                          <X aria-hidden="true" className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-2 mt-2">
-                    <Input value={certInput} onChange={(e) => setCertInput(e.target.value)}
+                    <Input aria-label={t("fields.newCertification")} value={certInput} onChange={(e) => setCertInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCert(); } }}
                       placeholder={t("placeholders.certification")} className="h-8 text-sm" />
                     <Button size="dense" variant="outline" onClick={addCert} className="gap-1 shrink-0">
@@ -1113,10 +1115,12 @@ function FormField({
   readOnly?: boolean;
   type?: string;
 }) {
+  const id = useId();
   return (
     <div className="field">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
       <Input
+        id={id}
         type={type}
         value={value}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
@@ -1138,10 +1142,12 @@ function AutoFormField({
   placeholder?: string;
   taxonomy: TaxonomyType;
 }) {
+  const id = useId();
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
       <Autocomplete
+        id={id}
         type={taxonomy}
         value={value}
         onChange={onChange}

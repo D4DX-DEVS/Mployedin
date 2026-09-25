@@ -4,7 +4,8 @@
  * GDPR erasure must also remove the files a seeker uploaded beyond the main CV:
  * their document library (JobSeeker.documents — ID scans, certificates) and the
  * per-application attachments (Application.documents). Both used to survive
- * erasure, still downloadable by the employers the seeker had applied to.
+ * erasure, still downloadable by the employers the seeker had applied to. The
+ * CV records (each CV's full text and reading) go too.
  */
 import { NextRequest } from "next/server";
 
@@ -48,6 +49,8 @@ jest.mock("@/models/User", () => ({ __esModule: true, default: { findByIdAndUpda
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { find: jest.fn() } }));
 jest.mock("@/models/Notification", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
 jest.mock("@/models/GdprRequest", () => ({ __esModule: true, default: { create: jest.fn().mockResolvedValue({}) } }));
+const deleteCvRecordsOfSeeker = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/cv/cvDocuments", () => ({ deleteCvRecordsOfSeeker: (...a: unknown[]) => deleteCvRecordsOfSeeker(...a) }));
 
 describe("DELETE /api/gdpr/export removes every uploaded file", () => {
   it("unsets the document library and application attachments and deletes their objects", async () => {
@@ -67,5 +70,6 @@ describe("DELETE /api/gdpr/export removes every uploaded file", () => {
       "https://s3/documents/cover.pdf",
       "https://s3/documents/passport.pdf",
     ]);
+    expect(deleteCvRecordsOfSeeker).toHaveBeenCalledWith(SEEKER_ID);
   });
 });

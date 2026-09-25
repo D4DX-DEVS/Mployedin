@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getTranslations } from "next-intl/server";
+import { pickMessages } from "@/lib/i18n/clientMessages";
 import {
   ArrowUpRight,
   BriefcaseBusiness,
@@ -11,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
+import { CsrfProvider } from "@/components/shared/CsrfProvider";
 
 export default async function AuthLayout({
   children,
@@ -21,8 +24,10 @@ export default async function AuthLayout({
 }) {
   const { locale } = await params;
   const t = await getTranslations("authLayout");
+  const messages = await getMessages();
 
   return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "auth")}>
     <div className="flex min-h-screen flex-col bg-background">
       <div className="flex flex-1 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(var(--accent)/0.08),transparent_28%)]">
         <div className="relative hidden w-0 flex-1 overflow-hidden border-e border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:block">
@@ -59,9 +64,10 @@ export default async function AuthLayout({
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 {t("trustedWorkspace")}
               </div>
-              <h1 className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.04em] text-foreground xl:text-[3.35rem]">
+              {/* Marketing line, not the page title: each auth page owns its h1. */}
+              <p className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.04em] text-foreground xl:text-[3.35rem]">
                 {t("heading")}
-              </h1>
+              </p>
               <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground xl:text-base xl:leading-7">
                 {t("description")}
               </p>
@@ -137,12 +143,15 @@ export default async function AuthLayout({
           <div className="mx-auto flex w-full max-w-md flex-1 items-center">
             <div className="w-full rounded-2xl border border-border/60 bg-background/86 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur sm:rounded-3xl panel-body">
               <SessionWrapper disableIdleTimeout>
-                {children}
+                <CsrfProvider>
+                  {children}
+                </CsrfProvider>
               </SessionWrapper>
             </div>
           </div>
         </div>
       </div>
     </div>
+    </NextIntlClientProvider>
   );
 }

@@ -3,12 +3,14 @@
  *
  * Triggered right after an application is submitted. Scores every application
  * with the shared matching engine — the number the seeker's email and home page
- * show for the same pair — then — and only here — applies the employer's opt-in
- * auto-reject rule. The rule is resolved from the job's and the employer's
- * stored hiring rules (see src/lib/hiring/workflowSettings.ts); the event
- * payload carries nothing but the application id, so no caller can smuggle a
- * threshold in. Runs asynchronously so the seeker's apply request never blocks
- * on (or fails because of) an LLM call.
+ * show for the same pair — together with the employer's requirements checklist
+ * (experience, qualification, deal-breaker answers, ...) that Shortlist Top
+ * filters on. Then — and only here — applies the employer's opt-in auto-reject
+ * rule. The rule is resolved from the job's and the employer's stored hiring
+ * rules (see src/lib/hiring/workflowSettings.ts); the event payload carries
+ * nothing but the application id, so no caller can smuggle a threshold in.
+ * Runs asynchronously so the seeker's apply request never blocks on (or fails
+ * because of) an LLM call.
  */
 
 import { inngest } from "./client";
@@ -19,11 +21,15 @@ import JobSeeker from "@/models/JobSeeker";
 import { Employer } from "@/models/Employer";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput, sanitizeAiList } from "@/lib/ai/sanitize";
-import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
-import { JOB_MATCH_FIELDS } from "@/lib/matching/constants";
-import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
-import { scoreOnePair, storedBreakdown } from "@/lib/matching/seekerMatches";
+import {
+  APPLICANT_JOB_FIELDS,
+  APPLICANT_SEEKER_FIELDS,
+  applicantMatchUpdate,
+  computeApplicantMatch,
+  describeMatchForPrompt,
+} from "@/lib/matching/scoreApplication";
 import { resolveHiringRulesForJob, shouldAutoReject, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
+import { applicantCvFor } from "@/lib/cv/cvDocuments";
 
 
 export const aiScreenApplication = inngest.createFunction(
@@ -49,33 +55,43 @@ export const aiScreenApplication = inngest.createFunction(
     return step.run("score-application", async () => {
       const application = await Application.findById(applicationId);
       if (!application) return { skipped: true, reason: "application not found" };
-      if (application.aiMatchScore != null) return { skipped: true, reason: "already scored" };
+      // scoredAt, not aiMatchScore: auto-apply stores the engine score at
+      // creation, and those applications still need the checklist.
+      if (application.scoredAt != null) return { skipped: true, reason: "already scored" };
 
       const [job, seeker] = await Promise.all([
-        // Every field the engine reads, plus what the narrative prompt and the
-        // hiring rules need. A short select silently drops a signal: this one
-        // used to omit preferred roles, so role fit always scored zero here.
-        Job.findById(application.jobId)
-          .select(`${JOB_MATCH_FIELDS} description workflow`)
-          .lean(),
-        JobSeeker.findById(application.jobSeekerId)
-          .select(`${SEEKER_MATCH_FIELDS} userId languages`)
-          .lean(),
+        // Every field the engine and the checklist read, plus what the
+        // narrative prompt and the hiring rules need. A short select silently
+        // drops a signal: this one used to omit preferred roles, so role fit
+        // always scored zero here.
+        Job.findById(application.jobId).select(APPLICANT_JOB_FIELDS).lean(),
+        JobSeeker.findById(application.jobSeekerId).select(APPLICANT_SEEKER_FIELDS).lean(),
       ]);
       if (!job || !seeker) return { skipped: true, reason: "job or seeker not found" };
 
       // The reject rule is read here, at screening time, from what the employer
       // has actually saved — never from the event.
       const employer = job.employerId
-        ? ((await Employer.findById(job.employerId).select("workflow").lean()) as WorkflowSettingsCarrier | null)
+        ? ((await Employer.findById(job.employerId).select("workflow matchingWeights").lean()) as
+            (WorkflowSettingsCarrier & { matchingWeights?: unknown }) | null)
         : null;
       const rules = resolveHiringRulesForJob(job as WorkflowSettingsCarrier, employer);
 
-      const seekerProfile = await effectiveSeekerProfile(
-        String((seeker as { userId?: unknown }).userId ?? ""),
-        seeker as Parameters<typeof effectiveSeekerProfile>[1],
-      );
-      const pair = await scoreOnePair(seekerProfile, job as Record<string, unknown>);
+      // The CV this application was sent with. Still being read, it scores
+      // from the profile now and is re-scored when the reading lands.
+      const cv = await applicantCvFor({
+        jobSeekerId: application.jobSeekerId,
+        documents: application.documents,
+        profileCvUrl: (seeker.cv as { originalUrl?: string } | undefined)?.originalUrl,
+      });
+      const match = await computeApplicantMatch({
+        job: job as Record<string, unknown>,
+        seeker: seeker as Record<string, unknown>,
+        employerWeights: employer?.matchingWeights,
+        answers: application.screeningAnswers ?? [],
+        cv,
+      });
+      Object.assign(application, applicantMatchUpdate(match));
 
       // LLM call for narrative fields only (optional — failures don't block score)
       const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
@@ -106,12 +122,10 @@ Skills: ${sanitizeAiList(seeker.skills as string[] | undefined, 25, 60)}
 Years of Experience: ${sanitizeAIInput(String(seeker.totalExperienceYears ?? "N/A"), 20)}
 Languages: ${seekerLangs}
 
-Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"strengths":[],"gaps":[],"summary":""}`;
+ESTABLISHED FACTS (already checked — your strengths and gaps must agree with these):
+${describeMatchForPrompt(match)}
 
-      // The engine's score; the LLM below writes narrative only.
-      application.aiMatchScore = pair.score;
-      application.scoredVia = "engine";
-      application.matchBreakdown = storedBreakdown(pair);
+Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"strengths":[],"gaps":[],"summary":""}`;
 
       // Try to get narrative from LLM, but failure doesn't block the score
       let narrativeData = { strengths: [], gaps: [], summary: "" };
@@ -144,7 +158,12 @@ Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"streng
       }
 
       await application.save();
-      return { scored: true, score: application.aiMatchScore, autoRejected: application.status === "rejected" };
+      return {
+        scored: true,
+        score: application.aiMatchScore,
+        requirements: match.requirementsStatus,
+        autoRejected: application.status === "rejected",
+      };
     });
   }
 );

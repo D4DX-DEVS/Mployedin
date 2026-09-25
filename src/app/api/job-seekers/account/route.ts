@@ -16,6 +16,7 @@ import { User } from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
+import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
 
 // ── GET — data export ─────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
     });
 
     // Wipe all PII from the JobSeeker profile
-    await JobSeeker.findOneAndUpdate(
+    const seekerBefore = await JobSeeker.findOneAndUpdate(
       { userId: ctx.userId },
       {
         // Identity
@@ -110,7 +111,10 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
         "cv.rawText": null,
         documents: [],
       }
-    );
+    ).select("_id").lean<{ _id?: unknown } | null>();
+
+    // Each CV's full text and reading live in its CV record.
+    if (seekerBefore?._id) await deleteCvRecordsOfSeeker(seekerBefore._id as string);
 
     logActivity({
       actorId: ctx.userId,

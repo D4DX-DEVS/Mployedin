@@ -313,6 +313,7 @@ export default function NotificationSettingsPage() {
             <button
               key={opt.value}
               onClick={() => setPrefs((p) => ({ ...p, emailFrequency: opt.value }))}
+              aria-pressed={prefs.emailFrequency === opt.value}
               className={`rounded-lg border-2 text-left transition-all ${ prefs.emailFrequency === opt.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-border" } chip-pad`}
             >
               <div className="text-sm font-medium">{t(opt.labelKey)}</div>
@@ -362,6 +363,7 @@ export default function NotificationSettingsPage() {
                   <Switch
                     checked={pref.enabled}
                     onCheckedChange={() => toggleCategory(cat.key)}
+                    aria-label={t(cat.labelKey)}
                   />
                 </div>
 
@@ -376,6 +378,7 @@ export default function NotificationSettingsPage() {
                         <button
                           key={ch}
                           onClick={() => toggleChannel(cat.key, ch)}
+                          aria-pressed={active}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
                             active
                               ? "border-primary/40 bg-primary/10 text-primary"
@@ -416,6 +419,7 @@ export default function NotificationSettingsPage() {
           <Switch
             checked={prefs.unsubscribedAll}
             onCheckedChange={toggleUnsubscribeAll}
+            aria-label={isAr ? "إيقاف جميع رسائل البريد" : "Unsubscribe from all emails"}
           />
         </div>
       </div>

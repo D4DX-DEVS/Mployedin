@@ -38,6 +38,7 @@ import { MAX_RECOMMENDATIONS, DEFAULT_MIN_RELEVANCE, JOB_MATCH_FIELDS } from "@/
 export { JOB_MATCH_FIELDS };
 import { decide, noulValue, hasJev, type JevQuestion } from "@/lib/ai/jev";
 import { OPENROUTER_MODELS } from "@/lib/ai/openRouter";
+import { sanitizeAIInput } from "@/lib/ai/sanitize";
 
 export interface CandidateJob {
   id: string;
@@ -246,8 +247,15 @@ function inJevBand(deterministic: number, threshold: number): boolean {
   return deterministic >= threshold - AI_MAX_ADJUSTMENT;
 }
 
+/**
+ * How much of the CV Jev reads. The opening of a CV is the summary and the
+ * latest roles — what a recruiter skims — and the cap keeps each call cheap.
+ */
+const JEV_CV_CHARS = 2500;
+
 /** The facts Jev is shown about one pair. One builder, so request and cache key cannot drift. */
 function jevState(seeker: SeekerProfile, job: CandidateJob) {
+  const cv = seeker.cvText ? sanitizeAIInput(seeker.cvText, JEV_CV_CHARS) : "";
   return {
     job: {
       title: job.title,
@@ -262,6 +270,8 @@ function jevState(seeker: SeekerProfile, job: CandidateJob) {
       preferred_roles: seeker.preferredRoles,
       total_experience_years: seeker.experienceKnown === false ? null : seeker.experienceYears,
       recent_roles: (seeker.roleHistory ?? []).slice(0, 5).map((r) => r.title),
+      // Only when there is one, so a pair with no CV keeps its cached verdict.
+      ...(cv ? { cv_excerpt: cv } : {}),
     },
   };
 }
@@ -310,7 +320,7 @@ async function jevFit(
  * alone still let a confident answer move a score by up to 35 points; the
  * clamp is what keeps Jev advisory.
  */
-function applyJev(deterministic: number, fit: number): number {
+export function applyJev(deterministic: number, fit: number): number {
   const blended = deterministic * (1 - AI_BLEND_WEIGHT) + fit * 100 * AI_BLEND_WEIGHT;
   const floor = deterministic - AI_MAX_ADJUSTMENT;
   const ceiling = deterministic + AI_MAX_ADJUSTMENT;

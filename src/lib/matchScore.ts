@@ -229,7 +229,7 @@ const RELATED_SKILLS_MAP: Map<string, Set<string>> = (() => {
  * react" both become " node js react ". Wrapped in spaces so `includes(" x ")`
  * is a whole-token test rather than a substring one ("java" ∉ "javascript").
  */
-function flattenText(s: string): string {
+export function flattenText(s: string): string {
   return ` ${s.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim()} `;
 }
 
@@ -682,10 +682,14 @@ export function seekerProfileFromDoc(seeker: {
   // Career length came only from dated `experience` entries, so a seeker who
   // filled in "8 years total" on the profile form but added no entries scored
   // as though they had none. Fall back to the stated total, then to the
-  // declared work status.
+  // declared work status. A role with no dates adds nothing to the sum, so
+  // when one is undated the sum is known to be short — then the stated total
+  // ("6+ years" on a CV whose first job gives no dates) counts if it is larger.
   const entryYears = roleHistory.reduce((total, role) => total + role.years, 0);
   const statedTotal = seeker.totalExperienceYears ?? 0;
-  const experienceYears = roleHistory.length > 0 ? entryYears : statedTotal;
+  const someUndated = (seeker.experience ?? []).some((exp) => !exp.startDate);
+  const experienceYears =
+    roleHistory.length === 0 ? statedTotal : someUndated ? Math.max(entryYears, statedTotal) : entryYears;
   // `totalExperienceYears` defaults to 0 on every document, so it cannot by
   // itself distinguish "fresher" from "never answered" — `workStatus` is only
   // ever present when the seeker actually chose one.

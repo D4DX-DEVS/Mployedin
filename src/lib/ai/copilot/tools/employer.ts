@@ -33,6 +33,8 @@ interface Selection {
   candidates: Array<{ applicationId: string; seekerUserId: string | null; name: string; score: number | null; note?: string }>;
   totalApplied: number;
   unscored: number;
+  /** Scored applicants left out because they fail a hard requirement. */
+  failingRequirements: number;
 }
 
 async function selectTopCandidates(
@@ -78,21 +80,29 @@ async function selectTopCandidates(
   const rules = resolveHiringRulesForJob(job, employer);
   const count = Math.min(100, Math.max(1, args.count ?? rules.shortlistTarget));
 
-  // Query candidates ranked by score
+  // Query candidates ranked by score. Anyone known to fail a hard requirement
+  // (experience, qualification, a deal-breaker answer) is left out — the same
+  // pool the page's Shortlist Top ranks.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filter: Record<string, any> = { jobId: job._id, status: "applied", aiMatchScore: { $ne: null } };
+  const filter: Record<string, any> = {
+    jobId: job._id,
+    status: "applied",
+    aiMatchScore: { $ne: null },
+    requirementsStatus: { $ne: "not_met" },
+  };
   if (args.minScore != null) filter.aiMatchScore.$gte = args.minScore;
 
   const candidates = await Application.find(filter)
-    .sort({ aiMatchScore: -1, appliedAt: 1 })
+    .sort({ aiMatchScore: -1, appliedAt: 1, _id: 1 })
     .limit(count)
     .select("_id jobSeekerId aiMatchScore matchStrengths appliedAt")
     .populate("jobSeekerId", "fullName userId")
     .lean();
 
-  const [totalApplied, unscored] = await Promise.all([
+  const [totalApplied, unscored, failingRequirements] = await Promise.all([
     Application.countDocuments({ jobId: job._id, status: "applied" }),
     Application.countDocuments({ jobId: job._id, status: "applied", aiMatchScore: null }),
+    Application.countDocuments({ jobId: job._id, status: "applied", requirementsStatus: "not_met" }),
   ]);
 
   const mapped = candidates.map((a) => {
@@ -116,6 +126,7 @@ async function selectTopCandidates(
       candidates: mapped,
       totalApplied,
       unscored,
+      failingRequirements,
     },
   };
 }
@@ -350,8 +361,11 @@ export const scheduleInterviewTool: CopilotTool<{
 };
 
 function nothingToShortlistMessage(sel: Selection): string {
-  const base = `No scored applicants are waiting at the Applied stage for "${sel.job.title}".`;
-  return sel.unscored ? `${base} ${sel.unscored} still being scored — try again in a minute.` : base;
+  const base = `No scored applicants who meet the requirements are waiting at the Applied stage for "${sel.job.title}".`;
+  const failing = sel.failingRequirements
+    ? ` ${sel.failingRequirements} applied but don't meet the job's requirements — review them on the applicants page.`
+    : "";
+  return sel.unscored ? `${base}${failing} ${sel.unscored} still being scored — try again in a minute.` : `${base}${failing}`;
 }
 
 export const shortlistTopCandidatesTool: CopilotTool<{ jobId?: string; count?: number; minScore?: number }> = {
@@ -385,7 +399,10 @@ export const shortlistTopCandidatesTool: CopilotTool<{ jobId?: string; count?: n
 
     const minScoreStr = sel.minScore ? `, ${sel.minScore}%+` : "";
     const unscoredNote = sel.unscored ? ` ${sel.unscored} not yet scored are skipped.` : "";
-    const summary = `${n} of ${sel.totalApplied} applicants at Applied will move to Shortlisted for "${sel.job.title}" (top by match score${minScoreStr}).${unscoredNote}`;
+    const failingNote = sel.failingRequirements
+      ? ` ${sel.failingRequirements} who don't meet the job's requirements are left out.`
+      : "";
+    const summary = `${n} of ${sel.totalApplied} applicants at Applied will move to Shortlisted for "${sel.job.title}" (top by match score${minScoreStr}).${unscoredNote}${failingNote}`;
 
     return {
       summary,

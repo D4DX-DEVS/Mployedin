@@ -249,7 +249,7 @@ export default function AgentTasksPage() {
         <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4" data-table-toolbar="simple">
           <div className="relative toolbar-search-field flex-1">
             <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9" />
+            <Input placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9" />
           </div>
           <SearchableSelect options={getStatusOptions(t)} value={statusFilter} onValueChange={setStatusFilter} placeholder={tc("status")} className="w-36" />
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); }} className="min-h-11 min-w-11">
@@ -288,8 +288,11 @@ export default function AgentTasksPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <button
+                      type="button"
                       onClick={() => updateTaskStatus(task._id, task.status === "completed" ? "pending" : "completed")}
-                      className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
+                      aria-pressed={task.status === "completed"}
+                      aria-label={task.status === "completed" ? t("markPending") : t("markComplete")}
+                      className={`tap-target-box mt-0.5 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
                         task.status === "completed"
                           ? "border-emerald-500 bg-emerald-500 text-white"
                           : "border-muted-foreground/30 hover:border-primary"
@@ -326,11 +329,11 @@ export default function AgentTasksPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     {task.status !== "completed" && task.status !== "in_progress" && (
-                      <Button variant="ghost" size="sm" onClick={() => updateTaskStatus(task._id, "in_progress")}>
+                      <Button variant="ghost" size="sm" onClick={() => updateTaskStatus(task._id, "in_progress")} aria-label={t("markInProgress")}>
                         <Star className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => deleteTask(task._id)}>
+                    <Button variant="ghost" size="sm" onClick={() => deleteTask(task._id)} aria-label={tc("delete")}>
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />
                     </Button>
                   </div>

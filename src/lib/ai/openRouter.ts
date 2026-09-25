@@ -188,23 +188,75 @@ export function openRouterHeaders(apiKey: string = getOpenRouterApiKey()): Recor
   };
 }
 
+/**
+ * OpenRouter service tier for a request. Only `flex` is ever requested: the
+ * same model at half the price (gemini-3.1-flash-lite: $0.125/$0.75 per 1M vs
+ * $0.25/$1.50 on 2026-09-24), traded for latency and availability.
+ */
+export type OpenRouterServiceTier = "flex";
+
+export interface OpenRouterRequestOptions {
+  /**
+   * Opt in only where nobody is waiting on the answer — cron and queue work.
+   * Flex can be slow or out of capacity, which a seeker uploading a CV or a
+   * recruiter mid-chat should never feel.
+   */
+  tier?: OpenRouterServiceTier;
+}
+
+/**
+ * Statuses that mean "the flex pool could not take this", worth one retry on
+ * the standard tier. OpenRouter's docs say only that "a flex capacity error
+ * surfaces"; they do not name the code, so this is every transient status.
+ * A 4xx request error would fail the same way on any tier and is returned as-is.
+ */
+function isFlexCapacityFailure(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+/**
+ * Timeout for the flex attempt. Flex is slow by design: a 67-token extraction
+ * took 16.7 s on 2026-09-24 against the 20 s standard budget, so the standard
+ * timeout would abandon most flex calls and pay full price on the retry
+ * anyway. Only background work opts in, where waiting longer costs nothing.
+ */
+export const FLEX_TIMEOUT_MS = 45_000;
+
 /** POST to OpenRouter's chat completions endpoint, under the shared timeout rule. */
 export async function openRouterChatFetch(
   body: Record<string, unknown>,
   label: string,
   timeoutMs?: number,
+  options: OpenRouterRequestOptions = {},
 ): Promise<Response> {
   const model = typeof body.model === "string" ? toOpenRouterModel(body.model) : body.model;
-  return providerFetch(
-    `${OPENROUTER_BASE}/chat/completions`,
-    {
-      method: "POST",
-      headers: openRouterHeaders(),
-      body: JSON.stringify({ ...body, model }),
-    },
-    label,
-    timeoutMs,
-  );
+  const send = (extra: Record<string, unknown>, timeout = timeoutMs) =>
+    providerFetch(
+      `${OPENROUTER_BASE}/chat/completions`,
+      {
+        method: "POST",
+        headers: openRouterHeaders(),
+        body: JSON.stringify({ ...body, model, ...extra }),
+      },
+      label,
+      timeout,
+    );
+
+  if (options.tier !== "flex") return send({});
+
+  // "Flex never falls back to a default-tier endpoint … a flex capacity error
+  // surfaces instead" (OpenRouter service-tier docs). The fallback is ours:
+  // one retry at the standard price, so a busy flex pool costs a background
+  // job some latency, never its result.
+  try {
+    const res = await send({ service_tier: "flex" }, Math.max(timeoutMs ?? 0, FLEX_TIMEOUT_MS));
+    if (!isFlexCapacityFailure(res.status)) return res;
+    // Release the failed response's connection before asking again.
+    await res.body?.cancel().catch(() => {});
+  } catch {
+    // Timed out or dropped — same treatment as a capacity error.
+  }
+  return send({});
 }
 
 /**

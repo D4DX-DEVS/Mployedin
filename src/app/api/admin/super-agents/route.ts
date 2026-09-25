@@ -270,6 +270,40 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 }
 
 /**
+ * An agent belongs to one super agent. Picking agents here used to silently
+ * take them from whichever super agent had them (and on create, left them in
+ * that super agent's agentIds too). Moving an agent between super agents is
+ * done from Admin → Agents → Edit, which keeps both sides in step; this form
+ * may only claim unassigned agents or keep its own.
+ */
+async function agentsOwnedElsewhere(
+  agentIds: string[] | undefined,
+  ownSuperAgentId: unknown
+): Promise<NextResponse | null> {
+  if (!agentIds?.length) return null;
+  const owned = [null, ...(ownSuperAgentId ? [ownSuperAgentId] : [])];
+  const candidates = await Agent.find({ _id: { $in: agentIds }, superAgentId: { $nin: owned } })
+    .select("_id superAgentId")
+    .lean();
+  if (candidates.length === 0) return null;
+  // A pointer at a super agent that no longer exists is not ownership.
+  const liveOwners = new Set(
+    (await SuperAgent.find({ _id: { $in: candidates.map((a) => a.superAgentId) } }).select("_id").lean())
+      .map((sa) => String(sa._id))
+  );
+  const taken = candidates.filter((a) => liveOwners.has(String(a.superAgentId)));
+  if (taken.length === 0) return null;
+  return NextResponse.json(
+    {
+      error: "Some of these agents already belong to another super agent.",
+      details: [{ path: "agentIds", message: "Agent already belongs to another super agent" }],
+      takenAgentIds: taken.map((a) => String(a._id)),
+    },
+    { status: 400 }
+  );
+}
+
+/**
  * POST /api/admin/super-agents — create a super agent (user + profile)
  */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
@@ -287,6 +321,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (existing) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }
+
+  const takenError = await agentsOwnedElsewhere(agentIds, null);
+  if (takenError) return takenError;
 
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await User.create({
@@ -307,8 +344,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       agentIds: agentIds ?? [],
     });
 
-    // Link agents back to this super agent
+    // Link agents back to this super agent (and drop any stale team entry
+    // left on another super agent, as PATCH does)
     if (agentIds?.length) {
+      await SuperAgent.updateMany(
+        { _id: { $ne: saDoc._id }, agentIds: { $in: agentIds } },
+        { $pull: { agentIds: { $in: agentIds } } }
+      );
       await Agent.updateMany(
         { _id: { $in: agentIds } },
         { $set: { superAgentId: saDoc._id } }
@@ -342,6 +384,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const { userId, name, email, isActive, overrideCommissionRate, defaultAgentCommissionRate, assignedCityIds, assignedStateIds, agentIds } = body;
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
+
+  if (agentIds?.length) {
+    const current = await SuperAgent.findOne({ userId }).select("_id").lean();
+    const takenError = await agentsOwnedElsewhere(agentIds, current?._id ?? null);
+    if (takenError) return takenError;
+  }
 
   // Update user fields
   const userUpdate: Record<string, unknown> = {};

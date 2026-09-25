@@ -13,6 +13,7 @@ import { validateBody } from "@/lib/validators";
 import { matchingWeightsSchema } from "@/lib/validators/misc";
 
 import { sanitizeMatchingWeights } from "@/lib/ai/matchingWeights";
+import { queueApplicantRescore } from "@/lib/inngest/rescoreJobApplicants";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -110,6 +111,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   job.matchingWeights = weights;
   await job.save();
+  // The weights produce the applicant ranking score; re-rank who already applied.
+  await queueApplicantRescore([String(job._id)]);
 
   await logActivity({
     ...actorFromCtx(ctx),

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { teamUpdateSchema } from "@/lib/validators/team";
@@ -7,7 +8,7 @@ import { CompanyUser, computeEffectivePermissions, getPrimaryRole } from "@/mode
 import type { CompanyRole, PermissionFlag } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { canManageTeam, canModifyRole } from "@/lib/permissions/team";
+import { actingUserId, canModifyMember, canModifyRole, getTeamActorRole } from "@/lib/permissions/team";
 import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
@@ -15,7 +16,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
  */
 async function patchHandler(
   req: NextRequest,
-  ctx: { userId: string; role: string },
+  ctx: { userId: string; role: string; member?: AuthContext["member"] },
   params?: Record<string, string>
 ) {
   if (ctx.role !== "employer") {
@@ -30,18 +31,15 @@ async function patchHandler(
   const body = await validateBody(req, teamUpdateSchema);
 
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id companyEmail").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  const callerMember = await CompanyUser.findOne({
-    companyId: employer._id,
-    userId: ctx.userId,
-    status: "active",
-  }).lean();
-
-  if (!callerMember || !canManageTeam(callerMember.companyRole)) {
+  // A colleague is judged on their own membership, never the owner's row that
+  // ctx.userId points at.
+  const actorRole = await getTeamActorRole(ctx, employer);
+  if (!actorRole) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
@@ -53,6 +51,15 @@ async function patchHandler(
   // Cannot modify owner
   if (target.companyRole === "owner") {
     return NextResponse.json({ error: "Cannot modify the owner" }, { status: 403 });
+  }
+
+  if (target.userId && String(target.userId) === actingUserId(ctx)) {
+    return NextResponse.json({ error: "You cannot change your own access" }, { status: 403 });
+  }
+
+  const targetRoles = (target.companyRoles?.length ? target.companyRoles : [target.companyRole]) as CompanyRole[];
+  if (!canModifyMember(actorRole, targetRoles)) {
+    return NextResponse.json({ error: "Cannot modify this member" }, { status: 403 });
   }
 
   // Check if caller can modify target's role
@@ -74,7 +81,7 @@ async function patchHandler(
 
   if (resolvedRoles) {
     for (const role of resolvedRoles) {
-      if (!canModifyRole(callerMember.companyRole, role as "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer")) {
+      if (!canModifyRole(actorRole, role as "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer")) {
         return NextResponse.json({ error: "Cannot assign this role" }, { status: 403 });
       }
     }
@@ -123,7 +130,7 @@ async function patchHandler(
  */
 async function deleteHandler(
   req: NextRequest,
-  ctx: { userId: string; role: string },
+  ctx: { userId: string; role: string; member?: AuthContext["member"] },
   params?: Record<string, string>
 ) {
   if (ctx.role !== "employer") {
@@ -136,18 +143,15 @@ async function deleteHandler(
   }
 
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id companyEmail").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  const callerMember = await CompanyUser.findOne({
-    companyId: employer._id,
-    userId: ctx.userId,
-    status: "active",
-  }).lean();
-
-  if (!callerMember || !canManageTeam(callerMember.companyRole)) {
+  // A colleague is judged on their own membership, never the owner's row that
+  // ctx.userId points at.
+  const actorRole = await getTeamActorRole(ctx, employer);
+  if (!actorRole) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
@@ -162,8 +166,13 @@ async function deleteHandler(
   }
 
   // Cannot deactivate yourself
-  if (target.userId && String(target.userId) === ctx.userId) {
+  if (target.userId && String(target.userId) === actingUserId(ctx)) {
     return NextResponse.json({ error: "Cannot deactivate yourself" }, { status: 400 });
+  }
+
+  const targetRoles = (target.companyRoles?.length ? target.companyRoles : [target.companyRole]) as CompanyRole[];
+  if (!canModifyMember(actorRole, targetRoles)) {
+    return NextResponse.json({ error: "Cannot deactivate this member" }, { status: 403 });
   }
 
   target.status = "deactivated";

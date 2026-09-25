@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
+import { pickMessages } from "@/lib/i18n/clientMessages";
 import { notFound } from "next/navigation";
 import { PWAInstallPrompt } from "@/components/shared/PWAInstallPrompt";
 
@@ -72,7 +73,8 @@ export default async function LocaleLayout({
 
   return (
     <div lang={locale} dir={dir} className={locale === "ar" ? "font-arabic" : ""}>
-      <NextIntlClientProvider locale={locale} messages={messages}>
+      {/* Groups bring their own provider and subset; see clientMessages.ts. */}
+      <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "root")}>
         {children}
         <PWAInstallPrompt />
       </NextIntlClientProvider>

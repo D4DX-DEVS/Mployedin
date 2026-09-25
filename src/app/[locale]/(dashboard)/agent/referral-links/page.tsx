@@ -308,7 +308,10 @@ export default function AgentReferralLinksPage() {
                       </button>
                     )}
                     <button
+                      type="button"
                       onClick={() => setExpandedId(isExpanded ? null : link._id)}
+                      aria-expanded={isExpanded}
+                      aria-label={isExpanded ? t("hideDetails") : t("showDetails")}
                       className="inline-flex h-8 items-center rounded-lg border border-border px-2 text-muted-foreground hover:text-foreground"
                     >
                       {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

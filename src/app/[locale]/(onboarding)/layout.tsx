@@ -1,4 +1,7 @@
 import { redirect } from "next/navigation";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
+import { pickMessages } from "@/lib/i18n/clientMessages";
 import { auth } from "@/lib/auth/config";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
@@ -20,7 +23,10 @@ export default async function OnboardingLayout({
     redirect(`/${locale}/login`);
   }
 
+  const messages = await getMessages();
+
   return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "onboarding")}>
     <SessionWrapper>
       <CsrfProvider>
         <div
@@ -32,5 +38,6 @@ export default async function OnboardingLayout({
         </div>
       </CsrfProvider>
     </SessionWrapper>
+    </NextIntlClientProvider>
   );
 }

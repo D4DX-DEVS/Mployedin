@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { formatDateTime } from "@/lib/ui/intlFormat";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
 
@@ -68,12 +70,16 @@ interface EmailLogEntry {
 
 
 type TabKey = "overview" | "cron-jobs" | "email-logs" | "user-overrides" | "test";
+const TAB_KEYS: readonly TabKey[] = ["overview", "cron-jobs", "email-logs", "user-overrides", "test"];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminNotificationsPage() {
   const t = useTranslations("adminSettingsNotifications");
-  const [tab, setTab] = useState<TabKey>("overview");
+  // In the URL so the dashboard's "failed emails" row can open the email log.
+  const [tabParam, setTabParam] = useUrlFilter("tab", "overview", { allow: TAB_KEYS });
+  const tab = tabParam as TabKey;
+  const setTab = (next: TabKey) => setTabParam(next);
   const [stats, setStats] = useState<NotifStats | null>(null);
   const [config, setConfig] = useState<SystemConfigData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -337,15 +343,18 @@ function EmailLogsTab() {
   const [limit, setLimit] = useState(30);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
-  const [statusFilter, setStatusFilter] = useState("__all__");
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "__all__", { allow: ["sent", "delivered", "failed", "bounced"] });
   const [sourceFilter, setSourceFilter] = useState("__all__");
   const [stats24h, setStats24h] = useState<Record<string, number>>({});
 
   function setPage(next: number) {
     setPageState(next);
-    const params = new URLSearchParams(window.location.search);
+    // readQuery, not window.location: a status change writes the URL in the
+    // same tick and router.replace has not applied it yet — reading the stale
+    // string here dropped the status the admin had just picked.
+    const params = readQuery();
     if (next > 1) params.set("page", String(next)); else params.delete("page");
-    router.replace(`?${params.toString()}`, { scroll: false });
+    writeQuery(params, (href) => router.replace(href, { scroll: false }));
   }
 
   const fetchLogs = useCallback(async () => {
@@ -433,7 +442,12 @@ function EmailLogsTab() {
                     <Badge variant="outline" className={`text-[11px] px-1.5 py-0 ${log.status === "sent" || log.status === "delivered" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"}`}>
                       {log.status}
                     </Badge>
-                    {log.errorMessage && <span className="ml-1 text-red-500" title={log.errorMessage}>⚠</span>}
+                    {log.errorMessage && (
+                      <span className="ml-1 inline-flex align-middle text-red-500" title={log.errorMessage}>
+                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="sr-only">{log.errorMessage}</span>
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

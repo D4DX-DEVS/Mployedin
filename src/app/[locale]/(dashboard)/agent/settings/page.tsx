@@ -25,6 +25,9 @@ import {
   currencyForCountry,
 } from "@/lib/currency";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
+import { AssignedRegionFields, type SupervisingSuperAgent } from "@/components/features/settings/AssignedRegionFields";
+import type { AssignedRegion } from "@/lib/agents/assignedRegion";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -150,6 +153,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function ProfileTab() {
   const { data: session, update: updateSession } = useSession();
   const t = useTranslations("agentSettings");
+  const locale = useLocale();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -163,6 +167,9 @@ function ProfileTab() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileSnap, setProfileSnap] = useState("");
+  // Admin-assigned, shown read-only.
+  const [assignedRegions, setAssignedRegions] = useState<AssignedRegion[]>([]);
+  const [superAgent, setSuperAgent] = useState<SupervisingSuperAgent | null>(null);
 
   const userName = session?.user?.name ?? t("profile.fallbackName");
   const userEmail = session?.user?.email ?? "";
@@ -175,18 +182,19 @@ function ProfileTab() {
 
   // Load profile data
   useEffect(() => {
-    fetch("/api/agent/profile")
+    fetch(`/api/agent/profile?locale=${locale}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.profile) {
           if (data.profile.phone) setPhone(data.profile.phone);
+          setAssignedRegions(Array.isArray(data.profile.assignedRegions) ? data.profile.assignedRegions : []);
+          setSuperAgent(data.profile.superAgent ?? null);
           setProfileSnap(JSON.stringify({ name: session?.user?.name ?? "", phone: data.profile.phone ?? "" }));
         }
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false));
-   
-  }, []);
+  }, [locale]);
 
   const profileHasChanges = profileSnap ? JSON.stringify({ name, phone }) !== profileSnap : false;
   const displayUrl = preview ?? avatarUrl;
@@ -309,6 +317,7 @@ function ProfileTab() {
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
+              aria-label={t("changePhoto")}
               className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               <Camera className="w-4 h-4" />
@@ -332,6 +341,7 @@ function ProfileTab() {
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-0.5 truncate">{userEmail}</p>
+            {!profileLoading && <AssignedRegionBadge regions={assignedRegions} className="mt-1.5" />}
             <div className="flex items-center gap-2 mt-2">
               <Button
                 type="button"
@@ -416,6 +426,8 @@ function ProfileTab() {
                   {t("profile.emailHelp")}
                 </p>
               </div>
+
+              <AssignedRegionFields regions={assignedRegions} superAgent={superAgent} showSuperAgent />
 
               <SaveFeedback saving={profileSaving} saved={profileSaved} hasChanges={profileHasChanges} onSave={handleProfileSave} label={t("profile.save")} />
             </>

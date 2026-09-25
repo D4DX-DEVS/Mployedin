@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   Activity, CheckCircle, ArrowUpRight, ArrowDownRight,
   RotateCcw, XCircle, AlertTriangle,
+  ArrowRight,
 } from "lucide-react";
 import type { ActivityItem } from "./useSubscriptionDashboard";
 
@@ -102,7 +103,7 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
                     <span className="font-medium">{a.userName}</span>{" "}
                     <span className="text-muted-foreground">{cfg.label.toLowerCase()}</span>
                     {a.toPlanName && (
-                      <> → <span className="font-semibold text-primary">{a.toPlanName}</span></>
+                      <> <ArrowRight className="inline h-3 w-3 align-[-2px] rtl:rotate-180" aria-hidden="true" /> <span className="font-semibold text-primary">{a.toPlanName}</span></>
                     )}
                   </p>
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">

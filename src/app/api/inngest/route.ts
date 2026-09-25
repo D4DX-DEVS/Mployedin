@@ -7,6 +7,8 @@ import { reEngagementCron, profileCompletionCron } from "@/lib/inngest/reEngagem
 import { weeklyDigestCron } from "@/lib/inngest/weeklyDigest";
 import { similarJobsAfterApply } from "@/lib/inngest/similarJobsEmail";
 import { aiScreenApplication } from "@/lib/inngest/aiScreenApplication";
+import { rescoreJobApplicants } from "@/lib/inngest/rescoreJobApplicants";
+import { processCvDocumentFunction } from "@/lib/inngest/processCvDocument";
 import { emailSequenceSenderCron } from "@/lib/inngest/emailSequenceSender";
 import { extractionDraftExpiryCron } from "@/lib/inngest/extractionDraftExpiry";
 import { aiChatDraftExpiryCron } from "@/lib/inngest/aiChatDraftExpiry";
@@ -29,6 +31,10 @@ export const { GET, POST, PUT } = serve({
     weeklyDigestCron,
     similarJobsAfterApply,
     aiScreenApplication,
+    // Re-scores a job's applicants after its requirements or weights change.
+    rescoreJobApplicants,
+    // Reads uploaded CVs, then re-scores the applications that use them.
+    processCvDocumentFunction,
     emailSequenceSenderCron,
     // Expires abandoned AI extraction drafts after their 7-day window.
     extractionDraftExpiryCron,

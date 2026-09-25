@@ -29,6 +29,10 @@ export interface ApplicationsFilters {
   unreviewed?: boolean;
   /** Only candidates who joined through a partner referral link. */
   referred?: boolean;
+  /** Requirements checklist roll-up; "qualified" = not known to fail a hard requirement. */
+  requirements?: "qualified" | "met" | "not_met" | "unverified";
+  /** true = has an AI match score, false = not scored yet. A score range wins. */
+  scored?: boolean;
 }
 
 /** Filters for page-by-page loading; the page number is the query's own state. */
@@ -71,6 +75,8 @@ function buildApplicationsParams(filters: ApplicationsFilters): URLSearchParams 
   if (filters.fetchCounts) params.set("fetchCounts", "true");
   if (filters.unreviewed) params.set("unreviewed", "true");
   if (filters.referred) params.set("referred", "true");
+  if (filters.requirements) params.set("requirements", filters.requirements);
+  if (filters.scored != null) params.set("scored", String(filters.scored));
   return params;
 }
 
@@ -79,6 +85,49 @@ async function fetchApplicationsPage(filters: ApplicationsFilters): Promise<any>
   const res = await fetch(`/api/applications?${buildApplicationsParams(filters)}`);
   if (!res.ok) throw new Error("Failed to fetch applications");
   return res.json();
+}
+
+/** The filters Shortlist Top narrows by; stage, order and paging are its own. */
+export type ShortlistPoolFilters = Omit<
+  ApplicationsFilters,
+  "page" | "limit" | "status" | "stageFrom" | "sortBy" | "sortOrder" | "requirements" | "scored" | "fetchJobs" | "fetchCounts"
+>;
+
+/** Most applicants Shortlist Top can move at once — the hiring rule's own ceiling. */
+export const SHORTLIST_POOL_LIMIT = 100;
+
+/**
+ * Everyone Shortlist Top may pick from, ranked on the server across every page
+ * of the list — not just the rows on screen, which is what it used to rank.
+ * Applied stage only, best score first, anyone known to fail a hard
+ * requirement left out and counted instead.
+ */
+export async function fetchShortlistPool<T>(filters: ShortlistPoolFilters): Promise<{
+  candidates: T[];
+  failingRequirements: number;
+  /** Scored applicants who qualify, across the whole job — `candidates` holds at most SHORTLIST_POOL_LIMIT of them. */
+  eligibleTotal: number;
+  /** Qualifying applicants still waiting for a score, across the whole job. */
+  unscoredTotal: number;
+}> {
+  const base = { ...filters, status: "applied", sortBy: "aiMatchScore", sortOrder: "desc" as const };
+  // The pool sorts the unscored last and stops at 100 rows, so once 100 are
+  // scored it cannot see who is still waiting — count them separately. A score
+  // range already leaves them out.
+  const hasScoreRange = (filters.scoreMin ?? 0) > 0 || (filters.scoreMax ?? 100) < 100;
+  const [pool, unscored, failing] = await Promise.all([
+    fetchApplicationsPage({ ...base, page: 1, limit: SHORTLIST_POOL_LIMIT, requirements: "qualified" }),
+    hasScoreRange ? null : fetchApplicationsPage({ ...base, page: 1, limit: 1, requirements: "qualified", scored: false }),
+    fetchApplicationsPage({ ...base, page: 1, limit: 1, requirements: "not_met" }),
+  ]);
+  const poolTotal = Number(pool?.pagination?.total ?? 0);
+  const unscoredTotal = Number(unscored?.pagination?.total ?? 0);
+  return {
+    candidates: (pool?.applications ?? []) as T[],
+    failingRequirements: Number(failing?.pagination?.total ?? 0),
+    eligibleTotal: Math.max(0, poolTotal - unscoredTotal),
+    unscoredTotal,
+  };
 }
 
 /** Fetch paginated, filtered applications list */
@@ -416,7 +465,9 @@ export interface CompareCandidate {
   aiMatchScore: number | null;
   /** Snapshot at apply time: the candidate joined through a partner referral. */
   isAgentReferred?: boolean;
-  matchBreakdown: { skills?: number; experience?: number; location?: number; salary?: number } | null;
+  matchBreakdown: { skills?: number; role?: number; experience?: number; education?: number; location?: number; salary?: number } | null;
+  /** Requirements checklist roll-up; null before the ATS scoring has run. */
+  requirementsStatus?: "met" | "not_met" | "unverified" | null;
   candidate: {
     name: string;
     profilePicture: string | null;

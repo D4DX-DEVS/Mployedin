@@ -188,6 +188,7 @@ export default function AgentCommissionsPage() {
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t("searchPlaceholder")}
+              aria-label={t("searchPlaceholder")}
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="h-10 rounded-xl border-border bg-secondary/65 ps-10 pe-10"

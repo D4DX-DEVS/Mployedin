@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Building2, FileText, FileCheck, ChevronLeft, ChevronRight,
-  Plus, Trash2, Loader2, Search, Check, X, ChevronDown, MapPin, Users,
+  Plus, Trash2, Loader2, Search, Check, X, ChevronDown, MapPin, Users, AlertTriangle,
 } from "lucide-react";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -661,9 +661,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       : commissionEnabled ? customSuperAgentRate : superAgentRate;
   const combinedRate = effectiveAgentRate + effectiveSuperAgentRate;
   const combinedRateExceeds = combinedRate > 100;
-  const agentCommission = Math.round(totalAmount * effectiveAgentRate / 100 * 100) / 100;
-  const superAgentCommission = Math.round(totalAmount * effectiveSuperAgentRate / 100 * 100) / 100;
-  const companyNet = Math.round((totalAmount - agentCommission - superAgentCommission) * 100) / 100;
+  // Same base as the server (invoices/recruitment + the Invoice save hook):
+  // commission on the pre-tax, post-discount subtotal; tax is a pass-through,
+  // never revenue.
+  const agentCommission = Math.round(afterDiscount * effectiveAgentRate / 100 * 100) / 100;
+  const superAgentCommission = Math.round(afterDiscount * effectiveSuperAgentRate / 100 * 100) / 100;
+  const companyNet = Math.round((afterDiscount + serviceCharge - agentCommission - superAgentCommission) * 100) / 100;
 
   const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
     setLineItems(prev => {
@@ -988,7 +991,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 }}
                 className={`rounded-full px-2 py-0.5 text-[9px] font-medium transition-colors ${commissionEnabled ? "bg-sky-100 text-sky-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
               >
-                {commissionEnabled ? `${t("custom")} ✓` : t("override")}
+                {commissionEnabled ? <>{t("custom")} <Check className="inline h-3 w-3 align-[-2px]" aria-hidden="true" /></> : t("override")}
               </button>
             )}
           </div>
@@ -1041,8 +1044,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
             )}
             {combinedRateExceeds && (
               <div className="mt-1 rounded-md bg-rose-100 px-2 py-1.5">
-                <p className="text-[11px] font-semibold text-rose-700">
-                  ⚠ {t("combinedRateExceedsWarning", { rate: combinedRate.toFixed(1) })}
+                <p className="flex items-start gap-1 text-[11px] font-semibold text-rose-700">
+                  <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+                  {t("combinedRateExceedsWarning", { rate: combinedRate.toFixed(1) })}
                 </p>
               </div>
             )}
@@ -1268,7 +1272,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     {loadingCount ? (
                       <span className="text-[11px] text-muted-foreground">{t("loading")}</span>
                     ) : totalJobCount > 0 ? (
-                      <span className="text-[11px] text-muted-foreground">{formatCount(totalJobCount)} {t("jobsTotal")}</span>
+                      <span className="text-[11px] text-muted-foreground">{t("jobsTotalCount", { count: totalJobCount })}</span>
                     ) : totalJobCount === 0 ? (
                       <span className="text-[11px] text-amber-600">{t("noJobsFound")}</span>
                     ) : null}
@@ -1302,7 +1306,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   {duplicateWarning && (
                     <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
                       <div className="flex items-start gap-2">
-                        <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-amber-800">Invoice Already Exists</p>
                           <p className="mt-0.5 text-xs text-amber-700">
@@ -1546,7 +1550,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomType(); } if (e.key === "Escape") setShowAddType(false); }}
                             />
                             <Button type="button" size="sm" variant="default" className="px-3 text-xs" onClick={addCustomType} disabled={!customCategory.trim()}>{t("add")}</Button>
-                            <Button type="button" size="sm" variant="ghost" className="px-2 text-xs" onClick={() => { setShowAddType(false); setCustomCategory(""); }}>✕</Button>
+                            <Button type="button" size="sm" variant="ghost" className="px-2 text-xs" onClick={() => { setShowAddType(false); setCustomCategory(""); }} aria-label={t("cancel")}><X className="h-3.5 w-3.5" aria-hidden="true" /></Button>
                           </div>
                         ) : (
                         <SearchableSelect
@@ -1595,7 +1599,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                               }}
                             />
                             <Button type="button" size="sm" variant="default" className="px-3 text-xs" onClick={addCustomPaymentTerm} disabled={!customPaymentLabel.trim()}>{t("add")}</Button>
-                            <Button type="button" size="sm" variant="ghost" className="px-2 text-xs" onClick={() => { setShowAddPaymentTerm(false); setCustomPaymentLabel(""); }}>✕</Button>
+                            <Button type="button" size="sm" variant="ghost" className="px-2 text-xs" onClick={() => { setShowAddPaymentTerm(false); setCustomPaymentLabel(""); }} aria-label={t("cancel")}><X className="h-3.5 w-3.5" aria-hidden="true" /></Button>
                           </div>
                         ) : (
                         <SearchableSelect
@@ -1858,25 +1862,32 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         {role === "agent" ? t("yourCommission") : t("commissionSplit")}
       </p>
       <div className="mt-2 space-y-1.5 text-xs">
-        {effectiveAgentRate > 0 && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              {selectedAgent?.userId?.name ? `Agent (${selectedAgent.userId.name})` : "Agent Commission"}
-            </span>
-            <span className="font-medium text-sky-700">{effectiveAgentRate}% &nbsp; {fmt(agentCommission)}</span>
+        {/* The agent raising the invoice always sees their own line — at 0% too,
+            with why — so "Your Commission" never lists only the super-agent's cut. */}
+        {(effectiveAgentRate > 0 || (role === "agent" && selectedAgent)) && (
+          <div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {selectedAgent?.userId?.name ? t("commissionAgentNamed", { name: selectedAgent.userId.name }) : t("commissionAgent")}
+              </span>
+              <span className="font-medium text-sky-700">{effectiveAgentRate}% &nbsp; {fmt(agentCommission)}</span>
+            </div>
+            {effectiveAgentRate === 0 && role === "agent" && (
+              <p className="mt-0.5 text-[11px] text-amber-700">{t("agentZeroRateNote")}</p>
+            )}
           </div>
         )}
         {effectiveSuperAgentRate > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              {selectedSuperAgent?.userId?.name ? `SA (${selectedSuperAgent.userId.name})` : "Super Agent"}
+              {selectedSuperAgent?.userId?.name ? t("commissionSuperAgentNamed", { name: selectedSuperAgent.userId.name }) : t("commissionSuperAgent")}
             </span>
             <span className="font-medium text-indigo-700">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
           </div>
         )}
         <div className="border-t border-amber-200/70 pt-1.5">
           <div className={`flex justify-between font-medium ${companyNet < 0 ? "text-rose-600" : "text-emerald-700"}`}>
-            <span>Platform Revenue</span>
+            <span>{t("platformRevenue")}</span>
             <span>{fmt(companyNet)}</span>
           </div>
         </div>

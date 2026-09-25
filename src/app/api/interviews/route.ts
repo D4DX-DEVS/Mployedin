@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
@@ -13,6 +14,8 @@ import { interviewCreateSchema } from "@/lib/validators/interviews";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
+import { verifyInterviewAccess } from "@/lib/interviews/access";
+import { memberMayAccessJob } from "@/lib/permissions/team";
 import {
   DEFAULT_INTERVIEW_MINUTES,
   conflictWindow,
@@ -26,7 +29,7 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
 async function handler(_req: NextRequest, ctx: AuthCtx) {
   await connectDB();
@@ -337,12 +340,20 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // proven before we schedule anything — otherwise an employer can create
   // interviews on another company's pipeline and notify their candidates.
   // Mirrors offers/route.ts:218-221.
+  const appJobId = (app.jobId as { _id?: unknown } | null)?._id ?? app.jobId;
   if (ctx.role === "employer") {
     const { Employer } = await import("@/models/Employer");
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp || String(app.employerId) !== String(emp._id)) {
+    if (!emp || String(app.employerId) !== String(emp._id) || !(await memberMayAccessJob(ctx, emp._id, appJobId))) {
       return NextResponse.json({ error: "Forbidden: application not owned by employer" }, { status: 403 });
     }
+  } else if (ctx.role === "agent" || ctx.role === "super_agent") {
+    // Agents and super-agents only schedule inside their own book — the same
+    // guard every /api/interviews/[id] route runs.
+    const accessError = await verifyInterviewAccess({ jobId: appJobId, jobSeekerId: app.jobSeekerId }, ctx);
+    if (accessError) return accessError;
+  } else if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // ── Check candidate availability ─────────────────────────────────────────

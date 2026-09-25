@@ -55,6 +55,8 @@ describe("digestEmailDataFromEvent", () => {
     };
     const out = digestEmailDataFromEvent(full);
     expect(out).toEqual({
+      // Forwarded so the footer can sign a working unsubscribe link.
+      userId: full.userId,
       userName: full.userName,
       locale: full.locale,
       jobs: full.jobs,

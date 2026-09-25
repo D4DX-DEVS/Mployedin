@@ -1,4 +1,7 @@
 import { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
+import { pickMessages } from "@/lib/i18n/clientMessages";
 import { connectDB } from "@/lib/db/mongoose";
 import PosterGeneration from "@/models/PosterGeneration";
 import { PosterShareView } from "@/components/features/employer/poster/PosterShareView";
@@ -35,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PosterSharePage({ params }: Props) {
-  const { slug } = await params;
+  const { slug, locale } = await params;
   await connectDB();
 
   const poster = await PosterGeneration.findOneAndUpdate(
@@ -57,7 +60,11 @@ export default async function PosterSharePage({ params }: Props) {
   const selected = poster.variations?.[poster.selectedVariation] ?? poster.variations?.[0];
   const job = poster.jobId as any;
 
+  // The share view reads only its own namespace; see clientMessages.ts.
+  const messages = await getMessages();
+
   return (
+    <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "poster")}>
     <PosterShareView
       backgroundUrl={selected?.backgroundUrl || ""}
       job={job ? JSON.parse(JSON.stringify(job)) : null}
@@ -70,5 +77,6 @@ export default async function PosterSharePage({ params }: Props) {
       jobId={job?._id?.toString() || ""}
       slug={slug}
     />
+    </NextIntlClientProvider>
   );
 }

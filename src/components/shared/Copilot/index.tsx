@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -12,8 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ToolProposalCard } from "./ToolProposalCard";
+import { sameOriginPath } from "./links";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { stripToolDataEcho, toolDataEntry } from "@/lib/ai/copilot/historyToolData";
 
 let idCounter = 0;
 const nextId = () => `ci-${Date.now()}-${idCounter++}`;
@@ -65,7 +68,15 @@ function settleRestoredItem(item: TranscriptItem): TranscriptItem {
   return item;
 }
 
-function AssistantMarkdown({ content }: { content: string }) {
+const LINK_CLASS = "text-primary underline underline-offset-2 hover:text-primary/80";
+
+interface AssistantMarkdownProps {
+  content: string;
+  /** In-app link followed — e.g. a job's apply page from recommended_jobs. */
+  onInternalLink: () => void;
+}
+
+function AssistantMarkdown({ content, onInternalLink }: AssistantMarkdownProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -76,12 +87,26 @@ function AssistantMarkdown({ content }: { content: string }) {
         li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
         strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
         code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em]" {...props} />,
-        a: ({ ...props }) => (
-          <a className="text-primary underline underline-offset-2 hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />
-        ),
+        pre: ({ ...props }) => <pre className="my-2 overflow-x-auto rounded-lg bg-muted p-2 text-xs" {...props} />,
+        a: ({ node: _node, href, children, ...props }) => {
+          // Only a link that resolves to this origin stays in the app (the chat
+          // lives in the shell and survives the navigation); anything else opens
+          // in a new tab. The panel renders client-only, so window is defined.
+          const path = sameOriginPath(href, window.location.origin);
+          return path ? (
+            <Link href={path} className={LINK_CLASS} onClick={onInternalLink}>
+              {children}
+            </Link>
+          ) : (
+            <a className={LINK_CLASS} target="_blank" rel="noopener noreferrer" href={href} {...props}>
+              {children}
+            </a>
+          );
+        },
         table: ({ ...props }) => (
           <div className="overflow-x-auto rounded-lg border border-border my-2">
-            <table className="w-full text-xs border-collapse" {...props} />
+            {/* scroll, not the global phone card-rows: a chat table is compared across columns */}
+            <table data-mobile-table="scroll" className="w-full text-xs border-collapse" {...props} />
           </div>
         ),
         th: ({ ...props }) => <th className="border-b border-border px-2.5 py-1.5 text-left font-semibold" {...props} />,
@@ -101,7 +126,6 @@ export function Copilot({ className }: CopilotProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const isRtl = locale === "ar";
-  const usesInlineEmployerLauncher = /^\/(?:en|ar)\/employer(?:\/jobs)?\/?$/.test(pathname);
   const t = useTranslations("copilot");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -254,6 +278,11 @@ export function Copilot({ className }: CopilotProps) {
   }, []);
   useEffect(() => { autoResize(); }, [autoResize, input]);
 
+  // On phones the panel covers the page the link opens, so step aside.
+  const handleInternalLink = useCallback(() => {
+    if (window.matchMedia("(max-width: 639px)").matches) setOpen(false);
+  }, []);
+
   const updateProposal = useCallback((proposalId: string, patch: Partial<Extract<TranscriptItem, { kind: "proposal" }>>) => {
     setTranscript((prev) =>
       prev.map((it) => (it.kind === "proposal" && it.proposalId === proposalId ? { ...it, ...patch } : it))
@@ -356,7 +385,7 @@ export function Copilot({ className }: CopilotProps) {
               // Keep a compact copy of tool data in the request history so
               // follow-up questions ("shortlist the second one") still have context.
               const payload = JSON.stringify(frame.data ?? message).slice(0, 1500);
-              historyForRequest.current = [...historyForRequest.current, { role: "assistant", content: `[data from ${tool}] ${payload}` }];
+              historyForRequest.current = [...historyForRequest.current, { role: "assistant", content: toolDataEntry(tool, payload) }];
             }
             setTranscript((prev) => {
               const idx = prev.findLastIndex((it) => it.kind === "tool_call" && it.tool === tool && !it.done);
@@ -561,18 +590,20 @@ export function Copilot({ className }: CopilotProps) {
           if (item.kind === "user") {
             return (
               <div key={item.id} className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
+                <div className="min-w-0 max-w-[85%] break-words rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
                   {item.content}
                 </div>
               </div>
             );
           }
           if (item.kind === "assistant_text") {
+            const text = stripToolDataEcho(item.content);
+            if (!text.trim()) return null;
+            // Full width, no bubble: tables and lists need the whole panel, and
+            // break-words keeps long ids/URLs from spilling past the edge.
             return (
-              <div key={item.id} className="flex justify-start">
-                <div className="max-w-[90%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground">
-                  <AssistantMarkdown content={item.content} />
-                </div>
+              <div key={item.id} className="min-w-0 break-words px-1 text-sm text-foreground">
+                <AssistantMarkdown content={text} onInternalLink={handleInternalLink} />
               </div>
             );
           }
@@ -642,7 +673,7 @@ export function Copilot({ className }: CopilotProps) {
         <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </div>
-  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, suggestions, sendMessage, showHistory, savedChats]);
+  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, handleInternalLink, suggestions, sendMessage, showHistory, savedChats]);
 
   if (!mounted) return null;
 
@@ -659,7 +690,6 @@ export function Copilot({ className }: CopilotProps) {
           style={fabPos ? { left: fabPos.x, top: fabPos.y, right: "auto", bottom: "auto" } : undefined}
           className={cn(
             "fixed z-[70] flex h-12 w-12 touch-none items-center justify-center rounded-full bg-white shadow-lg transition-transform hover:scale-105 active:scale-95",
-            usesInlineEmployerLauncher && "hidden lg:flex",
             !fabPos && "copilot-fab"
           )}
           aria-label={t("openCopilot")}

@@ -33,6 +33,7 @@ const DEFAULT_WEIGHTS: MatchingWeights = {
 
 export default function EmployerMatchingWeightsPage() {
   const t = useTranslations("employerMatchingWeights");
+  const tCommon = useTranslations("common");
   const { data: serverWeights, isLoading: loading } = useMatchingWeights();
   const saveWeights = useSaveMatchingWeights();
   const { data: templates, isLoading: templatesLoading } = useEmployerMatchingWeightTemplates();
@@ -260,7 +261,7 @@ export default function EmployerMatchingWeightsPage() {
               className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
             >
               {saveWeights.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {saveWeights.isPending ? t("saving") : saved ? "✓" : t("save")}
+              {saveWeights.isPending ? t("saving") : saved ? tCommon("saved") : t("save")}
             </Button>
             <Button
               variant="outline"

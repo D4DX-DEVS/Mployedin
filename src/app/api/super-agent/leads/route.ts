@@ -74,7 +74,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (hasNotes === "true") filter.notes = { $exists: true, $ne: "" };
   if (hasNotes === "false") filter.$and.push({ $or: [{ notes: { $exists: false } }, { notes: "" }] });
   if (hasFollowUp === "true") filter.followUpAt = { $exists: true, $ne: null };
-  if (hasFollowUp === "overdue") filter.followUpAt = { $lt: new Date(), $exists: true };
+  // Overdue = the date has passed AND the lead is still open. A converted or
+  // lost lead's old follow-up date is not work anyone owes; the dashboard's
+  // "follow-ups are overdue" row counts the same set and links here.
+  if (hasFollowUp === "overdue") {
+    filter.followUpAt = { $lt: new Date(), $exists: true };
+    filter.$and.push({ status: { $nin: ["converted", "lost"] } });
+  }
 
   // Text search across company, contact, email
   if (search) {

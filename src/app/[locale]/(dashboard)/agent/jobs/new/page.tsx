@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AlertCircle, ArrowLeft, Briefcase, Building2, Loader2, MapPin } from "lucide-react";
@@ -45,6 +45,7 @@ export default function AgentJobPosterPage() {
     internship: t("employmentTypes.internship"),
     freelance: t("employmentTypes.freelance"),
   };
+  const fieldId = useId();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [selectedEmployer, setSelectedEmployer] = useState("");
   const [loadingEmployers, setLoadingEmployers] = useState(true);
@@ -149,7 +150,7 @@ export default function AgentJobPosterPage() {
           </div>
         ) : (
           <Select value={selectedEmployer} onValueChange={setSelectedEmployer}>
-            <SelectTrigger className="h-11 rounded-xl">
+            <SelectTrigger aria-label={t("employer.title")} className="h-11 rounded-xl">
               <SelectValue placeholder={t("employer.placeholder")} />
             </SelectTrigger>
             <SelectContent>
@@ -171,9 +172,10 @@ export default function AgentJobPosterPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.jobTitle")}</label>
+            <label htmlFor={`${fieldId}-title`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.jobTitle")}</label>
             <Input
               required
+              id={`${fieldId}-title`}
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder={t("form.jobTitlePlaceholder")}
@@ -182,9 +184,9 @@ export default function AgentJobPosterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.category")}</label>
+            <label htmlFor={`${fieldId}-category`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.category")}</label>
             <Select required value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-              <SelectTrigger className="h-11 rounded-xl">
+              <SelectTrigger id={`${fieldId}-category`} className="h-11 rounded-xl">
                 <SelectValue placeholder={t("form.categoryPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
@@ -205,9 +207,10 @@ export default function AgentJobPosterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.city")}</label>
+            <label htmlFor={`${fieldId}-city`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.city")}</label>
             <Input
               required
+              id={`${fieldId}-city`}
               value={form.city}
               onChange={(e) => setForm({ ...form, city: e.target.value })}
               placeholder={t("form.cityPlaceholder")}
@@ -216,9 +219,9 @@ export default function AgentJobPosterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.employmentType")}</label>
+            <label htmlFor={`${fieldId}-employmentType`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.employmentType")}</label>
             <Select value={form.employmentType} onValueChange={(v) => setForm({ ...form, employmentType: v })}>
-              <SelectTrigger className="h-11 rounded-xl">
+              <SelectTrigger id={`${fieldId}-employmentType`} className="h-11 rounded-xl">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -234,13 +237,15 @@ export default function AgentJobPosterPage() {
             <CurrencySelect
               value={form.currency}
               onValueChange={(v) => setForm({ ...form, currency: v })}
+              ariaLabel={t("form.currency")}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.salaryMin")}</label>
+            <label htmlFor={`${fieldId}-salaryMin`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.salaryMin")}</label>
             <Input
               type="number"
+              id={`${fieldId}-salaryMin`}
               value={form.salaryMin}
               onChange={(e) => setForm({ ...form, salaryMin: e.target.value })}
               placeholder={t("form.salaryMinPlaceholder")}
@@ -249,9 +254,10 @@ export default function AgentJobPosterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.salaryMax")}</label>
+            <label htmlFor={`${fieldId}-salaryMax`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.salaryMax")}</label>
             <Input
               type="number"
+              id={`${fieldId}-salaryMax`}
               value={form.salaryMax}
               onChange={(e) => setForm({ ...form, salaryMax: e.target.value })}
               placeholder={t("form.salaryMaxPlaceholder")}
@@ -261,10 +267,11 @@ export default function AgentJobPosterPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.descriptionLabel")}</label>
+          <label htmlFor={`${fieldId}-description`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.descriptionLabel")}</label>
           <Textarea
             required
             rows={5}
+            id={`${fieldId}-description`}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder={t("form.descriptionPlaceholder")}
@@ -273,9 +280,10 @@ export default function AgentJobPosterPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.requirements")}</label>
+          <label htmlFor={`${fieldId}-requirements`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.requirements")}</label>
           <Textarea
             rows={4}
+            id={`${fieldId}-requirements`}
             value={form.requirements}
             onChange={(e) => setForm({ ...form, requirements: e.target.value })}
             placeholder={t("form.requirementsPlaceholder")}

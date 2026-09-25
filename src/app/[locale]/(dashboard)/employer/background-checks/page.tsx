@@ -466,6 +466,7 @@ export default function BackgroundChecksPage() {
             <div className="space-y-1.5">
               <Label>{t("fields.candidate")}</Label>
               <SearchableSelect
+                modal
                 value={applicationId}
                 onValueChange={setApplicationId}
                 placeholder={t("fields.selectCandidate")}
@@ -570,6 +571,7 @@ export default function BackgroundChecksPage() {
                     </Label>
                     <SearchableSelect
                       id="bc-assignee"
+                      modal
                       ariaLabel={t("assignTo")}
                       placeholder={t("unassigned")}
                       value={detail.assignedTo?._id ?? ""}

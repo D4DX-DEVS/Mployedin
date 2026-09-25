@@ -21,6 +21,8 @@ import {
   User,
   ArrowLeft,
   Briefcase,
+  Check,
+  Minus,
 } from "lucide-react";
 import type { CalendarEvent, BookingCandidate, BookingPayload, JobOption } from "./MployedinCalendar";
 import { bookingSlots } from "@/lib/interviews/bookingSlots";
@@ -303,6 +305,9 @@ export function InterviewBookingModal({
       <div
         className="animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-300 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/20"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="interview-modal-title"
       >
         {/* ── Header ── */}
         <div className="flex items-center justify-between border-b px-5 py-4 shrink-0">
@@ -317,7 +322,7 @@ export function InterviewBookingModal({
                 <ArrowLeft className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
-            <h3 className="heading-subsection font-semibold text-foreground">
+            <h3 id="interview-modal-title" className="heading-subsection font-semibold text-foreground">
               {step === "candidate"
                 ? t("selectCandidate")
                 : step === "details"
@@ -442,16 +447,8 @@ export function InterviewBookingModal({
                                 : "border-border hover:border-primary/50"
                           }`}
                         >
-                          {isAllSelected && (
-                            <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                          {isSomeSelected && !isAllSelected && (
-                            <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                              <path d="M3 6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                            </svg>
-                          )}
+                          {isAllSelected && <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />}
+                          {isSomeSelected && !isAllSelected && <Minus className="h-3 w-3" strokeWidth={3} aria-hidden="true" />}
                         </button>
                       </th>
                       <th className="px-3 py-2.5 text-start font-medium text-muted-foreground">{t("candidateColumn")}</th>
@@ -477,11 +474,7 @@ export function InterviewBookingModal({
                                   : "border-border"
                               }`}
                             >
-                              {isSelected && (
-                                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              )}
+                              {isSelected && <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />}
                             </div>
                           </td>
                           <td className="px-3 py-2.5">
@@ -604,9 +597,16 @@ export function InterviewBookingModal({
 
             {/* Time selection */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                {t("timeLabel")} {selectedCandidates.length > 1 && "(first interview starts at)"}
-              </label>
+              <div className="flex items-baseline justify-between gap-2 mb-1.5">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  {t("timeLabel")} {selectedCandidates.length > 1 && t("firstInterviewStartsAt")}
+                </label>
+                {viewerZoneLabel && (
+                  <span className="text-xs text-muted-foreground">
+                    {viewerZoneLabel}
+                  </span>
+                )}
+              </div>
               {timeSlots.length === 0 ? (
                 <p className="text-xs text-destructive">{t("noTimeSlots")}</p>
               ) : (

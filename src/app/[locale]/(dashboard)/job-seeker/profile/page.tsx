@@ -7,11 +7,12 @@ import { useRouter, useParams } from "next/navigation";
 import {
   User, MapPin, Globe, Briefcase, GraduationCap, Award,
   Link2, Upload, Sparkles, BrainCircuit,
-  CheckCircle2, Circle, Plus, Target, Zap,
+  Check, CheckCircle2, Circle, Plus, Target, Zap,
   FileText, TrendingUp, ChevronRight, Languages as LanguagesIcon,
   UserCircle, Pencil, Camera, X, Clock, Calendar, Eye, EyeOff,
   FolderKanban, Trophy, Building2, Shield, Settings,
   Loader2, ExternalLink, Save, Github, Linkedin,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -915,7 +916,12 @@ export default function JobSeekerProfilePage() {
                       "text-xs font-semibold tabular-nums",
                       step.done ? "text-emerald-500" : idx === 0 ? "text-primary" : "text-amber-500"
                     )}>
-                      {step.done ? "✓ Done" : step.bonus}
+                      {step.done ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                          {t("stepDone")}
+                        </span>
+                      ) : step.bonus}
                     </span>
                     {!step.done && (
                       <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors" />
@@ -1582,7 +1588,7 @@ function SectionCard({
             <p className="text-sm text-muted-foreground">{emptyLabel}</p>
             {onAdd && (
               <button onClick={onAdd} className="text-xs text-primary hover:underline mt-0.5 block">
-                {t("sectionActions.uploadToAutofill")} →
+                {t("sectionActions.uploadToAutofill")} <ArrowRight className="inline h-3 w-3 align-[-2px] rtl:rotate-180" aria-hidden="true" />
               </button>
             )}
           </div>

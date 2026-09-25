@@ -13,20 +13,28 @@ import { aiMatchSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
-import { scoreOnePair, storedBreakdown } from "@/lib/matching/seekerMatches";
+import { canAccessJob } from "@/lib/jobs/access";
+import {
+  applicantMatchUpdate,
+  computeApplicantMatch,
+  describeMatchForPrompt,
+} from "@/lib/matching/scoreApplication";
+import { applicantCvFor } from "@/lib/cv/cvDocuments";
 
 
 /**
  * POST /api/ai/match
  * Body: { jobId: string, jobSeekerId?: string }
  *
- * Returns the match score (0-100) for the job seeker vs a job posting, with
- * its breakdown and an AI-written narrative. The score comes from the shared
- * matching engine — the number the seeker's email and home page show for the
- * same pair — and `eligible` / `ineligibleReason` say whether the pair clears
- * the hard gates (country, pay, minimum experience, ...). The narrative is
- * commentary only and never moves the score.
+ * Returns the employer's ATS score (0-100) for the job seeker vs a job
+ * posting, with its breakdown, the requirements checklist and an AI-written
+ * narrative. The score is lib/matching/applicantScore.ts: the shared engine's
+ * parts, every required skill, industry and nearness, combined with the
+ * employer's matching weights (or the standard ones). `seekerMatchScore` is
+ * the number the seeker is shown. `requirementsStatus` rolls the hard
+ * requirements (experience, qualification, deal-breaker answers) up the way
+ * Shortlist Top reads them. The narrative is commentary only and never moves
+ * the score.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_job_matching" });
@@ -48,18 +56,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const job = await Job.findById(jobId).lean() as Record<string, unknown> | null;
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  if (ctx.role === "employer") {
-    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!employer || String(job.employerId) !== String(employer._id)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  } else if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
-    const hasEmployerAccess = agent?.assignedEmployerIds?.some((employerId: unknown) => String(employerId) === String(job.employerId));
-
-    if (!agent || (String(job.agentId) !== String(agent._id) && !hasEmployerAccess)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  // Recruiter-side only. The response carries the employer's requirements
+  // checklist — deal-breaker qualifying answers included — so a candidate (or
+  // anyone outside the job's owners) must never reach it.
+  if (!(await canAccessJob(ctx, { employerId: job.employerId, agentId: job.agentId }))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Support both JobSeeker._id and User._id (callers differ between pages)
@@ -94,14 +95,41 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
-  // The engine, on the seeker's effective profile (confirmed skills included),
-  // so the employer sees the number the seeker was shown.
-  const seekerProfile = await effectiveSeekerProfile(
-    String(seeker.userId ?? ""),
-    seeker as Parameters<typeof effectiveSeekerProfile>[1],
-  );
-  const pair = await scoreOnePair(seekerProfile, job);
-  const breakdown = storedBreakdown(pair);
+  // The application being scored, when there is one: its job must be this
+  // job, and its screening answers feed the deal-breaker checks.
+  let application: {
+    jobId?: unknown;
+    screeningAnswers?: Array<{ questionId: string; answer: unknown }>;
+    documents?: Array<{ url?: string; type?: string; name?: string }>;
+  } | null = null;
+  if (applicationId) {
+    application = await Application.findById(applicationId).select("jobId screeningAnswers documents").lean();
+    if (!application || String(application.jobId) !== String(jobId)) {
+      return NextResponse.json({ error: "Application does not match job" }, { status: 400 });
+    }
+  }
+
+  // The ATS score, on the seeker's effective profile (confirmed skills
+  // included) — the same function every other scorer of an application runs.
+  const employerDoc = job.employerId
+    ? ((await Employer.findById(job.employerId).select("matchingWeights industry").lean()) as
+        | { matchingWeights?: unknown; industry?: string }
+        | null)
+    : null;
+  // The CV sent with the application; for a talent-pool candidate, the one on their profile.
+  const cv = await applicantCvFor({
+    jobSeekerId: String(seeker._id),
+    documents: application?.documents ?? null,
+    profileCvUrl: (seeker.cv as { originalUrl?: string } | undefined)?.originalUrl,
+  });
+  const match = await computeApplicantMatch({
+    job,
+    seeker,
+    employerWeights: employerDoc?.matchingWeights,
+    employerIndustry: employerDoc?.industry,
+    answers: application?.screeningAnswers ?? [],
+    cv,
+  });
 
   // Safely extract nested fields for LLM narrative (optional)
   const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
@@ -147,6 +175,9 @@ Nationality: ${nationality}
 Languages: ${seekerLangs}
 === END SEEKER DATA ===
 
+ESTABLISHED FACTS (already checked — your strengths and gaps must agree with these):
+${describeMatchForPrompt(match)}
+
 Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no markdown) with this exact structure:
 {
   "strengths": [<2-3 short bullet strings>],
@@ -171,13 +202,18 @@ Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no m
     // LLM failure does not block the response — deterministic score is always available
   }
 
+  const { overall: _overall, ...parts } = match.matchBreakdown;
   const matchData = {
-    score: pair.score,
-    // The engine's own parts. Location and pay are gates, not parts, so they
-    // come back as eligible / ineligibleReason rather than as a percentage.
-    breakdown: { skills: breakdown.skills, role: breakdown.role, experience: breakdown.experience },
-    eligible: pair.eligible,
-    ineligibleReason: pair.reason ?? null,
+    score: match.aiMatchScore,
+    seekerMatchScore: match.seekerMatchScore,
+    weightsApplied: match.weightsApplied,
+    // The scored parts. Location and pay are not parts: they appear in the
+    // requirements checklist instead of as a percentage.
+    breakdown: parts,
+    requirementsStatus: match.requirementsStatus,
+    qualifications: match.qualifications,
+    matchedSkills: match.matchedSkills,
+    missingSkills: match.missingSkills,
     strengths,
     gaps,
     summary,
@@ -185,18 +221,8 @@ Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no m
 
   // Persist the score back to the Application document if an applicationId was provided
   if (applicationId) {
-    // Verify applicationId belongs to the job being analyzed
-    const app = await Application.findById(applicationId).select("jobId").lean();
-    if (!app || String(app.jobId) !== String(jobId)) {
-      return NextResponse.json({ error: "Application does not match job" }, { status: 400 });
-    }
-
     await Application.findByIdAndUpdate(applicationId, {
-      aiMatchScore: matchData.score,
-      scoredVia: "engine",
-      // Replaces the whole subdocument, so an older scorer's location / salary
-      // parts cannot linger beside the engine's.
-      matchBreakdown: breakdown,
+      ...applicantMatchUpdate(match),
       matchStrengths: matchData.strengths ?? [],
       matchGaps: matchData.gaps ?? [],
     });

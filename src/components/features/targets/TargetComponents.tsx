@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Progress } from "@/components/ui/progress";
 import {
   Building2, Users, DollarSign, AlertTriangle, CheckCircle2,
-  Clock, TrendingUp, TrendingDown, Target, Zap, Award,
+  Clock, TrendingUp, TrendingDown, Target, Zap, Award, Medal,
 } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -470,19 +470,22 @@ export function RankBadge({ rank }: { rank: number }) {
   if (rank === 1)
     return (
       <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-yellow-500/20 text-xs font-bold text-yellow-600">
-        🥇
+        <Medal className="h-4 w-4" aria-hidden="true" />
+        <span className="sr-only">#1</span>
       </span>
     );
   if (rank === 2)
     return (
       <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-slate-300/20 text-xs font-bold text-slate-500">
-        🥈
+        <Medal className="h-4 w-4" aria-hidden="true" />
+        <span className="sr-only">#2</span>
       </span>
     );
   if (rank === 3)
     return (
       <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-orange-500/20 text-xs font-bold text-orange-600">
-        🥉
+        <Medal className="h-4 w-4" aria-hidden="true" />
+        <span className="sr-only">#3</span>
       </span>
     );
   return (
