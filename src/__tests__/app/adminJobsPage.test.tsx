@@ -105,16 +105,17 @@ describe("AdminJobsPage", () => {
     // The "Recruitment Control" eyebrow above the title was dropped — it
     // restated the sidebar section, and the heading below identifies the page.
     expect(screen.getByRole("heading", { name: /job listings/i })).toBeInTheDocument();
-    // Name the toggle exactly: /filter/i now also matches "Advanced filters".
-    expect(screen.getByRole("button", { name: /show filters/i })).toBeInTheDocument();
+    // Filters sit inline; no Show filters toggle hides them.
+    expect(screen.queryByRole("button", { name: /show filters/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /search/i })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Senior Recruiter")).toBeInTheDocument();
     });
 
+    // Secondary filters stay behind the Advanced filters toggle.
     expect(screen.queryByPlaceholderText("Filter by location")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /show filters/i }));
     await user.click(screen.getByRole("button", { name: /advanced filters/i }));
 
     expect(screen.getByPlaceholderText("Filter by location")).toBeInTheDocument();

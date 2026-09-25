@@ -5039,7 +5039,8 @@
     "noFreeSlots": "{name} has no free slots in the next 7 days.",
     "freeSlotsLabel": "Free slots for {name}",
     "roleFit": "Role fit",
-    "ivTimeZoneHint": "Times are in your time zone ({zone})"
+    "ivTimeZoneHint": "Times are in your time zone ({zone})",
+    "searchOrDescribe": "Search or describe who you need"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -10297,7 +10298,7 @@
     "active": "active",
     "selectedJobOnly": "Selected job only",
     "clearFilters": "Clear filters",
-    "searchPlaceholder": "Search applicant, job, company, skills…",
+    "searchPlaceholder": "Search or describe what you need",
     "allStatuses": "All Statuses",
     "allEmployers": "All Employers",
     "allSources": "All Sources",
@@ -10311,9 +10312,6 @@
     "good6079": "Good (60–79)",
     "average4059": "Average (40–59)",
     "low039": "Low (0–39)",
-    "aiSearch": "AI search: e.g. \"rejected applications from d4dx\"",
-    "aiSearchButton": "AI Search",
-    "applying": "Applying…",
     "noMatchingApplications": "No matching applications",
     "noApplicationsYet": "No applications yet",
     "noApplicationsMatchFilters": "No applications match the current filters.",
@@ -17724,5 +17722,20 @@
     "approvedToast": "Review published.",
     "rejectedToast": "Review rejected.",
     "moderateError": "We couldn't update the review. Please try again."
+  },
+  "aiFilterSearch": {
+    "askAi": "Ask AI",
+    "askingAi": "Asking AI…",
+    "askAiHint": "Turn what you typed into filters",
+    "applied": "AI applied",
+    "noFilters": "AI found no filters in that, so we searched for your words instead.",
+    "unavailable": "AI search isn't available right now, so we searched for your words instead.",
+    "limit": "You've reached the AI search limit for now, so we searched for your words instead.",
+    "undo": "Undo",
+    "dismiss": "Dismiss",
+    "keyword": "“{keyword}”",
+    "scoreRange": "AI score {min}–{max}%",
+    "fromDate": "From {date}",
+    "toDate": "Until {date}"
   }
 }

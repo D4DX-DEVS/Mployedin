@@ -42,7 +42,6 @@ import {
   MoreHorizontal,
   Paperclip,
   Plus,
-  Search,
   Send,
   Sparkles,
   Square,
@@ -61,6 +60,8 @@ import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchField";
+import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/hooks/useAiFilterSearch";
 import { ViewToggle } from "@/components/shared/ViewToggle";
 import { useUpdateInterview } from "@/hooks/useInterviews";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
@@ -75,7 +76,6 @@ import { useJobWorkflow } from "@/hooks/useJobWorkflow";
 import { useSeekerAvailability } from "@/hooks/useSeekerAvailability";
 import { availabilityWindowStart, firstFreeSlots } from "@/lib/interviews/availabilitySlots";
 import { resolveHiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   useApplicationTimeline,
@@ -217,6 +217,14 @@ interface TimelineEntry {
   actorRole: string;
   changes?: { before?: Record<string, unknown>; after?: Record<string, unknown> };
   createdAt: string;
+}
+
+/** The filters Ask AI may change, captured so Undo can put them back. */
+interface EmployerAiSnapshot {
+  searchQuery: string;
+  statusFilter: string;
+  scoreRange: [number, number];
+  skillsFilter: string[];
 }
 
 /** Sentinel status filter meaning "shortlisted or any later stage". */
@@ -999,6 +1007,40 @@ export function ApplicationsWorkspace({
     unreviewedOnly,
   ].filter(Boolean).length;
 
+  // Ask AI, from the search box. It fills the filters this list already has
+  // and replaces only the ones it understands (keyword, stage, score, skills);
+  // the job, sort and the rest of the panel stay. Dates, source and company
+  // have no control here, so they are dropped rather than claimed.
+  const tAi = useTranslations("aiFilterSearch");
+  const ai = useAiFilterSearch<AiApplicationFilters, EmployerAiSnapshot>({
+    endpoint: "/api/ai/application-search-filters",
+    snapshot: () => ({ searchQuery, statusFilter, scoreRange, skillsFilter }),
+    restore: (snap) => {
+      setSearchQuery(snap.searchQuery);
+      setStatusFilter(snap.statusFilter);
+      setScoreRange(snap.scoreRange);
+      setSkillsFilter(snap.skillsFilter);
+    },
+    apply: (f) => {
+      const applied: string[] = [];
+      const stage = !stageLock && f.status ? pipelineStages.find((s) => s.value === f.status) : undefined;
+      if (stage) applied.push(stage.label);
+      const band = f.scoreBand ? AI_SCORE_BANDS[f.scoreBand] : undefined;
+      if (band) applied.push(tAi("scoreRange", { min: band[0], max: band[1] }));
+      const nextSkills = f.skills ?? [];
+      applied.push(...nextSkills);
+      const keyword = f.search ?? "";
+      if (keyword) applied.push(tAi("keyword", { keyword }));
+
+      if (!stageLock) setStatusFilter(stage?.value ?? "all");
+      setScoreRange(band ? [band[0], band[1]] : [0, 100]);
+      setSkillsFilter(nextSkills);
+      setSearchQuery(keyword);
+      return applied;
+    },
+    searchAsKeyword: (query) => setSearchQuery(query),
+  });
+
   function setUnreviewed(next: boolean) {
     setUnreviewedOnly(next);
     // Keep the deep link honest: ?unreviewed=1 goes when the toggle goes.
@@ -1015,6 +1057,7 @@ export function ApplicationsWorkspace({
     setExperienceRange([null, null]);
     setSkillsFilter([]);
     if (unreviewedOnly) setUnreviewed(false);
+    ai.dismiss();
   }
 
   async function handleBulkAction(
@@ -1245,16 +1288,15 @@ export function ApplicationsWorkspace({
           Same shape as Candidates: every filter (status, sort, Needs review,
           ranges, skills) lives in the Filters panel below, never beside it. */}
       <div className={embedded ? "workspace-toolbar is-embedded" : "workspace-toolbar"}>
-        <div className="workspace-toolbar-search">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={tc("search")}
-            aria-label={tc("search")}
-            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
-          />
-        </div>
+        <AiSearchField
+          className="workspace-toolbar-search"
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+          placeholder={t("searchOrDescribe")}
+          onAskAi={(query) => { void ai.askAi(query); }}
+          pending={ai.pending}
+          inputClassName="sm:h-10"
+        />
         {!embedded && (
           <SearchableSelect
             className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
@@ -1293,6 +1335,7 @@ export function ApplicationsWorkspace({
           onExportPdf={handleExportPdf}
         />
       </div>
+      <AiSearchResultLine result={ai.result} onUndo={ai.undo} onDismiss={ai.dismiss} />
 
           {/* Selected job info strip */}
           {!embedded && selectedJob && (

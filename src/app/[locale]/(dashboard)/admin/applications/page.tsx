@@ -13,18 +13,19 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Search, Inbox, Sparkles, Building2, ArrowUpDown,
+  Inbox, Sparkles, Building2, ArrowUpDown,
   TrendingUp, Users, FileText, Brain, ChevronDown, ChevronUp,
-  Filter, Zap, AlertTriangle, CheckCircle, Info, Target,
-  RefreshCw, Wand2, User, Briefcase,
+  Zap, AlertTriangle, CheckCircle, Info, Target,
+  RefreshCw, User, Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchField";
+import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/hooks/useAiFilterSearch";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
@@ -108,6 +109,19 @@ interface AIInsightsData {
 
 const STATUSES = ["applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected", "withdrawn"];
 
+/** The filters Ask AI may change, captured so Undo can put them back. */
+interface AdminAiSnapshot {
+  search: string;
+  status: string;
+  employerId: string;
+  source: string;
+  scoreRange: string;
+  dateFrom: string;
+  dateTo: string;
+  skills: string;
+  showAdvancedFilters: boolean;
+}
+
 function statusLabelKey(s: string): string {
   const key: Record<string, string> = {
     applied: "appliedStatus",
@@ -178,14 +192,16 @@ export default function AdminApplicationsPage() {
   const [scoreRange, setScoreRange] = useUrlFilter("scoreRange", "");
   const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
   const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
+  /** Comma-separated; only Ask AI sets it, and its result line names it. */
+  const [skills, setSkills] = useUrlFilter("skills", "");
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "appliedAt");
   const [sortOrderValue, setSortOrderValue] = useUrlFilter("sortOrder", "desc");
   const sortOrder = sortOrderValue === "asc" ? "asc" : "desc";
   const setSortOrder = (next: "asc" | "desc") => setSortOrderValue(next);
   /** Open applications untouched for 48h+ — what the dashboard's stale alert links to. */
   const [stale, setStale] = useUrlFilter("stale", "");
-  const [showFilters, setShowFilters] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // Starts open when the URL already carries an advanced filter, so it is never set-but-hidden.
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(() => Boolean(scoreRange || dateFrom || dateTo));
 
   /* Selection and inline detail. The admin list had neither: changing twenty
      applications meant twenty interactions, and reading a candidate meant
@@ -203,12 +219,7 @@ export default function AdminApplicationsPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
 
-  // AI Search
-  const [aiQuery, setAiQuery] = useState("");
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
-
-  const activeFilters = [jobIdFilter, status, employerId, source, scoreRange, dateFrom, dateTo, stale].filter(Boolean).length;
+  const activeFilters = [jobIdFilter, status, employerId, source, scoreRange, dateFrom, dateTo, skills, stale].filter(Boolean).length;
 
   // Build STATUS_OPTIONS, SOURCE_OPTIONS, SORT_OPTIONS, SCORE_RANGE_OPTIONS inside component for translations
   const STATUS_OPTIONS = [{ value: "", label: t("allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: t(statusLabelKey(s)) }))];
@@ -269,6 +280,7 @@ export default function AdminApplicationsPage() {
     if (source) params.set("source", source);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
+    if (skills) params.set("skills", skills);
     if (sortBy) params.set("sortBy", sortBy);
     if (sortOrder) params.set("sortOrder", sortOrder);
     if (stale === "true") params.set("stale", "true");
@@ -299,7 +311,7 @@ export default function AdminApplicationsPage() {
       setLoadFailed(true);
     }
     setLoading(false);
-  }, [jobIdFilter, search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, stale, page, limit, employers.length, stats, updateTotal]);
+  }, [jobIdFilter, search, status, employerId, source, scoreRange, dateFrom, dateTo, skills, sortBy, sortOrder, stale, page, limit, employers.length, stats, updateTotal]);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
@@ -319,52 +331,59 @@ export default function AdminApplicationsPage() {
     setAiLoading(false);
   }, [t]);
 
-  /* ---- AI Search ---- */
-  const scoreBandToRange: Record<string, string> = {
-    excellent: "80-100", good: "60-79", average: "40-59", low: "0-39",
-  };
+  /* ---- Ask AI, from the search box ----
+     The AI fills the same filters the controls below hold, and replaces only
+     the ones it understands; stale, the URL job filter and the sort stay. */
+  const tAi = useTranslations("aiFilterSearch");
+  const formatAiDate = (value: string) => formatDate(new Date(`${value}T00:00:00`), { dateStyle: "medium" }, locale);
+  const ai = useAiFilterSearch<AiApplicationFilters, AdminAiSnapshot>({
+    endpoint: "/api/ai/application-search-filters",
+    snapshot: () => ({ search, status, employerId, source, scoreRange, dateFrom, dateTo, skills, showAdvancedFilters }),
+    restore: (s) => {
+      setSearch(s.search); setStatus(s.status); setEmployerId(s.employerId); setSource(s.source);
+      setScoreRange(s.scoreRange); setDateFrom(s.dateFrom); setDateTo(s.dateTo); setSkills(s.skills);
+      setShowAdvancedFilters(s.showAdvancedFilters);
+      resetPage();
+    },
+    apply: (f) => {
+      const applied: string[] = [];
+      const nextStatus = f.status ?? "";
+      if (nextStatus) applied.push(t(statusLabelKey(nextStatus)));
+      // The parser names a company; the list filters by id. A name that
+      // matches no employer still narrows the list as a keyword.
+      const match = f.employer
+        ? employers.find((e) => e.companyName.toLowerCase().includes(f.employer!.toLowerCase()))
+        : undefined;
+      if (match) applied.push(match.companyName);
+      let keyword = f.search ?? "";
+      if (f.employer && !match && !keyword) keyword = f.employer;
+      const nextSource = f.source ?? "";
+      const sourceLabel = nextSource ? SOURCE_OPTIONS.find((o) => o.value === nextSource)?.label : undefined;
+      if (sourceLabel) applied.push(sourceLabel);
+      const band = f.scoreBand ? AI_SCORE_BANDS[f.scoreBand] : undefined;
+      const nextScoreRange = band ? `${band[0]}-${band[1]}` : "";
+      const scoreLabel = nextScoreRange ? SCORE_RANGE_OPTIONS.find((o) => o.value === nextScoreRange)?.label : undefined;
+      if (scoreLabel) applied.push(scoreLabel);
+      if (f.dateFrom) applied.push(tAi("fromDate", { date: formatAiDate(f.dateFrom) }));
+      if (f.dateTo) applied.push(tAi("toDate", { date: formatAiDate(f.dateTo) }));
+      const nextSkills = f.skills ?? [];
+      applied.push(...nextSkills);
+      if (keyword) applied.push(tAi("keyword", { keyword }));
 
-  async function handleApplyAiSearch() {
-    const q = aiQuery.trim();
-    if (!q) return;
-    setIsApplyingAiSearch(true);
-    try {
-      const res = await fetch("/api/ai/application-search-filters", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? "AI search failed, showing keyword results instead");
-        throw new Error("AI search failed");
-      }
-      const data = await res.json();
-      const f = data.filters ?? {};
-      setSearch(f.search ?? "");
-      setStatus(f.status ?? "");
-      setSource(f.source ?? "");
-      setScoreRange(f.scoreBand ? (scoreBandToRange[f.scoreBand] ?? "") : "");
+      setSearch(keyword);
+      setStatus(nextStatus);
+      setEmployerId(match?._id ?? "");
+      setSource(sourceLabel ? nextSource : "");
+      setScoreRange(scoreLabel ? nextScoreRange : "");
       setDateFrom(f.dateFrom ?? "");
       setDateTo(f.dateTo ?? "");
-      setSortBy("appliedAt");
-      setSortOrder("desc");
-      if (f.employer && employers.length > 0) {
-        const match = employers.find((e) => e.companyName.toLowerCase().includes(f.employer!.toLowerCase()));
-        setEmployerId(match?._id ?? "");
-      } else {
-        setEmployerId("");
-      }
-      if (f.scoreBand || f.dateFrom || f.dateTo) setShowAdvancedFilters(true);
-      setAiSummary(data.summary ?? null);
+      setSkills(nextSkills.join(","));
+      if (scoreLabel || f.dateFrom || f.dateTo) setShowAdvancedFilters(true);
       resetPage();
-    } catch {
-      setSearch(q);
-      setAiSummary(`AI search was unavailable, so keyword results are shown for "${q}".`);
-    } finally {
-      setIsApplyingAiSearch(false);
-    }
-  }
+      return applied;
+    },
+    searchAsKeyword: (query) => { setSearch(query); resetPage(); },
+  });
 
   /* ---- Manage: change application status ---- */
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -434,8 +453,9 @@ export default function AdminApplicationsPage() {
   const clearAllFilters = () => {
     setSearch(""); setStatus(""); setEmployerId(""); setSource("");
     setScoreRange(""); setDateFrom(""); setDateTo(""); setStale("");
+    setSkills("");
     setSortBy("appliedAt"); setSortOrder("desc");
-    setAiQuery(""); setAiSummary(null);
+    ai.dismiss();
     resetPage();
     if (jobIdFilter) {
       router.replace(pathname);
@@ -481,37 +501,6 @@ export default function AdminApplicationsPage() {
           { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
         ]}
         compactOnMobile
-        footer={(
-          <>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50 sm:min-h-0"
-            >
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              {showFilters ? t("hideFilters") : t("showFilters")}
-              {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{activeFilters} {t("active")}</Badge>}
-              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            <div className="flex items-center gap-2">
-              {jobIdFilter && (
-                <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
-                  {t("selectedJobOnly")}
-                </Badge>
-              )}
-              {activeFilters > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
-                  {t("clearFilters")}
-                </Button>
-              )}
-              <TableToolbar
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-              />
-            </div>
-          </>
-        )}
       >
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
@@ -621,125 +610,92 @@ export default function AdminApplicationsPage() {
             )}
           </div>
         )}
-
-        {/* ─── Expandable Filters ─────────────────────────────────────── */}
-        {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t("searchPlaceholder")}
-                value={search}
-                onChange={(v) => { setSearch(v.target.value); resetPage(); }}
-                className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SearchableSelect
-                className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
-                options={STATUS_OPTIONS}
-                value={status}
-                onValueChange={(v) => { setStatus(v); resetPage(); }}
-                placeholder={t("allStatuses")}
-              />
-              {employerOptions.length > 2 && (
-                <SearchableSelect
-                  className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
-                  options={employerOptions}
-                  value={employerId}
-                  onValueChange={(v) => { setEmployerId(v); resetPage(); }}
-                  placeholder={t("allEmployers")}
-                />
-              )}
-              <SearchableSelect
-                className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
-                options={SOURCE_OPTIONS}
-                value={source}
-                onValueChange={(v) => { setSource(v); resetPage(); }}
-                placeholder={t("allSources")}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Filter className="h-3.5 w-3.5" />
-                {t("advancedFilters")}
-                {showAdvancedFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </button>
-              {activeFilters > 0 && (
-                <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{activeFilters} {t("active")}</Badge>
-              )}
-            </div>
-
-            {showAdvancedFilters && (
-              <div className="grid grid-cols-3 gap-1.5 pt-1 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <SearchableSelect
-                  className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
-                  options={SCORE_RANGE_OPTIONS}
-                  value={scoreRange}
-                  onValueChange={(v) => { setScoreRange(v); resetPage(); }}
-                  placeholder={t("allScores")}
-                />
-                <DateTimePicker
-                  mode="date"
-                  value={dateFrom}
-                  onChange={(v) => { setDateFrom(v); resetPage(); }}
-                  placeholder={t("fromDate")}
-                  className="h-11 rounded-xl border-border bg-card text-sm"
-                />
-                <DateTimePicker
-                  mode="date"
-                  value={dateTo}
-                  onChange={(v) => { setDateTo(v); resetPage(); }}
-                  placeholder={t("toDate")}
-                  className="h-11 rounded-xl border-border bg-card text-sm"
-                />
-                <SearchableSelect
-                  className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
-                  options={SORT_OPTIONS}
-                  value={sortBy}
-                  onValueChange={(v) => { setSortBy(v); resetPage(); }}
-                  placeholder={t("sortBy")}
-                />
-              </div>
-            )}
-
-            <div className="grid gap-3 xl:grid-cols-[1fr_auto]">
-              <div className="relative">
-                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
-                <Input
-                  placeholder={t("aiSearch")}
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}
-                  className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={() => { void handleApplyAiSearch(); }}
-                disabled={!aiQuery.trim() || isApplyingAiSearch}
-                className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-              >
-                <Wand2 className="h-4 w-4" />
-                {isApplyingAiSearch ? t("applying") : t("aiSearchButton")}
-              </Button>
-            </div>
-
-            {aiSummary && (
-              <p className="rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
-                <Sparkles className="mr-1.5 inline-block h-3.5 w-3.5" />
-                {aiSummary}
-              </p>
-            )}
-          </div>
-        )}
       </DashboardPageHeader>
+
+      {/* ─── Filters ──────────────────────────────────────────────────── */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        more={(
+          <>
+            <SearchableSelect
+              className={INLINE_FILTER_CONTROL}
+              options={SCORE_RANGE_OPTIONS}
+              value={scoreRange}
+              onValueChange={(v) => { setScoreRange(v); resetPage(); }}
+              placeholder={t("allScores")}
+            />
+            <DateTimePicker
+              mode="date"
+              value={dateFrom}
+              onChange={(v) => { setDateFrom(v); resetPage(); }}
+              placeholder={t("fromDate")}
+              className="min-w-0 max-w-56 flex-[1_1_9rem]"
+            />
+            <DateTimePicker
+              mode="date"
+              value={dateTo}
+              onChange={(v) => { setDateTo(v); resetPage(); }}
+              placeholder={t("toDate")}
+              className="min-w-0 max-w-56 flex-[1_1_9rem]"
+            />
+            <SearchableSelect
+              className={INLINE_FILTER_CONTROL}
+              options={SORT_OPTIONS}
+              value={sortBy}
+              onValueChange={(v) => { setSortBy(v); resetPage(); }}
+              placeholder={t("sortBy")}
+            />
+          </>
+        )}
+        moreLabel={t("advancedFilters")}
+        moreActiveCount={[scoreRange, dateFrom, dateTo].filter(Boolean).length}
+        moreOpen={showAdvancedFilters}
+        onMoreOpenChange={setShowAdvancedFilters}
+        onClear={activeFilters > 0 ? clearAllFilters : undefined}
+        clearLabel={t("clearFilters")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        footer={<AiSearchResultLine result={ai.result} onUndo={ai.undo} onDismiss={ai.dismiss} />}
+      >
+        <AiSearchField
+          value={search}
+          onValueChange={(v) => { setSearch(v); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+          onAskAi={(q) => { void ai.askAi(q); }}
+          pending={ai.pending}
+          className="flex-[2_1_20rem]"
+          inputClassName="h-11 rounded-lg bg-card sm:h-9"
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={STATUS_OPTIONS}
+          value={status}
+          onValueChange={(v) => { setStatus(v); resetPage(); }}
+          placeholder={t("allStatuses")}
+        />
+        {employerOptions.length > 2 && (
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={employerOptions}
+            value={employerId}
+            onValueChange={(v) => { setEmployerId(v); resetPage(); }}
+            placeholder={t("allEmployers")}
+          />
+        )}
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={SOURCE_OPTIONS}
+          value={source}
+          onValueChange={(v) => { setSource(v); resetPage(); }}
+          placeholder={t("allSources")}
+        />
+        {jobIdFilter && (
+          <Badge variant="secondary" className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium">
+            {t("selectedJobOnly")}
+          </Badge>
+        )}
+      </InlineFilterBar>
 
       {/* ─── Application List ─────────────────────────────────────────── */}
       {/* Error first: an empty list and a failed load are different things, and

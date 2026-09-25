@@ -73,6 +73,50 @@ describe("AdminApplicationsPage", () => {
     expect(screen.getByText("Selected job only")).toBeInTheDocument();
   });
 
+  it("runs Ask AI from the one search box and lists what it applied", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === "/api/ai/application-search-filters") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ filters: { status: "rejected", employer: "d4dx", skills: ["React"] }, degraded: false }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          applications: [],
+          pagination: { total: 0, pages: 0 },
+          allEmployers: [{ _id: "emp-1", companyName: "D4DX Labs" }],
+          stats: { byStatus: {}, bySource: {}, avgAiScore: 0, scoredCount: 0, todayCount: 0, weekCount: 0, totalAll: 0 },
+        }),
+      } as Response;
+    });
+    const user = userEvent.setup();
+    render(<AdminApplicationsPage />);
+
+    // Filters are always visible now — no Show filters toggle to open first.
+    await screen.findByRole("textbox", { name: /search/i });
+    // One box only: the separate AI search row is gone.
+    expect(screen.queryByPlaceholderText(/AI search: e\.g\./i)).not.toBeInTheDocument();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    await user.type(screen.getByRole("textbox", { name: /search/i }), "rejected react people at d4dx");
+    await user.click(screen.getByRole("button", { name: /ask ai/i }));
+
+    await waitFor(() => {
+      const listCalls = fetchMock.mock.calls.map((c) => String(c[0])).filter((u) => u.startsWith("/api/applications?"));
+      const last = listCalls[listCalls.length - 1];
+      expect(last).toContain("status=rejected");
+      expect(last).toContain("employerId=emp-1");
+      expect(last).toContain("skills=React");
+    });
+    const line = screen.getByRole("status");
+    expect(line).toHaveTextContent("D4DX Labs");
+    expect(line).toHaveTextContent("React");
+  });
+
   it("clears the URL job filter when filters are reset", async () => {
     const user = userEvent.setup();
     render(<AdminApplicationsPage />);

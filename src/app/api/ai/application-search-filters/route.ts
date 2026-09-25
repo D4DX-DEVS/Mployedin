@@ -9,7 +9,9 @@ import { aiApplicationSearchSchema } from "@/lib/validators/ai";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
-const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent", "agent"];
+// Employers use it from their own Applications search box. It only turns a
+// sentence into filters; the list request that follows is scoped as usual.
+const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent", "agent", "employer"];
 const APP_STATUSES = new Set(["applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected", "withdrawn"]);
 const SOURCE_TYPES = new Set(["easy_apply", "full_form", "direct", "auto_apply"]);
 const SCORE_BANDS = new Set(["all", "excellent", "good", "average", "low"]);
@@ -96,7 +98,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const today = new Date().toISOString().split("T")[0];
 
   try {
-    const prompt = `You translate natural-language admin application searches into structured filters.
+    const prompt = `You translate natural-language job application searches into structured filters.
 Today's date is ${today}.
 
 Return ONLY valid JSON with this exact shape:

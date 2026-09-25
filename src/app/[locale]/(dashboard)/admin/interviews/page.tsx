@@ -4,24 +4,22 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  Search, Inbox, Calendar, Video, MapPin, Blend, Sparkles,
+  Inbox, Calendar, Video, MapPin, Blend, Sparkles,
   TrendingUp, AlertTriangle, Clock, BarChart3, RotateCcw, CheckCircle2,
-  Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { formatDateTime } from "@/lib/ui/intlFormat";
 
@@ -176,7 +174,6 @@ export default function AdminInterviewOversightPage() {
   const [selectedAgent, setSelectedAgent] = useState("all");
   const [selectedSuperAgent, setSelectedSuperAgent] = useState("all");
 
-  const [showFilters, setShowFilters] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const aiInsights = useMemo(() => computeAiInsights(interviews, t), [interviews, t]);
 
@@ -367,33 +364,6 @@ export default function AdminInterviewOversightPage() {
           { label: t("noShows"), value: noShowCount, note: t("missed"), icon: AlertTriangle, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
         ]}
         compactOnMobile
-        footer={(
-          <>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
-            >
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              {showFilters ? t("hideFilters") : t("showFilters")}
-              {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
-              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            <div className="flex items-center gap-2">
-              {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
-                  <RotateCcw className="h-3 w-3" />
-                  {t("clearActiveFilters", { count: activeFilterCount, plural: activeFilterCount > 1 ? t("clearFilterPlural") : "" })}
-                </Button>
-              )}
-              <TableToolbar
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-              />
-            </div>
-          </>
-        )}
       >
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
@@ -433,104 +403,104 @@ export default function AdminInterviewOversightPage() {
           </div>
         )}
 
-        {/* ─── Expandable Filters ─────────────────────────────────────── */}
-        {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder={t("searchCandidateOrCompany")}
-                aria-label={t("searchCandidateOrCompany")}
-                className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-4 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SearchableSelect
-                id="admin-interviews-status"
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "all", label: t("allStatuses") },
-                  { value: "scheduled", label: t("statusScheduled") },
-                  { value: "completed", label: t("statusCompleted") },
-                  { value: "cancelled", label: t("statusCancelled") },
-                  { value: "no_show", label: t("statusNoShow") },
-                ]}
-                value={statusFilter}
-                onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-                placeholder={t("allStatuses")}
-              />
-              <SearchableSelect
-                id="admin-interviews-type"
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "all", label: t("allTypes") },
-                  { value: "video", label: t("typeVideo") },
-                  { value: "offline", label: t("typeOffline") },
-                  { value: "hybrid", label: t("typeHybrid") },
-                ]}
-                value={typeFilter}
-                onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
-                placeholder={t("allTypes")}
-              />
-              <SearchableSelect
-                id="admin-interviews-daterange"
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "all", label: t("allDates") },
-                  { value: "today", label: t("today") },
-                  { value: "3days", label: t("last3Days") },
-                  { value: "7days", label: t("last7Days") },
-                  { value: "30days", label: t("last30Days") },
-                  { value: "90days", label: t("last90Days") },
-                  { value: "upcoming", label: t("upcomingOnly") },
-                ]}
-                value={dateRange}
-                onValueChange={(v) => { setDateRange(v); resetPage(); }}
-                placeholder={t("allDates")}
-              />
-              {employers.length > 1 && (
-                <SearchableSelect
-                  id="admin-interviews-employer"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={employers}
-                  value={selectedEmployer}
-                  onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
-                  placeholder={t("allEmployers")}
-                />
-              )}
-              {agents.length > 1 && (
-                <SearchableSelect
-                  id="admin-interviews-agent"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={agents}
-                  value={selectedAgent}
-                  onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
-                  placeholder={t("allAgents")}
-                />
-              )}
-              {superAgents.length > 1 && (
-                <SearchableSelect
-                  id="admin-interviews-sa"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={superAgents}
-                  value={selectedSuperAgent}
-                  onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
-                  placeholder={t("allSuperAgents")}
-                />
-              )}
-            </div>
-          </div>
-        )}
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      {loadFailed && !loading ? (
-        <ErrorState onRetry={() => void load()} />
-      ) : (
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <InlineFilterBar
+          className="border-b border-border/80"
+          onClear={activeFilterCount > 0 ? clearAllFilters : undefined}
+          clearLabel={t("clearActiveFilters", { count: activeFilterCount, plural: activeFilterCount > 1 ? t("clearFilterPlural") : "" })}
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        >
+          <InlineFilterSearch
+            value={search}
+            onChange={(value) => { setSearch(value); resetPage(); }}
+            placeholder={t("searchCandidateOrCompany")}
+          />
+          <SearchableSelect
+            id="admin-interviews-status"
+            className={INLINE_FILTER_CONTROL}
+            options={[
+              { value: "all", label: t("allStatuses") },
+              { value: "scheduled", label: t("statusScheduled") },
+              { value: "completed", label: t("statusCompleted") },
+              { value: "cancelled", label: t("statusCancelled") },
+              { value: "no_show", label: t("statusNoShow") },
+            ]}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("allStatuses")}
+          />
+          <SearchableSelect
+            id="admin-interviews-type"
+            className={INLINE_FILTER_CONTROL}
+            options={[
+              { value: "all", label: t("allTypes") },
+              { value: "video", label: t("typeVideo") },
+              { value: "offline", label: t("typeOffline") },
+              { value: "hybrid", label: t("typeHybrid") },
+            ]}
+            value={typeFilter}
+            onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
+            placeholder={t("allTypes")}
+          />
+          <SearchableSelect
+            id="admin-interviews-daterange"
+            className={INLINE_FILTER_CONTROL}
+            options={[
+              { value: "all", label: t("allDates") },
+              { value: "today", label: t("today") },
+              { value: "3days", label: t("last3Days") },
+              { value: "7days", label: t("last7Days") },
+              { value: "30days", label: t("last30Days") },
+              { value: "90days", label: t("last90Days") },
+              { value: "upcoming", label: t("upcomingOnly") },
+            ]}
+            value={dateRange}
+            onValueChange={(v) => { setDateRange(v); resetPage(); }}
+            placeholder={t("allDates")}
+          />
+          {employers.length > 1 && (
+            <SearchableSelect
+              id="admin-interviews-employer"
+              className={INLINE_FILTER_CONTROL}
+              options={employers}
+              value={selectedEmployer}
+              onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
+              placeholder={t("allEmployers")}
+            />
+          )}
+          {agents.length > 1 && (
+            <SearchableSelect
+              id="admin-interviews-agent"
+              className={INLINE_FILTER_CONTROL}
+              options={agents}
+              value={selectedAgent}
+              onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
+              placeholder={t("allAgents")}
+            />
+          )}
+          {superAgents.length > 1 && (
+            <SearchableSelect
+              id="admin-interviews-sa"
+              className={INLINE_FILTER_CONTROL}
+              options={superAgents}
+              value={selectedSuperAgent}
+              onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
+              placeholder={t("allSuperAgents")}
+            />
+          )}
+        </InlineFilterBar>
+
+        {loadFailed && !loading ? (
+          <div className="p-6">
+            <ErrorState onRetry={() => void load()} />
+          </div>
+        ) : (
+        <>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -616,8 +586,9 @@ export default function AdminInterviewOversightPage() {
         <div className="border-t border-border/60 px-4 py-4">
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
         </div>
+        </>
+        )}
       </section>
-      )}
     </div>
   );
 }
