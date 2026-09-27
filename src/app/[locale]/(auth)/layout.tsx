@@ -129,7 +129,7 @@ export default async function AuthLayout({
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 {t("trustedWorkspace")}
               </div>
-              <h2 className="text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-foreground xl:text-5xl">{t("heading")}</h2>
+              <h2 className="text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-foreground xl:text-[35px]">{t("heading")}</h2>
               <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground xl:text-base xl:leading-7">{t("description")}</p>
             </div>
 
