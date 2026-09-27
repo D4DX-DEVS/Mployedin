@@ -85,8 +85,8 @@ export function DashboardPageHeader({
         // The header is a content alignment rail, not another card around the
         // page. The shared page gutter owns its placement; the identity icon
         // and metric strip are the visual anchors used by every route.
-        "dashboard-page-header px-4 py-3 sm:px-5 sm:py-4",
-        compact && "px-3 py-2.5 sm:px-5 sm:py-4",
+        "dashboard-page-header px-0 py-3 sm:py-4",
+        compact && "px-0 py-2.5 sm:py-4",
         className
       )}
     >

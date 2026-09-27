@@ -4308,7 +4308,7 @@ table.workspace-list-table tbody tr:focus-visible {
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
-    padding-inline: 0.75rem !important;
+    padding-inline: 0 !important;
     padding-block: 0.75rem !important;
   }
 
@@ -4317,7 +4317,7 @@ table.workspace-list-table tbody tr:focus-visible {
       [data-dashboard-page-header="component"][data-dashboard-page-header="component"],
       .page-header-root
     ) {
-      padding-inline: 1rem !important;
+      padding-inline: 0 !important;
       padding-block: 1rem !important;
     }
   }
