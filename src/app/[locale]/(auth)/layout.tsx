@@ -27,9 +27,23 @@ export default async function AuthLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "auth")}>
-    <div className="flex min-h-screen flex-col bg-background">
-      <div className="flex flex-1 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(var(--accent)/0.08),transparent_28%)]">
-        <div className="relative hidden w-0 flex-1 overflow-hidden border-e border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:block">
+      <div className="flex min-h-screen bg-background">
+        <section className="relative flex w-full flex-col bg-background px-5 py-5 sm:px-8 sm:py-7 lg:w-[42%] lg:min-w-[430px] lg:px-10 xl:w-[40%] xl:px-14">
+          <Link href={`/${locale}`} className="absolute start-5 top-5 z-20 inline-flex items-center sm:start-8 sm:top-7 lg:start-10 xl:start-14" aria-label="Mployedin">
+            <Image src="/logo.png" alt="Mployedin" width={106} height={37} className="h-auto w-[106px] object-contain" priority />
+          </Link>
+          <div className="flex flex-1 flex-col justify-center">
+            <div className="mx-auto flex w-full max-w-md flex-1 items-center">
+              <div className="w-full py-4 sm:py-8">
+                <SessionWrapper disableIdleTimeout>
+                  <CsrfProvider>{children}</CsrfProvider>
+                </SessionWrapper>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative hidden flex-1 overflow-hidden border-s border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:flex">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.2)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.2)_1px,transparent_1px)] bg-[size:76px_76px] opacity-35" />
           <div className="absolute left-[-12%] top-[-12%] h-[360px] w-[360px] rounded-full bg-brand-blue/15 blur-[110px]" />
           <div className="absolute bottom-[-18%] right-[-10%] h-[420px] w-[420px] rounded-full bg-brand-cyan/15 blur-[130px]" />
@@ -41,36 +55,17 @@ export default async function AuthLayout({
             height={467}
             aria-hidden
             priority
-            className="pointer-events-none hidden xl:block absolute right-[3%] top-[16%] w-[48%] max-w-[560px] select-none object-contain opacity-60"
+            className="pointer-events-none absolute right-[-2%] top-[12%] hidden w-[56%] max-w-[640px] select-none object-contain opacity-55 xl:block"
           />
 
-          <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-12">
-            <div className="flex items-center justify-between gap-4">
-              <Link
-                href={`/${locale}`}
-                className="inline-flex items-center transition-transform hover:-translate-y-0.5"
-              >
-                <Image src="/mployedin-logo.png" alt="Mployedin" width={240} height={66} className="h-14 w-auto object-contain xl:h-16" priority />
-              </Link>
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card/75 px-3 py-1.5 text-xs font-semibold text-primary shadow-sm backdrop-blur">
-                <Sparkles className="h-3.5 w-3.5" />
-                {t("aiPowered")}
-              </div>
+          <div className="relative z-10 flex min-h-full w-full flex-col items-center justify-center px-8 py-12 xl:px-16">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card/75 px-3 py-1.5 text-xs font-semibold text-primary shadow-sm backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5" />
+              {t("aiPowered")}
             </div>
 
-            <div className="my-auto max-w-2xl py-10 xl:py-14">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                {t("trustedWorkspace")}
-              </div>
-              <p className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-foreground xl:text-[3.45rem]">
-                {t("heading")}
-              </p>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground xl:text-base xl:leading-7">
-                {t("description")}
-              </p>
-
-              <div className="relative mt-8 max-w-xl">
+            <div className="w-full max-w-[560px]">
+              <div className="relative">
                 <div className="absolute -inset-6 rounded-[2.25rem] bg-primary/10 blur-3xl" />
                 <div className="relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-card/80 p-4 shadow-[0_32px_100px_-45px_rgba(30,47,108,0.7)] backdrop-blur-xl sm:p-5">
                   <div className="flex items-center justify-between gap-4 border-b border-border/60 pb-4">
@@ -127,36 +122,32 @@ export default async function AuthLayout({
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
-                {[t("proofOne"), t("proofTwo"), t("proofThree")].map((proof) => (
-                  <div key={proof} className="flex items-center gap-2 text-xs font-medium text-foreground/80">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                    {proof}
-                  </div>
-                ))}
+            <div className="mt-8 max-w-2xl text-center">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                {t("trustedWorkspace")}
               </div>
+              <h2 className="text-3xl font-semibold leading-[1.08] tracking-[-0.04em] text-foreground xl:text-5xl">{t("heading")}</h2>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted-foreground xl:text-base xl:leading-7">{t("description")}</p>
             </div>
 
-            <div className="text-sm text-muted-foreground/70">
-              {t("copyright", { year: new Date().getFullYear() })}
+            <div className="mt-5 flex max-w-2xl flex-wrap justify-center gap-x-5 gap-y-2">
+              {[t("proofOne"), t("proofTwo"), t("proofThree")].map((proof) => (
+                <div key={proof} className="flex items-center gap-2 text-xs font-medium text-foreground/80">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+                  {proof}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
 
-        <div className="flex min-w-0 flex-1 flex-col bg-background/92 px-3 py-3 sm:px-6 sm:py-4 lg:w-[480px] lg:flex-none xl:w-[520px]">
-          <div className="mx-auto flex w-full max-w-md flex-1 items-center">
-            <div className="w-full rounded-2xl border border-border/60 bg-background/86 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur sm:rounded-3xl panel-body">
-              <SessionWrapper disableIdleTimeout>
-                <CsrfProvider>
-                  {children}
-                </CsrfProvider>
-              </SessionWrapper>
-            </div>
-          </div>
-        </div>
+          <p className="absolute bottom-6 inset-x-0 text-center text-sm text-muted-foreground/70">
+            {t("copyright", { year: new Date().getFullYear() })}
+          </p>
+        </section>
       </div>
-    </div>
     </NextIntlClientProvider>
   );
 }
