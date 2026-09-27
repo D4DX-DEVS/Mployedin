@@ -34,10 +34,11 @@ const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     hideClose?: boolean
+    overlayClassName?: string
     /** On mobile, render as bottom sheet sliding up from bottom; centered dialog on sm+. Default true; pass false for centered dialog on all screens. */
     mobileSheet?: boolean
   }
->(({ className, children, hideClose, mobileSheet = true, ...props }, ref) => {
+>(({ className, children, hideClose, overlayClassName, mobileSheet = true, ...props }, ref) => {
   const tCommon = useTranslations("common");
   /* A dialog that asks for its own width has to get it.
      `cn()` is tailwind-merge, which only drops a conflicting utility when the
@@ -52,7 +53,7 @@ const DialogContent = React.forwardRef<
   const declaresMaxWidth = /(?:^|\s)(?:[a-z-]+:)*max-w-/.test(className ?? "");
   return (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

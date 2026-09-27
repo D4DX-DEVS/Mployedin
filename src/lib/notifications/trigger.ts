@@ -124,6 +124,9 @@ export async function notify(payload: NotifyPayload): Promise<void> {
           sendEmail: payload.sendEmail,
           sendWhatsApp: payload.sendWhatsApp,
           metadata: payload.metadata,
+          titleKey: payload.titleKey,
+          bodyKey: payload.bodyKey,
+          params: payload.params,
         },
       });
     } catch (err) {

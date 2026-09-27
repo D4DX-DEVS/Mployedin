@@ -553,9 +553,8 @@ export default function AdminWebhooksPage() {
                 {t("clearNFilters", { count: activeFilterCount })}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={fetchWebhooks} disabled={loading} className="gap-1.5">
+            <Button variant="outline" size="iconDense" onClick={fetchWebhooks} disabled={loading} aria-label={t("refresh")} title={t("refresh")}>
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              {t("refresh")}
             </Button>
           </div>
         </div>

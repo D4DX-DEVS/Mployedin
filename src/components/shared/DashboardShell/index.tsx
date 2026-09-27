@@ -33,7 +33,7 @@ import { WorkspaceBottomNav } from "@/components/shared/WorkspaceBottomNav";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
 import { TemporaryPasswordNotice } from "@/components/shared/TemporaryPasswordNotice";
-import type { NavGroup } from "@/lib/nav/menuConfig";
+import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import { WORKSPACE_BOTTOM_NAV_TABS } from "@/lib/nav/bottomNavTabs";
 import type { NavBadgeKey } from "@/lib/nav/menuConfig";
@@ -42,6 +42,7 @@ import { useJobSeekerActionCounts } from "@/hooks/useJobSeekerActionCounts";
 import { useAgentActionCounts } from "@/hooks/useAgentActionCounts";
 import { useSuperAgentActionCounts } from "@/hooks/useSuperAgentActionCounts";
 import type { UserRole } from "@/types/user";
+import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 
 interface TenantViewData {
   employerId: string;
@@ -59,6 +60,7 @@ interface DashboardShellProps {
   userRole?: string;
   lastLogin?: string;
   companyLogo?: string;
+  topbarGreeting?: string;
   /** Present when an agent/super-agent/admin is viewing an employer's workspace */
   tenantViewData?: TenantViewData;
 }
@@ -72,15 +74,23 @@ export function DashboardShell({
   userRole,
   lastLogin,
   companyLogo,
+  topbarGreeting,
   tenantViewData,
 }: DashboardShellProps) {
   const tNav = useTranslations("nav");
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const unreadMessageCount = useUnreadMessageCount();
+  const navRootHref = navGroups
+    .flatMap((group) => group.items)
+    .find((item) => item.title === "Dashboard")?.href ?? "";
+  const hasAdminNavigation = navRootHref.endsWith("/admin");
+  const hasSuperAgentNavigation = navRootHref.includes("/super-agent");
+  const hasAgentNavigation = navRootHref.includes("/agent");
+  const hasEmployerNavigation = navRootHref.includes("/employer");
   const isJobSeeker = userRole === "job_seeker";
-  const isAdmin = userRole === "admin";
-  const isSuperAgent = userRole === "super_agent";
+  const isAdmin = userRole === "admin" || hasAdminNavigation;
+  const isSuperAgent = userRole === "super_agent" || hasSuperAgentNavigation;
   const seekerCounts = useJobSeekerActionCounts(isJobSeeker);
   const adminCounts = useAdminActionCounts(isAdmin);
   const superAgentCounts = useSuperAgentActionCounts(isSuperAgent);
@@ -102,12 +112,12 @@ export function DashboardShell({
   // Agent/super-agent list pages share the exact same admin-authored
   // components (PageHero, data-table-toolbar, <Table>), so they get the same
   // untuned-on-mobile problem the CSS below already fixes for admin.
-  const isAdminWorkspace = userRole === "admin" || userRole === "agent" || userRole === "super_agent";
+  const isAdminWorkspace = isAdmin || isSuperAgent || userRole === "agent" || hasAgentNavigation;
   // A genuinely per-role hook. `dashboard-shell-admin` above is NOT admin-only
   // — it covers agent and super-agent too — so it cannot scope a change to one
   // role. Styling that must land on exactly one workspace keys off this.
   const roleClass = `dashboard-role-${String(userRole ?? "").replace(/_/g, "-")}`;
-  const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
+  const usesModernWorkspaceShell = isAdminWorkspace || userRole === "employer" || hasEmployerNavigation;
   // The seeker runs the job-board shell (header tabs + its own phone tab bar,
   // no sidebar) so the workspace tab bar is not built for that role.
   const bottomNavTabConfigs = isJobSeeker ? [] : (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []);
@@ -147,6 +157,25 @@ export function DashboardShell({
   // and Settings were all unreachable without navigating home first. The
   // header stays.
   const hasBottomNav = bottomNavTabs.length > 0;
+
+  const isPathInLeaf = (item: NavItem) =>
+    pathname === item.href || (!item.href.endsWith("/admin") && pathname.startsWith(`${item.href}/`));
+  const flattenContextItems = (items: NavItem[]): NavItem[] =>
+    items.flatMap((item) => (item.children?.length ? flattenContextItems(item.children) : [item]));
+  const workspaceItems = navGroups.flatMap((group) => group.items);
+  const activeWorkspaceSection = workspaceItems.find((item) => {
+    const leaves = item.children?.length ? flattenContextItems(item.children) : [];
+    return leaves.some(isPathInLeaf) || (!item.children?.length && isPathInLeaf(item));
+  });
+  const contextItems = activeWorkspaceSection?.contextTabs && activeWorkspaceSection.children?.length
+    ? flattenContextItems(activeWorkspaceSection.children)
+    : [];
+  const contextTabs: WorkspaceTab[] = contextItems.map((item) => ({
+    key: item.href,
+    label: locale === "ar" ? item.titleAr : item.title,
+    href: item.href,
+    exact: item.href === activeWorkspaceSection?.href,
+  }));
 
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
   const [mounted, setMounted] = useState(false);
@@ -202,6 +231,14 @@ export function DashboardShell({
               </Link>
             )}
 
+            {topbarGreeting && (
+              <div className="hidden min-w-0 flex-1 items-center md:flex" data-dashboard-topbar-greeting>
+                <span className="truncate text-base font-semibold tracking-tight text-foreground lg:text-lg">
+                  {topbarGreeting}
+                </span>
+              </div>
+            )}
+
             {isJobSeeker && (
               <>
                 <Link href={`/${locale}/job-seeker`} className="shrink-0" aria-label={tNav("a11yHome")}>
@@ -219,7 +256,7 @@ export function DashboardShell({
               </>
             )}
 
-            <div className="flex-1 min-w-0">
+            <div className="flex flex-1 min-w-0 justify-end">
               <div className="hidden md:block">
                 <CommandMenuTrigger locale={locale} />
               </div>
@@ -240,7 +277,7 @@ export function DashboardShell({
                   {dashboardRoot && (
                     <MessagesIndicator navGroups={navGroups} rootHref={`/${locale}${dashboardRoot}`} />
                   )}
-                  <NotificationBell locale={locale} />
+                  <NotificationBell locale={locale} userRole={userRole} />
                   <UserProfileDropdown
                     userName={userName ?? "User"}
                     userEmail={userEmail ?? ""}
@@ -254,6 +291,17 @@ export function DashboardShell({
             </div>
           </div>
         </header>
+        {contextTabs.length > 1 && (
+          <div className="border-b border-border/60 bg-background px-3 sm:px-4 lg:px-6">
+            <div className="min-w-0">
+              <WorkspaceTabs
+                tabs={contextTabs}
+                ariaLabel={tNav("a11yNavigationMenu")}
+                className="border-b-0"
+              />
+            </div>
+          </div>
+        )}
         {/* Offer (never force) a password change to someone still on an issued one. */}
         {!tenantViewData && <TemporaryPasswordNotice />}
         {/* Page content */}

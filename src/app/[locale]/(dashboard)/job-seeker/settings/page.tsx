@@ -591,23 +591,23 @@ export default function JobSeekerSettingsPage() {
 
         {/* ── Tabs ────────────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full h-auto p-1 rounded-2xl flex flex-wrap gap-1 bg-muted/40 border border-border/40">
-            <TabsTrigger value="interviews" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsList className="w-full flex-wrap">
+            <TabsTrigger value="interviews" className="flex-1 gap-2">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.interviews")}</span>
               <span className="sm:hidden">{t("tabs.schedule")}</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="profile" className="flex-1 gap-2">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.profileVisibility")}</span>
               <span className="sm:hidden">{t("tabs.visibility")}</span>
             </TabsTrigger>
-            <TabsTrigger value="resume-ai" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="resume-ai" className="flex-1 gap-2">
               <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.resumeAi")}</span>
               <span className="sm:hidden">{t("tabs.ai")}</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="notifications" className="flex-1 gap-2">
               <Bell className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.notifications")}</span>
               <span className="sm:hidden">{t("tabs.alerts")}</span>

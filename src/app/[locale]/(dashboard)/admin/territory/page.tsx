@@ -260,11 +260,13 @@ export default function AdminTerritoryPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button variant="ghost" size="xs" onClick={() => openEdit(t)} title={tr("editButtonTitle")}>
+                      <Button variant="ghost" size="xs" onClick={() => openEdit(t)} title={tr("editButtonTitle")} className="h-8 gap-1 px-2 text-xs">
                         <Edit2 className="h-3.5 w-3.5 text-primary" />
+                        <span>{tr("editButtonTitle")}</span>
                       </Button>
-                      <Button variant="ghost" size="xs" onClick={() => setDeleteId(t._id)} title={tr("deleteButtonTitle")}>
+                      <Button variant="ghost" size="xs" onClick={() => setDeleteId(t._id)} title={tr("deleteButtonTitle")} className="h-8 gap-1 px-2 text-xs">
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        <span>{tr("deleteButtonTitle")}</span>
                       </Button>
                     </div>
                   </div>

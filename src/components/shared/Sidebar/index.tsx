@@ -80,13 +80,9 @@ export function Sidebar({
   };
 
   /**
-   * A group carries what it hides.
-   *
-   * The rail renders top-level entries only. Grouping admin's eleven entries
-   * into five primaries plus "More Admin Tools" pushed every badged destination
-   * a level down, so an assigned support ticket had a badge that nothing on
-   * screen ever displayed. Summing children means a collapsed group still says
-   * "something in here needs you", and opening it shows which child.
+   * A group carries what it hides. The rail renders top-level entries only,
+   * so summing children keeps a collapsed section useful: a badge on a
+   * message or review request still tells the user where to look.
    */
   const badgeCount = (item: NavItem): number => {
     const own = ownBadgeCount(item);
@@ -118,6 +114,30 @@ export function Sidebar({
     for (const item of group.items) groupLabelByItemHref.set(item.href, label);
   }
 
+  // Admin has enough destinations to benefit from task-oriented section
+  // labels. Keep these labels at the rail level, while each destination keeps
+  // its own children in the secondary panel. One source drives both labels
+  // and order so a future root rename cannot silently lose its section.
+  const adminSections = [
+    { label: "Main", labelAr: "الرئيسية", titles: ["Dashboard"] },
+    { label: "Workspace", labelAr: "مساحة العمل", titles: ["Recruitment", "People", "Finance"] },
+    { label: "Data & insights", labelAr: "البيانات والرؤى", titles: ["Master Data", "Reports"] },
+    { label: "Communication", labelAr: "التواصل", titles: ["Communication"] },
+    { label: "Content & events", labelAr: "المحتوى والفعاليات", titles: ["CMS / Content", "Exhibitions"] },
+    { label: "Settings", labelAr: "الإعدادات", titles: ["Settings"] },
+  ] as const;
+  const adminSectionByTitle = new Map<string, (typeof adminSections)[number]>(
+    adminSections.flatMap((section) =>
+      section.titles.map((title) => [title, section] as const)
+    )
+  );
+  if (isAdminWorkspace) {
+    for (const item of allMainItems) {
+      const section = adminSectionByTitle.get(item.title);
+      if (section) groupLabelByItemHref.set(item.href, locale === "ar" ? section.labelAr : section.label);
+    }
+  }
+
   const rootItem = (title: string) =>
     allMainItems.find((item) => item.title === title);
   const standaloneAsChild = (title: string, group?: string, groupAr?: string) => {
@@ -133,25 +153,12 @@ export function Sidebar({
       .filter((item): item is NavItem => Boolean(item))
       .map((item) => ({ ...item, group: item.group ?? group, groupAr: item.groupAr ?? groupAr }));
 
-  const adminPrimaryTitles = ["Dashboard", "Recruitment", "People", "Finance", "CMS / Content"];
-  const adminMoreChildren = allMainItems
-    .filter((item) => !adminPrimaryTitles.includes(item.title))
-    .map((item) => ({ ...item, group: undefined, groupAr: undefined }));
-  const adminGroupedItems: NavItem[] = [
-    ...adminPrimaryTitles.map(rootItem).filter((item): item is NavItem => Boolean(item)),
-    {
-      title: "More Admin Tools",
-      titleAr: "المزيد من أدوات الإدارة",
-      href: adminMoreChildren[0]?.href ?? `/${locale}/admin/reports`,
-      icon: "Grid3x3",
-      description: "Reports, platform data, system, exhibitions and communication",
-      descriptionAr: "التقارير وبيانات المنصة والنظام والمعارض والتواصل",
-      children: adminMoreChildren,
-    },
-  ];
+  const adminGroupedItems: NavItem[] = adminSections
+    .flatMap((section) => section.titles.map(rootItem))
+    .filter((item): item is NavItem => Boolean(item));
 
   // The agent drawer used to be re-grouped here by hand — Hiring, Accounts,
-  // Tasks, Messages, More — because the real nav was two parents and a
+  // Tasks, Messages, and an overflow section — because the real nav was two parents and a
   // twelve-child "Tools" junk drawer that no phone could present. menuConfig
   // now groups the agent workspace properly (Today / Work / Track sections,
   // Hiring mirroring the employer's), so the drawer renders the same tree as
@@ -215,12 +222,10 @@ export function Sidebar({
     },
   ].filter((item): item is NavItem => Boolean(item));
 
-  /* Admin carries eleven top-level entries and fifty-two children — by far the
-     heaviest workspace in the product. The five-primary grouping below was
-     written for the phone drawer and never applied to the desktop rail, so the
-     wider viewport kept the flat list the narrow one had already rejected.
-     Same grouping, both breakpoints: Dashboard, Recruitment, People, Finance,
-     CMS, and everything else behind "More Admin Tools". */
+  /* Admin carries many top-level entries and fifty-two children — by far the
+     heaviest workspace in the product. Keep task-oriented destinations visible
+     in the rail and let each root own its secondary panel. The same grouping
+     is used at both breakpoints. */
   const navigationMainItems = mobileOpen
     ? withoutBottomTabItems(
         effectiveRole === "admin"
@@ -378,15 +383,13 @@ export function Sidebar({
 
   const compactRootTitles = navigationMainItems.map((item) => item.title);
   const resolvedActiveMainTitle =
-    mobileOpen && effectiveRole === "admin" && !compactRootTitles.includes(activeMainTitle)
-      ? "More Admin Tools"
-      : mobileOpen && effectiveRole === "super_agent" && !compactRootTitles.includes(activeMainTitle)
-          ? superAgentMobileItems.find((item) =>
-              item.children?.some((child) =>
-                pathname === child.href || pathname.startsWith(`${child.href}/`)
-              )
-            )?.title ?? activeMainTitle
-          : activeMainTitle;
+    mobileOpen && effectiveRole === "super_agent" && !compactRootTitles.includes(activeMainTitle)
+      ? superAgentMobileItems.find((item) =>
+          item.children?.some((child) =>
+            pathname === child.href || pathname.startsWith(`${child.href}/`)
+          )
+        )?.title ?? activeMainTitle
+      : activeMainTitle;
   const activeMainItem = navigationMainItems.find((item) => item.title === resolvedActiveMainTitle);
   const hasSubmenu = Boolean(activeMainItem?.children?.length);
   const submenuId = activeMainItem
@@ -441,6 +444,7 @@ export function Sidebar({
         <button
           key={child.title}
           type="button"
+          data-sidebar-subitem=""
           onClick={() => setActiveMobileNestedItem(child)}
           className={cn(
             "group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-medium text-muted-foreground transition-all hover:bg-card/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
@@ -466,6 +470,7 @@ export function Sidebar({
     return (
       <Link
         key={child.href}
+        data-sidebar-subitem=""
         href={child.href}
         aria-current={isChildActive ? "page" : undefined}
         prefetch={false}
@@ -558,7 +563,7 @@ export function Sidebar({
     <div
       data-sidebar-tone={usesLightWorkspaceSidebar ? "light" : "theme-aware"}
       className={cn(
-        "h-full flex flex-col z-20 shrink-0",
+        "dashboard-sidebar-primary h-full flex flex-col z-20 shrink-0",
         usesDualTierLayout
           ? `w-[280px] max-w-[88vw] lg:w-[224px] ${sidebarBorder} border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.22),_transparent_60%),linear-gradient(180deg,_hsl(var(--card)/0.98),_hsl(var(--surface-3)/0.94))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.32)] backdrop-blur-xl`
           : usesModernWorkspaceShell
@@ -633,6 +638,7 @@ export function Sidebar({
             groupLabel && groupLabel !== previousGroupLabel ? (
               <div
                 key={`group-${groupLabel}`}
+                data-sidebar-section-label=""
                 className={cn(
                   // The dual-tier rail is light (data-sidebar-tone="theme-aware"),
                   // so the white heading it used to get was invisible on it.
@@ -642,6 +648,17 @@ export function Sidebar({
                 {groupLabel}
               </div>
             ) : null;
+          const railHeading =
+            usesModernWorkspaceShell && itemIndex === 0 && !groupHeading ? (
+              <div
+                key="group-main"
+                data-sidebar-section-label=""
+                className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
+              >
+                {locale === "ar" ? "الرئيسية" : "MAIN"}
+              </div>
+            ) : null;
+          const sectionHeading = groupHeading ?? railHeading;
           const Icon = getIcon(item.icon);
           const isSelected = resolvedActiveMainTitle === item.title;
           const hasChildren = Boolean(item.children?.length);
@@ -654,7 +671,7 @@ export function Sidebar({
               "group relative min-h-11 w-full flex items-start gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
               isRtl ? "text-right" : "text-left",
               isSelected
-                ? "bg-primary/10 text-primary shadow-[0_8px_24px_-12px_rgba(2,132,199,0.4)] ring-1 ring-primary/20"
+                ? "bg-[hsl(var(--workspace-surface-muted))] text-foreground shadow-none ring-1 ring-border/70"
                 : "text-muted-foreground hover:bg-card/90 hover:text-foreground hover:shadow-[0_8px_20px_-12px_rgba(15,23,42,0.18)]"
             );
 
@@ -693,9 +710,10 @@ export function Sidebar({
             if (hasChildren) {
               return (
                 <Fragment key={item.title}>
-                  {groupHeading}
+                  {sectionHeading}
                   <button
                     type="button"
+                    data-sidebar-item=""
                     onClick={() => {
                       if (activeMainTitle === item.title) {
                         setSubmenuExpanded((prev) => !prev);
@@ -717,9 +735,10 @@ export function Sidebar({
 
             return (
               <Fragment key={item.title}>
-                {groupHeading}
+                {sectionHeading}
                 <Link
                   href={item.href}
+                  data-sidebar-item=""
                   aria-current={isSelected ? "page" : undefined}
                   prefetch={false}
                   onClick={() => {
@@ -796,10 +815,11 @@ export function Sidebar({
           if (hasChildren) {
             return (
               <div key={item.title} className="space-y-1">
-                {groupHeading}
+                {sectionHeading}
                 <button
                   id={`${itemSubmenuId}-label`}
                   type="button"
+                  data-sidebar-item=""
                   onClick={() => {
                     if (usesInlineWorkspaceSidebar && isSelected) {
                       setSubmenuExpanded((previous) => !previous);
@@ -844,6 +864,7 @@ export function Sidebar({
             <Link
               key={item.title}
               href={item.href}
+              data-sidebar-item=""
               aria-current={isSelected ? "page" : undefined}
               prefetch={false}
               onClick={() => {
@@ -856,10 +877,10 @@ export function Sidebar({
             </Link>
           );
 
-          if (!groupHeading) return leafLink;
+          if (!sectionHeading) return leafLink;
           return (
             <div key={item.title} className="space-y-1">
-              {groupHeading}
+              {sectionHeading}
               {leafLink}
             </div>
           );
@@ -899,7 +920,7 @@ export function Sidebar({
   const secondarySidebar = (
     <div
       className={cn(
-        "h-full overflow-hidden transition-[width] duration-300 ease-in-out z-10 flex flex-col shrink-0",
+        "dashboard-sidebar-secondary h-full overflow-hidden transition-[width] duration-300 ease-in-out z-10 flex flex-col shrink-0",
         usesDualTierLayout
           ? cn(
               "lg:absolute lg:top-0 bg-[linear-gradient(180deg,_hsl(var(--card)/0.99),_hsl(var(--surface-3)/0.96))] shadow-[8px_0_36px_rgba(2,132,199,0.14)]",
@@ -1022,7 +1043,7 @@ export function Sidebar({
                   return groups.map((g) => (
                     <div key={g.key || "_ungrouped"}>
                       {g.label && (
-                        <h3 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
+                        <h3 data-sidebar-section-label="" className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
                           {g.label}
                         </h3>
                       )}

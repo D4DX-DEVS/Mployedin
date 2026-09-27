@@ -32,10 +32,11 @@ export function SubscriptionHero({ onRefresh, onExport, isRefreshing, metrics }:
               type="button"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
+              className="inline-flex size-8 items-center justify-center rounded-lg border border-border/60 bg-card text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
+              aria-label={t("refresh")}
+              title={t("refresh")}
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              {t("refresh")}
             </button>
           )}
           {onExport && (

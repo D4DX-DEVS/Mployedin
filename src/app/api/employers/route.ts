@@ -333,7 +333,23 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // company to an employer. Re-pin last: an employer only ever sees itself.
   if (ownEmployerUserId) query._id = ownEmployerUserId;
 
-  // Sorting
+  // Sorting. Company and industry live on Employer profiles rather than the
+  // User document returned by this branch, so resolve those profile ids first
+  // and preserve their order after fetching user records.
+  const profileSort = sortBy === "companyName" || sortBy === "industry";
+  let orderedProfileUserIds: string[] | null = null;
+  const countQuery: Record<string, unknown> = { ...query };
+  if (profileSort && !search) {
+    const profileQuery: Record<string, unknown> = { ...empFilter };
+    if (query._id) profileQuery.userId = query._id;
+    const orderedProfiles = await Employer.find(profileQuery)
+      .select("userId")
+      .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1, _id: 1 })
+      .lean();
+    orderedProfileUserIds = orderedProfiles.map((profile) => String(profile.userId));
+    const pageUserIds = orderedProfileUserIds.slice(skip, skip + limit);
+    query._id = { $in: pageUserIds };
+  }
   const VALID_SORT = new Set(["name", "email", "createdAt"]);
   const sortField = VALID_SORT.has(sortBy) ? sortBy : "name";
   const sortDir = sortOrder === "desc" ? -1 : 1;
@@ -341,11 +357,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const [users, total] = await Promise.all([
     User.find(query)
       .select("name email isActive createdAt")
-      .sort({ [sortField]: sortDir })
+      .sort(profileSort ? { _id: 1 } : { [sortField]: sortDir })
       .skip(skip)
       .limit(limit)
       .lean(),
-    User.countDocuments(query),
+    User.countDocuments(countQuery),
   ]);
 
   // Attach verificationDocs and domainVerified from Employer model
@@ -361,7 +377,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // The agent running each account (either end of the link) and their super-agent.
   const agentByEmployer = await resolveEmployerAgents(employerProfiles);
 
-  const employers = users
+  const orderedUsers = orderedProfileUserIds
+    ? [...users].sort((a, b) => orderedProfileUserIds!.indexOf(String(a._id)) - orderedProfileUserIds!.indexOf(String(b._id)))
+    : users;
+  const employers = orderedUsers
     .filter((u) => profileMap.has(String(u._id))) // exclude orphaned employer Users without Employer profile
     .map((u) => {
     const profile = profileMap.get(String(u._id))!;

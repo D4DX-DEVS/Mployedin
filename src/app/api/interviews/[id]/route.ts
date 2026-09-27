@@ -76,6 +76,19 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const material = isMaterialChange(update);
   if (material) update.icsSequence = (interview.icsSequence ?? 0) + 1;
 
+  // Validate before mutating the document. Previously a future interview was
+  // saved as completed, then returned 409, leaving the UI and database out of
+  // sync after an invalid transition attempt.
+  if (body.status === "completed") {
+    const scheduledTime = new Date(interview.scheduledAt);
+    if (scheduledTime > new Date()) {
+      return NextResponse.json(
+        { error: "Cannot complete interview before its scheduled start time" },
+        { status: 409 }
+      );
+    }
+  }
+
   Object.assign(interview, update);
   await interview.save();
 
@@ -118,18 +131,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         sendEmail: true,
         metadata: { jobTitle, interviewId: params?.id },
       }).catch(() => { /* non-blocking */ });
-    }
-  }
-
-  // Validate that interview is not marked complete before its scheduled time
-  if (body.status === "completed") {
-    const scheduledTime = new Date(interview.scheduledAt);
-    const now = new Date();
-    if (scheduledTime > now) {
-      return NextResponse.json(
-        { error: "Cannot complete interview before its scheduled start time" },
-        { status: 409 }
-      );
     }
   }
 

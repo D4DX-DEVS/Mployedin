@@ -98,6 +98,7 @@ const statusVariants: Record<
   completed: { labelKey: "completed", className: "status-selected" },
   cancelled: { labelKey: "cancelled", className: "status-rejected" },
   rescheduled: { labelKey: "rescheduled", className: "status-shortlisted" },
+  no_show: { labelKey: "noShow", className: "status-rejected" },
 
   // Invoice statuses
   issued: { labelKey: "issued", className: "status-applied" },
@@ -143,7 +144,7 @@ export function StatusBadge({
 
   const displayLabel =
     label ?? (variant.labelKey ? t(variant.labelKey) :
-      status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
+      t("unknown"));
 
   return (
     <span

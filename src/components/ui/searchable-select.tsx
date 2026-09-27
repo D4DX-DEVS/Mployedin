@@ -165,7 +165,8 @@ export function SearchableSelect({
           <div className={cn(!showSearch && "sr-only")}>
             <CommandInput
               placeholder={searchPlaceholder}
-              className="h-9 searchable-select-search"
+              className="h-9 searchable-select-search inline-select-search-input w-full ps-8 pe-3 text-sm"
+              wrapperClassName="searchable-select-input-wrapper relative border-b-0 p-2"
               value={resolvedSearchValue}
               onValueChange={handleSearchValueChange}
             />

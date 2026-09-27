@@ -28,6 +28,8 @@ async function handler(req: NextRequest, ctx: AuthCtx, params?: Record<string, s
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
+  const sortBy = searchParams.get("sortBy") ?? "sortOrder";
+  const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10")));
   const skip = (page - 1) * limit;
@@ -46,8 +48,11 @@ async function handler(req: NextRequest, ctx: AuthCtx, params?: Record<string, s
     ];
   }
 
+  const allowedSortFields = new Set(["name", "nameAr", "slug", "sortOrder", "createdAt"]);
+  const safeSortBy = allowedSortFields.has(sortBy) ? sortBy : "sortOrder";
+  const secondarySort = safeSortBy === "sortOrder" ? "name" : "sortOrder";
   const [items, total] = await Promise.all([
-    Model.find(query).sort({ sortOrder: 1, name: 1 }).skip(skip).limit(limit).lean(),
+    Model.find(query).sort({ [safeSortBy]: sortOrder, [secondarySort]: 1 }).skip(skip).limit(limit).lean(),
     Model.countDocuments(query),
   ]);
 

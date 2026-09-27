@@ -169,8 +169,8 @@ export default function AdminNotificationsPage() {
                 <CheckCircle2 className="w-3 h-3" /> {t("savedBadge")}
               </Badge>
             )}
-            <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="gap-1.5 rounded-xl">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> {t("refreshButtonLabel")}
+            <Button variant="outline" size="iconDense" onClick={fetchAll} disabled={loading} aria-label={t("refreshButtonLabel")} title={t("refreshButtonLabel")}>
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </>
         }
@@ -410,8 +410,8 @@ function EmailLogsTab() {
             <SelectItem value="test">{t("testSourceOption")}</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-1 ml-auto">
-          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> {t("refreshButtonLabel")}
+        <Button variant="outline" size="iconDense" onClick={fetchLogs} disabled={loading} className="ml-auto" aria-label={t("refreshButtonLabel")} title={t("refreshButtonLabel")}>
+          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
 

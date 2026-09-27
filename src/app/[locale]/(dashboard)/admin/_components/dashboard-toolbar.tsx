@@ -45,8 +45,10 @@ export function DashboardToolbar({ updatedLabel, updatedAt, labels }: DashboardT
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="min-h-9 gap-1.5"
+        size="iconDense"
+        className="shrink-0"
+        aria-label={pending ? labels.refreshing : labels.refresh}
+        title={pending ? labels.refreshing : labels.refresh}
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
@@ -57,7 +59,6 @@ export function DashboardToolbar({ updatedLabel, updatedAt, labels }: DashboardT
         }
       >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-        {labels.refresh}
       </Button>
       <Select value={period} onValueChange={changePeriod} disabled={pending}>
         <SelectTrigger className="h-9 w-[10.5rem] flex-1 gap-1.5 text-sm sm:flex-none" aria-label={labels.period}>

@@ -511,9 +511,8 @@ export default function AdminApplicationsPage() {
                 <Sparkles className="h-5 w-5 text-sky-500" />
                 <h3 className="heading-subsection font-semibold">{t("aiPipelineInsights")}</h3>
               </div>
-              <Button variant="ghost" size="sm" onClick={fetchAiInsights} disabled={aiLoading} className="gap-1.5">
+              <Button variant="ghost" size="iconDense" onClick={fetchAiInsights} disabled={aiLoading} aria-label={t("refresh")} title={t("refresh")}>
                 <RefreshCw className={`h-3.5 w-3.5 ${aiLoading ? "animate-spin" : ""}`} />
-                {t("refresh")}
               </Button>
             </div>
 

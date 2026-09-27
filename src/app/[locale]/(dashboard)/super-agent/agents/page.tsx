@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { useQueryFlag } from "@/hooks/useQueryFlag";
@@ -685,10 +686,9 @@ export default function SuperAgentAgentsPage() {
               </div>
               <div className="field">
                 <Label>{t("formLabelPassword")} <span className="text-destructive">*</span></Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   value={createForm.password}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+                  onChange={(password) => setCreateForm((f) => ({ ...f, password }))}
                   placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
                   aria-describedby="create-agent-password-hint"
                 />

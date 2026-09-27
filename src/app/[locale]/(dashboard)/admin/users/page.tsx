@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { ROLE_COLORS } from "@/lib/ui/statusColors";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -26,6 +27,7 @@ import {
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { PermissionEditor } from "@/components/shared/PermissionEditor";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
@@ -44,6 +46,7 @@ interface User {
   _id: string;
   name: string;
   email: string;
+  avatar?: string;
   role: string;
   isActive: boolean;
   locale: string;
@@ -79,6 +82,9 @@ export default function AdminUsersPage() {
   // The admin dashboard's "Users by role" rows link here with `?role=`.
   const [roleFilter, setRoleFilter] = useUrlFilter("role", "all", { allow: [...ROLES, "unknown"] });
   const [activeFilter, setActiveFilter] = useState("all");
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["name", "email", "role", "createdAt", "lastLogin"] });
+  const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const order = sortOrder === "desc" ? "desc" : "asc";
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState("");
@@ -134,6 +140,8 @@ export default function AdminUsersPage() {
       if (search) params.set("search", search);
       if (roleFilter && roleFilter !== "all") params.set("role", roleFilter);
       if (activeFilter && activeFilter !== "all") params.set("isActive", activeFilter);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
 
       const res = await fetch(`/api/admin/users?${params}`);
       if (res.ok) {
@@ -150,7 +158,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, activeFilter, page, limit, t]);
+  }, [search, roleFilter, activeFilter, sortBy, sortOrder, page, limit, t]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300);
@@ -558,7 +566,8 @@ export default function AdminUsersPage() {
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
-        <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-1.5 border-b border-border/80 sm:gap-2 panel-head">
+        <div data-table-toolbar="compact-admin" className="flex flex-col gap-2 border-b border-border/80 panel-head sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2">
             <div className="relative min-w-0 flex-1 basis-full sm:basis-auto sm:flex-none">
               <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input aria-label={t("searchPlaceholder")}
@@ -592,6 +601,23 @@ export default function AdminUsersPage() {
                 placeholder={t("allStatus")}
               />
             </div>
+            <TableSortControl
+              value={sortBy}
+              onValueChange={(value) => { setSortBy(value); resetPage(); }}
+              options={[
+                { value: "name", label: t("userTableHeader") },
+                { value: "email", label: t("email") },
+                { value: "role", label: t("roleTableHeader") },
+                { value: "createdAt", label: t("joinedTableHeader") },
+                { value: "lastLogin", label: t("exportHeaderLastLogin") },
+              ]}
+              order={order}
+              onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+              compact
+              className="shrink-0"
+            />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="dense" aria-label={t("export")} className="shrink-0 rounded-lg border-border/80 px-2 text-xs sm:px-3 sm:text-sm">
@@ -610,6 +636,7 @@ export default function AdminUsersPage() {
             <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 rounded-lg px-2 text-xs sm:px-3 sm:text-sm">
               <Plus className="h-3.5 w-3.5" /> {t("createUser")}
             </Button>
+          </div>
         </div>
 
         {/* Bulk Actions Bar */}
@@ -652,11 +679,11 @@ export default function AdminUsersPage() {
                   onCheckedChange={toggleAll}
                 />
               </TableHead>
-              <TableHead>{t("userTableHeader")}</TableHead>
-              <TableHead>{t("roleTableHeader")}</TableHead>
+              <TableHead><SortableTableHeader label={t("userTableHeader")} active={sortBy === "name"} order={order} onClick={() => { setSortBy("name"); setSortOrder(sortBy === "name" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead><SortableTableHeader label={t("roleTableHeader")} active={sortBy === "role"} order={order} onClick={() => { setSortBy("role"); setSortOrder(sortBy === "role" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
               <TableHead>{t("statusTableHeader")}</TableHead>
-              <TableHead>{t("exportHeaderLastLogin")}</TableHead>
-              <TableHead>{t("joinedTableHeader")}</TableHead>
+              <TableHead><SortableTableHeader label={t("exportHeaderLastLogin")} active={sortBy === "lastLogin"} order={order} onClick={() => { setSortBy("lastLogin"); setSortOrder(sortBy === "lastLogin" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead><SortableTableHeader label={t("joinedTableHeader")} active={sortBy === "createdAt"} order={order} onClick={() => { setSortBy("createdAt"); setSortOrder(sortBy === "createdAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
               <TableHead className="text-end">{t("actionsTableHeader")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -670,7 +697,6 @@ export default function AdminUsersPage() {
                 </TableCell>
               </TableRow>
             ) : users.map((user) => {
-              const initials = (user.name || "U").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
               /* formatDate's bare default is numeric (9/17/2026); the medium
                  form this table has always shown stays readable, and passing the
                  active locale is what the hardcoded "en-US" call blocked. */
@@ -693,11 +719,12 @@ export default function AdminUsersPage() {
                         email line on phone cards, visually detached from the
                         name it belongs to. */}
                     <div className="flex items-start gap-3">
-                      <Avatar className="mt-0.5 h-8 w-8 shrink-0">
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatar
+                        name={user.name}
+                        email={user.email}
+                        src={user.avatar}
+                        className="mt-0.5 h-8 w-8 shrink-0"
+                      />
                       <div className="min-w-0">
                         <p className="font-medium">{user.name || t("unnamed")}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
@@ -843,11 +870,10 @@ export default function AdminUsersPage() {
               </div>
               <div className="field">
                 <Label htmlFor="create-password">{t("password")} <span className="text-destructive">*</span></Label>
-                <Input
+                <PasswordInput
                   id="create-password"
-                  type="text"
                   value={createForm.password}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+                  onChange={(password) => setCreateForm((f) => ({ ...f, password }))}
                   placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
                   aria-describedby="create-password-hint"
                 />

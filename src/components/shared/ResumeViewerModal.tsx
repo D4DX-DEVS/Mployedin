@@ -415,7 +415,7 @@ export function ResumeViewerModal({
 
         {/* ── Phone pane switch (CV / Profile) — only when there is a profile panel ── */}
         {hasRightPanel && (
-          <div className="grid grid-cols-2 gap-1 border-b border-border/60 bg-background p-1.5 sm:hidden" role="tablist" aria-label={t("panes")}>
+          <div className="reference-tablist grid grid-cols-2 sm:hidden" role="tablist" aria-label={t("panes")}>
             {(["cv", "profile"] as const).map((pane) => (
               <button
                 key={pane}
@@ -423,9 +423,7 @@ export function ResumeViewerModal({
                 role="tab"
                 aria-selected={mobilePane === pane}
                 onClick={() => setMobilePane(pane)}
-                className={`min-h-10 rounded-lg text-sm font-semibold transition-colors ${
-                  mobilePane === pane ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
-                }`}
+                className={`reference-tab ${mobilePane === pane ? "border-primary bg-secondary/40 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >
                 {pane === "cv" ? t("tabCv") : t("tabProfile")}
               </button>
@@ -700,4 +698,3 @@ export function ResumeViewerModal({
   if (!mounted) return null;
   return createPortal(modal, document.body);
 }
-

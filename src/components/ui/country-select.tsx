@@ -120,14 +120,14 @@ export function CountrySelect({
         }}
       >
         {/* Search */}
-        <div className="flex items-center gap-2 border-b border-border/40 panel-head">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+        <div className="relative p-2">
+          <Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
           <input
             ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search or type a country…"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+            className="inline-select-search-input w-full ps-9 pe-3 text-sm outline-none placeholder:text-muted-foreground/50"
           />
         </div>
 

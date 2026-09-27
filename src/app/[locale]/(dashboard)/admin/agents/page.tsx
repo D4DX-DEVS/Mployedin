@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 
 interface AgentProfile {
   _id: string;
@@ -50,6 +52,7 @@ interface Agent {
   _id: string;
   name: string;
   email: string;
+  avatar?: string;
   isActive: boolean;
   createdAt: string;
   agentProfile: AgentProfile | null;
@@ -416,7 +419,8 @@ export default function AdminAgentsPage() {
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
-        <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 panel-head">
+        <div data-table-toolbar="compact-admin" className="flex flex-col gap-2 border-b border-border/80 panel-head sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <div className="relative toolbar-search-field">
               <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input aria-label={tr("searchAgentPlaceholder")}
@@ -438,6 +442,8 @@ export default function AdminAgentsPage() {
                 placeholder={tr("statusFilterAll")}
               />
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="dense" className="rounded-lg border-border/80">
@@ -457,6 +463,7 @@ export default function AdminAgentsPage() {
                 <Plus className="h-3.5 w-3.5" /> {tr("addAgent")}
               </Button>
             )}
+          </div>
         </div>
         {error ? (
           <div className="p-6">
@@ -496,10 +503,13 @@ export default function AdminAgentsPage() {
             ) : agents.map((agent) => (
               <TableRow key={agent._id}>
                 <TableCell>
-                  <div className="flex flex-col items-start gap-1.5">
-                    <span className="font-medium">{agent.name}</span>
-                    <span className="text-xs text-muted-foreground">{agent.email}</span>
-                    <StatusBadge status={agent.isActive !== false ? "active" : "inactive"} />
+                  <div className="flex items-start gap-3">
+                    <UserAvatar name={agent.name} email={agent.email} src={agent.avatar} className="h-9 w-9" />
+                    <div className="flex min-w-0 flex-col items-start gap-1.5">
+                      <span className="font-medium">{agent.name}</span>
+                      <span className="text-xs text-muted-foreground">{agent.email}</span>
+                      <StatusBadge status={agent.isActive !== false ? "active" : "inactive"} />
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-sm">
@@ -530,22 +540,26 @@ export default function AdminAgentsPage() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {can("agents", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => openEdit(agent)} title={tr("edit")}>
+                        <Button variant="ghost" size="xs" onClick={() => openEdit(agent)} title={tr("edit")} className="h-8 gap-1 px-2 text-xs">
                           <Pencil className="h-3.5 w-3.5 text-primary" />
+                          <span>{tr("edit")}</span>
                         </Button>
                       )}
                       {can("agents", "delete") && (agent.isActive !== false ? (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title={tr("deactivate")}>
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title={tr("deactivate")} className="h-8 gap-1 px-2 text-xs">
                           <Ban className="h-3.5 w-3.5 text-amber-500" />
+                          <span>{tr("deactivate")}</span>
                         </Button>
                       ) : (
-                        <Button variant="ghost" size="xs" onClick={() => handleActivate(agent._id)} title={tr("activate")}>
+                        <Button variant="ghost" size="xs" onClick={() => handleActivate(agent._id)} title={tr("activate")} className="h-8 gap-1 px-2 text-xs">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>{tr("activate")}</span>
                         </Button>
                       ))}
                       {can("agents", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title={tr("deletePermanently")}>
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title={tr("deletePermanently")} className="h-8 gap-1 px-2 text-xs">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          <span>{tr("deletePermanently")}</span>
                         </Button>
                       )}
                     </div>
@@ -586,7 +600,7 @@ export default function AdminAgentsPage() {
               </div>
               <div className="field">
                 <Label>{tr("password")} <span className="text-destructive">*</span></Label>
-                <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-agent-password-hint" />
+                <PasswordInput value={addForm.password} onChange={(password) => setAddForm((f) => ({ ...f, password }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-agent-password-hint" />
                 <p id="add-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
               </div>
               <div className="field">

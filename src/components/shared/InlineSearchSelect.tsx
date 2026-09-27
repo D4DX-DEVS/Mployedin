@@ -98,14 +98,14 @@ export function InlineSearchSelect({
         className="w-[var(--radix-popover-trigger-width)] min-w-[200px] max-w-[calc(100vw-1rem)] p-0"
       >
         {showSearch && (
-          <div className="flex items-center gap-2 border-b border-border/30 panel-head">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+          <div className="relative p-2">
+            <Search className="pointer-events-none absolute start-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("search")}
               aria-label={t("search")}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+              className="inline-select-search-input w-full ps-8 pe-3 text-sm outline-none placeholder:text-muted-foreground/50"
             />
           </div>
         )}

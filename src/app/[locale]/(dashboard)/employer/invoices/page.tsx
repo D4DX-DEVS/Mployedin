@@ -427,17 +427,17 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="w-full justify-start rounded-xl bg-secondary/40">
-            <TabsTrigger value="details" className="gap-1.5 rounded-lg text-xs">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="details" className="gap-1.5">
               <Receipt className="h-3 w-3" /> {t("tabDetails")}
             </TabsTrigger>
-            <TabsTrigger value="pay" className="gap-1.5 rounded-lg text-xs">
+            <TabsTrigger value="pay" className="gap-1.5">
               <CreditCard className="h-3 w-3" /> {t("tabPayment")}
             </TabsTrigger>
-            <TabsTrigger value="history" className="gap-1.5 rounded-lg text-xs">
+            <TabsTrigger value="history" className="gap-1.5">
               <Clock className="h-3 w-3" /> {t("tabHistory")}
             </TabsTrigger>
-            <TabsTrigger value="support" className="gap-1.5 rounded-lg text-xs">
+            <TabsTrigger value="support" className="gap-1.5">
               <MessageSquareWarning className="h-3 w-3" /> {t("tabSupport")}
             </TabsTrigger>
           </TabsList>

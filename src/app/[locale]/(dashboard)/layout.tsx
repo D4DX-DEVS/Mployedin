@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, setRequestLocale } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { getNavGroups } from "@/lib/nav/menuConfig";
 import type { ICompanyUserPermissions } from "@/models/CompanyUser";
 import { DashboardShell } from "@/components/shared/DashboardShell";
@@ -34,6 +34,16 @@ export default async function DashboardLayout({
   const locale = paramLocale;
   setRequestLocale(locale);
   const messages = await getMessages();
+  const adminTranslations = role === "admin" ? await getTranslations("adminDashboard") : null;
+  const adminName = session.user.name ?? adminTranslations?.("hero.fallbackName") ?? "Admin";
+  const adminHour = new Date().getHours();
+  const topbarGreeting = adminTranslations
+    ? adminHour < 12
+      ? adminTranslations("hero.greetingMorning", { name: adminName })
+      : adminHour < 17
+        ? adminTranslations("hero.greetingAfternoon", { name: adminName })
+        : adminTranslations("hero.greetingEvening", { name: adminName })
+    : undefined;
 
   // ── Tenant view detection ────────────────────────────────────────────────
   // The middleware injects x-tenant-* headers when an agent/super-agent/admin
@@ -97,6 +107,7 @@ export default async function DashboardLayout({
               userRole={effectiveRole}
               lastLogin={lastLogin}
               companyLogo={companyLogo}
+              topbarGreeting={topbarGreeting}
               tenantViewData={tenantViewData}
             >
               {children}

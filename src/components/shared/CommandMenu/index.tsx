@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Search } from "lucide-react";
+import { CornerDownLeft, Search } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -168,7 +168,22 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
         placeholder={entityRoutes ? t(entityRoutes.placeholderKey ?? "placeholderWithEntities") : t("placeholder")}
         value={query}
         onValueChange={setQuery}
+        wrapperClassName="mx-4 mt-3 rounded-xl border border-border/70 bg-muted/20 px-3 transition-colors focus-within:border-primary/40 focus-within:bg-background focus-within:ring-2 focus-within:ring-primary/10"
+        shortcut="⌘ K"
       />
+      <div className="border-b border-border/60 px-4 pb-3 pt-2.5">
+        <p className="mb-2 text-[11px] font-semibold text-muted-foreground">{t("whatLookingFor")}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {["people", "pages", "actions"].map((filter) => (
+            <span
+              key={filter}
+              className="inline-flex items-center rounded-md border border-border/70 bg-muted/45 px-2 py-1 text-[11px] font-medium text-muted-foreground"
+            >
+              {t(filter)}
+            </span>
+          ))}
+        </div>
+      </div>
       <CommandList>
         <CommandEmpty>{t("noResults")}</CommandEmpty>
 
@@ -356,6 +371,25 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
           </CommandGroup>
         ))}
       </CommandList>
+      <div className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-2.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="flex items-center gap-0.5">
+              <kbd className="rounded border border-border/70 bg-muted/50 px-1 py-0.5 font-mono">↑</kbd>
+              <kbd className="rounded border border-border/70 bg-muted/50 px-1 py-0.5 font-mono">↓</kbd>
+            </span>
+            {t("navigate")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <kbd className="rounded border border-border/70 bg-muted/50 px-1 py-0.5 font-mono"><CornerDownLeft className="h-3 w-3" /></kbd>
+            {t("select")}
+          </span>
+        </div>
+        <span className="hidden items-center gap-1.5 sm:inline-flex">
+          <Search className="h-3 w-3" />
+          {t("keyboardHelp")}
+        </span>
+      </div>
     </CommandDialog>
   );
 }
@@ -378,7 +412,7 @@ export function CommandMenuTrigger({ compact = false }: { locale?: string; compa
       className={
         compact
           ? "flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          : "flex w-full max-w-sm items-center gap-2 rounded-md border border-transparent bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition-all hover:border-border hover:bg-muted"
+          : "flex h-9 w-full max-w-sm items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground shadow-none transition-colors hover:border-border hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
       }
     >
       <Search className="h-4 w-4 shrink-0" />

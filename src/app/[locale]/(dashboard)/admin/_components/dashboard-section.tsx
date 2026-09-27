@@ -28,7 +28,10 @@ interface DashboardSectionProps {
 export function DashboardSection({ id, icon: Icon, iconClassName, title, description, action, aside, children }: DashboardSectionProps) {
   return (
     <section aria-labelledby={id} className={SECTION_PANEL} data-surface="light-panel">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+      <div
+        data-dashboard-section-header=""
+        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5"
+      >
         <div className="flex min-w-0 items-center gap-2.5 [flex-wrap:nowrap]">
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconClassName}`}>
             <Icon className="h-4 w-4" aria-hidden="true" />
@@ -55,7 +58,7 @@ export function DashboardSection({ id, icon: Icon, iconClassName, title, descrip
           </div>
         )}
       </div>
-      <div className="mt-2.5 sm:mt-3">{children}</div>
+      <div data-dashboard-section-body="" className="mt-3 sm:mt-4">{children}</div>
     </section>
   );
 }
@@ -87,9 +90,12 @@ interface DashboardCardProps {
 export function DashboardCard({ title, subtitle, subtitleOnPhone = true, action, className = "", children }: DashboardCardProps) {
   return (
     <div className={`workspace-subtle-surface flex h-full min-w-0 flex-col rounded-xl p-3 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.35)] ${className}`} data-surface="light-card">
-      <div className="flex items-start justify-between gap-3">
+      <div
+        data-dashboard-card-header=""
+        className="flex items-start justify-between gap-3 border-b border-border/70 pb-3"
+      >
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          <h3 className="text-[15px] font-semibold leading-5 text-foreground">{title}</h3>
           {subtitle && <p className={`text-xs text-muted-foreground ${subtitleOnPhone ? "" : "hidden sm:block"}`}>{subtitle}</p>}
         </div>
         {action && (
@@ -102,7 +108,7 @@ export function DashboardCard({ title, subtitle, subtitleOnPhone = true, action,
           </Link>
         )}
       </div>
-      <div className="mt-2 flex flex-1 flex-col">{children}</div>
+      <div data-dashboard-card-body="" className="mt-3 flex flex-1 flex-col">{children}</div>
     </div>
   );
 }

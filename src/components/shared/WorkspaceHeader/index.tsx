@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface WorkspaceMetric {
@@ -38,6 +39,8 @@ interface WorkspaceHeaderProps {
    *  while they fit and wrap beneath the title when they do not — the title
    *  itself is never squeezed. */
   actions?: ReactNode;
+  /** Leading identity icon used by the shared page header pattern. */
+  icon?: LucideIcon;
   /** Three or four totals in a slim strip under the title row. */
   metrics?: readonly WorkspaceMetric[];
   headingLevel?: 1 | 2;
@@ -58,6 +61,7 @@ export function WorkspaceHeader({
   context,
   status,
   actions,
+  icon: Icon = Sparkles,
   metrics,
   headingLevel = 1,
   className,
@@ -69,18 +73,23 @@ export function WorkspaceHeader({
   return (
     <section data-workspace-header="" className={cn("workspace-header", className)}>
       <div className="workspace-header-row">
-        <div className="workspace-header-text">
-          <Heading className="workspace-header-title text-balance">{title}</Heading>
-          {(context || status) && (
-            <p className="workspace-header-context">
-              {context && <span className="min-w-0 flex-1 basis-0 line-clamp-1">{context}</span>}
-              {status && (
-                <span className="workspace-header-status shrink-0" aria-live="polite">
-                  {status}
-                </span>
-              )}
-            </p>
-          )}
+        <div className="workspace-header-identity">
+          <span className="workspace-header-icon" aria-hidden="true">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div className="workspace-header-text">
+            <Heading className="workspace-header-title text-balance">{title}</Heading>
+            {(context || status) && (
+              <p className="workspace-header-context">
+                {context && <span className="min-w-0 flex-1 basis-0 line-clamp-1">{context}</span>}
+                {status && (
+                  <span className="workspace-header-status shrink-0" aria-live="polite">
+                    {status}
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
         </div>
         {actions && <div className="workspace-header-actions">{actions}</div>}
       </div>

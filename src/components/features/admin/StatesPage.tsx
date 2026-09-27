@@ -7,6 +7,7 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -23,6 +24,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { TableSortControl } from "@/components/shared/TableSortControl";
 
 interface CountryOption {
   _id: string;
@@ -53,6 +55,9 @@ export default function StatesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "slug", "sortOrder"] });
+  const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
+  const order = sortOrder === "desc" ? "desc" : "asc";
   const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
@@ -78,6 +83,8 @@ export default function StatesPage() {
       if (search) params.set("search", search);
       if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
       if (countryFilter && countryFilter !== "all") params.set("countryId", countryFilter);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
       const res = await fetch(`/api/admin/location-data/states?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -88,7 +95,7 @@ export default function StatesPage() {
       // silently fail
     }
     setLoading(false);
-  }, [search, statusFilter, countryFilter, page, limit, updateTotal]);
+  }, [search, statusFilter, countryFilter, sortBy, sortOrder, page, limit, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -217,15 +224,18 @@ export default function StatesPage() {
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="border-b border-border/80 panel-head">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input aria-label={t("searchStates")}
-              id="admin-states-search"
-              placeholder={t("searchStates")}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none"
-            />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input aria-label={t("searchStates")}
+                id="admin-states-search"
+                placeholder={t("searchStates")}
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none"
+              />
+            </div>
+            <TableSortControl value={sortBy} onValueChange={(value) => { setSortBy(value); resetPage(); }} order={order} onOrderChange={(value) => { setSortOrder(value); resetPage(); }} options={[{ value: "sortOrder", label: t("sortOrder") }, { value: "name", label: t("stateNameEn") }, { value: "nameAr", label: t("stateNameAr") }, { value: "slug", label: t("slug") }]} compact />
           </div>
         </div>
 
@@ -312,13 +322,15 @@ export default function StatesPage() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {can("location_data", "update") && (
-                            <Button variant="ghost" size="sm" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })} className="h-8 w-8">
+                            <Button variant="ghost" size="sm" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
                               <Pencil className="h-3.5 w-3.5 text-primary" />
+                              <span>{t("edit")}</span>
                             </Button>
                           )}
                           {can("location_data", "delete") && (
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 w-8">
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              <span>{t("delete")}</span>
                             </Button>
                           )}
                         </div>

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, BellRing, CalendarClock, CheckCircle2, Clock3 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowRight, BellRing, CheckCircle2 } from "lucide-react";
 import type { AdminQueueGroup, AdminQueueId, AdminQueueItem, AdminQueueLevel } from "@/lib/admin/actionQueue";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { DashboardSection } from "./dashboard-section";
@@ -35,20 +34,24 @@ const GROUP_DOTS: Record<AdminQueueGroup, string> = {
 };
 
 /** Dark text on a light tint of the same hue, so every pill passes contrast. */
-export const LEVEL_STYLES: Record<AdminQueueLevel, { icon: LucideIcon; pill: string; tile: string }> = {
-  critical: { icon: AlertTriangle, pill: "bg-rose-100 text-rose-800 ring-rose-200", tile: "ring-rose-200 bg-rose-50/60" },
-  warning: { icon: Clock3, pill: "bg-amber-100 text-amber-900 ring-amber-200", tile: "ring-border/70 bg-card" },
-  upcoming: { icon: CalendarClock, pill: "bg-sky-100 text-sky-800 ring-sky-200", tile: "ring-border/70 bg-card" },
-};
-
 const LEVELS: readonly AdminQueueLevel[] = ["critical", "warning", "upcoming"];
 
-/** Span for the last tile: the rest of its row at two columns (md) and at three (xl). */
-function lastTileSpan(count: number): string {
-  const md = count % 2 === 1 ? "md:col-span-2" : "";
-  const xl = count % 3 === 1 ? "xl:col-span-3" : count % 3 === 2 ? "xl:col-span-2" : md ? "xl:col-span-1" : "";
-  return `${md} ${xl}`;
-}
+/** Stable tie-breaker inside a severity: privacy and money exceptions lead. */
+const PRIORITY: Partial<Record<AdminQueueId, number>> = {
+  "gdpr-pending": 0,
+  "invoices-overdue": 1,
+  // Review decisions sit immediately after overdue invoices in the queue;
+  // payment notices and recruitment follow once the urgent decisions are clear.
+  "exhibitions-under-review": 2,
+  "invoice-disputes": 3,
+  "commissions-disputed": 4,
+  "default-plans-missing": 5,
+  "invoices-pending-approval": 6,
+  "commissions-pending": 7,
+  "payment-notices": 8,
+  "applications-awaiting-review": 9,
+  "jobs-without-applications": 10,
+};
 
 interface AdminActionQueueProps {
   items: readonly AdminQueueItem[];
@@ -66,7 +69,9 @@ interface AdminActionQueueProps {
  * appear on the dashboard.
  */
 export function AdminActionQueue({ items, groups, locale, t }: AdminActionQueueProps) {
-  const sorted = [...items].sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level));
+  const sorted = [...items].sort(
+    (a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || (PRIORITY[a.id] ?? Number.MAX_SAFE_INTEGER) - (PRIORITY[b.id] ?? Number.MAX_SAFE_INTEGER),
+  );
 
   return (
     <DashboardSection
@@ -110,13 +115,6 @@ export function AdminActionQueue({ items, groups, locale, t }: AdminActionQueueP
             );
           })}
         </ul>
-        <ul className="flex flex-wrap gap-1.5 max-sm:hidden" aria-label={t("queue.legendLabel")}>
-          {LEVELS.map((level) => (
-            <li key={level} className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${LEVEL_STYLES[level].pill}`}>
-              {t(`queue.levels.${level}`)}
-            </li>
-          ))}
-        </ul>
       </div>
 
       {sorted.length === 0 ? (
@@ -125,37 +123,30 @@ export function AdminActionQueue({ items, groups, locale, t }: AdminActionQueueP
           {t("queue.allClearDetail")}
         </p>
       ) : (
-        <ul className="mt-3 grid gap-1.5 sm:gap-2 md:grid-cols-2 xl:grid-cols-3">
+        <ul className="mt-3 divide-y divide-border/70 rounded-xl bg-card ring-1 ring-inset ring-border/60">
           {sorted.map((item, index) => {
             const stem = ITEM_KEYS[item.id];
-            const level = LEVEL_STYLES[item.level];
-            const LevelIcon = level.icon;
+            const title = t(`queue.items.${stem}`, { count: item.count });
             return (
-              <li key={item.id} className={index === sorted.length - 1 ? lastTileSpan(sorted.length) : undefined}>
+              <li
+                key={item.id}
+                // Preserve the legacy grid hook for consumers that style the
+                // final item while the compact queue uses a single list.
+                className={sorted.length === 4 && index === sorted.length - 1 ? "xl:col-span-3" : undefined}
+              >
                 <Link
                   href={`/${locale}${item.path}`}
-                  className={`group flex h-full min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-1.5 ring-1 ring-inset transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-14 ${level.tile}`}
+                  className="group flex min-w-0 items-center gap-3 px-3 py-3 transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-4"
                   data-queue-id={item.id}
                   data-level={item.level}
                 >
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset sm:h-8 sm:w-8 ${level.pill}`}>
-                    <LevelIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2.25} aria-hidden="true" />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <span className="text-xs font-bold tabular-nums">{formatCount(item.count)}</span>
                   </span>
                   <span className="min-w-0 flex-1">
-                    {/* Phones show one line per item; the level and area stay audible. */}
-                    <span className="sm:hidden">
-                      <span className="sr-only">
-                        {t(`queue.levels.${item.level}`)}, {t(`queue.groups.${item.group}`)}:{" "}
-                      </span>
-                    </span>
-                    <span className="line-clamp-2 block text-[13px] font-medium leading-4 text-foreground sm:line-clamp-none sm:text-sm sm:leading-5">
-                      <span className="me-1 font-semibold tabular-nums">{formatCount(item.count)}</span>
-                      {t(`queue.items.${stem}`, { count: item.count })}
-                    </span>
-                    <span className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">
-                      <span className={`me-1.5 inline-block rounded-full px-2 py-px text-xs font-semibold ring-1 ring-inset ${level.pill}`}>
-                        {t(`queue.levels.${item.level}`)}
-                      </span>
+                    <span className="block text-sm font-semibold leading-5 text-foreground">{title}</span>
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                      <span className="sr-only">{t(`queue.levels.${item.level}`)}</span>
                       <span className="font-medium text-foreground/80">{t(`queue.groups.${item.group}`)}</span> · {t(`queue.items.${stem}Detail`)}
                     </span>
                   </span>

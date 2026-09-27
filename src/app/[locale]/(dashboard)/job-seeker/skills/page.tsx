@@ -907,10 +907,12 @@ export default function JobSeekerSkillsPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="iconDense"
                     onClick={loadSuggestions}
                     disabled={loadingSuggestions}
-                    className="h-7 px-2 text-xs"
+                    className="shrink-0"
+                    aria-label={t("refresh")}
+                    title={t("refresh")}
                   >
                     {loadingSuggestions ? (
                       <Loader2 className="h-3 w-3 animate-spin" />

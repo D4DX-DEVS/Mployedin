@@ -321,18 +321,14 @@ export default function UnifiedCandidatePage() {
 
       {/* Tabs. Five labels do not fit a phone, and without `nowrap` they broke
           mid-word ("Applicati / ons"). The strip scrolls sideways instead. */}
-      <div className="scrollbar-none flex gap-1 overflow-x-auto border-b" role="tablist">
+      <div className="reference-tablist scrollbar-none" role="tablist">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 ${
-              activeTab === tab.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
+            className={`reference-tab ${activeTab === tab.key ? "border-primary bg-secondary/40 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             {tab.label}
             {tab.count != null && <span className="text-xs opacity-60">({tab.count})</span>}

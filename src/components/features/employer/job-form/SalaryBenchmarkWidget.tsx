@@ -163,12 +163,13 @@ export function SalaryBenchmarkWidget({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-6 px-2 text-[11px] gap-1 text-muted-foreground"
+              className="size-8 text-muted-foreground"
               onClick={fetchBenchmark}
               disabled={loading}
+              aria-label={t("refresh")}
+              title={t("refresh")}
             >
               {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" aria-hidden="true" />}
-              {t("refresh")}
             </Button>
           )}
           {data && (

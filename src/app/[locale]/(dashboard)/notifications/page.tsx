@@ -9,6 +9,7 @@ import { usePageNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/us
 import { EnablePushButton } from "@/components/shared/EnablePushButton";
 import { resolveNotificationText, localizeActionUrl } from "@/lib/notifications/resolve";
 import Link from "next/link";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 
 export default function NotificationsPage() {
   const t = useTranslations("notificationsPage");
@@ -80,13 +81,23 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {notifications.map((n) => {
             const { title, body } = resolveNotificationText(n, tc, locale);
+            const actorName = [n.meta?.actorName, n.meta?.userName, n.meta?.name]
+              .find((value): value is string => typeof value === "string" && value.trim().length > 0)
+              ?? title;
+            const actorEmail = typeof n.meta?.actorEmail === "string" ? n.meta.actorEmail : undefined;
+            const actorAvatar = [n.meta?.actorAvatar, n.meta?.avatar, n.meta?.userAvatar]
+              .find((value): value is string => typeof value === "string" && value.trim().length > 0);
             const cardClassName = `flex w-full gap-3 rounded-xl border p-4 text-start transition-all hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 n.isRead ? "opacity-70 bg-background" : "bg-primary/5 border-primary/20"
               }`;
             const content = <>
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${typeIcon(n.type ?? "system")}`}>
-                <Bell className="h-4 w-4" aria-hidden="true" />
-              </div>
+              <UserAvatar
+                name={actorName}
+                email={actorEmail}
+                src={actorAvatar}
+                className="h-9 w-9 flex-shrink-0"
+                fallbackClassName={typeIcon(n.type ?? "system")}
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{body}</p>
