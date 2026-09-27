@@ -75,6 +75,8 @@ export function LanguageSwitcher() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
             aria-label={`Switch to ${l.code === "en" ? "English" : "Arabic"}`}
+            aria-pressed={isActive}
+            title={l.code === "en" ? "English" : "Arabic"}
           >
             <Image src={l.flag} alt="" width={16} height={12} className="rounded-[2px]" style={{ width: "16px", height: "12px" }} unoptimized />
             <span className="tracking-wide hidden sm:inline-block">{l.label}</span>

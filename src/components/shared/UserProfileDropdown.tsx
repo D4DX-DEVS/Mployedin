@@ -261,9 +261,9 @@ export function UserProfileDropdown({
             onClick={(e) => e.stopPropagation()}
           >
             <span className="truncate text-sm text-muted-foreground">{t("preferences")}</span>
-            {/* Force the switcher to its compact flag-only width — its sm: breakpoint
-                is viewport-based and would overflow this 288px menu. */}
-            <div className="flex shrink-0 items-center gap-2 [&>div:first-child]:!w-16 [&>div:first-child]:[&_span]:hidden">
+            {/* Keep both language labels visible in the account menu so the
+                control reads as a switch instead of two unexplained flags. */}
+            <div className="flex shrink-0 items-center">
               <LanguageSwitcher />
             </div>
           </div>
