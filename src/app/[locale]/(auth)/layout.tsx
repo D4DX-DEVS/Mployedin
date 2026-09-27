@@ -10,7 +10,6 @@ import {
   MapPin,
   ShieldCheck,
   Sparkles,
-  Users,
 } from "lucide-react";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
@@ -59,37 +58,52 @@ export default async function AuthLayout({
               </div>
             </div>
 
-            <div className="max-w-2xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+            <div className="my-auto max-w-2xl py-10 xl:py-14">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 {t("trustedWorkspace")}
               </div>
-              {/* Marketing line, not the page title: each auth page owns its h1. */}
-              <p className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.04em] text-foreground xl:text-[3.35rem]">
+              <p className="max-w-xl text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-foreground xl:text-[3.45rem]">
                 {t("heading")}
               </p>
               <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground xl:text-base xl:leading-7">
                 {t("description")}
               </p>
 
-              <div className="relative mt-6 max-w-xl">
-                <div className="absolute -inset-5 rounded-[2rem] bg-primary/10 blur-2xl" />
-                <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-card/88 shadow-[0_30px_80px_-42px_rgba(30,47,108,0.55)] backdrop-blur card-pad">
-                  <div className="flex items-center justify-between gap-4">
+              <div className="relative mt-8 max-w-xl">
+                <div className="absolute -inset-6 rounded-[2.25rem] bg-primary/10 blur-3xl" />
+                <div className="relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-card/80 p-4 shadow-[0_32px_100px_-45px_rgba(30,47,108,0.7)] backdrop-blur-xl sm:p-5">
+                  <div className="flex items-center justify-between gap-4 border-b border-border/60 pb-4">
                     <div>
-                      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
                         <Sparkles className="h-3.5 w-3.5" />
-                        {t("matchPanelEyebrow")}
+                        {t("intelligenceEyebrow")}
                       </p>
-                      <h2 className="mt-1.5 text-base font-semibold text-foreground xl:text-lg">{t("matchPanelTitle")}</h2>
+                      <h2 className="mt-1.5 text-base font-semibold text-foreground xl:text-lg">{t("intelligenceTitle")}</h2>
                     </div>
-                    <span className="rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700">
-                      {t("matchScore", { score: 92 })}
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {t("liveSignal")}
                     </span>
                   </div>
 
-                  <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border/70 bg-background/70 p-3.5">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark)),hsl(var(--brand-cyan)))] text-white">
+                  <div className="mt-4 grid grid-cols-3 gap-2.5">
+                    <div className="rounded-xl border border-primary/10 bg-primary/[0.06] p-3">
+                      <p className="text-lg font-semibold tracking-tight text-foreground">92%</p>
+                      <p className="mt-1 text-[10px] font-medium leading-4 text-muted-foreground">{t("signalMatch")}</p>
+                    </div>
+                    <div className="rounded-xl border border-primary/10 bg-primary/[0.06] p-3">
+                      <p className="text-lg font-semibold tracking-tight text-foreground">24/7</p>
+                      <p className="mt-1 text-[10px] font-medium leading-4 text-muted-foreground">{t("signalNetwork")}</p>
+                    </div>
+                    <div className="rounded-xl border border-primary/10 bg-primary/[0.06] p-3">
+                      <p className="text-lg font-semibold tracking-tight text-foreground">1</p>
+                      <p className="mt-1 text-[10px] font-medium leading-4 text-muted-foreground">{t("signalWorkspace")}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-3 rounded-2xl border border-border/70 bg-background/75 p-3.5">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark)),hsl(var(--brand-cyan)))] text-white shadow-lg shadow-primary/20">
                       <BriefcaseBusiness className="h-5 w-5" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -104,20 +118,11 @@ export default async function AuthLayout({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-primary/[0.06] p-3">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                        <Users className="h-4 w-4 text-primary" />
-                        {t("candidateWorkspace")}
-                      </div>
-                      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("candidateWorkspaceDescription")}</p>
-                    </div>
-                    <div className="rounded-xl bg-primary/[0.06] p-3">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                        <BriefcaseBusiness className="h-4 w-4 text-primary" />
-                        {t("employerWorkspace")}
-                      </div>
-                      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("employerWorkspaceDescription")}</p>
+                  <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-primary/10 bg-primary/[0.045] px-3 py-2.5">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground">{t("insightTitle")}</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{t("insightDescription")}</p>
                     </div>
                   </div>
                 </div>
