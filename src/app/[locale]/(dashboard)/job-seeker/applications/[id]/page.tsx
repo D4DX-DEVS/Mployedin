@@ -37,6 +37,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface ApplicationDetail {
@@ -547,6 +548,8 @@ function DocumentsSection({
   t: ReturnType<typeof useTranslations>;
   tc: ReturnType<typeof useTranslations>;
 }) {
+  const { confirm, ConfirmDialogNode } = useConfirm();
+  const tConfirm = useTranslations("confirm");
   const [showUpload, setShowUpload] = useState(false);
   const [docName, setDocName] = useState("");
   const [docUrl, setDocUrl] = useState("");
@@ -576,14 +579,20 @@ function DocumentsSection({
   }
 
   async function handleDelete(url: string) {
+    const ok = await confirm({
+      message: tConfirm("deleteMessage"),
+      confirmLabel: tConfirm("delete"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setDeleting(url);
     try {
-      await csrfFetch(`/api/applications/${applicationId}/documents`, {
+      const res = await csrfFetch(`/api/applications/${applicationId}/documents`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      onUpdated();
+      if (res.ok) onUpdated();
     } finally {
       setDeleting(null);
     }
@@ -591,6 +600,7 @@ function DocumentsSection({
 
   return (
     <section className="space-y-3">
+      {ConfirmDialogNode}
       <div className="flex items-center justify-between">
         <h2 className="heading-section font-semibold flex items-center gap-2">
           <Paperclip className="h-4 w-4" /> {t("documents")} ({documents.length})

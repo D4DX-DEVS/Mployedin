@@ -34,6 +34,7 @@ import {
   ScreeningWelcome,
 } from "./tabs/WelcomeScreens";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface Message {
@@ -200,6 +201,8 @@ export function RecruitmentAssistant() {
   const locale = (params?.locale as string) ?? "en";
   const isRtl = locale === "ar";
   const t = useTranslations("recruitmentAI");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
 
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
@@ -325,7 +328,14 @@ export function RecruitmentAssistant() {
 
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await csrfFetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
+    const ok = await confirm({
+      message: tConfirm("deleteMessage"),
+      confirmLabel: tConfirm("delete"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    const response = await csrfFetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
+    if (!response.ok) return;
     setThreads((prev) => prev.filter((th) => th._id !== id));
     if (threadId === id) newConversation();
   };
@@ -573,6 +583,7 @@ export function RecruitmentAssistant() {
 
   return createPortal(
     <>
+      {ConfirmDialogNode}
       {/* Floating trigger button — only shown when fully closed */}
       {!open && (
         <button

@@ -4481,7 +4481,11 @@
   "confirm": {
     "title": "Are you sure?",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "remove": "Remove",
+    "deleteMessage": "This action will permanently remove the selected item. Do you want to continue?",
+    "removeMessage": "This will remove the current photo or logo. Do you want to continue?"
   },
   "calendar": {
     "today": "Today",

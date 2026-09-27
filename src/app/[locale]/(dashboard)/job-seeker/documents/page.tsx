@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { useConfirm } from "@/hooks/useConfirm";
 
 /* ── Document Categories ── */
 
@@ -113,6 +114,8 @@ interface ExtractedData {
 
 export default function JobSeekerDocumentsPage() {
   const t = useTranslations("jobSeekerExtra.documents");
+  const { confirm, ConfirmDialogNode } = useConfirm();
+  const tConfirm = useTranslations("confirm");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [file, setFile] = useState<File | null>(null);
@@ -313,6 +316,12 @@ export default function JobSeekerDocumentsPage() {
   };
 
   const deleteDocument = async (doc: UploadedDocument) => {
+    const ok = await confirm({
+      message: tConfirm("deleteMessage"),
+      confirmLabel: tConfirm("delete"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/job-seeker/documents?id=${doc.id}`, { method: "DELETE" });
       if (res.ok || res.status === 404) {
@@ -334,6 +343,7 @@ export default function JobSeekerDocumentsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHeader
         title={t("title")}
         description={t("description")}

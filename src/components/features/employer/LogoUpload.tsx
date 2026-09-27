@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Camera, Trash2, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/hooks/useConfirm";
 
 function getCsrfToken(): string {
   const match = document.cookie
@@ -24,6 +25,8 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 
 export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemove }: LogoUploadProps) {
   const t = useTranslations("logoUpload");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -78,6 +81,12 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
   }, [onUploadComplete]);
 
   const handleRemove = useCallback(async () => {
+    const ok = await confirm({
+      message: tConfirm("removeMessage"),
+      confirmLabel: tConfirm("remove"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setUploading(true);
     setError("");
     try {
@@ -94,13 +103,15 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
     } finally {
       setUploading(false);
     }
-  }, [onRemove]);
+  }, [confirm, onRemove, t, tConfirm]);
 
   const initials = companyName
     ? companyName.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
     : "CO";
 
   return (
+    <>
+      {ConfirmDialogNode}
     <div className="flex items-center gap-5">
       <div className="relative group">
         <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border/60 bg-muted/30 flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary/40">
@@ -168,5 +179,6 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
         {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
       </div>
     </div>
+    </>
   );
 }

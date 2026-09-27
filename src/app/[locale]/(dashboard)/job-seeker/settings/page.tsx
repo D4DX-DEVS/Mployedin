@@ -44,6 +44,7 @@ import { AvailabilityCalendar, type DayAvailability } from "@/components/feature
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { getCsrfToken } from "@/lib/security/csrf-client";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -259,6 +260,8 @@ export default function JobSeekerSettingsPage() {
   // Deep-linked seekers (email footers, bookmarks) have nothing to pop.
   const { goBack } = useBackNavigation(`/${locale}/job-seeker`);
   const t = useTranslations("jobSeekerExtra.settings");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, type: "success", message: "" });
@@ -327,6 +330,12 @@ export default function JobSeekerSettingsPage() {
   }, [session?.user?.image, updateSession]);
 
   const handleAvatarRemove = useCallback(async () => {
+    const ok = await confirm({
+      message: tConfirm("removeMessage"),
+      confirmLabel: tConfirm("remove"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setAvatarUploading(true);
     setAvatarError("");
     try {
@@ -343,7 +352,7 @@ export default function JobSeekerSettingsPage() {
     } finally {
       setAvatarUploading(false);
     }
-  }, [updateSession]);
+  }, [confirm, tConfirm, updateSession]);
 
   const form = useForm<SettingsForm>({
     resolver: zodResolver(settingsFormSchema),
@@ -443,6 +452,7 @@ export default function JobSeekerSettingsPage() {
 
   return (
     <TooltipProvider>
+      {ConfirmDialogNode}
       <form
         id="settings-form"
         onSubmit={handleSubmit(onSubmit)}

@@ -16,6 +16,7 @@ import { ToolProposalCard } from "./ToolProposalCard";
 import { sameOriginPath } from "./links";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { useConfirm } from "@/hooks/useConfirm";
 import { stripToolDataEcho, toolDataEntry } from "@/lib/ai/copilot/historyToolData";
 
 let idCounter = 0;
@@ -127,6 +128,8 @@ export function Copilot({ className }: CopilotProps) {
   const locale = useLocale();
   const isRtl = locale === "ar";
   const t = useTranslations("copilot");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
@@ -463,8 +466,14 @@ export function Copilot({ className }: CopilotProps) {
     setShowHistory(false);
   };
 
-  const deleteChat = (id: string, e: React.MouseEvent) => {
+  const deleteChat = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const ok = await confirm({
+      message: tConfirm("deleteMessage"),
+      confirmLabel: tConfirm("delete"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     const chats = loadChats().filter((c) => c.id !== id);
     persistChats(chats);
     setSavedChats(chats);
@@ -679,6 +688,7 @@ export function Copilot({ className }: CopilotProps) {
 
   return createPortal(
     <>
+      {ConfirmDialogNode}
       {!open && (
         <button
           ref={triggerRef}
