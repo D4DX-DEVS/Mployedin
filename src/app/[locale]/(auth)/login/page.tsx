@@ -315,7 +315,7 @@ export default function LoginPage() {
             required
             autoComplete="email"
             autoFocus
-            className="h-11 rounded-xl border-border/70 bg-background/70 px-4 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            className="h-11 rounded-xl border-border/70 bg-background/70 px-4 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
         </div>
 
@@ -338,7 +338,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="h-11 rounded-xl border-border/70 bg-background/70 px-4 pe-11 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+              className="h-11 rounded-xl border-border/70 bg-background/70 px-4 pe-11 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
             />
             <button
               type="button"
@@ -369,7 +369,7 @@ export default function LoginPage() {
               pattern="[0-9]{6}"
               aria-invalid={error?.kind === "two-factor"}
               aria-describedby={error?.kind === "two-factor" ? "login-error" : undefined}
-              className="h-11 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+              className="h-11 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
             />
           </div>
         )}

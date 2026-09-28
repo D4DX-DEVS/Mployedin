@@ -181,7 +181,7 @@ export default function ResetPasswordPage() {
               required
               minLength={12}
               autoComplete="new-password"
-              className="h-11 px-4 pr-11 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+              className="h-11 px-4 pr-11 bg-transparent transition-all focus-visible:ring-0 focus-visible:border-primary/40 rounded-lg"
             />
             <button
               type="button"
@@ -227,7 +227,7 @@ export default function ResetPasswordPage() {
               required
               minLength={12}
               autoComplete="new-password"
-              className="h-11 px-4 pr-11 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+              className="h-11 px-4 pr-11 bg-transparent transition-all focus-visible:ring-0 focus-visible:border-primary/40 rounded-lg"
             />
             <button
               type="button"
