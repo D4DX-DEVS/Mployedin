@@ -30,6 +30,11 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+/* Anything a person can type into or pick from. Radix Select's trigger is a
+   `role="combobox"` button, so it counts without a native field. */
+const EDITABLE_FIELD =
+  'input:not([type="hidden"]), textarea, select, [contenteditable=""], [contenteditable="true"], [role="combobox"]'
+
 const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
@@ -37,9 +42,35 @@ const DialogContent = React.forwardRef<
     overlayClassName?: string
     /** On mobile, render as bottom sheet sliding up from bottom; centered dialog on sm+. Default true; pass false for centered dialog on all screens. */
     mobileSheet?: boolean
+    /** Whether a click (or focus move) outside closes the dialog. Left unset, a dialog holding an editable field stays open and a read-only one closes. */
+    closeOnOutsideClick?: boolean
   }
->(({ className, children, hideClose, overlayClassName, mobileSheet = true, ...props }, ref) => {
+>(({ className, children, hideClose, overlayClassName, mobileSheet = true, closeOnOutsideClick, onInteractOutside, ...props }, ref) => {
   const tCommon = useTranslations("common");
+  /* A stray click on the backdrop used to close every dialog, so a half-filled
+     create/edit form vanished with everything typed into it (admin Add
+     Commission was the reported case; every role's CRUD dialogs shared it).
+     A dialog holding a field now closes only through its own Cancel, ✕ or
+     Escape. Checked at the moment of the click, not on mount, because
+     multi-step dialogs swap their fields in and out. */
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  const setContentRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      contentRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref]
+  );
+  const handleInteractOutside: typeof onInteractOutside = (event) => {
+    onInteractOutside?.(event);
+    if (event.defaultPrevented) return;
+    const keepOpen =
+      closeOnOutsideClick === undefined
+        ? Boolean(contentRef.current?.querySelector(EDITABLE_FIELD))
+        : !closeOnOutsideClick;
+    if (keepOpen) event.preventDefault();
+  };
   /* A dialog that asks for its own width has to get it.
      `cn()` is tailwind-merge, which only drops a conflicting utility when the
      variant prefix matches — so the default `sm:max-w-lg` used to survive
@@ -55,7 +86,8 @@ const DialogContent = React.forwardRef<
   <DialogPortal>
     <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
-      ref={ref}
+      ref={setContentRef}
+      onInteractOutside={handleInteractOutside}
       className={cn(
         "fixed z-[10000] grid gap-3 overflow-y-auto overscroll-contain border border-border bg-background p-4 shadow-2xl shadow-black/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:gap-4 sm:p-6",
         /* Only when the caller named no width of its own. */

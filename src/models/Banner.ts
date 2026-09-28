@@ -7,7 +7,6 @@ export interface IBanner extends Document {
   subtitle: string;
   subtitleAr: string;
   image: string;
-  imageMobile: string;
   linkUrl: string;
   linkText: string;
   linkTextAr: string;
@@ -24,7 +23,6 @@ const BannerSchema = new Schema<IBanner>(
     subtitle: { type: String, default: "", trim: true },
     subtitleAr: { type: String, default: "", trim: true },
     image: { type: String, required: true },
-    imageMobile: { type: String, default: "" },
     linkUrl: { type: String, default: "", trim: true },
     linkText: { type: String, default: "", trim: true },
     linkTextAr: { type: String, default: "", trim: true },

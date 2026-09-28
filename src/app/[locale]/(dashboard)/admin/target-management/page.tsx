@@ -2,25 +2,23 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  CompactProgress, RiskBadge, PerformanceBadge, KpiCard, TargetEmptyState,
-  TargetTypeIcon, RankBadge, CompletionStage, getCompletionStage, IncentiveTierBadge,
+  CompactProgress, RiskBadge, PerformanceBadge, TargetEmptyState,
+  RankBadge, CompletionStage, IncentiveTierBadge,
 } from "@/components/features/targets/TargetComponents";
 import {
-  Plus, Building2, Users, DollarSign, Crosshair, Sparkles, ArrowRight,
-  CalendarDays, RotateCcw, Eye, Trash2, ChevronDown, ChevronRight,
-  UsersRound, Activity, ShieldAlert, BarChart3, Download, Copy,
-  TrendingUp, MapPin, Filter, MoreHorizontal, FileText, Award, SplitSquareVertical,
+  Plus, Building2, Users, DollarSign, Crosshair, CalendarDays, Eye, Trash2, UsersRound, Activity, ShieldAlert, BarChart3, Download, Copy, TrendingUp, MapPin, Award, SplitSquareVertical,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -28,6 +26,8 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { TARGET_PROFILE_SORT_FIELDS, type TargetProfileSortField } from "@/lib/targets/profileSortFields";
 import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
@@ -70,7 +70,8 @@ interface Totals {
   totalTeamSize: number;
   employer: { target: number; achieved: number };
   employee: { target: number; achieved: number };
-  finance: { target: number; achieved: number };
+  /** Main currency only; other currencies are listed in `others`, never added in. */
+  finance: { currency: string | null; target: number; achieved: number; others: { currency: string; target: number; achieved: number }[] };
   avgPerformance: number;
   riskBreakdown: { high: number; medium: number; low: number };
   regions: string[];
@@ -108,12 +109,15 @@ interface ReassignSupervisorOption {
 
 type TabView = "dashboard" | "leaderboard";
 
+const SORT_FIELDS: string[] = [...TARGET_PROFILE_SORT_FIELDS];
+
 /* ------------------------------------------------------------------ */
 /*  Admin Target Management Page                                       */
 /* ------------------------------------------------------------------ */
 
 export default function AdminTargetManagementPage() {
   const t = useTranslations("targets");
+  const tc = useTranslations("common");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -136,7 +140,9 @@ export default function AdminTargetManagementPage() {
   const [riskFilter, setRiskFilter] = useState<"all" | "high" | "medium" | "low">("all");
   const [completionFilter, setCompletionFilter] = useState<"all" | CompletionStage>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "", { allow: SORT_FIELDS });
+  const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const order = sortOrder === "asc" ? "asc" : "desc";
   const [tab, setTab] = useState<TabView>("dashboard");
   const [regionOptions, setRegionOptions] = useState<string[]>([]);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
@@ -163,6 +169,8 @@ export default function AdminTargetManagementPage() {
       if (riskFilter !== "all") params.set("risk", riskFilter);
       if (completionFilter !== "all") params.set("completion", completionFilter);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (sortBy) params.set("sortBy", sortBy);
+      params.set("sortOrder", order);
       const res = await fetch(`/api/admin/target-profiles?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
@@ -175,7 +183,7 @@ export default function AdminTargetManagementPage() {
     } finally {
       setLoading(false);
     }
-  }, [yearFilter, regionFilter, riskFilter, completionFilter, searchQuery, page, limit, paginationParams, updateTotal]);
+  }, [yearFilter, regionFilter, riskFilter, completionFilter, searchQuery, sortBy, order, page, limit, paginationParams, updateTotal]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -235,6 +243,28 @@ export default function AdminTargetManagementPage() {
   useEffect(() => { fetchReassignOptions(); }, [fetchReassignOptions]);
 
   const filteredProfiles = profiles;
+
+  // Same toggle as admin Interviews: a new column starts ascending, the active one flips.
+  const toggleSort = (field: TargetProfileSortField) => {
+    setSortBy(field);
+    setSortOrder(sortBy === field && order === "asc" ? "desc" : "asc");
+    resetPage();
+  };
+  // No sortBy = date added, the API's own order; the filter bar names it so the
+  // direction button still has something to flip.
+  const sortOptions = [
+    { value: "dateAdded", label: t("sortDateAdded") },
+    { value: "name", label: t("supervisorHeader") },
+    { value: "teamSize", label: t("teamHeader") },
+    { value: "employerProgress", label: t("employerHeader") },
+    { value: "employeeProgress", label: t("employeeHeader") },
+    { value: "financeProgress", label: t("financeHeader") },
+    { value: "overallProgress", label: t("performanceHeader") },
+    { value: "risk", label: t("riskHeader") },
+  ];
+  const sortHeader = (field: TargetProfileSortField, label: string) => (
+    <SortableTableHeader label={label} active={sortBy === field} order={order} onClick={() => toggleSort(field)} />
+  );
 
   // Actions
   const handleCancel = async (id: string) => {
@@ -335,6 +365,16 @@ export default function AdminTargetManagementPage() {
   };
 
   const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
+  /* The finance total is in one currency, named by the API. It used to be a
+     sum over every currency, labelled with whatever the first row's was. */
+  const financeAmount = (value: number, notation: "standard" | "compact" = "standard") => totals?.finance.currency
+    ? formatCount(value, { style: "currency", currency: totals.finance.currency, notation, maximumFractionDigits: notation === "compact" ? 1 : 0 }, locale)
+    : formatCount(value, { notation }, locale);
+  const financeRatio = (notation: "standard" | "compact") =>
+    `${financeAmount(totals?.finance.achieved ?? 0, notation)} / ${financeAmount(totals?.finance.target ?? 0, notation)}`;
+  // Phones: bare compact numbers. Even "AED 0 / AED 612K" is wider than a third
+  // of the strip; the currency is named in the line under the risk chips.
+  const financeRatioPhone = `${formatCount(totals?.finance.achieved ?? 0, { notation: "compact", maximumFractionDigits: 1 }, locale)} / ${formatCount(totals?.finance.target ?? 0, { notation: "compact", maximumFractionDigits: 1 }, locale)}`;
 
   return (
     <div className="page-container">
@@ -351,10 +391,16 @@ export default function AdminTargetManagementPage() {
         description={t("description")}
         metrics={[
           { label: t("supervisorCount"), value: totals?.supervisors ?? 0, note: t("totalAgentsNote", { count: totals?.totalTeamSize ?? 0 }), icon: UsersRound, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
-          { label: t("employerLabel"), value: `${totals?.employer.achieved ?? 0}/${totals?.employer.target ?? 0}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employer.target ?? 0) - (totals?.employer.achieved ?? 0))) }), icon: Building2, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
-          { label: t("employeeLabel"), value: `${totals?.employee.achieved ?? 0}/${totals?.employee.target ?? 0}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employee.target ?? 0) - (totals?.employee.achieved ?? 0))) }), icon: Users, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
-          { label: t("financeLabel"), value: `${formatCount(totals?.finance.achieved ?? 0)}/${formatCount(totals?.finance.target ?? 0)}`, note: t("balanceNote", { value: `${profiles[0]?.currency ?? "AED"} ${formatCount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0)))}` }), icon: DollarSign, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
-          { label: t("avgPerformanceLabel"), value: `${totals?.avgPerformance ?? 0}%`, icon: Activity, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
+          { label: t("employerMetric"), value: `${formatCount(totals?.employer.achieved ?? 0)} / ${formatCount(totals?.employer.target ?? 0)}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employer.target ?? 0) - (totals?.employer.achieved ?? 0))) }), icon: Building2, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("employeeMetric"), value: `${formatCount(totals?.employee.achieved ?? 0)} / ${formatCount(totals?.employee.target ?? 0)}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employee.target ?? 0) - (totals?.employee.achieved ?? 0))) }), icon: Users, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("financeMetric"), value: (
+            // A full amount pair is wider than a third of a phone screen.
+            <>
+              <span className="sm:hidden">{financeRatioPhone}</span>
+              <span className="hidden sm:inline">{financeRatio("standard")}</span>
+            </>
+          ), note: t("balanceNote", { value: financeAmount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0))) }), icon: DollarSign, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("avgAchievementMetric"), value: `${totals?.avgPerformance ?? 0}%`, icon: Activity, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
           { label: t("activeProfilesLabel"), value: totals?.totalProfiles ?? 0, icon: BarChart3, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
         ]}
         footer={
@@ -363,66 +409,31 @@ export default function AdminTargetManagementPage() {
             <span className="chip-pad rounded-full bg-status-rejected-bg text-xs font-semibold text-status-rejected">{t("riskHighCount", { count: totals?.riskBreakdown.high ?? 0 })}</span>
             <span className="chip-pad rounded-full bg-status-shortlisted-bg text-xs font-semibold text-status-shortlisted">{t("riskMediumCount", { count: totals?.riskBreakdown.medium ?? 0 })}</span>
             <span className="chip-pad rounded-full bg-status-selected-bg text-xs font-semibold text-status-selected">{t("riskLowCount", { count: totals?.riskBreakdown.low ?? 0 })}</span>
+            {totals?.finance.currency && totals.finance.others.length > 0 ? (
+              <span className="text-xs text-muted-foreground" data-finance-other-currencies>
+                {t("financeOtherCurrenciesNote", {
+                  currency: totals.finance.currency,
+                  others: totals.finance.others.map((row) => row.currency).join(", "),
+                })}
+              </span>
+            ) : totals?.finance.currency ? (
+              // Wider screens show the currency in the figure itself.
+              <span className="text-xs text-muted-foreground sm:hidden" data-finance-currency>
+                {t("financeCurrencyNote", { currency: totals.finance.currency })}
+              </span>
+            ) : null}
           </div>
         }
       />
 
       {/* Toolbar */}
-      <TableToolbar
-        search={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder={t("searchSupervisors")}
-        left={
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("enterpriseTargets")}
-          </div>
-        }
-        actions={
-          /* Three full labels do not fit a 390px row, so the two secondary
-             actions go icon-only on phones (title carries the name) and the
-             primary one keeps its label. Unchanged from `sm:` up. */
-          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleExport} disabled={profiles.length === 0} title={t("common.export")}>
-              <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("common.export")}</span>
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleClone} title={t("cloneYear", { year: yearFilter - 1 })}>
-              <Copy className="h-4 w-4" /> <span className="hidden sm:inline">{t("cloneYear", { year: yearFilter - 1 })}</span>
-            </Button>
-            <Link href={`/${locale}/admin/target-management/create`} className="min-w-0">
-              <Button size="sm" className="gap-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
-                <Plus className="h-4 w-4 shrink-0" /> {t("newTargetProfile")}
-              </Button>
-            </Link>
-          </div>
-        }
-        filterContent={
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="number"
-                value={yearFilter}
-                onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)}
-                className="h-11 w-32 rounded-xl border-border bg-card pl-9 text-sm"
-                aria-label={t("a11yYear")}
-              />
-            </div>
-            {regionOptions.length > 0 && (
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <SearchableSelect
-                  options={[
-                    { value: "", label: t("allRegions") },
-                    ...regionOptions.map((region) => ({ value: region, label: region })),
-                  ]}
-                  value={regionFilter}
-                  onValueChange={setRegionFilter}
-                  placeholder={t("regionLabel")}
-                  className="h-11 w-40 rounded-xl"
-                />
-              </div>
-            )}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={yearFilter !== currentYear || !!regionFilter || riskFilter !== "all" || completionFilter !== "all" ? () => { setYearFilter(currentYear); setRegionFilter(""); setRiskFilter("all"); setCompletionFilter("all"); } : undefined}
+        clearLabel={t("resetFilters")}
+        moreLabel={t("advancedFilters")}
+        more={(
+          <>
             <SearchableSelect
               options={[
                 { value: "all", label: t("allStages") },
@@ -433,7 +444,7 @@ export default function AdminTargetManagementPage() {
               value={completionFilter}
               onValueChange={(value) => setCompletionFilter(value as "all" | CompletionStage)}
               placeholder={t("stageLabel")}
-              className="h-11 w-40 rounded-xl"
+              className={INLINE_FILTER_CONTROL}
             />
             <SearchableSelect
               options={[
@@ -445,23 +456,75 @@ export default function AdminTargetManagementPage() {
               value={riskFilter}
               onValueChange={(value) => setRiskFilter(value as "all" | "high" | "medium" | "low")}
               placeholder={t("riskLabel")}
-              className="h-11 w-36 rounded-xl"
+              className={INLINE_FILTER_CONTROL}
             />
-            <Button variant="outline" size="sm" onClick={() => { setYearFilter(currentYear); setRegionFilter(""); setRiskFilter("all"); setCompletionFilter("all"); }} className="rounded-lg">
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> {t("resetFilters")}
-            </Button>
-            <div className="ml-auto flex rounded-xl border border-border/60 bg-card p-0.5">
-              <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5">
-                <BarChart3 className="h-3.5 w-3.5" /> {t("dashboardTab")}
-              </Button>
-              <Button variant={tab === "leaderboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("leaderboard")} className="rounded-lg gap-1.5">
-                <Award className="h-3.5 w-3.5" /> {t("leaderboardTab")}
-              </Button>
-            </div>
+          </>
+        )}
+      >
+        <InlineFilterSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder={t("searchSupervisors")}
+        />
+        <div className="relative">
+          <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="number"
+            value={yearFilter}
+            onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)}
+            className="h-11 w-32 rounded-xl border-border bg-card pl-9 text-sm"
+            aria-label={t("a11yYear")}
+          />
+        </div>
+        {regionOptions.length > 0 && (
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <SearchableSelect
+              options={[
+                { value: "", label: t("allRegions") },
+                ...regionOptions.map((region) => ({ value: region, label: region })),
+              ]}
+              value={regionFilter}
+              onValueChange={setRegionFilter}
+              placeholder={t("regionLabel")}
+              className="h-11 w-40 rounded-xl"
+            />
           </div>
-        }
-        hasActiveFilters={yearFilter !== currentYear || !!regionFilter || riskFilter !== "all" || completionFilter !== "all"}
-      />
+        )}
+        <TableSortControl
+          value={sortBy || "dateAdded"}
+          onValueChange={(v) => { setSortBy(v === "dateAdded" ? "" : v); resetPage(); }}
+          options={sortOptions}
+          order={order}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
+
+      {/* View switch on the left, page actions on the right. */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
+        <div className="flex rounded-xl border border-border/60 bg-card p-0.5">
+          <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" /> {t("dashboardTab")}
+          </Button>
+          <Button variant={tab === "leaderboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("leaderboard")} className="rounded-lg gap-1.5">
+            <Award className="h-3.5 w-3.5" /> {t("leaderboardTab")}
+          </Button>
+        </div>
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 ms-auto">
+          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleExport} disabled={profiles.length === 0} title={tc("export")}>
+            <Download className="h-4 w-4" /> <span className="hidden sm:inline">{tc("export")}</span>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleClone} title={t("cloneYear", { year: yearFilter - 1 })}>
+            <Copy className="h-4 w-4" /> <span className="hidden sm:inline">{t("cloneYear", { year: yearFilter - 1 })}</span>
+          </Button>
+          <Link href={`/${locale}/admin/target-management/create`} className="min-w-0">
+            <Button size="sm" className="gap-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
+              <Plus className="h-4 w-4 shrink-0" /> {t("newTargetProfile")}
+            </Button>
+          </Link>
+        </div>
+      </div>
 
 
 
@@ -503,41 +566,36 @@ export default function AdminTargetManagementPage() {
           )}
 
           {/* Main Table */}
-          <div className="rounded-2xl border border-border/60 bg-card overflow-x-auto">
-            <Table>
+          {/* Region rides in the Supervisor cell (the Region filter and search
+              still cover it) so the nine columns fit the panel at desktop widths;
+              narrower screens scroll inside the panel, never the page. */}
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+            <Table className="sm:[&_td]:px-3 sm:[&_th]:px-3">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-8" />
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("supervisorHeader")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("regionHeader")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("teamHeader")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {t("employerHeader")}</div>
-                  </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {t("employeeHeader")}</div>
-                  </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> {t("financeHeader")}</div>
-                  </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("monthlyHeader")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("performanceHeader")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("riskHeader")}</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("actionsHeader")}</TableHead>
+                  <TableHead>{sortHeader("name", t("supervisorHeader"))}</TableHead>
+                  <TableHead className="text-center">{sortHeader("teamSize", t("teamHeader"))}</TableHead>
+                  <TableHead>{sortHeader("employerProgress", t("employerHeader"))}</TableHead>
+                  <TableHead>{sortHeader("employeeProgress", t("employeeHeader"))}</TableHead>
+                  <TableHead>{sortHeader("financeProgress", t("financeHeader"))}</TableHead>
+                  <TableHead>{t("monthlyHeader")}</TableHead>
+                  <TableHead>{sortHeader("overallProgress", t("performanceHeader"))}</TableHead>
+                  <TableHead>{sortHeader("risk", t("riskHeader"))}</TableHead>
+                  <TableHead className="text-end">{t("actionsHeader")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 11 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <TableCell key={j}><div className="h-4 w-16 animate-pulse rounded bg-muted" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : filteredProfiles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="py-16 text-center">
+                    <TableCell colSpan={9} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noTargets")}
                         description={t("emptyStateTargetProfile")}
@@ -552,33 +610,23 @@ export default function AdminTargetManagementPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProfiles.map((row) => {
-                    const isExpanded = expandedId === row._id;
-                    return (
-                      <TableRow
-                        key={row._id}
-                        className="group cursor-pointer"
-                        onClick={() => setExpandedId(isExpanded ? null : row._id)}
-                      >
-                        <TableCell className="w-8 pr-0">
-                          {isExpanded
-                            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        </TableCell>
+                  filteredProfiles.map((row) => (
+                      <TableRow key={row._id}>
                         <TableCell>
-                          <div>
+                          <div className="min-w-0">
                             <p className="font-medium">{row.assigneeName}</p>
-                            <p className="text-xs text-muted-foreground">{row.assigneeEmail}</p>
+                            {/* Long addresses wrap (after the @ first) rather than widen the table. */}
+                            <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                              {row.assigneeEmail.includes("@") ? (
+                                <>{row.assigneeEmail.slice(0, row.assigneeEmail.indexOf("@") + 1)}<wbr />{row.assigneeEmail.slice(row.assigneeEmail.indexOf("@") + 1)}</>
+                              ) : row.assigneeEmail}
+                            </p>
+                            {row.region && (
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                                <MapPin className="h-3 w-3" aria-hidden="true" /> {row.region}
+                              </span>
+                            )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {row.region ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                              <MapPin className="h-3 w-3" /> {row.region}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">—</span>
-                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">
@@ -591,6 +639,7 @@ export default function AdminTargetManagementPage() {
                             target={row.employerTarget}
                             progress={row.employerProgress}
                             type="employer"
+                            className="min-w-0"
                           />
                         </TableCell>
                         <TableCell>
@@ -599,6 +648,7 @@ export default function AdminTargetManagementPage() {
                             target={row.employeeTarget}
                             progress={row.employeeProgress}
                             type="employee"
+                            className="min-w-0"
                           />
                         </TableCell>
                         <TableCell>
@@ -608,6 +658,7 @@ export default function AdminTargetManagementPage() {
                             progress={row.financeProgress}
                             type="finance"
                             currency={row.currency}
+                            className="min-w-0"
                           />
                         </TableCell>
                         <TableCell>
@@ -624,24 +675,19 @@ export default function AdminTargetManagementPage() {
                               <IncentiveTierBadge tier={row.incentiveTier ?? "none"} />
                             </div>
                         </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                            <Button asChild variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title={t("a11yViewDetails")}>
-                              <Link href={`/${locale}/admin/target-management/${row._id}`}>
-                                <Eye className="h-3.5 w-3.5" />
-                              </Link>
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title={t("a11yReassign")} onClick={() => openReassign(row._id)}>
-                              <SplitSquareVertical className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" title={t("a11yCancel")} onClick={() => handleCancel(row._id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
+                        <TableCell className="text-end" onClick={(e) => e.stopPropagation()}>
+                          <RowActions
+                            name={row.assigneeName}
+                            labelsFrom="wide"
+                            quick={[{ key: "view", label: t("a11yViewDetails"), icon: Eye, href: `/${locale}/admin/target-management/${row._id}` }]}
+                            menu={[
+                              { key: "reassign", label: t("a11yReassign"), icon: SplitSquareVertical, onSelect: () => openReassign(row._id) },
+                              { key: "cancel", label: t("a11yCancel"), icon: Trash2, onSelect: () => handleCancel(row._id), destructive: true },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
-                    );
-                  })
+                  ))
                 )}
               </TableBody>
             </Table>

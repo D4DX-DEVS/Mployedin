@@ -22,12 +22,15 @@ export interface WorkflowSettings {
 interface WorkflowResponse {
   stages?: WorkflowStage[];
   settings?: Partial<WorkflowSettings>;
+  /** The template new jobs fall back to when none matches their details (null = platform default). */
+  defaultTemplateId?: string | null;
 }
 
 export interface WorkflowPayload {
   /** Optional since 2026-09-10 — the builder saves rules only. */
   stages?: WorkflowStage[];
-  settings: Partial<WorkflowSettings>;
+  settings?: Partial<WorkflowSettings>;
+  defaultTemplateId?: string | null;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────

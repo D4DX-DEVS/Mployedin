@@ -351,7 +351,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 <TableHead>{t("taxRegion")}</TableHead>
                 <TableHead>{t("commission")}</TableHead>
                 <TableHead>{t("visa")}</TableHead>
-                <TableHead className="text-right">{t("quickAction")}</TableHead>
+                <TableHead className="text-right">{tCommon("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

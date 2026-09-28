@@ -15,6 +15,8 @@ import { memberMayAccessJob } from "@/lib/permissions/team";
 import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
 import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
+import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
+import { stageForApplication, type WorkflowStageDef } from "@/lib/hiring/workflowStages";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
@@ -101,11 +103,28 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, applicationUpdateSchema);
-  const { status, note, rejectionReason, employerNotes, agentNotes, withdrawalReason, withdrawalNote, markViewed, acknowledgeOpenInterview } = body;
+  const { note, rejectionReason, employerNotes, agentNotes, withdrawalReason, withdrawalNote, markViewed, acknowledgeOpenInterview, stageId } = body;
 
-  if (ctx.role === "job_seeker" && status && status !== "withdrawn") {
+  if (ctx.role === "job_seeker" && ((body.status && body.status !== "withdrawn") || stageId)) {
     return NextResponse.json({ error: "Job seekers may only withdraw an application" }, { status: 403 });
   }
+
+  // A workflow stage names its status. Moving between two stages of the same
+  // status (Technical Interview → Culture Fit) changes the stage only.
+  // Plain object: the populated job is a hydrated document.
+  const jobPlain = (typeof (jobDoc as { toObject?: () => unknown }).toObject === "function"
+    ? (jobDoc as unknown as { toObject: () => unknown }).toObject()
+    : jobDoc) as JobWorkflowCarrier;
+  const jobStages = effectiveJobStages(jobPlain);
+  let targetStage: WorkflowStageDef | null = null;
+  if (stageId) {
+    targetStage = jobStages.find((s) => s.id === stageId) ?? null;
+    if (!targetStage) return NextResponse.json({ error: "UNKNOWN_STAGE" }, { status: 400 });
+    if (body.status && body.status !== targetStage.phase) {
+      return NextResponse.json({ error: "STAGE_STATUS_MISMATCH" }, { status: 400 });
+    }
+  }
+  const status = body.status ?? targetStage?.phase;
 
   // First employer open — stamp once; drives the "New" badge in the list.
   if (markViewed && ctx.role !== "job_seeker" && !application.viewedByEmployerAt) {
@@ -116,6 +135,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const onlyMarkViewed =
     markViewed &&
     !status &&
+    !stageId &&
     rejectionReason === undefined &&
     employerNotes === undefined &&
     agentNotes === undefined &&
@@ -164,10 +184,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }
   }
 
+  // History records the stage entered under the name it had at the time.
+  const currentStage = stageForApplication(jobStages, application.status, application.stageId);
+  let stageOnlyMove = false;
   if (status && status !== application.status) {
     application.status = status;
+    // Unnamed → the first stage of the new status.
+    application.stageId = targetStage?.id;
+    const entered = targetStage ?? stageForApplication(jobStages, status, null);
     application.statusHistory.push({
       status,
+      ...(entered ? { stageId: entered.id, stageLabel: entered.label } : {}),
       changedAt: new Date(),
       changedBy: ctx.userId,
       note: note ?? `Status updated to ${status}`,
@@ -178,6 +205,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (advancesPastInterviewing(status)) {
       await closeOpenInterviewsForAdvance(application._id);
     }
+  } else if (targetStage && currentStage?.id !== targetStage.id) {
+    application.stageId = targetStage.id;
+    application.statusHistory.push({
+      status: application.status,
+      stageId: targetStage.id,
+      stageLabel: targetStage.label,
+      changedAt: new Date(),
+      changedBy: ctx.userId,
+      note: note ?? `Moved to ${targetStage.label}`,
+    });
+    stageOnlyMove = true;
   }
 
   // Staff-only fields. A job seeker holds applications:update (to withdraw) and
@@ -194,6 +232,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const effectiveStatus = application.status;
   const statusChanged = effectiveStatus !== prevStatus;
+
+  if (stageOnlyMove && targetStage) {
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "application.stage_change",
+      resource: "applications",
+      resourceId: params?.id,
+      changes: { before: { stage: currentStage?.label ?? null }, after: { stage: targetStage.label } },
+      req,
+    });
+  }
 
   if (statusChanged) {
     const jobTitle = (application.jobId as unknown as { title?: string })?.title ?? "a job";

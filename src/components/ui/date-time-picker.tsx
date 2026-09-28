@@ -30,6 +30,8 @@ interface DateTimePickerProps {
   label?: string;
   placeholder?: string;
   minDate?: Date;
+  /** Last pickable day, e.g. today for a payment that has already happened. */
+  maxDate?: Date;
   className?: string;
   required?: boolean;
   id?: string;
@@ -64,6 +66,7 @@ export function DateTimePicker({
   label,
   placeholder,
   minDate,
+  maxDate,
   className,
   required,
   id,
@@ -238,7 +241,8 @@ export function DateTimePicker({
                     const isSelected = selectedDate && isSameDay(day, selectedDate);
                     const today = isToday(day);
                     const disabled =
-                      minDate && isBefore(day, startOfDay(minDate));
+                      (minDate && isBefore(day, startOfDay(minDate))) ||
+                      (maxDate && isBefore(startOfDay(maxDate), startOfDay(day)));
 
                     return (
                       <button

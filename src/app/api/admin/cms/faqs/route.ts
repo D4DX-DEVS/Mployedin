@@ -8,6 +8,9 @@ import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { faqCreateSchema } from "@/lib/validators/cms";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { cmsListSort } from "@/lib/cms/listSort";
+
+const SORT_FIELDS = ["createdAt", "question", "category", "sortOrder"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -37,7 +40,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const [items, total] = await Promise.all([
-    FAQ.find(query).sort({ sortOrder: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
+    FAQ.find(query).sort(cmsListSort(searchParams, SORT_FIELDS, { sortOrder: 1, createdAt: -1 })).skip(skip).limit(limit).lean(),
     FAQ.countDocuments(query),
   ]);
 

@@ -7,14 +7,14 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { Button } from "@/components/ui/button";
 import { HiringRulesPanel } from "@/components/features/employer/workflow/HiringRulesPanel";
-import { PipelinePreview } from "@/components/features/employer/workflow/PipelinePreview";
+import { DefaultWorkflowCard } from "@/components/features/employer/workflow/DefaultWorkflowCard";
 import { useWorkflow, useSaveWorkflow } from "@/hooks/useWorkflow";
 import { HIRING_RULE_DEFAULTS, resolveHiringRules, type HiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
 
 /**
- * Company-wide hiring rules. The pipeline itself is fixed (every board, tab
- * and dropdown reads the same stage list), so the page shows it read-only and
- * edits only the three rules that actually change behaviour.
+ * Company-wide hiring setup: the workflow new jobs fall back to (a job whose
+ * details match a template gets that one instead) and the three rules that
+ * actually change behaviour.
  */
 export default function EmployerWorkflowPage() {
   const t = useTranslations("hiringRules");
@@ -108,7 +108,7 @@ export default function EmployerWorkflowPage() {
         )}
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
-          <PipelinePreview />
+          <DefaultWorkflowCard defaultTemplateId={data?.defaultTemplateId ?? null} />
           <div className="space-y-4">
             <HiringRulesPanel rules={rules} onChange={handleChange} disabled={saveWorkflow.isPending} />
             <Button

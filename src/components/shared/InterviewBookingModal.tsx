@@ -299,7 +299,8 @@ export function InterviewBookingModal({
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      onClick={onClose}
+      /* No backdrop close: a stray click must not throw away a picked slot
+         and typed notes. The ✕ and Cancel buttons close it. */
       dir={isRtl ? "rtl" : "ltr"}
     >
       <div

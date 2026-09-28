@@ -48,19 +48,24 @@ interface CascadingLocationPickerProps {
   locationsEndpoint?: string;
   /** Shown instead of an empty country dropdown when the source has nothing. */
   emptyMessage?: string;
+  /** Show the country/state/city panel open, with no "Select locations"
+   *  toggle — for a form step whose only job is picking the region. */
+  alwaysOpen?: boolean;
 }
 
 export function CascadingLocationPicker({
   selectedCityIds,
   selectedStateIds,
   onChange,
-  label = "Assigned Locations",
+  label,
   readOnly = false,
   error,
   locationsEndpoint = "/api/filters/locations",
   emptyMessage,
+  alwaysOpen = false,
 }: CascadingLocationPickerProps) {
   const tc = useTranslations("common");
+  const heading = label ?? tc("assignedLocations");
 
   const [countries, setCountries] = useState<LocationItem[]>([]);
   const [states, setStates] = useState<LocationItem[]>([]);
@@ -70,7 +75,7 @@ export function CascadingLocationPicker({
   const [selectedState, setSelectedState] = useState<string>("");
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
-  const [expandedPanel, setExpandedPanel] = useState(false);
+  const [expandedPanel, setExpandedPanel] = useState(alwaysOpen);
   const [citySearch, setCitySearch] = useState("");
   const [countriesLoaded, setCountriesLoaded] = useState(false);
   /* A scoped source may hand back a state the caller only partly owns; then
@@ -211,9 +216,9 @@ export function CascadingLocationPicker({
 
   return (
     <div className="space-y-2">
-      {label && (
+      {heading && (
         <Label className="text-sm font-medium">
-          {label}
+          {heading}
           {totalSelections > 0 && (
             <Badge variant="secondary" className="ml-2 text-xs">{totalSelections}</Badge>
           )}
@@ -223,35 +228,41 @@ export function CascadingLocationPicker({
       {/* Selected items chips */}
       {totalSelections > 0 && (
         <div className="flex flex-wrap gap-1.5 p-2 rounded-md border border-border/50 bg-muted/10 min-h-[36px]">
-          {selectedStateIds.map((id) => (
-            <Badge key={`state-${id}`} variant="default" className="text-xs gap-1 bg-primary/10 text-primary border-primary/20">
-              <Globe className="h-3 w-3" />
-              {nameCache.get(id)?.name ?? `State ${id.slice(-4)}`} (all cities)
-              {!readOnly && (
-                <button type="button" onClick={() => removeItem(id, "state")} className="ml-0.5 hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </Badge>
-          ))}
-          {selectedCityIds.map((id) => (
-            <Badge key={`city-${id}`} variant="secondary" className="text-xs gap-1">
-              <MapPin className="h-3 w-3" />
-              {nameCache.get(id)?.name ?? `City ${id.slice(-4)}`}
-              {!readOnly && (
-                <button type="button" onClick={() => removeItem(id, "city")} className="ml-0.5 hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </Badge>
-          ))}
+          {selectedStateIds.map((id) => {
+            const name = nameCache.get(id)?.name ?? tc("stateFallbackName", { id: id.slice(-4) });
+            return (
+              <Badge key={`state-${id}`} variant="default" className="text-xs gap-1 bg-primary/10 text-primary border-primary/20">
+                <Globe className="h-3 w-3" />
+                {tc("stateAllCities", { name })}
+                {!readOnly && (
+                  <button type="button" onClick={() => removeItem(id, "state")} aria-label={tc("removeLocation", { name })} className="ms-0.5 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </Badge>
+            );
+          })}
+          {selectedCityIds.map((id) => {
+            const name = nameCache.get(id)?.name ?? tc("cityFallbackName", { id: id.slice(-4) });
+            return (
+              <Badge key={`city-${id}`} variant="secondary" className="text-xs gap-1">
+                <MapPin className="h-3 w-3" />
+                {name}
+                {!readOnly && (
+                  <button type="button" onClick={() => removeItem(id, "city")} aria-label={tc("removeLocation", { name })} className="ms-0.5 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </Badge>
+            );
+          })}
         </div>
       )}
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       {/* Toggle panel */}
-      {!readOnly && (
+      {!readOnly && !alwaysOpen && (
         <Button
           type="button"
           variant="outline"
@@ -261,7 +272,7 @@ export function CascadingLocationPicker({
         >
           <span className="flex items-center gap-2 text-sm">
             <MapPin className="h-4 w-4" />
-            {expandedPanel ? "Close location picker" : "Select locations"}
+            {expandedPanel ? tc("closeLocationPicker") : tc("selectLocations")}
           </span>
           {expandedPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
@@ -276,7 +287,7 @@ export function CascadingLocationPicker({
           ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1">Country</Label>
+              <Label className="text-xs text-muted-foreground mb-1">{tc("country")}</Label>
               <InlineSearchSelect
                 value={selectedCountry}
                 onValueChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}
@@ -333,9 +344,9 @@ export function CascadingLocationPicker({
                     }}
                   >
                     {isEntireStateSelected ? (
-                      <><CheckSquare className="h-3 w-3" /> Entire state</>
+                      <><CheckSquare className="h-3 w-3" /> {tc("entireState")}</>
                     ) : (
-                      <><Globe className="h-3 w-3" /> All state</>
+                      <><Globe className="h-3 w-3" /> {tc("allState")}</>
                     )}
                   </Button>
                   )}
@@ -349,7 +360,7 @@ export function CascadingLocationPicker({
                         className="h-6 px-2 text-[11px] rounded-md"
                         onClick={selectAllFilteredCities}
                       >
-                        <CheckSquare className="h-3 w-3" /> All
+                        <CheckSquare className="h-3 w-3" /> {tc("all")}
                       </Button>
                       {selectedCitiesInState.length > 0 && (
                         <Button
@@ -359,7 +370,7 @@ export function CascadingLocationPicker({
                           className="h-6 px-2 text-[11px] rounded-md text-destructive hover:text-destructive"
                           onClick={deselectAllFilteredCities}
                         >
-                          <Square className="h-3 w-3" /> Clear
+                          <Square className="h-3 w-3" /> {tc("clear")}
                         </Button>
                       )}
                     </>
@@ -372,7 +383,7 @@ export function CascadingLocationPicker({
                   <CheckSquare className="h-6 w-6 mx-auto mb-2 text-primary" />
                   <p className="text-sm font-medium text-primary">{tc("allCitiesSelected")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    All {cities.length} cities in this state are included
+                    {tc("allCitiesInStateIncluded", { count: cities.length })}
                   </p>
                 </div>
               ) : (
@@ -380,18 +391,23 @@ export function CascadingLocationPicker({
                   {/* City search */}
                   {cities.length > 6 && (
                     <div className="relative border-b border-border/20 px-3 py-2">
-                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                      <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
                       <input
                         value={citySearch}
                         onChange={(e) => setCitySearch(e.target.value)}
-                        placeholder="Search cities..."
-                        className="w-full bg-transparent pl-6 text-sm outline-none placeholder:text-muted-foreground/40"
+                        // The picker sits inside dialog forms; Enter here filters,
+                        // it must not advance or submit the surrounding form.
+                        onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+                        placeholder={tc("searchCities")}
+                        aria-label={tc("searchCities")}
+                        className="w-full bg-transparent ps-6 text-sm outline-none placeholder:text-muted-foreground/40"
                       />
                       {citySearch && (
                         <button
                           type="button"
                           onClick={() => setCitySearch("")}
-                          className="absolute right-5 top-1/2 -translate-y-1/2"
+                          aria-label={tc("clear")}
+                          className="absolute end-5 top-1/2 -translate-y-1/2"
                         >
                           <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                         </button>
@@ -400,14 +416,18 @@ export function CascadingLocationPicker({
                   )}
 
                   {/* City grid */}
-                  <div className="max-h-52 overflow-y-auto scrollbar-none p-2">
+                  {/* `relative`: each Radix Checkbox carries a hidden absolutely
+                      positioned input. Without a positioned ancestor here they
+                      escaped this scroll box and stretched the whole dialog by
+                      ~1,300px of empty scroll. */}
+                  <div className={`relative overflow-y-auto p-2 ${alwaysOpen ? "max-h-40" : "max-h-52"}`}>
                     {loadingCities ? (
                       <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Loading cities...
+                        <Loader2 className="h-4 w-4 animate-spin" /> {tc("loadingCities")}
                       </div>
                     ) : filteredCities.length === 0 ? (
                       <div className="py-6 text-center text-xs text-muted-foreground">
-                        {citySearch ? "No cities match your search" : tc("noCitiesFound")}
+                        {citySearch ? tc("noCitiesMatch") : tc("noCitiesFound")}
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-0.5">
@@ -440,12 +460,12 @@ export function CascadingLocationPicker({
                   {/* Footer summary */}
                   {selectedCitiesInState.length > 0 && !allCitiesInStateSelected && (
                     <div className="border-t border-border/20 bg-muted/10 px-3 py-1.5 text-[11px] text-muted-foreground">
-                      {selectedCitiesInState.length} of {cities.length} cities selected
+                      {tc("citiesSelectedCount", { selected: selectedCitiesInState.length, total: cities.length })}
                     </div>
                   )}
                   {allCitiesInStateSelected && (
                     <div className="border-t border-border/20 bg-primary/5 px-3 py-1.5 text-[11px] text-primary font-medium">
-                      All {cities.length} cities selected
+                      {tc("allCitiesSelectedCount", { count: cities.length })}
                     </div>
                   )}
                 </>

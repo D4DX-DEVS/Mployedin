@@ -1,4 +1,5 @@
 import NextAuth, { CredentialsSignin, type NextAuthConfig } from "next-auth";
+import { cookies } from "next/headers";
 import Credentials from "next-auth/providers/credentials";
 import LinkedIn from "next-auth/providers/linkedin";
 import Apple from "next-auth/providers/apple";
@@ -24,6 +25,9 @@ import { hashOtp, otpHashesMatch } from "@/lib/auth/emailVerification";
 import PendingSignin, { PENDING_SIGNIN_MAX_ATTEMPTS } from "@/models/PendingSignin";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { isSessionRevoked, revokeSession } from "@/lib/auth/sessionRevocation";
+import { recordRegistrationConsents } from "@/lib/gdpr/consent";
+import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
+import { CONSENT_REQUIRED_CODE, SIGNUP_CONSENT_COOKIE, parseSignupConsent } from "@/lib/auth/signupConsent";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -37,6 +41,9 @@ const emailOtpSchema = z.object({
   otp: z.string().regex(/^\d{6}$/),
   /** Optional job-seeker referral code; validated inside attachJobSeekerReferral. */
   referralCode: z.string().trim().max(32).optional(),
+  /** "true" once the Terms & Privacy box was ticked; required to create an account. */
+  termsAccepted: z.string().optional(),
+  cookieChoice: z.string().optional(),
 });
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -61,6 +68,14 @@ class LoginRateLimitedError extends CredentialsSignin {
 /** Thrown when the account exists but an admin has deactivated it. */
 class AccountInactiveError extends CredentialsSignin {
   code = "account_inactive";
+}
+
+/**
+ * Thrown when a sign-in would create a new account but the Terms & Privacy box
+ * was not ticked. The page asks and retries (lib/auth/signupConsent.ts).
+ */
+class ConsentRequiredError extends CredentialsSignin {
+  code = CONSENT_REQUIRED_CODE;
 }
 
 /** Thrown when credentials could not be checked because the service failed. */
@@ -297,11 +312,17 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       id: "firebase",
       name: "Firebase",
-      credentials: { idToken: { type: "text" }, referralCode: { type: "text" } },
-      async authorize(credentials) {
+      credentials: {
+        idToken: { type: "text" },
+        referralCode: { type: "text" },
+        termsAccepted: { type: "text" },
+        cookieChoice: { type: "text" },
+      },
+      async authorize(credentials, request) {
         try {
           const idToken = (credentials as { idToken?: string })?.idToken;
           const referralCode = (credentials as { referralCode?: string })?.referralCode;
+          const { termsAccepted, cookieChoice } = (credentials ?? {}) as { termsAccepted?: string; cookieChoice?: string };
           if (!idToken) return null;
 
           const adminAuth = getFirebaseAdminAuth();
@@ -317,6 +338,9 @@ export const authConfig: NextAuthConfig = {
           const providerAvatar = decoded.picture ?? null;
 
           if (!dbUser) {
+            // No account without the Terms & Privacy tick. The page asks, then
+            // retries with the same Google token.
+            if (termsAccepted !== "true") throw new ConsentRequiredError();
             dbUser = await User.create({
               email,
               name: providerName,
@@ -346,6 +370,15 @@ export const authConfig: NextAuthConfig = {
               preferredCountries: [],
               preferredRoles: [],
               preferredLocations: [],
+            });
+
+            await recordRegistrationConsents({
+              userId: dbUser._id.toString(),
+              userName: dbUser.name,
+              termsAccepted: true,
+              cookieChoice: parseCookieChoice(cookieChoice),
+              ipAddress: request ? getClientIp(request.headers) : undefined,
+              source: "registration:google",
             });
 
             // Referral link the seeker arrived through (/register?ref=). New
@@ -468,8 +501,14 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       id: "email-otp",
       name: "Email OTP",
-      credentials: { email: { type: "text" }, otp: { type: "text" }, referralCode: { type: "text" } },
-      async authorize(credentials) {
+      credentials: {
+        email: { type: "text" },
+        otp: { type: "text" },
+        referralCode: { type: "text" },
+        termsAccepted: { type: "text" },
+        cookieChoice: { type: "text" },
+      },
+      async authorize(credentials, request) {
         try {
           const parsed = emailOtpSchema.safeParse(credentials);
           if (!parsed.success) return null;
@@ -547,6 +586,13 @@ export const authConfig: NextAuthConfig = {
             return null;
           }
 
+          // A code that would create an account needs the Terms & Privacy tick.
+          // Checked before the code is redeemed, so the page can ask and send
+          // the same code again.
+          if (parsed.data.termsAccepted !== "true" && !(await User.exists({ email }))) {
+            throw new ConsentRequiredError();
+          }
+
           // Redeem atomically. Two concurrent submissions of the same code can
           // both pass the comparison above; only the one that deletes the row
           // proceeds, so a code is single use even under a race.
@@ -616,6 +662,15 @@ export const authConfig: NextAuthConfig = {
               },
               { upsert: true },
             );
+
+            await recordRegistrationConsents({
+              userId: user._id.toString(),
+              userName: user.name,
+              termsAccepted: parsed.data.termsAccepted === "true",
+              cookieChoice: parseCookieChoice(parsed.data.cookieChoice),
+              ipAddress: request ? getClientIp(request.headers) : undefined,
+              source: "registration:email_code",
+            });
 
             // Referral link this visitor arrived through, when the client
             // forwards one. New accounts only — a returning seeker signing in
@@ -732,6 +787,8 @@ export const authConfig: NextAuthConfig = {
             isOnboarded: jobSeeker?.isOnboarded ?? false,
           };
         } catch (err) {
+          // Typed refusals (consent_required) carry the code the page acts on.
+          if (err instanceof CredentialsSignin) throw err;
           logger.error({ err }, "Email-OTP authorize error");
           return null;
         }
@@ -787,6 +844,23 @@ export const authConfig: NextAuthConfig = {
     },
   },
   callbacks: {
+    // LinkedIn and Apple create the account in the jwt callback below. A new
+    // one is only allowed once the Terms & Privacy box was ticked — the cookie
+    // lib/auth/signupConsent.ts sets before leaving for the provider. Without
+    // it the person goes back to the login page, which asks and signs in again.
+    async signIn({ user, account }) {
+      if (account?.provider !== "linkedin" && account?.provider !== "apple") return true;
+      const email = user.email?.trim().toLowerCase();
+      // No e-mail means no way to tell whose account this is, or whether it
+      // would be a new one — refuse rather than let it past the gate.
+      if (!email) return false;
+      await connectDB();
+      if (await User.exists({ email })) return true;
+      const jar = await cookies();
+      if (parseSignupConsent(jar.get(SIGNUP_CONSENT_COOKIE)?.value).terms) return true;
+      const locale = jar.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+      return `/${locale}/login?error=${CONSENT_REQUIRED_CODE}&provider=${account.provider}`;
+    },
     async jwt({ token, user, account, trigger, session: updateData }) {
       // Signed-out sessions stay dead: the JWT itself would stay valid until it
       // expires, so a cookie copied before sign-out used to keep working.
@@ -912,21 +986,51 @@ export const authConfig: NextAuthConfig = {
       // here so that gate keeps covering Google sign-in.
       if (account && account.provider !== "credentials" && account.provider !== "email-otp") {
         await connectDB();
-        let dbUser = await User.findOne({ email: token.email });
-        const isNewUser = !dbUser;
+        // Providers keep their own casing; accounts are stored lower-case, and
+        // signIn above checked the lower-cased address. A token without an
+        // e-mail never reaches the query (an undefined filter value matches
+        // far more than one account).
+        const oauthEmail = typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
+        if (!oauthEmail) return null;
+        let dbUser = await User.findOne({ email: oauthEmail });
+        let isNewUser = false;
         if (!dbUser) {
-          dbUser = await User.create({
-            email: token.email,
-            name: token.name,
-            avatar: token.picture,
-            role: "job_seeker",
-            isEmailVerified: true,
-            authProvider: account.provider === "linkedin" ? "linkedin" : account.provider === "apple" ? "apple" : "google",
-            linkedinSub: account.provider === "linkedin" ? account.providerAccountId : undefined,
-            appleSub: account.provider === "apple" ? account.providerAccountId : undefined,
-            locale: "en",
-            lastLogin: new Date(),
-          });
+          try {
+            dbUser = await User.create({
+              email: oauthEmail,
+              name: token.name,
+              avatar: token.picture,
+              role: "job_seeker",
+              isEmailVerified: true,
+              authProvider: account.provider === "linkedin" ? "linkedin" : account.provider === "apple" ? "apple" : "google",
+              linkedinSub: account.provider === "linkedin" ? account.providerAccountId : undefined,
+              appleSub: account.provider === "apple" ? account.providerAccountId : undefined,
+              locale: "en",
+              lastLogin: new Date(),
+            });
+            isNewUser = true;
+          } catch (err) {
+            // E11000: the same person finished signing up in another tab a
+            // moment ago. Sign into the account that won.
+            if ((err as { code?: number }).code !== 11000) throw err;
+            dbUser = await User.findOne({ email: oauthEmail });
+            if (!dbUser) throw err;
+          }
+        }
+        if (isNewUser) {
+          // signIn above let this account through only with the consent cookie.
+          try {
+            const consent = parseSignupConsent((await cookies()).get(SIGNUP_CONSENT_COOKIE)?.value);
+            await recordRegistrationConsents({
+              userId: dbUser._id.toString(),
+              userName: dbUser.name,
+              termsAccepted: consent.terms,
+              cookieChoice: consent.cookieChoice,
+              source: `registration:${account.provider}`,
+            });
+          } catch (err) {
+            logger.error({ err }, "[OAuth Registration] Could not read the sign-up consent");
+          }
           // Re-host the provider avatar on our own storage so the URL never expires.
           const rehosted = await rehostExternalAvatar(token.picture as string | null | undefined);
           if (rehosted) {

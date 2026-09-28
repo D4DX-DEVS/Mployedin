@@ -10,17 +10,18 @@ import mongoose, { Document, Schema } from "mongoose";
  * its own collection instead of being derived from them.
  */
 export type GdprRequestType = "export" | "delete" | "rectification" | "restrict";
-export type GdprRequestStatus = "pending" | "in_progress" | "completed" | "rejected";
+export type GdprRequestStatus = "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
 
 export const GDPR_REQUEST_TYPES: GdprRequestType[] = ["export", "delete", "rectification", "restrict"];
-export const GDPR_REQUEST_STATUSES: GdprRequestStatus[] = ["pending", "in_progress", "completed", "rejected"];
+export const GDPR_REQUEST_STATUSES: GdprRequestStatus[] = ["pending", "in_progress", "completed", "rejected", "cancelled"];
 
-/** Allowed status transitions; completed and rejected are terminal. */
+/** Allowed status transitions; completed, rejected and cancelled are terminal. */
 export const GDPR_REQUEST_TRANSITIONS: Record<GdprRequestStatus, GdprRequestStatus[]> = {
-  pending: ["in_progress", "completed", "rejected"],
+  pending: ["in_progress", "completed", "rejected", "cancelled"],
   in_progress: ["completed", "rejected"],
   completed: [],
   rejected: [],
+  cancelled: [],
 };
 
 export interface IGdprRequest extends Document {

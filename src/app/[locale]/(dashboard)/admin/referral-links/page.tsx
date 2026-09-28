@@ -3,7 +3,6 @@
 import React, { useState, useCallback, useId } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -13,23 +12,22 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { RowActions } from "@/components/shared/RowActions";
+import { useConfirm } from "@/hooks/useConfirm";
+import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 import {
   useReferralLinks,
   useUpdateReferralLink,
   ReferralLinkItem,
   linkStatus,
+  type ReferralSortField,
 } from "@/hooks/useReferralLinks";
 import {
-  Building2,
-  UserRound,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  Link2,
-  TrendingUp,
+  Building2, UserRound, Check, Copy, Link2, TrendingUp, Eye, EyeOff,
 } from "lucide-react";
 import {
   Select,
@@ -41,14 +39,11 @@ import {
 import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
 import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
 import { registrationDisplayName } from "@/lib/referrals/display";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
+import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
 
 function formatDate(d: string | undefined): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return d ? formatIntlDate(d, { day: "2-digit", month: "short", year: "numeric" }) : "—";
 }
 
 
@@ -73,7 +68,6 @@ function creatorEmail(link: ReferralLinkItem): string {
 
 export default function AdminReferralLinksPage() {
   const t = useTranslations("adminReferralLinks");
-  const ta = useTranslations("a11y");
   const { locale } = useParams<{ locale: string }>();
   const { page, limit, setPage, setLimit, resetPage } = usePagination();
   const [search, setSearch] = useState("");
@@ -82,10 +76,30 @@ export default function AdminReferralLinksPage() {
   const [audienceFilter, setAudienceFilter] = useState<ReferralAudience | "">("");
   const audienceFilterId = useId();
 
-  const filters = { page, limit, search, audience: audienceFilter || undefined };
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "usedCount", "code", "label"] });
+  const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
+  const sortOptions = [
+    { value: "createdAt", label: t("tableHeaderCreated") },
+    { value: "usedCount", label: t("tableHeaderUsed") },
+    { value: "code", label: t("tableHeaderCode") },
+    { value: "label", label: t("tableHeaderLabel") },
+  ];
+  /** Same column flips the order; a new text column starts A–Z, a number or date newest/highest first. */
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else {
+      setSortBy(field);
+      setSortOrder(field === "code" || field === "label" ? "asc" : "desc");
+    }
+    resetPage();
+  };
+
+  const filters = { page, limit, search, audience: audienceFilter || undefined, sortBy: sortBy as ReferralSortField, sortOrder };
 
   const { data, isLoading } = useReferralLinks(filters);
   const updateMutation = useUpdateReferralLink();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const links = data?.links ?? [];
   const serverTotal = data?.total ?? 0;
@@ -98,8 +112,25 @@ export default function AdminReferralLinksPage() {
     setTimeout(() => setCopyMap((m) => ({ ...m, [code]: false })), 2000);
   }, [locale]);
 
+  // Disabling stops new sign-ups being credited to the link's creator, so it
+  // asks first. It also used to give no sign of progress or failure: a slow
+  // PATCH looked like a click that did nothing.
   const handleToggleActive = async (link: ReferralLinkItem) => {
-    await updateMutation.mutateAsync({ id: link._id, isActive: !link.isActive });
+    if (link.isActive) {
+      const ok = await confirmDialog({
+        title: t("confirmDisableTitle", { code: link.code }),
+        message: t("confirmDisableMessage"),
+        confirmLabel: t("buttonDisable"),
+        variant: "destructive",
+      });
+      if (!ok) return;
+    }
+    try {
+      await updateMutation.mutateAsync({ id: link._id, isActive: !link.isActive });
+      toast.success(link.isActive ? t("toastDisabled", { code: link.code }) : t("toastEnabled", { code: link.code }));
+    } catch {
+      toast.error(t("toastUpdateFailed"));
+    }
   };
 
   // Use server-aggregated stats so values reflect all pages, not just the current one
@@ -133,22 +164,22 @@ export default function AdminReferralLinksPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compact compactOnMobile metrics={headerMetrics} />
 
-      {/* Search */}
-      <TableToolbar
-        search={search}
-        onSearchChange={(v) => { setSearch(v); resetPage(); }}
-        searchPlaceholder={t("searchPlaceholder")}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-      />
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <label htmlFor={audienceFilterId} className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("tableHeaderAudience")}</label>
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearch(v); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
         <Select value={audienceFilter || "all"} onValueChange={(v) => { setAudienceFilter(v === "all" ? "" : (v as ReferralAudience)); resetPage(); }}>
-          <SelectTrigger id={audienceFilterId} className="h-9 w-full text-sm sm:w-56">
+          <SelectTrigger id={audienceFilterId} className={`${INLINE_FILTER_CONTROL}`}>
             <SelectValue placeholder={t("filterAudienceAll")} />
           </SelectTrigger>
           <SelectContent>
@@ -157,7 +188,15 @@ export default function AdminReferralLinksPage() {
             <SelectItem value="job_seeker">{t("filterAudienceJobSeeker")}</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(v) => { setSortBy(v); resetPage(); }}
+          options={sortOptions}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
 
       {/* Table */}
       {isLoading ? (
@@ -167,11 +206,11 @@ export default function AdminReferralLinksPage() {
               <TableRow>
                 <TableHead>{t("tableHeaderCode")}</TableHead>
                 <TableHead>{t("tableHeaderCreator")}</TableHead>
-                <TableHead>{t("tableHeaderRole")}</TableHead>
+                <TableHead className="hidden 2xl:table-cell">{t("tableHeaderRole")}</TableHead>
                 <TableHead>{t("tableHeaderAudience")}</TableHead>
                 <TableHead>{t("tableHeaderLabel")}</TableHead>
                 <TableHead>{t("tableHeaderUsed")}</TableHead>
-                <TableHead>{t("tableHeaderExpires")}</TableHead>
+                <TableHead className="hidden 2xl:table-cell">{t("tableHeaderExpires")}</TableHead>
                 <TableHead>{t("tableHeaderCreated")}</TableHead>
                 <TableHead>{t("tableHeaderStatus")}</TableHead>
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
@@ -181,7 +220,7 @@ export default function AdminReferralLinksPage() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   {Array.from({ length: 10 }).map((_, j) => (
-                    <TableCell key={j}>
+                    <TableCell key={j} className={j === 2 || j === 6 ? "hidden 2xl:table-cell" : undefined}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
                   ))}
@@ -201,14 +240,42 @@ export default function AdminReferralLinksPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("tableHeaderCode")}</TableHead>
+                <TableHead>
+                  <SortableTableHeader
+                    label={t("tableHeaderCode")}
+                    active={sortBy === "code"}
+                    order={sortOrder}
+                    onClick={() => sortByColumn("code")}
+                  />
+                </TableHead>
                 <TableHead>{t("tableHeaderCreator")}</TableHead>
-                <TableHead>{t("tableHeaderRole")}</TableHead>
+                <TableHead className="hidden 2xl:table-cell">{t("tableHeaderRole")}</TableHead>
                 <TableHead>{t("tableHeaderAudience")}</TableHead>
-                <TableHead>{t("tableHeaderLabel")}</TableHead>
-                <TableHead>{t("tableHeaderUsed")}</TableHead>
-                <TableHead>{t("tableHeaderExpires")}</TableHead>
-                <TableHead>{t("tableHeaderCreated")}</TableHead>
+                <TableHead>
+                  <SortableTableHeader
+                    label={t("tableHeaderLabel")}
+                    active={sortBy === "label"}
+                    order={sortOrder}
+                    onClick={() => sortByColumn("label")}
+                  />
+                </TableHead>
+                <TableHead>
+                  <SortableTableHeader
+                    label={t("tableHeaderUsed")}
+                    active={sortBy === "usedCount"}
+                    order={sortOrder}
+                    onClick={() => sortByColumn("usedCount")}
+                  />
+                </TableHead>
+                <TableHead className="hidden 2xl:table-cell">{t("tableHeaderExpires")}</TableHead>
+                <TableHead>
+                  <SortableTableHeader
+                    label={t("tableHeaderCreated")}
+                    active={sortBy === "createdAt"}
+                    order={sortOrder}
+                    onClick={() => sortByColumn("createdAt")}
+                  />
+                </TableHead>
                 <TableHead>{t("tableHeaderStatus")}</TableHead>
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
@@ -221,16 +288,23 @@ export default function AdminReferralLinksPage() {
                   <React.Fragment key={link._id}>
                     <TableRow
                       className="cursor-pointer hover:bg-muted/40"
-                      onClick={() => setExpandedId(isExpanded ? null : link._id)}
+                      onClick={(e) => { if (isRowToggleClick(e)) setExpandedId(isExpanded ? null : link._id); }}
                     >
-                      <TableCell className="font-mono text-sm font-medium">{link.code}</TableCell>
+                      <TableCell className="font-mono text-sm font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <RowExpandToggle expanded={isExpanded} onToggle={() => setExpandedId(isExpanded ? null : link._id)} />
+                          <span>{link.code}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="text-sm font-medium">{creatorName(link)}</p>
                           <p className="text-xs text-muted-foreground">{creatorEmail(link)}</p>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      {/* Role and Expires give way below 2xl (1536px) so Actions stays on screen
+                          with Copy + Disable labelled; the creator's email already says who made the link. */}
+                      <TableCell className="hidden 2xl:table-cell">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                           {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
@@ -240,37 +314,18 @@ export default function AdminReferralLinksPage() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{link.label || t("dashPlaceholder")}</TableCell>
                       <TableCell className="text-sm font-medium">{link.usedCount}{link.maxUses > 0 ? ` / ${link.maxUses}` : ""}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
+                      <TableCell className="hidden 2xl:table-cell text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.createdAt)}</TableCell>
                       <TableCell><StatusBadge status={status === "active" ? "active" : "inactive"} /></TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-[11px]"
-                            onClick={(e) => { e.stopPropagation(); handleCopy(link); }}
-                          >
-                            {copyMap[link.code] ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />}
-                            {copyMap[link.code] ? t("buttonCopied") : t("buttonCopy")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={`h-7 px-2 text-[11px] ${link.isActive ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}`}
-                            onClick={(e) => { e.stopPropagation(); handleToggleActive(link); }}
-                          >
-                            {link.isActive ? t("buttonDisable") : t("buttonEnable")}
-                          </Button>
-                          <Button aria-label={isExpanded ? ta("collapse") : ta("expand")}
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-1.5"
-                            onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : link._id); }}
-                          >
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </Button>
-                        </div>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <RowActions
+                          name={link.code}
+                          labelsFrom="wide"
+                          quick={[{ key: "copy", label: copyMap[link.code] ? t("buttonCopied") : t("buttonCopy"), icon: copyMap[link.code] ? Check : Copy, onSelect: () => handleCopy(link) }]}
+                          menu={[
+                            { key: "toggle", label: link.isActive ? t("buttonDisable") : t("buttonEnable"), icon: link.isActive ? EyeOff : Eye, onSelect: () => void handleToggleActive(link), destructive: link.isActive, pending: updateMutation.isPending && updateMutation.variables?.id === link._id },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                     {isExpanded && (

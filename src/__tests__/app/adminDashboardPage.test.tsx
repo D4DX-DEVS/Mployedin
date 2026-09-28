@@ -7,6 +7,7 @@ import AdminDashboardPage from "@/app/[locale]/(dashboard)/admin/page";
 import {
   FinanceSection,
   HealthSection,
+  HiringFunnelSection,
   PeopleSection,
   QueueSection,
   RecentSection,
@@ -195,25 +196,41 @@ describe("Needs your action", () => {
       "/en/admin/invoices?attention=payment_notice",
       "/en/admin/applications?stale=true",
     ]);
-    expect(rows[1].textContent).toContain("3exhibition requests under review");
+    expect(rows[1].textContent).toContain("3Exhibition requests under review");
     // Level and area in words on every tile, not colour alone.
     expect(within(rows[0] as HTMLElement).getAllByText("Critical").length).toBeGreaterThan(0);
+    expect(within(rows[1] as HTMLElement).getByText("Needs attention")).toHaveClass("sr-only");
     expect(rows[1].textContent).toContain("Decisions");
     expect(queue.querySelector('[data-queue-id="invoices-overdue"]')?.getAttribute("data-level")).toBe("critical");
     // Zero counts are not rendered.
     expect(within(queue).queryByText(/support ticket/i)).not.toBeInTheDocument();
     expect(within(queue).getByText("4 items need action")).toBeInTheDocument();
-    // Every area keeps its chip; one with nothing waiting says so.
+    // Every area keeps its chip; one with nothing waiting says so and is not a filter.
     const compliance = queue.querySelector('[data-queue-group="compliance"]') as HTMLElement;
     expect(within(compliance).getByLabelText("Nothing waiting here.")).toBeInTheDocument();
+    expect(compliance.tagName).toBe("SPAN");
   });
 
-  it("stretches the last tile over the rest of its row", async () => {
+  it("filters the list to one area and back", async () => {
     await show(QueueSection(ctx()));
-    const tiles = Array.from(sectionNamed(/^needs your action$/i).querySelectorAll("a[data-queue-id]")).map((a) => a.parentElement!);
-    // Four tiles: 3 + 1 at three columns, so the last spans all three.
-    expect(tiles[3].className).toContain("xl:col-span-3");
-    expect(tiles[2].className).not.toContain("col-span");
+    const queue = sectionNamed(/^needs your action$/i);
+    const ids = () => Array.from(queue.querySelectorAll("a[data-queue-id]")).map((a) => a.getAttribute("data-queue-id"));
+    const all = within(queue).getByRole("button", { name: /^all 4$/i });
+    expect(all).toHaveAttribute("aria-pressed", "true");
+
+    const finance = within(queue).getByRole("button", { name: /^finance 2$/i });
+    fireEvent.click(finance);
+    expect(finance).toHaveAttribute("aria-pressed", "true");
+    expect(all).toHaveAttribute("aria-pressed", "false");
+    expect(ids()).toEqual(["invoices-overdue", "payment-notices"]);
+
+    // A second press on the active area clears the filter.
+    fireEvent.click(finance);
+    expect(ids()).toHaveLength(4);
+    fireEvent.click(within(queue).getByRole("button", { name: /^recruitment 1$/i }));
+    expect(ids()).toEqual(["applications-awaiting-review"]);
+    fireEvent.click(all);
+    expect(ids()).toHaveLength(4);
   });
 
   it("says all clear when nothing is waiting instead of listing zeros", async () => {
@@ -251,10 +268,18 @@ describe("Platform snapshot", () => {
     expect(within(panel).getByText("No change vs previous 30 days")).toBeInTheDocument();
     // No previous figure: say so rather than print an infinite percentage.
     expect(within(panel).getByText("None in the previous 30 days")).toBeInTheDocument();
-    expect(within(panel).getByText("None in either period")).toBeInTheDocument();
+    // Phone row and desktop pill each keep the sentence for assistive tech.
+    expect(within(panel).getAllByText("None in either period").length).toBeGreaterThan(0);
     expect(panel.querySelector('[data-snapshot="activeJobs"] a')?.getAttribute("href")).toBe("/en/admin/jobs?status=active");
     // Jobs created in the period include drafts, so they are not called "opened".
     expect(within(panel).getAllByText("12 created in 30 days").length).toBeGreaterThan(0);
+    // The pill never prints a bare dash: none before → the count added; none either side → "No change".
+    const pill = (key: string) => panel.querySelector(`[data-snapshot="${key}"] .hidden.sm\\:block [aria-hidden="true"]:not(svg)`)?.textContent;
+    expect(pill("activeJobs")).toBe("+12");
+    expect(pill("placements")).toBe("No change");
+    expect(pill("interviews")).toBe("No change");
+    expect(pill("users")).toBe("20%");
+    expect(panel.textContent).not.toMatch(/—/);
     expect(snapshotMock).toHaveBeenCalledWith(period);
   });
 
@@ -278,25 +303,95 @@ describe("Platform snapshot", () => {
   });
 });
 
+describe("Hiring funnel", () => {
+  it("draws one bar per stage sized by count, with the conversion between stages", async () => {
+    await show(HiringFunnelSection(ctx()));
+    const panel = sectionNamed(/^hiring funnel$/i);
+    const stages = Array.from(panel.querySelectorAll("[data-funnel-stage]"));
+    expect(stages.map((stage) => stage.getAttribute("data-funnel-stage"))).toEqual(["applications", "reachedInterview", "reachedOffer", "hired"]);
+    expect(stages.map((stage) => stage.textContent)).toEqual([
+      "Applications65",
+      expect.stringContaining("Reached interview20"),
+      expect.stringContaining("Reached offer8"),
+      expect.stringContaining("Hired3"),
+    ]);
+    // Bars scale against applications, so later stages are never drawn longer than earlier ones;
+    // the drop-off segment carries the rest of the stage before, so the two together span it.
+    const width = (stage: Element, part: "stage" | "dropped") => {
+      const bar = stage.querySelector(`[data-bar="${part}"]`) as HTMLElement | null;
+      return bar ? parseFloat(bar.style.width) : 0;
+    };
+    expect(stages.map((stage) => width(stage, "stage"))).toEqual([100, (20 / 65) * 100, (8 / 65) * 100, (3 / 65) * 100]);
+    expect(stages.map((stage) => width(stage, "dropped"))).toEqual([0, (45 / 65) * 100, (12 / 65) * 100, (5 / 65) * 100]);
+    // 20 of 65 reached interview, 8 of 20 an offer, 3 of 8 were hired — each against the stage before.
+    const steps = Array.from(panel.querySelectorAll("[data-funnel-step]")).map((step) => step.textContent);
+    expect(steps).toEqual([
+      "30.8%converted· 45 dropped20 of 65 applications reached interview",
+      "40%converted· 12 dropped8 of 20 interviewed got an offer",
+      "37.5%converted· 5 dropped3 of 8 offers led to a hire",
+    ]);
+    expect(within(panel).getByText("All 65 applications to date, by every stage they ever reached — not their current status")).toBeInTheDocument();
+    // History counts have no filtered list, so stages are not links; the section links to all applications.
+    expect(panel.querySelectorAll("[data-funnel-stage] a")).toHaveLength(0);
+    expect(within(panel).getByRole("link", { name: /view applications/i })).toHaveAttribute("href", "/en/admin/applications");
+  });
+
+  it("gives speed and overall hire rate, saying so when there is no data", async () => {
+    await show(HiringFunnelSection(ctx()));
+    const panel = sectionNamed(/^hiring funnel$/i);
+    // 72 hours reads as days, the unit printed small beside the number; a missing average says so instead of showing 0.
+    expect(panel.querySelector('[data-funnel-time="firstReview"]')?.textContent).toBe("Avg. time to first review3days");
+    expect(panel.querySelector('[data-funnel-time="timeToHire"]')?.textContent).toContain("Not enough data yet");
+    const hireRate = panel.querySelector('[data-funnel-time="hireRate"]') as HTMLElement;
+    expect(hireRate.textContent).toContain("4.6%");
+    expect(hireRate.textContent).toContain("3 of 65 applications");
+  });
+
+  it("names a step with nobody at the stage before instead of printing a dash", async () => {
+    recruitmentMock.mockResolvedValue({
+      ...recruitment,
+      funnel: { applications: 12, reachedInterview: 0, reachedOffer: 0, hired: 0, avgHoursToFirstReview: 5, avgDaysToHire: null },
+    });
+    await show(HiringFunnelSection(ctx()));
+    const steps = Array.from(sectionNamed(/^hiring funnel$/i).querySelectorAll("[data-funnel-step]")).map((step) => step.textContent);
+    expect(steps).toEqual([
+      "0%converted· 12 dropped0 of 12 applications reached interview",
+      "Nobody reached the stage before",
+      "Nobody reached the stage before",
+    ]);
+  });
+
+  it("says so when there are no applications instead of drawing empty bars", async () => {
+    recruitmentMock.mockResolvedValue({
+      ...recruitment,
+      funnel: { applications: 0, reachedInterview: 0, reachedOffer: 0, hired: 0, avgHoursToFirstReview: null, avgDaysToHire: null },
+    });
+    await show(HiringFunnelSection(ctx()));
+    const panel = sectionNamed(/^hiring funnel$/i);
+    expect(within(panel).getByText(/no applications yet/i)).toBeInTheDocument();
+    expect(panel.querySelectorAll("[data-funnel-stage]")).toHaveLength(0);
+  });
+
+  it("is left out for an admin who cannot read applications, and fails in place", async () => {
+    expect(await HiringFunnelSection(ctx(only("jobs")))).toBeNull();
+    expect(recruitmentMock).not.toHaveBeenCalled();
+
+    recruitmentMock.mockRejectedValue(new Error("boom"));
+    await show(HiringFunnelSection(ctx()));
+    expect(within(sectionNamed(/^hiring funnel$/i)).getByRole("alert")).toHaveTextContent("We couldn't load this section. Please try again.");
+  });
+});
+
 describe("Recruitment overview", () => {
-  it("links every pipeline status and converts stage to stage", async () => {
+  it("links every pipeline status and leaves the funnel to Overview", async () => {
     await show(RecruitmentSection(ctx()));
     const panel = sectionNamed(/^recruitment overview$/i);
     expect(panel.querySelector('a[href="/en/admin/applications?status=interview_scheduled"]')).toBeTruthy();
     expect(panel.querySelector('a[href="/en/admin/applications?status=withdrawn"]')).toBeTruthy();
-    // 20 of 65 reached interview, 8 of 20 an offer, 3 of 8 were hired.
-    expect(within(panel).getByText("30.8%")).toBeInTheDocument();
-    expect(within(panel).getByText("40%")).toBeInTheDocument();
-    expect(within(panel).getByText("37.5%")).toBeInTheDocument();
-    // The funnel counts stages ever reached, and says so, unlike the pipeline's current status.
     expect(within(panel).getByText("65 applications by current status")).toBeInTheDocument();
-    expect(within(panel).getByText("Stages ever reached by 65 applications, not their current status")).toBeInTheDocument();
-    expect(within(panel).getByText("20 of 65 applications reached interview")).toBeInTheDocument();
-    expect(within(panel).getByText("8 of 20 interviewed got an offer")).toBeInTheDocument();
-    expect(within(panel).getByText("3 of 8 offers led to a hire")).toBeInTheDocument();
-    // 72 hours reads as days; a missing average says so instead of showing 0.
-    expect(within(panel).getByText("3 d")).toBeInTheDocument();
-    expect(within(panel).getByText("Not enough data yet")).toBeInTheDocument();
+    // One home per metric: the funnel and its timings live on the Overview tab.
+    expect(within(panel).queryByRole("heading", { name: /hiring funnel/i })).not.toBeInTheDocument();
+    expect(panel.querySelector("[data-funnel-step], [data-funnel-time]")).toBeNull();
   });
 
   it("links job-health rows only where a list filters to exactly those jobs", async () => {
@@ -311,7 +406,7 @@ describe("Recruitment overview", () => {
   it("drops job health for an admin who cannot read jobs", async () => {
     await show(RecruitmentSection(ctx(only("applications"))));
     expect(screen.queryByRole("heading", { name: /^job health$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^hiring funnel$/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^application pipeline$/i })).toBeInTheDocument();
   });
 });
 
@@ -322,10 +417,13 @@ describe("People & network", () => {
     expect(panel.querySelector('[data-role="job_seeker"] a')?.getAttribute("href")).toBe("/en/admin/users?role=job_seeker");
     // Admins and legacy roles have no single filter, so "Other" is not a link.
     expect(panel.querySelector('[data-role="other"] a')).toBeNull();
-    expect(panel.querySelector('[data-stat="employers-inactive"]')?.textContent).toContain("122");
-    // Sign-in rows count accounts, not companies: the header names both populations.
+    // Signed in and not signed in are complements over the same accounts: one split bar, not two rows.
+    const signIns = panel.querySelector('[data-stat="employers-sign-ins"]') as HTMLElement;
+    expect(signIns.querySelector('[data-sign-in="active"]')?.textContent).toBe("6 signed in within 7 days· 5%");
+    expect(signIns.querySelector('[data-sign-in="inactive"]')?.textContent).toBe("122 not signed in for 7+ days· 95%");
+    expect(panel.querySelector('[data-stat="employers-active"], [data-stat="employers-inactive"]')).toBeNull();
+    // Sign-in counts are accounts, not companies: the header names both populations.
     expect(within(panel).getByText("123 companies · 128 active accounts")).toBeInTheDocument();
-    expect(panel.querySelector('[data-stat="employers-inactive"]')?.textContent).toContain("95%");
     expect(within(panel).getByText("4 below target")).toBeInTheDocument();
     expect(peopleMock).toHaveBeenCalledWith(period, { employers: true, agents: true });
   });
@@ -351,6 +449,22 @@ describe("Finance & subscriptions", () => {
     expect(panel.querySelector('[data-invoice-status="void"]')).toBeNull();
     expect(panel.querySelector('[data-payment-row="commissionApproved"] a')?.getAttribute("href")).toBe("/en/admin/commissions?status=approved");
     expect(financeMock).toHaveBeenCalledWith(period, { commissions: true });
+  });
+
+  it("leaves a currency with no payment amounts out of the payments table", async () => {
+    financeMock.mockResolvedValue({
+      ...finance,
+      payments: [
+        { currency: "AED", awaitingVerification: 0, commissionPending: 0, commissionApproved: 0, commissionDisputed: 0, commissionPaid: 0 },
+        ...finance.payments!,
+      ],
+    });
+    await show(FinanceSection(ctx()));
+    const payments = screen.getByRole("heading", { name: /^payments & commissions$/i, level: 3 }).closest("[data-surface]") as HTMLElement;
+    expect(within(payments).getByRole("columnheader", { name: "INR" })).toBeInTheDocument();
+    expect(within(payments).queryByRole("columnheader", { name: "AED" })).not.toBeInTheDocument();
+    // Every state keeps its row, zero or not.
+    expect(payments.querySelectorAll("[data-payment-row]")).toHaveLength(5);
   });
 
   it("lets payments take the row alone when subscriptions are hidden", async () => {
@@ -425,8 +539,8 @@ describe("AdminDashboardPage", () => {
   it("hands the active dashboard view the period from the URL, falling back to 30 days", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "admin", name: "Super Admin" } });
     const contexts = sectionContexts(await page("7d"));
-    // The dashboard is URL-driven: overview streams the snapshot and compact
-    // recruitment pulse; attention and analysis load their own views.
+    // The dashboard is URL-driven: overview streams the snapshot and the hiring
+    // funnel; attention and analysis load their own views.
     expect(contexts).toHaveLength(2);
     expect(contexts.every((context) => context.period.key === "7d")).toBe(true);
 

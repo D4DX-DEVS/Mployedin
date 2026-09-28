@@ -6,7 +6,6 @@ import type { ReferralSummary } from "@/lib/referrals/summary";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -17,17 +16,17 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Pencil, Trash2, Ban, ChevronDown, ChevronUp, Briefcase,
-  GraduationCap, Globe, Award, Inbox, Download, Filter,
-  FileDown, Loader2, Eye, RotateCcw, MoreHorizontal, X,
+  Pencil, Trash2, Ban, Briefcase,
+  GraduationCap, Globe, Award, Inbox, Download, Contact, CalendarDays, AlignLeft, BadgeCheck, FileText,
+  FileDown, Loader2, Eye, RotateCcw, X,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -39,7 +38,9 @@ import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import {
   JobSeekersFilterPanel, EMPTY_JOB_SEEKER_FILTERS, countActiveJobSeekerFilters,
   buildJobSeekerFilterChips, FIELDLESS_FILTER_KEYS, type JobSeekerFilterChip, type JobSeekerFilters,
+  splitJobSeekerSort, joinJobSeekerSort, type JobSeekerSortField,
 } from "./_components/JobSeekersFilterPanel";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
 
 interface JobSeeker {
   _id: string;
@@ -120,14 +121,17 @@ export default function AdminJobSeekersPage() {
      list already narrowed to one candidate. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [filters, setFilters] = useState<JobSeekerFilters>(EMPTY_JOB_SEEKER_FILTERS);
-  // Open on arrival when a deep link already narrowed the list, so the search
-  // doing the narrowing is visible.
-  const [showFilters, setShowFilters] = useState(() => Boolean(search));
 
   const updateFilters = (patch: Partial<JobSeekerFilters>) => {
     setFilters((current) => ({ ...current, ...patch }));
     setClosestTo(null);
     resetPage();
+  };
+  const currentSort = splitJobSeekerSort(filters.sort);
+  /** Column heads share the filter bar's sort: same column flips it, a new one starts high-to-low. */
+  const sortByColumn = (field: JobSeekerSortField) => {
+    const order = currentSort.field === field && currentSort.order === "desc" ? "asc" : "desc";
+    updateFilters({ sort: joinJobSeekerSort(field, order) });
   };
   const changeSearch = (value: string) => {
     setSearch(value);
@@ -445,11 +449,9 @@ export default function AdminJobSeekersPage() {
   // ── Active filter count ─────────────────────────────────
   const activeFilterCount = countActiveJobSeekerFilters(search, filters);
   const allFilterChips = buildJobSeekerFilterChips(tr, search, filters);
-  // Open panel: its fields already show most filters, so only the ones without
-  // a field (set by AI search) need a chip.
-  const filterChips = showFilters
-    ? allFilterChips.filter((chip) => FIELDLESS_FILTER_KEYS.includes(chip.key))
-    : allFilterChips;
+  // The bar's fields show every filter they own, so only the ones without a
+  // field (set by AI search) need a chip.
+  const filterChips = allFilterChips.filter((chip) => FIELDLESS_FILTER_KEYS.includes(chip.key));
   const removeFilterChip = (chip: JobSeekerFilterChip) => {
     if (chip.clear === "search") {
       changeSearch("");
@@ -461,6 +463,24 @@ export default function AdminJobSeekersPage() {
   const canDelete = can("job_seekers", "delete");
   const columnCount = 8;
 
+  const rowActionsFor = (js: JobSeeker): { quick: RowAction[]; menu: RowAction[] } => {
+    const inactive = js.userId?.isActive === false;
+    return {
+      quick: js.cv?.originalUrl
+        ? [{ key: "cv", label: tr("viewCvTitle"), icon: Eye, onSelect: () => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" }) }]
+        : [],
+      menu: [
+        ...(canUpdate ? [{ key: "edit", label: tr("actionEditTitle"), icon: Pencil, onSelect: () => setEditItem(js) }] : []),
+        ...(canDelete ? [
+          inactive
+            ? { key: "reactivate", label: tr("actionReactivateTitle"), icon: RotateCcw, onSelect: () => void handleReactivate(js._id) }
+            : { key: "deactivate", label: tr("actionDeactivateTitle"), icon: Ban, destructive: true, onSelect: () => void handleDelete(js._id) },
+          { key: "delete", label: tr("actionDeletePermanentlyTitle"), icon: Trash2, destructive: true, onSelect: () => void handlePermanentDelete(js._id) },
+        ] : []),
+      ],
+    };
+  };
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -470,48 +490,30 @@ export default function AdminJobSeekersPage() {
         compactOnMobile
         title={tr("heroTitle")}
         description={tr("heroDescription")}
-        footer={(
-          <>
-            <button
-              type="button"
-              onClick={() => setShowFilters((open) => !open)}
-              aria-expanded={showFilters}
-              className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50 sm:min-h-0"
-            >
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              {showFilters ? tr("hideFilters") : tr("showFilters")}
-              {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
-                  {tr("activeFiltersBadge", { count: activeFilterCount })}
-                </Badge>
-              )}
-              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            <div className="flex items-center gap-2">
-              {(activeFilterCount > 0 || aiSummary) && (
-                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
-                  {tr("clearFilters")}
-                </Button>
-              )}
-              <TableToolbar
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-                exportExtra={(
-                  <DropdownMenuItem onClick={() => void handleBulkCvDownload()} disabled={cvDownloading}>
-                    {cvDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-                    {tr("downloadCvsButton")}
-                  </DropdownMenuItem>
-                )}
-              />
-            </div>
-          </>
+      />
+
+      {/* ── Filters ───────────────────────────────────────── */}
+      <JobSeekersFilterPanel
+        search={search}
+        onSearchChange={changeSearch}
+        filters={filters}
+        onFiltersChange={updateFilters}
+        aiLoading={aiLoading}
+        aiSummary={aiSummary}
+        onAiSearch={() => { void handleAiSearch(); }}
+        onClear={activeFilterCount > 0 || aiSummary ? clearAllFilters : undefined}
+        clearLabel={tr("clearFilters")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        exportExtra={(
+          <DropdownMenuItem onClick={() => void handleBulkCvDownload()} disabled={cvDownloading}>
+            {cvDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            {tr("downloadCvsButton")}
+          </DropdownMenuItem>
         )}
-      >
-        {/* Active filters as removable chips: all of them while the panel is
-            closed, only the fieldless ones while it is open. */}
-        {filterChips.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+        chips={filterChips.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
             {filterChips.map((chip) => (
               <button
                 key={chip.key}
@@ -525,19 +527,8 @@ export default function AdminJobSeekersPage() {
               </button>
             ))}
           </div>
-        )}
-        {showFilters && (
-          <JobSeekersFilterPanel
-            search={search}
-            onSearchChange={changeSearch}
-            filters={filters}
-            onFiltersChange={updateFilters}
-            aiLoading={aiLoading}
-            aiSummary={aiSummary}
-            onAiSearch={() => { void handleAiSearch(); }}
-          />
-        )}
-      </DashboardPageHeader>
+        ) : undefined}
+      />
 
       {/* ── List ──────────────────────────────────────────── */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
@@ -559,12 +550,26 @@ export default function AdminJobSeekersPage() {
               <TableHead>{tr("tableHeaderNationality")}</TableHead>
               <TableHead>{tr("tableHeaderSkills")}</TableHead>
               {/* Wraps to two lines: nowrap made this the widest column. */}
-              <TableHead className="whitespace-normal">{tr("tableHeaderProfilePercent")}</TableHead>
+              <TableHead className="whitespace-normal">
+                <SortableTableHeader
+                  label={tr("tableHeaderProfilePercent")}
+                  active={currentSort.field === "profile"}
+                  order={currentSort.order}
+                  onClick={() => sortByColumn("profile")}
+                />
+              </TableHead>
               {/* Gives way below ~1360px so the actions menu stays on screen;
                   the expanded row shows the date instead. */}
-              <TableHead className="hidden min-[1360px]:table-cell">{tr("tableHeaderJoined")}</TableHead>
+              <TableHead className="hidden min-[1360px]:table-cell">
+                <SortableTableHeader
+                  label={tr("tableHeaderJoined")}
+                  active={currentSort.field === "joined"}
+                  order={currentSort.order}
+                  onClick={() => sortByColumn("joined")}
+                />
+              </TableHead>
               <TableHead>{tr("tableHeaderReferredBy")}</TableHead>
-              <TableHead>{tr("tableHeaderActions")}</TableHead>
+              <TableHead className="text-right">{tr("tableHeaderActions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -589,13 +594,14 @@ export default function AdminJobSeekersPage() {
                 </TableCell>
               </TableRow>
             ) : jobSeekers.map((js) => (
-              <Fragment key={js._id}><TableRow className="cursor-pointer hover:bg-muted/30" onClick={() => setExpandedId(expandedId === js._id ? null : js._id)}>
+              <Fragment key={js._id}><TableRow className="cursor-pointer hover:bg-muted/30" onClick={(e) => { if (isRowToggleClick(e)) setExpandedId(expandedId === js._id ? null : js._id); }}>
                 <TableCell>
-                  <div className="flex items-start gap-1.5">
-                    {expandedId === js._id ? <ChevronUp className="mt-1 h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="mt-1 h-3.5 w-3.5 text-muted-foreground" />}
+                  <div className="flex items-start gap-2">
+                    <RowExpandToggle expanded={expandedId === js._id} onToggle={() => setExpandedId(expandedId === js._id ? null : js._id)} className="mt-1" />
+                    <UserAvatar name={js.fullName || js.userId?.name} email={js.email ?? js.userId?.email} className="h-9 w-9 shrink-0" colorful />
                     <div className="flex min-w-0 flex-col items-start gap-1">
                       <span className="font-medium">{js.fullName || js.userId?.name || "—"}</span>
-                      <span className="max-w-[11rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
+                      <span className="max-w-[10rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
                       <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
                     </div>
                   </div>
@@ -628,7 +634,7 @@ export default function AdminJobSeekersPage() {
                 <TableCell className="text-xs font-semibold tabular-nums">
                   {js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}
                 </TableCell>
-                <TableCell className="hidden min-[1360px]:table-cell text-xs text-muted-foreground">{formatDate(new Date(js.createdAt))}</TableCell>
+                <TableCell className="hidden whitespace-nowrap min-[1360px]:table-cell text-xs text-muted-foreground">{formatDate(new Date(js.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                 <TableCell className="text-xs">
                   {js.referralSummary
                     ? <ReferralSourceChip namespace="adminJobSeekers" summary={js.referralSummary} />
@@ -636,47 +642,7 @@ export default function AdminJobSeekersPage() {
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   {js.cv?.originalUrl || canUpdate || canDelete ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11"
-                          aria-label={tr("rowActionsFor", { name: js.fullName || js.userId?.name || js.email || "" })}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52">
-                        {js.cv?.originalUrl && (
-                          <DropdownMenuItem onClick={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}>
-                            <Eye className="h-4 w-4" /> {tr("viewCvTitle")}
-                          </DropdownMenuItem>
-                        )}
-                        {canUpdate && (
-                          <DropdownMenuItem onClick={() => setEditItem(js)}>
-                            <Pencil className="h-4 w-4" /> {tr("actionEditTitle")}
-                          </DropdownMenuItem>
-                        )}
-                        {canDelete && (
-                          <>
-                            {(js.cv?.originalUrl || canUpdate) && <DropdownMenuSeparator />}
-                            {js.userId?.isActive === false ? (
-                              <DropdownMenuItem onClick={() => void handleReactivate(js._id)}>
-                                <RotateCcw className="h-4 w-4" /> {tr("actionReactivateTitle")}
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem onClick={() => void handleDelete(js._id)} className="text-destructive focus:text-destructive">
-                                <Ban className="h-4 w-4" /> {tr("actionDeactivateTitle")}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => void handlePermanentDelete(js._id)} className="text-destructive focus:text-destructive">
-                              <Trash2 className="h-4 w-4" /> {tr("actionDeletePermanentlyTitle")}
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <RowActions name={js.fullName || js.userId?.name || js.email || ""} labelsFrom="wide" {...rowActionsFor(js)} />
                   ) : <span className="text-muted-foreground">—</span>}
                 </TableCell>
               </TableRow>
@@ -689,17 +655,17 @@ export default function AdminJobSeekersPage() {
                       {/* Summary */}
                       {js.summary && (
                         <div className="md:col-span-3">
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelSummary")}</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><AlignLeft className="h-3 w-3" /> {tr("expandedLabelSummary")}</p>
                           <p className="text-muted-foreground text-xs">{js.summary}</p>
                         </div>
                       )}
                       {/* Contact */}
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelContact")}</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Contact className="h-3 w-3" /> {tr("expandedLabelContact")}</p>
                         <p className="text-muted-foreground text-xs">{js.email ?? js.userId?.email ?? "—"}</p>
                         {js.phone && <p className="text-muted-foreground text-xs">{js.phone}</p>}
                         {js.currentLocation && <p className="text-muted-foreground text-xs">{js.currentLocation}</p>}
-                        <p className="text-muted-foreground text-xs">{tr("tableHeaderJoined")}: {formatDate(new Date(js.createdAt))}</p>
+                        <p className="mt-1 flex items-center gap-1 text-muted-foreground text-xs"><CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" /> {tr("tableHeaderJoined")}: {formatDate(new Date(js.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</p>
                       </div>
                       {/* Experience */}
                       <div>
@@ -747,7 +713,7 @@ export default function AdminJobSeekersPage() {
                       {/* Certifications */}
                       {js.certifications?.length ? (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelCertifications")}</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><BadgeCheck className="h-3 w-3" /> {tr("expandedLabelCertifications")}</p>
                           <div className="flex flex-wrap gap-1">
                             {js.certifications.slice(0, 5).map((c, i) => (
                               <span key={i} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{c}</span>
@@ -758,7 +724,7 @@ export default function AdminJobSeekersPage() {
                       {/* CV Download (individual) */}
                       {js.cv?.originalUrl && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelCvResume")}</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><FileText className="h-3 w-3" /> {tr("expandedLabelCvResume")}</p>
                           <button
                             type="button"
                             onClick={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}

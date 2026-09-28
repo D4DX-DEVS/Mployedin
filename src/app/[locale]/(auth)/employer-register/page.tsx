@@ -10,6 +10,7 @@ import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { normalizeWebsiteUrl } from "@/lib/validators/website";
+import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
 
 type VerificationLevel = "basic" | "standard" | "premium";
 
@@ -334,6 +335,10 @@ export default function EmployerRegisterPage() {
       if (step2.mohCertFile) form.append("mohCert", step2.mohCertFile);
       Object.entries(step3).forEach(([k, v]) => { if (k !== "confirmPassword") form.append(k, v); });
       if (referralCode) form.append("referralCode", referralCode);
+      // Recorded in the account's consent log (admin GDPR page).
+      form.append("termsAccepted", String(agreedToTerms));
+      const cookieChoice = readCookieChoice();
+      if (cookieChoice) form.append("cookieConsent", cookieChoice);
 
       const res = await fetch("/api/auth/employer-register", { method: "POST", body: form });
 

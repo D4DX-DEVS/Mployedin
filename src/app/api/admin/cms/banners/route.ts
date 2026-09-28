@@ -7,6 +7,9 @@ import Banner from "@/models/Banner";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { bannerCreateSchema } from "@/lib/validators/cms";
+import { cmsListSort } from "@/lib/cms/listSort";
+
+const SORT_FIELDS = ["createdAt", "title", "sortOrder"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -33,7 +36,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const [items, total] = await Promise.all([
-    Banner.find(query).sort({ sortOrder: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Banner.find(query).sort(cmsListSort(searchParams, SORT_FIELDS, { sortOrder: 1, createdAt: -1 })).skip(skip).limit(limit).lean(),
     Banner.countDocuments(query),
   ]);
 
@@ -47,7 +50,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const body = await validateBody(req, bannerCreateSchema);
 
-  const { title, titleAr, subtitle, subtitleAr, image, imageMobile, linkUrl, linkText, linkTextAr, sortOrder, isActive } = body;
+  const { title, titleAr, subtitle, subtitleAr, image, linkUrl, linkText, linkTextAr, sortOrder, isActive } = body;
   if (!image) {
     return NextResponse.json({ error: "Banner image URL is required" }, { status: 400 });
   }
@@ -58,7 +61,6 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     subtitle: (subtitle ?? "").trim(),
     subtitleAr: (subtitleAr ?? "").trim(),
     image,
-    imageMobile: imageMobile ?? "",
     linkUrl: (linkUrl ?? "").trim(),
     linkText: (linkText ?? "").trim(),
     linkTextAr: (linkTextAr ?? "").trim(),

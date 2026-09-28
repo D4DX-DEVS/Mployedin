@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AlarmClock, ArrowRight, CalendarX2, FilePen, Gauge, PauseCircle, PieChart, Timer, Workflow } from "lucide-react";
+import { AlarmClock, ArrowDown, CalendarX2, FilePen, Funnel, Gauge, PauseCircle, Percent, Timer, Workflow } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { ApplicationStatus } from "@/models/Application";
 import type { HiringFunnel, RecruitmentOverview } from "@/lib/admin/dashboard/types";
 import { formatCount } from "@/lib/ui/intlFormat";
@@ -31,7 +32,7 @@ function rate(part: number, whole: number): number | null {
 
 interface Props {
   data: RecruitmentOverview;
-  /** Pipeline and funnel need `applications`; job health needs `jobs`. */
+  /** Pipeline needs `applications`; job health needs `jobs`. */
   show: { applications: boolean; jobs: boolean };
   days: number;
   locale: string;
@@ -71,76 +72,15 @@ function Pipeline({ data, locale, t }: Pick<Props, "data" | "locale" | "t">) {
 }
 
 /**
- * Stage-to-stage conversion. Each step divides by the stage before it, so a
- * weak step shows up as a low percentage rather than being hidden inside an
- * overall hire rate.
- */
-function Funnel({ funnel, t }: { funnel: HiringFunnel; t: DashboardTranslator }) {
-  const steps = [
-    { key: "toInterview", part: funnel.reachedInterview, whole: funnel.applications },
-    { key: "toOffer", part: funnel.reachedOffer, whole: funnel.reachedInterview },
-    { key: "toHire", part: funnel.hired, whole: funnel.reachedOffer },
-  ] as const;
-  const reviewHours = funnel.avgHoursToFirstReview;
-  const reviewInDays = reviewHours !== null && reviewHours >= 48;
-  const times = [
-    {
-      key: "firstReview",
-      icon: Timer,
-      value: reviewInDays ? Math.round((reviewHours / 24) * 10) / 10 : reviewHours,
-      unit: reviewInDays ? "days" : "hours",
-    },
-    { key: "timeToHire", icon: Gauge, value: funnel.avgDaysToHire, unit: "days" },
-  ] as const;
-
-  return (
-    <>
-      <ul className="flex flex-col gap-2">
-        {steps.map((step) => {
-          const value = rate(step.part, step.whole);
-          return (
-            <li key={step.key} data-funnel-step={step.key}>
-              <div className="flex items-baseline justify-between gap-2 [flex-wrap:nowrap]">
-                <span className="truncate text-xs text-muted-foreground">{t(`funnel.${step.key}`)}</span>
-                <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{value === null ? "—" : `${value}%`}</span>
-              </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
-                <span className="block h-full rounded-full bg-primary" style={{ width: `${value ?? 0}%` }} />
-              </div>
-              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{t(`funnel.reached.${step.key}`, { part: step.part, whole: step.whole })}</p>
-            </li>
-          );
-        })}
-      </ul>
-      <dl className="mt-auto grid grid-cols-2 gap-2 pt-3">
-        {times.map((time) => {
-          const Icon = time.icon;
-          return (
-            <div key={time.key} className="rounded-lg bg-card/80 px-2.5 py-2 ring-1 ring-inset ring-border/60" data-funnel-time={time.key}>
-              <dt className="flex items-center gap-1.5 text-xs leading-4 text-muted-foreground [flex-wrap:nowrap]">
-                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="min-w-0">{t(`funnel.${time.key}`)}</span>
-              </dt>
-              <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
-                {time.value === null ? <span className="text-xs font-normal text-muted-foreground">{t("funnel.noData")}</span> : t(`funnel.${time.unit}`, { value: time.value })}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-    </>
-  );
-}
-
-/**
- * Where applications are now, which jobs need a hand, and how well each stage
- * converts. "No applications" is an action-queue count and is not repeated.
+ * Where applications are now and which jobs need a hand. How far applications
+ * get over time is the hiring funnel on the Overview tab, not repeated here.
+ * "No applications" is an action-queue count and is not repeated either.
  */
 export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props) {
-  const { jobs, funnel } = data;
+  const { jobs } = data;
   const total = data.pipeline.reduce((sum, stage) => sum + stage.count, 0);
-  const cards = [show.applications && "pipeline", show.jobs && "jobs", show.applications && "funnel"].filter(Boolean) as string[];
-  const grid = cardGrid(cards.length);
+  const cards = [show.applications && "pipeline", show.jobs && "jobs"].filter(Boolean) as string[];
+  const grid = cardGrid(cards.length, 2);
   const cell = (card: string) => grid.cell(cards.indexOf(card));
 
   return (
@@ -196,179 +136,181 @@ export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props)
             />
           </DashboardCard>
         )}
-
-        {show.applications && (
-          <DashboardCard title={t("funnel.title")} subtitle={t("funnel.subtitle", { count: funnel.applications })} className={cell("funnel")}>
-            <Funnel funnel={funnel} t={t} />
-          </DashboardCard>
-        )}
       </div>
     </DashboardSection>
   );
 }
 
-/** A small executive pulse for the default dashboard view. Detailed pipeline, job and funnel cards live in Quick analysis. */
-export function AdminRecruitmentPulse({ data, show, locale, t }: Props) {
-  const total = data.pipeline.reduce((sum, stage) => sum + stage.count, 0);
-  const interviewRate = rate(data.funnel.reachedInterview, data.funnel.applications);
-  const metrics = [
-    show.applications && {
-      label: t("recruitment.pipelineTitle"),
-      value: formatCount(total),
-      detail: t("recruitment.pipelineSubtitle", { count: total }),
-      href: `/${locale}/admin/applications`,
-      tone: "bg-primary/10 text-primary",
-    },
-    show.applications && {
-      label: t("funnel.toInterview"),
-      value: interviewRate === null ? "—" : `${interviewRate}%`,
-      detail: t("funnel.reached.toInterview", { part: data.funnel.reachedInterview, whole: data.funnel.applications }),
-      href: `/${locale}/admin/applications?status=interview_scheduled`,
-      tone: "bg-primary/10 text-primary",
-    },
-    show.jobs && {
-      label: t("jobHealth.lowVolume"),
-      value: formatCount(data.jobs.lowVolume),
-      detail: t("jobHealth.subtitle", { count: data.jobs.activeJobs }),
-      href: `/${locale}/admin/jobs`,
-      tone: "bg-primary/10 text-primary",
-    },
-  ].filter(Boolean) as Array<{ label: string; value: string; detail: string; href: string; tone: string }>;
-  const pulseAction = show.applications
-    ? { href: `/${locale}/admin/applications`, label: t("recruitment.viewApplications") }
-    : show.jobs
-      ? { href: `/${locale}/admin/jobs`, label: t("jobHealth.viewJobs") }
-      : undefined;
+const FUNNEL_STAGES = [
+  { key: "applications", count: (funnel: HiringFunnel) => funnel.applications },
+  { key: "reachedInterview", count: (funnel: HiringFunnel) => funnel.reachedInterview },
+  { key: "reachedOffer", count: (funnel: HiringFunnel) => funnel.reachedOffer },
+  { key: "hired", count: (funnel: HiringFunnel) => funnel.hired },
+] as const;
 
-  return (
-    <>
-      <DashboardSection
-        id="admin-recruitment-pulse"
-        icon={Workflow}
-        iconClassName="bg-primary/10 text-primary"
-        title={t("recruitment.title")}
-        description={t("recruitment.description")}
-        action={pulseAction}
-      >
-        <div className={`grid gap-2.5 ${cardGrid(metrics.length).grid}`}>
-          {metrics.map((metric) => (
-            <Link
-              key={metric.label}
-              href={metric.href}
-              className="group flex min-w-0 items-center gap-3 rounded-xl bg-card/80 p-3 ring-1 ring-inset ring-border/60 transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${metric.tone}`}>
-                <Workflow className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-semibold text-foreground">{metric.label}</span>
-                <span className="mt-0.5 block truncate text-xs text-muted-foreground">{metric.detail}</span>
-              </span>
-              <span className="shrink-0 text-xl font-semibold tabular-nums text-foreground">{metric.value}</span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
-            </Link>
-          ))}
-        </div>
-      </DashboardSection>
-      <AdminRecruitmentAnalytics data={data} show={show} locale={locale} t={t} />
-    </>
-  );
+/** The step into each stage after the first, keyed like the `funnel.reached.*` sentences. */
+const FUNNEL_STEPS = ["toInterview", "toOffer", "toHire"] as const;
+
+/**
+ * Label | bar | count, the same three columns as the pipeline chart on Quick
+ * analysis, so both bar charts read the same way.
+ */
+const FUNNEL_ROW = "grid grid-cols-[7.5rem_minmax(0,1fr)_2.75rem] items-center gap-3 sm:grid-cols-[8.5rem_minmax(0,1fr)_3rem]";
+
+interface Speed {
+  key: string;
+  icon: LucideIcon;
+  label: string;
+  /** The number, printed large; null when there is nothing to average. */
+  value: string | null;
+  /** Unit printed small beside the number, like "All time" beside a snapshot total. */
+  unit?: string;
+  detail?: string;
 }
 
-/** Detailed charts live in their own band below the compact recruitment pulse. */
-export function AdminRecruitmentAnalytics({ data, show, locale, t }: Pick<Props, "data" | "show" | "locale" | "t">) {
-  const cards = [show.applications && "pipeline", show.jobs && "jobs"].filter(Boolean) as string[];
-  const grid = cardGrid(cards.length, 2);
-  const cell = (card: string) => grid.cell(cards.indexOf(card));
+function speedTiles(funnel: HiringFunnel, locale: string, t: DashboardTranslator): Speed[] {
+  const decimal = (value: number) => formatCount(value, { maximumFractionDigits: 1 }, locale);
+  const reviewHours = funnel.avgHoursToFirstReview;
+  const reviewInDays = reviewHours !== null && reviewHours >= 48;
+  const hireRate = rate(funnel.hired, funnel.applications);
+  return [
+    {
+      key: "firstReview",
+      icon: Timer,
+      label: t("funnel.firstReview"),
+      value: reviewHours === null ? null : decimal(reviewInDays ? reviewHours / 24 : reviewHours),
+      unit: t(reviewInDays ? "funnel.unitDays" : "funnel.unitHours"),
+    },
+    {
+      key: "timeToHire",
+      icon: Gauge,
+      label: t("funnel.timeToHire"),
+      value: funnel.avgDaysToHire === null ? null : decimal(funnel.avgDaysToHire),
+      unit: t("funnel.unitDays"),
+    },
+    {
+      key: "hireRate",
+      icon: Percent,
+      label: t("funnel.hireRate"),
+      value: hireRate === null ? null : `${decimal(hireRate)}%`,
+      detail: t("funnel.hireRateDetail", { part: funnel.hired, whole: funnel.applications }),
+    },
+  ];
+}
 
-  if (cards.length === 0) return null;
+/**
+ * How far applications get and how fast: one bar per stage, sized by how many
+ * applications ever reached it. The part of the stage before that did not get
+ * this far stays on the bar as a lighter segment, so the drop-off is visible,
+ * and the line between two bars gives the conversion and the count lost. Every
+ * application to date — the period picker does not narrow it, and the subtitle
+ * says so. Stage counts are history ("ever reached"), which no list filters
+ * on, so the bars are not links; the section links to the list.
+ *
+ * Colours: primary for the stage, #94AEEA (bg-[#94AEEA]) for the drop-off — one
+ * hue, validated as an ordinal pair (light end 2.15:1 on the card surface).
+ */
+export function AdminHiringFunnel({ funnel, locale, t }: { funnel: HiringFunnel; locale: string; t: DashboardTranslator }) {
+  const stages = FUNNEL_STAGES.map((stage) => ({ key: stage.key, count: stage.count(funnel) }));
+  const max = Math.max(1, stages[0].count);
+  const percent = (count: number) => `${(count / max) * 100}%`;
 
   return (
     <DashboardSection
-      id="admin-recruitment-analytics"
-      icon={PieChart}
+      id="admin-hiring-funnel"
+      icon={Funnel}
       iconClassName="bg-primary/10 text-primary"
-      title={t("recruitment.analyticsTitle")}
-      description={t("recruitment.analyticsDescription")}
+      title={t("funnel.title")}
+      description={t("funnel.description")}
+      action={{ href: `/${locale}/admin/applications`, label: t("recruitment.viewApplications") }}
     >
-      <div className={`grid items-stretch gap-2.5 ${grid.grid}`}>
-        {show.applications && (
-          <DashboardCard
-            title={t("recruitment.pipelineTitle")}
-            subtitle={t("recruitment.pipelineSubtitle", { count: data.pipeline.reduce((sum, stage) => sum + stage.count, 0) })}
-            action={{ href: `/${locale}/admin/applications`, label: t("recruitment.viewApplications") }}
-            className={cell("pipeline")}
-          >
-            <PipelineDonut data={data} t={t} />
-          </DashboardCard>
-        )}
-        {show.jobs && (
-          <DashboardCard
-            title={t("jobHealth.title")}
-            subtitle={t("jobHealth.subtitle", { count: data.jobs.activeJobs })}
-            action={{ href: `/${locale}/admin/jobs`, label: t("jobHealth.viewJobs") }}
-            className={cell("jobs")}
-          >
-            <StatList
-              rows={[
-                { key: "jobs-active", icon: Workflow, tone: "sky", value: data.jobs.activeJobs, label: t("jobHealth.active") },
-                { key: "jobs-low-volume", icon: Gauge, tone: data.jobs.lowVolume > 0 ? "sky" : "slate", value: data.jobs.lowVolume, label: t("jobHealth.lowVolume") },
-                { key: "jobs-expiring", icon: AlarmClock, tone: data.jobs.expiringSoon > 0 ? "sky" : "slate", value: data.jobs.expiringSoon, label: t("jobHealth.expiringSoon") },
-                { key: "jobs-paused", icon: PauseCircle, tone: "slate", value: data.jobs.paused, label: t("jobHealth.paused") },
-              ]}
-            />
-          </DashboardCard>
-        )}
-      </div>
-    </DashboardSection>
-  );
-}
-
-function PipelineDonut({ data, t }: Pick<Props, "data" | "t">) {
-  const stages = data.pipeline.filter((stage) => stage.count > 0);
-  const total = stages.reduce((sum, stage) => sum + stage.count, 0);
-  const colors = ["hsl(var(--primary))", "#16a34a"];
-  let cursor = 0;
-  const segments = stages.map((stage, index) => {
-    const start = total > 0 ? (cursor / total) * 360 : 0;
-    cursor += stage.count;
-    const end = total > 0 ? (cursor / total) * 360 : 0;
-    return { stage, color: colors[index % colors.length], start, end };
-  });
-  const gradient = segments.length > 0
-    ? `conic-gradient(${segments.map((segment) => `${segment.color} ${segment.start}deg ${segment.end}deg`).join(", ")})`
-    : "hsl(var(--muted))";
-
-  return (
-    <div
-      className="flex min-w-0 items-center gap-3 rounded-xl bg-card/80 p-3 ring-1 ring-inset ring-border/60"
-      role="group"
-      aria-label={t("recruitment.pipelineSubtitle", { count: total })}
-    >
-      <div className="relative h-20 w-20 shrink-0 rounded-full p-2" style={{ background: gradient }} aria-hidden="true">
-        <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-card text-center">
-          <PieChart className="mb-0.5 h-3.5 w-3.5 text-primary" />
-          <span className="text-lg font-semibold leading-5 tabular-nums text-foreground">{formatCount(total)}</span>
+      <div className="grid items-stretch gap-2.5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="workspace-subtle-surface flex min-w-0 flex-col rounded-xl p-3 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.35)] sm:p-4" data-surface="light-card">
+          <p className="text-xs text-muted-foreground">{t("funnel.subtitle", { count: funnel.applications })}</p>
+          {funnel.applications === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">{t("funnel.empty")}</p>
+          ) : (
+            <ol className="mt-3 flex flex-1 flex-col">
+              {/* Each later stage grows to fill the height beside the tiles; its conversion line takes the
+                  growth, so the line sits centred in the gap between two bars rather than on top of one. */}
+              {stages.map((stage, index) => {
+                const step = index > 0 ? FUNNEL_STEPS[index - 1] : null;
+                const previous = index > 0 ? stages[index - 1].count : 0;
+                const dropped = Math.max(0, previous - stage.count);
+                const converted = step ? rate(stage.count, previous) : null;
+                // With nobody at the stage before there is no rate; say so in words, not with a dash.
+                const sentence = !step ? undefined : previous === 0 ? t("funnel.stepEmpty") : t(`funnel.reached.${step}`, { part: stage.count, whole: previous });
+                return (
+                  <li key={stage.key} className={step ? "flex flex-1 flex-col" : undefined} data-funnel-stage={stage.key}>
+                    {step && (
+                      <p className={`${FUNNEL_ROW} flex-1 py-1.5`} data-funnel-step={step}>
+                        <span aria-hidden="true" />
+                        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground [flex-wrap:nowrap]">
+                          <ArrowDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          {converted === null ? (
+                            <span className="truncate">{sentence}</span>
+                          ) : (
+                            <>
+                              <span className="font-semibold tabular-nums text-foreground">{`${converted}%`}</span>
+                              <span aria-hidden="true">{t("funnel.converted")}</span>
+                              {/* Phones keep the rate; the light segment still shows the drop. */}
+                              {dropped > 0 && (
+                                <span className="hidden truncate sm:inline" aria-hidden="true">
+                                  · {t("funnel.dropped", { count: formatCount(dropped) })}
+                                </span>
+                              )}
+                              <span className="sr-only">{sentence}</span>
+                            </>
+                          )}
+                        </span>
+                      </p>
+                    )}
+                    <div className={`${FUNNEL_ROW} rounded-md`} title={sentence}>
+                      <span className="truncate text-xs text-foreground sm:text-sm">{t(`funnel.stages.${stage.key}`)}</span>
+                      {/* Stage, then a 2px gap, then the drop-off: together they span the stage before. */}
+                      <span className="flex h-5 min-w-0 gap-0.5 [flex-wrap:nowrap] sm:h-6" aria-hidden="true">
+                        {stage.count > 0 && <span className="h-full shrink-0 rounded-e bg-primary" style={{ width: percent(stage.count) }} data-bar="stage" />}
+                        {dropped > 0 && <span className="h-full min-w-0 rounded-e bg-[#94AEEA]" style={{ width: percent(dropped) }} data-bar="dropped" />}
+                      </span>
+                      <span className="text-end text-sm font-semibold tabular-nums text-foreground">{formatCount(stage.count)}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </div>
-      </div>
-      <div className="min-w-0 space-y-1">
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <PieChart className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-          {t("recruitment.pipelineTitle")}
-        </p>
-        <ul className="space-y-0.5">
-          {segments.map(({ stage, color }) => {
-            const label = t(`statuses.${STATUS_KEYS[stage.status] ?? "unknown"}`);
+
+        <ul className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1">
+          {speedTiles(funnel, locale, t).map((tile) => {
+            const Icon = tile.icon;
             return (
-              <li key={stage.status} className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
-                <span className="truncate">{label}</span>
-                <span className="ms-auto tabular-nums text-foreground">{stage.count}</span>
+              <li
+                key={tile.key}
+                className="flex min-w-0 items-center gap-2.5 rounded-xl bg-card/80 p-3 ring-1 ring-inset ring-border/60 [flex-wrap:nowrap] sm:flex-col sm:items-start sm:justify-center sm:gap-1.5"
+                data-funnel-time={tile.key}
+              >
+                {/* Same anatomy as a Platform snapshot card: icon + semibold label, then the number with its unit small. */}
+                <span className="flex min-w-0 flex-1 items-center gap-2 [flex-wrap:nowrap] sm:flex-none">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 text-xs font-semibold text-foreground">{tile.label}</span>
+                </span>
+                {tile.value === null ? (
+                  <span className="shrink-0 text-xs text-muted-foreground">{t("funnel.noData")}</span>
+                ) : (
+                  <span className="flex shrink-0 items-baseline gap-1.5 [flex-wrap:nowrap]">
+                    <span className="text-lg font-semibold tabular-nums tracking-tight text-foreground sm:text-2xl">{tile.value}</span>
+                    {tile.unit && <span className="text-xs text-muted-foreground">{tile.unit}</span>}
+                  </span>
+                )}
+                {tile.detail && <span className="hidden text-xs text-muted-foreground sm:block">{tile.detail}</span>}
               </li>
             );
           })}
         </ul>
       </div>
-    </div>
+    </DashboardSection>
   );
 }

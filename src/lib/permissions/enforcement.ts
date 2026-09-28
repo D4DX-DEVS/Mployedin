@@ -25,7 +25,7 @@ export const ENFORCED_PERMISSIONS: Partial<Record<Resource, Action[]>> = {
   interviews: ["create", "read", "update", "delete"],
   placements: ["create", "read", "update", "delete"],
   leads: ["create", "read", "update", "delete"],
-  commissions: ["create", "read", "update", "delete", "approve"],
+  commissions: ["read", "update", "delete", "approve"],
   employers: ["create", "read", "update", "delete", "approve"],
   agents: ["create", "read", "update", "delete"],
   job_seekers: ["read", "update", "delete"],

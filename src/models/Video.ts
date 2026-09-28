@@ -7,7 +7,6 @@ export interface IVideo extends Document {
   description: string;
   descriptionAr: string;
   url: string;
-  thumbnail: string;
   sortOrder: number;
   isActive: boolean;
   createdAt: Date;
@@ -21,7 +20,6 @@ const VideoSchema = new Schema<IVideo>(
     description: { type: String, default: "", trim: true },
     descriptionAr: { type: String, default: "", trim: true },
     url: { type: String, required: true, trim: true },
-    thumbnail: { type: String, default: "" },
     sortOrder: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
   },

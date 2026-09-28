@@ -10,6 +10,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PrivacySettingsLink } from "@/components/features/privacy/PrivacySettingsLink";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -1406,22 +1407,11 @@ function SecurityTab() {
       </SectionCard>
 
       <ChangeEmailCard />
-            <CalendarFeedCard />
+      <CalendarFeedCard />
 
-      <SectionCard>
-        <SectionHeader icon={AlertTriangle} title={t("security.dangerTitle")} description={t("security.dangerDescription")} />
-        <div className="p-6">
-          <div className="flex items-center justify-between rounded-xl border border-destructive/20 bg-destructive/5 card-pad">
-            <div>
-              <p className="text-sm font-medium text-destructive">{t("security.deactivateTitle")}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("security.deactivateDescription")}</p>
-            </div>
-            <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10">
-              {t("security.deactivate")}
-            </Button>
-          </div>
-        </div>
-      </SectionCard>
+      {/* Downloading your data and deleting the account live on Data & Privacy
+          (the dead "Deactivate" button that sat here did nothing). */}
+      <PrivacySettingsLink href="/agent/settings/privacy" />
     </>
   );
 }

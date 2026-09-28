@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +15,13 @@ const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: 
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useDebounce } from "@/hooks/useDebounce";
 import { findTaxPreset, INTERNATIONAL_TAX_PRESETS } from "@/lib/invoices/taxPresets";
+import { toAgentOptions, toSuperAgentOptions, type AgentOption, type SuperAgentOption } from "./teamFilterOptions";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Building2, FileText, FileCheck, ChevronLeft, ChevronRight,
-  Plus, Trash2, Loader2, Search, Check, X, ChevronDown, MapPin, Users, AlertTriangle,
+  Plus, Trash2, Loader2, Search, Check, X, ChevronDown, MapPin, Users, AlertTriangle, CalendarDays,
 } from "lucide-react";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -48,8 +49,9 @@ interface Job {
 }
 interface Employer { _id: string; companyName: string; name?: string; companyEmail?: string; phone?: string; address?: string; country?: string; taxId?: string; employerProfileId?: string }
 interface LineItem { id: string; description: string; quantity: number; unitPrice: number; amount: number }
-interface AgentOption { _id: string; name: string; superAgentId?: string; regions: string[] }
-interface SuperAgentOption { _id: string; name: string; regions: string[]; agentCount: number }
+/** One line's rate as the server resolves it — see /api/invoices/recruitment/commission-rates. */
+interface ServerCommissionRate { rate: number; source: "country_override" | "agent_default" | "super_agent_default"; countryCode?: string; profileRate: number }
+interface ServerCommissionRates { jobId: string; agent: ServerCommissionRate | null; superAgent: ServerCommissionRate | null }
 
 interface InvoiceBuilderProps {
   open: boolean;
@@ -156,6 +158,7 @@ function mergeById<T extends { _id: string }>(current: T[], incoming: T[]): T[] 
 
 export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AED", searchScope = "standard", role = "agent", mode = "dialog" }: InvoiceBuilderProps) {
   const t = useTranslations("invoiceBuilder");
+  const locale = useLocale();
   const ta = useTranslations("a11y");
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -170,6 +173,11 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [jobSearchError, setJobSearchError] = useState<string | null>(null);
   const [totalJobCount, setTotalJobCount] = useState(-1); // -1 = not loaded yet
   const [loadingCount, setLoadingCount] = useState(false);
+  const [jobPage, setJobPage] = useState(1);
+  const [loadingMoreJobs, setLoadingMoreJobs] = useState(false);
+  // Only the newest job request may write results — a slow reply for "Acc"
+  // must not overwrite the list already showing "Accountant Beta".
+  const jobRequestSeqRef = useRef(0);
   const [employerSearchError, setEmployerSearchError] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [selectedEmployerId, setSelectedEmployerId] = useState("");
@@ -218,6 +226,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [commissionEnabled, setCommissionEnabled] = useState(false);
   const [customAgentRate, setCustomAgentRate] = useState(0);
   const [customSuperAgentRate, setCustomSuperAgentRate] = useState(0);
+  // The rates the server will apply for the selected job (a country rule can
+  // replace the profile rate), from /api/invoices/recruitment/commission-rates.
+  const [serverRates, setServerRates] = useState<ServerCommissionRates | null>(null);
   const [paymentTerms, setPaymentTerms] = useState("net_30");
   const [customPaymentDays, setCustomPaymentDays] = useState(30);
   const [customPaymentTerms, setCustomPaymentTerms] = useState<Array<{ value: string; label: string }>>([]);
@@ -245,7 +256,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       setStep(1);
       setJobs([]); setEmployers([]);
       setJobSearch(""); setJobSearchError(null); setEmployerSearchError(null);
-      setTotalJobCount(-1); setLoadingCount(false);
+      setTotalJobCount(-1); setLoadingCount(false); setJobPage(1);
       attemptedEmployerBackfillsRef.current = new Set();
       setSelectedJobId(""); setSelectedEmployerId("");
       setBillingCompanyName(""); setBillingAddress(""); setBillingCountry(""); setBillingTaxId("");
@@ -306,30 +317,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       fetch("/api/admin/super-agents?limit=500").then(r => r.ok ? r.json() : null),
       fetch("/api/admin/agents?limit=500").then(r => r.ok ? r.json() : null),
     ]).then(([saData, agData]) => {
-      // Helper to extract region names from populated state/city arrays
-      const extractRegions = (states?: { name?: string }[], cities?: { name?: string }[]): string[] => {
-        const names = new Set<string>();
-        (states ?? []).forEach(s => { if (s?.name) names.add(s.name); });
-        (cities ?? []).forEach(c => { if (c?.name) names.add(c.name); });
-        return Array.from(names);
-      };
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const saList: SuperAgentOption[] = (saData?.superAgents ?? []).map((sa: any) => ({
-        _id: sa.superAgentProfile?._id ?? sa._id,
-        name: sa.name ?? sa.email ?? sa._id,
-        regions: extractRegions(sa.superAgentProfile?.assignedStateIds, sa.superAgentProfile?.assignedCityIds),
-        agentCount: sa.superAgentProfile?.agentCount ?? sa.superAgentProfile?.agents?.length ?? 0,
-      }));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const agList: AgentOption[] = (agData?.agents ?? []).map((ag: any) => ({
-        _id: ag.agentProfile?._id ?? ag._id,
-        name: ag.name ?? ag.email ?? ag._id,
-        superAgentId: typeof ag.agentProfile?.superAgentId === "object" ? ag.agentProfile.superAgentId._id : ag.agentProfile?.superAgentId,
-        regions: extractRegions(ag.agentProfile?.assignedStateIds, ag.agentProfile?.assignedCityIds),
-      }));
-      setSuperAgents(saList);
-      setAgents(agList);
+      setSuperAgents(toSuperAgentOptions(saData));
+      setAgents(toAgentOptions(agData));
     }).catch(() => {}).finally(() => setLoadingFilters(false));
   }, [open, role]);
 
@@ -371,72 +360,81 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   // ── Fetch jobs (with agent + employer filter for cascade) ────────────────
   // Smart count: fetches total count, and auto-loads all jobs when count is small (≤ 20)
   const AUTO_LOAD_THRESHOLD = 20;
+  const JOB_PAGE_SIZE = 30;
+  const jobsEndpoint = searchScope === "admin" ? "/api/admin/jobs" : "/api/jobs";
+  // A team or employer filter scopes the list enough to show it without typing.
+  const hasCascadeFilter = Boolean(selectedSuperAgentFilter || selectedAgentFilter || selectedEmployerFilter);
+
+  const jobQuery = useCallback((extra: Record<string, string>) => {
+    const params = new URLSearchParams(extra);
+    if (searchScope !== "admin") params.set("invoiceableOnly", "true");
+    if (selectedAgentFilter) params.set("agentId", selectedAgentFilter);
+    // A super agent picked without one of their agents narrows to the whole team.
+    else if (searchScope === "admin" && role === "admin" && selectedSuperAgentFilter) params.set("superAgentId", selectedSuperAgentFilter);
+    if (selectedEmployerFilter) params.set("employerId", selectedEmployerFilter);
+    return params.toString();
+  }, [searchScope, role, selectedAgentFilter, selectedSuperAgentFilter, selectedEmployerFilter]);
+
   const fetchJobCount = useCallback(async () => {
+    const seq = ++jobRequestSeqRef.current;
     setLoadingCount(true);
+    setLoadingJobs(false);
     try {
-      const endpoint = searchScope === "admin" ? "/api/admin/jobs" : "/api/jobs";
-      // First get count
-      const countParams = new URLSearchParams({ limit: "1", page: "1" });
-      if (searchScope !== "admin") countParams.set("invoiceableOnly", "true");
-      if (selectedAgentFilter) countParams.set("agentId", selectedAgentFilter);
-      if (selectedEmployerFilter) countParams.set("employerId", selectedEmployerFilter);
-      const res = await fetch(`${endpoint}?${countParams.toString()}`);
+      const res = await fetch(`${jobsEndpoint}?${jobQuery({ limit: "1", page: "1" })}`);
+      if (seq !== jobRequestSeqRef.current) return;
       if (res.ok) {
         const data = await res.json();
         const total = data.pagination?.total ?? 0;
+        if (seq !== jobRequestSeqRef.current) return;
         setTotalJobCount(total);
         // Auto-load all jobs when count is small — no search needed
         if (total > 0 && total <= AUTO_LOAD_THRESHOLD) {
-          const allParams = new URLSearchParams({ limit: String(total), page: "1" });
-          if (searchScope !== "admin") allParams.set("invoiceableOnly", "true");
-          if (selectedAgentFilter) allParams.set("agentId", selectedAgentFilter);
-          if (selectedEmployerFilter) allParams.set("employerId", selectedEmployerFilter);
-          const allRes = await fetch(`${endpoint}?${allParams.toString()}`);
+          const allRes = await fetch(`${jobsEndpoint}?${jobQuery({ limit: String(total), page: "1" })}`);
           if (allRes.ok) {
             const allData = await allRes.json();
-            setJobs(allData.jobs ?? []);
+            if (seq === jobRequestSeqRef.current) setJobs(allData.jobs ?? []);
           }
         }
       } else {
         setTotalJobCount(0);
       }
     } catch {
-      setTotalJobCount(0);
+      if (seq === jobRequestSeqRef.current) setTotalJobCount(0);
     } finally {
-      setLoadingCount(false);
+      if (seq === jobRequestSeqRef.current) setLoadingCount(false);
     }
-  }, [searchScope, selectedAgentFilter, selectedEmployerFilter]);
+  }, [jobsEndpoint, jobQuery]);
 
-  // Search: fetches matching jobs when user types a query
-  const fetchJobs = useCallback(async (search: string) => {
-    if (!search.trim()) {
-      setJobs([]);
-      return;
-    }
-    setLoadingJobs(true);
+  // Search (or browse a filtered list): page 1 replaces the list, later pages append.
+  const fetchJobs = useCallback(async (search: string, page = 1) => {
+    const seq = ++jobRequestSeqRef.current;
+    if (page === 1) setLoadingJobs(true); else setLoadingMoreJobs(true);
+    setLoadingCount(false);
     setJobSearchError(null);
     try {
-      const endpoint = searchScope === "admin" ? "/api/admin/jobs" : "/api/jobs";
-      const params = new URLSearchParams({ limit: "30", page: "1" });
-      if (searchScope !== "admin") params.set("invoiceableOnly", "true");
-      params.set("search", search.trim());
-      if (selectedAgentFilter) params.set("agentId", selectedAgentFilter);
-      if (selectedEmployerFilter) params.set("employerId", selectedEmployerFilter);
-      const res = await fetch(`${endpoint}?${params.toString()}`);
+      const extra: Record<string, string> = { limit: String(JOB_PAGE_SIZE), page: String(page) };
+      if (search.trim()) extra.search = search.trim();
+      const res = await fetch(`${jobsEndpoint}?${jobQuery(extra)}`);
+      if (seq !== jobRequestSeqRef.current) return;
       if (res.ok) {
         const data = await res.json();
-        const total = data.pagination?.total ?? data.jobs?.length ?? 0;
-        setTotalJobCount(total);
-        setJobs(data.jobs ?? []);
+        if (seq !== jobRequestSeqRef.current) return;
+        const found: Job[] = data.jobs ?? [];
+        setTotalJobCount(data.pagination?.total ?? found.length);
+        setJobs((current) => (page === 1 ? found : mergeById(current, found)));
+        setJobPage(page);
       } else {
         setJobSearchError("Jobs could not be loaded right now.");
       }
     } catch {
-      setJobSearchError("Jobs could not be loaded right now.");
+      if (seq === jobRequestSeqRef.current) setJobSearchError("Jobs could not be loaded right now.");
     } finally {
-      setLoadingJobs(false);
+      if (seq === jobRequestSeqRef.current) {
+        setLoadingJobs(false);
+        setLoadingMoreJobs(false);
+      }
     }
-  }, [searchScope, selectedAgentFilter, selectedEmployerFilter]);
+  }, [jobsEndpoint, jobQuery]);
 
   const fetchEmployers = useCallback(async (search: string) => {
     setEmployerSearchError(null);
@@ -457,26 +455,26 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     }
   }, []);
 
+  // Re-runs whenever the search or any cascade filter changes (the fetchers
+  // change identity with the filters).
   useEffect(() => {
     if (!open) return;
-    if (debouncedJobSearch.trim()) {
+    if (debouncedJobSearch.trim() || hasCascadeFilter) {
       void fetchJobs(debouncedJobSearch);
     } else {
-      // No search query — just get the count, don't load all jobs
+      // No search query or filter — just get the count, don't load all jobs
       setJobs([]);
       void fetchJobCount();
     }
-  }, [open, debouncedJobSearch, fetchJobs, fetchJobCount]);
+  }, [open, debouncedJobSearch, hasCascadeFilter, fetchJobs, fetchJobCount]);
 
-  // When cascade filter changes, clear job selection and re-fetch count
+  // When cascade filter changes, clear job selection (the effect above refetches)
   useEffect(() => {
     setSelectedJobId("");
     setSelectedEmployerId("");
     setJobs([]);
     setTotalJobCount(-1);
-    if (open) void fetchJobCount();
-     
-  }, [selectedAgentFilter, selectedEmployerFilter]);
+  }, [selectedSuperAgentFilter, selectedAgentFilter, selectedEmployerFilter]);
 
   // When super agent filter changes, clear agent + employer
   useEffect(() => {
@@ -558,6 +556,19 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     setAgentRate(0);
     setSuperAgentRate(0);
   }, [selectedJobId, jobs, category]);
+
+  useEffect(() => {
+    if (!selectedJobId) return;
+    let cancelled = false;
+    fetch(`/api/invoices/recruitment/commission-rates?jobId=${encodeURIComponent(selectedJobId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: Omit<ServerCommissionRates, "jobId"> | null) => {
+        if (!cancelled && data) setServerRates({ jobId: selectedJobId, agent: data.agent, superAgent: data.superAgent });
+      })
+      // The preview then falls back to the profile rates; the server still applies the rule.
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedJobId]);
 
   // Check for duplicate invoice when job + employer are selected
   useEffect(() => {
@@ -646,19 +657,21 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const taxAmount = taxType !== "none" ? Math.round(afterDiscount * taxPercent / 100 * 100) / 100 : 0;
   const totalAmount = Math.round((afterDiscount + taxAmount + serviceCharge) * 100) / 100;
   // Commission calculation:
-  // - super_agent: uses profile rates from job populate (always visible, editable)
-  // - admin: uses profile rates by default; can override via toggle
-  // - agent: no control — backend applies profile rates server-side
-  const effectiveAgentRate = role === "agent"
-    ? agentRate
-    : role === "super_agent"
-      ? agentRate
-      : commissionEnabled ? customAgentRate : agentRate;
-  const effectiveSuperAgentRate = role === "agent"
-    ? superAgentRate
-    : role === "super_agent"
-      ? superAgentRate
-      : commissionEnabled ? customSuperAgentRate : superAgentRate;
+  // - everyone: the server's rate (country rule, else profile rate), falling
+  //   back to the job's profile rates until it has loaded
+  // - admin: can replace both with Custom rates via the toggle
+  const jobRates = serverRates?.jobId === selectedJobId ? serverRates : null;
+  const defaultAgentRate = jobRates?.agent ? jobRates.agent.rate : agentRate;
+  const defaultSuperAgentRate = jobRates?.superAgent ? jobRates.superAgent.rate : superAgentRate;
+  const effectiveAgentRate = role === "admin" && commissionEnabled ? customAgentRate : defaultAgentRate;
+  const effectiveSuperAgentRate = role === "admin" && commissionEnabled ? customSuperAgentRate : defaultSuperAgentRate;
+  /** "Saudi Arabia rule · profile 10%" under a line whose rate a country rule set. */
+  const countryRuleNote = (line: ServerCommissionRate | null | undefined): string | null => {
+    if (!line || line.source !== "country_override" || !line.countryCode || (role === "admin" && commissionEnabled)) return null;
+    let country = line.countryCode;
+    try { country = new Intl.DisplayNames([locale], { type: "region" }).of(line.countryCode) ?? line.countryCode; } catch { /* keep the code */ }
+    return t("countryRuleNote", { country, profileRate: line.profileRate });
+  };
   const combinedRate = effectiveAgentRate + effectiveSuperAgentRate;
   const combinedRateExceeds = combinedRate > 100;
   // Same base as the server (invoices/recruitment + the Invoice save hook):
@@ -780,12 +793,11 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         notes: notes || undefined,
         internalNotes: internalNotes || undefined,
         status: invoiceStatus,
-        ...(role === "super_agent" ? {
-          overrideAgentRate: agentRate,
-          overrideSuperAgentRate: superAgentRate,
-        } : role === "admin" ? {
-          overrideAgentRate: commissionEnabled ? customAgentRate : agentRate,
-          overrideSuperAgentRate: commissionEnabled ? customSuperAgentRate : superAgentRate,
+        // Only an admin's explicit Custom rates travel as overrides. Otherwise the
+        // server resolves the rate itself, so a country rule is never bypassed.
+        ...(role === "admin" && commissionEnabled ? {
+          overrideAgentRate: customAgentRate,
+          overrideSuperAgentRate: customSuperAgentRate,
         } : {}),
       };
 
@@ -848,20 +860,6 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     });
     return [{ value: "", label: "All Employers" }, ...Array.from(nameMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([name, id]) => ({ value: id, label: name }))];
   }, [jobs, cascadeEmployers]);
-
-  // Client-side filter for auto-loaded jobs (when user types but jobs were pre-loaded)
-  const filteredJobs = useMemo(() => {
-    let result = jobs;
-    // Server-side employer filter handles filtering via cascade re-fetch;
-    // no client-side employer filter needed here.
-    if (!debouncedJobSearch.trim() || totalJobCount > AUTO_LOAD_THRESHOLD) return result;
-    const q = debouncedJobSearch.toLowerCase();
-    return result.filter((job) => {
-      const employer = isPopulatedJobEmployer(job.employerId) ? job.employerId.companyName : "";
-      const city = job.location?.city ?? "";
-      return job.title.toLowerCase().includes(q) || employer.toLowerCase().includes(q) || city.toLowerCase().includes(q);
-    });
-  }, [jobs, debouncedJobSearch, totalJobCount]);
 
   const superAgentOptions = [{ value: "", label: "All Super Agents" }, ...regionFilteredSuperAgents.map(sa => ({
     value: sa._id,
@@ -985,8 +983,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 onClick={() => {
                   setCommissionEnabled(!commissionEnabled);
                   if (!commissionEnabled) {
-                    setCustomAgentRate(agentRate);
-                    setCustomSuperAgentRate(superAgentRate);
+                    setCustomAgentRate(defaultAgentRate);
+                    setCustomSuperAgentRate(defaultSuperAgentRate);
                   }
                 }}
                 className={`rounded-full px-2 py-0.5 text-[9px] font-medium transition-colors ${commissionEnabled ? "bg-sky-100 text-sky-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
@@ -996,7 +994,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
             )}
           </div>
           <div className="mt-2 space-y-1.5 text-xs">
-            {(selectedAgent || agentRate > 0) ? (
+            {(selectedAgent || defaultAgentRate > 0) ? (
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
@@ -1004,6 +1002,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   </span>
                   <span className="font-medium">{effectiveAgentRate}% &nbsp; {fmt(agentCommission)}</span>
                 </div>
+                {countryRuleNote(jobRates?.agent) && (
+                  <p className="text-[10px] text-muted-foreground">{countryRuleNote(jobRates?.agent)}</p>
+                )}
                 {role === "admin" && commissionEnabled && (
                   <input
                     type="range" min={0} max={50} step={0.5}
@@ -1019,7 +1020,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 <span className="text-muted-foreground/60">—</span>
               </div>
             )}
-            {(selectedSuperAgent || superAgentRate > 0) ? (
+            {(selectedSuperAgent || defaultSuperAgentRate > 0) ? (
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
@@ -1027,6 +1028,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   </span>
                   <span className="font-medium">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
                 </div>
+                {countryRuleNote(jobRates?.superAgent) && (
+                  <p className="text-[10px] text-muted-foreground">{countryRuleNote(jobRates?.superAgent)}</p>
+                )}
                 {role === "admin" && commissionEnabled && (
                   <input
                     type="range" min={0} max={50} step={0.5}
@@ -1361,12 +1365,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         )}
                       </div>
   
-                      {/* Results list — shown when searching OR auto-loaded (small count) */}
-                      {(debouncedJobSearch.trim() || loadingJobs || (jobs.length > 0 && totalJobCount <= AUTO_LOAD_THRESHOLD)) ? (
+                      {/* Results list — shown when searching, filtered by team/employer, OR auto-loaded (small count) */}
+                      {(debouncedJobSearch.trim() || hasCascadeFilter || loadingJobs || (jobs.length > 0 && totalJobCount <= AUTO_LOAD_THRESHOLD)) ? (
                         <div className="mt-2 max-h-[35vh] overflow-y-auto rounded-lg border border-border/50">
-                          {filteredJobs.length > 0 ? (
+                          {jobs.length > 0 ? (
                             <>
-                              {filteredJobs.map((job) => {
+                              {jobs.map((job) => {
                                 const employer = isPopulatedJobEmployer(job.employerId) ? job.employerId : null;
                                 const city = job.location?.city;
                                 const sal = job.salary;
@@ -1400,6 +1404,16 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                         {typeLabel && (
                                           <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] capitalize text-muted-foreground">{typeLabel}</span>
                                         )}
+                                        {/* Same title at the same company is common — ID + date tell them apart. */}
+                                        <span className="font-mono text-[11px] text-muted-foreground" title={t("jobId")}>
+                                          #{job._id.slice(-8).toUpperCase()}
+                                        </span>
+                                        {job.createdAt && (
+                                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                            {t("postedOn", { date: formatDate(job.createdAt, { day: "numeric", month: "short", year: "numeric" }) })}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                     {job.status && (
@@ -1412,10 +1426,22 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                   </button>
                                 );
                               })}
-                              {totalJobCount > filteredJobs.length && (
-                                <p className="px-3 py-2 text-center text-[11px] text-muted-foreground">
-                                  {t("showingResults", { showing: filteredJobs.length, total: formatCount(totalJobCount) })}
-                                </p>
+                              {totalJobCount > jobs.length && (
+                                <div className="flex flex-col items-center gap-1.5 px-3 py-2">
+                                  <p className="text-center text-[11px] text-muted-foreground">
+                                    {t("showingResults", { showing: jobs.length, total: formatCount(totalJobCount) })}
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => void fetchJobs(debouncedJobSearch, jobPage + 1)}
+                                    disabled={loadingMoreJobs}
+                                  >
+                                    {loadingMoreJobs && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                                    {t("loadMoreJobs")}
+                                  </Button>
+                                </div>
                               )}
                             </>
                           ) : (
@@ -1856,7 +1882,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   }
 
   // ── Commission summary for dialog mode (agent view) ──────────────────────
-  const dialogCommissionSummary = (selectedAgent || selectedSuperAgent || agentRate > 0 || superAgentRate > 0) && totalAmount > 0 && (
+  const dialogCommissionSummary = (selectedAgent || selectedSuperAgent || defaultAgentRate > 0 || defaultSuperAgentRate > 0) && totalAmount > 0 && (
     <div className={`mt-4 rounded-xl border ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"} card-pad`}>
       <p className={`text-[11px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>
         {role === "agent" ? t("yourCommission") : t("commissionSplit")}
@@ -1875,14 +1901,22 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
             {effectiveAgentRate === 0 && role === "agent" && (
               <p className="mt-0.5 text-[11px] text-amber-700">{t("agentZeroRateNote")}</p>
             )}
+            {countryRuleNote(jobRates?.agent) && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{countryRuleNote(jobRates?.agent)}</p>
+            )}
           </div>
         )}
         {effectiveSuperAgentRate > 0 && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              {selectedSuperAgent?.userId?.name ? t("commissionSuperAgentNamed", { name: selectedSuperAgent.userId.name }) : t("commissionSuperAgent")}
-            </span>
-            <span className="font-medium text-indigo-700">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+          <div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                {selectedSuperAgent?.userId?.name ? t("commissionSuperAgentNamed", { name: selectedSuperAgent.userId.name }) : t("commissionSuperAgent")}
+              </span>
+              <span className="font-medium text-indigo-700">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+            </div>
+            {countryRuleNote(jobRates?.superAgent) && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{countryRuleNote(jobRates?.superAgent)}</p>
+            )}
           </div>
         )}
         <div className="border-t border-amber-200/70 pt-1.5">

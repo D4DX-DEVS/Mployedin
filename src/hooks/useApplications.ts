@@ -10,6 +10,8 @@ export interface ApplicationsFilters {
   page: number;
   limit: number;
   status?: string;
+  /** One workflow stage of the selected job, when several stages share `status` (a board column). */
+  stageId?: string;
   /** "Has reached at least this stage" — the shortlist keeps candidates who
    *  have since advanced. Ignored when `status` is set. */
   stageFrom?: string;
@@ -63,6 +65,7 @@ function buildApplicationsParams(filters: ApplicationsFilters): URLSearchParams 
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
   else if (filters.stageFrom) params.set("stageFrom", filters.stageFrom);
   if (filters.jobId) params.set("jobId", filters.jobId);
+  if (filters.stageId && filters.jobId && filters.status) params.set("stageId", filters.stageId);
   if (filters.search) params.set("search", filters.search);
   if (filters.scoreMin != null && filters.scoreMin > 0) params.set("scoreMin", String(filters.scoreMin));
   if (filters.scoreMax != null && filters.scoreMax < 100) params.set("scoreMax", String(filters.scoreMax));
@@ -192,17 +195,21 @@ export function useUpdateApplicationStatus() {
       status,
       rejectionReason,
       acknowledgeOpenInterview,
+      stageId,
     }: {
       id: string;
       status: string;
       rejectionReason?: string;
       acknowledgeOpenInterview?: boolean;
+      /** A stage of the job's workflow under `status` (a board column). */
+      stageId?: string;
     }) => {
       const res = await fetch(`/api/applications/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status,
+          ...(stageId && { stageId }),
           ...(rejectionReason && { rejectionReason }),
           ...(acknowledgeOpenInterview && { acknowledgeOpenInterview: true }),
         }),

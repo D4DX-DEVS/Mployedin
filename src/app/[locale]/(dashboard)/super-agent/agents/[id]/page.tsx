@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   ArrowLeft, Briefcase, Calendar, Clock, Copy, ExternalLink,
@@ -18,13 +18,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
+import { StepFormDialog } from "@/components/shared/StepFormDialog";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
@@ -151,6 +150,8 @@ export default function AgentDetailPage() {
   const agentId = params.id as string;
   const t = useTranslations("superAgentAgentDetail");
   const tc = useTranslations("common");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
 
   const [data, setData] = useState<AgentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -246,8 +247,21 @@ export default function AgentDetailPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        setEditError(e.error ?? t("failedToUpdateAgent"));
+        // Translated, field-named copy instead of the API's English `error`.
+        const { message } = await formErrorFromResponse(res, {
+          t: tf,
+          locale,
+          fieldLabels: {
+            commissionRate: t("formLabelCommissionRate"),
+            workingHoursStart: t("formLabelWorkingHoursStart"),
+            workingHoursEnd: t("formLabelWorkingHoursEnd"),
+            workingDays: t("formLabelWorkingDays"),
+            isActive: tc("status"),
+            assignedCityIds: t("formLabelUpdateRegion"),
+            assignedStateIds: t("formLabelUpdateRegion"),
+          },
+        });
+        setEditError(message);
         return;
       }
       setShowEdit(false);
@@ -580,134 +594,139 @@ export default function AgentDetailPage() {
         </SuperAgentSection>
       )}
 
-      {/* ── Edit Agent Dialog ── */}
-      <Dialog open={showEdit} onOpenChange={setShowEdit}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("editDialogTitle")}</DialogTitle>
-            <DialogDescription>{t("editDialogDescription")}</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {editError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
-                <AlertCircle className="h-4 w-4 shrink-0" />{editError}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="field">
-                <Label>{t("formLabelCommissionRate")}</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={editForm.commissionRate}
-                  onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))}
-                  placeholder="0"
-                />
-                <p className="text-[11px] text-muted-foreground">{t("formHintCommissionRate")}</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="agent-active-status-switch">{tc("status")}</Label>
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    id="agent-active-status-switch"
-                    type="button"
-                    role="switch"
-                    aria-checked={editForm.isActive}
-                    aria-label={t("toggleActiveStatusLabel")}
-                    onClick={() => setEditForm((f) => ({ ...f, isActive: !f.isActive }))}
-                    className={cn(
-                      "relative h-6 w-11 rounded-full transition-colors",
-                      editForm.isActive ? "bg-emerald-500" : "bg-gray-300"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform shadow-sm",
-                        editForm.isActive && "translate-x-5"
-                      )}
+      {/* ── Edit Agent: Details → Region, on the Add Employer frame ── */}
+      <StepFormDialog
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        title={t("editDialogTitle")}
+        description={t("editDialogDescription")}
+        error={editError}
+        onErrorDismiss={() => setEditError("")}
+        submitLabel={tc("save")}
+        submittingLabel={t("formSavingLabel")}
+        submitting={editLoading}
+        onSubmit={handleEdit}
+        steps={[
+          {
+            label: tc("stepDetails"),
+            content: (
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="field">
+                    <Label htmlFor="edit-agent-commission">{t("formLabelCommissionRate")}</Label>
+                    <Input
+                      id="edit-agent-commission"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={editForm.commissionRate}
+                      onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))}
+                      placeholder="0"
+                      aria-describedby="edit-agent-commission-hint"
                     />
-                  </button>
-                  <span className="text-sm">{editForm.isActive ? tc("active") : tc("inactive")}</span>
+                    <p id="edit-agent-commission-hint" className="text-xs text-muted-foreground">{t("formHintCommissionRate")}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="agent-active-status-switch">{tc("status")}</Label>
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        id="agent-active-status-switch"
+                        type="button"
+                        role="switch"
+                        aria-checked={editForm.isActive}
+                        aria-label={t("toggleActiveStatusLabel")}
+                        onClick={() => setEditForm((f) => ({ ...f, isActive: !f.isActive }))}
+                        className={cn(
+                          "relative h-6 w-11 rounded-full transition-colors",
+                          editForm.isActive ? "bg-emerald-500" : "bg-gray-300"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform shadow-sm",
+                            editForm.isActive && "translate-x-5"
+                          )}
+                        />
+                      </button>
+                      <span className="text-sm">{editForm.isActive ? tc("active") : tc("inactive")}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t("formLabelWorkingHoursStart")}</Label>
+                    {/* Modal: the hour/minute columns scroll, and a non-modal
+                        portalled list inside a dialog cannot take the wheel. */}
+                    <DateTimePicker
+                      mode="time"
+                      modal
+                      value={editForm.workingHoursStart}
+                      onChange={(v) => setEditForm((f) => ({ ...f, workingHoursStart: v }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("formLabelWorkingHoursEnd")}</Label>
+                    <DateTimePicker
+                      mode="time"
+                      modal
+                      value={editForm.workingHoursEnd}
+                      onChange={(v) => setEditForm((f) => ({ ...f, workingHoursEnd: v }))}
+                    />
+                  </div>
+                </div>
+
+                <div role="group" aria-labelledby="edit-agent-days-label" className="space-y-2">
+                  <p id="edit-agent-days-label" className="text-sm font-medium">{t("formLabelWorkingDays")}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ALL_DAYS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={editForm.workingDays.includes(d)}
+                        onClick={() =>
+                          setEditForm((f) => ({
+                            ...f,
+                            workingDays: f.workingDays.includes(d)
+                              ? f.workingDays.filter((x) => x !== d)
+                              : [...f.workingDays, d],
+                          }))
+                        }
+                        className={cn(
+                          "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
+                          editForm.workingDays.includes(d)
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        )}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            ),
+          },
+          {
+            label: tc("stepRegion"),
+            content: (
               <div className="space-y-2">
-                <Label>{t("formLabelWorkingHoursStart")}</Label>
-                <DateTimePicker
-                  mode="time"
-                  value={editForm.workingHoursStart}
-                  onChange={(v) => setEditForm((f) => ({ ...f, workingHoursStart: v }))}
+                <CascadingLocationPicker
+                  selectedCityIds={editCityIds}
+                  selectedStateIds={editStateIds}
+                  onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
+                  locationsEndpoint="/api/super-agent/territory/locations"
+                  emptyMessage={tc("noTerritoryAssigned")}
+                  label={t("formLabelUpdateRegion")}
+                  alwaysOpen
                 />
+                <p className="text-xs text-muted-foreground">{t("formHintRegionEmpty")}</p>
               </div>
-              <div className="space-y-2">
-                <Label>{t("formLabelWorkingHoursEnd")}</Label>
-                <DateTimePicker
-                  mode="time"
-                  value={editForm.workingHoursEnd}
-                  onChange={(v) => setEditForm((f) => ({ ...f, workingHoursEnd: v }))}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("formLabelWorkingDays")}</Label>
-              <div className="flex flex-wrap gap-2">
-                {ALL_DAYS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() =>
-                      setEditForm((f) => ({
-                        ...f,
-                        workingDays: f.workingDays.includes(d)
-                          ? f.workingDays.filter((x) => x !== d)
-                          : [...f.workingDays, d],
-                      }))
-                    }
-                    className={cn(
-                      "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                      editForm.workingDays.includes(d)
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <CascadingLocationPicker
-              selectedCityIds={editCityIds}
-              selectedStateIds={editStateIds}
-              onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
-              locationsEndpoint="/api/super-agent/territory/locations"
-              emptyMessage={tc("noTerritoryAssigned")}
-              label={t("formLabelUpdateRegion")}
-            />
-
-            <p className="text-xs text-muted-foreground">
-              {t("formHintRegionEmpty")}
-            </p>
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setShowEdit(false)} disabled={editLoading}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleEdit} disabled={editLoading}>
-              {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editLoading ? t("formSavingLabel") : tc("save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            ),
+          },
+        ]}
+      />
 
       {ConfirmDialogNode}
     </div>

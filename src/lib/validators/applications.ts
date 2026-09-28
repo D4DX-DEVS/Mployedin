@@ -61,6 +61,9 @@ export const applicationUpdateSchema = z
     // Set once the caller has been told an open interview would be left behind
     // by a backwards stage move and chose to go ahead anyway.
     acknowledgeOpenInterview: z.boolean().optional(),
+    // A stage of the job's workflow (lib/hiring/workflowStages.ts). Its status
+    // is implied; when `status` is sent too the two must agree.
+    stageId: z.string().regex(/^[a-z0-9][a-z0-9_]{0,39}$/).optional(),
   })
   .refine(
     (data) => data.status !== "rejected" || !!data.rejectionReason,

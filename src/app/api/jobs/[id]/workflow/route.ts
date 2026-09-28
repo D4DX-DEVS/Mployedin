@@ -11,7 +11,15 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { workflowUpdateSchema } from "@/lib/validators/misc";
-import { normalizeWorkflowStages, type WorkflowStageLike } from "@/lib/hiring/pipeline";
+import {
+  buildWorkflowSnapshot,
+  effectiveJobStages,
+  findUsableWorkflowTemplate,
+  hasWorkflowSnapshot,
+  resolveWorkflowForJob,
+  type JobWorkflowCarrier,
+} from "@/lib/hiring/jobWorkflow";
+import { decodeResolutionReason } from "@/lib/hiring/workflowTemplateMatch";
 import {
   isJobWorkflowCustomized,
   pickHiringRuleFields,
@@ -25,6 +33,33 @@ interface StoredWorkflow {
   stages?: unknown;
   settings?: Record<string, unknown>;
   customizedAt?: Date | string | null;
+  template?: {
+    templateId?: unknown;
+    name?: string;
+    version?: number;
+    source?: string;
+    reason?: string;
+    appliedAt?: Date | string;
+  } | null;
+}
+
+/** The job's workflow as the screens read it: stages + where they came from. */
+function describeWorkflow(job: { workflow?: StoredWorkflow | null }) {
+  const ref = job.workflow?.template;
+  const carrier = job as JobWorkflowCarrier;
+  return {
+    stages: effectiveJobStages(carrier),
+    template: hasWorkflowSnapshot(carrier) && ref
+      ? {
+          templateId: ref.templateId ? String(ref.templateId) : null,
+          name: ref.name ?? "",
+          version: ref.version ?? 1,
+          source: ref.source,
+          reason: decodeResolutionReason(ref.reason),
+          appliedAt: ref.appliedAt ? new Date(ref.appliedAt).toISOString() : null,
+        }
+      : null,
+  };
 }
 
 // GET /api/jobs/[id]/workflow — get per-job workflow (falls back to employer default)
@@ -32,7 +67,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
-  const job = await Job.findById(params!.id).select("employerId agentId workflow").lean();
+  const job = await Job.findById(params!.id).select("employerId agentId workflow status").lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   // Authorization check
@@ -68,13 +103,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     | (WorkflowSettingsCarrier & { workflow?: StoredWorkflow })
     | null;
   const customized = isJobWorkflowCustomized(job as WorkflowSettingsCarrier);
-  const jobStages = (job.workflow as StoredWorkflow | undefined)?.stages;
-  const stored = customized && Array.isArray(jobStages) && jobStages.length > 0
-    ? jobStages
-    : employer?.workflow?.stages;
 
   return NextResponse.json({
-    stages: Array.isArray(stored) && stored.length > 0 ? normalizeWorkflowStages(stored as WorkflowStageLike[]) : null,
+    ...describeWorkflow(job as { workflow?: StoredWorkflow | null }),
     settings: resolveHiringRulesForJob(job as WorkflowSettingsCarrier, employer),
     source: customized ? "job" : "employer",
   });
@@ -117,28 +148,61 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, workflowUpdateSchema);
-  const { stages, settings } = body;
-
-  // Merge over what is stored (a rules-only save keeps the stage list) and
-  // stamp customizedAt: from now on this job's rules override the employer's.
+  const { settings, templateId, customStages } = body;
   const currentWorkflow = ((typeof job.toObject === "function" ? job.toObject().workflow : job.workflow) ?? {}) as StoredWorkflow;
-  const currentStages = Array.isArray(currentWorkflow.stages) ? (currentWorkflow.stages as WorkflowStageLike[]) : [];
-  job.workflow = {
-    stages: stages ? normalizeWorkflowStages(stages) : currentStages,
-    settings: { ...pickHiringRuleFields(currentWorkflow.settings), ...pickHiringRuleFields(settings) },
-    customizedAt: new Date(),
-  };
+  const before = describeWorkflow({ workflow: currentWorkflow });
+  const next: StoredWorkflow = { ...currentWorkflow };
+
+  // Stage list: a template someone picked, back to automatic matching (null),
+  // or stages edited for this job. Candidates keep their status; one whose
+  // stage the new list lacks sits in the first stage of that status.
+  if (customStages) {
+    const current = before.template;
+    const snapshot = buildWorkflowSnapshot(null, "custom", undefined, customStages);
+    next.stages = snapshot.stages;
+    next.template = {
+      ...snapshot.template,
+      templateId: current?.templateId ?? null,
+      name: current?.name ?? "",
+      version: current?.version ?? 1,
+    };
+  } else if (templateId) {
+    const template = await findUsableWorkflowTemplate(templateId, job.employerId);
+    if (!template) return NextResponse.json({ error: "Workflow template not found" }, { status: 404 });
+    Object.assign(next, buildWorkflowSnapshot(template, "manual"));
+  } else if (templateId === null) {
+    const resolved = await resolveWorkflowForJob(job as unknown as JobWorkflowCarrier);
+    Object.assign(next, buildWorkflowSnapshot(resolved.template, "auto", resolved.reason, resolved.stages));
+  }
+
+  // Rules: merged over what is stored, and customizedAt stamped — from now on
+  // this job's rules override the employer's. A stage-only save leaves both.
+  if (settings) {
+    next.settings = { ...pickHiringRuleFields(currentWorkflow.settings), ...pickHiringRuleFields(settings) };
+    next.customizedAt = new Date();
+  }
+  job.workflow = next as typeof job.workflow;
   await job.save();
 
+  const after = describeWorkflow({ workflow: next });
+  const stagesChanged = customStages !== undefined || templateId !== undefined;
   await logActivity({
     ...actorFromCtx(ctx),
-    action: "job.update_workflow",
+    action: stagesChanged ? "job.workflow_change" : "job.update_workflow",
     resource: "jobs",
     resourceId: String(job._id),
+    ...(stagesChanged
+      ? {
+          changes: {
+            before: { workflow: before.template?.name || "Standard pipeline", source: before.template?.source ?? null },
+            after: { workflow: after.template?.name || "Standard pipeline", source: after.template?.source ?? null },
+          },
+        }
+      : {}),
     req,
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, ...after });
 }
 
 export const GET = withAuth(getHandler);

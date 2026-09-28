@@ -7,15 +7,17 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Inbox, Sparkles, Building2, ArrowUpDown,
-  TrendingUp, Users, FileText, Brain, ChevronDown, ChevronUp,
-  Zap, AlertTriangle, CheckCircle, Info, Target,
+  Inbox, Sparkles, Building2,
+  TrendingUp, Users, FileText, Brain, Zap, AlertTriangle, CheckCircle, Info, Target,
   RefreshCw, User, Briefcase,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +28,7 @@ import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchF
 import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/hooks/useAiFilterSearch";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
@@ -166,6 +169,7 @@ function ScoreBadge({ score }: { score?: number }) {
 
 export default function AdminApplicationsPage() {
   const t = useTranslations("adminApplications");
+  const tc = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -637,13 +641,6 @@ export default function AdminApplicationsPage() {
               placeholder={t("toDate")}
               className="min-w-0 max-w-56 flex-[1_1_9rem]"
             />
-            <SearchableSelect
-              className={INLINE_FILTER_CONTROL}
-              options={SORT_OPTIONS}
-              value={sortBy}
-              onValueChange={(v) => { setSortBy(v); resetPage(); }}
-              placeholder={t("sortBy")}
-            />
           </>
         )}
         moreLabel={t("advancedFilters")}
@@ -694,6 +691,16 @@ export default function AdminApplicationsPage() {
             {t("selectedJobOnly")}
           </Badge>
         )}
+        {/* Sort sits with the filters, like every admin list, with its own
+            direction button; it used to hide behind "Advanced filters". */}
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(v) => { setSortBy(v); resetPage(); }}
+          options={SORT_OPTIONS}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
       </InlineFilterBar>
 
       {/* ─── Application List ─────────────────────────────────────────── */}
@@ -734,7 +741,7 @@ export default function AdminApplicationsPage() {
           {/* List header with privacy notice */}
           <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-background/50 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("candidate")}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("applicationsCount", { count: total })}</span>
               <CandidateDataNotice variant="candidateList" compact />
             </div>
           </div>
@@ -770,7 +777,7 @@ export default function AdminApplicationsPage() {
           )}
 
           {/* Column headers */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_15rem]">
             <span className="flex items-center gap-3">
               <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center sm:min-h-0 sm:min-w-0">
                 <Checkbox
@@ -781,12 +788,11 @@ export default function AdminApplicationsPage() {
               </label>
               {t("candidate")}
             </span>
-            <span>{t("roleMatchSkills")}</span>
-            <span className="text-right">
-              <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("appliedAt")}>
-                {t("applied")} <ArrowUpDown className="h-3 w-3" />
-              </button>
+            <span className="flex items-center justify-between gap-3">
+              {t("roleMatchSkills")}
+              <SortableTableHeader label={t("applied")} active={sortBy === "appliedAt"} order={sortOrder} onClick={() => { toggleSort("appliedAt"); resetPage(); }} />
             </span>
+            <span className="text-right">{tc("actions")}</span>
           </div>
 
           <div className="divide-y divide-border/60">
@@ -814,10 +820,13 @@ export default function AdminApplicationsPage() {
               const seekerPhone = seeker?.phone ?? seeker?.userId?.phone;
               const cvHref = seeker?.cvUrl ?? seeker?.resumeUrl;
 
+              const toggleExpanded = () => setExpandedId(isExpanded ? null : app._id);
+
               return (
                 <article
                   key={app._id}
-                  className="grid gap-1 bg-transparent px-3 py-2 transition-all duration-200 hover:bg-background/70 sm:gap-3 sm:px-5 sm:py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
+                  onClick={(e) => { if (isRowToggleClick(e)) toggleExpanded(); }}
+                  className="grid cursor-pointer gap-1 bg-transparent px-3 py-2 transition-all duration-200 hover:bg-background/70 sm:gap-3 sm:px-5 sm:py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_15rem] sm:items-center"
                 >
                   {/* Candidate */}
                   <div className="flex min-w-0 items-center gap-2 sm:gap-4">
@@ -832,16 +841,14 @@ export default function AdminApplicationsPage() {
                         className="shrink-0"
                       />
                     </label>
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-status-applied shadow-inner sm:h-10 sm:w-10 sm:rounded-xl">
-                      <User className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-                    </div>
+                    <RowExpandToggle expanded={isExpanded} onToggle={toggleExpanded} />
+                    <UserAvatar name={candidateName} email={seeker?.email ?? seeker?.userId?.email} className="h-8 w-8 sm:h-10 sm:w-10" colorful />
                     {/* flex-1 only on phones: it lets the name column use the
                         width freed by the smaller avatar. On desktop the column
                         must stay content-sized, exactly as it was. */}
                     <div className="min-w-0 flex-1 sm:flex-initial">
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <span className="truncate text-[13px] font-semibold tracking-tight text-foreground sm:text-base">{candidateName}</span>
-                        <StatusBadge status={app.status} />
                       </div>
                       {employer?.companyName && (
                         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground sm:mt-1 sm:gap-1.5 sm:text-xs">
@@ -894,29 +901,24 @@ export default function AdminApplicationsPage() {
                     </div>
                   </div>
 
-                  {/* Score + manage — the match badge above already states score on phones. */}
-                  <div className="flex items-center gap-2 sm:justify-end">
-                    <span className="hidden sm:inline-flex"><ScoreBadge score={app.aiMatchScore} /></span>
-                    <SearchableSelect
-                      className="h-8 w-40 rounded-lg border-border bg-card text-xs"
-                      options={STATUSES.map((s) => ({ value: s, label: t(statusLabelKey(s)) }))}
-                      value={app.status}
-                      onValueChange={(v) => { if (v && v !== app.status) void handleStatusChange(app._id, v); }}
-                      placeholder={t("status")}
-                      disabled={updatingId === app._id}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 min-h-11 px-2 sm:min-h-0"
-                      aria-expanded={isExpanded}
-                      aria-label={isExpanded ? t("hideDetails") : t("showDetails")}
-                      onClick={() => setExpandedId(isExpanded ? null : app._id)}
-                    >
-                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  {/* The match badge in the role column states the score; this column is actions only. */}
+                  <RowActions
+                    name={candidateName}
+                    className="sm:justify-end"
+                    picker={{
+                      label: `${tc("changeStatus")}: ${candidateName}`,
+                      value: app.status,
+                      display: <StatusBadge status={app.status} />,
+                      options: STATUSES.map((value) => ({ value, label: t(statusLabelKey(value)) })),
+                      onChange: (value) => { if (value !== app.status) void handleStatusChange(app._id, value); },
+                      pending: updatingId === app._id,
+                    }}
+                    menu={[
+                      ...(cvHref ? [{ key: "cv", label: t("openCv"), icon: FileText, href: cvHref, external: true }] : []),
+                      ...(job?.title ? [{ key: "job", label: t("viewJob"), icon: Briefcase, href: `/${locale}/admin/jobs?search=${encodeURIComponent(job.title)}` }] : []),
+                      { key: "profile", label: t("viewCandidateProfile"), icon: User, href: `/${locale}/admin/job-seekers?search=${encodeURIComponent(candidateName)}` },
+                    ]}
+                  />
 
                   {/* Inline detail. A panel here keeps the list, its filters and
                       the scroll position intact — the alternative was leaving for

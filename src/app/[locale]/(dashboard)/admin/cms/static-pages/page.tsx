@@ -2,38 +2,23 @@
 
 import { useTranslations } from "next-intl";
 import CmsPage from "@/components/features/admin/CmsPage";
-import type { CrudField } from "@/components/shared/CrudModal";
 import { FileText } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
 
+/**
+ * The four legal pages (lib/cms/legalPages) — edit only. No Add New: a new slug
+ * had no public route. No Delete: nothing could re-create a deleted page. The
+ * slug is locked on the edit page. The API creates any page missing from the DB.
+ */
 export default function StaticPagesAdminPage() {
   const t = useTranslations("adminCmsStaticPages");
 
-  const FIELDS: CrudField[] = [
-    { name: "slug", label: t("slugLabel"), type: "text", required: true, placeholder: t("slugPlaceholder") },
-    /* The four placeholders below stay in their own language on purpose: each
-       shows what belongs in that field, and the English/Arabic pairs are what
-       tell an editor which box takes which language. */
-    { name: "title", label: t("titleEnLabel"), type: "text", required: true, placeholder: "Privacy Policy" },
-    { name: "titleAr", label: t("titleArLabel"), type: "text", placeholder: "سياسة الخصوصية" },
-    { name: "body", label: t("bodyEnLabel"), type: "textarea", required: true, placeholder: "<h2>Privacy Policy</h2><p>...</p>" },
-    { name: "bodyAr", label: t("bodyArLabel"), type: "textarea", placeholder: "المحتوى بالعربية" },
-    {
-      name: "isActive",
-      label: t("statusLabel"),
-      type: "select",
-      options: [
-        { value: "true", label: t("statusActiveOption") },
-        { value: "false", label: t("statusInactiveOption") },
-      ],
-    },
-  ];
-
   const COLUMNS = [
-    { key: "slug", label: t("slugLabel") },
-    { key: "title", label: t("titleColumnLabel") },
+    { key: "slug", label: t("slugLabel"), sortable: true },
+    { key: "title", label: t("titleColumnLabel"), sortable: true },
     {
       key: "updatedAt",
+      sortable: true,
       label: t("lastUpdatedColumnLabel"),
       render: (value: unknown) =>
         value ? formatDate(new Date(String(value))) : t("emptyDateValue"),
@@ -47,11 +32,12 @@ export default function StaticPagesAdminPage() {
       title={t("pageTitle")}
       description={t("pageDescription")}
       columns={COLUMNS}
-      fields={FIELDS}
+      fields={[]}
       icon={FileText}
       iconColor="text-cyan-600"
       editPageBasePath="/admin/cms/static-pages"
-      createPagePath="/admin/cms/static-pages/new"
+      allowCreate={false}
+      allowDelete={false}
       filterFields={[
         { type: "search", placeholder: t("searchFilterPlaceholder") },
         {

@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
+import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, SlidersHorizontal, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -28,6 +28,7 @@ import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
 import { StatusPillTabs } from "@/components/features/job-seeker/StatusPillTabs";
+import { userInitials } from "@/components/shared/UserAvatar";
 
 interface ApplicationJob {
   _id: string;
@@ -464,11 +465,11 @@ function ApplicationCard({
           aria-label={cardLabel}
           onClick={() => setShowDetails((current) => !current)}
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/90 shadow-sm sm:h-10 sm:w-10">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-primary/10 text-xs font-semibold text-primary shadow-sm sm:h-10 sm:w-10">
             {companyLogo ? (
-              <img src={companyLogo} alt={companyName ?? t("companyFallback")} className="h-7 w-7 rounded-lg object-contain sm:h-8 sm:w-8" />
+              <img src={companyLogo} alt={companyName ?? t("companyFallback")} className="h-full w-full bg-card object-contain p-1" />
             ) : (
-              <Building2 className="h-4 w-4 text-muted-foreground sm:h-[18px] sm:w-[18px]" />
+              userInitials(companyName ?? t("companyFallback"))
             )}
           </div>
 
@@ -716,10 +717,8 @@ function ApplicationCard({
 
       {/* Withdrawal Modal */}
       {showWithdraw && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowWithdraw(false); }}
-        >
+        /* No backdrop close: a stray click must not drop the chosen reason. */
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div
             ref={withdrawTrapRef}
             role="dialog"

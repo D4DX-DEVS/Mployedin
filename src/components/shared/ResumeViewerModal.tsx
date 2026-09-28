@@ -518,7 +518,7 @@ export function ResumeViewerModal({
               <div className="p-5 space-y-4">
                 {/* Avatar + name */}
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary font-bold text-base select-none">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary font-semibold text-base select-none">
                     {initials}
                   </div>
                   <div className="min-w-0 pt-0.5">

@@ -8,7 +8,6 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
@@ -18,13 +17,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, MapPin } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, MapPin } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { TableSortControl } from "@/components/shared/TableSortControl";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { TableSortControl } from "@/components/shared/TableSortControl";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 
 interface CountryOption {
   _id: string;
@@ -63,7 +64,6 @@ export default function CitiesPage() {
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "slug", "sortOrder"] });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
   const order = sortOrder === "desc" ? "desc" : "asc";
-  const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<CityItem | null>(null);
@@ -233,6 +233,41 @@ export default function CitiesPage() {
     fetchItems();
   };
 
+  const rowActionsFor = (item: CityItem): { quick: RowAction[]; menu: RowAction[] } => {
+    // Edit is the everyday action: a labelled button. Delete stays in "…".
+    const quick: RowAction[] = [];
+    const menu: RowAction[] = [];
+    if (can("location_data", "update")) {
+      quick.push({
+        key: "edit",
+        label: t("edit"),
+        icon: Pencil,
+        iconOnly: true,
+        onSelect: () => {
+          if (typeof item.stateId === "object" && item.stateId !== null) {
+            const state = item.stateId as StateOption;
+            const cId = typeof state.countryId === "object" && state.countryId !== null
+              ? (state.countryId as CountryOption)._id
+              : "";
+            setModalCountryId(cId);
+          }
+          setEditItem(item);
+        },
+      });
+    }
+    if (can("location_data", "delete")) {
+      menu.push({
+        key: "delete",
+        label: t("delete"),
+        icon: Trash2,
+        iconOnly: true,
+        onSelect: () => handleDelete(item._id),
+        destructive: true,
+      });
+    }
+    return { quick, menu };
+  };
+
   const getStateName = (item: CityItem): string => {
     if (typeof item.stateId === "object" && item.stateId !== null) {
       const state = item.stateId as StateOption;
@@ -258,98 +293,70 @@ export default function CitiesPage() {
         title={t("citiesTitle")}
         description={t("citiesSubtitle")}
         actions={
-          <>
+          can("location_data", "create") && (
             <Button
-              type="button"
-              variant="outline"
+              onClick={() => { setModalCountryId(""); setShowAdd(true); }}
               size="sm"
-              onClick={() => setShowFilters((v) => !v)}
-              aria-label={t("filter")}
-              className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium shrink-0 ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
+              aria-label={t("addNew")}
+              className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("filter")}</span>
-              {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">!</span>}
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("addNew")}</span>
             </Button>
-            {can("location_data", "create") && (
-              <Button
-                onClick={() => { setModalCountryId(""); setShowAdd(true); }}
-                size="sm"
-                aria-label={t("addNew")}
-                className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("addNew")}</span>
-              </Button>
-            )}
-          </>
+          )
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        <div className="border-b border-border/80 panel-head">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input aria-label={t("searchCities")}
-                id="admin-cities-search"
-                placeholder={t("searchCities")}
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none"
-              />
-            </div>
-            <TableSortControl value={sortBy} onValueChange={(value) => { setSortBy(value); resetPage(); }} order={order} onOrderChange={(value) => { setSortOrder(value); resetPage(); }} options={[{ value: "sortOrder", label: t("sortOrder") }, { value: "name", label: t("cityNameEn") }, { value: "nameAr", label: t("cityNameAr") }, { value: "slug", label: t("slug") }]} compact />
-          </div>
-        </div>
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={hasActiveFilters ? () => { setCountryFilter("all"); setStateFilter("all"); setSearch(""); setStatusFilter("all"); resetPage(); } : undefined}
+        clearLabel={t("clear")}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearch(v); resetPage(); }}
+          placeholder={t("searchCities")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          id="admin-cities-country"
+          options={[{ value: "all", label: t("allCountries") }, ...countries.map((c) => ({ value: c._id, label: c.name }))]}
+          value={countryFilter}
+          onValueChange={(v) => { setCountryFilter(v); setStateFilter("all"); resetPage(); }}
+          placeholder={t("allCountries")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          id="admin-cities-state"
+          options={[{ value: "all", label: t("allStates") }, ...filteredStates.map((s) => ({ value: s._id, label: s.name }))]}
+          value={stateFilter}
+          onValueChange={(v) => { setStateFilter(v); resetPage(); }}
+          placeholder={t("allStates")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          id="admin-cities-status"
+          options={[
+            { value: "all", label: t("all") },
+            { value: "active", label: t("active") },
+            { value: "inactive", label: t("inactive") },
+          ]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={t("status")}
+        />
+        {/* Sorting lives here as well as on the column heads: phone cards have no heads. */}
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={[{ value: "sortOrder", label: t("sortOrder") }, { value: "name", label: t("cityNameEn") }, { value: "nameAr", label: t("cityNameAr") }, { value: "slug", label: t("slug") }]}
+          order={order}
+          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+          className="shrink-0"
+        />
+      </InlineFilterBar>
 
-        {/* Collapsible filter panel: stacked on mobile */}
-        {showFilters && (
-          <div className="grid gap-2 bg-secondary/30 sm:gap-3 sm:flex sm:flex-wrap sm:items-center panel-head">
-            <label className="text-xs font-medium text-muted-foreground">{t("colCountry")}</label>
-            <SearchableSelect
-              id="admin-cities-country"
-              className="h-9 w-full rounded-lg border-border bg-card text-sm sm:w-[160px] sm:h-8"
-              options={[{ value: "all", label: t("allCountries") }, ...countries.map((c) => ({ value: c._id, label: c.name }))]}
-              value={countryFilter}
-              onValueChange={(v) => { setCountryFilter(v); setStateFilter("all"); resetPage(); }}
-              placeholder={t("allCountries")}
-            />
-            <label className="text-xs font-medium text-muted-foreground">{t("state")}</label>
-            <SearchableSelect
-              id="admin-cities-state"
-              className="h-9 w-full rounded-lg border-border bg-card text-sm sm:w-[160px] sm:h-8"
-              options={[{ value: "all", label: t("allStates") }, ...filteredStates.map((s) => ({ value: s._id, label: s.name }))]}
-              value={stateFilter}
-              onValueChange={(v) => { setStateFilter(v); resetPage(); }}
-              placeholder={t("allStates")}
-            />
-            <label className="text-xs font-medium text-muted-foreground">{t("status")}</label>
-            <SearchableSelect
-              id="admin-cities-status"
-              className="h-9 w-full rounded-lg border-border bg-card text-sm sm:w-[120px] sm:h-8"
-              options={[
-                { value: "all", label: t("all") },
-                { value: "active", label: t("active") },
-                { value: "inactive", label: t("inactive") },
-              ]}
-              value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder={t("status")}
-            />
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => { setCountryFilter("all"); setStateFilter("all"); setSearch(""); setStatusFilter("all"); resetPage(); }}
-                className="h-9 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground sm:h-8"
-              >
-                <RotateCcw className="h-3 w-3" /> {t("clear")}
-              </Button>
-            )}
-          </div>
-        )}
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
 
         {/* Table: semantic table with responsive-card-table */}
         <div className="overflow-x-auto" data-mobile-table="responsive">
@@ -392,37 +399,8 @@ export default function CitiesPage() {
                     <TableCell className="text-muted-foreground min-w-0 truncate">{getStateName(item)}</TableCell>
                     <TableCell className="text-center"><StatusBadge status={item.isActive ? "active" : "inactive"} /></TableCell>
                     {(can("location_data", "update") || can("location_data", "delete")) && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {can("location_data", "update") && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (typeof item.stateId === "object" && item.stateId !== null) {
-                                  const state = item.stateId as StateOption;
-                                  const cId = typeof state.countryId === "object" && state.countryId !== null
-                                    ? (state.countryId as CountryOption)._id
-                                    : "";
-                                  setModalCountryId(cId);
-                                }
-                                setEditItem(item);
-                              }}
-                              title={t("edit")}
-                              aria-label={t("editItem", { name: item.name })}
-                              className="h-8 gap-1 px-2 text-xs"
-                            >
-                              <Pencil className="h-3.5 w-3.5 text-primary" />
-                              <span>{t("edit")}</span>
-                            </Button>
-                          )}
-                          {can("location_data", "delete") && (
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              <span>{t("delete")}</span>
-                            </Button>
-                          )}
-                        </div>
+                      <TableCell>
+                        <RowActions name={item.name} {...rowActionsFor(item)} />
                       </TableCell>
                     )}
                   </TableRow>
@@ -431,11 +409,9 @@ export default function CitiesPage() {
             </TableBody>
           </Table>
         </div>
-
-        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </section>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       <CrudModal
         open={showAdd}

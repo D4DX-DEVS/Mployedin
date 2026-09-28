@@ -4,6 +4,9 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { escapeRegex } from "@/lib/security/sanitize";
 import ContactSubmission from "@/models/ContactSubmission";
 import type { UserRole } from "@/models/User";
+import { cmsListSort } from "@/lib/cms/listSort";
+
+const SORT_FIELDS = ["createdAt", "name", "email", "subject"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -32,7 +35,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const [items, total] = await Promise.all([
-    ContactSubmission.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    ContactSubmission.find(query).sort(cmsListSort(searchParams, SORT_FIELDS, { createdAt: -1 })).skip(skip).limit(limit).lean(),
     ContactSubmission.countDocuments(query),
   ]);
 

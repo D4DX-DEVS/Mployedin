@@ -95,7 +95,8 @@ export function DashboardCard({ title, subtitle, subtitleOnPhone = true, action,
         className="flex items-start justify-between gap-3 border-b border-border/70 pb-3"
       >
         <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold leading-5 text-foreground">{title}</h3>
+          {/* 16px: the card step of the dashboard scale 12 · 14 · 16 · 17 (section token) · 24. */}
+          <h3 className="text-base font-semibold leading-6 text-foreground">{title}</h3>
           {subtitle && <p className={`text-xs text-muted-foreground ${subtitleOnPhone ? "" : "hidden sm:block"}`}>{subtitle}</p>}
         </div>
         {action && (

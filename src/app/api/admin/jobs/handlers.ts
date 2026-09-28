@@ -119,37 +119,30 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.agentId = { $in: effective.map((id) => new Types.ObjectId(id)) };
   }
 
-  // Search: match jobs by title/desc/tags AND also by employer company name
-  if (search) {
-    const escaped = escapeRegex(search);
-    const searchRegex = { $regex: escaped, $options: "i" };
-
-    // Find employers whose company name matches the search term
-    const matchingEmployers = await Employer.find(
-      { companyName: { $regex: escaped, $options: "i" } },
-    ).select("_id").lean();
-    const matchingEmpIds = matchingEmployers.map((e) => e._id);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const searchConditions: any[] = [
-      { title: searchRegex },
-      { description: searchRegex },
-      { tags: searchRegex },
-      { "location.city": searchRegex },
-    ];
-    if (matchingEmpIds.length > 0) {
-      searchConditions.push({ employerId: { $in: matchingEmpIds } });
-    }
-
-    if (query.$or) {
-      query.$and = [
-        { $or: query.$or },
-        { $or: searchConditions },
+  // Search: every word must match the job (title/desc/tags/city) or its
+  // employer's company name. Matching the whole string against one field at a
+  // time meant "Accountant Beta" — the way you tell one of many same-titled
+  // jobs apart — found nothing, since no single field holds both words.
+  const searchWords = search.trim().split(/\s+/).filter(Boolean).slice(0, 6);
+  if (searchWords.length > 0) {
+    const wordClauses = await Promise.all(searchWords.map(async (word) => {
+      const wordRegex = { $regex: escapeRegex(word), $options: "i" };
+      const matchingEmployers = await Employer.find({ companyName: wordRegex }).select("_id").lean();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const conditions: any[] = [
+        { title: wordRegex },
+        { description: wordRegex },
+        { tags: wordRegex },
+        { "location.city": wordRegex },
       ];
-      delete query.$or;
-    } else {
-      query.$or = searchConditions;
-    }
+      if (matchingEmployers.length > 0) {
+        conditions.push({ employerId: { $in: matchingEmployers.map((e) => e._id) } });
+      }
+      return { $or: conditions };
+    }));
+
+    query.$and = [...(query.$or ? [{ $or: query.$or }] : []), ...wordClauses];
+    delete query.$or;
   }
 
   const sortSpec = sortBy === "oldest" ? { createdAt: 1 as const } : { createdAt: -1 as const };

@@ -6,19 +6,20 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
-import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Shield, RotateCcw, Download, Trash2, Eye, FileText,
-  UserCheck, Clock, AlertTriangle, CheckCircle2, XCircle,
-  ShieldCheck, Database, Users, CalendarDays,
+  Shield, Download, Trash2, Eye, FileText, UserCheck, Clock, AlertTriangle, CheckCircle2, XCircle, ShieldCheck, Users, CalendarDays,
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
@@ -32,7 +33,7 @@ interface GdprRequest {
   userName: string;
   userEmail: string;
   requestType: "export" | "delete" | "rectification" | "restrict";
-  status: "pending" | "in_progress" | "completed" | "rejected";
+  status: "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
   createdAt: string;
   completedAt?: string;
   notes?: string;
@@ -46,15 +47,6 @@ interface ConsentLog {
   granted: boolean;
   timestamp: string;
   ipAddress?: string;
-}
-
-interface RetentionPolicy {
-  _id: string;
-  dataCategory: string;
-  retentionPeriod: number;
-  unit: "days" | "months" | "years";
-  autoDelete: boolean;
-  lastReview: string;
 }
 
 interface GdprStats {
@@ -74,14 +66,9 @@ interface GdprStats {
 /** Mirrors GDPR_REQUEST_STATUSES; the model file cannot be imported client-side. */
 const GDPR_STATUS_VALUES = ["pending", "in_progress", "completed", "rejected"] as const;
 
-const DEFAULT_RETENTION: RetentionPolicy[] = [
-  { _id: "1", dataCategory: "User Accounts", retentionPeriod: 3, unit: "years", autoDelete: false, lastReview: new Date().toISOString() },
-  { _id: "2", dataCategory: "Application Data", retentionPeriod: 2, unit: "years", autoDelete: true, lastReview: new Date().toISOString() },
-  { _id: "3", dataCategory: "Interview Records", retentionPeriod: 1, unit: "years", autoDelete: true, lastReview: new Date().toISOString() },
-  { _id: "4", dataCategory: "Audit Logs", retentionPeriod: 5, unit: "years", autoDelete: false, lastReview: new Date().toISOString() },
-  { _id: "5", dataCategory: "Messages/DMs", retentionPeriod: 1, unit: "years", autoDelete: true, lastReview: new Date().toISOString() },
-  { _id: "6", dataCategory: "CV/Resume Files", retentionPeriod: 2, unit: "years", autoDelete: true, lastReview: new Date().toISOString() },
-];
+// No "Retention policies" tab: it rendered six hardcoded rows claiming
+// auto-delete for applications, CVs and messages that no job performs, with a
+// "last reviewed" date of whenever the page was opened.
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -89,10 +76,10 @@ const DEFAULT_RETENTION: RetentionPolicy[] = [
 
 export default function AdminGdprPage() {
   const t = useTranslations("adminGdpr");
-  const [activeTab, setActiveTab] = useState<"requests" | "consent" | "retention">("requests");
+  const { confirm, ConfirmDialogNode } = useConfirm();
+  const [activeTab, setActiveTab] = useState<"requests" | "consent">("requests");
   const [requests, setRequests] = useState<GdprRequest[]>([]);
   const [consentLogs, setConsentLogs] = useState<ConsentLog[]>([]);
-  const [retentionPolicies, setRetentionPolicies] = useState<RetentionPolicy[]>(DEFAULT_RETENTION);
   const [stats, setStats] = useState<GdprStats>({
     totalRequests: 0, pendingRequests: 0, completedRequests: 0,
     avgResponseDays: 0, dataSubjects: 0, activeConsents: 0,
@@ -103,6 +90,16 @@ export default function AdminGdprPage() {
   // In the URL so the dashboard's "pending GDPR requests" row lands filtered.
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: GDPR_STATUS_VALUES });
   const pagination = usePagination();
+  // Requests sort by submitted or completed date; consent logs only by time.
+  const [sortByParam, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "completedAt"] });
+  const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const sortBy = activeTab === "consent" ? "createdAt" : sortByParam;
+  const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder("desc"); }
+    pagination.resetPage();
+  };
 
   // i18n option maps (moved inside component)
   const REQUEST_TYPE_OPTIONS = [
@@ -119,6 +116,7 @@ export default function AdminGdprPage() {
     { value: "in_progress", label: t("inProgressStatusLabel") },
     { value: "completed", label: t("completedStatusLabel") },
     { value: "rejected", label: t("rejectedStatusLabel") },
+    { value: "cancelled", label: t("cancelledStatusLabel") },
   ];
 
   /* ---- Fetch data requests ---- */
@@ -129,6 +127,8 @@ export default function AdminGdprPage() {
       if (search) params.set("search", search);
       if (typeFilter !== "all") params.set("type", typeFilter);
       if (statusFilter !== "all") params.set("status", statusFilter);
+      params.set("sortBy", sortByParam);
+      params.set("sortOrder", sortOrder);
 
       const res = await fetch(`/api/admin/gdpr?${params}`);
       if (res.ok) {
@@ -142,13 +142,14 @@ export default function AdminGdprPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, typeFilter, statusFilter, pagination.page, pagination.limit, t]);
+  }, [search, typeFilter, statusFilter, sortByParam, sortOrder, pagination.page, pagination.limit, t]);
 
   /* ---- Fetch consent logs ---- */
   const fetchConsentLogs = useCallback(async () => {
     try {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
+      params.set("sortOrder", sortOrder);
       const res = await fetch(`/api/admin/gdpr/consent?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -158,7 +159,7 @@ export default function AdminGdprPage() {
     } catch {
       toast.error(t("failedLoadConsentLogs"));
     }
-  }, [search, pagination.page, pagination.limit, t]);
+  }, [search, sortOrder, pagination.page, pagination.limit, t]);
 
   useEffect(() => {
     if (activeTab === "requests") fetchRequests();
@@ -167,7 +168,29 @@ export default function AdminGdprPage() {
   }, [activeTab, fetchRequests, fetchConsentLogs]);
 
   /* ---- Actions ---- */
-  const handleUpdateStatus = async (id: string, status: string) => {
+  const handleUpdateStatus = async (id: string, status: string, subject: string, requestType?: string) => {
+    // Completed and rejected are terminal (GDPR_REQUEST_TRANSITIONS): once
+    // either is saved the request can never move again, so ask first.
+    if (status === "completed" || status === "rejected") {
+      let dialogMessage = status === "rejected"
+        ? t("confirmRejectMessage", { name: subject })
+        : t("confirmCompleteMessage", { name: subject });
+      let dialogVariant: "default" | "destructive" = status === "rejected" ? "destructive" : "default";
+
+      // For delete requests being completed, show the destructive warning
+      if (status === "completed" && requestType === "delete") {
+        dialogMessage = t("confirmCompleteDeleteMessage", { name: subject });
+        dialogVariant = "destructive";
+      }
+
+      const confirmed = await confirm({
+        title: status === "rejected" ? t("confirmRejectTitle") : t("confirmCompleteTitle"),
+        message: dialogMessage,
+        confirmLabel: status === "rejected" ? t("rejectButton") : t("completeButton"),
+        variant: dialogVariant,
+      });
+      if (!confirmed) return;
+    }
     try {
       const res = await fetch(`/api/admin/gdpr/${id}`, {
         method: "PATCH",
@@ -178,21 +201,30 @@ export default function AdminGdprPage() {
         toast.success(t("statusUpdatedSuccess"));
         fetchRequests();
       } else {
-        toast.error(t("failedUpdateStatus"));
+        const error = (await res.json().catch(() => ({}))) as { code?: string };
+        toast.error(error.code === "ADMIN_ACCOUNT" ? t("cannotEraseAdmin") : t("failedUpdateStatus"));
       }
     } catch {
       toast.error(t("errorUpdatingRequest"));
     }
   };
 
+  // A static map, not t(`consentType_${type}`): an unknown stored type must
+  // fall back to its raw name instead of throwing a missing-message error.
+  const CONSENT_TYPE_LABELS: Record<string, string> = {
+    terms_and_privacy: t("consentTypeTermsAndPrivacy"),
+    cookies: t("consentTypeCookies"),
+    marketing: t("consentTypeMarketing"),
+  };
+
   const TABS = [
     { key: "requests" as const, label: t("dataRequestsTab"), icon: <FileText className="h-4 w-4" /> },
     { key: "consent" as const, label: t("consentLogsTab"), icon: <UserCheck className="h-4 w-4" /> },
-    { key: "retention" as const, label: t("retentionPoliciesTab"), icon: <Database className="h-4 w-4" /> },
   ];
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <DashboardPageHeader
         compact
         compactOnMobile
@@ -249,39 +281,48 @@ export default function AdminGdprPage() {
       </div>
 
       {/* Filters */}
-      {activeTab !== "retention" && (
-        <TableToolbar
-          title={t("gdprDataTitle")}
-          description={activeTab === "requests" ? t("filterDataPrivacyDesc") : t("filterConsentLogsDesc")}
-          search={search}
-          onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-          searchPlaceholder={t("searchPlaceholder")}
-          hasActiveFilters={typeFilter !== "all" || statusFilter !== "all"}
-          actions={
-            <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); pagination.resetPage(); }}>
-              <RotateCcw className="mr-1 h-4 w-4" /> {t("resetButton")}
-            </Button>
-          }
-          filterContent={activeTab === "requests" ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <SearchableSelect
-                options={REQUEST_TYPE_OPTIONS}
-                value={typeFilter}
-                onValueChange={(v) => { setTypeFilter(v); pagination.resetPage(); }}
-                placeholder={t("requestTypeLabel")}
-                className="h-11 w-44 rounded-xl border-border bg-card"
-              />
-              <SearchableSelect
-                options={STATUS_OPTIONS}
-                value={statusFilter}
-                onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
-                placeholder={t("statusLabel")}
-                className="h-11 w-36 rounded-xl border-border bg-card"
-              />
-            </div>
-          ) : undefined}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={search.trim() || typeFilter !== "all" || statusFilter !== "all" ? () => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); pagination.resetPage(); } : undefined}
+        clearLabel={t("resetButton")}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearch(v); pagination.resetPage(); }}
+          placeholder={t("searchPlaceholder")}
         />
-      )}
+        {activeTab === "requests" && (
+          <SearchableSelect
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
+            placeholder={t("statusLabel")}
+            className={INLINE_FILTER_CONTROL}
+          />
+        )}
+        {activeTab === "requests" && (
+          <SearchableSelect
+            options={REQUEST_TYPE_OPTIONS}
+            value={typeFilter}
+            onValueChange={(v) => { setTypeFilter(v); pagination.resetPage(); }}
+            placeholder={t("requestTypeLabel")}
+            className={INLINE_FILTER_CONTROL}
+          />
+        )}
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(v) => { setSortBy(v); pagination.resetPage(); }}
+          options={activeTab === "consent"
+            ? [{ value: "createdAt", label: t("timestampColumnHeader") }]
+            : [
+                { value: "createdAt", label: t("submittedColumnHeader") },
+                { value: "completedAt", label: t("completedColumnHeader") },
+              ]}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); pagination.resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
 
       {/* Content */}
       <section className="workspace-panel-surface rounded-2xl panel-body">
@@ -327,8 +368,12 @@ export default function AdminGdprPage() {
                       <TableHead>{t("userColumnHeader")}</TableHead>
                       <TableHead>{t("requestTypeColumnHeader")}</TableHead>
                       <TableHead>{t("statusColumnHeader")}</TableHead>
-                      <TableHead>{t("submittedColumnHeader")}</TableHead>
-                      <TableHead>{t("completedColumnHeader")}</TableHead>
+                      <TableHead>
+                        <SortableTableHeader label={t("submittedColumnHeader")} active={sortBy === "createdAt"} order={sortOrder} onClick={() => sortByColumn("createdAt")} />
+                      </TableHead>
+                      <TableHead>
+                        <SortableTableHeader label={t("completedColumnHeader")} active={sortBy === "completedAt"} order={sortOrder} onClick={() => sortByColumn("completedAt")} />
+                      </TableHead>
                       <TableHead className="text-right">{t("actionsColumnHeader")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -336,8 +381,13 @@ export default function AdminGdprPage() {
                     {requests.map((r) => (
                       <TableRow key={r._id}>
                         <TableCell>
-                          <p className="font-medium text-foreground">{r.userName}</p>
-                          <p className="text-xs text-muted-foreground">{r.userEmail}</p>
+                          <div className="flex items-center gap-3">
+                            <UserAvatar name={r.userName} email={r.userEmail} className="h-9 w-9 shrink-0" colorful />
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground">{r.userName}</p>
+                              <p className="text-xs text-muted-foreground">{r.userEmail}</p>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5 text-sm capitalize">
@@ -349,26 +399,25 @@ export default function AdminGdprPage() {
                           </span>
                         </TableCell>
                         <TableCell><StatusBadge status={r.status} /></TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(r.createdAt))}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{r.completedAt ? formatDate(new Date(r.completedAt)) : "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(r.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{r.completedAt ? formatDate(new Date(r.completedAt), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {r.status === "pending" && (
-                              <>
-                                <Button size="sm" variant="ghost" onClick={() => handleUpdateStatus(r._id, "in_progress")}>
-                                  <Clock className="mr-1 h-3.5 w-3.5" /> {t("startButton")}
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleUpdateStatus(r._id, "rejected")}>
-                                  <XCircle className="mr-1 h-3.5 w-3.5" /> {t("rejectButton")}
-                                </Button>
-                              </>
-                            )}
-                            {r.status === "in_progress" && (
-                              <Button size="sm" variant="ghost" onClick={() => handleUpdateStatus(r._id, "completed")}>
-                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> {t("completeButton")}
-                              </Button>
-                            )}
-                          </div>
+                          <RowActions
+                            name={r.userName}
+                            menu={
+                              (() => {
+                                const items: RowAction[] = [];
+                                if (r.status === "pending") {
+                                  items.push({ key: "start", label: t("startButton"), icon: Clock, onSelect: () => handleUpdateStatus(r._id, "in_progress", r.userName, r.requestType) });
+                                  items.push({ key: "reject", label: t("rejectButton"), icon: XCircle, onSelect: () => handleUpdateStatus(r._id, "rejected", r.userName, r.requestType), destructive: true });
+                                }
+                                if (r.status === "in_progress") {
+                                  items.push({ key: "complete", label: t("completeButton"), icon: CheckCircle2, onSelect: () => handleUpdateStatus(r._id, "completed", r.userName, r.requestType) });
+                                }
+                                return items;
+                              })()
+                            }
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -394,7 +443,9 @@ export default function AdminGdprPage() {
                       <TableHead>{t("consentUserColumnHeader")}</TableHead>
                       <TableHead>{t("consentTypeColumnHeader")}</TableHead>
                       <TableHead>{t("grantedColumnHeader")}</TableHead>
-                      <TableHead>{t("timestampColumnHeader")}</TableHead>
+                      <TableHead>
+                        <SortableTableHeader label={t("timestampColumnHeader")} active={sortBy === "createdAt"} order={sortOrder} onClick={() => sortByColumn("createdAt")} />
+                      </TableHead>
                       <TableHead>{t("ipAddressColumnHeader")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -402,7 +453,7 @@ export default function AdminGdprPage() {
                     {consentLogs.map((c) => (
                       <TableRow key={c._id}>
                         <TableCell className="font-medium">{c.userName}</TableCell>
-                        <TableCell className="capitalize">{c.consentType.replace(/_/g, " ")}</TableCell>
+                        <TableCell>{CONSENT_TYPE_LABELS[c.consentType] ?? c.consentType.replace(/_/g, " ")}</TableCell>
                         <TableCell>
                           {c.granted ? (
                             <span className="inline-flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> {t("consentYesLabel")}</span>
@@ -420,55 +471,17 @@ export default function AdminGdprPage() {
             )}
           </>
         )}
-
-        {activeTab === "retention" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">{t("retentionDescription")}</p>
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("dataCategoryColumnHeader")}</TableHead>
-                    <TableHead>{t("retentionPeriodColumnHeader")}</TableHead>
-                    <TableHead>{t("autoDeleteColumnHeader")}</TableHead>
-                    <TableHead>{t("lastReviewedColumnHeader")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {retentionPolicies.map((p) => (
-                    <TableRow key={p._id}>
-                      <TableCell className="font-medium">{p.dataCategory}</TableCell>
-                      <TableCell>{p.retentionPeriod} {p.unit}</TableCell>
-                      <TableCell>
-                        {p.autoDelete ? (
-                          <span className="text-sm text-emerald-600">{t("autoDeleteEnabled")}</span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">{t("autoDeleteManual")}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(p.lastReview))}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Pagination */}
-      {activeTab !== "retention" && (
-        <PaginationControls
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          limit={pagination.limit}
-          total={pagination.total}
-          onPageChange={pagination.setPage}
-          onLimitChange={pagination.setLimit}
-        />
-      )}
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        limit={pagination.limit}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

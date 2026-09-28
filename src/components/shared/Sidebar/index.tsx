@@ -124,7 +124,7 @@ export function Sidebar({
     { label: "Data & insights", labelAr: "البيانات والرؤى", titles: ["Master Data", "Reports"] },
     { label: "Communication", labelAr: "التواصل", titles: ["Communication"] },
     { label: "Content & events", labelAr: "المحتوى والفعاليات", titles: ["CMS / Content", "Exhibitions"] },
-    { label: "Settings", labelAr: "الإعدادات", titles: ["Settings"] },
+    { label: "Settings & system", labelAr: "الإعدادات والنظام", titles: ["Settings", "System"] },
   ] as const;
   const adminSectionByTitle = new Map<string, (typeof adminSections)[number]>(
     adminSections.flatMap((section) =>
@@ -247,6 +247,7 @@ export function Sidebar({
 
     for (const item of allMainItems) {
       if (pathname === item.href) return item.title;
+      if (item.activePaths?.some((path) => pathname === path || pathname.startsWith(`${path}/`))) return item.title;
     }
 
     for (const item of allMainItems) {
@@ -662,6 +663,9 @@ export function Sidebar({
           const Icon = getIcon(item.icon);
           const isSelected = resolvedActiveMainTitle === item.title;
           const hasChildren = Boolean(item.children?.length);
+          // An admin row with its own tab strip links straight to it: a flyout
+          // listing the same children only repeated the tabs.
+          const opensFlyout = hasChildren && !(isAdminWorkspace && item.contextTabs);
           const itemSubmenuId = `sidebar-submenu-${item.title.toLowerCase().replace(/\s+/g, "-")}`;
           const showInlineChildren = usesInlineWorkspaceSidebar && hasChildren && isSelected && submenuExpanded;
           const submenuVariant = usesSimpleEmployerMenu ? "panel" : "inline";
@@ -688,7 +692,7 @@ export function Sidebar({
                     {badgeCount(item) > 99 ? "99+" : badgeCount(item)}
                   </span>
                 )}
-                {hasChildren && (
+                {opensFlyout && (
                   <ChevronDown
                     className={cn(
                       "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
@@ -707,7 +711,7 @@ export function Sidebar({
                branch and then dropped on the floor — only the inline layouts
                printed it, so a dual-tier rail authored in sections rendered as
                one flat list. */
-            if (hasChildren) {
+            if (opensFlyout) {
               return (
                 <Fragment key={item.title}>
                   {sectionHeading}

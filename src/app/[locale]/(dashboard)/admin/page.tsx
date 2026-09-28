@@ -8,6 +8,7 @@ import type { CustomPermissions, PermissionMode, Resource, UserRole } from "@/ty
 import { DashboardToolbar } from "./_components/dashboard-toolbar";
 import {
   FinanceSkeleton,
+  FunnelSkeleton,
   PeopleSkeleton,
   QueueSkeleton,
   RecruitmentSkeleton,
@@ -15,6 +16,7 @@ import {
 } from "./_components/section-states";
 import {
   FinanceSection,
+  HiringFunnelSection,
   PeopleSection,
   QueueSection,
   RecruitmentSection,
@@ -24,10 +26,10 @@ import {
 import { AdminDashboardTabs, type DashboardTab } from "./_components/admin-dashboard-tabs";
 
 /*
- * Admin dashboard, ordered by what an admin opens it for:
- *   1. the platform in five numbers and the recruitment pulse;
- *   2. what needs a decision or is going wrong (the action queue);
- *   3. recruitment, people and finance analysis behind the snapshot.
+ * Admin dashboard, one question per tab:
+ *   1. Overview — the platform in five numbers and the hiring funnel;
+ *   2. Needs your attention — what needs a decision or is going wrong;
+ *   3. Quick analysis — recruitment, people and finance behind the snapshot.
  *
  * Each metric has one home. Counts of things to act on live only in the
  * queue; the sections hold the context around them. Every figure is counted
@@ -113,8 +115,8 @@ export default async function AdminDashboardPage({
             <Suspense key={`snapshot-${period.key}`} fallback={<SnapshotSkeleton label={loading(t("snapshot.title"))} />}>
               <SnapshotSection {...context} />
             </Suspense>
-            <Suspense key={`recruitment-${period.key}`} fallback={<RecruitmentSkeleton label={loading(t("recruitment.title"))} />}>
-              <RecruitmentSection {...context} compact />
+            <Suspense key={`funnel-${period.key}`} fallback={<FunnelSkeleton label={loading(t("funnel.title"))} />}>
+              <HiringFunnelSection {...context} />
             </Suspense>
           </div>
         )}

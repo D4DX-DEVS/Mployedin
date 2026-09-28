@@ -86,7 +86,9 @@ export default auth(async function middleware(req: NextAuthRequest) {
   // Belt-and-suspenders: the matcher regex should exclude these, but some
   // Edge Runtimes evaluate the pattern differently, causing sw.js to be
   // redirected by the intl middleware (breaks Service Worker registration).
-  if (/^\/(sw\.js|workbox-.*\.js)(\.map)?$/.test(pathname)) {
+  // storage-fallback.js is loaded by the root layout before hydration; a
+  // locale redirect turned it into a 404 on every page.
+  if (/^\/(sw\.js|workbox-.*\.js|storage-fallback\.js)(\.map)?$/.test(pathname)) {
     return NextResponse.next();
   }
 

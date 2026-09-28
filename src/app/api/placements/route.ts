@@ -22,6 +22,8 @@ import { notifySuperAgentPlacement } from "@/lib/notifications/trigger";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
+const PLACEMENT_SORT_FIELDS = ["createdAt", "startDate", "salary"] as const;
+
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
@@ -29,6 +31,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
+  // Whitelisted: the list's sort control and column heads. _id breaks ties so
+  // paging never repeats or drops a row.
+  const sortParam = searchParams.get("sortBy") ?? "";
+  const sortField = (PLACEMENT_SORT_FIELDS as readonly string[]).includes(sortParam) ? sortParam : "createdAt";
+  const sortDir = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   // --- Filters ---
   const lifecycleStatus = searchParams.get("status");
@@ -150,7 +157,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .populate("employerId", "companyName")
       .populate("agentId", "userId")
       .populate({ path: "agentId", populate: { path: "userId", select: "name" } })
-      .sort({ createdAt: -1 })
+      .sort({ [sortField]: sortDir, _id: sortDir })
       .skip(skip)
       .limit(limit)
       .lean(),

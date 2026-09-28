@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { PrivacySettingsLink } from "@/components/features/privacy/PrivacySettingsLink";
 import { useTranslations, useLocale } from "next-intl";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -825,6 +826,7 @@ export default function JobSeekerSettingsPage() {
 
             <ChangeEmailCard />
             <CalendarFeedCard />
+            <PrivacySettingsLink href="/job-seeker/settings/privacy" />
           </TabsContent>
 
           {/* ════════════════════ RESUME & AI TAB ════════════════════ */}

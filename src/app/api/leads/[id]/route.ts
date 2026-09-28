@@ -51,10 +51,10 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
     update.convertedAt = new Date();
   }
 
-  // Re-route if country changed and lead has no manual superAgent assignment
-  if (update.country && !current.superAgentId) {
+  // Re-route if the location changed and lead has no manual superAgent assignment
+  if ((update.country || update.city) && !current.superAgentId) {
     const routeResult = await autoRouteLead({
-      country: update.country as string,
+      country: (update.country ?? current.country) as string | undefined,
       city: (update.city ?? current.city) as string | undefined,
       superAgentId: undefined,
     });

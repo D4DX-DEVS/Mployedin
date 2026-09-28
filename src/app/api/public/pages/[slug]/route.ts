@@ -3,9 +3,11 @@ import { connectDB } from "@/lib/db/mongoose";
 import StaticPage from "@/models/StaticPage";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import logger from "@/lib/logger";
+import { isLegalPageSlug } from "@/lib/cms/legalPages";
 
 /**
- * Public static page by slug (privacy-policy, cookie-policy, etc) — NO AUTH required.
+ * Public legal page by slug — NO AUTH required. Only the four slugs in
+ * lib/cms/legalPages are served; nothing else has a public route.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
@@ -14,12 +16,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   try {
     const { slug } = await params;
+    if (!isLegalPageSlug(slug)) {
+      return NextResponse.json({ error: "Page not found" }, { status: 404 });
+    }
     await connectDB();
 
     const page = await StaticPage.findOne({
       slug,
       isActive: true,
-    }).lean();
+    })
+      .select("slug title titleAr body bodyAr updatedAt")
+      .lean();
 
     if (!page) {
       return NextResponse.json({ error: "Page not found" }, { status: 404 });

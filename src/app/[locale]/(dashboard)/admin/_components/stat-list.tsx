@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { formatCount } from "@/lib/ui/intlFormat";
 
 export type StatTone = "rose" | "amber" | "sky" | "violet" | "emerald" | "slate";
@@ -31,9 +32,10 @@ export interface StatRow {
  * exactly those records — a link. Rows without an exact destination render as
  * plain rows rather than linking somewhere approximate.
  */
-export function StatList({ rows }: { rows: readonly StatRow[] }) {
+export function StatList({ rows, after }: { rows: readonly StatRow[]; after?: ReactNode }) {
   // flex-1 + justify-between: in a card taller than its rows (a longer card
   // beside it), the rows spread out rather than leaving a blank band below.
+  // `after` is a last item that spreads with the rows (e.g. a split bar).
   return (
     <ul className="-mx-1 flex flex-1 flex-col justify-between">
       {rows.map((row) => {
@@ -44,8 +46,8 @@ export function StatList({ rows }: { rows: readonly StatRow[] }) {
               <Icon className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
             <span className="w-11 shrink-0 text-sm font-semibold tabular-nums text-foreground">{formatCount(row.value)}</span>
-            <span className="min-w-0 flex-1 text-xs leading-4 text-muted-foreground sm:text-[13px]">{row.label}</span>
-            {row.meta && <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{row.meta}</span>}
+            <span className="min-w-0 flex-1 text-xs leading-4 text-muted-foreground sm:text-sm sm:leading-5">{row.label}</span>
+            {row.meta && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{row.meta}</span>}
             {row.href ? (
               <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
             ) : (
@@ -68,6 +70,7 @@ export function StatList({ rows }: { rows: readonly StatRow[] }) {
           </li>
         );
       })}
+      {after && <li className="px-1">{after}</li>}
     </ul>
   );
 }
@@ -92,13 +95,14 @@ export function MetricTiles({ rows, className = "max-lg:grid-cols-2 lg:grid-cols
               <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 ring-inset ${TONES[row.tone]}`}>
                 <Icon className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
-              <span className="text-lg font-semibold tabular-nums leading-none text-foreground">{formatCount(row.value)}</span>
-              {row.meta && <span className="text-[11px] tabular-nums text-muted-foreground">{row.meta}</span>}
+              {/* Tile numbers match every other tile on the dashboard: 18px on phones, 24px from sm. */}
+              <span className="text-lg font-semibold tabular-nums leading-none tracking-tight text-foreground sm:text-2xl sm:leading-none">{formatCount(row.value)}</span>
+              {row.meta && <span className="text-xs tabular-nums text-muted-foreground">{row.meta}</span>}
               {row.href && (
                 <ArrowRight className="ms-auto h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
               )}
             </span>
-            <span className="mt-1.5 block text-[11px] leading-4 text-muted-foreground sm:text-xs">{row.label}</span>
+            <span className="mt-1.5 block text-xs leading-4 text-muted-foreground">{row.label}</span>
           </>
         );
         const tile = "flex h-full flex-col rounded-lg bg-card/80 px-2.5 py-2 ring-1 ring-inset ring-border/60";

@@ -7,6 +7,9 @@ import Testimonial from "@/models/Testimonial";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { testimonialCreateSchema } from "@/lib/validators/cms";
+import { cmsListSort } from "@/lib/cms/listSort";
+
+const SORT_FIELDS = ["createdAt", "name", "company", "rating", "sortOrder"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -34,7 +37,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const [items, total] = await Promise.all([
-    Testimonial.find(query).sort({ sortOrder: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Testimonial.find(query).sort(cmsListSort(searchParams, SORT_FIELDS, { sortOrder: 1, createdAt: -1 })).skip(skip).limit(limit).lean(),
     Testimonial.countDocuments(query),
   ]);
 

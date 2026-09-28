@@ -261,7 +261,9 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+    /* No backdrop close: a stray click must not throw away a half-built
+       assessment. Cancel is the way out. */
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-background border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto panel-body" onClick={e => e.stopPropagation()}>
         <h2 className="heading-section font-bold text-foreground mb-4">{t("createTitle")}</h2>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">

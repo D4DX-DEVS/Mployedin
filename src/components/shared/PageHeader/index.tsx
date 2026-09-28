@@ -1,11 +1,12 @@
 import { cn } from "@/lib/utils";
-import { Sparkles, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { PageNavIcon } from "@/components/shared/PageNavIcon";
 
 interface PageHeaderProps {
   title: string;
   description?: string;
   actions?: React.ReactNode;
-  /** Leading identity icon shared by page headers across workspaces. */
+  /** Leading identity icon. Omit it to use the route's sidebar icon. */
   icon?: LucideIcon;
   className?: string;
   headingLevel?: 1 | 2;
@@ -15,7 +16,7 @@ export function PageHeader({
   title,
   description,
   actions,
-  icon: Icon = Sparkles,
+  icon: Icon,
   className,
   headingLevel = 1,
 }: PageHeaderProps) {
@@ -30,7 +31,7 @@ export function PageHeader({
     >
       <div className="page-header-identity min-w-0">
         <span className="page-header-icon" aria-hidden="true">
-          <Icon className="h-5 w-5" />
+          {Icon ? <Icon className="h-5 w-5" /> : <PageNavIcon className="h-5 w-5" />}
         </span>
         <div className="min-w-0 space-y-1">
           <Heading className="page-header-title text-xl sm:text-[1.625rem] font-bold tracking-tight text-foreground">

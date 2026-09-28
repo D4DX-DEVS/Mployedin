@@ -341,11 +341,8 @@ export default function SuperAgentCommissionsPage() {
                           {t("actionApprove")}
                         </Button>
                       )}
-                      {c.status === "approved" && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-700" onClick={() => updateStatus(c._id, "paid")}>
-                          {t("actionMarkPaid")}
-                        </Button>
-                      )}
+                      {/* Paying out is the admin's step (it needs the payment reference); a super agent only approves. */}
+                      {c.status === "approved" && <span className="text-xs text-muted-foreground">{t("awaitingPayout")}</span>}
                       {c.status === "paid" && <span className="text-xs text-muted-foreground">{t("statusPaid")}</span>}
                     </TableCell>
                   </TableRow>

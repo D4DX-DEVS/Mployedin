@@ -4,14 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  Search, Filter, CheckCircle2, Clock, AlertCircle, Pencil,
-  Trash2, Inbox, CalendarDays, DollarSign, Sparkles, ChevronDown, ChevronUp, X, RotateCcw,
+  CheckCircle2, Clock, AlertCircle, Pencil,
+  Trash2, Inbox, DollarSign, Sparkles, RotateCcw,
   TrendingUp, Users,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
@@ -22,7 +21,10 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
@@ -81,6 +83,7 @@ function formatCurrencyBreakdown(salaryByCurrency: Record<string, number>, t: an
 
 export default function AdminPlacementsPage() {
   const t = useTranslations("adminPlacements");
+  const tc = useTranslations("common");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -93,6 +96,14 @@ export default function AdminPlacementsPage() {
      hit and the system-health panel all link here with `?search=<name>`,
      and a filter kept only in component state would silently ignore it. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "startDate", "salary"] });
+  const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder("desc"); }
+    resetPage();
+  };
   const [visaFilter, setVisaFilter] = useState("");
   const [commissionFilter, setCommissionFilter] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
@@ -100,8 +111,6 @@ export default function AdminPlacementsPage() {
   const [dateTo, setDateTo] = useState("");
   const [salaryMin, setSalaryMin] = useState("");
   const [salaryMax, setSalaryMax] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [editItem, setEditItem] = useState<Placement | null>(null);
 
   const [aiInsights, setAiInsights] = useState<string | null>(null);
@@ -121,6 +130,8 @@ export default function AdminPlacementsPage() {
       if (dateTo) params.set("dateTo", dateTo);
       if (salaryMin) params.set("salaryMin", salaryMin);
       if (salaryMax) params.set("salaryMax", salaryMax);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
 
       const res = await fetch(`/api/placements?${params}`);
       if (res.ok) {
@@ -143,7 +154,7 @@ export default function AdminPlacementsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, visaFilter, commissionFilter, currencyFilter, dateFrom, dateTo, salaryMin, salaryMax, limit, updateTotal]);
+  }, [page, search, visaFilter, commissionFilter, currencyFilter, dateFrom, dateTo, salaryMin, salaryMax, sortBy, sortOrder, limit, updateTotal]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -261,6 +272,23 @@ export default function AdminPlacementsPage() {
     { name: "notes", label: t("notes"), type: "textarea" },
   ];
 
+  // Unpaid rows put "Mark paid" in plain sight; edit, undo and delete sit under More.
+  const rowActionsFor = (p: Placement): { quick: RowAction[]; menu: RowAction[] } => {
+    const canUpdate = can("placements", "update");
+    const quick: RowAction[] = !p.commissionPaid && canUpdate
+      ? [{ key: "paid", label: t("markPaid"), icon: CheckCircle2, iconClassName: "text-emerald-600", onSelect: () => markCommission(p._id, true) }]
+      : [];
+    const menu: RowAction[] = [];
+    if (canUpdate) {
+      menu.push({ key: "edit", label: t("edit"), icon: Pencil, onSelect: () => setEditItem(p) });
+      if (p.commissionPaid) menu.push({ key: "unpaid", label: t("markUnpaid"), icon: RotateCcw, onSelect: () => markCommission(p._id, false) });
+    }
+    if (can("placements", "delete")) {
+      menu.push({ key: "delete", label: t("delete"), icon: Trash2, onSelect: () => handleDelete(p._id), destructive: true });
+    }
+    return { quick, menu };
+  };
+
   const pendingVisa = placements.filter((p) => p.visaStatus === "pending").length;
   const unpaidCommissions = placements.filter((p) => !p.commissionPaid).length;
 
@@ -307,33 +335,6 @@ export default function AdminPlacementsPage() {
           { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
         ]}
         compactOnMobile
-        footer={(
-          <>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
-            >
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              {showFilters ? t("hideFilters") : t("showFilters")}
-              {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
-              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            <div className="flex items-center gap-2">
-              {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-xs text-muted-foreground">
-                  <X className="h-3.5 w-3.5" />
-                  {t("clearActiveFilters", { count: activeFilterCount })}
-                </Button>
-              )}
-              <TableToolbar
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-              />
-            </div>
-          </>
-        )}
       >
 
         {/* AI Insights inline panel */}
@@ -347,114 +348,104 @@ export default function AdminPlacementsPage() {
           </div>
         )}
 
-        {/* ─── Expandable Filters ─────────────────────────────────────── */}
-        {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder={t("searchPlaceholder")}
-                aria-label={t("searchPlaceholder")}
-                className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-              />
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              <SearchableSelect
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "", label: t("allVisaStatuses") },
-                  { value: "not_required", label: t("notRequired") },
-                  { value: "pending", label: t("pending") },
-                  { value: "approved", label: t("approved") },
-                  { value: "rejected", label: t("rejected") },
-                  { value: "stamped", label: t("stamped") },
-                ]}
-                value={visaFilter}
-                onValueChange={(v) => { setVisaFilter(v); resetPage(); }}
-                placeholder={t("allVisaStatuses")}
-              />
-              <SearchableSelect
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "", label: t("allCommission") },
-                  { value: "true", label: t("paid") },
-                  { value: "false", label: t("unpaid") },
-                ]}
-                value={commissionFilter}
-                onValueChange={(v) => { setCommissionFilter(v); resetPage(); }}
-                placeholder={t("allCommission")}
-              />
-              <SearchableSelect
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "", label: t("allCurrencies") },
-                  { value: "AED", label: "AED" },
-                  { value: "USD", label: "USD" },
-                  { value: "EUR", label: "EUR" },
-                  { value: "SAR", label: "SAR" },
-                ]}
-                value={currencyFilter}
-                onValueChange={(v) => { setCurrencyFilter(v); resetPage(); }}
-                placeholder={t("allCurrencies")}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Filter className="h-3.5 w-3.5" />
-                {t("advancedFilters")}
-                {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </button>
-            </div>
-
-            {showAdvanced && (
-              <div className="grid gap-2 pt-1 sm:grid-cols-2 xl:grid-cols-4">
-                <DateTimePicker
-                  mode="date"
-                  value={dateFrom}
-                  onChange={(v) => { setDateFrom(v); resetPage(); }}
-                  placeholder={t("from")}
-                  className="h-11 rounded-xl border-border bg-card text-sm"
-                />
-                <DateTimePicker
-                  mode="date"
-                  value={dateTo}
-                  onChange={(v) => { setDateTo(v); resetPage(); }}
-                  placeholder={t("to")}
-                  className="h-11 rounded-xl border-border bg-card text-sm"
-                />
-                <div className="relative">
-                  <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder={t("minSalaryPlaceholder")}
-                    value={salaryMin}
-                    onChange={(e) => { setSalaryMin(e.target.value); resetPage(); }}
-                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                  />
-                </div>
-                <div className="relative">
-                  <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder={t("maxSalaryPlaceholder")}
-                    value={salaryMax}
-                    onChange={(e) => { setSalaryMax(e.target.value); resetPage(); }}
-                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </DashboardPageHeader>
+
+      {/* ─── Filters ──────────────────────────────────────────────────── */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        more={(
+          <>
+            <DateTimePicker
+              mode="date"
+              value={dateFrom}
+              onChange={(v) => { setDateFrom(v); resetPage(); }}
+              placeholder={t("from")}
+              className="min-w-0 max-w-56 flex-[1_1_9rem]"
+            />
+            <DateTimePicker
+              mode="date"
+              value={dateTo}
+              onChange={(v) => { setDateTo(v); resetPage(); }}
+              placeholder={t("to")}
+              className="min-w-0 max-w-56 flex-[1_1_9rem]"
+            />
+            <Input
+              type="number"
+              inputMode="numeric"
+              placeholder={t("minSalaryPlaceholder")}
+              aria-label={t("minSalaryPlaceholder")}
+              value={salaryMin}
+              onChange={(e) => { setSalaryMin(e.target.value); resetPage(); }}
+              className={`${INLINE_FILTER_CONTROL} shadow-none`}
+            />
+            <Input
+              type="number"
+              inputMode="numeric"
+              placeholder={t("maxSalaryPlaceholder")}
+              aria-label={t("maxSalaryPlaceholder")}
+              value={salaryMax}
+              onChange={(e) => { setSalaryMax(e.target.value); resetPage(); }}
+              className={`${INLINE_FILTER_CONTROL} shadow-none`}
+            />
+          </>
+        )}
+        moreLabel={t("advancedFilters")}
+        moreActiveCount={[dateFrom, dateTo, salaryMin, salaryMax].filter(Boolean).length}
+        onClear={activeFilterCount > 0 ? clearFilters : undefined}
+        clearLabel={t("clearActiveFilters", { count: activeFilterCount })}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={[{ value: "", label: t("allVisaStatuses") }, ...visaStatusOptions]}
+          value={visaFilter}
+          onValueChange={(v) => { setVisaFilter(v); resetPage(); }}
+          placeholder={t("allVisaStatuses")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "", label: t("allCommission") },
+            { value: "true", label: t("paid") },
+            { value: "false", label: t("unpaid") },
+          ]}
+          value={commissionFilter}
+          onValueChange={(v) => { setCommissionFilter(v); resetPage(); }}
+          placeholder={t("allCommission")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "", label: t("allCurrencies") },
+            { value: "AED", label: "AED" },
+            { value: "USD", label: "USD" },
+            { value: "EUR", label: "EUR" },
+            { value: "SAR", label: "SAR" },
+          ]}
+          value={currencyFilter}
+          onValueChange={(v) => { setCurrencyFilter(v); resetPage(); }}
+          placeholder={t("allCurrencies")}
+        />
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(v) => { setSortBy(v); resetPage(); }}
+          options={[
+            { value: "createdAt", label: t("sortDateAdded") },
+            { value: "startDate", label: t("exportHeaderStartDate") },
+            { value: "salary", label: t("salary") },
+          ]}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
       {loadFailed && !loading ? (
@@ -465,9 +456,18 @@ export default function AdminPlacementsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                {[t("candidate"), t("role"), t("company"), t("agent"), t("salary"), t("visa"), t("commission"), t("date"), ""].map((h, i) => (
-                  <TableHead key={i} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{h}</TableHead>
+                {[t("candidate"), t("role"), t("company"), t("agent")].map((h) => (
+                  <TableHead key={h}>{h}</TableHead>
                 ))}
+                <TableHead>
+                  <SortableTableHeader label={t("salary")} active={sortBy === "salary"} order={sortOrder} onClick={() => sortByColumn("salary")} />
+                </TableHead>
+                <TableHead>{t("visa")}</TableHead>
+                <TableHead>{t("commission")}</TableHead>
+                <TableHead>
+                  <SortableTableHeader label={t("date")} active={sortBy === "startDate"} order={sortOrder} onClick={() => sortByColumn("startDate")} />
+                </TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -498,85 +498,46 @@ export default function AdminPlacementsPage() {
                 </TableRow>
               ) : placements.map((p) => (
                 <TableRow key={p._id} className="group transition-colors">
-                  <TableCell className="px-4 py-3">
-                    <p className="font-medium">{p.candidateName ?? t("dashSeparator")}</p>
-                    <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
+                  <TableCell className="py-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar name={p.candidateName} email={p.candidateEmail} className="h-10 w-10" colorful />
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{p.candidateName ?? t("dashSeparator")}</p>
+                        <p className="truncate text-xs text-muted-foreground">{p.candidateEmail}</p>
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-muted-foreground">{p.jobTitle ?? t("dashSeparator")}</TableCell>
-                  <TableCell className="px-4 py-3">{p.companyName ?? t("dashSeparator")}</TableCell>
-                  <TableCell className="px-4 py-3 text-muted-foreground">{p.agentName ?? t("dashSeparator")}</TableCell>
-                  <TableCell className="px-4 py-3 font-medium">
+                  <TableCell className="text-muted-foreground">{p.jobTitle ?? t("dashSeparator")}</TableCell>
+                  <TableCell>{p.companyName ?? t("dashSeparator")}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.agentName ?? t("dashSeparator")}</TableCell>
+                  <TableCell className="whitespace-nowrap font-medium">
                     {formatCount(salaryAmount(p.salary) ?? 0)}{" "}
                     <span className="text-xs text-muted-foreground">{salaryCurrency(p)}</span>
                   </TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell>
                     <div className="flex items-center gap-1.5">
                       {VISA_ICONS[p.visaStatus]}
-                      <span className="text-xs capitalize">{p.visaStatus?.replace("_", " ")}</span>
+                      <span className="text-sm">{visaStatusOptions.find((o) => o.value === p.visaStatus)?.label ?? t("dashSeparator")}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell>
                     <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />
                   </TableCell>
-                  <TableCell className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                    {new Date(p.startDate).toLocaleDateString("en-AE")}
+                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                    {formatDate(new Date(p.startDate), { day: "2-digit", month: "short", year: "numeric" })}
                   </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      {!p.commissionPaid && can("placements", "update") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => markCommission(p._id, true)}
-                          className="text-emerald-700 hover:bg-status-selected-bg"
-                        >
-                          {t("markPaid")}
-                        </Button>
-                      )}
-                      {can("placements", "update") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setEditItem(p)}
-                          className="h-8 gap-1 px-2 text-xs text-status-applied hover:bg-blue-50"
-                          title={t("edit")}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          {t("edit")}
-                        </Button>
-                      )}
-                      {can("placements", "delete") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleDelete(p._id)}
-                          className="h-8 gap-1 px-2 text-xs text-status-rejected hover:bg-status-rejected-bg"
-                          title={t("delete")}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          {t("delete")}
-                        </Button>
-                      )}
-                    </div>
+                  <TableCell className="text-right">
+                    <RowActions name={p.candidateName ?? t("dashSeparator")} {...rowActionsFor(p)} />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-
-        <div className="border-t border-border/60 px-4 py-4">
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            limit={limit}
-            onPageChange={setPage}
-            onLimitChange={setLimit}
-          />
-        </div>
       </section>
       )}
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       <CrudModal
         open={!!editItem}

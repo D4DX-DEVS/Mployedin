@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
-import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
+import { accountFieldsError } from "@/lib/errors/account-fields";
+import { PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
+import { StepFormDialog } from "@/components/shared/StepFormDialog";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,12 +15,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Activity, ArrowUpDown, BriefcaseBusiness, ChevronDown, ChevronUp,
   Filter, RotateCcw, Search, SlidersHorizontal, Target, Users2,
-  Plus, AlertCircle, Loader2,
+  Plus,
 } from "lucide-react";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -163,6 +162,8 @@ export default function SuperAgentAgentsPage() {
   const [createStateIds, setCreateStateIds] = useState<string[]>([]);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
+  // Step the banner belongs to: a taken email (409) goes back to Account.
+  const [createErrorStep, setCreateErrorStep] = useState<number | undefined>();
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
@@ -198,17 +199,11 @@ export default function SuperAgentAgentsPage() {
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
   /* ── Create agent handler ── */
+  // Name / email / password are checked by the Account step before the dialog
+  // lets the super agent leave it, and again on submit (StepFormDialog).
   const handleCreate = async () => {
     setCreateError("");
-    if (!createForm.name || !createForm.email || !createForm.password) {
-      setCreateError(t("validateNameEmailPasswordRequired"));
-      return;
-    }
-    const passwordError = validatePasswordForForm(createForm.password, { locale, t: tf });
-    if (passwordError) {
-      setCreateError(passwordError);
-      return;
-    }
+    setCreateErrorStep(undefined);
     setCreateLoading(true);
     try {
       const res = await fetch("/api/super-agent/agents", {
@@ -230,6 +225,7 @@ export default function SuperAgentAgentsPage() {
           fieldLabels: { name: t("formLabelFullName"), email: tc("email"), password: t("formLabelPassword"), commissionRate: t("formLabelCommissionRate") },
           conflict: tf("emailInUse"),
         });
+        setCreateErrorStep(res.status === 409 ? 0 : undefined);
         setCreateError(message);
         return;
       }
@@ -640,99 +636,100 @@ export default function SuperAgentAgentsPage() {
         </div>
       </SuperAgentSection>
 
-      {/* ── Create Agent Dialog ──────────────────────────── */}
-      <Dialog open={showCreate} onOpenChange={(open) => {
-        setShowCreate(open);
-        if (!open) {
-          // Remove ?new parameter from URL when closing the dialog
-          const params = new URLSearchParams(searchParams?.toString());
-          params.delete("new");
-          const newUrl = params.toString() ? `?${params.toString()}` : "";
-          window.history.replaceState(null, "", newUrl);
-        }
-      }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("dialogAddNewAgent")}</DialogTitle>
-            <DialogDescription>
-              {t("dialogAddNewAgentDescription")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {createError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
-                <AlertCircle className="h-4 w-4 shrink-0" />{createError}
+      {/* ── Create Agent: Account → Region, on the Add Employer frame ── */}
+      <StepFormDialog
+        open={showCreate}
+        onOpenChange={(open) => {
+          setShowCreate(open);
+          if (!open) {
+            // Remove ?new parameter from URL when closing the dialog
+            const params = new URLSearchParams(searchParams?.toString());
+            params.delete("new");
+            const newUrl = params.toString() ? `?${params.toString()}` : "";
+            window.history.replaceState(null, "", newUrl);
+          }
+        }}
+        title={t("dialogAddNewAgent")}
+        description={t("dialogAddNewAgentDescription")}
+        error={createError}
+        errorStep={createErrorStep}
+        onErrorDismiss={() => setCreateError("")}
+        submitLabel={t("buttonCreateAgent")}
+        submittingLabel={t("buttonCreating")}
+        submitting={createLoading}
+        onSubmit={handleCreate}
+        steps={[
+          {
+            label: tc("stepAccount"),
+            validate: () => accountFieldsError(createForm, { t: tf, locale }),
+            content: (
+              <div className="grid gap-4">
+                <div className="field">
+                  <Label htmlFor="create-agent-name">{t("formLabelFullName")} <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="create-agent-name"
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder={t("formPlaceholderAgentFullName")}
+                  />
+                </div>
+                <div className="field">
+                  <Label htmlFor="create-agent-email">{tc("email")} <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="create-agent-email"
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder={t("formPlaceholderEmail")}
+                  />
+                </div>
+                <div className="field">
+                  <Label htmlFor="create-agent-password">{t("formLabelPassword")} <span className="text-destructive">*</span></Label>
+                  <PasswordInput
+                    id="create-agent-password"
+                    value={createForm.password}
+                    onChange={(password) => setCreateForm((f) => ({ ...f, password }))}
+                    placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
+                    aria-describedby="create-agent-password-hint"
+                  />
+                  <p id="create-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
+                </div>
+                <div className="field">
+                  <Label htmlFor="create-agent-commission">{t("formLabelCommissionRate")}</Label>
+                  <Input
+                    id="create-agent-commission"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={createForm.commissionRate}
+                    placeholder="0"
+                    onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))}
+                    aria-describedby="create-agent-commission-hint"
+                  />
+                  <p id="create-agent-commission-hint" className="text-xs text-muted-foreground">{t("formHintCommissionRate")}</p>
+                </div>
               </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="field">
-                <Label>{t("formLabelFullName")} <span className="text-destructive">*</span></Label>
-                <Input
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder={t("formPlaceholderAgentFullName")}
+            ),
+          },
+          {
+            label: tc("stepRegion"),
+            content: (
+              <div className="space-y-2">
+                <CascadingLocationPicker
+                  selectedCityIds={createCityIds}
+                  selectedStateIds={createStateIds}
+                  onChange={(cities, states) => { setCreateCityIds(cities); setCreateStateIds(states); }}
+                  locationsEndpoint="/api/super-agent/territory/locations"
+                  emptyMessage={tc("noTerritoryAssigned")}
+                  label={t("formLabelAssignedRegion")}
+                  alwaysOpen
                 />
+                <p className="text-xs text-muted-foreground">{t("formHintAssignedRegion")}</p>
               </div>
-              <div className="field">
-                <Label>{tc("email")} <span className="text-destructive">*</span></Label>
-                <Input
-                  type="email"
-                  value={createForm.email}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder={t("formPlaceholderEmail")}
-                />
-              </div>
-              <div className="field">
-                <Label>{t("formLabelPassword")} <span className="text-destructive">*</span></Label>
-                <PasswordInput
-                  value={createForm.password}
-                  onChange={(password) => setCreateForm((f) => ({ ...f, password }))}
-                  placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
-                  aria-describedby="create-agent-password-hint"
-                />
-                <p id="create-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
-              </div>
-              <div className="field">
-                <Label>{t("formLabelCommissionRate")}</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={createForm.commissionRate}
-                  placeholder="0"
-                  onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))}
-                />
-                <p className="text-[11px] text-muted-foreground">{t("formHintCommissionRate")}</p>
-              </div>
-            </div>
-
-            <CascadingLocationPicker
-              selectedCityIds={createCityIds}
-              selectedStateIds={createStateIds}
-              onChange={(cities, states) => { setCreateCityIds(cities); setCreateStateIds(states); }}
-              locationsEndpoint="/api/super-agent/territory/locations"
-              emptyMessage={tc("noTerritoryAssigned")}
-              label={t("formLabelAssignedRegion")}
-            />
-
-            <p className="text-xs text-muted-foreground">
-              {t("formHintAssignedRegion")}
-            </p>
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => setShowCreate(false)} disabled={createLoading}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleCreate} disabled={createLoading}>
-              {createLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {createLoading ? t("buttonCreating") : t("buttonCreateAgent")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

@@ -515,6 +515,11 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     })(),
   });
 
+  // A workflow template the poster picked; the Job pre-save hook snapshots it
+  // (or matches one from the job's details when none was picked).
+  const locals = (jobDoc as { $locals?: Record<string, unknown> }).$locals;
+  if (body.workflowTemplateId && locals) locals.workflowTemplateId = body.workflowTemplateId;
+
   // Drafts are intentionally partial — a user can save one before filling in
   // description/location, which are `required` on the schema. Skip validation for
   // them (same rule as /api/jobs/auto-draft); publishing re-validates in full.

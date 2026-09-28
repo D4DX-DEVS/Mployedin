@@ -34,7 +34,6 @@ describe("LandingPage", () => {
             subtitle: "Primary hero banner",
             subtitleAr: "لافتة رئيسية",
             image: "/desktop-banner.jpg",
-            imageMobile: "/mobile-banner.jpg",
             linkUrl: "/en/jobs",
             linkText: "Explore now",
             linkTextAr: "استكشف الآن",

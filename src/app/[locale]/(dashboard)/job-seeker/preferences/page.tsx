@@ -25,6 +25,7 @@ import {
   Shuffle,
 } from "lucide-react";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
+import { userInitials } from "@/components/shared/UserAvatar";
 
 const CURRENCIES = ["USD", "INR", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
 
@@ -299,16 +300,16 @@ function RecommendedJobCard({ job }: { job: RecommendedJob }) {
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 hover:border-primary/30 hover:shadow-sm transition-all">
-      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+      <div className="h-9 w-9 rounded-full bg-primary/10 text-xs font-semibold text-primary flex items-center justify-center shrink-0 overflow-hidden">
         {job.employerId?.logo ? (
            
           <img
             src={job.employerId.logo}
             alt={job.employerId.companyName ?? ""}
-            className="h-full w-full object-cover"
+            className="h-full w-full bg-card object-contain p-1"
           />
         ) : (
-          <Building2 className="h-4 w-4 text-muted-foreground" />
+          userInitials(job.employerId?.companyName ?? "?")
         )}
       </div>
       <div className="flex-1 min-w-0">

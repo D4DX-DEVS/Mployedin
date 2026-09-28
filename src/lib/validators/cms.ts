@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FAQ_CATEGORIES } from "@/lib/cms/faqCategories";
 
 const bilingualText = (maxLen: number) =>
   z.string().max(maxLen).trim().optional().or(z.literal(""));
@@ -26,7 +27,6 @@ export const videoCreateSchema = z.object({
   titleAr: bilingualText(200),
   description: z.string().max(2000).trim().optional().or(z.literal("")),
   descriptionAr: bilingualText(2000),
-  thumbnail: urlOrPath().optional().or(z.literal("")),
   ...sortActive,
 });
 
@@ -58,7 +58,6 @@ export const bannerCreateSchema = z.object({
   titleAr: bilingualText(200),
   subtitle: bilingualText(500),
   subtitleAr: bilingualText(500),
-  imageMobile: urlOrPath().optional().or(z.literal("")),
   linkUrl: urlOrPath().optional().or(z.literal("")),
   linkText: bilingualText(100),
   linkTextAr: bilingualText(100),
@@ -85,25 +84,35 @@ export const testimonialCreateSchema = z.object({
 export const testimonialUpdateSchema = testimonialCreateSchema.partial();
 
 // ── FAQs ────────────────────────────────────────────────────────────
-export const faqCreateSchema = z.object({
+// The admin form sends "" for an untouched select; treat it as "not sent".
+const blankToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
+const faqBase = z.object({
   question: z.string().min(1).max(500).trim(),
   answer: z.string().min(1).max(5000).trim(),
   questionAr: bilingualText(500),
   answerAr: bilingualText(5000),
-  category: z.string().max(50).trim().optional().default("general"),
+  category: z.preprocess(blankToUndefined, z.enum(FAQ_CATEGORIES).optional()),
   ...sortActive,
 });
 
-export const faqUpdateSchema = faqCreateSchema.partial();
-
-// ── Static Pages ────────────────────────────────────────────────────
-export const staticPageCreateSchema = z.object({
-  title: z.string().min(1).max(300).trim(),
-  body: z.string().min(1).max(100000).trim(),
-  titleAr: bilingualText(300),
-  slug: z.string().max(300).trim().optional().or(z.literal("")),
-  bodyAr: z.string().max(100000).trim().optional().or(z.literal("")),
-  isActive: z.boolean().optional(),
+export const faqCreateSchema = faqBase.extend({
+  category: z.preprocess(blankToUndefined, z.enum(FAQ_CATEGORIES).default("general")),
 });
 
-export const staticPageUpdateSchema = staticPageCreateSchema.partial();
+// Built from the base, not faqCreateSchema.partial(): Zod 4 still applies a
+// .default() inside .partial(), which reset every edited FAQ to "general".
+export const faqUpdateSchema = faqBase.partial();
+
+// ── Static Pages ────────────────────────────────────────────────────
+// Edit-only: the four legal pages are fixed (lib/cms/legalPages), so there is
+// no create schema and no slug — an unknown `slug` key is stripped.
+export const staticPageUpdateSchema = z
+  .object({
+    title: z.string().min(1).max(300).trim(),
+    body: z.string().min(1).max(100000).trim(),
+    titleAr: bilingualText(300),
+    bodyAr: z.string().max(100000).trim().optional().or(z.literal("")),
+    isActive: z.boolean().optional(),
+  })
+  .partial();

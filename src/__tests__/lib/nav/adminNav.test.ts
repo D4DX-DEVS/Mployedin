@@ -96,6 +96,42 @@ describe("admin navigation", () => {
     expect(missing).toEqual([]);
   });
 
+  describe("tabbed sections", () => {
+    const tabbed = getNavGroups("admin", "en")
+      .flatMap((group) => group.items)
+      .filter((item) => item.contextTabs);
+
+    it("are Settings and System", () => {
+      expect(tabbed.map((item) => item.title)).toEqual(["Settings", "System"]);
+    });
+
+    // The rail row is a plain link on admin (no flyout), so its href is the
+    // tab the user lands on.
+    it("send the rail row to the first tab", () => {
+      for (const item of tabbed) {
+        expect({ section: item.title, href: item.href }).toEqual({
+          section: item.title,
+          href: item.children?.[0]?.href,
+        });
+      }
+    });
+
+    // Eleven tabs overflowed the strip and hid half of them off-screen.
+    it("keep each strip short enough to fit", () => {
+      for (const item of tabbed) {
+        expect({ section: item.title, fits: (item.children?.length ?? 0) <= 6 }).toEqual({
+          section: item.title,
+          fits: true,
+        });
+      }
+    });
+
+    it("list each destination in one strip only", () => {
+      const hrefs = tabbed.flatMap((item) => (item.children ?? []).map((child) => child.href));
+      expect(new Set(hrefs).size).toBe(hrefs.length);
+    });
+  });
+
   it("keeps every phone tab pointing at a real nav destination", () => {
     const hrefs = new Set(
       getNavGroups("admin", "en").flatMap((group) =>

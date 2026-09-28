@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
+import { FAQ_CATEGORIES } from "@/lib/cms/faqCategories";
+import { useFaqCategoryLabel } from "@/hooks/useFaqCategoryLabel";
 
 interface FAQ {
   _id: string;
@@ -33,7 +35,14 @@ export default function FAQPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const categories = ["all", ...Array.from(new Set(faqs.map((f) => f.category)))];
+  const categoryLabel = useFaqCategoryLabel();
+  // Fixed order from the category list, then any legacy value last.
+  const present = new Set(faqs.map((f) => f.category));
+  const categories = [
+    "all",
+    ...FAQ_CATEGORIES.filter((c) => present.has(c)),
+    ...[...present].filter((c) => !(FAQ_CATEGORIES as readonly string[]).includes(c)),
+  ];
   const filtered = activeCategory === "all" ? faqs : faqs.filter((f) => f.category === activeCategory);
 
   if (loading) {
@@ -67,7 +76,7 @@ export default function FAQPage() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
-                {cat === "all" ? t("allCategories2") : cat}
+                {cat === "all" ? t("allCategories2") : categoryLabel(cat)}
               </button>
             ))}
           </div>

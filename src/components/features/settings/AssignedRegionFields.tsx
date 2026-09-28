@@ -12,6 +12,8 @@ export interface SupervisingSuperAgent {
 
 interface AssignedRegionFieldsProps {
   regions: readonly AssignedRegion[];
+  /** Super agents only: the admin's name for their territory, when one was given. */
+  territoryName?: string | null;
   /** Agents only: the super-agent they report to. Omit on the super-agent's own profile. */
   superAgent?: SupervisingSuperAgent | null;
   showSuperAgent?: boolean;
@@ -22,7 +24,7 @@ interface AssignedRegionFieldsProps {
  * region(s) and, for an agent, the super-agent above them. Same shape as the
  * read-only email row beside it — the user can see it, not change it.
  */
-export function AssignedRegionFields({ regions, superAgent = null, showSuperAgent = false }: AssignedRegionFieldsProps) {
+export function AssignedRegionFields({ regions, territoryName = null, superAgent = null, showSuperAgent = false }: AssignedRegionFieldsProps) {
   const t = useTranslations("assignedRegion");
 
   return (
@@ -33,6 +35,12 @@ export function AssignedRegionFields({ regions, superAgent = null, showSuperAgen
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           {regions.length > 0 ? (
             <ul className="min-w-0 flex-1 space-y-0.5">
+              {territoryName && (
+                <li className="pb-0.5 text-sm text-foreground" data-testid="assigned-territory-name">
+                  <span className="text-muted-foreground">{t("territoryName")} · </span>
+                  <span className="font-semibold">{territoryName}</span>
+                </li>
+              )}
               {regions.map((region) => (
                 <li key={region.id} className="text-sm text-foreground">
                   <span className="font-medium">{region.name}</span>

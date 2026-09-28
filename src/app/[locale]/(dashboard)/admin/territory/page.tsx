@@ -1,346 +1,358 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { AlertTriangle, MapPin, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { toast } from "sonner";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Plus, X, Edit2, Trash2, UserCheck, MapPin } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { useConfirm } from "@/hooks/useConfirm";
+import { useDebounce } from "@/hooks/useDebounce";
+import { usePagination } from "@/hooks/usePagination";
+import type { RegionConflict } from "@/lib/superAgent/regions";
+import type { TerritoryRow, TerritorySuperAgentOption } from "@/lib/superAgent/territories";
+import { TerritoryDialog, type TerritoryFormValues } from "./_components/TerritoryDialog";
 
-interface SuperAgentOption { _id: string; name: string; email: string; }
+const HEAD = "px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]";
+const VISIBLE_REGIONS = 3;
 
-interface Territory {
-  _id: string;
-  name: string;
-  superAgentId?: { _id?: string; name?: string; email?: string } | string | null;
-  countries?: string[];
-  createdAt?: string;
+interface SaveResponse {
+  error?: string;
+  trimmedAgents?: number;
+  warnings?: { type: string; conflicts: RegionConflict[] }[];
 }
 
-const GCC_COUNTRIES = ["UAE", "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman", "Egypt", "Jordan", "Lebanon"];
-
+/**
+ * Admin → Territories. Each row is a super agent's territory: its name, the
+ * super agent, and the places it covers — the same region the super agent sees
+ * on their dashboard, profile and Territory page, and that routes leads to them.
+ */
 export default function AdminTerritoryPage() {
-  const tr = useTranslations("adminTerritory");
-  const [territories, setTerritories] = useState<Territory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", countries: [] as string[], superAgentId: "__none__" });
-  const [saving, setSaving] = useState(false);
+  const t = useTranslations("adminTerritory");
+  const tc = useTranslations("common");
+  const locale = useLocale();
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination(20);
+  const { confirm, ConfirmDialogNode } = useConfirm();
+
   const [search, setSearch] = useState("");
-  const [superAgents, setSuperAgents] = useState<SuperAgentOption[]>([]);
+  const debouncedSearch = useDebounce(search, 300);
+  const [rows, setRows] = useState<TerritoryRow[]>([]);
+  const [superAgents, setSuperAgents] = useState<TerritorySuperAgentOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  // Edit dialog
-  const [editTerritory, setEditTerritory] = useState<Territory | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", countries: [] as string[], superAgentId: "__none__" });
-  const [editSaving, setEditSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<TerritoryRow | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Delete confirm
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState("superAgent");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  /** Same column flips it; a new name column starts A–Z, agent count highest first. */
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder(field === "agentCount" ? "desc" : "asc"); }
+    resetPage();
+  };
 
   const fetchTerritories = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    const res = await fetch(`/api/admin/territories?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setTerritories(data.items ?? []);
-    }
-    setLoading(false);
-  }, [search]);
-
-  useEffect(() => { fetchTerritories(); }, [fetchTerritories]);
-
-  // Fetch super-agents for assignment dropdown
-  useEffect(() => {
-    fetch("/api/admin/users?role=super_agent&limit=200")
-      .then((r) => r.ok ? r.json() : { users: [] })
-      .then((d) => setSuperAgents((d.users ?? d.items ?? []).map((u: { _id: string; name?: string; email?: string }) => ({ _id: u._id, name: u.name ?? "", email: u.email ?? "" }))))
-      .catch(() => {});
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    const payload: Record<string, unknown> = { name: form.name, countries: form.countries };
-    if (form.superAgentId && form.superAgentId !== "__none__") payload.superAgentId = form.superAgentId;
-    const res = await fetch("/api/admin/territories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      toast.success(tr("toastTerritoryCreated"));
-      setShowForm(false);
-      setForm({ name: "", countries: [], superAgentId: "__none__" });
-      fetchTerritories();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      toast.error(err.error ?? tr("toastFailedToCreate"));
-    }
-    setSaving(false);
-  };
-
-  const toggleCountry = (country: string, target: "form" | "edit") => {
-    const setter = target === "form" ? setForm : setEditForm;
-    setter((prev) => ({
-      ...prev,
-      countries: prev.countries.includes(country)
-        ? prev.countries.filter((c) => c !== country)
-        : [...prev.countries, country],
-    }));
-  };
-
-  const openEdit = (t: Territory) => {
-    const saId = typeof t.superAgentId === "object" && t.superAgentId?._id ? t.superAgentId._id : "__none__";
-    setEditTerritory(t);
-    setEditForm({ name: t.name, countries: t.countries ?? [], superAgentId: saId });
-  };
-
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editTerritory) return;
-    setEditSaving(true);
-    const payload: Record<string, unknown> = { name: editForm.name, countries: editForm.countries };
-    payload.superAgentId = editForm.superAgentId === "__none__" ? null : editForm.superAgentId || null;
-    const res = await fetch(`/api/admin/territories/${editTerritory._id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      toast.success(tr("toastTerritoryUpdated"));
-      setEditTerritory(null);
-      fetchTerritories();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      toast.error(err.error ?? tr("toastFailedToUpdate"));
-    }
-    setEditSaving(false);
-  };
-
-  const handleDelete = async () => {
-    if (!deleteId) return;
+    setLoadError(false);
     try {
-      const res = await fetch(`/api/admin/territories/${deleteId}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.success(tr("toastTerritoryDeleted"));
-        setDeleteId(null);
-        fetchTerritories();
-      } else {
-        toast.error(tr("toastFailedToDelete"));
-      }
+      const params = new URLSearchParams({ page: String(page), limit: String(limit), locale });
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
+      const res = await fetch(`/api/admin/territories?${params}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      setRows(data.items ?? []);
+      setSuperAgents(data.superAgents ?? []);
+      updateTotal(data.total ?? 0);
     } catch {
-      toast.error(tr("toastFailedToDelete"));
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, locale, debouncedSearch, sortBy, sortOrder, updateTotal]);
+
+  useEffect(() => { void fetchTerritories(); }, [fetchTerritories]);
+
+  const openCreate = () => { setEditing(null); setSaveError(null); setDialogOpen(true); };
+  const openEdit = (row: TerritoryRow) => { setEditing(row); setSaveError(null); setDialogOpen(true); };
+
+  const reportSave = (body: SaveResponse, doneMessage: string) => {
+    toast.success(doneMessage);
+    const conflicts = body.warnings?.flatMap((w) => w.conflicts) ?? [];
+    if (conflicts.length > 0) {
+      toast.warning(t("toastOverlap", { names: conflicts.map((c) => c.superAgentName).join(", ") }));
+    }
+    if (body.trimmedAgents) toast.info(t("toastAgentsTrimmed", { count: body.trimmedAgents }));
+  };
+
+  const save = async (values: TerritoryFormValues) => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = editing?.territoryId
+        ? await fetch(`/api/admin/territories/${editing.territoryId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+          })
+        : await fetch("/api/admin/territories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+          });
+      const body: SaveResponse = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSaveError(body.error ?? t("toastSaveFailed"));
+        return;
+      }
+      setDialogOpen(false);
+      reportSave(body, editing?.territoryId ? t("toastTerritoryUpdated") : t("toastTerritoryCreated"));
+      void fetchTerritories();
+    } catch {
+      setSaveError(t("toastSaveFailed"));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getSaName = (sa: Territory["superAgentId"]) => {
-    if (!sa) return tr("superAgentUnassigned");
-    if (typeof sa === "string") return tr("superAgentAssigned");
-    return sa.name ?? sa.email ?? tr("superAgentAssigned");
+  const remove = async (row: TerritoryRow) => {
+    if (!row.territoryId) return;
+    const ok = await confirm({
+      title: t("deleteConfirmTitle", { name: row.name ?? "" }),
+      message: row.superAgent
+        ? t("deleteConfirmMessage", { superAgent: row.superAgent.name })
+        : t("deleteConfirmMessageUnowned"),
+      confirmLabel: t("deleteButtonLabel"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/admin/territories/${row.territoryId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(String(res.status));
+      toast.success(t("toastTerritoryDeleted"));
+      void fetchTerritories();
+    } catch {
+      toast.error(t("toastDeleteFailed"));
+    }
   };
+
+  const rowActionsFor = (row: TerritoryRow): { quick: RowAction[]; menu: RowAction[] } => ({
+    quick: [{
+      key: "edit",
+      label: row.territoryId ? t("editButtonTitle") : t("nameButtonTitle"),
+      icon: Pencil,
+      iconOnly: true,
+      onSelect: () => openEdit(row),
+    }],
+    menu: row.territoryId
+      ? [{ key: "delete", label: t("deleteButtonTitle"), icon: Trash2, iconOnly: true, destructive: true, onSelect: () => void remove(row) }]
+      : [],
+  });
 
   return (
     <div className="page-container">
-      {/* No `compact`: title + controls on one phone row squeezed the title
-          into three lines. Phones stack search and the button full-width. */}
+      {ConfirmDialogNode}
+
       <PageHero
-        icon={MapPin}
-        title={tr("pageTitle")}
-        description={tr("pageDescription")}
+        compact
+        compactOnMobile
+        title={t("pageTitle")}
+        description={t("pageDescription")}
         actions={
-          <Button
-            size="sm"
-            onClick={() => setShowForm((v) => !v)}
-            className="h-10 w-full gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:w-auto"
-          >
-            {showForm ? <><X className="h-3.5 w-3.5" /> {tr("cancelButtonLabel")}</> : <><Plus className="h-3.5 w-3.5" /> {tr("newTerritoryButtonLabel")}</>}
+          <Button onClick={openCreate} size="sm" className="h-9 rounded-xl shadow-sm">
+            <Plus className="h-4 w-4" />
+            {t("newTerritoryButtonLabel")}
           </Button>
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        {/* Search sits with the list it filters, not in the header: stacked with
-            the action button on a phone it made this header 187px — taller than
-            the same header on desktop. */}
-        <div className="border-b border-border/60 px-3 py-3 sm:px-4">
-          <div className="relative w-full sm:w-64">
-            <Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input aria-label={tr("searchPlaceholder")}
-              placeholder={tr("searchPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 w-full rounded-xl border-border/70 bg-background/90 ps-8 text-sm sm:h-9"
-            />
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={search ? () => { setSearch(""); resetPage(); } : undefined}
+        clearLabel={t("clearSearch")}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={[
+            { value: "superAgent", label: t("columnSuperAgent") },
+            { value: "name", label: t("columnTerritory") },
+            { value: "agentCount", label: t("columnAgents") },
+          ]}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none">
+        {loadError ? (
+          <div className="p-6">
+            <ErrorState onRetry={() => void fetchTerritories()} />
           </div>
-        </div>
-        {/* Inline create form */}
-        {showForm && (
-          <div className="border-b border-border/60 bg-secondary/30 px-5 py-4">
-            <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-              <h3 className="heading-label font-semibold text-foreground">{tr("createTerritoryFormHeading")}</h3>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">{tr("territoryNameLabel")} <span className="text-destructive">*</span></label>
-                <Input aria-label={tr("territoryNameLabel")}
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  required
-                  placeholder={tr("territoryNamePlaceholder")}
-                  className="h-9 rounded-lg"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">{tr("countriesLabel")}</label>
-                <div className="flex flex-wrap gap-2">
-                  {GCC_COUNTRIES.map((c) => (
-                    <Button key={c} type="button" variant={form.countries.includes(c) ? "default" : "outline"} size="xs" onClick={() => toggleCountry(c, "form")} className="rounded-full">{c}</Button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">{tr("assignSuperAgentLabel")}</label>
-                <Select value={form.superAgentId} onValueChange={(v) => setForm((p) => ({ ...p, superAgentId: v }))}>
-                  <SelectTrigger className="h-9 w-full rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">{tr("noAssignmentOption")}</SelectItem>
-                    {superAgents.map((sa) => (
-                      <SelectItem key={sa._id} value={sa._id}>{sa.name} ({sa.email})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" size="sm" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                {saving ? tr("savingButtonText") : tr("createButtonText")}
-              </Button>
-            </form>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className={`min-w-[160px] ${HEAD}`}>
+                    <SortableTableHeader label={t("columnTerritory")} active={sortBy === "name"} order={sortOrder} onClick={() => sortByColumn("name")} />
+                  </TableHead>
+                  <TableHead className={`min-w-[200px] ${HEAD}`}>
+                    <SortableTableHeader label={t("columnSuperAgent")} active={sortBy === "superAgent"} order={sortOrder} onClick={() => sortByColumn("superAgent")} />
+                  </TableHead>
+                  <TableHead className={`min-w-[220px] ${HEAD}`}>{t("columnRegion")}</TableHead>
+                  <TableHead className={`w-[90px] text-center ${HEAD}`}>
+                    <SortableTableHeader label={t("columnAgents")} active={sortBy === "agentCount"} order={sortOrder} onClick={() => sortByColumn("agentCount")} />
+                  </TableHead>
+                  <TableHead className={`w-[120px] text-right ${HEAD}`}>{tc("actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableBodySkeleton rows={4} cols={5} />
+                ) : rows.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={5}>
+                      <EmptyState
+                        icon={MapPin}
+                        title={search ? t("emptySearchTitle") : t("emptyStateTitle")}
+                        description={search ? t("emptySearchDescription") : t("emptyStateDescription")}
+                        action={
+                          search ? (
+                            <Button variant="outline" size="sm" onClick={() => { setSearch(""); resetPage(); }}>
+                              {t("clearSearch")}
+                            </Button>
+                          ) : (
+                            <Button size="sm" onClick={openCreate}>
+                              <Plus className="h-4 w-4" />
+                              {t("newTerritoryButtonLabel")}
+                            </Button>
+                          )
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((row) => {
+                    const shown = row.regions.slice(0, VISIBLE_REGIONS);
+                    const hidden = row.regions.slice(VISIBLE_REGIONS);
+                    return (
+                      <TableRow key={row.key}>
+                        <TableCell className="px-4 py-3">
+                          {row.name ? (
+                            <span className="font-medium text-foreground">{row.name}</span>
+                          ) : (
+                            <span className="text-sm italic text-muted-foreground">{t("unnamedTerritory")}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          {row.superAgent ? (
+                            <div className="flex min-w-0 items-center gap-3">
+                              <UserAvatar
+                                name={row.superAgent.name}
+                                email={row.superAgent.email}
+                                src={row.superAgent.avatar}
+                                className="h-9 w-9"
+                                colorful
+                              />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-foreground">{row.superAgent.name}</p>
+                                <p className="max-w-[14rem] truncate text-xs text-muted-foreground">{row.superAgent.email}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-sm text-amber-800">
+                              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                              {t("noSuperAgent")}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          {row.regions.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {shown.map((region) => (
+                                <span
+                                  key={region.id}
+                                  title={region.parent ? `${region.name}, ${region.parent}` : region.name}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs text-foreground"
+                                >
+                                  <MapPin className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                                  {region.name}
+                                </span>
+                              ))}
+                              {hidden.length > 0 && (
+                                <span
+                                  title={hidden.map((r) => r.name).join(", ")}
+                                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                                >
+                                  {t("moreRegions", { count: hidden.length })}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">{t("noRegion")}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center gap-1 text-sm tabular-nums text-foreground">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                            {row.agentCount}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-right">
+                          <RowActions
+                            name={row.name ?? row.superAgent?.name ?? t("unnamedTerritory")}
+                            {...rowActionsFor(row)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
           </div>
         )}
-
-        {/* Card grid */}
-        <div className="p-5">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-28 animate-shimmer rounded-xl border border-border/50 bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-              ))}
-            </div>
-          ) : territories.length === 0 ? (
-            <EmptyState
-              title={tr("emptyStateTitle")}
-              description={tr("emptyStateDescription")}
-              action={
-                !showForm && (
-                  <Button
-                    size="sm"
-                    onClick={() => setShowForm(true)}
-                    className="h-10 gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> {tr("createTerritoryFormHeading")}
-                  </Button>
-                )
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {territories.map((t) => (
-                <div key={t._id} className="group rounded-xl border border-border/60 bg-card transition-all hover:border-primary/40 hover:shadow-sm card-pad">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground">{t.name}</h3>
-                      <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <UserCheck className="h-3 w-3" />
-                        {getSaName(t.superAgentId)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button variant="ghost" size="xs" onClick={() => openEdit(t)} title={tr("editButtonTitle")} className="h-8 gap-1 px-2 text-xs">
-                        <Edit2 className="h-3.5 w-3.5 text-primary" />
-                        <span>{tr("editButtonTitle")}</span>
-                      </Button>
-                      <Button variant="ghost" size="xs" onClick={() => setDeleteId(t._id)} title={tr("deleteButtonTitle")} className="h-8 gap-1 px-2 text-xs">
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        <span>{tr("deleteButtonTitle")}</span>
-                      </Button>
-                    </div>
-                  </div>
-                  {t.countries?.length ? (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {t.countries.map((c) => (
-                        <span key={c} className="rounded-full bg-muted px-2 py-0.5 text-xs">{c}</span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-xs text-muted-foreground/50">{tr("noCountriesAssignedText")}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </section>
 
-      {/* Edit Dialog */}
-      <Dialog open={!!editTerritory} onOpenChange={(open) => { if (!open) setEditTerritory(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{tr("editDialogTitle")}</DialogTitle>
-            <DialogDescription>{tr("editDialogDescription")}</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{tr("nameLabel")}</label>
-              <Input aria-label={tr("nameLabel")} value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} required className="h-9" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">{tr("countriesLabel")}</label>
-              <div className="flex flex-wrap gap-2">
-                {GCC_COUNTRIES.map((c) => (
-                  <Button key={c} type="button" variant={editForm.countries.includes(c) ? "default" : "outline"} size="xs" onClick={() => toggleCountry(c, "edit")} className="rounded-full">{c}</Button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{tr("assignSuperAgentLabel")}</label>
-              <Select value={editForm.superAgentId} onValueChange={(v) => setEditForm((p) => ({ ...p, superAgentId: v }))}>
-                <SelectTrigger className="h-9 w-full rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">{tr("unassignedOption")}</SelectItem>
-                  {superAgents.map((sa) => (
-                    <SelectItem key={sa._id} value={sa._id}>{sa.name} ({sa.email})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditTerritory(null)}>{tr("cancelButtonLabel")}</Button>
-              <Button type="submit" disabled={editSaving}>{editSaving ? tr("savingButtonText") : tr("saveButtonText")}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+      />
 
-      {/* Delete Confirm */}
-      <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{tr("deleteDialogTitle")}</DialogTitle>
-            <DialogDescription>{tr("deleteDialogDescription")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>{tr("cancelButtonLabel")}</Button>
-            <Button variant="destructive" onClick={handleDelete}>{tr("deleteButtonLabel")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TerritoryDialog
+        open={dialogOpen}
+        row={editing}
+        superAgents={superAgents}
+        saving={saving}
+        error={saveError}
+        onOpenChange={setDialogOpen}
+        onSubmit={(values) => void save(values)}
+      />
     </div>
   );
 }

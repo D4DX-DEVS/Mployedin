@@ -90,10 +90,10 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
   const planGroups = (["employer", "job_seeker"] as const)
     .map((role) => ({ role, plans: data.plans.filter((plan) => plan.role === role) }))
     .filter((group) => group.plans.length > 0);
-  const payments = data.payments;
-  // A 5-row table of zeros (screenshot: AED 0 / ₹0 everywhere) is dead space — collapse to the empty state.
-  const hasPaymentBalances =
-    payments !== null && payments.some((row) => PAYMENT_ROWS.some((item) => row[item.key] > 0));
+  // A currency with nothing in any row is a column of zeros; leave it out. The rows stay —
+  // each is a state, and "nothing disputed" is worth seeing.
+  // With no currency left there is no table at all — the card shows its empty state.
+  const payments = data.payments === null ? null : data.payments.filter((row) => PAYMENT_ROWS.some((item) => row[item.key] > 0));
   // Invoices take the full row (balances beside states); subscriptions and
   // payments share the row below, or take it alone when the other is hidden.
   const pair = Number(show.subscriptions) + Number(Boolean(payments));
@@ -124,7 +124,7 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
                 <table className="w-full table-fixed text-xs sm:text-sm" data-mobile-table="scroll">
                   <thead>
                     <tr className="border-b border-border/60 text-xs text-muted-foreground">
-                      <th scope="col" className="w-12 px-1.5 py-1.5 text-start font-semibold sm:w-20 sm:px-2.5">
+                      <th scope="col" className="w-12 whitespace-nowrap px-1.5 py-1.5 text-start font-semibold sm:w-28 sm:px-2.5">
                         <span className="max-sm:sr-only">{t("money.currency")}</span>
                       </th>
                       <th scope="col" className="px-1.5 py-1.5 text-end font-semibold sm:px-2.5">{t("money.outstanding")}</th>
@@ -229,7 +229,7 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
             action={{ href: `/${locale}/admin/commissions`, label: t("payments.viewCommissions") }}
             className={lower}
           >
-            {payments.length === 0 || !hasPaymentBalances ? (
+            {payments.length === 0 ? (
               <p className="rounded-lg bg-card/80 px-3 py-3 text-sm text-muted-foreground ring-1 ring-inset ring-border/60">{t("payments.empty", { days })}</p>
             ) : (
               <div className="flex-1 overflow-x-auto rounded-lg bg-card/80 ring-1 ring-inset ring-border/60">

@@ -58,6 +58,32 @@ export async function resolveCommissionApprover(
   };
 }
 
+export interface CommissionBeneficiary {
+  role: "agent" | "super_agent";
+  /** The Agent or SuperAgent profile _id. */
+  profileId: string;
+}
+
+/**
+ * Who EARNS a commission line — not merely whose id is on it. An agent's
+ * "placement" line also carries the overseeing super-agent's id for scoping;
+ * that super-agent does not earn it. External records carry `type`; the
+ * embedded invoice lines carry `role`. Null when the line names nobody.
+ */
+export function commissionBeneficiary(
+  line: { agentId?: unknown; superAgentId?: unknown; type?: unknown; role?: unknown },
+): CommissionBeneficiary | null {
+  const earnedBySuperAgent =
+    line.role === "super_agent" ||
+    line.type === "override" ||
+    (!line.agentId && Boolean(line.superAgentId));
+
+  if (earnedBySuperAgent) {
+    return line.superAgentId ? { role: "super_agent", profileId: String(line.superAgentId) } : null;
+  }
+  return line.agentId ? { role: "agent", profileId: String(line.agentId) } : null;
+}
+
 /**
  * Segregation of duties: whoever triggers the paid transition must never
  * auto-approve the commission line they themselves earn. Marking an invoice
@@ -69,22 +95,14 @@ export function isOwnCommissionLine(
   line: { agentId?: unknown; superAgentId?: unknown; type?: unknown; role?: unknown },
   approver: CommissionApproverIdentity,
 ): boolean {
-  // Match the BENEFICIARY, not merely a populated id. An agent's "placement"
-  // line also carries the overseeing super-agent's id for scoping — that SA
-  // does not earn it, and treating it as theirs would lock them out of
-  // approving their own team's commissions.
-  // External records carry `type`; the embedded invoice lines carry `role`.
-  const earnedBySuperAgent =
-    line.role === "super_agent" ||
-    line.type === "override" ||
-    (!line.agentId && Boolean(line.superAgentId));
-
-  if (earnedBySuperAgent) {
-    return Boolean(
-      approver.superAgentId && String(line.superAgentId ?? "") === approver.superAgentId,
-    );
-  }
-  return Boolean(approver.agentId && String(line.agentId ?? "") === approver.agentId);
+  // Match the BENEFICIARY, not merely a populated id — treating the overseeing
+  // SA as the placement line's owner would lock them out of approving their
+  // own team's commissions.
+  const earner = commissionBeneficiary(line);
+  if (!earner) return false;
+  return earner.role === "super_agent"
+    ? earner.profileId === approver.superAgentId
+    : earner.profileId === approver.agentId;
 }
 
 export interface CommissionApprovalNotification {
@@ -194,7 +212,7 @@ export async function approvePendingCommissionsForPaidInvoice(
   const approver = await resolveCommissionApprover(approvedBy, session);
 
   const allPending = await Commission.find({ invoiceId, status: "pending" })
-    .select("_id agentId superAgentId amount currency")
+    .select("_id type agentId superAgentId amount currency")
     .session(session ?? null)
     .lean();
 
@@ -229,12 +247,10 @@ export async function approvePendingCommissionsForPaidInvoice(
     session ? { session } : {},
   );
 
-  const agentIds = pendingCommissions
-    .map((commission) => commission.agentId)
-    .filter(Boolean);
-  const superAgentIds = pendingCommissions
-    .map((commission) => commission.superAgentId)
-    .filter(Boolean);
+  // Each approved line notifies the one person who earns it.
+  const earners = pendingCommissions.map((commission) => commissionBeneficiary(commission));
+  const agentIds = earners.filter((e) => e?.role === "agent").map((e) => e!.profileId);
+  const superAgentIds = earners.filter((e) => e?.role === "super_agent").map((e) => e!.profileId);
 
   const [agents, superAgents] = await Promise.all([
     agentIds.length > 0
@@ -248,21 +264,11 @@ export async function approvePendingCommissionsForPaidInvoice(
   const agentUserMap = new Map(agents.map((agent) => [String(agent._id), String(agent.userId)]));
   const superAgentUserMap = new Map(superAgents.map((superAgent) => [String(superAgent._id), String(superAgent.userId)]));
 
-  const notifications = pendingCommissions.flatMap((commission) => {
-    const tasks: CommissionApprovalNotification[] = [];
-    if (commission.agentId) {
-      const userId = agentUserMap.get(String(commission.agentId));
-      if (userId) {
-        tasks.push({ userId, role: "agent", amount: commission.amount, currency: commission.currency });
-      }
-    }
-    if (commission.superAgentId) {
-      const userId = superAgentUserMap.get(String(commission.superAgentId));
-      if (userId) {
-        tasks.push({ userId, role: "super_agent", amount: commission.amount, currency: commission.currency });
-      }
-    }
-    return tasks;
+  const notifications = pendingCommissions.flatMap((commission, i): CommissionApprovalNotification[] => {
+    const earner = earners[i];
+    if (!earner) return [];
+    const userId = (earner.role === "agent" ? agentUserMap : superAgentUserMap).get(earner.profileId);
+    return userId ? [{ userId, role: earner.role, amount: commission.amount, currency: commission.currency }] : [];
   });
 
   const notificationFailures = options.sendNotifications === false

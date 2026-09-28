@@ -19,6 +19,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useTableExport } from "@/hooks/useTableExport";
+import { TableSortControl } from "@/components/shared/TableSortControl";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -273,12 +274,19 @@ export default function AdminJobsPage() {
   const statusOptionsList = getStatusOptions(t);
   const workModeOptionsList = getWorkModeOptions(t);
   const employmentTypeOptionsList = getEmploymentTypeOptions(t);
+  // The API takes one combined value (newest / applications_desc …); the
+  // control shows it as a field plus the shared ↑/↓ direction button.
+  const sortField = sortBy.startsWith("applications") ? "applications" : "posted";
+  const sortOrder: "asc" | "desc" = sortBy === "oldest" || sortBy === "applications_asc" ? "asc" : "desc";
   const sortOptionsList = [
-    { value: "newest", label: t("sortNewest") },
-    { value: "oldest", label: t("sortOldest") },
-    { value: "applications_desc", label: t("sortMostApplications") },
-    { value: "applications_asc", label: t("sortFewestApplications") },
+    { value: "posted", label: t("postedLabel") },
+    { value: "applications", label: t("applications") },
   ];
+  const applySort = (field: string, order: "asc" | "desc") => {
+    if (field === "applications") setSortBy(order === "asc" ? "applications_asc" : "applications_desc");
+    else setSortBy(order === "asc" ? "oldest" : "newest");
+    resetPage();
+  };
 
   const activeFilterChips = [
     search ? { key: "search", label: search, clear: () => setSearch("") } : null,
@@ -527,13 +535,13 @@ export default function AdminJobsPage() {
           onValueChange={(value) => { setWorkMode(value); resetPage(); }}
           placeholder={t("allWorkModes")}
         />
-        <SearchableSelect
-          id="admin-jobs-sort"
-          className={`${INLINE_FILTER_CONTROL} max-sm:hidden`}
+        <TableSortControl
+          value={sortField}
+          onValueChange={(field) => applySort(field, sortOrder)}
           options={sortOptionsList}
-          value={sortBy}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-          placeholder={t("sortBy")}
+          order={sortOrder}
+          onOrderChange={(order) => applySort(sortField, order)}
+          compact
         />
       </InlineFilterBar>
 

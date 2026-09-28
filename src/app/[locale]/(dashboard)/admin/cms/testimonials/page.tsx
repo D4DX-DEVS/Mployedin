@@ -43,10 +43,11 @@ export default function TestimonialsAdminPage() {
   ];
 
   const COLUMNS = [
-    { key: "name", label: t("columnLabelName") },
-    { key: "company", label: t("columnLabelCompany") },
+    { key: "name", label: t("columnLabelName"), sortable: true },
+    { key: "company", label: t("columnLabelCompany"), sortable: true },
     {
       key: "rating",
+      sortable: true,
       label: t("columnLabelRating"),
       render: (value: unknown) => {
         const rating = Number(value) || 5;
@@ -60,12 +61,13 @@ export default function TestimonialsAdminPage() {
         );
       },
     },
-    { key: "sortOrder", label: t("columnLabelOrder") },
+    { key: "sortOrder", label: t("columnLabelOrder"), sortable: true },
     { key: "isActive", label: t("columnLabelStatus") },
   ];
 
   return (
     <CmsPage
+      defaultSort={{ by: "sortOrder", order: "asc" }}
       apiUrl="/api/admin/cms/testimonials"
       title={t("pageTitle")}
       description={t("pageDescription")}

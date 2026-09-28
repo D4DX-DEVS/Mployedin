@@ -4,11 +4,13 @@ import Commission from "@/models/Commission";
 import SuperAgent from "@/models/SuperAgent";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { notifyCommissionApproved } from "@/lib/notifications/trigger";
+import { commissionBeneficiary, isOwnCommissionLine, resolveCommissionApprover } from "@/lib/invoices/commissionRecords";
 import type { CopilotTool } from "../types";
 
 /**
  * Commission approval — admin (any) and super_agent (own team's commissions only),
- * mirroring PATCH /api/commissions/[id] canAccessCommission().
+ * mirroring PATCH /api/commissions/[id]: pending lines only, never the caller's
+ * own line, and the notice goes to whoever earns the line.
  */
 export const approveCommissionTool: CopilotTool<{ commissionId: string }> = {
   name: "approve_commission",
@@ -33,8 +35,12 @@ export const approveCommissionTool: CopilotTool<{ commissionId: string }> = {
       if (!owns) return { ok: false, message: "That commission is outside your team's scope." };
     }
 
-    if (commission.status === "approved" || commission.status === "paid") {
-      return { ok: false, message: `Commission is already ${commission.status}.` };
+    if (commission.status !== "pending") {
+      return { ok: false, message: `Only pending commissions can be approved. This one is ${commission.status.replace("_", " ")}.` };
+    }
+
+    if (isOwnCommissionLine(commission, await resolveCommissionApprover(ctx.userId))) {
+      return { ok: false, message: "You can't approve your own commission. An admin must review it." };
     }
 
     commission.status = "approved";
@@ -42,11 +48,12 @@ export const approveCommissionTool: CopilotTool<{ commissionId: string }> = {
     commission.approvedAt = new Date();
     await commission.save();
 
-    if (commission.agentId) {
-      const agent = await Agent.findById(commission.agentId).select("userId").lean();
-      if (agent?.userId) {
-        await notifyCommissionApproved(String(agent.userId), "agent", commission.amount, commission.currency).catch(() => {});
-      }
+    const earner = commissionBeneficiary(commission);
+    const profile = !earner ? null : earner.role === "agent"
+      ? await Agent.findById(earner.profileId).select("userId").lean()
+      : await SuperAgent.findById(earner.profileId).select("userId").lean();
+    if (earner && profile?.userId) {
+      await notifyCommissionApproved(String(profile.userId), earner.role, commission.amount, commission.currency).catch(() => {});
     }
 
     return { ok: true, message: `Commission of ${commission.currency} ${commission.amount} approved.` };

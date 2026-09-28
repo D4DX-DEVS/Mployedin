@@ -145,7 +145,14 @@ async function openDialog(page: Page, url: string, triggerName: string): Promise
   await trigger.waitFor({ timeout: 120_000 });
   await trigger.click();
   const dialog = page.getByRole("dialog");
-  await dialog.waitFor({ timeout: 20_000 });
+  try {
+    await dialog.waitFor({ timeout: 20_000 });
+  } catch {
+    // Under parallel load the button can paint before React hydrates it, and
+    // that first click does nothing. One more click, not a longer wait.
+    await trigger.click();
+    await dialog.waitFor({ timeout: 20_000 });
+  }
   return dialog;
 }
 
@@ -316,7 +323,8 @@ test.describe("form error copy", () => {
     await dialog.locator("input").first().fill("Probe Agent");
     await dialog.locator("input[type=email]").fill("probe-new-agent@example.com");
     await dialog.locator("input[aria-describedby='add-agent-password-hint']").fill(WEAK_PASSWORD);
-    await dialog.getByRole("button", { name: t("en", "adminAgents.createAgent") }).click();
+    // Step dialog: the Account step checks the password before it lets go.
+    await dialog.getByRole("button", { name: t("en", "common.next") }).click();
 
     const message = await bannerText(dialog);
     expect(message).toBe(expectedWeakPasswordMessage("en"));
@@ -356,7 +364,8 @@ test.describe("form error copy", () => {
     await dialog.locator("input").first().fill("Probe Super Agent");
     await dialog.locator("input[type=email]").fill("probe-new-super-agent@example.com");
     await password.fill(WEAK_PASSWORD);
-    await dialog.getByRole("button", { name: t("ar", "adminSuperAgents.createButtonLabel") }).click();
+    // Step dialog: the Account step checks the password before it lets go.
+    await dialog.getByRole("button", { name: t("ar", "common.next") }).click();
 
     const message = await bannerText(dialog);
     expect(message).toBe(expectedWeakPasswordMessage("ar"));
@@ -375,7 +384,8 @@ test.describe("form error copy", () => {
     await dialog.locator(`input[placeholder="${t("en", "superAgentAgents.formPlaceholderAgentFullName")}"]`).fill("Probe Agent");
     await dialog.locator(`input[placeholder="${t("en", "superAgentAgents.formPlaceholderEmail")}"]`).fill("probe-sa-agent@example.com");
     await dialog.locator("input[type=password]").fill(WEAK_PASSWORD);
-    await dialog.getByRole("button", { name: t("en", "superAgentAgents.buttonCreateAgent") }).click();
+    // Step dialog: the Account step checks the password before it lets go.
+    await dialog.getByRole("button", { name: t("en", "common.next") }).click();
 
     const message = await bannerText(dialog);
     expect(message).toBe(expectedWeakPasswordMessage("en"));

@@ -137,6 +137,10 @@ export function PhoneInput({
           searchPlaceholder={translate("searchCountry", "Search countries…")}
           placeholder={translate("country", "Country")}
           searchable
+          /* Modal: this field lives in dialogs (Add Employer, Add Lead), whose
+             scroll lock swallows every wheel event over a non-modal portalled
+             list, so the 200+ countries could only be scrolled by dragging. */
+          modal
           disabled={disabled}
           className="h-10 w-[7.5rem] shrink-0 rounded-lg"
         />

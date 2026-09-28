@@ -5,21 +5,24 @@ import { useTranslations } from "next-intl";
 import { Building2, CheckCircle, Loader2, Save, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HiringRulesPanel } from "@/components/features/employer/workflow/HiringRulesPanel";
-import { PipelinePreview } from "@/components/features/employer/workflow/PipelinePreview";
+import { JobWorkflowCard } from "@/components/features/employer/workflow/JobWorkflowCard";
 import { useJobWorkflow, useSaveJobWorkflow } from "@/hooks/useJobWorkflow";
+import { useFeatureGate } from "@/hooks/useFeatureGate";
 import { HIRING_RULE_DEFAULTS, resolveHiringRules, type HiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
 
 interface Props { jobId: string; }
 
 /**
- * Per-job hiring rules. Until the employer saves here the job follows the
- * company-wide rules; a save stamps the job and its rules take precedence.
+ * The job's hiring workflow (its stages and where they came from) and its
+ * hiring rules. Until the employer saves rules here the job follows the
+ * company-wide ones; a save stamps the job and its rules take precedence.
  */
 export function JobWorkflowTab({ jobId }: Props) {
   const t = useTranslations("hiringRules");
   const ta = useTranslations("a11y");
   const { data, isLoading, error: fetchError } = useJobWorkflow(jobId);
   const saveWorkflow = useSaveJobWorkflow(jobId);
+  const workflowGate = useFeatureGate("workflowCustomization");
 
   const [rules, setRules] = useState<HiringRules>({ ...HIRING_RULE_DEFAULTS });
   const [source, setSource] = useState<"job" | "employer">("employer");
@@ -92,7 +95,11 @@ export function JobWorkflowTab({ jobId }: Props) {
       )}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
-        <PipelinePreview />
+        {data ? (
+          <JobWorkflowCard jobId={jobId} workflow={data} canChange={workflowGate.allowed} />
+        ) : (
+          <div className="h-40 rounded-3xl border border-border bg-muted/30" aria-hidden="true" />
+        )}
         <div className="space-y-4">
           <HiringRulesPanel rules={rules} onChange={handleChange} disabled={saveWorkflow.isPending} idPrefix="job-hiring-rules" />
           <Button

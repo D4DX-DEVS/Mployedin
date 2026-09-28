@@ -207,6 +207,8 @@ export const jobFormSchema = z.object({
   applicationMode: z.enum(["auto", "manual"]).default("manual"),
   // From a matching-weight template; PATCHed onto the job after it is created.
   matchingWeights: z.record(z.string(), z.number().min(0).max(100)).optional(),
+  // A workflow template picked by hand. Unset = matched from the job's details; null = back to automatic.
+  workflowTemplateId: z.string().nullable().optional(),
   visibility: z.enum(["public", "private", "invite_only"]).default("public"),
   vacancies: z.number().int().min(1).max(100).optional(),
   maxApplicants: z.number().int().min(1).max(10000).optional(),

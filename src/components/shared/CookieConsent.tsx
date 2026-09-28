@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { COOKIE_CONSENT_STORAGE_KEY, storeCookieChoice, type CookieChoice } from "@/lib/gdpr/cookieChoice";
 
 interface CookieConsentProps {
   locale: string;
@@ -12,9 +14,10 @@ interface CookieConsentProps {
 export default function CookieConsent({ locale }: CookieConsentProps) {
   const [showBanner, setShowBanner] = useState(false);
   const t = useTranslations("landing");
+  const { status } = useSession();
 
   useEffect(() => {
-    const consent = localStorage.getItem("cookie-consent");
+    const consent = localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);
     if (!consent) {
       const timer = setTimeout(() => setShowBanner(true), 1000);
       return () => clearTimeout(timer);
@@ -33,15 +36,23 @@ export default function CookieConsent({ locale }: CookieConsentProps) {
     };
   }, [showBanner]);
 
-  const handleAccept = () => {
-    localStorage.setItem("cookie-consent", "accepted");
+  const choose = (choice: CookieChoice) => {
+    storeCookieChoice(choice);
     setShowBanner(false);
+    // A signed-in user's answer goes to their consent log (admin GDPR page);
+    // a visitor's is sent when they register.
+    if (status === "authenticated") {
+      void fetch("/api/user/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consentType: "cookies", granted: choice === "accepted" }),
+      }).catch(() => undefined);
+    }
   };
 
-  const handleDecline = () => {
-    localStorage.setItem("cookie-consent", "declined");
-    setShowBanner(false);
-  };
+  const handleAccept = () => choose("accepted");
+
+  const handleDecline = () => choose("declined");
 
   if (!showBanner) return null;
 

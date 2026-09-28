@@ -128,7 +128,8 @@ export const systemSettingsUpdateSchema = z.object({
   commissionOverrides: z
     .array(
       z.object({
-        countryCode: z.string().min(1).max(5).trim(),
+        // ISO 3166-1 alpha-2: rules are matched to employers by country code.
+        countryCode: z.string().trim().regex(/^[A-Za-z]{2}$/, "Pick a country for every commission rule").transform((c) => c.toUpperCase()),
         rate: z.number().min(0).max(100),
         agentRate: z.number().min(0).max(100).optional(),
         superAgentRate: z.number().min(0).max(100).optional(),
@@ -136,6 +137,8 @@ export const systemSettingsUpdateSchema = z.object({
       })
     )
     .max(200)
+    // Only the first rule for a country would ever apply; refuse the rest.
+    .refine((rules) => new Set(rules.map((r) => r.countryCode)).size === rules.length, "Each country can have only one commission rule")
     .optional(),
 });
 

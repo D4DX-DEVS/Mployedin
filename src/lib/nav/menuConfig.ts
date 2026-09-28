@@ -1,6 +1,7 @@
 import type { UserRole } from "@/models/User";
 import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/companyRoles";
 import type { IconName } from "./iconRegistry";
+import { ADMIN_REPORT_TABS } from "./reportRoutes";
 
 /** Resources in the system */
 export type Resource = string;
@@ -39,9 +40,11 @@ export interface NavItem {
   /**
    * Render this item's children as a contextual tab row in the workspace.
    *
-   * Children stay available in the sidebar submenu by default. This opt-in is
+   * On admin the rail row then links straight to its href (the first tab) and
+   * opens no flyout: the tabs are the only sibling navigation. Other roles
+   * still list the children in the sidebar submenu as well. This opt-in is
    * deliberately narrow so broad navigation sections such as Recruitment or
-   * People do not duplicate their menus in a second horizontal navigation.
+   * People keep their flyout and get no second horizontal navigation.
    */
   contextTabs?: boolean;
   /**
@@ -52,6 +55,12 @@ export interface NavItem {
    * were granted, and never sees a row they cannot use.
    */
   companyFunction?: PermissionFlag;
+  /**
+   * Other routes that belong to this row, for a leaf whose destination has
+   * sibling pages outside its own path (the admin report tabs). The row stays
+   * highlighted on any of them instead of falling back to the workspace root.
+   */
+  activePaths?: string[];
   children?: NavItem[];
 }
 
@@ -254,21 +263,12 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
           {
             title: "CMS / Content",
             titleAr: "إدارة المحتوى",
-            href: p("/admin/cms"),
+            // No overview page: it only repeated this drawer as count cards.
+            href: p("/admin/cms/faqs"),
             icon: "PanelsTopLeft",
             description: "Manage website content",
             descriptionAr: "إدارة محتوى الموقع",
             children: [
-              {
-                title: "CMS Overview",
-                titleAr: "نظرة عامة",
-                href: p("/admin/cms"),
-                icon: "PanelsTopLeft",
-                description: "Content management dashboard",
-                descriptionAr: "لوحة إدارة المحتوى",
-                group: "Overview",
-                groupAr: "نظرة عامة",
-              },
               {
                 title: "FAQs",
                 titleAr: "الأسئلة الشائعة",
@@ -300,6 +300,18 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 groupAr: "المحتوى",
               },
               {
+                // Was reachable only from the dashboard's pending-reviews chip,
+                // so with nothing pending the page had no way in.
+                title: "Company Reviews",
+                titleAr: "مراجعات الشركات",
+                href: p("/admin/cms/company-reviews"),
+                icon: "Star",
+                description: "Moderate job-seeker company reviews",
+                descriptionAr: "مراجعة تقييمات الشركات من الباحثين عن عمل",
+                group: "Content",
+                groupAr: "المحتوى",
+              },
+              {
                 title: "Banners",
                 titleAr: "البانرات",
                 href: p("/admin/cms/banners"),
@@ -324,8 +336,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 titleAr: "الصفحات الثابتة",
                 href: p("/admin/cms/static-pages"),
                 icon: "FileText",
-                description: "Privacy, terms & custom pages",
-                descriptionAr: "الخصوصية والشروط والصفحات المخصصة",
+                description: "Privacy, terms, cookies & GDPR",
+                descriptionAr: "الخصوصية والشروط وملفات تعريف الارتباط وحماية البيانات",
                 group: "Pages",
                 groupAr: "الصفحات",
               },
@@ -372,48 +384,41 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             title: "Reports",
             titleAr: "التقارير",
             href: p("/admin/reports"),
+            activePaths: ADMIN_REPORT_TABS.map((tab) => p(tab.path)),
             icon: "BarChart2",
             description: "Platform, AI, targets, commissions and subscriptions",
             descriptionAr: "المنصة والذكاء الاصطناعي والأهداف والعمولات والاشتراكات",
           },
+          // Settings used to hold eleven rows — half of them logs and support
+          // tools — shown twice: in the rail flyout and again as a tab strip
+          // that overflowed. Split into what you configure (Settings) and what
+          // you use or watch (System). Admin rows with contextTabs open their
+          // first tab straight from the rail; the tabs are the only sibling
+          // navigation (see Sidebar `opensDirectly`).
           {
             title: "Settings",
             titleAr: "الإعدادات",
             href: p("/admin/settings"),
             icon: "Settings",
-            description: "Settings & configuration",
-            descriptionAr: "الإعدادات والتكوين",
+            description: "Platform configuration, notifications and templates",
+            descriptionAr: "إعدادات المنصة والإشعارات والقوالب",
             contextTabs: true,
             children: [
               {
-                title: "Settings",
-                titleAr: "الإعدادات",
+                title: "General",
+                titleAr: "عام",
                 href: p("/admin/settings"),
                 icon: "Settings",
                 description: "Platform configuration",
                 descriptionAr: "إعدادات المنصة",
-                group: "Configuration",
-                groupAr: "التكوين",
               },
               {
-                title: "Communications",
-                titleAr: "الاتصالات",
-                href: p("/admin/communications"),
-                icon: "MessageSquare",
-                description: "Email & notification logs",
-                descriptionAr: "سجلات البريد والإشعارات",
-                group: "Configuration",
-                groupAr: "التكوين",
-              },
-              {
-                title: "Notification System",
-                titleAr: "نظام الإشعارات",
+                title: "Notifications",
+                titleAr: "الإشعارات",
                 href: p("/admin/settings/notifications"),
                 icon: "Bell",
                 description: "Email automation & monitoring",
                 descriptionAr: "أتمتة البريد الإلكتروني والمراقبة",
-                group: "Configuration",
-                groupAr: "التكوين",
               },
               {
                 title: "Webhooks",
@@ -422,10 +427,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Link2",
                 description: "Outbound webhook integrations",
                 descriptionAr: "تكاملات الويب هوك الصادرة",
-                group: "Configuration",
-                groupAr: "التكوين",
               },
-
               {
                 title: "Workflow Templates",
                 titleAr: "قوالب سير العمل",
@@ -433,19 +435,26 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "GitBranch",
                 description: "Manage hiring workflow presets",
                 descriptionAr: "إدارة قوالب سير عمل التوظيف",
-                group: "Automation",
-                groupAr: "الأتمتة",
               },
               {
-                title: "Matching Weight Templates",
-                titleAr: "قوالب أوزان المطابقة",
+                title: "Matching Weights",
+                titleAr: "أوزان المطابقة",
                 href: p("/admin/matching-weight-templates"),
                 icon: "Scale",
                 description: "Manage matching weight presets",
                 descriptionAr: "إدارة قوالب أوزان المطابقة",
-                group: "Automation",
-                groupAr: "الأتمتة",
               },
+            ],
+          },
+          {
+            title: "System",
+            titleAr: "النظام",
+            href: p("/admin/audit-logs"),
+            icon: "Wrench",
+            description: "Audit trail, broadcasts, data privacy and support tools",
+            descriptionAr: "سجل التدقيق والرسائل الجماعية وحماية البيانات وأدوات الدعم",
+            contextTabs: true,
+            children: [
               {
                 // One page now: Activity Timeline read the same AuditLog
                 // collection with a filter set that neither contained nor was
@@ -455,9 +464,18 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 href: p("/admin/audit-logs"),
                 icon: "ClipboardList",
                 description: "Who did what, filtered by user, role, resource or date",
-                group: "Compliance",
-                groupAr: "الامتثال",
                 descriptionAr: "من فعل ماذا، مع التصفية حسب المستخدم أو الدور أو المورد أو التاريخ",
+              },
+              {
+                // Not a log: the page sends broadcasts from a template library
+                // and keeps their history. Named apart from the Communication
+                // rail entry, which is support messages.
+                title: "Broadcasts",
+                titleAr: "الرسائل الجماعية",
+                href: p("/admin/communications"),
+                icon: "Mail",
+                description: "Send announcements, manage templates, see history",
+                descriptionAr: "إرسال الإعلانات وإدارة القوالب وعرض السجل",
               },
               {
                 title: "GDPR / Data Privacy",
@@ -466,8 +484,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "ShieldCheck",
                 description: "Data requests, consent & retention",
                 descriptionAr: "طلبات البيانات والموافقة والاحتفاظ",
-                group: "Compliance",
-                groupAr: "الامتثال",
               },
               {
                 title: "Bulk Import",
@@ -476,8 +492,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Upload",
                 description: "CSV import for users & jobs",
                 descriptionAr: "استيراد CSV للمستخدمين والوظائف",
-                group: "Data",
-                groupAr: "البيانات",
               },
               {
                 title: "System Health",
@@ -486,8 +500,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Activity",
                 description: "Platform monitoring & diagnostics",
                 descriptionAr: "مراقبة المنصة والتشخيص",
-                group: "Operations",
-                groupAr: "العمليات",
               },
               {
                 title: "Impersonate User",
@@ -496,8 +508,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "UserCheck",
                 description: "Sign in as another user for support",
                 descriptionAr: "تسجيل الدخول كمستخدم آخر للدعم",
-                group: "Operations",
-                groupAr: "العمليات",
               },
             ],
           },
@@ -1265,6 +1275,16 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "حملات متابعة تلقائية",
                 group: "Hiring setup",
                 groupAr: "إعداد التوظيف",
+              },
+              {
+                title: "Data & Privacy",
+                titleAr: "البيانات والخصوصية",
+                href: p("/employer/privacy"),
+                icon: "Shield",
+                description: "Download your data or request account deletion",
+                descriptionAr: "تحميل بيانات حسابك أو طلب حذف الحساب",
+                group: "Account",
+                groupAr: "الحساب",
               },
             ],
           },

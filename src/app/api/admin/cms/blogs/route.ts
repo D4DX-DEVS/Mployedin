@@ -9,6 +9,9 @@ import { validateBody } from "@/lib/validators";
 import { blogCreateSchema } from "@/lib/validators/cms";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
 import { slugify } from "@/lib/slug";
+import { cmsListSort } from "@/lib/cms/listSort";
+
+const SORT_FIELDS = ["createdAt", "title", "author", "publishedAt"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -39,7 +42,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const [items, total] = await Promise.all([
-    BlogPost.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    BlogPost.find(query).sort(cmsListSort(searchParams, SORT_FIELDS, { createdAt: -1 })).skip(skip).limit(limit).lean(),
     BlogPost.countDocuments(query),
   ]);
 

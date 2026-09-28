@@ -9,6 +9,7 @@ import Job from "@/models/Job";
 import { Application } from "@/models/Application";
 import State from "@/models/State";
 import City from "@/models/City";
+import Territory from "@/models/Territory";
 
 /**
  * GET /api/super-agent/territory
@@ -32,9 +33,13 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   await connectDB();
 
+  // The admin's name for this super agent's territory, when one was given.
+  const territory = await Territory.findOne({ superAgentId: ctx.userId }).select("name").lean<{ name?: string }>();
+  const territoryName = territory?.name ?? null;
+
   const scope = await getSuperAgentScope(ctx.userId);
   if (!scope) {
-    return NextResponse.json({ regions: [], stats: { totalRegions: 0, totalAgents: 0, totalEmployers: 0, totalJobs: 0, totalSeekers: 0 } });
+    return NextResponse.json({ territoryName, regions: [], stats: { totalRegions: 0, totalAgents: 0, totalEmployers: 0, totalJobs: 0, totalSeekers: 0 } });
   }
 
   const cityIds = scope.assignedCityIds;
@@ -156,6 +161,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   return NextResponse.json({
+    territoryName,
     regions,
     stats: {
       totalRegions: regions.length,

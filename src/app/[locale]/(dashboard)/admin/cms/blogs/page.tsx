@@ -42,8 +42,8 @@ export default function BlogsAdminPage() {
   ];
 
   const COLUMNS = [
-    { key: "title", label: t("titleColumnLabel") },
-    { key: "author", label: t("authorColumnLabel") },
+    { key: "title", label: t("titleColumnLabel"), sortable: true },
+    { key: "author", label: t("authorColumnLabel"), sortable: true },
     {
       key: "status",
       label: t("publishColumnLabel"),
@@ -56,6 +56,7 @@ export default function BlogsAdminPage() {
     { key: "isActive", label: t("activeColumnLabel") },
     {
       key: "publishedAt",
+      sortable: true,
       label: t("publishedAtColumnLabel"),
       render: (value: unknown) =>
         value ? formatDate(new Date(String(value))) : "—",

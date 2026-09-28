@@ -132,10 +132,12 @@ describe("commission self-approval exclusion", () => {
     expect(result.skippedSelfApproval).toBe(1);
     expect(result.skippedCommissionIds).toEqual(["comm_super_agent"]);
 
-    // No notification is emitted for the skipped override (amount 25). The SA
-    // is still notified about the agent's placement line (amount 100), which
-    // they oversee — that one really was approved.
-    expect(result.notifications.every((n) => n.amount === 100)).toBe(true);
+    // Only the agent who earns the approved placement line is told. The
+    // overseeing SA is named on that line but does not earn it, and their own
+    // override stayed pending, so they get nothing.
+    expect(result.notifications).toEqual([
+      { userId: "agent_user_001", role: "agent", amount: 100, currency: "AED" },
+    ]);
   });
 
   it("approves nothing when the only pending line belongs to the approver", async () => {
@@ -194,6 +196,13 @@ describe("commission self-approval exclusion", () => {
     expect(result.skippedSelfApproval).toBe(0);
     expect(result.approvedCommissionIds).toEqual(["comm_agent", "comm_super_agent"]);
     expect(result.approver).toEqual({ agentId: null, superAgentId: null });
+
+    // One notification per line, to whoever earns it: the agent for the
+    // placement line, the super-agent for the override — never both.
+    expect(result.notifications).toEqual([
+      { userId: "agent_user_001", role: "agent", amount: 100, currency: "AED" },
+      { userId: "sa_user_001", role: "super_agent", amount: 25, currency: "AED" },
+    ]);
   });
 
   describe("isOwnCommissionLine", () => {

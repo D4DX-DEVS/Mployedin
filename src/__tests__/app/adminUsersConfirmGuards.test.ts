@@ -22,8 +22,8 @@ const PAGE = path.join(
 const source = fs.readFileSync(PAGE, "utf8");
 
 describe("admin users page - destructive controls are guarded", () => {
-  it("routes the role dropdown through the confirming handler, not updateUser", () => {
-    expect(source).toContain("onClick={() => changeUserRole(user, r)}");
+  it("routes the role picker through the confirming handler, not updateUser", () => {
+    expect(source).toContain("onChange: (r) => { void changeUserRole(user, r); }");
     // The unguarded call this replaced.
     expect(source).not.toContain("updateUser(user._id, { role: r })");
   });

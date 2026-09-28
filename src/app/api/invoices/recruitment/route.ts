@@ -14,6 +14,7 @@ import { generateInvoiceNumber } from "@/lib/subscription/invoiceNumber";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
 import { createCommissionRecordsForInvoice } from "@/lib/invoices/commissionRecords";
+import { recruitmentJobAccessError } from "@/lib/invoices/recruitmentJobAccess";
 import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import logger from "@/lib/logger";
@@ -102,25 +103,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Role-based access: agent can only create invoice for their own assigned jobs
-  if (ctx.role === "agent") {
-    const myAgent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!myAgent || !agentId || agentId.toString() !== myAgent._id.toString()) {
-      return NextResponse.json({ error: "You can only create invoices for your assigned jobs" }, { status: 403 });
-    }
+  // Agents invoice only their own jobs; super-agents only their team's.
+  const accessError = await recruitmentJobAccessError(ctx, agentId);
+  if (accessError === "agent_not_assigned") {
+    return NextResponse.json({ error: "You can only create invoices for your assigned jobs" }, { status: 403 });
   }
-
-  // Super-agent may only invoice jobs handled by an agent within their scope (team + region).
-  if (ctx.role === "super_agent") {
-    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
-    const scope = await getSuperAgentScope(ctx.userId);
-    const scopedAgentIds = (scope?.effectiveAgentIds ?? []).map(String);
-    if (!agentId || !scopedAgentIds.includes(String(agentId))) {
-      return NextResponse.json(
-        { error: "You can only create invoices for jobs handled by your team" },
-        { status: 403 }
-      );
-    }
+  if (accessError === "outside_team") {
+    return NextResponse.json(
+      { error: "You can only create invoices for jobs handled by your team" },
+      { status: 403 }
+    );
   }
 
   // Resolve default currency

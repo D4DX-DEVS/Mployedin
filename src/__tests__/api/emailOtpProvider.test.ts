@@ -17,6 +17,8 @@ process.env.NEXTAUTH_URL = "http://localhost:3000";
 
 const mockUserFindOne = jest.fn();
 const mockUserCreate = jest.fn();
+const mockUserExists = jest.fn();
+const mockRecordConsents = jest.fn();
 const mockUserFindByIdAndUpdate = jest.fn();
 const mockJobSeekerFindOne = jest.fn();
 const mockJobSeekerUpdateOne = jest.fn();
@@ -55,6 +57,7 @@ jest.mock("@/models/User", () => {
     findOne: (...a: unknown[]) => mockUserFindOne(...a),
     findByIdAndUpdate: (...a: unknown[]) => mockUserFindByIdAndUpdate(...a),
     create: (...a: unknown[]) => mockUserCreate(...a),
+    exists: (...a: unknown[]) => mockUserExists(...a),
   };
   return { __esModule: true, User: model, default: model };
 });
@@ -96,6 +99,8 @@ jest.mock("@/lib/security/rateLimit", () => ({
   checkRateLimit: (...a: unknown[]) => mockCheckRateLimit(...a),
 }));
 jest.mock("@/lib/employers/company-membership", () => ({ __esModule: true, ensureEmployerOwnerMembership: jest.fn() }));
+jest.mock("@/lib/gdpr/consent", () => ({ __esModule: true, recordRegistrationConsents: (...a: unknown[]) => mockRecordConsents(...a) }));
+jest.mock("next/headers", () => ({ __esModule: true, cookies: jest.fn(async () => ({ get: () => undefined })) }));
 jest.mock("@/lib/referrals/attachJobSeeker", () => ({ __esModule: true, attachJobSeekerReferral: jest.fn() }));
 jest.mock("@/lib/subscription/autoAssign", () => ({
   __esModule: true,
@@ -180,6 +185,9 @@ beforeEach(() => {
   mockPendingDeleteOne.mockResolvedValue({ deletedCount: 1 });
   mockPendingUpdateOne.mockResolvedValue({ modifiedCount: 1 });
   mockAutoAssign.mockResolvedValue(undefined);
+  // An account exists unless a test says otherwise (the consent gate asks first).
+  mockUserExists.mockResolvedValue({ _id: "job-seeker-id" });
+  mockRecordConsents.mockResolvedValue(undefined);
 });
 
 describe("email-otp Credentials provider — authorize()", () => {
@@ -201,9 +209,10 @@ describe("email-otp Credentials provider — authorize()", () => {
 
     test("unknown email: this is where the account is created (User + JobSeeker + default plan)", async () => {
       existingUser(null);
+      mockUserExists.mockResolvedValue(null);
       mockUserCreate.mockResolvedValue(baseUser({ _id: "new-id", name: "candidate", isEmailVerified: true }));
 
-      const result = await authorize({ email: EMAIL, otp: CODE });
+      const result = await authorize({ email: EMAIL, otp: CODE, termsAccepted: "true", cookieChoice: "declined" });
 
       expect(mockUserCreate).toHaveBeenCalledWith(
         expect.objectContaining({ email: EMAIL, role: "job_seeker", isActive: true, isEmailVerified: true }),
@@ -218,6 +227,31 @@ describe("email-otp Credentials provider — authorize()", () => {
       expect(mockAutoAssign).toHaveBeenCalledWith("new-id", "job_seeker");
       expect(mockLogActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "register.email_otp" }));
       expect(result).toMatchObject({ id: "new-id", email: EMAIL, role: "job_seeker", isOnboarded: false });
+      expect(mockRecordConsents).toHaveBeenCalledWith(expect.objectContaining({
+        userId: "new-id",
+        termsAccepted: true,
+        cookieChoice: "declined",
+        source: "registration:email_code",
+      }));
+    });
+
+    test("unknown email without the Terms & Privacy tick: refused before the code is spent", async () => {
+      existingUser(null);
+      mockUserExists.mockResolvedValue(null);
+
+      await expect(authorize({ email: EMAIL, otp: CODE })).rejects.toMatchObject({ code: "consent_required" });
+
+      expect(mockPendingFindOneAndDelete).not.toHaveBeenCalled();
+      expect(mockPendingUpdateOne).not.toHaveBeenCalled();
+      expect(mockUserCreate).not.toHaveBeenCalled();
+      expect(mockRecordConsents).not.toHaveBeenCalled();
+    });
+
+    test("an existing account is never asked for the tick again", async () => {
+      existingUser(baseUser());
+
+      await expect(authorize({ email: EMAIL, otp: CODE })).resolves.toMatchObject({ id: "job-seeker-id" });
+      expect(mockRecordConsents).not.toHaveBeenCalled();
     });
 
     test("the code is consumed atomically (findOneAndDelete on the exact row + hash)", async () => {
@@ -245,8 +279,9 @@ describe("email-otp Credentials provider — authorize()", () => {
         .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
         .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(winner) });
       mockUserCreate.mockRejectedValueOnce(Object.assign(new Error("E11000 duplicate key"), { code: 11000 }));
+      mockUserExists.mockResolvedValue(null);
 
-      const result = await authorize({ email: EMAIL, otp: CODE });
+      const result = await authorize({ email: EMAIL, otp: CODE, termsAccepted: "true" });
 
       expect(result).toMatchObject({ id: "winner-id" });
       // Not "new": no profile upsert, no plan, no register event for the loser.
