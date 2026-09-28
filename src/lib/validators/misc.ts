@@ -8,7 +8,7 @@ import { SHORTLIST_TARGET_MAX, SHORTLIST_TARGET_MIN } from "@/lib/hiring/workflo
 export const contactSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   email: commonSchemas.email,
-  phone: z.string().max(20).trim().optional().or(z.literal("")),
+  phone: commonSchemas.phone.optional().or(z.literal("")),
   subject: z.string().max(200).trim().optional().or(z.literal("")),
   message: z.string().min(1).max(5000).trim(),
   captchaToken: z.string().max(2000).optional(),
@@ -134,7 +134,7 @@ export const agentRegisterSchema = z.object({
   fullName: z.string().min(1).max(200).trim(),
   email: z.string().email().max(254).trim().toLowerCase(),
   password: strongPasswordSchema,
-  phone: z.string().max(30).trim().optional(),
+  phone: commonSchemas.phone.optional().or(z.literal("")),
   country: z.string().max(100).optional(),
   city: z.string().max(100).optional(),
   experience: z.string().max(100).optional(),

@@ -46,7 +46,7 @@ const getOnboardFields = (t: ReturnType<typeof useTranslations>, tf: ReturnType<
   { name: "password", label: t("fieldTemporaryPassword"), type: "password", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
   { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true, placeholder: t("placeholderCompanyName") },
   { name: "industry", label: t("fieldIndustry"), type: "text", placeholder: t("placeholderIndustry") },
-  { name: "phone", label: t("fieldPhone"), type: "text", placeholder: t("placeholderPhone") },
+  { name: "phone", label: t("fieldPhone"), type: "phone", placeholder: t("placeholderPhone") },
 ];
 
 export default function AgentEmployersPage() {

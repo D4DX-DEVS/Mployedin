@@ -12,6 +12,7 @@ import { CurrencySelect } from "@/components/ui/currency-select";
 import { Switch } from "@/components/ui/switch";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 interface SmtpConfig {
   smtpEmail: string;
@@ -335,14 +336,12 @@ export default function AdminSettingsPage() {
               />
             </div>
 
-            <div className="space-y-1">
-              <label htmlFor="issuer-phone" className="text-sm text-muted-foreground">{t("issuerPhoneLabel")}</label>
-              <Input
-                id="issuer-phone"
-                value={settings.invoiceIssuer.phone}
-                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, phone: e.target.value } }))}
-              />
-            </div>
+            <PhoneInput
+              id="issuer-phone"
+              label={t("issuerPhoneLabel")}
+              value={settings.invoiceIssuer.phone}
+              onChange={(value) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, phone: value } }))}
+            />
 
             <div className="space-y-1 sm:col-span-2">
               <label htmlFor="issuer-website" className="text-sm text-muted-foreground">{t("issuerWebsiteLabel")}</label>

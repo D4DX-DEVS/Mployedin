@@ -409,6 +409,8 @@
     "changeSkillLevel": "انقر لتغيير المستوى",
     "removeSkill": "إزالة {skill}",
     "selectCountry": "اختر البلد",
+    "searchCountry": "ابحث عن دولة…",
+    "invalidPhoneNumber": "أدخل رقم هاتف صالحًا للبلد المحدد.",
     "selectState": "اختر المنطقة",
     "stateRegion": "الولاية / المنطقة",
     "cities": "المدن",

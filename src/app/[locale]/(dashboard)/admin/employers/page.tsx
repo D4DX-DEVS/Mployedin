@@ -178,7 +178,7 @@ export default function AdminEmployersPage() {
     { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
     { name: "industry", label: t("fieldIndustry"), type: "text" },
     { name: "location", label: t("fieldLocation"), type: "text" },
-    { name: "phone", label: t("fieldPhone"), type: "text" },
+    { name: "phone", label: t("fieldPhone"), type: "phone" },
   ], [t, tf]);
   const editFields = useMemo(() => fields.filter((f) => f.name !== "password"), [fields]);
 

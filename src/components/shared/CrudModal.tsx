@@ -18,11 +18,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { isFormError } from "@/lib/errors/form-error";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 export interface CrudField {
   name: string;
   label: string;
-  type: "text" | "email" | "number" | "select" | "textarea" | "date" | "password";
+  type: "text" | "email" | "number" | "select" | "textarea" | "date" | "password" | "phone";
   required?: boolean;
   placeholder?: string;
   /** Short rule shown under the input, e.g. the password policy. */
@@ -145,6 +146,14 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
                       required={field.required}
                       placeholder={field.placeholder}
                       aria-describedby={field.hint ? `${field.name}-hint` : undefined}
+                    />
+                  ) : field.type === "phone" ? (
+                    <PhoneInput
+                      id={field.name}
+                      value={values[field.name] ?? ""}
+                      onChange={(value) => updateValue(field.name, value)}
+                      required={field.required}
+                      placeholder={field.placeholder}
                     />
                   ) : (
                     <Input

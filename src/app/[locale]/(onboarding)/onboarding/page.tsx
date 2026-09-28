@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronRight, ChevronDown, Search, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2, ArrowLeft } from "lucide-react";
+import { Check, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -247,80 +248,6 @@ const YEARS_RANGE = Array.from({ length: 40 }, (_, i) => String(new Date().getFu
 // Note: STEPS labels/subtitles are translated dynamically inside the component
 
 // ── Tiny helpers ──────────────────────────────────────────────────────────────
-function CountryCodeSelect({ value, onChange, t }: { value: string; onChange: (code: string) => void; t: ReturnType<typeof useTranslations> }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [open]);
-
-  const selected = COUNTRY_CODES.find((c) => c.code === value) ?? COUNTRY_CODES[0];
-  const q = search.trim().toLowerCase();
-  const filtered = q
-    ? COUNTRY_CODES.filter((c) => c.code.includes(q) || c.country.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
-    : COUNTRY_CODES;
-
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex h-11 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 text-sm text-gray-700 transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
-      >
-        <span className="text-base leading-none">{selected.flag}</span>
-        <span className="font-medium">{selected.code}</span>
-        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1.5 w-60 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-          <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
-            <Search className="h-4 w-4 text-gray-400" />
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("searchCountryPlaceholder")}
-              className="w-full bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
-            />
-          </div>
-          <ul className="max-h-60 overflow-y-auto py-1">
-            {filtered.length === 0 && (
-              <li className="px-3 py-2 text-sm text-gray-400">{t("noMatches")}</li>
-            )}
-            {filtered.map((c) => (
-              <li key={c.code + c.country}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(c.code);
-                    setOpen(false);
-                    setSearch("");
-                  }}
-                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-blue-50 ${
-                    c.code === value ? "bg-blue-50/60 text-blue-700" : "text-gray-700"
-                  }`}
-                >
-                  <span className="text-base leading-none">{c.flag}</span>
-                  <span className="flex-1 truncate font-medium">{c.name}</span>
-                  <span className="text-gray-400">{c.code}</span>
-                  {c.code === value && <Check className="ml-1 h-4 w-4 shrink-0 text-blue-600" />}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ChipButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
     <button
@@ -399,7 +326,6 @@ export default function JobSeekerOnboardingPage() {
   const [industryOpen, setIndustryOpen] = useState(false);
   const [industrySearch, setIndustrySearch] = useState("");
   const industryRef = useRef<HTMLDivElement>(null);
-  const phoneRef = useRef<HTMLInputElement>(null);
 
   const userName = (session?.user?.name as string | undefined) ?? "";
   const userEmail = (session?.user?.email as string | undefined) ?? "";
@@ -545,10 +471,6 @@ export default function JobSeekerOnboardingPage() {
             // step exists to stop. It stays null until they choose.
           }));
 
-          // Auto-focus phone if name is already filled
-          if ((p.fullName || userName) && !p.phone) {
-            setTimeout(() => phoneRef.current?.focus(), 300);
-          }
         })
         .catch(() => {
           // Profile not found — that's fine for credentials users
@@ -1251,27 +1173,21 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Mobile number */}
                 <div className="field">
-                  <Label htmlFor="ob-mobileNumber" className="text-sm font-medium text-gray-800">{t("mobileNumber")} <span className="text-red-500">*</span></Label>
-                  <div className="flex gap-2">
-                    <CountryCodeSelect
-                      value={step0.countryCode}
-                      onChange={(code) => setStep0((p) => ({ ...p, countryCode: code }))}
-                      t={t}
-                    />
-                    <div className="relative flex-1">
-                      <Input id="ob-mobileNumber"
-                        ref={phoneRef}
-                        type="tel"
-                        value={step0.phone}
-                        onChange={(e) => setStep0((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "") }))}
-                        placeholder={t("mobileNumberPlaceholder")}
-                        className={`h-11 border-gray-300 focus:border-blue-500 pr-10 ${!step0.phone && "border-red-400"}`}
-                      />
-                      {step0.phone.length >= 7 && (
-                        <Check className="absolute right-3 top-3 w-5 h-5 text-green-500" />
-                      )}
-                    </div>
-                  </div>
+                  <PhoneInput
+                    id="ob-mobileNumber"
+                    label={t("mobileNumber")}
+                    value={`${step0.countryCode} ${step0.phone}`}
+                    onChange={(value) => {
+                      const match = value.match(/^(\+\d+)\s*(.*)$/);
+                      setStep0((p) => ({
+                        ...p,
+                        countryCode: match?.[1] ?? p.countryCode,
+                        phone: match?.[2]?.replace(/\D/g, "") ?? "",
+                      }));
+                    }}
+                    placeholder={t("mobileNumberPlaceholder")}
+                    required
+                  />
                   {!step0.phone && <p className="text-xs text-red-500">{t("mobileNumberRequired")}</p>}
                   {step0.phone.length >= 7 && <p className="text-xs text-gray-500">{t("recruitersWillContact")}</p>}
                 </div>
@@ -2045,4 +1961,3 @@ export default function JobSeekerOnboardingPage() {
     </div>
   );
 }
-

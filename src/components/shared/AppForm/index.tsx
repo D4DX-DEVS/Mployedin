@@ -5,12 +5,12 @@
 "use client";
 
 import { useState, useRef, useEffect, useId, useMemo } from "react";
-import { Check, ChevronDown, X, Upload, Phone, Search, FileText } from "lucide-react";
+import { Check, ChevronDown, X, Upload, Search, FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 function joinIds(...ids: Array<string | undefined>) {
   const value = ids.filter(Boolean).join(" ");
@@ -687,22 +687,8 @@ export function FormSwitch({ label, description, checked, onChange, disabled }: 
 }
 
 // ──────────────────────────────────────────────────────────
-// FormPhone
+// FormPhone (canonical shared country-code input)
 // ──────────────────────────────────────────────────────────
-const COUNTRY_CODES = [
-  { code: "+971", flag: "🇦🇪", label: "UAE" },
-  { code: "+966", flag: "🇸🇦", label: "KSA" },
-  { code: "+974", flag: "🇶🇦", label: "Qatar" },
-  { code: "+968", flag: "🇴🇲", label: "Oman" },
-  { code: "+973", flag: "🇧🇭", label: "Bahrain" },
-  { code: "+965", flag: "🇰🇼", label: "Kuwait" },
-  { code: "+44",  flag: "🇬🇧", label: "UK" },
-  { code: "+1",   flag: "🇺🇸", label: "US" },
-  { code: "+91",  flag: "🇮🇳", label: "India" },
-  { code: "+92",  flag: "🇵🇰", label: "Pakistan" },
-  { code: "+20",  flag: "🇪🇬", label: "Egypt" },
-];
-
 interface FormPhoneProps {
   label?: string;
   error?: string;
@@ -712,58 +698,6 @@ interface FormPhoneProps {
   required?: boolean;
 }
 
-export function FormPhone({ label, error, hint, value, onChange, required }: FormPhoneProps) {
-  const t = useTranslations("common");
-  const generatedId = useId();
-  const controlId = `form-phone-${generatedId}`;
-  const hintId = `${controlId}-hint`;
-  const errorId = `${controlId}-error`;
-  const [countryCode, setCountryCode] = useState("+971");
-  const number = value.startsWith("+") ? value.replace(/^\+\d+\s?/, "") : value;
-
-  const updateValue = (code: string, num: string) => {
-    onChange(`${code} ${num}`);
-  };
-
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={controlId} className="block text-xs font-medium text-muted-foreground">
-          {label} {required && <RequiredMark />}
-        </label>
-      )}
-      <div className="flex gap-2">
-        <div className="w-24">
-          <Select value={countryCode} onValueChange={(value) => { setCountryCode(value); updateValue(value, number); }}>
-            <SelectTrigger aria-label={t("selectCountry")} aria-describedby={error ? errorId : hint ? hintId : undefined} className="h-10 rounded-lg">
-              <SelectValue placeholder="Select code" />
-            </SelectTrigger>
-            <SelectContent>
-              {COUNTRY_CODES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>{c.flag} {c.code}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="relative flex-1">
-          <Phone aria-hidden="true" className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            id={controlId}
-            type="tel"
-            dir="ltr"
-            value={number}
-            onChange={(e) => updateValue(countryCode, e.target.value)}
-            placeholder="50 123 4567"
-            required={required}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : hint ? hintId : undefined}
-            className={`w-full h-10 rounded-lg border ps-9 pe-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 ${
-              error ? "border-destructive" : ""
-            }`}
-          />
-        </div>
-      </div>
-      <FieldFeedback hint={hint} error={error} hintId={hintId} errorId={errorId} />
-    </div>
-  );
+export function FormPhone(props: FormPhoneProps) {
+  return <PhoneInput {...props} />;
 }

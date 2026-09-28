@@ -29,6 +29,7 @@ import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 import { AssignedRegionFields, type SupervisingSuperAgent } from "@/components/features/settings/AssignedRegionFields";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
 import { useConfirm } from "@/hooks/useConfirm";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -408,16 +409,12 @@ function ProfileTab() {
                   </p>
                 </div>
                 <div className="field">
-                  <Label htmlFor="agent-phone" className="text-sm font-medium text-foreground">
-                    {t("profile.phone")}
-                  </Label>
-                  <Input
+                  <PhoneInput
                     id="agent-phone"
-                    type="tel"
+                    label={t("profile.phone")}
                     placeholder={t("profile.phonePlaceholder")}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    maxLength={20}
+                    onChange={setPhone}
                   />
                   <p className="text-[11px] text-muted-foreground">
                     {t("profile.phoneHelp")}
@@ -1236,7 +1233,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
             </div>
             <div className="field">
               <Label htmlFor="inv-phone" className="text-sm font-medium">{t("invoice.billingPhone")}</Label>
-              <Input id="inv-phone" type="tel" placeholder={t("invoice.billingPhonePlaceholder")} value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
+              <PhoneInput id="inv-phone" label={t("invoice.billingPhone")} placeholder={t("invoice.billingPhonePlaceholder")} value={form.billingPhone} onChange={(value) => update("billingPhone", value)} />
             </div>
           </div>
           <div className="field">

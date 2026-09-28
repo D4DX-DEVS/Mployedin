@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { isPhoneValueValid } from "@/lib/phone/validation";
 
 /**
  * Parse and validate the JSON body of a request against a Zod schema.
@@ -75,7 +76,7 @@ export function validateQuery<T extends z.ZodType>(
 export const commonSchemas = {
   objectId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid ObjectId"),
   email: z.string().email().max(254).trim().toLowerCase(),
-  phone: z.string().min(7).max(20).trim(),
+  phone: z.string().min(7).max(30).trim().refine(isPhoneValueValid, "Enter a valid international phone number"),
   url: z.string().url().max(2048),
   paginationPage: z.coerce.number().int().min(1).default(1),
   paginationLimit: z.coerce.number().int().min(1).max(100).default(10),

@@ -409,6 +409,8 @@
     "changeSkillLevel": "Click to change level",
     "removeSkill": "Remove {skill}",
     "selectCountry": "Select country",
+    "searchCountry": "Search countries…",
+    "invalidPhoneNumber": "Enter a valid phone number for the selected country.",
     "selectState": "Select state",
     "stateRegion": "State / Region",
     "cities": "Cities",
