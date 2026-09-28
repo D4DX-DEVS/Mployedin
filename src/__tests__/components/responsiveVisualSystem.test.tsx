@@ -6,6 +6,9 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import CookieConsent from "@/components/shared/CookieConsent";
 import { SmartHeader } from "@/components/features/employer/dashboard/SmartHeader";
 
+// The cookie banner reads the session to log a signed-in user's choice.
+jest.mock("next-auth/react", () => ({ useSession: () => ({ data: null, status: "unauthenticated" }) }));
+
 const mockTranslations: Record<string, string> = {
   "landing.cookieConsent": "We use cookies to improve your experience.",
   "landing.cookiePolicy": "Cookie policy",

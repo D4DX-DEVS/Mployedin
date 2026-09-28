@@ -1,615 +1,196 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { useQuery } from "@tanstack/react-query";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend,
-} from "recharts";
-import {
-  Building2, Users,
-  CalendarDays, RotateCcw, FileText, X,
-  CircleDollarSign, Activity,
-  ArrowUpRight, ArrowDownRight, Minus,
-} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { TableToolbar } from "@/components/shared/TableToolbar";
-import { useTableExport } from "@/hooks/useTableExport";
-import type { ExportColumn } from "@/lib/export";
+import { Building2, CircleDollarSign, Gauge, UserCheck } from "lucide-react";
+import { ReportTabs } from "@/components/features/admin/ReportTabs";
+import { PageHero } from "@/components/shared/PageHero";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ReportKpiGrid, type ReportKpi } from "@/components/features/admin/reports/ReportKpiGrid";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { BehindPaceList } from "./_components/behind-pace-list";
+import { TargetPeopleTable } from "./_components/target-people-table";
+import { TargetProgressChart } from "./_components/target-progress-chart";
+import { percentOf, type Progress, type TargetReport } from "./_components/types";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+/*
+ * Target report: four totals, then
+ *   Monthly progress (target vs achieved) | Behind pace (who to talk to)
+ *   Progress by person (every plan, searchable, exportable)
+ * Dropped: business volume (the Commissions tab, and it added INR to AED),
+ * the quarterly chart (counts and money on one axis), the year-over-year grid
+ * and the quarter/category/risk filters that only re-sliced the same numbers.
+ */
 
-interface MonthlyTrendItem {
-  month: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
+/** The TargetProfile schema's year bounds; the URL can only hold one of these. */
+const YEAR_OPTIONS = Array.from({ length: 81 }, (_, index) => String(2020 + index));
+
+function ProgressFooter({ progress, label }: { progress: Progress; label: string }) {
+  const share = percentOf(progress);
+  return (
+    <div className="flex w-full items-center gap-2">
+      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+        <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, share ?? 0)}%` }} />
+      </span>
+      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
 }
-
-interface YearOverYear {
-  currentYear: { year: number; employerTarget: number; employeeTarget: number; financeTarget: number; employerAchieved: number; employeeAchieved: number; financeAchieved: number; avgProgress: number; profileCount: number };
-  previousYear: { year: number; employerTarget: number; employeeTarget: number; financeTarget: number; employerAchieved: number; employeeAchieved: number; financeAchieved: number; avgProgress: number; profileCount: number };
-  growth: { employerTarget: number; employeeTarget: number; financeTarget: number; employerAchieved: number; employeeAchieved: number; financeAchieved: number; avgProgress: number };
-}
-
-interface BusinessVolumeItem {
-  month: number;
-  approved: number;
-  pending: number;
-  total: number;
-  count: number;
-}
-
-interface QuarterlyItem {
-  label: string;
-  employerTarget: number;
-  employerAchieved: number;
-  employeeTarget: number;
-  employeeAchieved: number;
-  financeTarget: number;
-  financeAchieved: number;
-  businessVolume: number;
-}
-
-interface ProfileRow {
-  _id: string;
-  assigneeId: string;
-  assigneeName: string;
-  assigneeEmail: string;
-  region?: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  overallProgress: number;
-  riskScore: "high" | "medium" | "low";
-  incentiveTier: string;
-}
-
-interface ReportData {
-  year: number;
-  monthlyTrend: MonthlyTrendItem[];
-  yearOverYear: YearOverYear;
-  businessVolume: BusinessVolumeItem[];
-  totalBusinessVolume: number;
-  totalApprovedVolume: number;
-  quarterlyBreakdown: QuarterlyItem[];
-  supervisorProfiles: ProfileRow[];
-  agentProfiles: ProfileRow[];
-  summary: { employerTarget: number; employeeTarget: number; financeTarget: number; employerAchieved: number; employeeAchieved: number; financeAchieved: number; avgProgress: number; profileCount: number };
-}
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-
-function formatCurrency(value: number, currency = "AED"): string {
-  if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${formatCount(value)}`;
-}
-
-function GrowthIndicator({ value }: { value: number }) {
-  if (value > 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3 w-3" />+{value}%</span>;
-  if (value < 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3 w-3" />{value}%</span>;
-  return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted-foreground"><Minus className="h-3 w-3" />0%</span>;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
 
 export default function AdminTargetReportPage() {
-  const t = useTranslations("targets");
+  const t = useTranslations("adminTargetReport");
   const locale = useLocale();
-  /* Chart axis labels are rendered inside the SVG, so a hardcoded English array
-     left "Jan…Dec" sitting in the middle of the Arabic report. */
-  const monthsShort = useMemo(() => {
-    const fmt = new Intl.DateTimeFormat(locale, { month: "short" });
-    return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(Date.UTC(2020, i, 1))));
-  }, [locale]);
-  const currentYear = new Date().getFullYear();
+  const currentYear = String(new Date().getFullYear());
+  // The year lives in the URL, like the Platform tab's period, so a refresh or
+  // a shared link shows the same plan year.
+  const [year, setYear] = useUrlFilter("year", currentYear, { allow: YEAR_OPTIONS });
 
-  // Filters
-  const [yearFilter, setYearFilter] = useState(currentYear);
-  const [quarterFilter, setQuarterFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [riskFilter, setRiskFilter] = useState("all");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Cached per year: revisiting the page paints from cache instead of
-  // re-running the whole report aggregation behind a skeleton.
-  const { data = null, isLoading: loading, isError } = useQuery<ReportData>({
-    queryKey: ["admin", "target-report", yearFilter],
+  // Cached per year; the previous year's figures stay on screen while the next loads.
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<TargetReport>({
+    queryKey: ["admin", "target-report", year],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/target-report?year=${yearFilter}`);
-      if (!res.ok) throw new Error(`Target report error: ${res.status}`);
-      return res.json();
+      const response = await fetch(`/api/admin/target-report?year=${year}`);
+      if (!response.ok) throw new Error(`Target report error: ${response.status}`);
+      return response.json();
     },
     staleTime: 5 * 60_000,
+    placeholderData: (previous) => previous,
   });
 
-  useEffect(() => {
-    if (isError) toast.error(t("failedToLoadReport"));
-  }, [isError, t]);
+  const count = (value: number) => formatCount(value, undefined, locale);
+  const shareLabel = (progress: Progress) => {
+    const share = percentOf(progress);
+    return share === null ? t("noTarget") : t("percentOfTarget", { percent: share });
+  };
+  const managementHref = `/${locale}/admin/target-management?year=${year}`;
+  const yearOptions = data?.years.map(String) ?? [currentYear];
 
-  const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all" || riskFilter !== "all" || roleFilter !== "all" || Boolean(searchQuery);
-
-  function clearFilters() {
-    setQuarterFilter("all");
-    setCategoryFilter("all");
-    setRiskFilter("all");
-    setRoleFilter("all");
-    setSearchQuery("");
-  }
-
-  // Filter data by quarter for charts
-  const filteredTrend = useMemo(() => {
-    if (!data) return [];
-    let months = data.monthlyTrend;
-    if (quarterFilter !== "all") {
-      const q = parseInt(quarterFilter);
-      const start = (q - 1) * 3;
-      months = months.filter((m) => m.month > start && m.month <= start + 3);
-    }
-    return months;
-  }, [data, quarterFilter]);
-
-  const filteredBusinessVolume = useMemo(() => {
-    if (!data) return [];
-    let months = data.businessVolume;
-    if (quarterFilter !== "all") {
-      const q = parseInt(quarterFilter);
-      const start = (q - 1) * 3;
-      months = months.filter((m) => m.month > start && m.month <= start + 3);
-    }
-    return months;
-  }, [data, quarterFilter]);
-
-  // Filter profiles by risk + search
-  const filteredProfiles = useMemo(() => {
-    if (!data) return { supervisors: [] as ProfileRow[], agents: [] as ProfileRow[] };
-    let supervisors = data.supervisorProfiles;
-    let agents = data.agentProfiles;
-
-    if (riskFilter !== "all") {
-      supervisors = supervisors.filter((p) => p.riskScore === riskFilter);
-      agents = agents.filter((p) => p.riskScore === riskFilter);
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      supervisors = supervisors.filter((p) => p.assigneeName.toLowerCase().includes(q) || p.assigneeEmail.toLowerCase().includes(q));
-      agents = agents.filter((p) => p.assigneeName.toLowerCase().includes(q) || p.assigneeEmail.toLowerCase().includes(q));
-    }
-    return { supervisors, agents };
-  }, [data, riskFilter, searchQuery]);
-
-  // Chart data (respects category + quarter filters)
-  const trendChartData = useMemo(() => {
-    return filteredTrend.map((m) => ({
-      name: monthsShort[m.month - 1],
-      ...(categoryFilter === "all" || categoryFilter === "employer" ? { "Employer Target": m.employerTarget, "Employer Achieved": m.employerAchieved } : {}),
-      ...(categoryFilter === "all" || categoryFilter === "employee" ? { "Employee Target": m.employeeTarget, "Employee Achieved": m.employeeAchieved } : {}),
-      ...(categoryFilter === "all" || categoryFilter === "finance" ? { "Finance Target (K)": Math.round(m.financeTarget / 1000), "Finance Achieved (K)": Math.round(m.financeAchieved / 1000) } : {}),
-    }));
-  }, [filteredTrend, categoryFilter, monthsShort]);
-
-  const businessVolumeChartData = useMemo(() => {
-    return filteredBusinessVolume.map((bv) => ({
-      name: monthsShort[bv.month - 1],
-      Approved: Math.round(bv.approved / 1000),
-      Pending: Math.round(bv.pending / 1000),
-      Total: Math.round(bv.total / 1000),
-    }));
-  }, [filteredBusinessVolume, monthsShort]);
-
-  // Export via useTableExport (proper CSV / Excel / PDF)
-  const allProfiles = useMemo(() => {
-    if (!data) return [];
-    return [...data.supervisorProfiles.map((p) => ({ ...p, role: "Supervisor" })), ...data.agentProfiles.map((p) => ({ ...p, role: "Agent" }))];
-  }, [data]);
-
-  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("name"), key: "assigneeName" },
-    { header: t("email"), key: "assigneeEmail" },
-    { header: t("exportHeaderRole"), key: "role" },
-    { header: t("exportHeaderRegion"), key: "region", formatter: (v) => String(v ?? "—") },
-    { header: t("csvHeaderEmployerTarget"), key: "employerTarget", formatter: (v) => String(v ?? 0) },
-    { header: t("csvHeaderEmployerAchieved"), key: "employerAchieved", formatter: (v) => String(v ?? 0) },
-    { header: t("csvHeaderEmployeeTarget"), key: "employeeTarget", formatter: (v) => String(v ?? 0) },
-    { header: t("csvHeaderEmployeeAchieved"), key: "employeeAchieved", formatter: (v) => String(v ?? 0) },
-    { header: t("csvHeaderFinanceTarget"), key: "financeTarget", formatter: (v) => String(v ?? 0) },
-    { header: t("csvHeaderFinanceAchieved"), key: "financeAchieved", formatter: (v) => String(v ?? 0) },
-    { header: t("exportHeaderOverallPercent"), key: "overallProgress", formatter: (v) => `${v ?? 0}%` },
-    { header: t("exportHeaderRisk"), key: "riskScore" },
-    { header: t("exportHeaderIncentiveTier"), key: "incentiveTier" },
-  ];
-
-  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
-    data: allProfiles as unknown as Record<string, unknown>[],
-    columns: exportColumns,
-    filename: `target-report-${yearFilter}`,
-    title: `Target Report ${yearFilter}`,
-  });
-
-  if (loading) {
-    return (
-      <div className="page-container">
-      <ReportTabs />
-        <div className="h-20 w-full animate-pulse rounded-3xl bg-muted/40" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
-          ))}
-        </div>
-        <div className="h-72 animate-pulse rounded-2xl bg-muted/50" />
-      </div>
+  const kpis: ReportKpi[] = [];
+  if (data) {
+    const { employers, employees, finance, people } = data.totals;
+    const money = (value: number, notation: "standard" | "compact" = "standard") => finance.currency
+      ? formatCount(value, { style: "currency", currency: finance.currency, notation, maximumFractionDigits: 0 }, locale)
+      : count(value);
+    kpis.push(
+      {
+        key: "employers",
+        label: t("metricEmployers"),
+        value: `${count(employers.achieved)} / ${count(employers.target)}`,
+        phoneValue: count(employers.achieved),
+        detail: t("kpiEmployersDetail"),
+        footer: <ProgressFooter progress={employers} label={shareLabel(employers)} />,
+        dot: "bg-blue-500",
+        tone: "workspace-tone-sky",
+        icon: Building2,
+        href: managementHref,
+      },
+      {
+        key: "employees",
+        label: t("metricEmployees"),
+        value: `${count(employees.achieved)} / ${count(employees.target)}`,
+        phoneValue: count(employees.achieved),
+        detail: t("kpiEmployeesDetail"),
+        footer: <ProgressFooter progress={employees} label={shareLabel(employees)} />,
+        dot: "bg-violet-500",
+        tone: "workspace-tone-violet",
+        icon: UserCheck,
+        href: managementHref,
+      },
+      {
+        key: "finance",
+        label: t("metricFinance"),
+        value: money(finance.achieved),
+        phoneValue: money(finance.achieved, "compact"),
+        detail: finance.target > 0 ? t("kpiFinanceDetail", { target: money(finance.target) }) : t("kpiFinanceNoTarget"),
+        footer: <ProgressFooter progress={finance} label={shareLabel(finance)} />,
+        note: finance.others.length > 0 ? t("financeOtherCurrencies", { count: finance.others.length }) : null,
+        dot: "bg-amber-500",
+        tone: "workspace-tone-amber",
+        icon: CircleDollarSign,
+        href: managementHref,
+      },
+      {
+        key: "pace",
+        label: t("kpiOnPace"),
+        value: `${count(people.onPace + people.achieved)} / ${count(people.total)}`,
+        phoneValue: count(people.onPace + people.achieved),
+        detail: t("kpiOnPaceDetail", { expected: data.expectedProgress, year: data.year }),
+        footer: (
+          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${people.behind > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
+            {t("behindCount", { count: people.behind })}
+          </span>
+        ),
+        dot: people.behind > 0 ? "bg-rose-500" : "bg-emerald-500",
+        tone: people.behind > 0 ? "workspace-tone-rose" : "workspace-tone-emerald",
+        icon: Gauge,
+        href: managementHref,
+      },
     );
   }
 
-  if (!data) return null;
-
-  const headerMetrics = [
-    { label: t("csvHeaderEmployerTarget"), value: `${data.summary.employerAchieved} / ${data.summary.employerTarget}`, icon: Building2, iconSurfaceClassName: "workspace-tone-sky" },
-    { label: t("csvHeaderEmployeeTarget"), value: `${data.summary.employeeAchieved} / ${data.summary.employeeTarget}`, icon: Users, iconSurfaceClassName: "workspace-tone-emerald" },
-    { label: t("businessVolumeTitle", { year: yearFilter }), value: formatCurrency(data.totalApprovedVolume), icon: CircleDollarSign, iconSurfaceClassName: "workspace-tone-amber" },
-    { label: t("avgPerformanceLabel"), value: `${data.summary.avgProgress}%`, icon: Activity, iconSurfaceClassName: "workspace-tone-violet" },
-  ];
-
   return (
     <div className="page-container print:space-y-4">
-      <DashboardPageHeader
+      <div className="print:hidden">
+        <ReportTabs />
+      </div>
+      <PageHero
         compact
         compactOnMobile
-        icon={Activity}
-        title={t("targetReportTitle")}
-        description={t("consolidatedPerformanceReport", { year: yearFilter })}
-        summary={{
-          label: t("coverageLabel"),
-          value: t("profilesCoverage", { count: data.summary.profileCount }),
-          note: t("profilesCount", { supervisors: data.supervisorProfiles.length, agents: data.agentProfiles.length, avgProgress: data.summary.avgProgress }),
-        }}
-        metrics={headerMetrics}
+        title={t("title")}
+        description={t("description", { year })}
+        actions={(
+          <Select value={year} onValueChange={setYear}>
+            <SelectTrigger aria-label={t("yearLabel")} className="h-10 w-[8.5rem] rounded-xl border-border/70 bg-background/90 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(yearOptions.includes(year) ? yearOptions : [year, ...yearOptions]).map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       />
 
-      {/* ═══════ TOOLBAR ═══════ */}
-      <TableToolbar
-        title={t("performanceDataTitle")}
-        description={t("filterByQuarterCategoryRisk")}
-        search={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder={t("searchByNameOrEmail")}
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        hasActiveFilters={hasActiveFilters}
-        right={
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 gap-1.5 rounded-lg print:hidden">
-            <FileText className="h-3.5 w-3.5" /> {t("print")}
-          </Button>
-        }
-        actions={hasActiveFilters ? (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground">
-            <X className="h-3.5 w-3.5 mr-1" /> {t("actionClearFilters")}
-          </Button>
-        ) : undefined}
-        filterContent={
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
-            </div>
-            <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allQuarters")}</SelectItem>
-                <SelectItem value="1">{t("q1Quarter")}</SelectItem>
-                <SelectItem value="2">{t("q2Quarter")}</SelectItem>
-                <SelectItem value="3">{t("q3Quarter")}</SelectItem>
-                <SelectItem value="4">{t("q4Quarter")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allCategories")}</SelectItem>
-                <SelectItem value="employer">{t("categoryEmployer")}</SelectItem>
-                <SelectItem value="employee">{t("categoryEmployee")}</SelectItem>
-                <SelectItem value="finance">{t("categoryFinance")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allRisks")}</SelectItem>
-                <SelectItem value="high">{t("highRiskFilter")}</SelectItem>
-                <SelectItem value="medium">{t("mediumRiskFilter")}</SelectItem>
-                <SelectItem value="low">{t("lowRiskFilter")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("role")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allRoles")}</SelectItem>
-                <SelectItem value="supervisors">{t("supervisorsRole")}</SelectItem>
-                <SelectItem value="agents">{t("agentsRole")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="ghost" size="sm" onClick={() => setYearFilter(currentYear)} disabled={yearFilter === currentYear} className="h-9 gap-1.5 text-xs">
-              <RotateCcw className="h-3.5 w-3.5" /> {t("resetYearButton")}
-            </Button>
+      {isError && !data ? (
+        <ErrorState title={t("failedToLoad")} onRetry={() => { void refetch(); }} retryLabel={t("retry")} />
+      ) : isLoading || !data ? (
+        <div className="space-y-6" role="status" aria-live="polite" aria-label={t("loading")}>
+          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="workspace-panel-surface h-16 animate-pulse rounded-2xl sm:h-36" />
+            ))}
           </div>
-        }
-      />
-
-      {/* ═══════ Monthly Trend ═══════ */}
-      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="heading-section font-semibold tracking-tight">{t("monthlyPerformanceTimeline")}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t("targetVsAchieved")}{quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}{categoryFilter !== "all" ? ` — ${categoryFilter} only` : ""}
-            </p>
-          </div>
-          <Badge variant="outline" className="shrink-0">{quarterFilter !== "all" ? `Q${quarterFilter}` : t("twelveMonths")}</Badge>
-        </div>
-        <div className="h-[22rem] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trendChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
-              <YAxis axisLine={false} tickLine={false} className="text-xs" />
-              <ReTooltip
-                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
-                contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-              {(categoryFilter === "all" || categoryFilter === "employer") && (
-                <>
-                  <Line type="monotone" dataKey="Employer Target" name={t("employerTargetSeries")} stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Employer Achieved" name={t("employerAchievedSeries")} stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
-                </>
-              )}
-              {(categoryFilter === "all" || categoryFilter === "employee") && (
-                <>
-                  <Line type="monotone" dataKey="Employee Target" name={t("employeeTargetSeries")} stroke="#c4b5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Employee Achieved" name={t("employeeAchievedSeries")} stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} />
-                </>
-              )}
-              {(categoryFilter === "all" || categoryFilter === "finance") && (
-                <>
-                  <Line type="monotone" dataKey="Finance Target (K)" name={t("financeTargetKSeries")} stroke="#fde68a" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="Finance Achieved (K)" name={t("financeAchievedKSeries")} stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
-                </>
-              )}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* ═══════ Business Volume ═══════ */}
-      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="heading-section font-semibold tracking-tight">{t("businessVolumeTitle", { year: yearFilter })}</h2>
-            <p className="text-sm text-muted-foreground">{t("monthlyRevenueThousands")}{quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}</p>
-          </div>
-          <CircleDollarSign className="h-5 w-5 text-primary" />
-        </div>
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={businessVolumeChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
-              <defs>
-                <linearGradient id="adminGradApproved" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="adminGradPending" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
-              <YAxis axisLine={false} tickLine={false} className="text-xs" unit="K" />
-              <ReTooltip
-                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
-                contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
-                formatter={(value) => [`${value}K`, ""]}
-              />
-              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-              <Area type="monotone" dataKey="Approved" name={t("approvedSeries")} stackId="1" stroke="#10b981" strokeWidth={2.5} fill="url(#adminGradApproved)" />
-              <Area type="monotone" dataKey="Pending" name={t("pendingSeries")} stackId="1" stroke="#f59e0b" strokeWidth={2} fill="url(#adminGradPending)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* ═══════ Year-over-Year ═══════ */}
-      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="heading-section font-semibold tracking-tight">{t("yearOverYearComparison")}</h2>
-            <p className="text-sm text-muted-foreground">{t("yearsComparison", { prevYear: data.yearOverYear.previousYear.year, currYear: data.yearOverYear.currentYear.year })}</p>
+          <div className="grid gap-6 xl:grid-cols-12">
+            <div className="workspace-panel-surface h-80 animate-pulse rounded-3xl xl:col-span-7" />
+            <div className="workspace-panel-surface h-80 animate-pulse rounded-3xl xl:col-span-5" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {([
-            { id: "empTarget", label: t("yoyEmployerTarget"), curr: data.yearOverYear.currentYear.employerTarget, prev: data.yearOverYear.previousYear.employerTarget, growth: data.yearOverYear.growth.employerTarget },
-            { id: "empAchieved", label: t("yoyEmployerAchieved"), curr: data.yearOverYear.currentYear.employerAchieved, prev: data.yearOverYear.previousYear.employerAchieved, growth: data.yearOverYear.growth.employerAchieved },
-            { id: "emplTarget", label: t("yoyEmployeeTarget"), curr: data.yearOverYear.currentYear.employeeTarget, prev: data.yearOverYear.previousYear.employeeTarget, growth: data.yearOverYear.growth.employeeTarget },
-            { id: "emplAchieved", label: t("yoyEmployeeAchieved"), curr: data.yearOverYear.currentYear.employeeAchieved, prev: data.yearOverYear.previousYear.employeeAchieved, growth: data.yearOverYear.growth.employeeAchieved },
-            { id: "finTarget", label: t("yoyFinanceTarget"), curr: data.yearOverYear.currentYear.financeTarget, prev: data.yearOverYear.previousYear.financeTarget, growth: data.yearOverYear.growth.financeTarget, isCurrency: true },
-            { id: "finAchieved", label: t("yoyFinanceAchieved"), curr: data.yearOverYear.currentYear.financeAchieved, prev: data.yearOverYear.previousYear.financeAchieved, growth: data.yearOverYear.growth.financeAchieved, isCurrency: true },
-          ] as const).map((item) => (
-            <div key={item.id} className="rounded-xl border border-border/50 text-center chip-pad">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
-              <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr) : formatCount(item.curr)}</p>
-              <p className="text-xs text-muted-foreground">{t("previousValue", { value: "isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : formatCount(item.prev) })}</p>
-              <GrowthIndicator value={item.growth} />
-            </div>
-          ))}
+      ) : (
+        <div className={`space-y-6 transition-opacity ${isFetching ? "opacity-60" : ""}`} aria-busy={isFetching}>
+          <ReportKpiGrid kpis={kpis} ariaLabel={t("a11yTotals")} />
+
+          <div className="grid gap-6 xl:grid-cols-12">
+            <TargetProgressChart
+              className="xl:col-span-7"
+              monthly={data.monthly}
+              year={data.year}
+              currency={data.totals.finance.currency}
+              locale={locale}
+            />
+            <BehindPaceList
+              className="xl:col-span-5"
+              people={data.people}
+              year={data.year}
+              expectedProgress={data.expectedProgress}
+              locale={locale}
+            />
+          </div>
+
+          <TargetPeopleTable people={data.people} year={data.year} locale={locale} />
         </div>
-      </section>
-
-      {/* ═══════ Quarterly Breakdown ═══════ */}
-      <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="heading-section font-semibold tracking-tight">{t("quarterlyBreakdownTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("quarterlyBreakdownDescription")}</p>
-          </div>
-          <Badge variant="outline">{t("quarterCount")}</Badge>
-        </div>
-        <div className="h-[18rem] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.quarterlyBreakdown.map((q) => ({ name: q.label, Employer: q.employerAchieved, Employee: q.employeeAchieved, "Revenue (K)": Math.round(q.financeAchieved / 1000), "Volume (K)": Math.round(q.businessVolume / 1000) }))} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
-              <YAxis axisLine={false} tickLine={false} className="text-xs" />
-              <ReTooltip
-                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
-                contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-              <Bar dataKey="Employer" name={t("employerBarSeries")} fill="#3b82f6" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="Employee" name={t("employeeBarSeries")} fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="Revenue (K)" name={t("revenueKSeries")} fill="#f59e0b" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="Volume (K)" name={t("volumeKSeries")} fill="#10b981" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* ═══════ Supervisor Table ═══════ */}
-      {(roleFilter === "all" || roleFilter === "supervisors") && filteredProfiles.supervisors.length > 0 && (
-        <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight">{t("supervisorPerformance")}</h2>
-              <p className="text-sm text-muted-foreground">{t("supervisorPerformanceDesc", { count: filteredProfiles.supervisors.length })}</p>
-            </div>
-            <Users className="h-5 w-5 text-primary" />
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-border/50">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">#</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">{t("supervisor")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">{t("region")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("employer")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("employee")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("finance")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("overall")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("risk")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProfiles.supervisors.length > 0 && <TableRow><TableCell colSpan={8} className="py-3 px-4 text-xs text-muted-foreground text-center">{t("showingOf", { shown: Math.min(20, filteredProfiles.supervisors.length), total: filteredProfiles.supervisors.length })}</TableCell></TableRow>}
-                {filteredProfiles.supervisors.slice(0, 20).map((row, i) => (
-                  <TableRow key={row._id}>
-                    <TableCell className="text-sm font-bold tabular-nums">{i + 1}</TableCell>
-                    <TableCell>
-                      <p className="font-medium">{row.assigneeName}</p>
-                      <p className="text-xs text-muted-foreground">{row.assigneeEmail}</p>
-                    </TableCell>
-                    <TableCell className="text-sm">{row.region || "—"}</TableCell>
-                    <TableCell className="text-center tabular-nums">{row.employerAchieved}/{row.employerTarget}</TableCell>
-                    <TableCell className="text-center tabular-nums">{row.employeeAchieved}/{row.employeeTarget}</TableCell>
-                    <TableCell className="text-center tabular-nums">{formatCurrency(row.financeAchieved)}</TableCell>
-                    <TableCell className="text-center">
-                      <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[11px]">{row.riskScore}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
-      )}
-
-      {(roleFilter === "all" || roleFilter === "supervisors") && filteredProfiles.supervisors.length === 0 && (
-        <EmptyState title={t("noSupervisorsFound")} description={t("adjustFiltersOrSearch")} icon={Users} />
-      )}
-
-      {/* ═══════ Agent Table ═══════ */}
-      {(roleFilter === "all" || roleFilter === "agents") && filteredProfiles.agents.length > 0 && (
-        <section className="workspace-panel-surface rounded-2xl print:break-inside-avoid panel-body">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight">{t("agentPerformance")}</h2>
-              <p className="text-sm text-muted-foreground">{t("agentPerformanceDesc", { count: filteredProfiles.agents.length })}</p>
-            </div>
-            <Users className="h-5 w-5 text-primary" />
-          </div>
-          <div className="overflow-x-auto rounded-xl border border-border/50">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">#</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">{t("agent")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("employer")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("employee")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("finance")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("overall")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("risk")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProfiles.agents.length > 0 && <TableRow><TableCell colSpan={7} className="py-3 px-4 text-xs text-muted-foreground text-center">{t("showingOf", { shown: Math.min(30, filteredProfiles.agents.length), total: filteredProfiles.agents.length })}</TableCell></TableRow>}
-                {filteredProfiles.agents.slice(0, 30).map((row, i) => (
-                  <TableRow key={row._id}>
-                    <TableCell className="text-sm font-bold tabular-nums">{i + 1}</TableCell>
-                    <TableCell>
-                      <p className="font-medium">{row.assigneeName}</p>
-                      <p className="text-xs text-muted-foreground">{row.assigneeEmail}</p>
-                    </TableCell>
-                    <TableCell className="text-center tabular-nums">{row.employerAchieved}/{row.employerTarget}</TableCell>
-                    <TableCell className="text-center tabular-nums">{row.employeeAchieved}/{row.employeeTarget}</TableCell>
-                    <TableCell className="text-center tabular-nums">{formatCurrency(row.financeAchieved)}</TableCell>
-                    <TableCell className="text-center">
-                      <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[11px]">{row.riskScore}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
-      )}
-
-      {(roleFilter === "all" || roleFilter === "agents") && filteredProfiles.agents.length === 0 && (
-        <EmptyState title={t("noAgentsFound")} description={t("adjustFiltersOrSearch")} icon={Users} />
       )}
     </div>
   );

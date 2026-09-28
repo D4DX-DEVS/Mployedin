@@ -19,6 +19,7 @@ import {
   Search, MapPin, Users, Briefcase,
   RotateCcw, Inbox, CheckCircle2,
 } from "lucide-react";
+import { userInitials } from "@/components/shared/UserAvatar";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -187,11 +188,11 @@ export default function CompaniesListPage() {
                 className="group flex h-full flex-col rounded-2xl border border-border/70 bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted text-lg font-bold text-muted-foreground">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-primary/10 text-sm font-semibold text-primary">
                     {c.logo ? (
-                      <img src={c.logo} alt={c.companyName} className="h-full w-full object-cover" />
+                      <img src={c.logo} alt={c.companyName} className="h-full w-full bg-card object-contain p-1.5" />
                     ) : (
-                      c.companyName.charAt(0).toUpperCase()
+                      userInitials(c.companyName)
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

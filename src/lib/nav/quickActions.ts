@@ -127,15 +127,6 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
       permission: { resource: "targets", action: "create" },
     },
     {
-      key: "createStaticPage",
-      href: "/admin/cms/static-pages/new",
-      icon: "ScrollText",
-      labelKey: "createStaticPage",
-      descriptionKey: "createStaticPageDesc",
-      create: true,
-      permission: { resource: "cms", action: "create" },
-    },
-    {
       key: "bulkImport",
       href: "/admin/bulk-import",
       icon: "Upload",

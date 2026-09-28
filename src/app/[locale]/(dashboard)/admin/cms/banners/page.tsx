@@ -14,7 +14,6 @@ export default function BannersAdminPage() {
     { name: "subtitle", label: t("subtitleEnglish"), type: "text", placeholder: t("supportingText") },
     { name: "subtitleAr", label: t("subtitleArabic"), type: "text", placeholder: t("supportingTextAr") },
     { name: "image", label: t("imageUrl"), type: "text", required: true, placeholder: "https://..." },
-    { name: "imageMobile", label: t("mobileImageUrl"), type: "text", placeholder: "https://... (optional)" },
     { name: "linkUrl", label: t("linkUrl"), type: "text", placeholder: "https://..." },
     { name: "linkText", label: t("linkTextEnglish"), type: "text", placeholder: t("learnMore") },
     { name: "linkTextAr", label: t("linkTextArabic"), type: "text", placeholder: t("learnMoreAr") },
@@ -31,7 +30,7 @@ export default function BannersAdminPage() {
   ];
 
   const COLUMNS = [
-    { key: "title", label: t("title") },
+    { key: "title", label: t("title"), sortable: true },
     {
       key: "image",
       label: t("image"),
@@ -42,12 +41,13 @@ export default function BannersAdminPage() {
           <span className="text-muted-foreground">—</span>
         ),
     },
-    { key: "sortOrder", label: t("order") },
+    { key: "sortOrder", label: t("order"), sortable: true },
     { key: "isActive", label: t("status") },
   ];
 
   return (
     <CmsPage
+      defaultSort={{ by: "sortOrder", order: "asc" }}
       apiUrl="/api/admin/cms/banners"
       title={t("banners")}
       description={t("manageBanners")}

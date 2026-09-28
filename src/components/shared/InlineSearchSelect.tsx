@@ -23,6 +23,8 @@ interface InlineSearchSelectProps {
   className?: string;
   /** Show the search box. Defaults to lists longer than four options. */
   searchable?: boolean;
+  /** Put on the trigger so a form `<Label htmlFor>` can name it. */
+  id?: string;
 }
 
 export function InlineSearchSelect({
@@ -34,6 +36,7 @@ export function InlineSearchSelect({
   loading = false,
   className,
   searchable,
+  id,
 }: InlineSearchSelectProps) {
   const t = useTranslations("inlineSearchSelect");
   const [open, setOpen] = useState(false);
@@ -64,6 +67,7 @@ export function InlineSearchSelect({
     <Popover open={open} onOpenChange={handleOpenChange} modal>
       <PopoverTrigger asChild>
         <button
+          id={id}
           type="button"
           disabled={disabled}
           // Long option names can outrun the trigger; hover shows the full label.

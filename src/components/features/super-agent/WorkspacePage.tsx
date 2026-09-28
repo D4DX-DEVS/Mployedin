@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardPageHeader, type DashboardHeaderMetric } from "@/components/shared/DashboardPageHeader";
 
@@ -103,7 +102,6 @@ export function SuperAgentPageIntro({
 
   return (
     <DashboardPageHeader
-      icon={Sparkles}
       eyebrow={eyebrow}
       title={title}
       description={description}

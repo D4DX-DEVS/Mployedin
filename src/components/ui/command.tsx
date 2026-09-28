@@ -31,6 +31,8 @@ const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
       <DialogContent
         hideClose
         mobileSheet={false}
+        /* A search palette holds nothing worth protecting; clicking away dismisses it. */
+        closeOnOutsideClick
         overlayClassName="bg-foreground/20 backdrop-blur-[6px]"
         className="command-dialog overflow-hidden rounded-2xl border-border/80 bg-background p-0 shadow-2xl shadow-foreground/10 sm:max-w-[34rem]"
       >

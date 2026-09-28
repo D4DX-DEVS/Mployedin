@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ArrowLeft, Loader2, AlertCircle, Save, Eye, Code } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Save, Eye, Code, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { legalPageBySlug } from "@/lib/cms/legalPages";
 
 export default function EditStaticPage() {
   const { id, locale } = useParams<{ id: string; locale: string }>();
@@ -62,7 +63,7 @@ export default function EditStaticPage() {
       const r = await fetch(`/api/admin/cms/static-pages/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, title, titleAr, body, bodyAr, isActive: isActive === "true" }),
+        body: JSON.stringify({ title, titleAr, body, bodyAr, isActive: isActive === "true" }),
       });
       if (!r.ok) {
         const d = await r.json();
@@ -115,18 +116,22 @@ export default function EditStaticPage() {
         <section className="workspace-panel-surface rounded-3xl panel-body">
           <h2 className="heading-section font-semibold tracking-tight">{t("basicInformationHeading")}</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
+            {/* Locked: the public route reads the page by this slug. */}
             <div className="field">
-              <Label htmlFor="slug">
-                {t("slugLabel")} <span className="text-destructive">{t("required")}</span>
-              </Label>
-              <Input
-                id="slug"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                required
-                placeholder={t("slugPlaceholder")}
-                className="h-11"
-              />
+              <Label htmlFor="slug">{t("slugLabel")}</Label>
+              <div className="relative">
+                <Input
+                  id="slug"
+                  value={slug}
+                  readOnly
+                  aria-describedby="slug-hint"
+                  className="h-11 bg-muted/40 pe-10 text-muted-foreground"
+                />
+                <Lock className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              </div>
+              <p id="slug-hint" className="text-xs text-muted-foreground">
+                {t("slugLockedHint", { path: `/${locale}${legalPageBySlug(slug)?.path ?? ""}` })}
+              </p>
             </div>
             <div className="field">
               <Label htmlFor="isActive">{t("statusLabel")}</Label>

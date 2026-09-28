@@ -168,25 +168,41 @@ export function SnapshotSkeleton({ label }: { label: string }) {
   );
 }
 
-/* ── Recruitment: pipeline bars, stat rows, funnel blocks ─────────────────── */
+/* ── Hiring funnel: four stage bars beside three speed tiles ──────────────── */
 
-function FunnelBlock() {
+const FUNNEL_BAR_WIDTHS = ["w-full", "w-2/5", "w-1/5", "w-[12%]"];
+
+export function FunnelSkeleton({ label }: { label: string }) {
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2 [flex-wrap:nowrap]">
-        <Skeleton className="h-3 w-32" />
-        <Skeleton className="h-4 w-12 shrink-0" />
+    <SectionShell label={label}>
+      <div className="mt-3 grid items-stretch gap-2.5 sm:mt-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <CardShell className="sm:p-4">
+          <Skeleton className="h-3 w-64 max-w-full" />
+          <div className="mt-3 flex flex-1 flex-col justify-between gap-2.5">
+            {FUNNEL_BAR_WIDTHS.map((width) => (
+              <div key={width} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+                <Skeleton className="h-4 w-24 max-w-full" />
+                <Skeleton className={`h-5 rounded-e ${width}`} />
+              </div>
+            ))}
+          </div>
+        </CardShell>
+        <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1">
+          {Array.from({ length: 3 }, (_, tile) => (
+            <Skeleton key={tile} className="h-12 w-full rounded-xl sm:h-20" />
+          ))}
+        </div>
       </div>
-      <Skeleton className="mt-1 h-2 w-full rounded-full" />
-      <Skeleton className="mt-1 h-3 w-40 max-w-full" />
-    </div>
+    </SectionShell>
   );
 }
+
+/* ── Recruitment: pipeline bars beside job-health stat rows ───────────────── */
 
 export function RecruitmentSkeleton({ label }: { label: string }) {
   return (
     <SectionShell label={label}>
-      <div className="mt-2.5 grid items-stretch gap-2.5 sm:mt-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-2.5 grid items-stretch gap-2.5 sm:mt-3 md:grid-cols-2">
         <CardShell>
           <CardHead />
           <div className="mt-2 flex flex-1 flex-col justify-between">
@@ -201,18 +217,6 @@ export function RecruitmentSkeleton({ label }: { label: string }) {
             {Array.from({ length: 5 }, (_, row) => (
               <StatRow key={row} />
             ))}
-          </div>
-        </CardShell>
-        <CardShell className="md:col-span-2 xl:col-span-1">
-          <CardHead />
-          <div className="mt-2 flex flex-1 flex-col gap-2">
-            <FunnelBlock />
-            <FunnelBlock />
-            <FunnelBlock />
-          </div>
-          <div className="grid grid-cols-2 gap-2 pt-3">
-            <Skeleton className="h-14 w-full rounded-lg" />
-            <Skeleton className="h-14 w-full rounded-lg" />
           </div>
         </CardShell>
       </div>

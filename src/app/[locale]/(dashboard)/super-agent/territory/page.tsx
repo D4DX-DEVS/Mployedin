@@ -37,6 +37,7 @@ export default function SuperAgentTerritoryPage() {
   const t = useTranslations("superAgentTerritory");
   const tc = useTranslations("common");
   const [regions, setRegions] = useState<TerritoryRegion[]>([]);
+  const [territoryName, setTerritoryName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<TerritoryStats>({ totalRegions: 0, totalAgents: 0, totalEmployers: 0, totalJobs: 0 });
 
@@ -47,6 +48,7 @@ export default function SuperAgentTerritoryPage() {
       if (res.ok) {
         const data = await res.json();
         setRegions(data.regions ?? []);
+        setTerritoryName(data.territoryName ?? null);
         if (data.stats) setStats(data.stats);
       }
     } catch {
@@ -119,7 +121,7 @@ export default function SuperAgentTerritoryPage() {
 
       {/* Territory Grid */}
       <SuperAgentSection
-        title={t("sectionTitle")}
+        title={territoryName ?? t("sectionTitle")}
         description={t("sectionDescription", { count: regions.length })}
         actions={
           regions.length > 0 ? (

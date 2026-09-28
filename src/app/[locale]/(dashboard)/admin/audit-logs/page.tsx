@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -115,6 +116,9 @@ export default function AuditLogsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
+  const changeSortOrder = (next: "asc" | "desc") => { setSortOrder(next); resetPage(); };
 
   useEffect(() => { document.title = `${t("auditLogs")} · MPLOYEDIN`; }, [t]);
 
@@ -188,6 +192,7 @@ export default function AuditLogsPage() {
       if (country) params.set("country", country);
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
+      params.set("sortOrder", sortOrder);
       const res = await fetch(`/api/admin/audit-logs?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -202,7 +207,7 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [actorSearch, actorRole, resource, action, country, fromDate, toDate, page, limit, t]);
+  }, [actorSearch, actorRole, resource, action, country, fromDate, toDate, sortOrder, page, limit, t]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -220,6 +225,17 @@ export default function AuditLogsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
         hasActiveFilters={resource !== "all" || !!action || !!country || !!fromDate || !!toDate || !!actorSearch || actorRole !== "all"}
+        // The log has one order, time; the field list only names it, the button flips it.
+        right={(
+          <TableSortControl
+            value="createdAt"
+            onValueChange={() => undefined}
+            options={[{ value: "createdAt", label: t("timestamp") }]}
+            order={sortOrder}
+            onOrderChange={changeSortOrder}
+            compact
+          />
+        )}
         filterContent={
           <div className="flex gap-3 flex-wrap items-center">
             <div className="relative">
@@ -306,7 +322,9 @@ export default function AuditLogsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
               <tr>
-                <th className="text-start px-4 py-3">{t("timestamp")}</th>
+                <th className="text-start px-4 py-3">
+                  <SortableTableHeader label={t("timestamp")} active order={sortOrder} onClick={() => changeSortOrder(sortOrder === "asc" ? "desc" : "asc")} />
+                </th>
                 <th className="text-start px-4 py-3">{t("actor")}</th>
                 <th className="text-start px-4 py-3">{t("action")}</th>
                 <th className="text-start px-4 py-3">{t("resource")}</th>

@@ -9,7 +9,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
@@ -19,12 +18,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, Globe } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, Globe } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { TableSortControl } from "@/components/shared/TableSortControl";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 
 interface CountryItem {
   _id: string;
@@ -76,7 +77,6 @@ export default function CountriesPage() {
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "code", "sortOrder"] });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
   const order = sortOrder === "desc" ? "desc" : "asc";
-  const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<CountryItem | null>(null);
@@ -164,6 +164,32 @@ export default function CountriesPage() {
     fetchItems();
   };
 
+  const rowActionsFor = (item: CountryItem): { quick: RowAction[]; menu: RowAction[] } => {
+    // Edit is the everyday action: a labelled button. Delete stays in "…".
+    const quick: RowAction[] = [];
+    const menu: RowAction[] = [];
+    if (can("location_data", "update")) {
+      quick.push({
+        key: "edit",
+        label: t("edit"),
+        icon: Pencil,
+        iconOnly: true,
+        onSelect: () => setEditItem(item),
+      });
+    }
+    if (can("location_data", "delete")) {
+      menu.push({
+        key: "delete",
+        label: t("delete"),
+        icon: Trash2,
+        iconOnly: true,
+        onSelect: () => handleDelete(item._id),
+        destructive: true,
+      });
+    }
+    return { quick, menu };
+  };
+
   return (
     <div className="page-container">
       <PlatformDataTabs />
@@ -178,80 +204,53 @@ export default function CountriesPage() {
         title={t("countriesTitle")}
         description={t("countriesSubtitle")}
         actions={
-          <>
+          can("location_data", "create") && (
             <Button
-              type="button"
-              variant="outline"
+              onClick={() => setShowAdd(true)}
               size="sm"
-              onClick={() => setShowFilters((v) => !v)}
-              aria-label={t("filter")}
-              className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium shrink-0 ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
+              aria-label={t("addNew")}
+              className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("filter")}</span>
-              {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">!</span>}
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("addNew")}</span>
             </Button>
-            {can("location_data", "create") && (
-              <Button
-                onClick={() => setShowAdd(true)}
-                size="sm"
-                aria-label={t("addNew")}
-                className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("addNew")}</span>
-              </Button>
-            )}
-          </>
+          )
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        <div className="border-b border-border/80 panel-head">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input aria-label={t("searchCountries")}
-              id="admin-countries-search"
-              placeholder={t("searchCountries")}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none"
-            />
-            </div>
-            <TableSortControl value={sortBy} onValueChange={(value) => { setSortBy(value); resetPage(); }} order={order} onOrderChange={(value) => { setSortOrder(value); resetPage(); }} options={[{ value: "sortOrder", label: t("sortOrder") }, { value: "name", label: t("countryNameEn") }, { value: "nameAr", label: t("countryNameAr") }, { value: "code", label: t("shortName") }]} compact />
-          </div>
-        </div>
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); resetPage(); } : undefined}
+        clearLabel={t("clear")}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearch(v); resetPage(); }}
+          placeholder={t("searchCountries")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("all") },
+            { value: "active", label: t("active") },
+            { value: "inactive", label: t("inactive") },
+          ]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={t("status")}
+        />
+        {/* Sorting lives here as well as on the column heads: phone cards have no heads. */}
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={[{ value: "sortOrder", label: t("sortOrder") }, { value: "name", label: t("countryNameEn") }, { value: "nameAr", label: t("countryNameAr") }, { value: "code", label: t("shortName") }]}
+          order={order}
+          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+          className="shrink-0"
+        />
+      </InlineFilterBar>
 
-        {/* Collapsible filter panel: stacked on mobile */}
-        {showFilters && (
-          <div className="grid gap-2 bg-secondary/30 sm:gap-3 sm:flex sm:flex-wrap sm:items-center panel-head">
-            <label htmlFor="admin-countries-status" className="text-xs font-medium text-muted-foreground">{t("status")}</label>
-            <SearchableSelect
-              id="admin-countries-status"
-              className="h-9 w-full rounded-lg border-border bg-card text-sm sm:w-[140px] sm:h-8"
-              options={[
-                { value: "all", label: t("all") },
-                { value: "active", label: t("active") },
-                { value: "inactive", label: t("inactive") },
-              ]}
-              value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder={t("status")}
-            />
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
-                className="h-9 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground sm:h-8"
-              >
-                <RotateCcw className="h-3 w-3" /> {t("clear")}
-              </Button>
-            )}
-          </div>
-        )}
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
 
         {/* Table: semantic table with responsive-card-table */}
         <div className="overflow-x-auto" data-mobile-table="responsive">
@@ -264,8 +263,10 @@ export default function CountriesPage() {
                 <TableHead data-label={t("currency")} className="hidden lg:table-cell">{t("currency")}</TableHead>
                 <TableHead data-label={t("currencyCode")} className="hidden lg:table-cell">{t("currencyCode")}</TableHead>
                 <TableHead data-label={t("currencySymbol")} className="hidden xl:table-cell">{t("currencySymbol")}</TableHead>
-                <TableHead data-label={t("thousandSep")} className="hidden xl:table-cell">{t("thousandSep")}</TableHead>
-                <TableHead data-label={t("decimalSep")} className="hidden xl:table-cell">{t("decimalSep")}</TableHead>
+                {/* Separators only matter when editing; below 2xl they give way so
+                    Actions stays on screen. */}
+                <TableHead data-label={t("thousandSep")} className="hidden 2xl:table-cell">{t("thousandSep")}</TableHead>
+                <TableHead data-label={t("decimalSep")} className="hidden 2xl:table-cell">{t("decimalSep")}</TableHead>
                 <TableHead data-label={t("status")}>{t("status")}</TableHead>
                 {(can("location_data", "update") || can("location_data", "delete")) && (
                   <TableHead className="text-right" data-label={t("actions")}>{t("actions")}</TableHead>
@@ -302,25 +303,12 @@ export default function CountriesPage() {
                     <TableCell className="text-muted-foreground hidden lg:table-cell">{item.currency || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden lg:table-cell">{item.currencyCode || "—"}</TableCell>
                     <TableCell className="text-muted-foreground hidden xl:table-cell">{item.currencySymbol || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground hidden xl:table-cell">{item.thousandSeparator || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground hidden xl:table-cell">{item.decimalSeparator || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden 2xl:table-cell">{item.thousandSeparator || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground hidden 2xl:table-cell">{item.decimalSeparator || "—"}</TableCell>
                     <TableCell className="text-center"><StatusBadge status={item.isActive ? "active" : "inactive"} /></TableCell>
                     {(can("location_data", "update") || can("location_data", "delete")) && (
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {can("location_data", "update") && (
-                            <Button variant="ghost" size="sm" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
-                              <Pencil className="h-3.5 w-3.5 text-primary" />
-                              <span>{t("edit")}</span>
-                            </Button>
-                          )}
-                          {can("location_data", "delete") && (
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              <span>{t("delete")}</span>
-                            </Button>
-                          )}
-                        </div>
+                      <TableCell>
+                        <RowActions name={item.name} labelsFrom="wide" {...rowActionsFor(item)} />
                       </TableCell>
                     )}
                   </TableRow>
@@ -329,11 +317,9 @@ export default function CountriesPage() {
             </TableBody>
           </Table>
         </div>
-
-        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </section>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       <CrudModal
         open={showAdd}

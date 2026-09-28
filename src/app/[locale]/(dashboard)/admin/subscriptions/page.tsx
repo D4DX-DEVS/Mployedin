@@ -21,6 +21,7 @@ import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { useSubscriptionPlans, type SubscriptionPlanItem } from "@/hooks/useSubscriptionPlans";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -128,6 +129,31 @@ export default function AdminSubscriptionsPage() {
   const overview = stats?.overview;
   const expiringSoonCount = stats?.expiringSoonCount ?? stats?.expiringSoon?.length ?? 0;
 
+  const viewTabs = (
+    <div className="flex gap-2">
+      <Button
+        size="sm"
+        variant={activeTab === "table" ? "default" : "outline"}
+        className={activeTab === "table" ? "bg-primary hover:bg-primary/90" : ""}
+        aria-pressed={activeTab === "table"}
+        onClick={() => setActiveTab("table")}
+      >
+        <Users className="h-3.5 w-3.5 mr-1.5" />
+        {t("allSubscribersTab")}
+      </Button>
+      <Button
+        size="sm"
+        variant={activeTab === "manage" ? "default" : "outline"}
+        className={activeTab === "manage" ? "bg-primary hover:bg-primary/90" : ""}
+        aria-pressed={activeTab === "manage"}
+        onClick={() => setActiveTab("manage")}
+      >
+        <Search className="h-3.5 w-3.5 mr-1.5" />
+        {t("searchManageTab")}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="page-container">
       <PageHero
@@ -158,34 +184,13 @@ export default function AdminSubscriptionsPage() {
         ))}
       </div>
 
-      {/* ── Tab Switcher ── */}
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant={activeTab === "table" ? "default" : "outline"}
-          className={activeTab === "table" ? "bg-primary hover:bg-primary/90" : ""}
-          onClick={() => setActiveTab("table")}
-        >
-          <Users className="h-3.5 w-3.5 mr-1.5" />
-          {t("allSubscribersTab")}
-        </Button>
-        <Button
-          size="sm"
-          variant={activeTab === "manage" ? "default" : "outline"}
-          className={activeTab === "manage" ? "bg-primary hover:bg-primary/90" : ""}
-          onClick={() => setActiveTab("manage")}
-        >
-          <Search className="h-3.5 w-3.5 mr-1.5" />
-          {t("searchManageTab")}
-        </Button>
-      </div>
-
-      {/* ── All Subscribers Table ── */}
-      {activeTab === "table" && <SubscribersTable />}
+      {/* ── All Subscribers Table (renders the tab switcher inline with its role toggle) ── */}
+      {activeTab === "table" && <SubscribersTable viewTabs={viewTabs} />}
 
       {/* ── Search & Manage (existing flow) ── */}
       {activeTab === "manage" && (
         <>
+          {viewTabs}
           <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
             <h3 className="heading-label font-semibold text-muted-foreground uppercase tracking-wider">
               {t("searchUserLabel")}
@@ -236,12 +241,20 @@ export default function AdminSubscriptionsPage() {
 
 // ── Subscribers Table ────────────────────────────────────────────────────────
 
-function SubscribersTable() {
+function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
   const t = useTranslations("adminSubscriptions");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [filters, setFilters] = useState<AdminSubscriptionsFilters>({
     sortBy: "createdAt", sortOrder: "desc",
   });
+  const sortBy = filters.sortBy ?? "createdAt";
+  const sortOrder: "asc" | "desc" = filters.sortOrder === "asc" ? "asc" : "desc";
+  const setSort = (by: string, order: "asc" | "desc") => {
+    setFilters((f) => ({ ...f, sortBy: by, sortOrder: order }));
+    resetPage();
+  };
+  /** Same column flips it; a new one starts latest first. */
+  const sortByColumn = (field: string) => setSort(field, field === sortBy && sortOrder === "desc" ? "asc" : "desc");
   const [searchInput, setSearchInput] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -312,8 +325,10 @@ function SubscribersTable() {
 
   return (
     <section className="space-y-4">
-      {/* ── Role Toggle ── */}
-      <div className="flex gap-2">
+      {/* ── View tabs + Role Toggle, one row ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        {viewTabs}
+        <span aria-hidden="true" className="mx-1 hidden h-6 w-px bg-border lg:block" />
         {([
           { value: undefined, label: t("allRoleOption"), icon: Users },
           { value: "employer", label: t("employersRoleOption"), icon: Briefcase },
@@ -321,8 +336,10 @@ function SubscribersTable() {
         ] as const).map((opt) => (
           <button
             key={opt.label}
+            type="button"
+            aria-pressed={filters.role === opt.value}
             onClick={() => { setFilters((f) => ({ ...f, role: opt.value, planId: undefined })); resetPage(); }}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
               filters.role === opt.value
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -454,9 +471,23 @@ function SubscribersTable() {
             </div>
           }
           right={
-            <span className="text-xs text-muted-foreground">
-              {total} {total !== 1 ? t("subscriberCountPlural") : t("subscriberCountLabel")}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {total} {total !== 1 ? t("subscriberCountPlural") : t("subscriberCountLabel")}
+              </span>
+              <TableSortControl
+                value={sortBy}
+                onValueChange={(value) => setSort(value, sortOrder)}
+                options={[
+                  { value: "createdAt", label: t("sortDateAdded") },
+                  { value: "startDate", label: t("tableHeaderStart") },
+                  { value: "endDate", label: t("tableHeaderEnd") },
+                ]}
+                order={sortOrder}
+                onOrderChange={(next) => setSort(sortBy, next)}
+                compact
+              />
+            </div>
           }
         />
 
@@ -471,8 +502,12 @@ function SubscribersTable() {
                 <th className="px-4 py-3 font-medium">{t("tableHeaderPlan")}</th>
                 <th className="px-4 py-3 font-medium">{t("tableHeaderPrice")}</th>
                 <th className="px-4 py-3 font-medium">{t("tableHeaderStatus")}</th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderStart")}</th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderEnd")}</th>
+                <th className="px-4 py-3 font-medium">
+                  <SortableTableHeader label={t("tableHeaderStart")} active={sortBy === "startDate"} order={sortOrder} onClick={() => sortByColumn("startDate")} />
+                </th>
+                <th className="px-4 py-3 font-medium">
+                  <SortableTableHeader label={t("tableHeaderEnd")} active={sortBy === "endDate"} order={sortOrder} onClick={() => sortByColumn("endDate")} />
+                </th>
                 <th className="px-4 py-3 font-medium">{t("tableHeaderAutoRenew")}</th>
                 <th className="px-4 py-3 font-medium">{t("tableHeaderDaysLeft")}</th>
               </tr>

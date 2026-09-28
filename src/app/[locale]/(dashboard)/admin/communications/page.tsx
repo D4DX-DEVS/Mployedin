@@ -44,6 +44,8 @@ interface BroadcastRecord {
   title: string;
   body: string;
   channels: string[];
+  /** Null on entries written before the count was recorded. */
+  recipientCount: number | null;
   createdAt: string;
 }
 
@@ -153,11 +155,33 @@ export default function AdminCommunicationsPage() {
     e.preventDefault();
     setError("");
     setSentCount(null);
+    const targetAll = form.targetRoles.includes("all");
+    const targetRoles = targetAll ? undefined : form.targetRoles;
+
+    // A broadcast cannot be recalled and defaults to every user, and Enter in
+    // the title field submits the form — so show who it reaches first.
+    let recipientCount: number | null = null;
+    try {
+      const countRes = await fetch(
+        `/api/admin/communications/audience${targetRoles ? `?roles=${encodeURIComponent(targetRoles.join(","))}` : ""}`
+      );
+      if (countRes.ok) recipientCount = ((await countRes.json()) as { count?: number }).count ?? null;
+    } catch {
+      // The dialog falls back to naming the audience.
+    }
+    const channels = form.channels.map((channel) => formatChannelLabel(channel)).join(", ");
+    const confirmed = await confirm({
+      title: tr("confirmSendTitle"),
+      message:
+        recipientCount === null
+          ? tr("confirmSendMessageNoCount", { title: form.title, audience: selectedAudience, channels })
+          : tr("confirmSendMessage", { title: form.title, count: recipientCount, channels }),
+      confirmLabel: tr("confirmSendAction"),
+    });
+    if (!confirmed) return;
+
     setSending(true);
     try {
-      const targetAll = form.targetRoles.includes("all");
-      const targetRoles = targetAll ? undefined : form.targetRoles;
-
       const res = await fetch("/api/admin/communications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -267,10 +291,11 @@ export default function AdminCommunicationsPage() {
   const selectedChannels = form.channels.length;
   const quickTemplates = templates.slice(0, 3);
 
+  // WhatsApp is not connected to broadcasts yet: shown, but not selectable.
   const CHANNEL_OPTIONS = [
-    { key: "in_app", label: tr("inAppChannel") },
-    { key: "email", label: tr("emailChannel") },
-    { key: "whatsapp", label: tr("whatsappChannel") },
+    { key: "in_app", label: tr("inAppChannel"), comingSoon: false },
+    { key: "email", label: tr("emailChannel"), comingSoon: false },
+    { key: "whatsapp", label: tr("whatsappChannel"), comingSoon: true },
   ] as const;
 
   const TABS = [
@@ -428,12 +453,29 @@ export default function AdminCommunicationsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {CHANNEL_OPTIONS.map((channel) => {
+                  if (channel.comingSoon) {
+                    return (
+                      <button
+                        key={channel.key}
+                        type="button"
+                        disabled
+                        aria-disabled="true"
+                        className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-dashed border-border bg-muted/40 px-3.5 py-2 text-sm font-medium text-muted-foreground"
+                      >
+                        {channel.label}
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                          {tr("comingSoon")}
+                        </span>
+                      </button>
+                    );
+                  }
                   const active = form.channels.includes(channel.key);
 
                   return (
                     <button
                       key={channel.key}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => toggleChannel(channel.key)}
                       className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${
                         active
@@ -797,15 +839,22 @@ export default function AdminCommunicationsPage() {
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{record.title}</h3>
-                      <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        {formatChannelLabel(record.channels?.[0] ?? "in_app")}
-                      </span>
+                      {(record.channels?.length ? record.channels : ["in_app"]).map((channel) => (
+                        <span key={channel} className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          {formatChannelLabel(channel)}
+                        </span>
+                      ))}
                     </div>
-                    <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{record.body}</p>
+                    {record.body ? (
+                      <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{record.body}</p>
+                    ) : null}
                   </div>
                   <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("sentLabel")}</p>
                     <p className="mt-2 font-medium text-foreground">{formatDateTime(new Date(record.createdAt))}</p>
+                    {record.recipientCount !== null ? (
+                      <p className="mt-1 text-xs text-muted-foreground">{tr("recipientsCount", { count: record.recipientCount })}</p>
+                    ) : null}
                   </div>
                 </div>
               </article>

@@ -179,7 +179,7 @@ describe("Super-agent commission approval (S1)", () => {
     expect(edited.status).toBe(200);
 
     currentDoc = commissionDoc({ status: "approved" });
-    const settled = await patch({ status: "paid" });
+    const settled = await patch({ status: "paid", paymentRef: "TRX-1" });
     expect(settled.status).toBe(200);
   });
 

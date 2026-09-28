@@ -14,6 +14,7 @@ import { BriefcaseBusiness, Handshake, Loader2, UserRoundSearch } from "lucide-r
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 import { REFERRAL_CODE_RE, REFERRAL_COOKIE_NAME } from "@/lib/referrals/url";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
+import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
 
 /** Deliberately permissive — the server and the verification email decide. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -171,10 +172,19 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    const cookieChoice = readCookieChoice();
     const res = await fetch("/api/auth/job-seeker-register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, ...(referralCode ? { referralCode } : {}) }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        ...(referralCode ? { referralCode } : {}),
+        // Recorded in the account's consent log (admin GDPR page).
+        termsAccepted: agreedToTerms,
+        ...(cookieChoice ? { cookieConsent: cookieChoice } : {}),
+      }),
     });
 
     const data = await res.json();

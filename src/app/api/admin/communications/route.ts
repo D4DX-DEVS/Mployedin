@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import Notification from "@/models/Notification";
+import AuditLog from "@/models/AuditLog";
 import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { communicationSchema } from "@/lib/validators/admin";
 import { inngest } from "@/lib/inngest/client";
+import { broadcastRecipientQuery } from "@/lib/communications/broadcastAudience";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
+
+/** What POST below writes into the audit entry of each broadcast. */
+interface BroadcastAuditMeta {
+  title?: string;
+  message?: string;
+  channels?: string[];
+  recipientCount?: number;
+  targetRoles?: string[] | "all";
+}
 
 async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   // The broadcast history is platform-wide with no scoping, and POST below is
@@ -19,19 +29,29 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();
-  const history = await Notification.find({ type: "system" })
+  // One audit entry per broadcast, written by POST below. This used to read
+  // `type: "system"` notifications, but every automated notice (review
+  // requests, invoice reminders, renewals) uses that type too, and a single
+  // broadcast writes one per recipient in batches of 50 — so the history
+  // listed reminders and receipts and never an actual broadcast.
+  const entries = await AuditLog.find({ action: "communication.broadcast" })
     .sort({ createdAt: -1 })
-    .limit(200)
-    .select("title body channels createdAt")
+    .limit(100)
+    .select("meta createdAt")
     .lean();
 
-  // Deduplicate by title+createdAt (one broadcast creates many per-user records)
-  const seen = new Set<string>();
-  const broadcasts = history.filter((n) => {
-    const key = `${n.title}:${String(n.createdAt)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  const broadcasts = entries.map((entry) => {
+    const meta = (entry.meta ?? {}) as BroadcastAuditMeta;
+    return {
+      _id: String(entry._id),
+      title: meta.title ?? "",
+      // Entries written before the message was recorded have none.
+      body: meta.message ?? "",
+      channels: meta.channels?.length ? meta.channels : ["in_app"],
+      recipientCount: typeof meta.recipientCount === "number" ? meta.recipientCount : null,
+      audience: meta.targetRoles ?? "all",
+      createdAt: entry.createdAt,
+    };
   });
 
   return NextResponse.json({ broadcasts });
@@ -58,11 +78,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // per-user notification + email fan-out is offloaded to Inngest so a
     // targetAll broadcast (100k+ users) never runs on the request path
     // (which would blow the serverless timeout + memory).
-    const userQuery: Record<string, unknown> = { isActive: true };
-    if (!targetAll && targetRoles && targetRoles.length > 0) {
-      userQuery.role = targetRoles.length === 1 ? targetRoles[0] : { $in: targetRoles };
-    }
-    const recipientCount = await User.countDocuments(userQuery);
+    const recipientCount = await User.countDocuments(broadcastRecipientQuery(Boolean(targetAll), targetRoles));
 
     await inngest.send({
       name: "admin/broadcast",
@@ -74,7 +90,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       actorRole: ctx.role,
       action: "communication.broadcast",
       resource: "notifications",
-      meta: { title, targetRoles: targetRoles ?? "all", recipientCount, channels: selectedChannels },
+      // The History tab is built from this entry, message included.
+      meta: { title, message, targetRoles: targetRoles ?? "all", recipientCount, channels: selectedChannels },
       req,
     });
 

@@ -17,6 +17,9 @@ import type { ITargetProfile, IMonthlyTarget } from "@/models/TargetProfile";
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+/** A profile without a currency predates the field; the schema default is AED. */
+const DEFAULT_TARGET_CURRENCY = "AED";
+
 interface DateRange {
   start: Date;
   end: Date;
@@ -99,17 +102,26 @@ async function calcEmployee(
   });
 }
 
+/** Commissions in `currency`. Legacy rows without one are AED, the schema default. */
+function commissionCurrencyMatch(currency: string) {
+  return currency === DEFAULT_TARGET_CURRENCY ? { $in: [DEFAULT_TARGET_CURRENCY, null] } : currency;
+}
+
 async function calcFinance(
   userId: string,
   role: "agent" | "super_agent",
   year: number,
-  month?: number
+  month?: number,
+  currency?: string
 ): Promise<number> {
   const { start, end } = getDateRange(year, month);
 
   // Recognition date = approvedAt ?? paidAt ?? createdAt (ASC-606-style: key on approval event date)
   const matchStage: Record<string, unknown> = {
     status: { $in: ["approved", "paid"] },
+    // A finance target is an amount in one currency; nothing converts, so a
+    // commission in another currency is not progress towards it.
+    ...(currency ? { currency: commissionCurrencyMatch(currency) } : {}),
     $expr: {
       $let: {
         vars: {
@@ -216,14 +228,15 @@ export interface EnrichedProfile {
 export async function calculateProfileAchievements(
   userId: string,
   role: "agent" | "super_agent",
-  year: number
+  year: number,
+  currency?: string
 ): Promise<AchievementResult> {
   await connectDB();
   const [employerAchieved, employeeAchieved, financeAchieved] =
     await Promise.all([
       calcEmployer(userId, role, year),
       calcEmployee(userId, role, year),
-      calcFinance(userId, role, year),
+      calcFinance(userId, role, year, undefined, currency),
     ]);
   return { employerAchieved, employeeAchieved, financeAchieved };
 }
@@ -236,7 +249,8 @@ export async function calculateMonthlyAchievements(
   userId: string,
   role: "agent" | "super_agent",
   year: number,
-  monthlyTargets: IMonthlyTarget[]
+  monthlyTargets: IMonthlyTarget[],
+  currency?: string
 ): Promise<MonthlyAchievement[]> {
   await connectDB();
 
@@ -252,7 +266,7 @@ export async function calculateMonthlyAchievements(
       const [ea, emA, fA] = await Promise.all([
         calcEmployer(userId, role, year, month),
         calcEmployee(userId, role, year, month),
-        calcFinance(userId, role, year, month),
+        calcFinance(userId, role, year, month, currency),
       ]);
       const ep = mt.employerTarget > 0 ? Math.min(Math.round((ea / mt.employerTarget) * 100), 999) : 0;
       const emp = mt.employeeTarget > 0 ? Math.min(Math.round((emA / mt.employeeTarget) * 100), 999) : 0;
@@ -305,6 +319,27 @@ export function calculateOverallTargetProgress(
   return Math.min(Math.round(totalProgress / activeCategories.length), 999);
 }
 
+/**
+ * Share of a year's target that should be done by `now`: all of a past year,
+ * none of a future one, and the months elapsed of the current one. Measuring
+ * every year against today's month marked a whole 2027 plan "high risk" in
+ * September 2026.
+ */
+export function expectedProgressPct(year: number, now: Date = new Date()): number {
+  const currentYear = now.getFullYear();
+  if (year < currentYear) return 100;
+  if (year > currentYear) return 0;
+  return Math.round(((now.getMonth() + 1) / 12) * 100);
+}
+
+/** More than 20 points under the expected share is high risk, more than 10 medium. */
+export function getRiskScore(overallProgress: number, year: number, now: Date = new Date()): "high" | "medium" | "low" {
+  const expected = expectedProgressPct(year, now);
+  if (overallProgress < expected - 20) return "high";
+  if (overallProgress < expected - 10) return "medium";
+  return "low";
+}
+
 export function getIncentiveTier(overallProgress: number): IncentiveTier {
   if (overallProgress >= 100) return "platinum";
   if (overallProgress >= 80) return "gold";
@@ -321,9 +356,10 @@ export async function enrichProfile(
   const year = profile.year as number;
   const monthlyTargets = (profile.monthlyTargets ?? []) as IMonthlyTarget[];
 
-  const achievements = await calculateProfileAchievements(userId, role, year);
+  const currency = (profile.currency as string | undefined) ?? DEFAULT_TARGET_CURRENCY;
+  const achievements = await calculateProfileAchievements(userId, role, year, currency);
   const monthlyAchievements = monthlyTargets.length > 0
-    ? await calculateMonthlyAchievements(userId, role, year, monthlyTargets)
+    ? await calculateMonthlyAchievements(userId, role, year, monthlyTargets, currency)
     : [];
 
   const empTarget = (profile.employerTarget as number) ?? 0;
@@ -339,13 +375,7 @@ export async function enrichProfile(
     { target: finTarget, progress: financeProgress },
   ]);
 
-  // Risk calculation
-  const currentMonth = new Date().getMonth() + 1;
-  const expectedPct = Math.round((currentMonth / 12) * 100);
-  const riskScore: "high" | "medium" | "low" =
-    overallProgress < expectedPct - 20 ? "high" :
-    overallProgress < expectedPct - 10 ? "medium" :
-    "low";
+  const riskScore = getRiskScore(overallProgress, year);
 
   return {
     _id: String(profile._id),
@@ -357,7 +387,7 @@ export async function enrichProfile(
     employerTarget: empTarget,
     employeeTarget: emplTarget,
     financeTarget: finTarget,
-    currency: (profile.currency as string) ?? "AED",
+    currency,
     distributionStrategy: (profile.distributionStrategy as string) ?? "equal",
     monthlyTargets,
     parentProfileId: profile.parentProfileId ? String(profile.parentProfileId) : undefined,
@@ -428,6 +458,7 @@ async function batchCalcEmployeeByMonth(
   return map;
 }
 
+/** Keyed `${agentDocId}:${currency}` so each profile reads only its own currency. */
 async function batchCalcFinanceByMonth(
   agentDocIds: string[],
   year: number
@@ -449,14 +480,23 @@ async function batchCalcFinanceByMonth(
         recognitionDate: { $gte: start, $lte: end }
       }
     },
-    { $group: { _id: { agentId: "$agentId", month: { $month: "$recognitionDate" } }, total: { $sum: "$amount" } } },
+    {
+      $group: {
+        _id: {
+          agentId: "$agentId",
+          month: { $month: "$recognitionDate" },
+          currency: { $ifNull: ["$currency", DEFAULT_TARGET_CURRENCY] },
+        },
+        total: { $sum: "$amount" },
+      },
+    },
   ]);
 
   const map = new Map<string, Map<number, number>>();
   for (const r of results) {
-    const agentId = String(r._id.agentId);
-    if (!map.has(agentId)) map.set(agentId, new Map());
-    map.get(agentId)!.set(r._id.month, r.total);
+    const key = `${String(r._id.agentId)}:${r._id.currency}`;
+    if (!map.has(key)) map.set(key, new Map());
+    map.get(key)!.set(r._id.month, r.total);
   }
   return map;
 }
@@ -508,7 +548,8 @@ export async function enrichProfiles(
 
     const empMonths = employerMap.get(agentDocId);
     const emplMonths = employeeMap.get(agentDocId);
-    const finMonths = financeMap.get(agentDocId);
+    const currency = (profile.currency as string | undefined) ?? DEFAULT_TARGET_CURRENCY;
+    const finMonths = financeMap.get(`${agentDocId}:${currency}`);
 
     const employerAchieved = sumAllMonths(empMonths);
     const employeeAchieved = sumAllMonths(emplMonths);
@@ -555,12 +596,7 @@ export async function enrichProfiles(
       };
     });
 
-    const currentMonth = new Date().getMonth() + 1;
-    const expectedPct = Math.round((currentMonth / 12) * 100);
-    const riskScore: "high" | "medium" | "low" =
-      overallProgress < expectedPct - 20 ? "high" :
-      overallProgress < expectedPct - 10 ? "medium" :
-      "low";
+    const riskScore = getRiskScore(overallProgress, year);
 
     return {
       _id: String(profile._id),
@@ -572,7 +608,7 @@ export async function enrichProfiles(
       employerTarget: empTarget,
       employeeTarget: emplTarget,
       financeTarget: finTarget,
-      currency: (profile.currency as string) ?? "AED",
+      currency,
       distributionStrategy: (profile.distributionStrategy as string) ?? "equal",
       monthlyTargets,
       parentProfileId: profile.parentProfileId ? String(profile.parentProfileId) : undefined,

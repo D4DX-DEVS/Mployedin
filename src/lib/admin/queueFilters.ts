@@ -7,11 +7,20 @@
  * No model imports: API routes pull this in without the dashboard's queries.
  */
 
+import { PAYMENT_BLOCKED_INVOICE_STATUSES } from "@/lib/invoices/status";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Invoices with an employer "I paid" notice nobody has decided yet. Approve and reject both stamp `verifiedAt`. */
+/**
+ * Invoices with an employer "I paid" notice nobody has decided yet, while the
+ * invoice can still take a payment. Approve and reject both stamp `verifiedAt`;
+ * an invoice settled another way (marked paid, voided) leaves its notice
+ * unstamped, and it is not work any more. `$nor`, not `status`: the invoices
+ * list merges this object into a filter whose `status` comes from the URL.
+ */
 export const PAYMENT_NOTICE_PENDING_FILTER = {
   paymentNotifications: { $elemMatch: { verifiedAt: null } },
+  $nor: [{ status: { $in: [...PAYMENT_BLOCKED_INVOICE_STATUSES] } }],
 };
 
 /** Invoices with a billing dispute still open. */

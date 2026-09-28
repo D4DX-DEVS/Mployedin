@@ -641,9 +641,9 @@ export function JobSeekerHomePage({
                     index > 0 && "border-t border-border/60"
                   )}
                 >
-                  <Avatar className="h-9 w-9 shrink-0 rounded-xl border border-border/60 bg-muted/20">
-                    <AvatarImage src={app.companyLogo ?? ""} alt={app.companyName ?? app.title} />
-                    <AvatarFallback className="rounded-xl bg-primary/[0.08] text-xs font-semibold text-primary">
+                  <Avatar className="h-9 w-9 shrink-0 border border-border/60 bg-muted/20">
+                    <AvatarImage src={app.companyLogo ?? ""} alt={app.companyName ?? app.title} className="bg-card object-contain p-1" />
+                    <AvatarFallback className="bg-primary/[0.08] text-xs font-semibold text-primary">
                       {appInitials}
                     </AvatarFallback>
                   </Avatar>

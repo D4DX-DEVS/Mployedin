@@ -17,7 +17,9 @@ export interface ICommission extends Document {
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
   paidAt?: Date;
+  paidBy?: mongoose.Types.ObjectId;
   paymentRef?: string;
+  paymentMethod?: "bank_transfer" | "cash" | "cheque" | "online" | "other";
   notes?: string;
   // Dispute fields
   disputeReason?: string;
@@ -57,7 +59,9 @@ const CommissionSchema = new Schema<ICommission>(
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
     approvedAt: Date,
     paidAt: Date,
+    paidBy: { type: Schema.Types.ObjectId, ref: "User" },
     paymentRef: String,
+    paymentMethod: { type: String, enum: ["bank_transfer", "cash", "cheque", "online", "other"] },
     notes: String,
     // Dispute
     disputeReason: { type: String, maxlength: 1000 },

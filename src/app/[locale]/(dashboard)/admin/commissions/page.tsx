@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
@@ -15,39 +16,28 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { Plus, Pencil, Trash2, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, CalendarDays, Globe } from "lucide-react";
+import { Pencil, Trash2, Clock3, CheckCircle2, WalletCards, ReceiptText, Inbox } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import {
+  CommissionActionDialog, type CommissionActionMode, type CommissionActionTarget, type CommissionActionValues,
+} from "./_components/CommissionActionDialog";
+import { CommissionPayoutDialog, type CommissionPayoutValues } from "./_components/CommissionPayoutDialog";
+import { commissionExportColumns, type Commission } from "./_components/commissionRow";
 import type { ExportColumn } from "@/lib/export";
-import { Inbox } from "lucide-react";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
-interface Commission {
-  _id: string;
-  agentId?: { fullName?: string; _id?: string };
-  superAgentId?: { fullName?: string; _id?: string };
-  agentName?: string | null;
-  amount: number;
-  currency?: string;
-  status: string;
-  type?: string;
-  rate?: number;
-  notes?: string;
-  disputeReason?: string;
-  disputeResolution?: string;
-  clawbackAmount?: number;
-  clawbackReason?: string;
-  createdAt: string;
-}
+interface CurrencyTotals { currency: string; pending: number; approved: number; paid: number }
+/** GET /api/commissions `summary`; the single figures mix currencies, byCurrency doesn't. */
+interface CommissionSummary { pending: number; approved: number; paid: number; currency: string; byCurrency?: CurrencyTotals[] }
 
 export default function AdminCommissionsPage() {
   const t = useTranslations("adminCommissions");
@@ -56,15 +46,9 @@ export default function AdminCommissionsPage() {
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
-  const CURRENCY_FORM_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` }));
-
-  const ADD_FIELDS: CrudField[] = [
-    { name: "type", label: t("fieldTypeLabel"), type: "select", required: true, options: [
-      { value: "placement", label: t("typePlacement") }, { value: "override", label: t("typeOverride") }, { value: "bonus", label: t("typeBonus") }
-    ]},
-    { name: "amount", label: t("fieldAmountLabel"), type: "number", required: true },
-    { name: "currency", label: t("fieldCurrencyLabel"), type: "select", options: CURRENCY_FORM_OPTIONS },
-    { name: "rate", label: t("fieldRateLabel"), type: "number" },
+  // Commissions come from recruitment invoices, so their money is not edited
+  // here (the API refuses it); corrections go through Dispute or Clawback.
+  const NOTE_FIELDS: CrudField[] = [
     { name: "notes", label: t("fieldNotesLabel"), type: "textarea" },
   ];
 
@@ -81,8 +65,8 @@ export default function AdminCommissionsPage() {
     { value: "all", label: t("allTypes") },
     { value: "placement", label: t("typePlacement") },
     { value: "override", label: t("typeOverride") },
-    { value: "bonus", label: t("typeBonus") },
   ];
+  const TYPE_LABELS: Record<string, string> = { placement: t("typePlacement"), override: t("typeOverride"), bonus: t("typeBonus") };
 
   const CURRENCY_OPTIONS = [
     { value: "all", label: t("allCurrencies") },
@@ -98,21 +82,11 @@ export default function AdminCommissionsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
-  const [summary, setSummary] = useState<{ pending: number; approved: number; paid: number; currency: string }>({ pending: 0, approved: 0, paid: 0, currency: "AED" });
+  const [summary, setSummary] = useState<CommissionSummary>({ pending: 0, approved: 0, paid: 0, currency: "AED" });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
-  const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Commission | null>(null);
-
-  // Fetch platform default currency from settings
-  useEffect(() => {
-    fetch("/api/admin/settings")
-      .then((r) => r.json())
-      .then((data) => {
-        const dc = data.settings?.defaultCurrency ?? "AED";
-        setSummary((s) => ({ ...s, currency: dc }));
-      })
-      .catch(() => {});
-  }, []);
+  const [payoutTarget, setPayoutTarget] = useState<CommissionActionTarget | null>(null);
+  const [actionTarget, setActionTarget] = useState<{ mode: CommissionActionMode; target: CommissionActionTarget } | null>(null);
 
   const fetchCommissions = useCallback(async () => {
     setLoading(true);
@@ -149,16 +123,6 @@ export default function AdminCommissionsPage() {
 
   useEffect(() => { document.title = "Commissions · MPLOYEDIN"; }, []);
 
-  const handleCreate = async (values: Record<string, string>) => {
-    const res = await csrfFetch("/api/commissions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, amount: Number(values.amount), rate: values.rate ? Number(values.rate) : undefined }),
-    });
-    if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: ADD_FIELDS });
-    await fetchCommissions();
-  };
-
   const handleEdit = async (values: Record<string, string>) => {
     if (!editItem) {
       throw new Error("No commission selected for editing");
@@ -167,9 +131,9 @@ export default function AdminCommissionsPage() {
     const res = await csrfFetch(`/api/commissions/${editItem._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, amount: Number(values.amount), rate: values.rate ? Number(values.rate) : undefined }),
+      body: JSON.stringify({ notes: values.notes ?? "" }),
     });
-    if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: ADD_FIELDS });
+    if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: NOTE_FIELDS });
     setEditItem(null);
     await fetchCommissions();
   };
@@ -192,14 +156,12 @@ export default function AdminCommissionsPage() {
     }
   };
 
-  const updateStatus = async (id: string, newStatus: string) => {
-    const successMessage = newStatus === "approved" ? t("commissionApproved") : t("commissionMarkedPaid");
-
+  const approve = async (id: string) => {
     try {
       const res = await csrfFetch(`/api/commissions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: "approved" }),
       });
 
       if (!res.ok) {
@@ -207,53 +169,55 @@ export default function AdminCommissionsPage() {
         throw new Error(error?.error ?? t("failedUpdateStatus"));
       }
 
-      toast.success(successMessage);
+      toast.success(t("commissionApproved"));
       await fetchCommissions();
     } catch (error: unknown) {
       toast.error(toUserFacingError(error, { fallback: t("failedUpdateStatus") }).message);
     }
   };
 
-  const handleDispute = async (id: string) => {
-    const reason = prompt(t("disputeReasonPrompt"));
-    if (!reason?.trim()) return;
-    try {
-      const res = await csrfFetch(`/api/commissions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "disputed", disputeReason: reason.trim() }),
-      });
-      if (!res.ok) throw new Error(t("failedDispute"));
-      toast.success(t("markDisputedSuccess"));
-      await fetchCommissions();
-    } catch (error: unknown) {
-      toast.error(toUserFacingError(error, { fallback: t("failedDispute") }).message);
+  // Mark paid records the payout (method, reference, day) in CommissionPayoutDialog.
+  const submitPayout = async (values: CommissionPayoutValues) => {
+    if (!payoutTarget) return;
+    const res = await csrfFetch(`/api/commissions/${payoutTarget.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "paid", ...values }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => null);
+      // A 422 reason (missing reference, future date) is written for this screen.
+      throw new Error(res.status === 422 && error?.error
+        ? error.error
+        : toUserFacingError(new Error(error?.error ?? ""), { fallback: t("failedUpdateStatus") }).message);
     }
+    toast.success(t("commissionMarkedPaid"));
+    await fetchCommissions();
   };
 
-  const handleClawback = async (id: string, amount: number) => {
-    const reason = prompt(t("disputeReasonPrompt"));
-    if (!reason?.trim()) return;
-    const amountStr = prompt(t("clawbackAmountPrompt") + ` ${amount}):`, String(amount));
-    if (!amountStr) return;
-    const clawbackAmount = Number(amountStr);
-    if (isNaN(clawbackAmount) || clawbackAmount <= 0 || clawbackAmount > amount) {
-      toast.error(t("invalidClawbackAmount"));
-      return;
+  // Dispute and clawback collect a reason (and amount) in CommissionActionDialog.
+  const submitCommissionAction = async ({ reason, clawbackAmount }: CommissionActionValues) => {
+    if (!actionTarget) return;
+    const isClawback = actionTarget.mode === "clawback";
+    const fallback = isClawback ? t("failedClawback") : t("failedDispute");
+    const res = await csrfFetch(`/api/commissions/${actionTarget.target.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(isClawback
+        ? { status: "clawed_back", clawbackReason: reason, clawbackAmount }
+        : { status: "disputed", disputeReason: reason }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => null);
+      throw new Error(toUserFacingError(new Error(error?.error ?? fallback), { fallback }).message);
     }
-    try {
-      const res = await csrfFetch(`/api/commissions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "clawed_back", clawbackReason: reason.trim(), clawbackAmount }),
-      });
-      if (!res.ok) throw new Error(t("failedClawback"));
-      toast.success(t("commissionClawbacked"));
-      await fetchCommissions();
-    } catch (error: unknown) {
-      toast.error(toUserFacingError(error, { fallback: t("failedClawback") }).message);
-    }
+    toast.success(isClawback ? t("commissionClawbacked") : t("markDisputedSuccess"));
+    await fetchCommissions();
   };
+
+  const recipientLabel = (c: Commission) => c.recipientName ?? c.agentName ?? t("recipientNone");
+  const targetFor = (c: Commission): CommissionActionTarget => ({ id: c._id, name: recipientLabel(c), amount: c.amount, currency: c.currency ?? "USD" });
+  const openCommissionAction = (mode: CommissionActionMode, c: Commission) => setActionTarget({ mode, target: targetFor(c) });
 
   const handleResolveDispute = async (id: string) => {
     const ok = await confirmDialog(t("resolveDisputeConfirmation"));
@@ -272,36 +236,73 @@ export default function AdminCommissionsPage() {
     }
   };
 
-  const visibleCommissions = commissions.length;
-  const pendingAmount = summary.pending;
-  const approvedAmount = summary.approved;
-  const paidAmount = summary.paid;
-  const summaryCurrency = summary.currency;
-  const displayCurrency = currencyFilter || summaryCurrency;
   const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo || currencyFilter);
 
+  // Lines keep their invoice's currency and nothing converts, so each card lists
+  // one figure per currency ("AED 1,200 · INR 6,000") instead of adding them up.
+  const currencyTotals = summary.byCurrency?.length
+    ? summary.byCurrency
+    : [{ currency: currencyFilter || summary.currency, pending: summary.pending, approved: summary.approved, paid: summary.paid }];
+  // One line per currency: a quarter-width card can't hold "INR 50,330 · AED 3,000"
+  // at any width. Two or more currencies step down a size so the card grows
+  // one short line, not a wide one. Whole units, like the invoices strip; rows stay exact.
+  const moneyStrip = (pick: (row: CurrencyTotals) => number) => {
+    const rows = currencyTotals.filter((row) => pick(row) > 0);
+    const shown = rows.length ? rows : currencyTotals.slice(0, 1);
+    const size = shown.length > 1 ? "text-sm leading-snug sm:text-lg sm:leading-tight" : "text-sm sm:text-2xl";
+    return (
+      <span className={`flex flex-col ${size}`}>
+        {shown.map((row) => (
+          <span key={row.currency}>{row.currency} {formatCount(rows.length ? pick(row) : 0, { maximumFractionDigits: 0 })}</span>
+        ))}
+      </span>
+    );
+  };
+
   const commissionMetrics = [
-    { label: t("visibleRecordsLabel"), value: visibleCommissions, icon: WalletCards, iconSurfaceClassName: "workspace-tone-sky" },
-    { label: t("pendingReviewLabel"), value: `${displayCurrency} ${formatCount(pendingAmount)}`, icon: Clock3, iconSurfaceClassName: "workspace-tone-sky" },
-    { label: t("approvedLabel"), value: `${displayCurrency} ${formatCount(approvedAmount)}`, icon: CheckCircle2, iconSurfaceClassName: "workspace-tone-sky" },
-    { label: t("paidOutLabel"), value: `${displayCurrency} ${formatCount(paidAmount)}`, icon: ReceiptText, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("recordsLabel"), value: formatCount(total), icon: WalletCards, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("pendingReviewLabel"), value: moneyStrip((row) => row.pending), icon: Clock3, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("approvedLabel"), value: moneyStrip((row) => row.approved), icon: CheckCircle2, iconSurfaceClassName: "workspace-tone-sky" },
+    { label: t("paidOutLabel"), value: moneyStrip((row) => row.paid), icon: ReceiptText, iconSurfaceClassName: "workspace-tone-sky" },
   ];
 
-  const exportColumns: ExportColumn<Commission>[] = [
-    { header: t("exportHeaderAgent"), key: "agentId" as keyof Commission, formatter: (_v, r) => { const c = r as unknown as Commission; return c.agentName ?? c.agentId?.fullName ?? "—"; } },
-    { header: t("exportHeaderType"), key: "type", formatter: (v) => String(v ?? "—") },
-    { header: t("exportHeaderAmount"), key: "amount", formatter: (v) => String(v ?? 0) },
-    { header: t("exportHeaderCurrency"), key: "currency", formatter: (v) => String(v ?? "AED") },
-    { header: t("exportHeaderRate"), key: "rate", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: t("exportHeaderStatus"), key: "status" },
-    { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
-  ];
+  const exportColumns = commissionExportColumns(t, TYPE_LABELS);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: commissions as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "commissions",
     title: t("exportTitle"),
   });
+
+
+  // The row's next step (Approve → Mark paid, or Resolve a dispute) is the
+  // labelled button, like Mark paid on Placements; otherwise Edit is.
+  const rowActionsFor = (c: Commission): { quick: RowAction[]; menu: RowAction[] } => {
+    const canApprove = can("commissions", "approve");
+    const next: RowAction | null = !canApprove ? null
+      : c.status === "pending" ? { key: "approve", label: t("approveButton"), icon: CheckCircle2, iconClassName: "text-emerald-600", onSelect: () => approve(c._id) }
+      : c.status === "approved" && can("commissions", "update") ? { key: "paid", label: t("markPaidButton"), icon: CheckCircle2, iconClassName: "text-emerald-600", onSelect: () => setPayoutTarget(targetFor(c)) }
+      : c.status === "disputed" ? { key: "resolve", label: t("resolveButton"), icon: CheckCircle2, onSelect: () => handleResolveDispute(c._id) }
+      : null;
+    const edit: RowAction | null = can("commissions", "update")
+      ? { key: "edit", label: t("editNotesButton"), icon: Pencil, iconOnly: true, onSelect: () => setEditItem(c) }
+      : null;
+    const quick = [next ?? edit].filter((x): x is RowAction => x !== null);
+    // Money already sent is recovered by clawback — also while it is disputed.
+    const paidOut = c.status === "paid" || (c.status === "disputed" && Boolean(c.paidAt));
+    // An invoice's line goes when the invoice is voided; a paid one by clawback.
+    const deletable = !c.invoice && !c.paidAt && c.status !== "paid" && c.status !== "clawed_back";
+    const menu: RowAction[] = [
+      ...(next && edit ? [edit] : []),
+      ...(canApprove && (c.status === "approved" || c.status === "paid")
+        ? [{ key: "dispute", label: t("disputeButton"), icon: Clock3, onSelect: () => openCommissionAction("dispute", c) }] : []),
+      ...(can("commissions", "update") && paidOut
+        ? [{ key: "clawback", label: t("clawbackButton"), icon: Trash2, destructive: true, onSelect: () => openCommissionAction("clawback", c) }] : []),
+      ...(can("commissions", "delete") && deletable
+        ? [{ key: "delete", label: t("deleteButton"), icon: Trash2, iconOnly: true, destructive: true, onSelect: () => handleDelete(c._id) }] : []),
+    ];
+    return { quick, menu };
+  };
 
   return (
     <div className="page-container">
@@ -315,114 +316,83 @@ export default function AdminCommissionsPage() {
         metrics={commissionMetrics}
       />
 
-      <TableToolbar
-        search={searchTerm}
-        onSearchChange={(value) => { setSearchTerm(value); resetPage(); }}
-        searchPlaceholder={t("searchPlaceholder")}
-        actions={can("commissions", "create") ? (
-          <Button
-            onClick={() => setShowAdd(true)}
-            size="sm"
-            className="h-9 gap-2 rounded-lg px-4"
-          >
-            <Plus className="h-4 w-4" />
-            {t("addCommissionButton")}
-          </Button>
-        ) : undefined}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={hasActiveFilters ? () => {
+          setStatus("");
+          setTypeFilter("");
+          setSearchTerm("");
+          setCurrencyFilter("");
+          setDateFrom("");
+          setDateTo("");
+          resetPage();
+        } : undefined}
+        clearLabel={t("clearFiltersButton")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        filterContent={(
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <div>
-                <label htmlFor="admin-commissions-status-filter" className="sr-only">{t("filterByStatus")}</label>
-                <SearchableSelect
-                  id="admin-commissions-status-filter"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={STATUS_OPTIONS}
-                  value={status || "all"}
-                  onValueChange={(value) => {
-                    setStatus(value === "all" ? "" : value);
-                    resetPage();
-                  }}
-                  placeholder={t("allStatuses")}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="admin-commissions-type-filter" className="sr-only">{t("filterByType")}</label>
-                <SearchableSelect
-                  id="admin-commissions-type-filter"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={TYPE_OPTIONS}
-                  value={typeFilter || "all"}
-                  onValueChange={(value) => {
-                    setTypeFilter(value === "all" ? "" : value);
-                    resetPage();
-                  }}
-                  placeholder={t("allTypes")}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="admin-commissions-currency-filter" className="sr-only">{t("filterByCurrency")}</label>
-                <SearchableSelect
-                  id="admin-commissions-currency-filter"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={CURRENCY_OPTIONS}
-                  value={currencyFilter || "all"}
-                  onValueChange={(value) => {
-                    setCurrencyFilter(value === "all" ? "" : value);
-                    resetPage();
-                  }}
-                  placeholder={t("allCurrencies")}
-                />
-              </div>
-
-              <div className="flex items-center gap-2 xl:col-span-2">
-                <DateTimePicker
-                  mode="date"
-                  value={dateFrom}
-                  onChange={(v) => { setDateFrom(v); resetPage(); }}
-                  placeholder={t("dateFromLabel")}
-                  className="h-11 rounded-xl border-border bg-card text-sm flex-1"
-                />
-                <span className="text-xs text-muted-foreground">{t("dateRangeSeparator")}</span>
-                <DateTimePicker
-                  mode="date"
-                  value={dateTo}
-                  onChange={(v) => { setDateTo(v); resetPage(); }}
-                  placeholder={t("dateToLabel")}
-                  className="h-11 rounded-xl border-border bg-card text-sm flex-1"
-                />
-              </div>
+        moreLabel={t("advancedFilters")}
+        more={(
+          <>
+            <SearchableSelect
+              id="admin-commissions-type-filter"
+              className={INLINE_FILTER_CONTROL}
+              options={TYPE_OPTIONS}
+              value={typeFilter || "all"}
+              onValueChange={(value) => {
+                setTypeFilter(value === "all" ? "" : value);
+                resetPage();
+              }}
+              placeholder={t("allTypes")}
+            />
+            <SearchableSelect
+              id="admin-commissions-currency-filter"
+              className={INLINE_FILTER_CONTROL}
+              options={CURRENCY_OPTIONS}
+              value={currencyFilter || "all"}
+              onValueChange={(value) => {
+                setCurrencyFilter(value === "all" ? "" : value);
+                resetPage();
+              }}
+              placeholder={t("allCurrencies")}
+            />
+            <div className="flex items-center gap-2">
+              <DateTimePicker
+                mode="date"
+                value={dateFrom}
+                onChange={(v) => { setDateFrom(v); resetPage(); }}
+                placeholder={t("dateFromLabel")}
+                className="h-11 rounded-xl border-border bg-card text-sm flex-1"
+              />
+              <span className="text-xs text-muted-foreground">{t("dateRangeSeparator")}</span>
+              <DateTimePicker
+                mode="date"
+                value={dateTo}
+                onChange={(v) => { setDateTo(v); resetPage(); }}
+                placeholder={t("dateToLabel")}
+                className="h-11 rounded-xl border-border bg-card text-sm flex-1"
+              />
             </div>
-
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setStatus("");
-                  setTypeFilter("");
-                  setSearchTerm("");
-                  setCurrencyFilter("");
-                  setDateFrom("");
-                  setDateTo("");
-                  resetPage();
-                }}
-                disabled={!hasActiveFilters}
-                className="h-11 rounded-xl border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                {t("clearFiltersButton")}
-              </Button>
-            </div>
-          </div>
+          </>
         )}
-        hasActiveFilters={hasActiveFilters}
-      />
+      >
+        <InlineFilterSearch
+          value={searchTerm}
+          onChange={(value) => { setSearchTerm(value); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          id="admin-commissions-status-filter"
+          className={INLINE_FILTER_CONTROL}
+          options={STATUS_OPTIONS}
+          value={status || "all"}
+          onValueChange={(value) => {
+            setStatus(value === "all" ? "" : value);
+            resetPage();
+          }}
+          placeholder={t("allStatuses")}
+        />
+      </InlineFilterBar>
 
       {errorMessage ? (
         <ErrorState title={t("failedLoadCommissions")} onRetry={fetchCommissions} />
@@ -433,20 +403,21 @@ export default function AdminCommissionsPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>{t("tableHeaderAgent")}</TableHead>
-                <TableHead>{t("tableHeaderType")}</TableHead>
+                <TableHead>{t("tableHeaderRecipient")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderType")}</TableHead>
+                <TableHead>{t("tableHeaderInvoice")}</TableHead>
                 <TableHead>{t("tableHeaderAmount")}</TableHead>
                 <TableHead>{t("tableHeaderStatus")}</TableHead>
-                <TableHead>{t("tableHeaderDate")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderDate")}</TableHead>
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableBodySkeleton rows={5} cols={6} />
+                <TableBodySkeleton rows={5} cols={7} />
               ) : commissions.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
-                  <TableCell colSpan={6} className="px-6 py-14 text-center">
+                  <TableCell colSpan={7} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center gap-3 text-center">
                       <div className="workspace-muted-pill rounded-3xl p-3">
                         <Inbox className="h-6 w-6" />
@@ -462,105 +433,41 @@ export default function AdminCommissionsPage() {
                 <TableRow key={c._id} className="border-border/70">
                   <TableCell>
                     <div>
-                      <p className="font-medium text-foreground">{c.agentName ?? c.agentId?.fullName ?? "—"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{t("commissionRecord")}</p>
+                      <p className={c.recipientName ? "font-medium text-foreground" : "font-medium text-muted-foreground"}>{c.recipientName ?? t("recipientNone")}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {c.recipientRole === "super_agent" ? t("recipientSuperAgent") : c.recipientRole === "agent" ? t("recipientAgent") : t("recipientNoneHint")}
+                      </p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    <span className="inline-flex rounded-full border border-border/70 bg-secondary/70 px-2.5 py-1 text-xs font-medium capitalize text-foreground">
-                      {c.type ?? "placement"}
+                  <TableCell className="hidden text-muted-foreground lg:table-cell">
+                    <span className="inline-flex rounded-full border border-border/70 bg-secondary/70 px-2.5 py-1 text-xs font-medium text-foreground">
+                      {TYPE_LABELS[c.type ?? "placement"] ?? c.type}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {c.invoice ? (
+                      <Link href={`/${locale}/admin/invoices?invoice=${c.invoice._id}`} className="whitespace-nowrap font-medium text-primary underline-offset-4 hover:underline">
+                        {c.invoice.invoiceNumber ?? t("viewInvoice")}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">{t("noInvoice")}</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-semibold text-foreground">{c.currency ?? "USD"} {formatCount(c.amount)}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{c.rate ? `${c.rate}% rate` : t("rateNotSet")}</p>
+                      <p className="whitespace-nowrap font-semibold text-foreground">{c.currency ?? "USD"} {formatCount(c.amount)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{c.rate ? t("rateValue", { rate: c.rate }) : t("rateNotSet")}</p>
                     </div>
                   </TableCell>
-                  <TableCell><StatusBadge status={c.status} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(c.createdAt))}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      {can("commissions", "approve") && c.status === "pending" && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => updateStatus(c._id, "approved")}
-                          className="text-emerald-700 hover:bg-emerald-50"
-                        >
-                          {t("approveButton")}
-                        </Button>
-                      )}
-                      {can("commissions", "approve") && c.status === "approved" && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => updateStatus(c._id, "paid")}
-                          className="text-sky-700 hover:bg-sky-50"
-                        >
-                          {t("markPaidButton")}
-                        </Button>
-                      )}
-                      {can("commissions", "approve") && (c.status === "approved" || c.status === "paid") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleDispute(c._id)}
-                          className="text-amber-700 hover:bg-amber-50"
-                          title={t("disputeTitle")}
-                        >
-                          {t("disputeButton")}
-                        </Button>
-                      )}
-                      {can("commissions", "approve") && c.status === "paid" && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleClawback(c._id, c.amount)}
-                          className="gap-1 text-rose-700 hover:bg-rose-50"
-                          title={t("clawbackTitle")}
-                        >
-                          {t("clawbackButton")}
-                        </Button>
-                      )}
-                      {can("commissions", "approve") && c.status === "disputed" && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleResolveDispute(c._id)}
-                          className="gap-1 text-emerald-700 hover:bg-emerald-50"
-                          title={t("resolveTitle")}
-                        >
-                          {t("resolveButton")}
-                        </Button>
-                      )}
-                      {can("commissions", "update") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setEditItem(c)}
-                          title={t("editButton")}
-                          aria-label={`${t("editAriaLabel")} ${c.agentId?.fullName ?? "agent"}`}
-                          className="h-8 gap-1 px-2 text-xs"
-                        >
-                          <Pencil className="h-3.5 w-3.5 text-primary" />
-                          {t("editButton")}
-                        </Button>
-                      )}
-                      {can("commissions", "delete") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleDelete(c._id)}
-                          title={t("deleteButton")}
-                          aria-label={`${t("deleteAriaLabel")} ${c.agentId?.fullName ?? "agent"}`}
-                          className="h-8 gap-1 px-2 text-xs"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          {t("deleteButton")}
-                        </Button>
-                      )}
-                    </div>
+                    <StatusBadge status={c.status} />
+                    {c.status === "paid" && c.paymentRef ? (
+                      <p className="mt-1 max-w-40 truncate text-xs text-muted-foreground" title={c.paymentRef}>{t("paidRef", { ref: c.paymentRef })}</p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground lg:table-cell">{formatDate(new Date(c.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                  <TableCell className="text-right">
+                    <RowActions name={recipientLabel(c)} {...rowActionsFor(c)} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -573,10 +480,12 @@ export default function AdminCommissionsPage() {
         </div>
       </section>
 
-      <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title={t("addModalTitle")} fields={ADD_FIELDS} onSubmit={handleCreate} />
-      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={t("editModalTitle")} fields={ADD_FIELDS}
-        initialValues={editItem ? { type: editItem.type ?? "placement", amount: String(editItem.amount), currency: editItem.currency ?? "AED", rate: String(editItem.rate ?? ""), notes: editItem.notes ?? "" } : undefined}
+      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={t("editNotesTitle")} description={t("editNotesDescription")} fields={NOTE_FIELDS}
+        initialValues={editItem ? { notes: editItem.notes ?? "" } : undefined}
         onSubmit={handleEdit} />
+      <CommissionPayoutDialog target={payoutTarget} onClose={() => setPayoutTarget(null)} onSubmit={submitPayout} />
+      <CommissionActionDialog mode={actionTarget?.mode ?? null} target={actionTarget?.target ?? null}
+        onClose={() => setActionTarget(null)} onSubmit={submitCommissionAction} />
     </div>
   );
 }

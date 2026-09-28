@@ -18,6 +18,8 @@ import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { normalizeWebsiteUrl } from "@/lib/validators/website";
+import { recordRegistrationConsents } from "@/lib/gdpr/consent";
+import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
 
 export const runtime = "nodejs";
 
@@ -346,6 +348,15 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Shows on the admin GDPR page's Consent Logs. Never throws.
+    await recordRegistrationConsents({
+      userId: user._id.toString(),
+      userName: contactName,
+      termsAccepted: get("termsAccepted") === "true",
+      cookieChoice: parseCookieChoice(get("cookieConsent")),
+      ipAddress: ip,
+    });
 
     // Auto-assign default subscription plan (fire-and-forget — don't block registration)
     autoAssignDefaultPlan(user._id.toString(), "employer").catch((err) =>

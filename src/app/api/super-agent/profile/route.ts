@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import SuperAgent from "@/models/SuperAgent";
 import User from "@/models/User";
+import Territory from "@/models/Territory";
 import { regionLocale, resolveAssignedRegions } from "@/lib/agents/assignedRegion";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
@@ -20,12 +21,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
-  const [profile, user] = await Promise.all([
+  const [profile, user, territory] = await Promise.all([
     SuperAgent.findOne({ userId: ctx.userId })
       .select("overrideRate commissions currencyCode country assignedCityIds assignedStateIds")
       .lean(),
     User.findById(ctx.userId).select("name phone").lean(),
+    Territory.findOne({ superAgentId: ctx.userId }).select("name").lean<{ name?: string }>(),
   ]);
+  const territoryName = territory?.name ?? null;
 
   if (!profile) {
     return NextResponse.json({
@@ -36,6 +39,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         name: user?.name ?? "",
         phone: user?.phone ?? "",
         assignedRegions: [],
+        territoryName,
       },
     });
   }
@@ -53,6 +57,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       name: user?.name ?? "",
       phone: user?.phone ?? "",
       assignedRegions,
+      territoryName,
     },
   });
 }

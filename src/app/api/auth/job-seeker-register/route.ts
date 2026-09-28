@@ -12,6 +12,7 @@ import { validateBody } from "@/lib/validators";
 import { jobSeekerRegisterSchema } from "@/lib/validators/misc";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import { attachJobSeekerReferral } from "@/lib/referrals/attachJobSeeker";
+import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const { name, email, password, referralCode } = await validateBody(req, jobSeekerRegisterSchema);
+    const { name, email, password, referralCode, termsAccepted, cookieConsent } = await validateBody(req, jobSeekerRegisterSchema);
 
     const normalizedEmail = email;
 
@@ -68,6 +69,15 @@ export async function POST(req: NextRequest) {
       preferredCountries: [],
       preferredRoles: [],
       preferredLocations: [],
+    });
+
+    // Shows on the admin GDPR page's Consent Logs. Never throws.
+    await recordRegistrationConsents({
+      userId: user._id.toString(),
+      userName: name.trim(),
+      termsAccepted: termsAccepted === true,
+      cookieChoice: cookieConsent ?? null,
+      ipAddress: ip,
     });
 
     // Referral: attach if the code is live. Never fail the signup over it.

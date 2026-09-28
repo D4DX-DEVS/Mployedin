@@ -31,6 +31,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
      search, the other had the date range. */
   const search = searchParams.get("search")?.trim() ?? "";
   const actorRole = searchParams.get("actorRole") ?? "";
+  // The log reads newest first; ?sortOrder=asc walks it from the oldest entry.
+  const sortDir = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -80,7 +82,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   const [logs, total] = await Promise.all([
     AuditLog.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: sortDir, _id: sortDir })
       .skip((page - 1) * limit)
       .limit(limit)
       .populate("actorId", "name email role")

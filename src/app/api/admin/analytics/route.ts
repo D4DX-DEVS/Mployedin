@@ -1,29 +1,41 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
-import { buildPlatformAlerts } from "@/lib/admin/platformAlerts";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Placement from "@/models/Placement";
-import Commission from "@/models/Commission";
-import Interview from "@/models/Interview";
-import Agent from "@/models/Agent";
+import Invoice from "@/models/Invoice";
+import { NON_REVENUE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { resolveDashboardPeriod } from "@/lib/admin/dashboard/period";
+import { getHiringFunnel } from "@/lib/admin/dashboard/recruitment.server";
+import { countActiveJobs, getJobDemandBuckets } from "@/lib/admin/dashboard/shared.server";
+import { getPlatformAlerts } from "@/lib/admin/platformAlerts.server";
 import logger from "@/lib/logger";
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/*
+ * GET /api/admin/analytics?period=7d|30d|90d — the admin Platform report.
+ *
+ * Built on the admin dashboard's own helpers (period, hiring funnel, job
+ * demand, platform alerts) so a number here is the same number there. The
+ * report used to run its own copies, which counted "jobs without
+ * applications" over every job instead of active ones and "needs review" over
+ * five statuses instead of `applied`, so the two pages disagreed.
+ */
 
-const STATUS_GROUPS = [
-  { key: "pending", label: "Pending", statuses: ["applied"], toneKey: "sky" },
-  { key: "shortlisted", label: "Shortlisted", statuses: ["shortlisted"], toneKey: "violet" },
-  { key: "interviewed", label: "Interviewed", statuses: ["interview_scheduled"], toneKey: "amber" },
-  { key: "selected", label: "Selected", statuses: ["selected"], toneKey: "emerald" },
-  { key: "offered", label: "Offered", statuses: ["offer"], toneKey: "sky" },
-  { key: "hired", label: "Hired", statuses: ["hired"], toneKey: "emerald" },
-  { key: "rejected", label: "Rejected", statuses: ["rejected"], toneKey: "rose" },
-  { key: "withdrawn", label: "Withdrawn", statuses: ["withdrawn"], toneKey: "slate" },
+/* Pipeline order, keyed by the real application status. The page owns the
+   label (this route has no locale), using the admin dashboard's status names. */
+const STATUS_ROWS = [
+  "applied",
+  "shortlisted",
+  "interview_scheduled",
+  "selected",
+  "offer",
+  "hired",
+  "rejected",
+  "withdrawn",
 ] as const;
+const ALWAYS_SHOWN_STATUSES: readonly string[] = ["applied", "shortlisted", "interview_scheduled", "rejected"];
+const ACTIVITY_MONTHS = 6;
 
 type AggregateMonthRow = {
   _id: {
@@ -33,62 +45,59 @@ type AggregateMonthRow = {
   count: number;
 };
 
-function buildTrend(current: number, previous: number) {
-  const delta = previous === 0
-    ? current === 0
-      ? 0
-      : 100
-    : Number((((current - previous) / previous) * 100).toFixed(1));
+type CurrencyRow = { _id: string | null; total: number };
 
-  return {
-    current,
-    previous,
-    delta,
-    direction: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
-  } as const;
-}
+function buildMonthlySeries(now: Date, jobsRows: AggregateMonthRow[], applicationRows: AggregateMonthRow[]) {
+  const jobsMap = new Map(jobsRows.map((row) => [`${row._id.year}-${row._id.month}`, row.count]));
+  const applicationsMap = new Map(applicationRows.map((row) => [`${row._id.year}-${row._id.month}`, row.count]));
 
-function buildMonthlySeed(now: Date, months = 6) {
-  return Array.from({ length: months }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - (months - index - 1), 1);
+  return Array.from({ length: ACTIVITY_MONTHS }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (ACTIVITY_MONTHS - index - 1), 1);
+    const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
     return {
-      key: `${date.getFullYear()}-${date.getMonth() + 1}`,
-      label: `${MONTH_NAMES[date.getMonth()]} ${String(date.getFullYear()).slice(-2)}`,
+      // ISO year-month; the page formats it in the viewer's locale.
+      month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      jobs: jobsMap.get(key) ?? 0,
+      applications: applicationsMap.get(key) ?? 0,
     };
   });
 }
 
-function buildMonthlySeries(now: Date, jobsRows: AggregateMonthRow[], applicationRows: AggregateMonthRow[]) {
-  const seed = buildMonthlySeed(now);
-  const jobsMap = new Map(jobsRows.map((row) => [`${row._id.year}-${row._id.month}`, row.count]));
-  const applicationsMap = new Map(applicationRows.map((row) => [`${row._id.year}-${row._id.month}`, row.count]));
-
-  return seed.map((month) => ({
-    label: month.label,
-    jobs: jobsMap.get(month.key) ?? 0,
-    applications: applicationsMap.get(month.key) ?? 0,
-  }));
+/* Money collected on invoices — the same source as the admin dashboard's
+   "Collected" column. Invoices follow their issuer's currency and nothing
+   converts, so totals stay per currency and are never added together. */
+function collectedByCurrency(match: Record<string, unknown> = {}) {
+  return Invoice.aggregate<CurrencyRow>([
+    { $match: { status: { $nin: NON_REVENUE_INVOICE_STATUSES } } },
+    { $unwind: "$payments" },
+    ...(Object.keys(match).length ? [{ $match: match }] : []),
+    { $group: { _id: "$currency", total: { $sum: "$payments.amount" } } },
+  ]);
 }
 
-function formatStatus(status: string) {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+function currencyTotals(rows: CurrencyRow[]): Map<string, number> {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const currency = row._id || "AED";
+    totals.set(currency, (totals.get(currency) ?? 0) + row.total);
+  }
+  return totals;
 }
 
-export const GET = withAuth(async () => {
+export const GET = withAuth(async (req: NextRequest) => {
   try {
     await connectDB();
 
-    const now = new Date();
-    const currentPeriodStart = new Date(now.getTime() - THIRTY_DAYS_MS);
-    const previousPeriodStart = new Date(now.getTime() - (THIRTY_DAYS_MS * 2));
-    const monthlyWindowStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const staleThreshold = new Date(now.getTime() - FORTY_EIGHT_HOURS_MS);
+    const period = resolveDashboardPeriod(new URL(req.url).searchParams.get("period"));
+    const { now, start, previousStart } = period;
+    const inPeriod = { $gte: start };
+    const inPreviousPeriod = { $gte: previousStart, $lt: start };
+    const monthlyWindowStart = new Date(now.getFullYear(), now.getMonth() - (ACTIVITY_MONTHS - 1), 1);
 
     const [
       totalJobs,
       totalApplications,
       totalPlacements,
-      totalInterviews,
       revenueAgg,
       currentJobs,
       previousJobs,
@@ -101,343 +110,92 @@ export const GET = withAuth(async () => {
       appsByStatus,
       jobsByMonth,
       applicationsByMonth,
-      jobsWithoutApplicationsAgg,
-      staleOpenApplications,
-      recentJobs,
-      recentApplications,
-      topAgents,
+      funnel,
+      activeJobs,
+      jobDemand,
+      alerts,
     ] = await Promise.all([
-    Job.countDocuments({ deletedAt: null }),
-    Application.countDocuments(),
-    Placement.countDocuments(),
-    Interview.countDocuments({ status: { $in: ["scheduled", "confirmed", "completed", "rescheduled"] } }),
-    Commission.aggregate([
-      { $match: { status: "paid" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]),
-    Job.countDocuments({ deletedAt: null, createdAt: { $gte: currentPeriodStart } }),
-    Job.countDocuments({ deletedAt: null, createdAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } }),
-    Application.countDocuments({ appliedAt: { $gte: currentPeriodStart } }),
-    Application.countDocuments({ appliedAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } }),
-    Placement.countDocuments({ placedAt: { $gte: currentPeriodStart } }),
-    Placement.countDocuments({ placedAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } }),
-    Commission.aggregate([
-      { $match: { status: "paid", paidAt: { $gte: currentPeriodStart } } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]),
-    Commission.aggregate([
-      { $match: { status: "paid", paidAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } } },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]),
-    Application.aggregate<{ _id: string; count: number }>([
-      { $group: { _id: "$status", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-    ]),
-    Job.aggregate<AggregateMonthRow>([
-      { $match: { deletedAt: null, createdAt: { $gte: monthlyWindowStart } } },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-          },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { "_id.year": 1, "_id.month": 1 } },
-    ]),
-    Application.aggregate<AggregateMonthRow>([
-      {
-        $project: {
-          bucketDate: { $ifNull: ["$appliedAt", "$createdAt"] },
-        },
-      },
-      { $match: { bucketDate: { $gte: monthlyWindowStart } } },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$bucketDate" },
-            month: { $month: "$bucketDate" },
-          },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { "_id.year": 1, "_id.month": 1 } },
-    ]),
-    Job.aggregate<{ count: number }>([
-      { $match: { deletedAt: null } },
-      {
-        $lookup: {
-          from: "applications",
-          let: { jobId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$jobId", "$$jobId"] } } },
-            { $limit: 1 },
-          ],
-          as: "applications",
-        },
-      },
-      { $match: { "applications.0": { $exists: false } } },
-      { $count: "count" },
-    ]),
-    Application.countDocuments({
-      status: { $in: ["applied", "shortlisted", "interview_scheduled", "selected", "offer"] },
-      appliedAt: { $lte: staleThreshold },
-    }),
-    Job.aggregate<{
-      _id: string;
-      title: string;
-      status: string;
-      createdAt: string;
-      employerName: string;
-      applicationCount: number;
-    }>([
-      { $match: { deletedAt: null } },
-      { $sort: { createdAt: -1 } },
-      { $limit: 5 },
-      {
-        $lookup: {
-          from: "employers",
-          localField: "employerId",
-          foreignField: "_id",
-          as: "employer",
-        },
-      },
-      {
-        $lookup: {
-          from: "applications",
-          let: { jobId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$jobId", "$$jobId"] } } },
-            { $count: "count" },
-          ],
-          as: "applicationStats",
-        },
-      },
-      {
-        $project: {
-          title: 1,
-          status: 1,
-          createdAt: 1,
-          employerName: { $ifNull: [{ $arrayElemAt: ["$employer.companyName", 0] }, "Unknown employer"] },
-          applicationCount: { $ifNull: [{ $arrayElemAt: ["$applicationStats.count", 0] }, 0] },
-        },
-      },
-    ]),
-    Application.aggregate<{
-      _id: string;
-      status: string;
-      appliedAt: string;
-      jobTitle: string;
-      employerName: string;
-    }>([
-      { $sort: { appliedAt: -1, createdAt: -1 } },
-      { $limit: 5 },
-      {
-        $lookup: {
-          from: "jobs",
-          localField: "jobId",
-          foreignField: "_id",
-          as: "job",
-        },
-      },
-      {
-        $lookup: {
-          from: "employers",
-          localField: "employerId",
-          foreignField: "_id",
-          as: "employer",
-        },
-      },
-      {
-        $project: {
-          status: 1,
-          appliedAt: { $ifNull: ["$appliedAt", "$createdAt"] },
-          jobTitle: { $ifNull: [{ $arrayElemAt: ["$job.title", 0] }, "Unknown role"] },
-          employerName: { $ifNull: [{ $arrayElemAt: ["$employer.companyName", 0] }, "Unknown employer"] },
-        },
-      },
-    ]),
-    Agent.aggregate<{
-      _id: string;
-      name: string;
-      jobs: number;
-      applications: number;
-      placements: number;
-      revenue: number;
-    }>([
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      {
-        $lookup: {
-          from: "jobs",
-          let: { agentId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$agentId", "$$agentId"] } } },
-            { $count: "count" },
-          ],
-          as: "jobsStats",
-        },
-      },
-      {
-        $lookup: {
-          from: "applications",
-          let: { agentId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$agentId", "$$agentId"] } } },
-            { $count: "count" },
-          ],
-          as: "applicationStats",
-        },
-      },
-      {
-        $lookup: {
-          from: "placements",
-          let: { agentId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$agentId", "$$agentId"] } } },
-            { $count: "count" },
-          ],
-          as: "placementStats",
-        },
-      },
-      {
-        $lookup: {
-          from: "commissions",
-          let: { agentId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$agentId", "$$agentId"] },
-                    { $eq: ["$status", "paid"] },
-                  ],
-                },
-              },
-            },
-            { $group: { _id: null, total: { $sum: "$amount" } } },
-          ],
-          as: "revenueStats",
-        },
-      },
-      {
-        $project: {
-          name: { $ifNull: [{ $arrayElemAt: ["$user.name", 0] }, "Unassigned agent"] },
-          jobs: { $ifNull: [{ $arrayElemAt: ["$jobsStats.count", 0] }, 0] },
-          applications: { $ifNull: [{ $arrayElemAt: ["$applicationStats.count", 0] }, 0] },
-          placements: { $ifNull: [{ $arrayElemAt: ["$placementStats.count", 0] }, 0] },
-          revenue: { $ifNull: [{ $arrayElemAt: ["$revenueStats.total", 0] }, 0] },
-        },
-      },
-      {
-        $match: {
-          $or: [
-            { jobs: { $gt: 0 } },
-            { applications: { $gt: 0 } },
-            { placements: { $gt: 0 } },
-            { revenue: { $gt: 0 } },
-          ],
-        },
-      },
-      { $sort: { placements: -1, revenue: -1, applications: -1, jobs: -1, name: 1 } },
-      { $limit: 5 },
-    ]),
+      Job.countDocuments({ deletedAt: null }),
+      Application.countDocuments(),
+      Placement.countDocuments(),
+      collectedByCurrency(),
+      Job.countDocuments({ deletedAt: null, createdAt: inPeriod }),
+      Job.countDocuments({ deletedAt: null, createdAt: inPreviousPeriod }),
+      Application.countDocuments({ appliedAt: inPeriod }),
+      Application.countDocuments({ appliedAt: inPreviousPeriod }),
+      Placement.countDocuments({ placedAt: inPeriod }),
+      Placement.countDocuments({ placedAt: inPreviousPeriod }),
+      collectedByCurrency({ "payments.paymentDate": inPeriod }),
+      collectedByCurrency({ "payments.paymentDate": inPreviousPeriod }),
+      Application.aggregate<{ _id: string; count: number }>([
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      Job.aggregate<AggregateMonthRow>([
+        { $match: { deletedAt: null, createdAt: { $gte: monthlyWindowStart } } },
+        { $group: { _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+      ]),
+      Application.aggregate<AggregateMonthRow>([
+        { $project: { bucketDate: { $ifNull: ["$appliedAt", "$createdAt"] } } },
+        { $match: { bucketDate: { $gte: monthlyWindowStart } } },
+        { $group: { _id: { year: { $year: "$bucketDate" }, month: { $month: "$bucketDate" } }, count: { $sum: 1 } } },
+      ]),
+      getHiringFunnel(),
+      countActiveJobs(),
+      getJobDemandBuckets(),
+      // The findings keep their own 30-day window: their sentences say "30 days".
+      getPlatformAlerts(30),
     ]);
 
-    const totalRevenue = revenueAgg[0]?.total ?? 0;
-    const currentRevenue = currentRevenueAgg[0]?.total ?? 0;
-    const previousRevenue = previousRevenueAgg[0]?.total ?? 0;
+    // The headline figure is the currency with the most collected; any other
+    // currency is listed beside it, never added in.
+    const revenueTotals = [...currencyTotals(revenueAgg)]
+      .map(([currency, total]) => ({ currency, total }))
+      .sort((left, right) => right.total - left.total || left.currency.localeCompare(right.currency));
+    const primaryRevenue = revenueTotals[0] ?? null;
+    const revenueIn = (rows: CurrencyRow[]) => (primaryRevenue ? currencyTotals(rows).get(primaryRevenue.currency) ?? 0 : 0);
 
     const statusMap = new Map(appsByStatus.map((row) => [row._id ?? "unknown", row.count]));
-    const applicationsByStatus = STATUS_GROUPS.map((group) => {
-      const count = group.statuses.reduce((sum, status) => sum + (statusMap.get(status) ?? 0), 0);
-
+    const applicationsByStatus = STATUS_ROWS.map((status) => {
+      const count = statusMap.get(status) ?? 0;
       return {
-        key: group.key,
-        label: group.label,
+        key: status,
         count,
         percent: totalApplications > 0 ? Number(((count / totalApplications) * 100).toFixed(1)) : 0,
-        toneKey: group.toneKey,
       };
-    }).filter((row) => row.count > 0 || ["pending", "shortlisted", "interviewed", "rejected"].includes(row.key));
-
-    const activitySeries = buildMonthlySeries(now, jobsByMonth as AggregateMonthRow[], applicationsByMonth as AggregateMonthRow[]);
-    const funnel = [
-      { key: "jobs", label: "Jobs", count: totalJobs },
-      { key: "applications", label: "Applications", count: totalApplications },
-      { key: "interviews", label: "Interviews", count: totalInterviews },
-      { key: "placements", label: "Placements", count: totalPlacements },
-    ];
-
-    const jobsWithoutApplications = jobsWithoutApplicationsAgg[0]?.count ?? 0;
-    const applicationRate = totalJobs > 0 ? totalApplications / totalJobs : 0;
-    const placementRate = totalApplications > 0 ? totalPlacements / totalApplications : 0;
-    // The thresholds live in `@/lib/admin/platformAlerts` so the server-rendered
-    // dashboard raises exactly the same alerts from the same numbers. They used
-    // to exist only here, which is why the dashboard could not use them.
-    const alerts = buildPlatformAlerts({
-      jobsWithoutApplications,
-      staleOpenApplications,
-      currentApplications,
-      previousApplications,
-      currentPlacements,
-      currentJobs,
-      previousJobs,
-      placementRatePercent: Math.round(placementRate * 100),
-    });
+    }).filter((row) => row.count > 0 || ALWAYS_SHOWN_STATUSES.includes(row.key));
 
     return NextResponse.json({
+      period: { key: period.key, days: period.days },
       totalJobs,
       totalApplications,
       totalPlacements,
-      totalRevenue,
+      revenue: {
+        currency: primaryRevenue?.currency ?? null,
+        total: primaryRevenue?.total ?? 0,
+        others: revenueTotals.slice(1),
+      },
+      // Each pair is this period against the equally long period before it.
       trends: {
-        jobs: buildTrend(currentJobs, previousJobs),
-        applications: buildTrend(currentApplications, previousApplications),
-        placements: buildTrend(currentPlacements, previousPlacements),
-        revenue: buildTrend(currentRevenue, previousRevenue),
+        jobs: { current: currentJobs, previous: previousJobs },
+        applications: { current: currentApplications, previous: previousApplications },
+        placements: { current: currentPlacements, previous: previousPlacements },
+        revenue: { current: revenueIn(currentRevenueAgg), previous: revenueIn(previousRevenueAgg) },
       },
-      activitySeries,
-      jobsByMonth: activitySeries.map((row) => ({ month: row.label, count: row.jobs })),
+      activitySeries: buildMonthlySeries(now, jobsByMonth, applicationsByMonth),
       applicationsByStatus,
-      funnel,
-      alerts,
-      recentJobs: recentJobs.map((job) => ({
-        id: String(job._id),
-        title: job.title,
-        status: formatStatus(job.status),
-        createdAt: job.createdAt,
-        employerName: job.employerName,
-        applicationCount: job.applicationCount,
-      })),
-      recentApplications: recentApplications.map((application) => ({
-        id: String(application._id),
-        status: formatStatus(application.status),
-        appliedAt: application.appliedAt,
-        jobTitle: application.jobTitle,
-        employerName: application.employerName,
-      })),
-      topAgents: topAgents.map((agent) => ({
-        id: String(agent._id),
-        name: agent.name,
-        jobs: agent.jobs,
-        applications: agent.applications,
-        placements: agent.placements,
-        revenue: agent.revenue,
-      })),
-      summary: {
-        jobsWithoutApplications,
-        staleOpenApplications,
-        applicationRate: Number(applicationRate.toFixed(2)),
-        placementRate: Number(placementRate.toFixed(2)),
+      // Applications only, by the furthest stage each one reached — the
+      // dashboard's funnel. The old one started at Jobs, a different population.
+      conversion: {
+        applications: funnel.applications,
+        reachedInterview: funnel.reachedInterview,
+        reachedOffer: funnel.reachedOffer,
+        hired: funnel.hired,
       },
+      jobHealth: {
+        active: activeJobs,
+        withoutApplications: jobDemand.none,
+      },
+      alerts,
     });
   } catch (error: unknown) {
     logger.error({ error }, "[Admin Analytics Route] Failed to build analytics payload");
@@ -448,4 +206,3 @@ export const GET = withAuth(async () => {
     );
   }
 }, { resource: "users", action: "read" });
-

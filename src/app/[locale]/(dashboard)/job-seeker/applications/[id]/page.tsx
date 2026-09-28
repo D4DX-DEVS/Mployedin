@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
   Banknote,
-  Building2,
   Calendar,
   Check,
   Clock,
@@ -38,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
+import { userInitials } from "@/components/shared/UserAvatar";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface ApplicationDetail {
@@ -159,11 +159,11 @@ export default function ApplicationDetailPage() {
       {/* ── Header Card ─────────────────────────────────────────── */}
       <section className="card-base rounded-lg sm:rounded-2xl border space-y-3 panel-body">
         <div className="flex items-start gap-2 sm:gap-3">
-          <div className="h-12 w-12 rounded-xl border bg-muted/20 flex items-center justify-center shrink-0">
+          <div className="h-12 w-12 overflow-hidden rounded-full border bg-primary/10 flex items-center justify-center shrink-0 text-sm font-semibold text-primary">
             {employer?.logo ? (
-              <img src={employer.logo} alt={employer.companyName ?? ""} className="h-9 w-9 rounded-lg object-contain" />
+              <img src={employer.logo} alt={employer.companyName ?? ""} className="h-full w-full bg-card object-contain p-1.5" />
             ) : (
-              <Building2 className="h-5 w-5 text-muted-foreground" />
+              userInitials(employer?.companyName ?? t("company"))
             )}
           </div>
           <div className="flex-1 min-w-0">

@@ -2,16 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import TargetProfile from "@/models/TargetProfile";
-import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import User from "@/models/User";
-import SuperAgent from "@/models/SuperAgent";
-import Commission from "@/models/Commission";
+import { enrichProfiles, expectedProgressPct, type EnrichedProfile } from "@/lib/targets/profileAchievementCalculator";
+import { targetPace } from "@/lib/admin/dashboard/people.server";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
+/** The TargetProfile schema's own bounds. */
+const MIN_YEAR = 2020;
+const MAX_YEAR = 2100;
+
+interface Progress { target: number; achieved: number }
+interface MoneyProgress extends Progress { currency: string }
+
+/** Finance by currency, largest target first. Amounts are never added across currencies. */
+function financeByCurrency(profiles: EnrichedProfile[]): MoneyProgress[] {
+  const byCurrency = new Map<string, MoneyProgress>();
+  for (const profile of profiles) {
+    const row = byCurrency.get(profile.currency) ?? { currency: profile.currency, target: 0, achieved: 0 };
+    row.target += profile.financeTarget;
+    row.achieved += profile.financeAchieved;
+    byCurrency.set(profile.currency, row);
+  }
+  return [...byCurrency.values()].sort((left, right) => right.target - left.target || right.achieved - left.achieved);
+}
+
+function sum(profiles: EnrichedProfile[], target: "employerTarget" | "employeeTarget", achieved: "employerAchieved" | "employeeAchieved"): Progress {
+  return {
+    target: profiles.reduce((total, profile) => total + profile[target], 0),
+    achieved: profiles.reduce((total, profile) => total + profile[achieved], 0),
+  };
+}
+
 /* ------------------------------------------------------------------ */
-/*  GET  /api/admin/target-report                                      */
-/*  Consolidated target report: trends, YoY, business volume, etc.     */
+/*  GET  /api/admin/target-report?year=                                */
+/*  One year of targets against what was achieved: totals, the month   */
+/*  by month line, and every person's progress and pace.               */
 /* ------------------------------------------------------------------ */
 async function handler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
@@ -19,222 +45,93 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
   await connectDB();
 
-  const { searchParams } = new URL(req.url);
-  const currentYear = new Date().getFullYear();
-  const requestedYear = parseInt(searchParams.get("year") ?? String(currentYear));
-  const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
-  const compareYear = year - 1;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const requested = Number.parseInt(new URL(req.url).searchParams.get("year") ?? "", 10);
+  const year = Number.isInteger(requested) && requested >= MIN_YEAR && requested <= MAX_YEAR ? requested : currentYear;
 
-  // --- Load current + previous year profiles (all roles) ---
-  const [currentProfiles, prevProfiles] = await Promise.all([
+  const [profiles, yearsWithTargets] = await Promise.all([
     TargetProfile.find({ year, status: "active" }).lean(),
-    TargetProfile.find({ year: compareYear, status: "active" }).lean(),
+    TargetProfile.distinct("year", { status: "active" }) as Promise<number[]>,
   ]);
 
-  // Resolve user names
-  const allUserIds = [
-    ...new Set([
-      ...currentProfiles.map((p) => String(p.assigneeId)),
-      ...prevProfiles.map((p) => String(p.assigneeId)),
-    ]),
-  ];
-  // User lookup + both enrichment passes are independent — run them together.
-  const [users, enrichedCurrent, enrichedPrev] = await Promise.all([
-    User.find({ _id: { $in: allUserIds } }).select("_id name email").lean(),
-    currentProfiles.length > 0
-      ? enrichProfiles(currentProfiles as unknown as Record<string, unknown>[])
-      : Promise.resolve([]),
-    prevProfiles.length > 0
-      ? enrichProfiles(prevProfiles as unknown as Record<string, unknown>[])
-      : Promise.resolve([]),
+  const [enriched, users] = await Promise.all([
+    profiles.length > 0 ? enrichProfiles(profiles as unknown as Record<string, unknown>[]) : Promise.resolve([]),
+    User.find({ _id: { $in: profiles.map((profile) => profile.assigneeId) } }).select("_id name email").lean(),
   ]);
-  const userMap = new Map(users.map((u) => [String(u._id), u]));
+  const userById = new Map(users.map((user) => [String(user._id), user]));
 
-  // --- Monthly Trend (current year aggregated) ---
-  const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1;
-    const monthData = {
-      month,
-      employerTarget: 0,
-      employeeTarget: 0,
-      financeTarget: 0,
-      employerAchieved: 0,
-      employeeAchieved: 0,
-      financeAchieved: 0,
+  /* Totals count each target once. A super agent's target already covers its
+     agents, so only top-level profiles add up — an agent whose parent plan is
+     not active this year stands on its own. The month-by-month line used to
+     add parents and children together, doubling every team. */
+  const activeIds = new Set(enriched.map((profile) => profile._id));
+  const topLevel = enriched.filter((profile) => !profile.parentProfileId || !activeIds.has(profile.parentProfileId));
+  const finance = financeByCurrency(topLevel);
+  const mainCurrency = finance[0]?.currency ?? null;
+
+  const pace = { achieved: 0, onPace: 0, behind: 0 };
+  for (const profile of enriched) pace[targetPace(profile)] += 1;
+
+  const monthly = Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    const point = {
+      month: `${year}-${String(month).padStart(2, "0")}`,
+      employers: { target: 0, achieved: 0 },
+      employees: { target: 0, achieved: 0 },
+      // The main currency only: a line cannot mix two currencies either.
+      finance: { target: 0, achieved: 0 },
     };
-    for (const profile of enrichedCurrent) {
-      const ma = profile.monthlyAchievements.find((m) => m.month === month);
-      if (ma) {
-        monthData.employerTarget += ma.employerTarget;
-        monthData.employeeTarget += ma.employeeTarget;
-        monthData.financeTarget += ma.financeTarget;
-        monthData.employerAchieved += ma.employerAchieved;
-        monthData.employeeAchieved += ma.employeeAchieved;
-        monthData.financeAchieved += ma.financeAchieved;
+    for (const profile of topLevel) {
+      const row = profile.monthlyAchievements.find((entry) => entry.month === month);
+      if (!row) continue;
+      point.employers.target += row.employerTarget;
+      point.employers.achieved += row.employerAchieved;
+      point.employees.target += row.employeeTarget;
+      point.employees.achieved += row.employeeAchieved;
+      if (profile.currency === mainCurrency) {
+        point.finance.target += row.financeTarget;
+        point.finance.achieved += row.financeAchieved;
       }
     }
-    return monthData;
+    return point;
   });
 
-  // --- Year-over-Year Comparison ---
-  const sumMetrics = (profiles: typeof enrichedCurrent) => ({
-    employerTarget: profiles.reduce((s, p) => s + p.employerTarget, 0),
-    employeeTarget: profiles.reduce((s, p) => s + p.employeeTarget, 0),
-    financeTarget: profiles.reduce((s, p) => s + p.financeTarget, 0),
-    employerAchieved: profiles.reduce((s, p) => s + p.employerAchieved, 0),
-    employeeAchieved: profiles.reduce((s, p) => s + p.employeeAchieved, 0),
-    financeAchieved: profiles.reduce((s, p) => s + p.financeAchieved, 0),
-    avgProgress: profiles.length > 0
-      ? Math.round(profiles.reduce((s, p) => s + p.overallProgress, 0) / profiles.length)
-      : 0,
-    profileCount: profiles.length,
-  });
-
-  // Filter to root profiles only (super_agents) to avoid double-counting agent targets
-  const currentRootProfiles = enrichedCurrent.filter((p) => !p.parentProfileId);
-  const prevRootProfiles = enrichedPrev.filter((p) => !p.parentProfileId);
-
-  const currentSummary = sumMetrics(currentRootProfiles);
-  const prevSummary = sumMetrics(prevRootProfiles);
-
-  const yoyGrowth = (curr: number, prev: number) =>
-    prev > 0 ? Math.round(((curr - prev) / prev) * 100) : curr > 0 ? 100 : 0;
-
-  const yearOverYear = {
-    currentYear: { year, ...currentSummary },
-    previousYear: { year: compareYear, ...prevSummary },
-    growth: {
-      employerTarget: yoyGrowth(currentSummary.employerTarget, prevSummary.employerTarget),
-      employeeTarget: yoyGrowth(currentSummary.employeeTarget, prevSummary.employeeTarget),
-      financeTarget: yoyGrowth(currentSummary.financeTarget, prevSummary.financeTarget),
-      employerAchieved: yoyGrowth(currentSummary.employerAchieved, prevSummary.employerAchieved),
-      employeeAchieved: yoyGrowth(currentSummary.employeeAchieved, prevSummary.employeeAchieved),
-      financeAchieved: yoyGrowth(currentSummary.financeAchieved, prevSummary.financeAchieved),
-      avgProgress: yoyGrowth(currentSummary.avgProgress, prevSummary.avgProgress),
-    },
-  };
-
-  // --- Business Volume (total commission value for the year) ---
-  const businessVolumeAgg = await Commission.aggregate([
-    {
-      $match: {
-        createdAt: {
-          $gte: new Date(year, 0, 1),
-          $lte: new Date(year, 11, 31, 23, 59, 59, 999),
-        },
-      },
-    },
-    {
-      $group: {
-        _id: { month: { $month: "$createdAt" }, status: "$status" },
-        total: { $sum: "$amount" },
-        count: { $sum: 1 },
-      },
-    },
-  ]);
-
-  const businessVolume = Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1;
-    const approvedRecords = businessVolumeAgg.filter(
-      (a) => a._id.month === month && ["approved", "paid"].includes(a._id.status)
-    );
-    const pendingRecords = businessVolumeAgg.filter(
-      (a) => a._id.month === month && a._id.status === "pending"
-    );
-    const all = businessVolumeAgg.filter((a) => a._id.month === month);
-    return {
-      month,
-      approved: approvedRecords.reduce((s, a) => s + (a.total ?? 0), 0),
-      pending: pendingRecords.reduce((s, a) => s + (a.total ?? 0), 0),
-      total: all.reduce((s, a) => s + (a.total ?? 0), 0),
-      count: all.reduce((s, a) => s + (a.count ?? 0), 0),
-    };
-  });
-
-  const totalBusinessVolume = businessVolume.reduce((s, m) => s + m.total, 0);
-  const totalApprovedVolume = businessVolume.reduce((s, m) => s + m.approved, 0);
-
-  // --- Per-Supervisor / Per-Agent breakdown ---
-  const supervisorProfiles = enrichedCurrent
-    .filter((p) => p.assigneeRole === "super_agent")
-    .map((p) => {
-      const user = userMap.get(p.assigneeId);
+  const people = enriched
+    .map((profile) => {
+      const user = userById.get(profile.assigneeId);
       return {
-        _id: p._id,
-        assigneeId: p.assigneeId,
-        assigneeName: user?.name ?? "Unknown",
-        assigneeEmail: user?.email ?? "",
-        region: p.region,
-        employerTarget: p.employerTarget,
-        employeeTarget: p.employeeTarget,
-        financeTarget: p.financeTarget,
-        employerAchieved: p.employerAchieved,
-        employeeAchieved: p.employeeAchieved,
-        financeAchieved: p.financeAchieved,
-        overallProgress: p.overallProgress,
-        riskScore: p.riskScore,
-        incentiveTier: p.incentiveTier,
+        id: profile._id,
+        name: user?.name ?? "",
+        email: user?.email ?? "",
+        role: profile.assigneeRole as "agent" | "super_agent",
+        region: profile.region ?? null,
+        employers: { target: profile.employerTarget, achieved: profile.employerAchieved },
+        employees: { target: profile.employeeTarget, achieved: profile.employeeAchieved },
+        finance: { currency: profile.currency, target: profile.financeTarget, achieved: profile.financeAchieved },
+        progress: profile.overallProgress,
+        pace: targetPace(profile),
       };
     })
-    .sort((a, b) => b.overallProgress - a.overallProgress);
-
-  const agentProfiles = enrichedCurrent
-    .filter((p) => p.assigneeRole === "agent")
-    .map((p) => {
-      const user = userMap.get(p.assigneeId);
-      return {
-        _id: p._id,
-        assigneeId: p.assigneeId,
-        assigneeName: user?.name ?? "Unknown",
-        assigneeEmail: user?.email ?? "",
-        region: p.region,
-        employerTarget: p.employerTarget,
-        employeeTarget: p.employeeTarget,
-        financeTarget: p.financeTarget,
-        employerAchieved: p.employerAchieved,
-        employeeAchieved: p.employeeAchieved,
-        financeAchieved: p.financeAchieved,
-        overallProgress: p.overallProgress,
-        riskScore: p.riskScore,
-        incentiveTier: p.incentiveTier,
-      };
-    })
-    .sort((a, b) => b.overallProgress - a.overallProgress);
-
-  // --- Quarterly breakdown ---
-  const quarters = [
-    { label: "Q1", months: [1, 2, 3] },
-    { label: "Q2", months: [4, 5, 6] },
-    { label: "Q3", months: [7, 8, 9] },
-    { label: "Q4", months: [10, 11, 12] },
-  ];
-  const quarterlyBreakdown = quarters.map((q) => {
-    const qMonths = monthlyTrend.filter((m) => q.months.includes(m.month));
-    return {
-      label: q.label,
-      employerTarget: qMonths.reduce((s, m) => s + m.employerTarget, 0),
-      employerAchieved: qMonths.reduce((s, m) => s + m.employerAchieved, 0),
-      employeeTarget: qMonths.reduce((s, m) => s + m.employeeTarget, 0),
-      employeeAchieved: qMonths.reduce((s, m) => s + m.employeeAchieved, 0),
-      financeTarget: qMonths.reduce((s, m) => s + m.financeTarget, 0),
-      financeAchieved: qMonths.reduce((s, m) => s + m.financeAchieved, 0),
-      businessVolume: businessVolume
-        .filter((bv) => q.months.includes(bv.month))
-        .reduce((s, bv) => s + bv.total, 0),
-    };
-  });
+    .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name));
 
   return NextResponse.json({
     year,
-    monthlyTrend,
-    yearOverYear,
-    businessVolume,
-    totalBusinessVolume,
-    totalApprovedVolume,
-    quarterlyBreakdown,
-    supervisorProfiles,
-    agentProfiles,
-    summary: currentSummary,
+    years: [...new Set([...yearsWithTargets, currentYear, year])].sort((left, right) => right - left),
+    expectedProgress: expectedProgressPct(year, now),
+    totals: {
+      employers: sum(topLevel, "employerTarget", "employerAchieved"),
+      employees: sum(topLevel, "employeeTarget", "employeeAchieved"),
+      finance: {
+        currency: mainCurrency,
+        target: finance[0]?.target ?? 0,
+        achieved: finance[0]?.achieved ?? 0,
+        others: finance.slice(1),
+      },
+      people: { total: enriched.length, ...pace },
+    },
+    monthly,
+    people,
   });
 }
 

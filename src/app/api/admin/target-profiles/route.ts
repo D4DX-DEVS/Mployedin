@@ -17,6 +17,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyTargetAssigned } from "@/lib/notifications/trigger";
 import User from "@/models/User";
 import SuperAgent from "@/models/SuperAgent";
+import type { TargetProfileSortField } from "@/lib/targets/profileSortFields";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -60,6 +61,38 @@ function isDuplicateKeyError(error: unknown): boolean {
   );
 }
 
+interface SortableRow {
+  assigneeName: string;
+  teamSize: number;
+  employerProgress: number;
+  employeeProgress: number;
+  financeProgress: number;
+  overallProgress: number;
+  riskScore: "high" | "medium" | "low";
+}
+
+const RISK_RANK: Record<SortableRow["riskScore"], number> = { low: 1, medium: 2, high: 3 };
+
+/** One comparator per shared sort field. Anything else keeps date added (createdAt), newest first unless asc. */
+const SORTERS: Record<TargetProfileSortField, (a: SortableRow, b: SortableRow) => number> = {
+  name: (a, b) => a.assigneeName.localeCompare(b.assigneeName, undefined, { sensitivity: "base" }),
+  teamSize: (a, b) => a.teamSize - b.teamSize,
+  employerProgress: (a, b) => a.employerProgress - b.employerProgress,
+  employeeProgress: (a, b) => a.employeeProgress - b.employeeProgress,
+  financeProgress: (a, b) => a.financeProgress - b.financeProgress,
+  overallProgress: (a, b) => a.overallProgress - b.overallProgress,
+  risk: (a, b) => RISK_RANK[a.riskScore] - RISK_RANK[b.riskScore],
+};
+
+function sortRows<T extends SortableRow>(rows: T[], sortBy: string | null, order: "asc" | "desc"): T[] {
+  const compare = sortBy && Object.hasOwn(SORTERS, sortBy) ? SORTERS[sortBy as TargetProfileSortField] : undefined;
+  // No sortBy = date added. Rows arrive createdAt desc, so oldest-first is the
+  // reverse; an unknown field keeps the default order as it is.
+  if (!compare) return !sortBy && order === "asc" ? [...rows].reverse() : rows;
+  const direction = order === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => compare(a, b) * direction);
+}
+
 async function getEligibleAssigneeIds(assigneeIds: string[], assigneeRole: string): Promise<Set<string>> {
   const users = await User.find({
     _id: { $in: assigneeIds },
@@ -91,6 +124,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const search = (searchParams.get("search") ?? "").trim().toLowerCase();
   const risk = searchParams.get("risk");
   const completion = searchParams.get("completion");
+  const sortBy = searchParams.get("sortBy");
+  const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50")));
 
@@ -179,7 +214,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   });
   const total = filteredRows.length;
   const skip = (page - 1) * limit;
-  const rows = filteredRows.slice(skip, skip + limit);
+  const rows = sortRows(filteredRows, sortBy, sortOrder).slice(skip, skip + limit);
 
   return NextResponse.json({
     profiles: rows,

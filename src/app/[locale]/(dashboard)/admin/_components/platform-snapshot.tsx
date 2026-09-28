@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, BadgeCheck, Briefcase, CalendarClock, FileText, LayoutDashboard, Minus, Users } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, BadgeCheck, Briefcase, CalendarClock, FileText, LayoutDashboard, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { periodChange } from "@/lib/admin/dashboard/period";
 import type { PlatformSnapshot, WindowedCount } from "@/lib/admin/dashboard/types";
@@ -36,28 +36,39 @@ function layout(count: number, index: number): { grid: string; cell: string } {
   return { grid: `sm:max-lg:grid-cols-2 ${wide}`, cell: lastOdd };
 }
 
-function trend(window: WindowedCount) {
+/**
+ * The change against the previous period: the sentence for tooltips and
+ * assistive tech, and the short form the pill prints. With nothing in the
+ * previous period the short form is the count added ("+9"); with nothing in
+ * either, it says "No change" rather than printing a bare dash.
+ */
+function trend(window: WindowedCount, days: number, t: DashboardTranslator) {
   const change = periodChange(window.current, window.previous);
-  const signed = change.kind === "percent" || change.kind === "count" ? change.value : 0;
-  const direction = change.kind === "new" ? "up" : signed > 0 ? "up" : signed < 0 ? "down" : "flat";
-  const Icon = direction === "up" ? ArrowUpRight : direction === "down" ? ArrowDownRight : Minus;
+  const signed = change.kind === "percent" || change.kind === "count" ? change.value : change.kind === "new" ? window.current : 0;
+  const direction = signed > 0 ? "up" : signed < 0 ? "down" : "flat";
+  const value = Math.abs(signed);
+  // Flat prints "No change" in words; a dash icon beside it read as a missing value.
+  const Icon = direction === "up" ? ArrowUpRight : direction === "down" ? ArrowDownRight : null;
   const tone = direction === "up" ? "text-emerald-700" : direction === "down" ? "text-primary" : "text-muted-foreground";
-  return { change, value: Math.abs(signed), direction, Icon, tone };
-}
-
-/** Compact phone suffix; the full comparison remains available to assistive tech. */
-function ShortChange({ window, days, t }: { window: WindowedCount; days: number; t: DashboardTranslator }) {
-  const { change, value, direction, Icon, tone } = trend(window);
-  const label =
+  const text =
     change.kind === "none"
       ? t("snapshot.changeNone")
       : change.kind === "new"
         ? t("snapshot.changeNew", { days })
         : t(change.kind === "percent" ? "snapshot.changePercent" : "snapshot.changeCount", { value, direction, days });
-  const compact = change.kind === "none" || change.kind === "new" ? "—" : `${change.kind === "count" && direction === "down" ? "−" : change.kind === "count" && direction === "up" ? "+" : ""}${value}${change.kind === "percent" ? "%" : ""}`;
+  // The icon carries the direction, so a percentage prints bare; counts are signed.
+  const compact =
+    direction !== "flat" && change.kind === "percent" ? `${value}%` : t("snapshot.changeShortCount", { value, direction });
+  return { change, direction, Icon, tone, text, compact };
+}
+
+/** Compact phone suffix; the full comparison remains available to assistive tech. Nothing either side prints nothing. */
+function ShortChange({ window, days, t }: { window: WindowedCount; days: number; t: DashboardTranslator }) {
+  const { change, Icon, tone, text, compact } = trend(window, days, t);
+  if (change.kind === "none") return <span className="sr-only">{text}</span>;
   return (
-    <span className={`inline-flex shrink-0 items-center gap-0.5 font-semibold ${tone}`} aria-label={label} title={label}>
-      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+    <span className={`inline-flex shrink-0 items-center gap-0.5 font-semibold ${tone}`} aria-label={text} title={text}>
+      {Icon && <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />}
       <span aria-hidden="true">{compact}</span>
     </span>
   );
@@ -65,19 +76,12 @@ function ShortChange({ window, days, t }: { window: WindowedCount; days: number;
 
 /** A compact delta pill; the full comparison is retained as a label and tooltip. */
 function Change({ window, days, t }: { window: WindowedCount; days: number; t: DashboardTranslator }) {
-  const { change, value, direction, Icon, tone } = trend(window);
-  const text =
-    change.kind === "none"
-      ? t("snapshot.changeNone")
-      : change.kind === "new"
-        ? t("snapshot.changeNew", { days })
-        : t(change.kind === "percent" ? "snapshot.changePercent" : "snapshot.changeCount", { value, direction, days });
-  const compact = change.kind === "none" || change.kind === "new" ? "—" : `${change.kind === "count" && direction === "down" ? "−" : change.kind === "count" && direction === "up" ? "+" : ""}${value}${change.kind === "percent" ? "%" : ""}`;
+  const { direction, Icon, tone, text, compact } = trend(window, days, t);
   const pill =
-    direction === "up" ? "bg-emerald-50 text-emerald-700" : "bg-primary/10 text-primary";
+    direction === "up" ? "bg-emerald-50 text-emerald-700" : direction === "down" ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground";
   return (
     <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold leading-4 ${pill}`} aria-label={text} title={text}>
-      <Icon className={`h-3 w-3 shrink-0 ${tone}`} aria-hidden="true" />
+      {Icon && <Icon className={`h-3 w-3 shrink-0 ${tone}`} aria-hidden="true" />}
       <span aria-hidden="true">{compact}</span>
       <span className="sr-only">{text}</span>
     </span>

@@ -37,7 +37,6 @@ interface Banner {
   subtitle: string;
   subtitleAr: string;
   image: string;
-  imageMobile?: string;
   linkUrl: string;
   linkText: string;
   linkTextAr: string;
@@ -73,7 +72,6 @@ interface Video {
   description: string;
   descriptionAr: string;
   url: string;
-  thumbnail: string;
 }
 
 interface BlogPost {

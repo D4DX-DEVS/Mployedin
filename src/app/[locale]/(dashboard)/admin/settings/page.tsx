@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent, ReceiptText, Banknote, Check } from "lucide-react";
+import { Eye, EyeOff, Mail, Send, Globe, ReceiptText, Banknote, Check } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import { CommissionCountryRules, commissionRuleProblem, type CommissionOverride } from "./_components/CommissionCountryRules";
 
 interface SmtpConfig {
   smtpEmail: string;
@@ -22,11 +23,6 @@ interface SmtpConfig {
   smtpSecure: boolean;
 }
 
-interface CommissionOverride {
-  countryCode: string;
-  rate: number;
-  label: string;
-}
 
 interface InvoiceIssuerBank {
   bankName: string;
@@ -153,6 +149,11 @@ export default function AdminSettingsPage() {
   }, []);
 
   const handleSave = async () => {
+    const ruleProblem = commissionRuleProblem(settings.commissionOverrides);
+    if (ruleProblem) {
+      toast.error(ruleProblem === "missingCountry" ? t("commissionRuleMissingCountry") : t("commissionRuleDuplicateCountry"));
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/admin/settings", {
@@ -435,105 +436,10 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Commission Overrides */}
-        <div className="panel-body space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
-                <Percent className="h-4 w-4 text-primary" />
-                {t("commissionOverridesTitle")}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {t("commissionOverridesDescription")}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setSettings((s) => ({
-                  ...s,
-                  commissionOverrides: [...s.commissionOverrides, { countryCode: "", rate: 0, label: "" }],
-                }))
-              }
-            >
-              <Plus className="h-4 w-4 mr-1" /> {t("addCommissionButton")}
-            </Button>
-          </div>
-
-          {settings.commissionOverrides.length > 0 ? (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 sm:grid-cols-[1fr_80px_1fr_40px] gap-2 text-xs font-medium text-muted-foreground px-1">
-                <span>{t("countryCodeHeader")}</span>
-                <span>{t("rateHeader")}</span>
-                <span className="hidden sm:inline">{t("labelHeader")}</span>
-                <span />
-              </div>
-              {settings.commissionOverrides.map((ov, idx) => (
-                <div key={idx} className="grid grid-cols-2 sm:grid-cols-[1fr_80px_1fr_40px] gap-2 items-center">
-                  <Input
-                    aria-label={t("countryCodeHeader")}
-                    placeholder={t("countryCodePlaceholder")}
-                    value={ov.countryCode}
-                    maxLength={2}
-                    onChange={(e) => {
-                      const updated = [...settings.commissionOverrides];
-                      updated[idx] = { ...updated[idx], countryCode: e.target.value.toUpperCase() };
-                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
-                    }}
-                  />
-                  <Input
-                    aria-label={t("rateHeader")}
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    value={ov.rate}
-                    onChange={(e) => {
-                      const updated = [...settings.commissionOverrides];
-                      updated[idx] = { ...updated[idx], rate: parseFloat(e.target.value) || 0 };
-                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
-                    }}
-                  />
-                  <Input
-                    aria-label={t("labelHeader")}
-                    placeholder={t("labelPlaceholder")}
-                    value={ov.label}
-                    onChange={(e) => {
-                      const updated = [...settings.commissionOverrides];
-                      updated[idx] = { ...updated[idx], label: e.target.value };
-                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
-                    }}
-                  />
-                  <Button aria-label={ta("delete")}
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive p-1"
-                    onClick={() => {
-                      const updated = settings.commissionOverrides.filter((_, i) => i !== idx);
-                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">
-              {t("noOverridesMessage")}
-            </p>
-          )}
-        </div>
-
-        {/* GDPR */}
-        <div className="panel-body space-y-2">
-          <h2 className="heading-section font-semibold text-foreground">{t("gdprSectionTitle")}</h2>
-          <p className="text-sm text-muted-foreground">{t("gdprDescription")}</p>
-          <a href="/api/gdpr" target="_blank" className="text-sm text-primary hover:underline">
-            {t("gdprLink")}
-          </a>
-        </div>
+        <CommissionCountryRules
+          rules={settings.commissionOverrides}
+          onChange={(commissionOverrides) => setSettings((s) => ({ ...s, commissionOverrides }))}
+        />
 
         {/* SMTP / Email Configuration */}
         <div className="panel-body space-y-4">

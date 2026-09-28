@@ -22,7 +22,7 @@ import {
 import { Plus, Pencil, Trash2, Inbox, Sparkles } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import type { LucideIcon } from "lucide-react";
-import CmsHeroFilters, {
+import {
   type CmsFilterField,
   type CmsFilterValues,
   buildCmsQueryParams,
@@ -30,11 +30,19 @@ import CmsHeroFilters, {
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { formatDate } from "@/lib/ui/intlFormat";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Input } from "@/components/ui/input";
 
 export interface CmsColumn {
   key: string;
   label: string;
   render?: (value: unknown, item: Record<string, unknown>) => React.ReactNode;
+  /** The key is a field the page's API whitelists for `?sortBy=`. */
+  sortable?: boolean;
 }
 
 const DEFAULT_STATUS_OPTIONS = [
@@ -51,7 +59,10 @@ interface CmsPageProps {
   columns: CmsColumn[];
   fields: CrudField[];
   resource?: string;
+  /** Show "Add New". Off for a fixed set of records (Static Pages). */
   allowCreate?: boolean;
+  /** Offer Delete on each row. Off for a fixed set of records (Static Pages). */
+  allowDelete?: boolean;
   editPageBasePath?: string;
   createPagePath?: string;
   icon?: LucideIcon;
@@ -59,6 +70,8 @@ interface CmsPageProps {
   /** Page-specific filter fields rendered inside the hero (expand on click). */
   filterFields?: CmsFilterField[];
   searchPlaceholder?: string;
+  /** The list's first order — e.g. display order for the ordered collections. */
+  defaultSort?: { by: string; order: "asc" | "desc" };
 }
 
 export default function CmsPage({
@@ -69,12 +82,14 @@ export default function CmsPage({
   fields,
   resource = "cms",
   allowCreate = true,
+  allowDelete = true,
   editPageBasePath,
   createPagePath,
   icon: Icon,
   iconColor = "text-sky-600",
   filterFields: filterFieldsProp,
   searchPlaceholder,
+  defaultSort = { by: "createdAt", order: "desc" },
 }: CmsPageProps) {
   const t = useTranslations("cmsPage");
   const tf = useTranslations("formErrors");
@@ -87,8 +102,22 @@ export default function CmsPage({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [filterValues, setFilterValues] = useState<CmsFilterValues>(getDefaultCmsFilterValues);
-  const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const [sortBy, setSortBy] = useState(defaultSort.by);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(defaultSort.order);
+  const sortOptions = [
+    { value: "createdAt", label: tCommon("sortDateAdded") },
+    ...columns.filter((col) => col.sortable).map((col) => ({ value: col.key, label: col.label })),
+  ];
+  /** Same column flips it; a new one starts at its natural first order. */
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else {
+      setSortBy(field);
+      setSortOrder(field === "createdAt" || field.endsWith("At") || field === "rating" ? "desc" : "asc");
+    }
+    resetPage();
+  };
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Record<string, unknown> | null>(null);
 
@@ -121,6 +150,11 @@ export default function CmsPage({
         filterFields,
         new URLSearchParams({ page: String(page), limit: String(limit) })
       );
+      // The default order is left to the API, which may break ties its own way.
+      if (sortBy !== defaultSort.by || sortOrder !== defaultSort.order) {
+        params.set("sortBy", sortBy);
+        params.set("sortOrder", sortOrder);
+      }
       setLoadError(false);
       const r = await fetch(`${apiUrl}?${params}`, { signal: controller.signal });
       if (!r.ok) throw new Error(`Failed to load ${title}: HTTP ${r.status}`);
@@ -140,7 +174,7 @@ export default function CmsPage({
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
     }
-  }, [apiUrl, page, limit, filterValues, filterFields, title, updateTotal]);
+  }, [apiUrl, page, limit, filterValues, filterFields, sortBy, sortOrder, defaultSort.by, defaultSort.order, title, updateTotal]);
 
   useEffect(() => {
     void fetchItems();
@@ -212,6 +246,31 @@ export default function CmsPage({
     return record;
   };
 
+  // Heads the "…" menu: the record's own words, never its database id.
+  const rowName = (row: Record<string, unknown>) =>
+    String(row.title ?? row.name ?? row.question ?? row.subject ?? row.slug ?? title);
+
+  const canEdit = can(resource as "cms", "update");
+  const canDelete = allowDelete && can(resource as "cms", "delete");
+
+  const rowActionsFor = (row: Record<string, unknown>): { quick: RowAction[]; menu: RowAction[] } => ({
+    quick: canEdit
+      ? [{
+          key: "edit",
+          label: t("edit"),
+          icon: Pencil,
+          iconOnly: true,
+          onSelect: () =>
+            editPageBasePath
+              ? router.push(`/${locale}${editPageBasePath}/${row._id}/edit`)
+              : setEditItem(row),
+        }]
+      : [],
+    menu: canDelete
+      ? [{ key: "delete", label: t("delete"), icon: Trash2, iconOnly: true, destructive: true, onSelect: () => void handleDelete(String(row._id)) }]
+      : [],
+  });
+
   const activeOnPage = items.filter(
     (i) => i.isActive === true || i.status === "published"
   ).length;
@@ -248,35 +307,88 @@ export default function CmsPage({
         ]}
       />
 
-      {/* The filter bar used to live inside DashboardPageHeader, which pushed
-          six CMS headers to 288px on desktop and 226px on a 390px phone — 27%
-          of the screen before the first record. The house layout is
-          header -> one list panel -> pagination, with filters in the list
-          toolbar. */}
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl sm:rounded-3xl">
-        <CmsHeroFilters
-          inToolbar
-          fields={filterFields}
-          values={filterValues}
-          onChange={handleFilterChange}
-          onReset={resetFilters}
-          hasActiveFilters={hasActiveFilters}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters((v) => !v)}
-          searchPlaceholder={
+      {/* Standalone filter bar, same as admin Jobs: every filter field the page
+          declares sits inline (none of the CMS pages has more than three), so
+          nothing hides behind a Show Filters toggle any more. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={hasActiveFilters ? resetFilters : undefined}
+        clearLabel={t("clearFilters")}
+      >
+        <InlineFilterSearch
+          value={filterValues.search}
+          onChange={(value) => { handleFilterChange({ ...filterValues, search: value }); }}
+          placeholder={
             searchPlaceholder ??
             filterFields.find((f) => f.type === "search")?.placeholder ??
             t("searchFallback", { title: title.toLowerCase() })
           }
         />
+        {filterFields.map((field) => {
+          if (field.type === "status") {
+            return (
+              <SearchableSelect
+                key="status"
+                id="cms-status-filter"
+                ariaLabel={field.label ?? tCommon("status")}
+                className={INLINE_FILTER_CONTROL}
+                options={field.options}
+                value={filterValues.status}
+                onValueChange={(value) => { handleFilterChange({ ...filterValues, status: value }); }}
+                placeholder={field.label ?? tCommon("status")}
+              />
+            );
+          }
+          if (field.type === "select") {
+            return (
+              <SearchableSelect
+                key={field.key}
+                ariaLabel={field.label}
+                className={INLINE_FILTER_CONTROL}
+                options={field.options}
+                value={filterValues.extras[field.key] ?? "all"}
+                onValueChange={(value) => { handleFilterChange({ ...filterValues, extras: { ...filterValues.extras, [field.key]: value } }); }}
+                placeholder={field.placeholder ?? field.label}
+              />
+            );
+          }
+          if (field.type === "text") {
+            return (
+              <Input
+                key={field.key}
+                aria-label={field.label}
+                placeholder={field.placeholder ?? field.label}
+                value={filterValues.extras[field.key] ?? ""}
+                onChange={(e) => { handleFilterChange({ ...filterValues, extras: { ...filterValues.extras, [field.key]: e.target.value } }); }}
+                className={`${INLINE_FILTER_CONTROL} shadow-none`}
+              />
+            );
+          }
+          return null;
+        })}
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={sortOptions}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="overflow-x-auto" data-mobile-table="responsive">
           <Table className="responsive-card-table">
             <TableHeader>
               <TableRow className="bg-secondary/70 hover:bg-secondary/70">
                 {columns.map((col) => (
-                  <TableHead key={col.key} data-label={col.label}>{col.label}</TableHead>
+                  <TableHead key={col.key} data-label={col.label}>
+                    {col.sortable ? (
+                      <SortableTableHeader label={col.label} active={sortBy === col.key} order={sortOrder} onClick={() => sortByColumn(col.key)} />
+                    ) : col.label}
+                  </TableHead>
                 ))}
-                <TableHead className="w-[100px]" data-label={t("actions")}>{t("actions")}</TableHead>
+                <TableHead className="text-right" data-label={tCommon("actions")}>{tCommon("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -320,11 +432,13 @@ export default function CmsPage({
                           ? t("noItemsMatchFilters")
                           : t("noFoundTitle", { title: title.toLowerCase() })}
                       </h2>
-                      <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-                        {hasActiveFilters
-                          ? t("adjustFiltersMsg")
-                          : t("clickAddNewMsg")}
-                      </p>
+                      {(hasActiveFilters || allowCreate) && (
+                        <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+                          {hasActiveFilters
+                            ? t("adjustFiltersMsg")
+                            : t("clickAddNewMsg")}
+                        </p>
+                      )}
                       {hasActiveFilters && (
                         <Button size="sm"
                           onClick={resetFilters}
@@ -339,79 +453,54 @@ export default function CmsPage({
                 </TableRow>
               ) : (
                 items.map((item) => (
-                  <TableRow key={String(item._id)}>
-                    {columns.map((col) => (
-                      <TableCell key={col.key} className="min-w-0">
-                        {col.render
-                          ? col.render(item[col.key], item)
-                          : col.key === "isActive"
-                            ? (
-                                <Badge variant={item[col.key] ? "default" : "secondary"}>
-                                  {item[col.key] ? t("active") : t("inactive")}
-                                </Badge>
-                              )
-                            : (
-                                <span className="line-clamp-1 max-w-xs">
-                                  {String(item[col.key] ?? "")}
-                                </span>
-                              )}
+                    <TableRow key={String(item._id)}>
+                      {columns.map((col) => (
+                        <TableCell key={col.key} className="min-w-0">
+                          {col.render
+                            ? col.render(item[col.key], item)
+                            : col.key === "isActive"
+                              ? (
+                                  <Badge variant={item[col.key] ? "default" : "secondary"}>
+                                    {item[col.key] ? t("active") : t("inactive")}
+                                  </Badge>
+                                )
+                              : (col.key === "createdAt" || col.key === "updatedAt" || col.key === "publishedAt" || col.key === "date")
+                                ? (
+                                    <span className="text-sm text-muted-foreground">
+                                      {item[col.key] ? formatDate(new Date(String(item[col.key])), { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                    </span>
+                                  )
+                                : (
+                                    <span className="line-clamp-1 max-w-xs">
+                                      {String(item[col.key] ?? "")}
+                                    </span>
+                                  )}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-right">
+                        {canEdit || canDelete ? (
+                          <RowActions name={rowName(item)} {...rowActionsFor(item)} />
+                        ) : null}
                       </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {allowCreate && can(resource as "cms", "update") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              editPageBasePath
-                                ? router.push(`/${locale}${editPageBasePath}/${item._id}/edit`)
-                                : setEditItem(item)
-                            }
-                            title={t("edit")}
-                            aria-label={t("edit")}
-                            className="h-8 gap-1 px-2 text-xs"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            <span>{t("edit")}</span>
-                          </Button>
-                        )}
-                        {can(resource as "cms", "delete") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(String(item._id))}
-                            title={t("delete")}
-                            aria-label={t("delete")}
-                            className="h-8 gap-1 px-2 text-xs text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>{t("delete")}</span>
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                    </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
         </div>
-
-        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            limit={limit}
-            total={total}
-            onPageChange={setPage}
-            onLimitChange={(v) => {
-              setLimit(v);
-              resetPage();
-            }}
-          />
-        </div>
       </section>
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        limit={limit}
+        total={total}
+        onPageChange={setPage}
+        onLimitChange={(v) => {
+          setLimit(v);
+          resetPage();
+        }}
+      />
 
       {showAdd && (
         <CrudModal

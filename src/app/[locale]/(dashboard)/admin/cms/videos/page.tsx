@@ -14,7 +14,6 @@ export default function VideosAdminPage() {
     { name: "description", label: t("descriptionEnglishLabel"), type: "textarea", placeholder: t("briefDescriptionPlaceholder") },
     { name: "descriptionAr", label: t("descriptionArabicLabel"), type: "textarea", placeholder: t("briefDescriptionPlaceholder") },
     { name: "url", label: t("videoUrlLabel"), type: "text", required: true, placeholder: t("youtubeUrlPlaceholder") },
-    { name: "thumbnail", label: t("thumbnailUrlLabel"), type: "text", placeholder: t("httpPlaceholder") },
     { name: "sortOrder", label: t("sortOrderLabel"), type: "number", placeholder: "0" },
     {
       name: "isActive",
@@ -28,7 +27,7 @@ export default function VideosAdminPage() {
   ];
 
   const COLUMNS = [
-    { key: "title", label: t("columnTitleLabel") },
+    { key: "title", label: t("columnTitleLabel"), sortable: true },
     {
       key: "url",
       label: t("columnUrlLabel"),
@@ -38,12 +37,13 @@ export default function VideosAdminPage() {
         </a>
       ),
     },
-    { key: "sortOrder", label: t("columnOrderLabel") },
+    { key: "sortOrder", label: t("columnOrderLabel"), sortable: true },
     { key: "isActive", label: t("statusLabel") },
   ];
 
   return (
     <CmsPage
+      defaultSort={{ by: "sortOrder", order: "asc" }}
       apiUrl="/api/admin/cms/videos"
       title={t("pageTitle")}
       description={t("pageDescription")}

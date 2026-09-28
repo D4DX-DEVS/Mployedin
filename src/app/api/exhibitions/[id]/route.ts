@@ -13,26 +13,7 @@ import ExhibitionRequest, {
 import User from "@/models/User";
 import { sendEmail } from "@/lib/communications/email";
 import logger from "@/lib/logger";
-
-/** Valid status transitions per role */
-const VALID_TRANSITIONS: Record<string, Record<string, ExhibitionRequestStatus[]>> = {
-  super_agent: {
-    submitted: ["under_review", "rejected"],
-    under_review: ["approved", "rejected", "revision_requested"],
-    revision_requested: ["under_review"],
-  },
-  admin: {
-    submitted: ["under_review", "approved", "rejected"],
-    under_review: ["approved", "rejected", "revision_requested"],
-    approved: ["budget_approved", "rejected"],
-    revision_requested: ["under_review"],
-    budget_approved: ["resources_assigned"],
-    resources_assigned: ["active"],
-    active: ["completed"],
-    completed: ["archived"],
-    rejected: ["archived"],
-  },
-};
+import { VALID_TRANSITIONS } from "@/lib/exhibitions/transitions";
 
 /** Statuses that require a non-empty statusReason — enforced backend-side */
 const REASON_REQUIRED: ExhibitionRequestStatus[] = ["rejected", "revision_requested"];
@@ -217,7 +198,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     };
 
     if (status) {
-      const allowed = VALID_TRANSITIONS[ctx.role]?.[item.status] ?? [];
+      const allowed = VALID_TRANSITIONS[ctx.role]?.[item.status as ExhibitionRequestStatus] ?? [];
       if (!allowed.includes(status)) {
         return NextResponse.json(
           { error: `Cannot transition from '${item.status}' to '${status}'` },

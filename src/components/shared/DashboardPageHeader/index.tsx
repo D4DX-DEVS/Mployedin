@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Sparkles, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageNavIcon } from "@/components/shared/PageNavIcon";
 
 export interface DashboardHeaderMetric {
   label: string;
@@ -16,6 +17,10 @@ export interface DashboardHeaderMetric {
    *  affordances, which a button silently drops. */
   href?: string;
   active?: boolean;
+  /** Extra classes for this one cell — e.g. a tint that marks the figure an
+   *  admin acts on first. Use a ring, not a border: from 640 the admin card
+   *  border is set with !important in globals.css. */
+  className?: string;
 }
 
 interface DashboardPageHeaderProps {
@@ -61,7 +66,7 @@ export function DashboardPageHeader({
   eyebrow,
   title,
   description,
-  icon: Icon = Sparkles,
+  icon: Icon,
   summary,
   actions,
   metrics,
@@ -103,7 +108,7 @@ export function DashboardPageHeader({
             a 479px header. A floor here makes the row wrap instead of crushing. */}
         <div data-header-identity="" className="dashboard-page-header-identity min-w-0 max-w-3xl flex-1 basis-0 lg:min-w-[16rem]">
           <span data-header-icon="" className="dashboard-page-header-icon" aria-hidden="true">
-            <Icon className="h-5 w-5" />
+            {Icon ? <Icon className="h-5 w-5" /> : <PageNavIcon className="h-5 w-5" />}
           </span>
           <div data-header-text="" className="min-w-0">
             {eyebrow && (
@@ -204,7 +209,8 @@ export function DashboardPageHeader({
                   metricCompact && "justify-center px-0.5 py-1.5 text-center sm:justify-between sm:px-3 sm:py-2.5 sm:text-start",
                   "border-e border-border/60 last:border-e-0",
                   (metric.onClick || metric.href) && "transition-colors hover:bg-background/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500",
-                  metric.active && "bg-primary/5 ring-1 ring-inset ring-primary/30"
+                  metric.active && "bg-primary/5 ring-1 ring-inset ring-primary/30",
+                  metric.className
                 )}
               >
                 <div data-header-metric-body="" className={cn("min-w-0", metricCompact && "flex flex-col items-center sm:block")}>

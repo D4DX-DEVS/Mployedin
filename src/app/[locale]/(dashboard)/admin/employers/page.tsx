@@ -21,24 +21,21 @@ import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, Loader2, UserCog, MoreHorizontal, Building2, MapPin, Mail, UserRoundCheck, UserRoundX } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, UserCog, Building2, MapPin, Mail, UserRoundCheck, UserRoundX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AssignAgentDialog } from "./_components/AssignAgentDialog";
 import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
 import { useConfirm } from "@/hooks/useConfirm";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Employer {
@@ -256,22 +253,26 @@ export default function AdminEmployersPage() {
     if (!verifyItem) return;
     setVerifyLoading(true);
     setVerifyError(null);
-    const res = await fetch(`/api/employers/${verifyItem._id}/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ override: verifyOverride, reason: verifyReason || undefined }),
-    });
-    if (res.ok) {
-      await res.json();
-      setVerifyItem((prev) => prev ? { ...prev, domainVerified: true, verificationLevel: "company" } : prev);
-      setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
-        ? { ...e, domainVerified: true, verificationLevel: "company" }
-        : e));
-      setVerifyOverride(false);
-      setVerifyReason("");
-    } else {
-      const data = await res.json();
-      setVerifyError(data.error ?? t("toastVerificationFailed"));
+    try {
+      const res = await fetch(`/api/employers/${verifyItem._id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ override: verifyOverride, reason: verifyReason || undefined }),
+      });
+      if (res.ok) {
+        setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
+          ? { ...e, domainVerified: true, verificationLevel: "company" }
+          : e));
+        setVerifyOverride(false);
+        setVerifyReason("");
+        setVerifyItem(null);
+        toast.success(t("toastVerified", { companyName: verifyItem.companyName }));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setVerifyError(data.error ?? t("toastVerificationFailed"));
+      }
+    } catch {
+      setVerifyError(t("toastVerificationFailed"));
     }
     setVerifyLoading(false);
   };
@@ -284,10 +285,11 @@ export default function AdminEmployersPage() {
     try {
       const res = await fetch(`/api/employers/${verifyItem._id}/verify`, { method: "DELETE" });
       if (res.ok) {
-        setVerifyItem((prev) => prev ? { ...prev, domainVerified: false, verificationLevel: "basic" } : prev);
         setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
           ? { ...e, domainVerified: false, verificationLevel: "basic" }
           : e));
+        setVerifyItem(null);
+        toast.success(t("toastVerificationRevoked", { companyName: verifyItem.companyName }));
       } else {
         const err = await res.json().catch(() => ({}));
         setVerifyError(err.error ?? t("requestFailed"));
@@ -300,6 +302,37 @@ export default function AdminEmployersPage() {
 
   const canManageRows = can("employers", "update") || can("employers", "delete") || can("employers", "approve");
   const tableColumnCount = canManageRows ? 5 : 4;
+
+  // The row's open task goes in plain sight — an agent for a "No agent" row,
+  // then verification — else the workspace; everything else sits under More.
+  const rowActionsFor = (emp: Employer): { quick: RowAction[]; menu: RowAction[] } => {
+    const workspaceId = emp.employerProfileId ?? emp._id;
+    const assign: RowAction | null = can("employers", "update") ? {
+      key: "assign", label: emp.assignedAgent ? t("changeAgentTitle") : t("assignAgentTitle"), icon: UserCog,
+      iconClassName: emp.assignedAgent ? undefined : "text-amber-600", onSelect: () => setAssignItem(emp),
+    } : null;
+    const verify: RowAction | null = can("employers", "approve") ? {
+      key: "verify", label: emp.domainVerified ? t("verifiedButtonTitle") : t("verifyButtonTitle"), icon: ShieldCheck,
+      iconClassName: emp.domainVerified ? "text-emerald-600" : undefined, onSelect: () => setVerifyItem(emp),
+    } : null;
+    const workspace: RowAction = {
+      key: "workspace", label: t("switchViewTitle"), icon: LogIn, iconClassName: "text-sky-600",
+      onSelect: () => handleSwitchToEmployerView(workspaceId),
+      pending: switchingEmployerId === workspaceId, disabled: emp.isActive === false,
+    };
+    const primary = !emp.assignedAgent && assign ? assign : !emp.domainVerified && verify ? verify : workspace;
+    const menu: RowAction[] = [verify, assign, can("employers", "update") ? {
+      key: "edit", label: t("editButtonTitle"), icon: Pencil, onSelect: () => setEditItem(emp),
+    } : null, workspace].filter((action): action is RowAction => Boolean(action) && action !== primary);
+    if (can("employers", "delete")) {
+      menu.push(
+        { key: "deactivate", label: t("deactivateButtonTitle"), icon: Ban, onSelect: () => handleDelete(emp._id), destructive: true },
+        { key: "delete", label: t("deleteButtonTitle"), icon: Trash2, onSelect: () => handlePermanentDelete(emp._id), destructive: true },
+      );
+    }
+    const quick = primary === workspace ? { ...workspace, label: t("openWorkspaceShort") } : primary;
+    return { quick: [quick], menu };
+  };
 
   return (
     <div className="page-container">
@@ -406,12 +439,12 @@ export default function AdminEmployersPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="min-w-[260px]"><SortableTableHeader label={t("tableHeaderCompany")} active={sortBy === "companyName"} order={order} onClick={() => { setSortBy("companyName"); setSortOrder(sortBy === "companyName" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
-              <TableHead className="min-w-[180px]"><SortableTableHeader label={t("tableHeaderIndustry")} active={sortBy === "industry"} order={order} onClick={() => { setSortBy("industry"); setSortOrder(sortBy === "industry" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
-              <TableHead className="min-w-[180px]">{t("tableHeaderAgent")}</TableHead>
+              <TableHead className="min-w-[220px]"><SortableTableHeader label={t("tableHeaderCompany")} active={sortBy === "companyName"} order={order} onClick={() => { setSortBy("companyName"); setSortOrder(sortBy === "companyName" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead className="min-w-[120px]"><SortableTableHeader label={t("tableHeaderIndustry")} active={sortBy === "industry"} order={order} onClick={() => { setSortBy("industry"); setSortOrder(sortBy === "industry" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead className="min-w-[160px]">{t("tableHeaderAgent")}</TableHead>
               <TableHead className="whitespace-nowrap"><SortableTableHeader label={t("tableHeaderJoined")} active={sortBy === "createdAt"} order={order} onClick={() => { setSortBy("createdAt"); setSortOrder(sortBy === "createdAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
               {canManageRows && (
-                <TableHead>{t("tableHeaderActions")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -427,18 +460,8 @@ export default function AdminEmployersPage() {
             ) : employers.map((emp) => (
               <TableRow key={emp._id} className="group">
                 <TableCell className="py-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Avatar className="h-10 w-10 rounded-xl bg-primary/10 ring-0">
-                      <AvatarFallback className="rounded-xl bg-primary/10 text-xs font-bold text-primary">
-                        {(emp.companyName || emp.name || "?")
-                          .split(/\s+/)
-                          .filter(Boolean)
-                          .slice(0, 2)
-                          .map((part) => part[0])
-                          .join("")
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                  <div className="flex min-w-0 max-w-[13rem] items-center gap-3 xl:max-w-none">
+                    <UserAvatar name={emp.companyName || emp.name} email={emp.email ?? emp.contactEmail} className="h-10 w-10" colorful />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate font-semibold text-foreground">{emp.companyName || emp.name}</span>
@@ -490,61 +513,10 @@ export default function AdminEmployersPage() {
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(new Date(emp.createdAt))}</TableCell>
+                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(new Date(emp.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                 {canManageRows && (
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="iconDense" className="opacity-70 transition-opacity group-hover:opacity-100" aria-label={t("rowActions")}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52">
-                        <DropdownMenuLabel className="max-w-[190px] truncate">{emp.companyName || emp.name}</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {can("employers", "approve") && (
-                          <DropdownMenuItem onClick={() => setVerifyItem(emp)}>
-                            <ShieldCheck className={emp.domainVerified ? "text-emerald-600" : ""} />
-                            {emp.domainVerified ? t("verifiedButtonTitle") : t("verifyButtonTitle")}
-                          </DropdownMenuItem>
-                        )}
-                        {can("employers", "update") && (
-                          <DropdownMenuItem onClick={() => setAssignItem(emp)}>
-                            <UserCog className={emp.assignedAgent ? "text-primary" : "text-amber-600"} />
-                            {emp.assignedAgent ? t("changeAgentTitle") : t("assignAgentTitle")}
-                          </DropdownMenuItem>
-                        )}
-                        {can("employers", "update") && (
-                          <DropdownMenuItem onClick={() => setEditItem(emp)}>
-                            <Pencil className="text-primary" />
-                            {t("editButtonTitle")}
-                          </DropdownMenuItem>
-                        )}
-                        {can("employers", "delete") && (
-                          <DropdownMenuItem onClick={() => handleDelete(emp._id)}>
-                            <Ban className="text-amber-500" />
-                            {t("deactivateButtonTitle")}
-                          </DropdownMenuItem>
-                        )}
-                        {can("employers", "delete") && (
-                          <DropdownMenuItem onClick={() => handlePermanentDelete(emp._id)} className="text-destructive focus:text-destructive">
-                            <Trash2 className="text-destructive" />
-                            {t("deleteButtonTitle")}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => handleSwitchToEmployerView(emp.employerProfileId ?? emp._id)}
-                          disabled={switchingEmployerId === (emp.employerProfileId ?? emp._id) || emp.isActive === false}
-                        >
-                          {switchingEmployerId === (emp.employerProfileId ?? emp._id) ? (
-                            <Loader2 className="animate-spin text-sky-600" />
-                          ) : (
-                            <LogIn className="text-sky-600" />
-                          )}
-                          {t("switchViewTitle")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-right">
+                    <RowActions name={emp.companyName || emp.name || ""} {...rowActionsFor(emp)} />
                   </TableCell>
                 )}
               </TableRow>

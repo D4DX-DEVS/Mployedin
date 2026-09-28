@@ -9,10 +9,25 @@ import mongoose from "mongoose";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
+/** Commissions without a currency predate the field; the schema default is AED. */
+const DEFAULT_COMMISSION_CURRENCY = "AED";
+
+function currencyMatch(currency: string) {
+  return currency === DEFAULT_COMMISSION_CURRENCY
+    ? { currency: { $in: [DEFAULT_COMMISSION_CURRENCY, null] } }
+    : { currency };
+}
+
 /* ------------------------------------------------------------------ */
-/*  GET  /api/admin/commissions-report                                 */
+/*  GET  /api/admin/commissions-report?year=&currency=                 */
 /*  Aggregated commission analytics for admin:                         */
 /*  monthly trends, agent breakdown, type/status breakdown, quarters   */
+/*                                                                     */
+/*  Commissions keep the currency of the invoice that raised them and  */
+/*  nothing converts, so the report covers one currency at a time: the */
+/*  requested one, else the year's largest. `currencies` lists every   */
+/*  currency the year holds. It used to add them all up and label the  */
+/*  sum "AED".                                                         */
 /* ------------------------------------------------------------------ */
 async function handler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
@@ -28,9 +43,28 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const dateFrom = new Date(year, 0, 1);
   const dateTo = new Date(year, 11, 31, 23, 59, 59, 999);
 
+  const currencyRows = await Commission.aggregate<{ _id: string | null; total: number; count: number }>([
+    { $match: { createdAt: { $gte: dateFrom, $lte: dateTo } } },
+    { $group: { _id: "$currency", total: { $sum: "$amount" }, count: { $sum: 1 } } },
+  ]);
+  const currencyTotals = new Map<string, { currency: string; total: number; count: number }>();
+  for (const row of currencyRows) {
+    const code = row._id || DEFAULT_COMMISSION_CURRENCY;
+    const entry = currencyTotals.get(code) ?? { currency: code, total: 0, count: 0 };
+    entry.total += row.total;
+    entry.count += row.count;
+    currencyTotals.set(code, entry);
+  }
+  const currencies = [...currencyTotals.values()].sort((a, b) => b.total - a.total || a.currency.localeCompare(b.currency));
+  const requestedCurrency = searchParams.get("currency")?.toUpperCase() ?? null;
+  const currency = currencies.find((row) => row.currency === requestedCurrency)?.currency
+    ?? currencies[0]?.currency
+    ?? DEFAULT_COMMISSION_CURRENCY;
+  const scope = { createdAt: { $gte: dateFrom, $lte: dateTo }, ...currencyMatch(currency) };
+
   // ── Monthly trend: total / by-status per month ──────────────────────
   const monthlyAgg = await Commission.aggregate([
-    { $match: { createdAt: { $gte: dateFrom, $lte: dateTo } } },
+    { $match: scope },
     {
       $group: {
         _id: { month: { $month: "$createdAt" }, status: "$status" },
@@ -86,7 +120,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const rateAgg = await Commission.aggregate([
     {
       $match: {
-        createdAt: { $gte: dateFrom, $lte: dateTo },
+        ...scope,
         rate: { $exists: true, $ne: null },
       },
     },
@@ -96,7 +130,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // ── Type breakdown ──────────────────────────────────────────────────
   const typeAgg = await Commission.aggregate([
-    { $match: { createdAt: { $gte: dateFrom, $lte: dateTo } } },
+    { $match: scope },
     {
       $group: {
         _id: "$type",
@@ -114,7 +148,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // ── Per-agent breakdown ─────────────────────────────────────────────
   const agentAgg = await Commission.aggregate([
-    { $match: { createdAt: { $gte: dateFrom, $lte: dateTo } } },
+    { $match: scope },
     {
       $group: {
         _id: { agentId: "$agentId", status: "$status" },
@@ -207,8 +241,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       totalDisputed,
       totalClawedBack,
       avgRate,
-      currency: "AED",
+      currency,
     },
+    currencies,
     monthlyTrend,
     quarterlyBreakdown,
     typeBreakdown,

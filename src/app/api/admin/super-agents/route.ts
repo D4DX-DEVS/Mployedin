@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import { validateBody } from "@/lib/validators";
 import { superAgentCreateSchema, superAgentUpdateSchema } from "@/lib/validators/admin";
 import logger from "@/lib/logger";
+import { findRegionOverlaps, trimAgentsToRegion, type RegionConflict } from "@/lib/superAgent/regions";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -409,32 +410,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (assignedStateIds !== undefined) profileUpdate.assignedStateIds = assignedStateIds;
   if (agentIds !== undefined) profileUpdate.agentIds = agentIds;
 
-  // Detect region overlap with other super agents
-  let regionConflicts: { superAgentName: string; overlappingCities: number; overlappingStates: number }[] = [];
+  // Warn (not refuse) when the region overlaps another super agent's — the
+  // same check the admin Territories page runs.
+  let regionConflicts: RegionConflict[] = [];
   if (assignedCityIds?.length || assignedStateIds?.length) {
-    const otherSAs = await SuperAgent.find({ userId: { $ne: userId } })
-      .select("userId assignedCityIds assignedStateIds")
-      .lean();
-    const saUserIds = otherSAs.map((sa) => sa.userId);
-    const saNameDocs = saUserIds.length > 0
-      ? await User.find({ _id: { $in: saUserIds } }).select("name").lean()
-      : [];
-    const nameMap = new Map(saNameDocs.map((u) => [u._id.toString(), u.name]));
-
-    const citySet = new Set((assignedCityIds ?? []).map(String));
-    const stateSet = new Set((assignedStateIds ?? []).map(String));
-
-    for (const other of otherSAs) {
-      const overlapCities = (other.assignedCityIds ?? []).filter((id: unknown) => citySet.has(String(id))).length;
-      const overlapStates = (other.assignedStateIds ?? []).filter((id: unknown) => stateSet.has(String(id))).length;
-      if (overlapCities > 0 || overlapStates > 0) {
-        regionConflicts.push({
-          superAgentName: nameMap.get(other.userId.toString()) ?? "Unknown",
-          overlappingCities: overlapCities,
-          overlappingStates: overlapStates,
-        });
-      }
-    }
+    regionConflicts = await findRegionOverlaps(String(userId), {
+      cityIds: (assignedCityIds ?? []).map(String),
+      stateIds: (assignedStateIds ?? []).map(String),
+    });
   }
 
   if (Object.keys(profileUpdate).length > 0) {
@@ -464,22 +447,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
       );
     }
 
-    // When SA region changes, prune agents' out-of-territory regions.
-    // $pull-with-$nin intersects: agents keep their narrower assignments
-    // instead of being force-expanded to the SA's full territory.
+    // When the region changes, take back from this super agent's agents what
+    // now falls outside it. Cities inside a state the super agent holds stay.
     if (assignedCityIds !== undefined || assignedStateIds !== undefined) {
-      const regionPrune: Record<string, unknown> = {};
-      if (assignedCityIds !== undefined) {
-        regionPrune.assignedCityIds = { $nin: assignedCityIds };
-      }
-      if (assignedStateIds !== undefined) {
-        regionPrune.assignedStateIds = { $nin: assignedStateIds };
-      }
-
-      await Agent.updateMany(
-        { superAgentId: saDoc._id },
-        { $pull: regionPrune }
-      );
+      await trimAgentsToRegion(saDoc._id, {
+        cityIds: (saDoc.assignedCityIds ?? []).map(String),
+        stateIds: (saDoc.assignedStateIds ?? []).map(String),
+      });
     }
   }
 

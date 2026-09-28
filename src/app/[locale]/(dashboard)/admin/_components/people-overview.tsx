@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, CalendarCheck, Handshake, Network, Sparkles, UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { Building2, CalendarCheck, Handshake, Network, Sparkles, UserMinus, UserPlus } from "lucide-react";
 import type { AgentOperations, PeopleOverview, UserRoleBucket } from "@/lib/admin/dashboard/types";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { cardGrid, DashboardCard, DashboardSection } from "./dashboard-section";
@@ -70,6 +70,42 @@ function TargetPace({ agents, locale, t }: { agents: AgentOperations; locale: st
               <li key={key} className="inline-flex items-center gap-1" data-pace={key}>
                 <span className={`h-2 w-2 rounded-full ${bar}`} aria-hidden="true" />
                 {t(`agents.pace.${key}`, { count: agents.targets[key] })}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Employer accounts split by whether they signed in this week, as one bar:
+ * the two counts are complements over the same accounts, so they are one fact.
+ */
+function SignInSplit({ employers, t }: { employers: NonNullable<PeopleOverview["employers"]>; t: DashboardTranslator }) {
+  const parts = [
+    { key: "active", count: employers.accountsActive7d, bar: "bg-emerald-500" },
+    { key: "inactive", count: employers.accountsInactive7d, bar: "bg-amber-400" },
+  ] as const;
+  return (
+    <div className="border-t border-border/60 pt-2.5" data-stat="employers-sign-ins">
+      <p className="text-xs font-semibold text-foreground">{t("employers.signInsTitle")}</p>
+      {employers.accounts === 0 ? (
+        <p className="text-xs text-muted-foreground">{t("employers.noAccounts")}</p>
+      ) : (
+        <>
+          <div className="mt-1.5 flex h-2 gap-0.5" aria-hidden="true">
+            {parts.map(({ key, count, bar }) =>
+              count > 0 ? <span key={key} className={`rounded-full ${bar}`} style={{ width: `${(count / employers.accounts) * 100}%` }} /> : null,
+            )}
+          </div>
+          <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            {parts.map(({ key, count, bar }) => (
+              <li key={key} className="inline-flex items-center gap-1" data-sign-in={key}>
+                <span className={`h-2 w-2 rounded-full ${bar}`} aria-hidden="true" />
+                {t(`employers.signIns.${key}`, { count })}
+                <span className="tabular-nums">· {shareOf(count, employers.accounts)}</span>
               </li>
             ))}
           </ul>
@@ -154,22 +190,8 @@ export function AdminPeopleOverview({ data, showRoles, days, locale, t }: Props)
           >
             <StatList
               rows={[
-                {
-                  key: "employers-active",
-                  icon: UserCheck,
-                  tone: "emerald",
-                  value: employers.accountsActive7d,
-                  label: t("employers.active"),
-                  meta: shareOf(employers.accountsActive7d, employers.accounts),
-                },
-                {
-                  key: "employers-inactive",
-                  icon: UserMinus,
-                  tone: employers.accountsInactive7d > 0 ? "amber" : "slate",
-                  value: employers.accountsInactive7d,
-                  label: t("employers.inactive"),
-                  meta: shareOf(employers.accountsInactive7d, employers.accounts),
-                },
+                // Signed-in and not-signed-in accounts are one fact (8 + 122 = 130); the split bar below
+                // shows both instead of two rows.
                 { key: "employers-new", icon: Sparkles, tone: "sky", value: employers.newCompaniesInPeriod, label: t("employers.newCompanies", { days }) },
                 {
                   key: "employers-no-active-job",
@@ -182,6 +204,7 @@ export function AdminPeopleOverview({ data, showRoles, days, locale, t }: Props)
                 // "Hiring, but no applications" removed: the same backlog is already counted in the action queue as
                 // jobs (43 jobs vs 13 companies confused users — two numbers for one problem).
               ]}
+              after={<SignInSplit employers={employers} t={t} />}
             />
           </DashboardCard>
         )}

@@ -36,6 +36,7 @@ const agentFindOne = jest.fn();
 const saFindOne = jest.fn();
 const saFindById = jest.fn();
 const userFindById = jest.fn();
+const territoryFindOne = jest.fn();
 
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: (...a: unknown[]) => agentFindOne(...a) } }));
 jest.mock("@/models/SuperAgent", () => ({
@@ -46,6 +47,7 @@ jest.mock("@/models/SuperAgent", () => ({
   },
 }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: { findById: (...a: unknown[]) => userFindById(...a) } }));
+jest.mock("@/models/Territory", () => ({ __esModule: true, default: { findOne: (...a: unknown[]) => territoryFindOne(...a) } }));
 
 // The City/State/Country models are behind the mocked resolver; stub them so
 // the real module's imports do not pull in bson.
@@ -71,6 +73,7 @@ function req(url: string, ctx: Record<string, unknown>) {
 beforeEach(() => {
   jest.clearAllMocks();
   resolveAssignedRegionsMock.mockResolvedValue([TIRUR]);
+  territoryFindOne.mockReturnValue(lean(null));
 });
 
 describe("GET /api/agent/profile", () => {
@@ -145,6 +148,19 @@ describe("GET /api/super-agent/profile", () => {
     expect(body.profile).not.toHaveProperty("assignedStateIds");
     expect(body.profile.overrideRate).toBe(2);
     expect(resolveAssignedRegionsMock).toHaveBeenCalledWith({ assignedCityIds: ["c_tirur"], assignedStateIds: [] }, "en");
+    expect(body.profile.territoryName).toBeNull();
+  });
+
+  it("names the territory an admin gave this super agent", async () => {
+    saFindOne.mockReturnValue(lean({ assignedCityIds: ["c_tirur"], assignedStateIds: [] }));
+    userFindById.mockReturnValue(lean({ name: "Super Agent", phone: "" }));
+    territoryFindOne.mockReturnValue(lean({ name: "India" }));
+
+    const body = await (await saGET(req("http://localhost/api/super-agent/profile", ctx))).json();
+
+    expect(territoryFindOne).toHaveBeenCalledWith({ superAgentId: "u_sa" });
+    expect(body.profile.territoryName).toBe("India");
+    expect(body.profile.assignedRegions).toEqual([TIRUR]);
   });
 
   it("returns an empty region list when the profile does not exist yet", async () => {

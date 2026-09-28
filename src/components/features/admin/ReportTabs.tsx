@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { ADMIN_REPORT_TABS } from "@/lib/nav/reportRoutes";
 
 /**
  * One strip across every admin report.
@@ -18,14 +19,6 @@ import { useLocale, useTranslations } from "next-intl";
  * The routes stay where they are; this makes the set visible from any one of
  * them, which is what a tab strip is for.
  */
-const TABS = [
-  { key: "platform", href: "/admin/reports" },
-  { key: "aiInsights", href: "/admin/analytics" },
-  { key: "targets", href: "/admin/target-report" },
-  { key: "commissions", href: "/admin/commissions-report" },
-  { key: "subscriptions", href: "/admin/subscription-dashboard" },
-] as const;
-
 export function ReportTabs() {
   const pathname = usePathname();
   const locale = useLocale();
@@ -34,8 +27,8 @@ export function ReportTabs() {
   return (
     <nav aria-label={t("tabsLabel")} className="-mx-1 mb-4 overflow-x-auto px-1">
       <ul className="flex w-max min-w-full items-center gap-1 rounded-xl border border-border/70 bg-card/60 p-1">
-        {TABS.map((tab) => {
-          const href = `/${locale}${tab.href}`;
+        {ADMIN_REPORT_TABS.map((tab) => {
+          const href = `/${locale}${tab.path}`;
           const isActive = pathname === href;
           return (
             <li key={tab.key}>

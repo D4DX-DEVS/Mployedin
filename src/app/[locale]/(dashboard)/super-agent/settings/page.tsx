@@ -220,6 +220,7 @@ function ProfileTab() {
   const [profileSnap, setProfileSnap] = useState("");
   // Admin-assigned territory, shown read-only.
   const [assignedRegions, setAssignedRegions] = useState<AssignedRegion[]>([]);
+  const [territoryName, setTerritoryName] = useState<string | null>(null);
 
   const userName = session?.user?.name ?? t("superAgentRole");
   const userEmail = session?.user?.email ?? "";
@@ -237,6 +238,7 @@ function ProfileTab() {
         if (data?.profile) {
           if (data.profile.phone) setPhone(data.profile.phone);
           setAssignedRegions(Array.isArray(data.profile.assignedRegions) ? data.profile.assignedRegions : []);
+          setTerritoryName(typeof data.profile.territoryName === "string" ? data.profile.territoryName : null);
           setProfileSnap(JSON.stringify({ name: session?.user?.name ?? "", phone: data.profile.phone ?? "" }));
         }
       })
@@ -481,7 +483,7 @@ function ProfileTab() {
                 </p>
               </div>
 
-              <AssignedRegionFields regions={assignedRegions} />
+              <AssignedRegionFields regions={assignedRegions} territoryName={territoryName} />
 
               <SaveFeedback saving={profileSaving} saved={profileSaved} hasChanges={profileHasChanges} onSave={handleProfileSave} label={t("saveProfile")} />
             </>

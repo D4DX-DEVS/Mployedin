@@ -15,6 +15,8 @@ import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: string; locale: string }
 
+const WEBHOOK_SORT_FIELDS = ["createdAt", "name", "lastTriggeredAt"] as const;
+
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -27,6 +29,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const search = searchParams.get("search")?.trim();
   const status = searchParams.get("status");
   const event = searchParams.get("event");
+  // Whitelisted sort for the list's control and column heads; _id breaks ties.
+  const sortParam = searchParams.get("sortBy") ?? "";
+  const sortField = (WEBHOOK_SORT_FIELDS as readonly string[]).includes(sortParam) ? sortParam : "createdAt";
+  const sortDir = searchParams.get("sortOrder") === "asc" ? 1 : -1;
   const query: Record<string, unknown> = {};
   if (search) {
     const safeSearch = escapeRegex(search);
@@ -45,7 +51,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (event && event !== "all") query.events = event;
 
   const [webhooks, total, active, inactive, failed, healthy] = await Promise.all([
-    Webhook.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Webhook.find(query).sort({ [sortField]: sortDir, _id: sortDir }).skip((page - 1) * limit).limit(limit).lean(),
     Webhook.countDocuments(query),
     Webhook.countDocuments({ isActive: true }),
     Webhook.countDocuments({ isActive: false }),

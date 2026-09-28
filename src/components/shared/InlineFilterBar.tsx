@@ -72,6 +72,8 @@ interface InlineFilterBarProps {
   onExportCsv?: () => void;
   onExportExcel?: () => void;
   onExportPdf?: () => void;
+  /** Extra export menu items after the formats (e.g. "Download CVs"). */
+  exportExtra?: ReactNode;
   /** Below the controls — e.g. the summary an AI search produced. */
   footer?: ReactNode;
   className?: string;
@@ -96,6 +98,7 @@ export function InlineFilterBar({
   onExportCsv,
   onExportExcel,
   onExportPdf,
+  exportExtra,
   footer,
   className,
 }: InlineFilterBarProps) {
@@ -183,6 +186,12 @@ export function InlineFilterBar({
                       <FileText className="h-4 w-4" />
                       PDF
                     </DropdownMenuItem>
+                  )}
+                  {exportExtra && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {exportExtra}
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import {
-  Plus, Trash2, RefreshCw, Copy, Check, Webhook as WebhookIcon,
-  AlertCircle, CheckCircle2, XCircle, Search, Filter,
-  ChevronDown, ChevronUp, RotateCcw, Activity, Inbox,
-  Send, Eye, ToggleLeft, ToggleRight, KeyRound, Clock, X, Info,
+  Plus, Trash2, Copy, Check, Webhook as WebhookIcon,
+  AlertCircle, CheckCircle2, XCircle,
+  RotateCcw, Activity, Inbox,
+  Send, Eye, ToggleLeft, ToggleRight, KeyRound, Clock, X, Info, Pencil,
 } from "lucide-react";
 import { formatActionCode } from "@/lib/admin/actionLabels";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,9 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
@@ -85,12 +88,18 @@ export default function AdminWebhooksPage() {
   const [newSecret, setNewSecret] = useState<string | null>(null);
 
   // Filter state
-  const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
   /* System Health and the "Failing webhooks" quick action both link here with
      ?status=failed; in component state that filter would be ignored on arrival. */
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [eventFilter, setEventFilter] = useState("all");
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "name", "lastTriggeredAt"] });
+  const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder(field === "name" ? "asc" : "desc"); }
+  };
 
   // Delivery log drawer
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
@@ -122,6 +131,8 @@ export default function AdminWebhooksPage() {
       if (search.trim()) params.set("search", search.trim());
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (eventFilter !== "all") params.set("event", eventFilter);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
       const res = await fetch(`/api/admin/webhooks?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
@@ -136,12 +147,12 @@ export default function AdminWebhooksPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, eventFilter, page, limit, paginationParams, updateTotal, t]);
+  }, [search, statusFilter, eventFilter, sortBy, sortOrder, page, limit, paginationParams, updateTotal, t]);
 
   useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
   useEffect(() => {
     resetPage();
-  }, [search, statusFilter, eventFilter, resetPage]);
+  }, [search, statusFilter, eventFilter, sortBy, sortOrder, resetPage]);
 
   const filteredWebhooks = webhooks;
 
@@ -463,7 +474,7 @@ export default function AdminWebhooksPage() {
                       size="sm"
                       onClick={() => { setDialogOpen(false); resetForm(); }}
                     >
-                      Done
+                      {t("doneButton")}
                     </Button>
                   </div>
                 )}
@@ -471,39 +482,52 @@ export default function AdminWebhooksPage() {
                 {!newSecret && (
                   <div className="space-y-4 mt-2">
                     <div className="field">
-                      <Label>{t("nameLabel")}</Label>
+                      <Label htmlFor="webhook-name">{t("nameLabel")}</Label>
                       <Input
+                        id="webhook-name"
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                         placeholder={t("namePlaceholderExample")}
                       />
                     </div>
                     <div className="field">
-                      <Label>{t("endpointUrlLabel")}</Label>
+                      <Label htmlFor="webhook-url">{t("endpointUrlLabel")}</Label>
                       <Input
+                        id="webhook-url"
                         value={form.url}
                         onChange={(e) => setForm({ ...form, url: e.target.value })}
                         placeholder="https://your-system.com/webhook"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>{t("eventsLabel")}</Label>
+                    <div className="space-y-1.5" role="group" aria-labelledby="webhook-events-label">
+                      <Label id="webhook-events-label">{t("eventsLabel")}</Label>
                       <div className="flex flex-wrap gap-2">
-                        {EVENTS.map((ev) => (
-                          <Badge
-                            key={ev}
-                            variant={form.events.includes(ev) ? "default" : "outline"}
-                            className="cursor-pointer select-none"
-                            onClick={() => toggleEvent(ev)}
-                          >
-                            {ev}
-                          </Badge>
-                        ))}
+                        {/* Toggle buttons, not clickable badges: a Badge is a
+                            span, so keyboard users could not pick an event. */}
+                        {EVENTS.map((ev) => {
+                          const selected = form.events.includes(ev);
+                          return (
+                            <button
+                              key={ev}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => toggleEvent(ev)}
+                              className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 ${
+                                selected
+                                  ? "border-transparent bg-primary text-primary-foreground"
+                                  : "border-border text-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {ev}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     <div className="field">
-                      <Label>{t("retryCountLabel")}</Label>
+                      <Label htmlFor="webhook-retry-count">{t("retryCountLabel")}</Label>
                       <Input
+                        id="webhook-retry-count"
                         type="number"
                         min={0}
                         max={10}
@@ -532,80 +556,56 @@ export default function AdminWebhooksPage() {
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl panel-body">
-
-        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
-        <div className="mt-6 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
-          >
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? t("hideFilters") : t("showFilters")}
-            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-xs">{t("activeFilterCount", { count: activeFilterCount })}</Badge>}
-            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-          </button>
-          <div className="flex items-center gap-2">
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
-                <RotateCcw className="h-3 w-3" />
-                {t("clearNFilters", { count: activeFilterCount })}
-              </Button>
-            )}
-            <Button variant="outline" size="iconDense" onClick={fetchWebhooks} disabled={loading} aria-label={t("refresh")} title={t("refresh")}>
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
-
-        {/* ─── Expandable Filters ─────────────────────────────────────── */}
-        {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
-            <div className="relative">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                aria-label={t("searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="h-11 w-full rounded-xl border border-border bg-card ps-9 pr-4 text-sm"
-              />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <SearchableSelect
-                id="webhook-status-filter"
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "all", label: t("allStatuses") },
-                  { value: "active", label: t("active") },
-                  { value: "inactive", label: t("inactive") },
-                  // Enabled but the last delivery failed — the dashboard's health row links here.
-                  { value: "failing", label: t("failingStatus") },
-                ]}
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-                placeholder={t("allStatuses")}
-              />
-              <SearchableSelect
-                id="webhook-event-filter"
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "all", label: t("allEvents") },
-                  ...EVENTS.map((ev) => ({ value: ev, label: ev })),
-                ]}
-                value={eventFilter}
-                onValueChange={setEventFilter}
-                placeholder={t("allEvents")}
-              />
-            </div>
-          </div>
-        )}
-      </section>
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={activeFilterCount > 0 ? clearAllFilters : undefined}
+        clearLabel={t("clearNFilters", { count: activeFilterCount })}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          id="webhook-status-filter"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allStatuses") },
+            { value: "active", label: t("active") },
+            { value: "inactive", label: t("inactive") },
+            { value: "failing", label: t("failingStatus") },
+          ]}
+          value={statusFilter}
+          onValueChange={(value) => { setStatusFilter(value); resetPage(); }}
+          placeholder={t("allStatuses")}
+        />
+        <SearchableSelect
+          id="webhook-event-filter"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allEvents") },
+            ...EVENTS.map((ev) => ({ value: ev, label: ev })),
+          ]}
+          value={eventFilter}
+          onValueChange={(value) => { setEventFilter(value); resetPage(); }}
+          placeholder={t("allEvents")}
+        />
+        <TableSortControl
+          value={sortBy}
+          onValueChange={setSortBy}
+          options={[
+            { value: "createdAt", label: t("sortDateAdded") },
+            { value: "lastTriggeredAt", label: t("lastTriggered") },
+            { value: "name", label: t("name") },
+          ]}
+          order={sortOrder}
+          onOrderChange={setSortOrder}
+          compact
+        />
+      </InlineFilterBar>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none">
         {loadError ? (
           <div className="p-6">
             <ErrorState onRetry={fetchWebhooks} />
@@ -615,11 +615,15 @@ export default function AdminWebhooksPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="min-w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("name")}</TableHead>
+                  <TableHead className="min-w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">
+                    <SortableTableHeader label={t("name")} active={sortBy === "name"} order={sortOrder} onClick={() => sortByColumn("name")} />
+                  </TableHead>
                   <TableHead className="min-w-[200px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("url")}</TableHead>
                   <TableHead className="min-w-[180px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("events")}</TableHead>
                   <TableHead className="min-w-[80px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("active")}</TableHead>
-                  <TableHead className="min-w-[110px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("lastTriggered")}</TableHead>
+                  <TableHead className="min-w-[110px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">
+                    <SortableTableHeader label={t("lastTriggered")} active={sortBy === "lastTriggeredAt"} order={sortOrder} onClick={() => sortByColumn("lastTriggeredAt")} />
+                  </TableHead>
                   <TableHead className="min-w-[180px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.12em]">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -647,114 +651,122 @@ export default function AdminWebhooksPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filteredWebhooks.map((wh) => (
-                <TableRow key={wh._id} className="group transition-colors">
-                  <TableCell className="px-4 py-3 font-medium">{wh.name}</TableCell>
-                  <TableCell className="max-w-[200px] truncate px-4 py-3 text-xs font-mono text-muted-foreground">
-                    {wh.url}
-                  </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {wh.events.map((ev) => (
-                        <Badge key={ev} variant="secondary" className="text-[11px]" title={ev}>
-                          {formatActionCode(ev)}
-                          {/* The raw code is what a receiver subscribes to; phones get it via title. */}
-                          <span className="ml-1 hidden font-mono text-[10px] text-muted-foreground sm:inline">({ev})</span>
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-center">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleActive(wh)}
-                            className="inline-flex items-center gap-1 text-xs"
-                            aria-label={wh.isActive ? t("clickToDisable") : t("clickToEnable")}
-                          >
-                            {wh.isActive ? (
-                              <ToggleRight className="h-5 w-5 text-emerald-500" />
-                            ) : (
-                              <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                            )}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {wh.isActive ? t("clickToDisable") : t("clickToEnable")}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-center text-xs text-muted-foreground">
-                    {wh.lastTriggeredAt
-                      ? formatDate(new Date(wh.lastTriggeredAt))
-                      : "—"}
-                    {wh.lastStatus && (
-                      <span className={`ml-1 ${wh.lastStatus === "success" ? "text-status-selected" : "text-red-500"}`}>
-                        ({wh.lastStatus})
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleTestPing(wh._id)}
-                        disabled={testingId === wh._id}
-                        title={t("a11ySendTestPing")}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Send className={`h-3.5 w-3.5 ${testingId === wh._id ? "animate-pulse" : ""}`} />
-                      </Button>
-                      {wh.lastStatus === "failed" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRedeliver(wh._id)}
-                          disabled={redeliveringId === wh._id}
-                          title={t("a11yRedeliver")}
-                          aria-label={t("a11yRedeliver")}
-                          className="h-8 w-8 p-0 text-red-600 max-sm:min-h-11"
-                        >
-                          <RotateCcw className={`h-3.5 w-3.5 ${redeliveringId === wh._id ? "animate-spin" : ""}`} />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openDeliveryLog(wh)}
-                        title={t("a11yViewDeliveryLog")}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRotateSecret(wh._id)}
-                        title={t("a11yRotateSecret")}
-                        className="h-8 w-8 p-0"
-                      >
-                        <KeyRound className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(wh)} className="h-8 px-2 text-xs">
-                        {t("edit")}
-                      </Button>
-                      <Button aria-label={ta("delete")}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(wh._id)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                ) : filteredWebhooks.map((wh) => {
+                  const rowActionsFor = (webhook: WebhookItem): { quick: RowAction[]; menu: RowAction[] } => {
+                    const menu: RowAction[] = [];
+
+                    // Send test ping
+                    menu.push({
+                      key: "test",
+                      label: t("a11ySendTestPing"),
+                      icon: Send,
+                      onSelect: () => handleTestPing(webhook._id),
+                      pending: testingId === webhook._id,
+                    });
+
+                    // Replay failed (only if last delivery failed)
+                    if (webhook.lastStatus === "failed") {
+                      menu.push({
+                        key: "redeliver",
+                        label: t("a11yRedeliver"),
+                        icon: RotateCcw,
+                        onSelect: () => handleRedeliver(webhook._id),
+                        pending: redeliveringId === webhook._id,
+                      });
+                    }
+
+                    // View delivery log - QUICK ACTION
+                    const viewAction: RowAction = {
+                      key: "view",
+                      label: t("a11yViewDeliveryLog"),
+                      icon: Eye,
+                      onSelect: () => openDeliveryLog(webhook),
+                    };
+
+                    // Rotate secret
+                    menu.push({
+                      key: "rotate",
+                      label: t("a11yRotateSecret"),
+                      icon: KeyRound,
+                      onSelect: () => handleRotateSecret(webhook._id),
+                    });
+
+                    // Edit
+                    menu.push({
+                      key: "edit",
+                      label: t("edit"),
+                      icon: Pencil,
+                      onSelect: () => openEdit(webhook),
+                    });
+
+                    // Delete
+                    menu.push({
+                      key: "delete",
+                      label: ta("delete"),
+                      icon: Trash2,
+                      onSelect: () => handleDelete(webhook._id),
+                      destructive: true,
+                    });
+
+                    return { quick: [viewAction], menu };
+                  };
+
+                  return (
+                    <TableRow key={wh._id} className="group transition-colors">
+                      <TableCell className="px-4 py-3 font-medium">{wh.name}</TableCell>
+                      <TableCell className="max-w-[200px] truncate px-4 py-3 text-xs font-mono text-muted-foreground">
+                        {wh.url}
+                      </TableCell>
+                      <TableCell className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {wh.events.map((ev) => (
+                            <Badge key={ev} variant="secondary" className="text-[11px]" title={ev}>
+                              {formatActionCode(ev)}
+                              {/* The raw code is what a receiver subscribes to; phones get it via title. */}
+                              <span className="ml-1 hidden font-mono text-[10px] text-muted-foreground sm:inline">({ev})</span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleActive(wh)}
+                                className="inline-flex items-center gap-1 text-xs"
+                                aria-label={wh.isActive ? t("clickToDisable") : t("clickToEnable")}
+                              >
+                                {wh.isActive ? (
+                                  <ToggleRight className="h-5 w-5 text-emerald-500" />
+                                ) : (
+                                  <ToggleLeft className="h-5 w-5 text-muted-foreground" />
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {wh.isActive ? t("clickToDisable") : t("clickToEnable")}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center text-xs text-muted-foreground">
+                        {wh.lastTriggeredAt
+                          ? formatDate(new Date(wh.lastTriggeredAt), { day: "2-digit", month: "short", year: "numeric" })
+                          : "—"}
+                        {wh.lastStatus && (
+                          <span className={`ml-1 ${wh.lastStatus === "success" ? "text-status-selected" : "text-red-500"}`}>
+                            ({wh.lastStatus})
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right">
+                        <RowActions name={wh.name} labelsFrom="wide" {...rowActionsFor(wh)} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

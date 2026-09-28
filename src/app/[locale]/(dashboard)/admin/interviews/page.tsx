@@ -10,6 +10,8 @@ import {
 import { ErrorState } from "@/components/shared/ErrorState";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
@@ -148,6 +150,7 @@ type InterviewStatusOption = (typeof INTERVIEW_STATUS_OPTIONS)[number];
 
 export default function AdminInterviewOversightPage() {
   const t = useTranslations("adminInterviews");
+  const tc = useTranslations("common");
   const locale = useLocale();
   /* Written out rather than `t(`status_${value}`)`: a key built from a template
      literal is invisible to the key-parity check and to tsc, and next-intl
@@ -417,115 +420,117 @@ export default function AdminInterviewOversightPage() {
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
+      {/* ─── Filters ──────────────────────────────────────────────────── */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={activeFilterCount > 0 ? clearAllFilters : undefined}
+        clearLabel={t("clearActiveFilters", { count: activeFilterCount })}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        moreLabel={t("advancedFilters")}
+        moreActiveCount={advancedFilterCount}
+        moreOpen={showAdvancedFilters}
+        onMoreOpenChange={setShowAdvancedFilters}
+        more={(
+          <>
+            <SearchableSelect
+              id="admin-interviews-type"
+              className={INLINE_FILTER_CONTROL}
+              options={[
+                { value: "all", label: t("allTypes") },
+                { value: "video", label: t("typeVideo") },
+                { value: "offline", label: t("typeOffline") },
+                { value: "hybrid", label: t("typeHybrid") },
+              ]}
+              value={typeFilter}
+              onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
+              placeholder={t("allTypes")}
+            />
+            <SearchableSelect
+              id="admin-interviews-daterange"
+              className={INLINE_FILTER_CONTROL}
+              options={[
+                { value: "all", label: t("allDates") },
+                { value: "today", label: t("today") },
+                { value: "3days", label: t("last3Days") },
+                { value: "7days", label: t("last7Days") },
+                { value: "30days", label: t("last30Days") },
+                { value: "90days", label: t("last90Days") },
+                { value: "upcoming", label: t("upcomingOnly") },
+              ]}
+              value={dateRange}
+              onValueChange={(v) => { setDateRange(v); resetPage(); }}
+              placeholder={t("allDates")}
+            />
+            {employers.length > 1 && (
+              <SearchableSelect
+                id="admin-interviews-employer"
+                className={INLINE_FILTER_CONTROL}
+                options={employers}
+                value={selectedEmployer}
+                onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
+                placeholder={t("allEmployers")}
+              />
+            )}
+            {agents.length > 1 && (
+              <SearchableSelect
+                id="admin-interviews-agent"
+                className={INLINE_FILTER_CONTROL}
+                options={agents}
+                value={selectedAgent}
+                onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
+                placeholder={t("allAgents")}
+              />
+            )}
+            {superAgents.length > 1 && (
+              <SearchableSelect
+                id="admin-interviews-sa"
+                className={INLINE_FILTER_CONTROL}
+                options={superAgents}
+                value={selectedSuperAgent}
+                onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
+                placeholder={t("allSuperAgents")}
+              />
+            )}
+          </>
+        )}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={t("searchCandidateOrCompany")}
+        />
+        <SearchableSelect
+          id="admin-interviews-status"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allStatuses") },
+            { value: "scheduled", label: t("statusScheduled") },
+            { value: "confirmed", label: t("status_confirmed") },
+            { value: "rescheduled", label: t("status_rescheduled") },
+            { value: "completed", label: t("statusCompleted") },
+            { value: "cancelled", label: t("statusCancelled") },
+          ]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={t("allStatuses")}
+        />
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={[
+            { value: "scheduledAt", label: t("date") },
+            { value: "status", label: t("status") },
+            { value: "type", label: t("type") },
+          ]}
+          order={order}
+          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
+
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <InlineFilterBar
-          className="border-b border-border/80"
-          onClear={activeFilterCount > 0 ? clearAllFilters : undefined}
-          clearLabel={t("clearActiveFilters", { count: activeFilterCount })}
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          moreLabel={showAdvancedFilters ? t("hideFilters") : t("showFilters")}
-          moreActiveCount={advancedFilterCount}
-          moreOpen={showAdvancedFilters}
-          onMoreOpenChange={setShowAdvancedFilters}
-          more={(
-            <>
-              <SearchableSelect
-                id="admin-interviews-type"
-                className={INLINE_FILTER_CONTROL}
-                options={[
-                  { value: "all", label: t("allTypes") },
-                  { value: "video", label: t("typeVideo") },
-                  { value: "offline", label: t("typeOffline") },
-                  { value: "hybrid", label: t("typeHybrid") },
-                ]}
-                value={typeFilter}
-                onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
-                placeholder={t("allTypes")}
-              />
-              <SearchableSelect
-                id="admin-interviews-daterange"
-                className={INLINE_FILTER_CONTROL}
-                options={[
-                  { value: "all", label: t("allDates") },
-                  { value: "today", label: t("today") },
-                  { value: "3days", label: t("last3Days") },
-                  { value: "7days", label: t("last7Days") },
-                  { value: "30days", label: t("last30Days") },
-                  { value: "90days", label: t("last90Days") },
-                  { value: "upcoming", label: t("upcomingOnly") },
-                ]}
-                value={dateRange}
-                onValueChange={(v) => { setDateRange(v); resetPage(); }}
-                placeholder={t("allDates")}
-              />
-              {employers.length > 1 && (
-                <SearchableSelect
-                  id="admin-interviews-employer"
-                  className={INLINE_FILTER_CONTROL}
-                  options={employers}
-                  value={selectedEmployer}
-                  onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
-                  placeholder={t("allEmployers")}
-                />
-              )}
-              {agents.length > 1 && (
-                <SearchableSelect
-                  id="admin-interviews-agent"
-                  className={INLINE_FILTER_CONTROL}
-                  options={agents}
-                  value={selectedAgent}
-                  onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
-                  placeholder={t("allAgents")}
-                />
-              )}
-              {superAgents.length > 1 && (
-                <SearchableSelect
-                  id="admin-interviews-sa"
-                  className={INLINE_FILTER_CONTROL}
-                  options={superAgents}
-                  value={selectedSuperAgent}
-                  onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
-                  placeholder={t("allSuperAgents")}
-                />
-              )}
-            </>
-          )}
-        >
-          <InlineFilterSearch
-            value={search}
-            onChange={(value) => { setSearch(value); resetPage(); }}
-            placeholder={t("searchCandidateOrCompany")}
-          />
-          <SearchableSelect
-            id="admin-interviews-status"
-            className={INLINE_FILTER_CONTROL}
-            options={[
-              { value: "all", label: t("allStatuses") },
-              { value: "scheduled", label: t("statusScheduled") },
-              { value: "confirmed", label: t("status_confirmed") },
-              { value: "rescheduled", label: t("status_rescheduled") },
-              { value: "completed", label: t("statusCompleted") },
-              { value: "cancelled", label: t("statusCancelled") },
-            ]}
-            value={statusFilter}
-            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-            placeholder={t("allStatuses")}
-          />
-          <TableSortControl
-            value={sortBy}
-            onValueChange={(value) => { setSortBy(value); resetPage(); }}
-            options={[
-              { value: "scheduledAt", label: t("date") },
-              { value: "status", label: t("status") },
-              { value: "type", label: t("type") },
-            ]}
-            order={order}
-            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
-            compact
-          />
-        </InlineFilterBar>
 
         {loadFailed && !loading ? (
           <div className="p-6">
@@ -537,12 +542,12 @@ export default function AdminInterviewOversightPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="md:min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("candidate")}</TableHead>
-                <TableHead className="md:min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("role")}</TableHead>
-                <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]"><SortableTableHeader label={t("type")} active={sortBy === "type"} order={order} onClick={() => { setSortBy("type"); setSortOrder(sortBy === "type" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
-                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("agent")}</TableHead>
-                <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]"><SortableTableHeader label={t("date")} active={sortBy === "scheduledAt"} order={order} onClick={() => { setSortBy("scheduledAt"); setSortOrder(sortBy === "scheduledAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
-                <TableHead className="md:min-w-[150px] px-4 py-3 text-end text-[11px] font-semibold uppercase tracking-[0.12em]">{t("manage")}</TableHead>
+                <TableHead className="md:min-w-[160px]">{t("candidate")}</TableHead>
+                <TableHead className="md:min-w-[180px]">{t("role")}</TableHead>
+                <TableHead className="md:min-w-[80px]"><SortableTableHeader label={t("type")} active={sortBy === "type"} order={order} onClick={() => { setSortBy("type"); setSortOrder(sortBy === "type" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+                <TableHead className="md:min-w-[100px]">{t("agent")}</TableHead>
+                <TableHead className="md:min-w-[110px]"><SortableTableHeader label={t("date")} active={sortBy === "scheduledAt"} order={order} onClick={() => { setSortBy("scheduledAt"); setSortOrder(sortBy === "scheduledAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -574,10 +579,15 @@ export default function AdminInterviewOversightPage() {
                 const candidateName = cleanInterviewName(iv.jobSeeker?.name);
                 return (
                   <TableRow key={iv._id} className="group transition-colors">
-                    <TableCell className="px-4 py-3">
-                      <p id={`interview-candidate-${iv._id}`} className="font-medium">{candidateName}</p>
-                      <p className="text-xs text-muted-foreground">{iv.jobSeeker?.email}</p>
-                      <StatusBadge status={iv.status} />
+                    <TableCell className="px-4 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <UserAvatar name={candidateName} email={iv.jobSeeker?.email} className="h-10 w-10" colorful />
+                        <div className="min-w-0">
+                          <p id={`interview-candidate-${iv._id}`} className="truncate font-semibold text-foreground">{candidateName}</p>
+                          <p className="truncate text-xs text-muted-foreground">{iv.jobSeeker?.email}</p>
+                          <div className="mt-1.5 sm:hidden"><StatusBadge status={iv.status} /></div>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <span className="text-sm text-foreground">{iv.job?.title ?? "—"}</span>
@@ -599,17 +609,17 @@ export default function AdminInterviewOversightPage() {
                         {formatDate(iv.scheduledAt, { day: "2-digit", month: "short", year: "numeric" }, locale)}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-end">
-                      <SearchableSelect
-                        className="h-9 w-[150px] rounded-lg border-border bg-card text-xs"
-                        options={INTERVIEW_STATUS_OPTIONS.map((value) => ({ value, label: statusLabel[value] }))}
-                        value={iv.status}
-                        onValueChange={(value) => {
-                          if (value && value !== iv.status) void changeInterviewStatus(iv._id, value);
+                    <TableCell className="px-4 py-3 text-right">
+                      <RowActions
+                        name={candidateName}
+                        picker={{
+                          label: t("changeStatusFor", { candidate: candidateName }),
+                          value: iv.status,
+                          display: <StatusBadge status={iv.status} />,
+                          options: INTERVIEW_STATUS_OPTIONS.map((value) => ({ value, label: statusLabel[value] })),
+                          onChange: (value) => { if (value !== iv.status) void changeInterviewStatus(iv._id, value); },
+                          pending: updatingId === iv._id,
                         }}
-                        placeholder={t("status")}
-                        ariaLabel={t("changeStatusFor", { candidate: candidateName })}
-                        disabled={updatingId === iv._id}
                       />
                     </TableCell>
                   </TableRow>
@@ -619,12 +629,11 @@ export default function AdminInterviewOversightPage() {
           </Table>
         </div>
 
-        <div className="border-t border-border/60 px-4 py-4">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
         </>
         )}
       </section>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

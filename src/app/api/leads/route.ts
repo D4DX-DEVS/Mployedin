@@ -109,7 +109,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   });
   const qualificationLevel = deriveQualification(score);
 
-  // Auto-route to territory if no superAgent assigned
+  // Route to the super agent whose region covers the lead's location
   const routeResult = await autoRouteLead({
     country: body.country,
     city: body.city,
@@ -123,7 +123,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     score,
     qualificationLevel,
     ...(routeResult && {
-      territoryId: routeResult.territoryId,
+      ...(routeResult.territoryId ? { territoryId: routeResult.territoryId } : {}),
       superAgentId: routeResult.superAgentId,
       autoRouted: true,
     }),

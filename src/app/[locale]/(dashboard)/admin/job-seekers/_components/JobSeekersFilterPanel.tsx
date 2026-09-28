@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, ChevronUp, Filter, Loader2, Search, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AiSearchField } from "@/components/shared/AiSearchField";
+import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TableSortControl } from "@/components/shared/TableSortControl";
 
 export interface JobSeekerFilters {
   skills: string;
@@ -34,15 +36,30 @@ export const EMPTY_JOB_SEEKER_FILTERS: JobSeekerFilters = {
   experienceYears: 0,
 };
 
-/** Filters that differ from their default — drives the "N active" badge and Clear. */
+export type JobSeekerSortField = "joined" | "profile";
+
+/** The API takes one combined `sort` value; the table shows it as a field plus a direction. */
+export function splitJobSeekerSort(sort: string): { field: JobSeekerSortField; order: "asc" | "desc" } {
+  const field = sort.startsWith("profile") ? "profile" : "joined";
+  const order = sort === "oldest" || sort === "profile_low" ? "asc" : "desc";
+  return { field, order };
+}
+
+export function joinJobSeekerSort(field: JobSeekerSortField, order: "asc" | "desc"): string {
+  if (field === "profile") return order === "asc" ? "profile_low" : "profile_high";
+  return order === "asc" ? "oldest" : "newest";
+}
+
+/** Filters that differ from their default — drives the "N active" badge and Clear.
+ *  Sort is not a filter: it has its own control. */
 export function countActiveJobSeekerFilters(search: string, filters: JobSeekerFilters): number {
   return (Object.keys(EMPTY_JOB_SEEKER_FILTERS) as (keyof JobSeekerFilters)[])
-    .filter((key) => filters[key] !== EMPTY_JOB_SEEKER_FILTERS[key])
+    .filter((key) => key !== "sort" && filters[key] !== EMPTY_JOB_SEEKER_FILTERS[key])
     .length + (search ? 1 : 0);
 }
 
-/** Filters that live behind "More filters". */
-const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["jobType", "referred"];
+/** Filters on the "Advanced Filters" line. */
+const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["location", "experienceYears", "jobType", "referred"];
 
 /**
  * Filters with no field of their own: the search box already matches skills,
@@ -77,10 +94,8 @@ function filterOptions(tr: Translate) {
       { value: "onsite", label: tr("jobTypeOnsite") },
     ],
     sort: [
-      { value: "newest", label: tr("sortNewest") },
-      { value: "oldest", label: tr("sortOldest") },
-      { value: "profile_high", label: tr("sortProfileHigh") },
-      { value: "profile_low", label: tr("sortProfileLow") },
+      { value: "joined", label: tr("tableHeaderJoined") },
+      { value: "profile", label: tr("tableHeaderProfilePercent") },
     ],
   };
 }
@@ -113,7 +128,6 @@ export function buildJobSeekerFilterChips(
   if (filters.jobType) chips.push(chip("jobType", tr("filterLabelJobType"), optionLabel(options.jobType, filters.jobType)));
   if (filters.skills) chips.push(chip("skills", tr("filterLabelSkills"), filters.skills));
   if (filters.location) chips.push(chip("location", tr("filterLabelLocation"), filters.location));
-  if (filters.sort !== EMPTY_JOB_SEEKER_FILTERS.sort) chips.push(chip("sort", tr("filterLabelSort"), optionLabel(options.sort, filters.sort)));
   if (filters.referred) chips.push(chip("referred", tr("tableHeaderReferredBy"), optionLabel(options.referred, filters.referred)));
   if (filters.nationality) chips.push(chip("nationality", tr("tableHeaderNationality"), filters.nationality));
   if (filters.education) chips.push(chip("education", tr("exportColumnHeaderEducation"), filters.education));
@@ -131,17 +145,21 @@ interface JobSeekersFilterPanelProps {
   aiSummary: string | null;
   /** Reads the search box as a plain-language brief and turns it into filters. */
   onAiSearch: () => void;
+  onClear?: () => void;
+  clearLabel?: string;
+  onExportCsv: () => void;
+  onExportExcel: () => void;
+  onExportPdf: () => void;
+  exportExtra?: ReactNode;
+  /** Removable chips for filters that have no field (set by AI search). */
+  chips?: ReactNode;
 }
 
-const FIELD_CONTROL = "h-11 w-full rounded-xl border-border bg-card text-sm shadow-none";
-
 /**
- * Expandable filter panel for the admin job-seekers list, same shape as the
- * admin jobs / applications panels: one search row, then one compact row of
- * filters with no label row above it — each empty option names its field
- * ("Availability", "Job Type"), as on those pages. One search box serves both
- * modes: typing filters by keyword as you go, "AI search" reads the same text
- * as a brief.
+ * Admin job-seekers filters on the shared InlineFilterBar, same as Jobs,
+ * Applications and Interviews: search (+ Ask AI) and the everyday filters
+ * always visible, the rest behind "Advanced Filters", Clear + Export pinned
+ * right. Replaces the Show/Hide Filters panel inside the page header.
  */
 export function JobSeekersFilterPanel({
   search,
@@ -151,133 +169,114 @@ export function JobSeekersFilterPanel({
   aiLoading,
   aiSummary,
   onAiSearch,
+  onClear,
+  clearLabel,
+  onExportCsv,
+  onExportExcel,
+  onExportPdf,
+  exportExtra,
+  chips,
 }: JobSeekersFilterPanelProps) {
   const tr = useTranslations("adminJobSeekers");
   const options = filterOptions(tr);
+  const sort = splitJobSeekerSort(filters.sort);
   const advancedActiveCount = ADVANCED_KEYS
     .filter((key) => filters[key] !== EMPTY_JOB_SEEKER_FILTERS[key])
     .length;
-  // Phones only: the two rarely-set filters wait behind "More filters". From
-  // `sm` up all seven share the row(s). Follows the filters until toggled, so
-  // an AI search that sets one never leaves it hidden.
-  const [advancedToggled, setAdvancedToggled] = useState<boolean | null>(null);
-  const showAdvanced = advancedToggled ?? advancedActiveCount > 0;
-  const advancedClass = showAdvanced ? "" : "max-sm:hidden";
 
   return (
-    <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:gap-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+    <InlineFilterBar
+      className="workspace-panel-surface rounded-2xl border-b-0"
+      more={(
+        <>
           <Input
-            aria-label={tr("searchOrDescribePlaceholder")}
-            placeholder={tr("searchOrDescribePlaceholder")}
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className={`${FIELD_CONTROL} ps-9`}
+            aria-label={tr("filterLabelLocation")}
+            placeholder={tr("filterLabelLocation")}
+            value={filters.location}
+            onChange={(e) => onFiltersChange({ location: e.target.value })}
+            className={`${INLINE_FILTER_CONTROL} shadow-none`}
           />
-        </div>
-        <Button
-          type="button"
-          onClick={onAiSearch}
-          disabled={aiLoading || !search.trim()}
-          title={tr("aiSearchTitle")}
-          className="h-11 gap-2 rounded-xl px-4 text-sm font-semibold"
-        >
-          {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {tr("aiSearchButton")}
-        </Button>
-      </div>
-
-      {aiSummary && (
-        <p className="rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
-          <Sparkles className="me-1.5 inline-block h-3.5 w-3.5" aria-hidden="true" />
-          {tr("aiSummarySuffix", { summary: aiSummary })}
-        </p>
-      )}
-
-      {/* xl: selects and the checkbox size to their text; the two text inputs
-          share what is left. Seven equal columns cut "Referred by" and
-          "Newest First" short at 1280px. */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-[minmax(6rem,1fr)_auto_minmax(6rem,1fr)_auto_auto_auto_auto]">
-        <Input
-          aria-label={tr("filterLabelLocation")}
-          placeholder={tr("filterLabelLocation")}
-          value={filters.location}
-          onChange={(e) => onFiltersChange({ location: e.target.value })}
-          className={FIELD_CONTROL}
-        />
-        <SearchableSelect
-          ariaLabel={tr("filterLabelAvailability")}
-          className={FIELD_CONTROL}
-          options={options.availability}
-          value={filters.availability}
-          onValueChange={(value) => onFiltersChange({ availability: value })}
-          placeholder={tr("filterLabelAvailability")}
-        />
-        <Input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={50}
-          aria-label={tr("filterLabelMinExperience")}
-          placeholder={tr("filterLabelMinExperience")}
-          value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
-          onChange={(e) => onFiltersChange({ experienceYears: Math.max(0, Number(e.target.value) || 0) })}
-          className={FIELD_CONTROL}
-        />
-        <div className={advancedClass}>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={50}
+            aria-label={tr("filterLabelMinExperience")}
+            placeholder={tr("filterLabelMinExperience")}
+            value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
+            onChange={(e) => onFiltersChange({ experienceYears: Math.max(0, Number(e.target.value) || 0) })}
+            className={`${INLINE_FILTER_CONTROL} shadow-none`}
+          />
           <SearchableSelect
             ariaLabel={tr("filterLabelJobType")}
-            className={FIELD_CONTROL}
+            className={INLINE_FILTER_CONTROL}
             options={options.jobType}
             value={filters.jobType}
             onValueChange={(value) => onFiltersChange({ jobType: value })}
             placeholder={tr("filterLabelJobType")}
           />
-        </div>
-        <div className={advancedClass}>
           <SearchableSelect
             ariaLabel={tr("tableHeaderReferredBy")}
-            className={FIELD_CONTROL}
+            className={INLINE_FILTER_CONTROL}
             options={options.referred}
             value={filters.referred}
             onValueChange={(value) => onFiltersChange({ referred: value })}
             placeholder={tr("tableHeaderReferredBy")}
           />
+        </>
+      )}
+      moreLabel={tr("advancedFilters")}
+      moreActiveCount={advancedActiveCount}
+      onClear={onClear}
+      clearLabel={clearLabel}
+      onExportCsv={onExportCsv}
+      onExportExcel={onExportExcel}
+      onExportPdf={onExportPdf}
+      exportExtra={exportExtra}
+      footer={(aiSummary || chips) ? (
+        <div className="space-y-2">
+          {aiSummary && (
+            <p className="rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
+              <Sparkles className="me-1.5 inline-block h-3.5 w-3.5" aria-hidden="true" />
+              {tr("aiSummarySuffix", { summary: aiSummary })}
+            </p>
+          )}
+          {chips}
         </div>
-        <SearchableSelect
-          ariaLabel={tr("filterLabelSort")}
-          className={FIELD_CONTROL}
-          options={options.sort}
-          value={filters.sort}
-          onValueChange={(value) => onFiltersChange({ sort: value || "newest" })}
-          placeholder={tr("sortNewest")}
+      ) : undefined}
+    >
+      <AiSearchField
+        value={search}
+        onValueChange={onSearchChange}
+        placeholder={tr("searchOrDescribePlaceholder")}
+        onAskAi={() => onAiSearch()}
+        pending={aiLoading}
+        className="flex-[2_1_20rem]"
+        inputClassName="h-11 rounded-lg bg-card sm:h-9"
+      />
+      <SearchableSelect
+        ariaLabel={tr("filterLabelAvailability")}
+        className={INLINE_FILTER_CONTROL}
+        options={options.availability}
+        value={filters.availability}
+        onValueChange={(value) => onFiltersChange({ availability: value })}
+        placeholder={tr("filterLabelAvailability")}
+      />
+      <label className="flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground sm:h-9">
+        <Checkbox
+          checked={filters.hasCV}
+          onCheckedChange={(checked) => onFiltersChange({ hasCV: checked === true })}
         />
-        <label className="flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm text-foreground">
-          <Checkbox
-            checked={filters.hasCV}
-            onCheckedChange={(checked) => onFiltersChange({ hasCV: checked === true })}
-          />
-          <span className="truncate">{tr("filterHasCvOnly")}</span>
-        </label>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setAdvancedToggled(!showAdvanced)}
-        aria-expanded={showAdvanced}
-        className="flex min-h-9 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:hidden"
-      >
-        <Filter className="h-3.5 w-3.5" aria-hidden="true" />
-        {showAdvanced ? tr("fewerFilters") : tr("moreFilters")}
-        {advancedActiveCount > 0 && (
-          <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-semibold text-primary">
-            {tr("activeFiltersBadge", { count: advancedActiveCount })}
-          </span>
-        )}
-        {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-      </button>
-    </div>
+        <span className="truncate">{tr("filterHasCvOnly")}</span>
+      </label>
+      <TableSortControl
+        value={sort.field}
+        onValueChange={(field) => onFiltersChange({ sort: joinJobSeekerSort(field as JobSeekerSortField, sort.order) })}
+        options={options.sort}
+        order={sort.order}
+        onOrderChange={(order) => onFiltersChange({ sort: joinJobSeekerSort(sort.field, order) })}
+        compact
+      />
+    </InlineFilterBar>
   );
 }

@@ -7,6 +7,7 @@ import {
   Clock, TrendingUp, TrendingDown, Target, Zap, Award, Medal,
 } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { cn } from "@/lib/utils";
 
 export type IncentiveTier = "none" | "bronze" | "silver" | "gold" | "platinum";
 
@@ -35,14 +36,15 @@ export function CompactProgress({
     "text-red-500";
 
   return (
-    <div className={`space-y-1 min-w-[120px] ${className}`}>
+    <div className={cn("space-y-1 min-w-[120px]", className)}>
       <div className="flex items-baseline gap-1 tabular-nums">
         <span className="text-sm font-semibold">{fmt(achieved)}</span>
         <span className="text-[11px] text-muted-foreground">/ {fmt(target)}</span>
       </div>
       <div className="flex items-center gap-2">
-        <Progress value={Math.min(progress, 100)} className="h-1.5 w-16" />
-        <span className={`text-[11px] font-bold tabular-nums ${color}`}>{progress}%</span>
+        {/* Up to 4rem, down to 2rem when a crowded table passes `min-w-0`. */}
+        <Progress value={Math.min(progress, 100)} className="h-1.5 min-w-8 max-w-16" />
+        <span className={`shrink-0 text-[11px] font-bold tabular-nums ${color}`}>{progress}%</span>
       </div>
     </div>
   );

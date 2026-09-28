@@ -38,6 +38,8 @@ function appendSearchConditions(filter: InvoiceFilter, conditions: InvoiceFilter
   filter.$or = conditions;
 }
 
+const INVOICE_SORT_FIELDS = ["createdAt", "dueDate", "totalAmount", "invoiceNumber"] as const;
+
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
@@ -156,6 +158,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
   const skip = (page - 1) * limit;
+  // Whitelisted sort for the admin list's control and column heads; _id breaks
+  // ties so paging never repeats or drops a row.
+  const sortParam = url.searchParams.get("sortBy") ?? "";
+  const sortField = (INVOICE_SORT_FIELDS as readonly string[]).includes(sortParam) ? sortParam : "createdAt";
+  const sortDir = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   const [invoices, total] = await Promise.all([
     Invoice.find(filter)
@@ -166,7 +173,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       // client { _id, userId } and the super-agent invoice table's AGENT column
       // read `.name` off it, so every row rendered its "—" fallback.
       .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name email" } })
-      .sort({ createdAt: -1 })
+      .sort({ [sortField]: sortDir, _id: sortDir })
       .skip(skip)
       .limit(limit)
       .lean(),
@@ -294,5 +301,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     totalPages: Math.ceil(total / limit),
   });
 }
+
 
 export const GET = withAuth(handler, { resource: "invoices", action: "read" });

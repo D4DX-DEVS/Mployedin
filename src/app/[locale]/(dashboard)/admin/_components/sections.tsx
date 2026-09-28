@@ -19,7 +19,7 @@ import { AdminHealthPanel } from "./health-panel";
 import { AdminPeopleOverview } from "./people-overview";
 import { AdminPlatformSnapshot, type SnapshotKey } from "./platform-snapshot";
 import { AdminRecentActivity, type RecentActivityFilter, type RecentActivityRow } from "./recent-activity";
-import { AdminRecruitmentOverview, AdminRecruitmentPulse } from "./recruitment-overview";
+import { AdminHiringFunnel, AdminRecruitmentOverview } from "./recruitment-overview";
 import { SectionError } from "./section-error";
 import type { DashboardTranslator } from "./types";
 
@@ -76,17 +76,22 @@ export async function SnapshotSection({ can, period, locale }: SectionContext) {
   return <AdminPlatformSnapshot data={result.data} keys={keys} days={period.days} locale={locale} t={t} />;
 }
 
-export async function RecruitmentSection({ can, period, locale, compact = false }: SectionContext & { compact?: boolean }) {
+export async function RecruitmentSection({ can, period, locale }: SectionContext) {
   const show = { applications: can("applications"), jobs: can("jobs") };
   if (!show.applications && !show.jobs) return null;
   const t = await getTranslations("adminDashboard");
   const result = await load("recruitment", () => cachedDashboardSection("recruitment", period.key, () => getRecruitmentOverview(period)));
   if (!result.ok) return <Failed id="admin-recruitment" title={t("recruitment.title")} t={t} />;
-  return compact ? (
-    <AdminRecruitmentPulse data={result.data} show={show} days={period.days} locale={locale} t={t} />
-  ) : (
-    <AdminRecruitmentOverview data={result.data} show={show} days={period.days} locale={locale} t={t} />
-  );
+  return <AdminRecruitmentOverview data={result.data} show={show} days={period.days} locale={locale} t={t} />;
+}
+
+/** Overview's recruitment view. Shares the recruitment query and its cache entry with Quick analysis. */
+export async function HiringFunnelSection({ can, period, locale }: SectionContext) {
+  if (!can("applications")) return null;
+  const t = await getTranslations("adminDashboard");
+  const result = await load("recruitment", () => cachedDashboardSection("recruitment", period.key, () => getRecruitmentOverview(period)));
+  if (!result.ok) return <Failed id="admin-hiring-funnel" title={t("funnel.title")} t={t} />;
+  return <AdminHiringFunnel funnel={result.data.funnel} locale={locale} t={t} />;
 }
 
 export async function PeopleSection({ can, period, locale }: SectionContext) {

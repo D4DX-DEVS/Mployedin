@@ -106,7 +106,9 @@ export const communicationSchema = z.object({
   message: z.string().min(1).max(5000).trim(),
   targetRoles: z.array(z.enum(VALID_ROLES)).max(10).optional(),
   targetAll: z.boolean().optional(),
-  channels: z.array(z.enum(["in_app", "email", "whatsapp"])).min(1).default(["in_app"]),
+  // WhatsApp is shown as "coming soon": the broadcast worker delivers in-app
+  // and email only, so accepting it queued a send that reached nobody.
+  channels: z.array(z.enum(["in_app", "email"])).min(1).default(["in_app"]),
 });
 
 /** POST /api/admin/comm-templates */

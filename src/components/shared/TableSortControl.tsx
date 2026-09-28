@@ -82,7 +82,9 @@ export function SortableTableHeader({ label, active, order, onClick, className }
   return (
     <button
       type="button"
-      className={cn("inline-flex items-center gap-1.5 text-start hover:text-foreground", className)}
+      // Preflight resets text-transform on <button>, so sortable columns read
+      // "Company" beside plain "AGENT" headers; inherit the <th> casing instead.
+      className={cn("inline-flex items-center gap-1.5 text-start [text-transform:inherit] hover:text-foreground", className)}
       aria-label={active
         ? `${label}, ${order === "asc" ? t("sortAscending") : t("sortDescending")}`
         : t("sortByField", { field: label })}

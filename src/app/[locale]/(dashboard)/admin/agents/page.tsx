@@ -5,7 +5,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
-import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
+import { accountFieldsError } from "@/lib/errors/account-fields";
+import { PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
+import { StepFormDialog } from "@/components/shared/StepFormDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -16,26 +18,22 @@ import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe, Ban, CheckCircle2, ArrowUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, Ban, CheckCircle2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 
@@ -74,6 +72,7 @@ interface SuperAgentOption {
 export default function AdminAgentsPage() {
   const tr = useTranslations("adminAgents");
   const tf = useTranslations("formErrors");
+  const tc = useTranslations("common");
   const locale = useLocale();
   // Field name → on-screen label, so a server rejection can say "Check these
   // fields: Email" instead of echoing zod's English path/message.
@@ -108,6 +107,8 @@ export default function AdminAgentsPage() {
   const [addStateIds, setAddStateIds] = useState<string[]>([]);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
+  // Step the banner belongs to: a taken email (409) sends the admin back to Account.
+  const [addErrorStep, setAddErrorStep] = useState<number | undefined>();
 
   // Edit modal
   const [editAgent, setEditAgent] = useState<Agent | null>(null);
@@ -116,6 +117,7 @@ export default function AdminAgentsPage() {
   const [editStateIds, setEditStateIds] = useState<string[]>([]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
+  const [editErrorStep, setEditErrorStep] = useState<number | undefined>();
 
   const exportColumns: ExportColumn<Agent>[] = [
     { header: tr("exportName"), key: "name" },
@@ -194,6 +196,7 @@ export default function AdminAgentsPage() {
       setSortBy(col);
       setSortOrder(col === "name" ? "asc" : "desc");
     }
+    resetPage();
   };
 
   const handleActivate = async (id: string) => {
@@ -239,17 +242,11 @@ export default function AdminAgentsPage() {
     };
   };
 
+  // Name / email / password are checked by the Account step before the dialog
+  // lets the admin leave it, and again on submit (StepFormDialog).
   const handleCreate = async () => {
     setAddError("");
-    if (!addForm.name || !addForm.email || !addForm.password) {
-      setAddError(tr("requiredFieldsError"));
-      return;
-    }
-    const passwordError = validatePasswordForForm(addForm.password, { locale, t: tf });
-    if (passwordError) {
-      setAddError(passwordError);
-      return;
-    }
+    setAddErrorStep(undefined);
     setAddLoading(true);
     try {
       const saProfile = superAgents.find((s) => s._id === addForm.superAgentId);
@@ -268,6 +265,7 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const { message } = await formErrorFromResponse(res, { t: tf, locale, fieldLabels: agentFieldLabels, conflict: tf("emailInUse") });
+        setAddErrorStep(res.status === 409 ? 0 : undefined);
         setAddError(message);
         toast.error(message);
         return;
@@ -308,11 +306,13 @@ export default function AdminAgentsPage() {
       setEditStateIds(ownStates);
     }
     setEditError("");
+    setEditErrorStep(undefined);
   };
 
   const handleEdit = async () => {
     if (!editAgent) return;
     setEditError("");
+    setEditErrorStep(undefined);
     setEditLoading(true);
     try {
       const saProfile = superAgents.find((s) => s._id === editForm.superAgentId);
@@ -332,6 +332,7 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const { message } = await formErrorFromResponse(res, { t: tf, locale, fieldLabels: agentFieldLabels, conflict: tf("emailInUse") });
+        setEditErrorStep(res.status === 409 ? 0 : undefined);
         setEditError(message);
         toast.error(message);
         return;
@@ -405,6 +406,46 @@ export default function AdminAgentsPage() {
     return parts.join(", ");
   };
 
+  const rowActionsFor = (agent: Agent): { quick: RowAction[]; menu: RowAction[] } => {
+    const menu: RowAction[] = [];
+
+    if (can("agents", "delete")) {
+      if (agent.isActive !== false) {
+        menu.push({
+          key: "deactivate",
+          label: tr("deactivate"),
+          icon: Ban,
+          onSelect: () => handleDelete(agent._id),
+          destructive: true,
+        });
+      } else {
+        menu.push({
+          key: "activate",
+          label: tr("activate"),
+          icon: CheckCircle2,
+          onSelect: () => handleActivate(agent._id),
+        });
+      }
+      menu.push({
+        key: "delete",
+        label: tr("deletePermanently"),
+        icon: Trash2,
+        onSelect: () => handlePermanentDelete(agent._id),
+        destructive: true,
+      });
+    }
+
+    const quick = can("agents", "update") ? {
+      key: "edit",
+      label: tr("edit"),
+      icon: Pencil,
+      iconOnly: true,
+      onSelect: () => openEdit(agent),
+    } : null;
+
+    return { quick: quick ? [quick] : [], menu };
+  };
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -414,57 +455,50 @@ export default function AdminAgentsPage() {
         compactOnMobile
         title={tr("agents")}
         description={tr("heroDescription")}
+        actions={can("agents", "create") ? (
+          <Button onClick={() => setShowAdd(true)} size="sm" className="h-9 rounded-xl shadow-sm">
+            <Plus className="h-4 w-4" />
+            {tr("addAgent")}
+          </Button>
+        ) : undefined}
       />
 
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={tr("searchAgentPlaceholder")}
+        />
+        <InlineSearchSelect
+          options={[
+            { value: "all", label: tr("statusFilterAll") },
+            { value: "active", label: tr("active") },
+            { value: "inactive", label: tr("inactive") },
+          ]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={tr("statusFilterAll")}
+          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+        />
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(v) => { setSortBy(v === "name" ? "name" : "createdAt"); resetPage(); }}
+          options={[
+            { value: "createdAt", label: tr("joined") },
+            { value: "name", label: tr("name") },
+          ]}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
+
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        {/* data-table-toolbar opts this hand-rolled header into the shared
-            mobile toolbar rules, same as pages built on <TableToolbar>. */}
-        <div data-table-toolbar="compact-admin" className="flex flex-col gap-2 border-b border-border/80 panel-head sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <div className="relative toolbar-search-field">
-              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input aria-label={tr("searchAgentPlaceholder")}
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder={tr("searchAgentPlaceholder")}
-                className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
-              />
-            </div>
-            <div className="min-w-[120px]">
-              <InlineSearchSelect
-                options={[
-                  { value: "all", label: tr("statusFilterAll") },
-                  { value: "active", label: tr("active") },
-                  { value: "inactive", label: tr("inactive") },
-                ]}
-                value={statusFilter}
-                onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-                placeholder={tr("statusFilterAll")}
-              />
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
-                  <Download className="h-3.5 w-3.5" /> {tr("export")}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>{tr("export")}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />{tr("csv")}</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />{tr("excel")}</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />{tr("pdf")}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {can("agents", "create") && (
-              <Button onClick={() => setShowAdd(true)} size="sm" className="h-8 rounded-lg">
-                <Plus className="h-3.5 w-3.5" /> {tr("addAgent")}
-              </Button>
-            )}
-          </div>
-        </div>
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={fetchAgents} />
@@ -474,20 +508,16 @@ export default function AdminAgentsPage() {
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>
-                <button type="button" onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground">
-                  {tr("name")} <ArrowUpDown className={`h-3 w-3 ${sortBy === "name" ? "text-primary" : "opacity-50"}`} />
-                </button>
+                <SortableTableHeader label={tr("name")} active={sortBy === "name"} order={sortOrder} onClick={() => toggleSort("name")} />
               </TableHead>
               <TableHead>{tr("superAgent")}</TableHead>
               <TableHead>{tr("region")}</TableHead>
               <TableHead>{tr("commission")}</TableHead>
               <TableHead>
-                <button type="button" onClick={() => toggleSort("createdAt")} className="flex items-center gap-1 hover:text-foreground">
-                  {tr("joined")} <ArrowUpDown className={`h-3 w-3 ${sortBy === "createdAt" ? "text-primary" : "opacity-50"}`} />
-                </button>
+                <SortableTableHeader label={tr("joined")} active={sortBy === "createdAt"} order={sortOrder} onClick={() => toggleSort("createdAt")} />
               </TableHead>
               {(can("agents", "update") || can("agents", "delete")) && (
-                <TableHead>{tr("actions")}</TableHead>
+                <TableHead className="text-right">{tr("actions")}</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -501,10 +531,10 @@ export default function AdminAgentsPage() {
                 </TableCell>
               </TableRow>
             ) : agents.map((agent) => (
-              <TableRow key={agent._id}>
+              <TableRow key={agent._id} className="group">
                 <TableCell>
                   <div className="flex items-start gap-3">
-                    <UserAvatar name={agent.name} email={agent.email} src={agent.avatar} className="h-9 w-9" />
+                    <UserAvatar name={agent.name} email={agent.email} src={agent.avatar} className="h-9 w-9" colorful />
                     <div className="flex min-w-0 flex-col items-start gap-1.5">
                       <span className="font-medium">{agent.name}</span>
                       <span className="text-xs text-muted-foreground">{agent.email}</span>
@@ -535,34 +565,10 @@ export default function AdminAgentsPage() {
                 <TableCell className="text-sm">
                   {agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(agent.createdAt))}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(agent.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                 {(can("agents", "update") || can("agents", "delete")) && (
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      {can("agents", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => openEdit(agent)} title={tr("edit")} className="h-8 gap-1 px-2 text-xs">
-                          <Pencil className="h-3.5 w-3.5 text-primary" />
-                          <span>{tr("edit")}</span>
-                        </Button>
-                      )}
-                      {can("agents", "delete") && (agent.isActive !== false ? (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title={tr("deactivate")} className="h-8 gap-1 px-2 text-xs">
-                          <Ban className="h-3.5 w-3.5 text-amber-500" />
-                          <span>{tr("deactivate")}</span>
-                        </Button>
-                      ) : (
-                        <Button variant="ghost" size="xs" onClick={() => handleActivate(agent._id)} title={tr("activate")} className="h-8 gap-1 px-2 text-xs">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>{tr("activate")}</span>
-                        </Button>
-                      ))}
-                      {can("agents", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title={tr("deletePermanently")} className="h-8 gap-1 px-2 text-xs">
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          <span>{tr("deletePermanently")}</span>
-                        </Button>
-                      )}
-                    </div>
+                  <TableCell className="text-right">
+                    <RowActions name={agent.name} {...rowActionsFor(agent)} />
                   </TableCell>
                 )}
               </TableRow>
@@ -574,178 +580,187 @@ export default function AdminAgentsPage() {
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
-      {/* ── Add Agent Modal ──────────────────────────────── */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
-          <DialogHeader>
-            <DialogTitle>{tr("addAgent")}</DialogTitle>
-            <DialogDescription>{tr("addAgentDescription")}</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {addError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
-                <AlertCircle className="h-4 w-4 shrink-0" />{addError}
+      {/* ── Add Agent: Account → Assignment, on the Add Employer frame ── */}
+      <StepFormDialog
+        open={showAdd}
+        onOpenChange={setShowAdd}
+        title={tr("addAgent")}
+        description={tr("addAgentDescription")}
+        error={addError}
+        errorStep={addErrorStep}
+        onErrorDismiss={() => setAddError("")}
+        submitLabel={tr("createAgent")}
+        submittingLabel={tr("creating")}
+        submitting={addLoading}
+        onSubmit={handleCreate}
+        steps={[
+          {
+            label: tc("stepAccount"),
+            validate: () => accountFieldsError(addForm, { t: tf, locale }),
+            content: (
+              <div className="grid gap-4">
+                <div className="field">
+                  <Label htmlFor="add-agent-name">{tr("fullName")} <span className="text-destructive">*</span></Label>
+                  <Input id="add-agent-name" value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div className="field">
+                  <Label htmlFor="add-agent-email">{tr("email")} <span className="text-destructive">*</span></Label>
+                  <Input id="add-agent-email" type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="field">
+                  <Label htmlFor="add-agent-password">{tr("password")} <span className="text-destructive">*</span></Label>
+                  <PasswordInput id="add-agent-password" value={addForm.password} onChange={(password) => setAddForm((f) => ({ ...f, password }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-agent-password-hint" />
+                  <p id="add-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
+                </div>
+                <div className="field">
+                  <Label htmlFor="add-agent-commission">{tr("commissionRate")}</Label>
+                  <Input id="add-agent-commission" type="number" min="0" max="100" value={addForm.commissionRate} onChange={(e) => setAddForm((f) => ({ ...f, commissionRate: e.target.value }))} aria-describedby="add-agent-commission-help" />
+                  <p id="add-agent-commission-help" className="text-xs text-muted-foreground">{tr("commissionRateHelp")}</p>
+                </div>
               </div>
-            )}
+            ),
+          },
+          {
+            label: tc("stepAssignment"),
+            content: (
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="add-agent-super-agent">{tr("assignedSuperAgent")}</Label>
+                  <InlineSearchSelect
+                    id="add-agent-super-agent"
+                    options={[
+                      { value: "none", label: tr("none") },
+                      ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
+                    ]}
+                    value={addForm.superAgentId || "none"}
+                    onValueChange={(v) => {
+                      const id = v === "none" ? "" : v;
+                      setAddForm((f) => ({ ...f, superAgentId: id }));
+                      if (id) applySARegion(id, setAddCityIds, setAddStateIds);
+                      else { setAddCityIds([]); setAddStateIds([]); }
+                    }}
+                    placeholder={tr("selectSuperAgentPlaceholder")}
+                  />
+                  {addForm.superAgentId && (() => {
+                    const sa = superAgents.find((s) => s._id === addForm.superAgentId);
+                    const regionCount = (sa?.region.stateIds.length ?? 0) + (sa?.region.cityIds.length ?? 0);
+                    return regionCount > 0 ? (
+                      <p className="text-xs text-primary flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        {tr("regionAutoFilled", { name: sa?.name || "", count: regionCount })}
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="field">
-                <Label>{tr("fullName")} <span className="text-destructive">*</span></Label>
-                <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
-              </div>
-              <div className="field">
-                <Label>{tr("email")} <span className="text-destructive">*</span></Label>
-                <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} />
-              </div>
-              <div className="field">
-                <Label>{tr("password")} <span className="text-destructive">*</span></Label>
-                <PasswordInput value={addForm.password} onChange={(password) => setAddForm((f) => ({ ...f, password }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-agent-password-hint" />
-                <p id="add-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
-              </div>
-              <div className="field">
-                <Label>{tr("commissionRate")}</Label>
-                <Input type="number" min="0" max="100" value={addForm.commissionRate} onChange={(e) => setAddForm((f) => ({ ...f, commissionRate: e.target.value }))} />
-                <p className="text-xs text-muted-foreground">{tr("commissionRateHelp")}</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{tr("assignedSuperAgent")}</Label>
-              <InlineSearchSelect
-                options={[
-                  { value: "none", label: tr("none") },
-                  ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
-                ]}
-                value={addForm.superAgentId || "none"}
-                onValueChange={(v) => {
-                  const id = v === "none" ? "" : v;
-                  setAddForm((f) => ({ ...f, superAgentId: id }));
-                  if (id) applySARegion(id, setAddCityIds, setAddStateIds);
-                  else { setAddCityIds([]); setAddStateIds([]); }
-                }}
-                placeholder={tr("selectSuperAgentPlaceholder")}
-              />
-              {addForm.superAgentId && (() => {
-                const sa = superAgents.find((s) => s._id === addForm.superAgentId);
-                const regionCount = (sa?.region.stateIds.length ?? 0) + (sa?.region.cityIds.length ?? 0);
-                return regionCount > 0 ? (
-                  <p className="text-xs text-primary flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    {tr("regionAutoFilled", { name: sa?.name || "", count: regionCount })}
-                  </p>
-                ) : null;
-              })()}
-            </div>
-
-            <CascadingLocationPicker
-              key={addForm.superAgentId || "catalogue"}
-              selectedCityIds={addCityIds}
-              selectedStateIds={addStateIds}
-              onChange={(cities, states) => { setAddCityIds(cities); setAddStateIds(states); }}
-              label={tr("assignedRegion")}
-              {...regionPickerScope(addForm.superAgentId)}
-            />
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={addLoading}>{tr("cancel")}</Button>
-            <Button onClick={handleCreate} disabled={addLoading}>
-              {addLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {addLoading ? tr("creating") : tr("createAgent")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Edit Agent Modal ──────────────────────────────── */}
-      <Dialog open={!!editAgent} onOpenChange={(open) => { if (!open) setEditAgent(null); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
-          <DialogHeader>
-            <DialogTitle>{tr("editAgent")}</DialogTitle>
-            <DialogDescription>{editAgent?.name} — {editAgent?.email}</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {editError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
-                <AlertCircle className="h-4 w-4 shrink-0" />{editError}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="field">
-                <Label>{tr("fullName")}</Label>
-                <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
-              </div>
-              <div className="field">
-                <Label>{tr("email")}</Label>
-                <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
-              </div>
-              <div className="field">
-                <Label>{tr("status")}</Label>
-                <InlineSearchSelect
-                  options={[
-                    { value: "true", label: tr("active") },
-                    { value: "false", label: tr("inactive") },
-                  ]}
-                  value={editForm.isActive}
-                  onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}
+                <CascadingLocationPicker
+                  key={addForm.superAgentId || "catalogue"}
+                  selectedCityIds={addCityIds}
+                  selectedStateIds={addStateIds}
+                  onChange={(cities, states) => { setAddCityIds(cities); setAddStateIds(states); }}
+                  label={tr("assignedRegion")}
+                  alwaysOpen
+                  {...regionPickerScope(addForm.superAgentId)}
                 />
               </div>
-              <div className="field">
-                <Label>{tr("commissionRate")}</Label>
-                <Input type="number" min="0" max="100" value={editForm.commissionRate} onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))} />
-                <p className="text-xs text-muted-foreground">{tr("commissionRateEditHelp")}</p>
+            ),
+          },
+        ]}
+      />
+
+      {/* ── Edit Agent: Account → Assignment ──────────────────────────── */}
+      <StepFormDialog
+        open={!!editAgent}
+        onOpenChange={(open) => { if (!open) setEditAgent(null); }}
+        title={tr("editAgent")}
+        description={editAgent ? `${editAgent.name} — ${editAgent.email}` : undefined}
+        error={editError}
+        errorStep={editErrorStep}
+        onErrorDismiss={() => setEditError("")}
+        submitLabel={tr("updateAgent")}
+        submittingLabel={tr("saving")}
+        submitting={editLoading}
+        onSubmit={handleEdit}
+        steps={[
+          {
+            label: tc("stepAccount"),
+            validate: () => accountFieldsError(editForm, { t: tf, locale }),
+            content: (
+              <div className="grid gap-4">
+                <div className="field">
+                  <Label htmlFor="edit-agent-name">{tr("fullName")}</Label>
+                  <Input id="edit-agent-name" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div className="field">
+                  <Label htmlFor="edit-agent-email">{tr("email")}</Label>
+                  <Input id="edit-agent-email" type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="field">
+                  <Label htmlFor="edit-agent-status">{tr("status")}</Label>
+                  <InlineSearchSelect
+                    id="edit-agent-status"
+                    options={[
+                      { value: "true", label: tr("active") },
+                      { value: "false", label: tr("inactive") },
+                    ]}
+                    value={editForm.isActive}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}
+                  />
+                </div>
+                <div className="field">
+                  <Label htmlFor="edit-agent-commission">{tr("commissionRate")}</Label>
+                  <Input id="edit-agent-commission" type="number" min="0" max="100" value={editForm.commissionRate} onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))} aria-describedby="edit-agent-commission-help" />
+                  <p id="edit-agent-commission-help" className="text-xs text-muted-foreground">{tr("commissionRateEditHelp")}</p>
+                </div>
               </div>
-            </div>
+            ),
+          },
+          {
+            label: tc("stepAssignment"),
+            content: (
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-agent-super-agent">{tr("assignedSuperAgent")}</Label>
+                  <InlineSearchSelect
+                    id="edit-agent-super-agent"
+                    options={[
+                      { value: "none", label: tr("none") },
+                      ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
+                    ]}
+                    value={editForm.superAgentId || "none"}
+                    onValueChange={(v) => {
+                      const id = v === "none" ? "" : v;
+                      setEditForm((f) => ({ ...f, superAgentId: id }));
+                      if (id) applySARegion(id, setEditCityIds, setEditStateIds);
+                    }}
+                    placeholder={tr("selectSuperAgentPlaceholder")}
+                  />
+                  {editForm.superAgentId && (() => {
+                    const sa = superAgents.find((s) => s._id === editForm.superAgentId);
+                    const regionCount = (sa?.region.stateIds.length ?? 0) + (sa?.region.cityIds.length ?? 0);
+                    return regionCount > 0 ? (
+                      <p className="text-xs text-primary flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        {tr("regionFromTerritory", { name: sa?.name || "", count: regionCount })}
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
 
-            <div className="space-y-2">
-              <Label>{tr("assignedSuperAgent")}</Label>
-              <InlineSearchSelect
-                options={[
-                  { value: "none", label: tr("none") },
-                  ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
-                ]}
-                value={editForm.superAgentId || "none"}
-                onValueChange={(v) => {
-                  const id = v === "none" ? "" : v;
-                  setEditForm((f) => ({ ...f, superAgentId: id }));
-                  if (id) applySARegion(id, setEditCityIds, setEditStateIds);
-                }}
-                placeholder={tr("selectSuperAgentPlaceholder")}
-              />
-              {editForm.superAgentId && (() => {
-                const sa = superAgents.find((s) => s._id === editForm.superAgentId);
-                const regionCount = (sa?.region.stateIds.length ?? 0) + (sa?.region.cityIds.length ?? 0);
-                return regionCount > 0 ? (
-                  <p className="text-xs text-primary flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    {tr("regionFromTerritory", { name: sa?.name || "", count: regionCount })}
-                  </p>
-                ) : null;
-              })()}
-            </div>
-
-            <CascadingLocationPicker
-              key={editForm.superAgentId || "catalogue"}
-              selectedCityIds={editCityIds}
-              selectedStateIds={editStateIds}
-              onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
-              label={tr("assignedRegion")}
-              {...regionPickerScope(editForm.superAgentId)}
-            />
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => setEditAgent(null)} disabled={editLoading}>{tr("cancel")}</Button>
-            <Button onClick={handleEdit} disabled={editLoading}>
-              {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editLoading ? tr("saving") : tr("updateAgent")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                <CascadingLocationPicker
+                  key={editForm.superAgentId || "catalogue"}
+                  selectedCityIds={editCityIds}
+                  selectedStateIds={editStateIds}
+                  onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
+                  label={tr("assignedRegion")}
+                  alwaysOpen
+                  {...regionPickerScope(editForm.superAgentId)}
+                />
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

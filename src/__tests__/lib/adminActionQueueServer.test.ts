@@ -104,6 +104,22 @@ describe("new queue items", () => {
   });
 });
 
+describe("PAYMENT_NOTICE_PENDING_FILTER", () => {
+  it("counts an unverified notice only while its invoice can still take a payment", () => {
+    // A notice left on an invoice that was marked paid (or voided) another way is not work.
+    expect(PAYMENT_NOTICE_PENDING_FILTER).toEqual({
+      paymentNotifications: { $elemMatch: { verifiedAt: null } },
+      $nor: [{ status: { $in: ["draft", "pending_approval", "paid", "void", "cancelled", "refunded", "credit_note"] } }],
+    });
+  });
+
+  it("keeps the invoices list's own status filter when merged into it", () => {
+    const filter: Record<string, unknown> = { status: "overdue" };
+    Object.assign(filter, PAYMENT_NOTICE_PENDING_FILTER);
+    expect(filter.status).toBe("overdue");
+  });
+});
+
 describe("subscriptionsEndingFilter", () => {
   it("covers active subscriptions ending between now and the window", () => {
     const now = new Date("2026-09-24T00:00:00.000Z");

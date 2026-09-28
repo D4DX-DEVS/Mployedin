@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Sparkles, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   DashboardPageHeader,
   type DashboardHeaderMetric,
@@ -14,7 +14,7 @@ interface PageHeroProps {
    *  something the title does not — defaulting it to `title` printed every
    *  page heading twice. */
   eyebrow?: string;
-  /** Icon rendered inside the eyebrow badge. Defaults to `Sparkles`. */
+  /** Leading identity icon. Omit it to use the route's sidebar icon. */
   icon?: LucideIcon;
   /** Right-aligned content (buttons, filters, stat pills). */
   actions?: ReactNode;
@@ -47,7 +47,7 @@ export function PageHero({
   title,
   description,
   eyebrow,
-  icon: Icon = Sparkles,
+  icon,
   actions,
   metrics,
   metricsClassName,
@@ -61,7 +61,7 @@ export function PageHero({
       eyebrow={eyebrow}
       title={title}
       description={description}
-      icon={Icon}
+      icon={icon}
       actions={actions}
       metrics={metrics}
       metricsClassName={metricsClassName}

@@ -7,6 +7,9 @@ import Video from "@/models/Video";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { videoCreateSchema } from "@/lib/validators/cms";
+import { cmsListSort } from "@/lib/cms/listSort";
+
+const SORT_FIELDS = ["createdAt", "title", "sortOrder"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -33,7 +36,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const [items, total] = await Promise.all([
-    Video.find(query).sort({ sortOrder: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Video.find(query).sort(cmsListSort(searchParams, SORT_FIELDS, { sortOrder: 1, createdAt: -1 })).skip(skip).limit(limit).lean(),
     Video.countDocuments(query),
   ]);
 
@@ -47,7 +50,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const body = await validateBody(req, videoCreateSchema);
 
-  const { title, titleAr, description, descriptionAr, url, thumbnail, sortOrder, isActive } = body;
+  const { title, titleAr, description, descriptionAr, url, sortOrder, isActive } = body;
   if (!title || !url) {
     return NextResponse.json({ error: "Title and URL are required" }, { status: 400 });
   }
@@ -58,7 +61,6 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     description: (description ?? "").trim(),
     descriptionAr: (descriptionAr ?? "").trim(),
     url: url.trim(),
-    thumbnail: thumbnail ?? "",
     sortOrder: sortOrder ?? 0,
     isActive: isActive !== false,
   });

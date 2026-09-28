@@ -4,13 +4,11 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp, Power, RotateCcw,
-  Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText, ShieldCheck, AlertTriangle,
+  Plus, X, Loader2, Crown, Check, Users, Briefcase, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -26,36 +24,11 @@ import {
   type IJobSeekerFeatureLimits,
   type IAIFeatureLimit,
 } from "@/hooks/useSubscriptionPlans";
-import { AI_FEATURE_KEYS, type AIFeatureKey } from "@/types/subscription-plan";
-import { convertAndFormat } from "@/lib/currency";
+import { AI_FEATURE_KEYS } from "@/types/subscription-plan";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
-
-// ── Feature label key mapping (labels resolved at render) ──
-const AI_FEATURE_LABEL_KEYS: Record<AIFeatureKey, string> = {
-  ai_chat: "aiChatLabel",
-  ai_daily_insights: "aiDailyInsightsLabel",
-  ai_job_matching: "aiJobMatchingLabel",
-  ai_cv_extraction: "aiCvExtractionLabel",
-  ai_interview_questions: "aiInterviewQuestionsLabel",
-  ai_skills_gap: "aiSkillsGapLabel",
-  ai_candidate_screening: "aiCandidateScreeningLabel",
-  ai_salary_benchmark: "aiSalaryBenchmarkLabel",
-  ai_job_description: "aiJobDescriptionLabel",
-  ai_hiring_reports: "aiHiringReportsLabel",
-  ai_voice_input: "aiVoiceInputLabel",
-  ai_skills_suggest: "aiSkillsSuggestLabel",
-  ai_profile_fill: "aiProfileFillLabel",
-  ai_enhance_text: "aiEnhanceTextLabel",
-  ai_generate_summary: "aiGenerateSummaryLabel",
-};
-
-const TIER_COLORS: Record<number, string> = {
-  0: "bg-zinc-100 text-zinc-700",
-  1: "bg-slate-200 text-foreground",
-  2: "bg-amber-100 text-amber-700",
-  3: "bg-violet-100 text-violet-700",
-};
+import { AI_FEATURE_LABEL_KEYS } from "./_components/planLabels";
+import { PlansList, PlansListSkeleton } from "./_components/PlansList";
 
 function defaultEmployerLimits(): IEmployerFeatureLimits {
   return {
@@ -243,7 +216,6 @@ export default function AdminSubscriptionPlansPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<PlanFormState>(emptyForm());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"basic" | "limits" | "ai">("basic");
   const [systemCurrency, setSystemCurrency] = useState<string>("AED");
 
@@ -331,16 +303,16 @@ export default function AdminSubscriptionPlansPage() {
     closeForm();
   };
 
-  const handleDeactivate = async (id: string, name: string) => {
+  const handleDeactivate = async (p: SubscriptionPlanItem) => {
     const ok = await confirmDialog({
       title: t("deactivateConfirmTitle"),
-      message: t("deactivateConfirmMessage", { name }),
+      message: t("deactivateConfirmMessage", { name: p.name }),
       confirmLabel: t("deactivateConfirmAction"),
       variant: "destructive",
     });
     if (!ok) return;
     try {
-      await deleteMut.mutateAsync({ id });
+      await deleteMut.mutateAsync({ id: p._id });
     } catch {
       // Reported by the hook’s onError toast.
     }
@@ -349,44 +321,34 @@ export default function AdminSubscriptionPlansPage() {
   /**
    * Reactivating was only ever possible by opening Edit, finding the "Active"
    * switch at the bottom of the Basic tab and saving — so in practice a
-   * deactivated plan was a dead end. It is the same PATCH, given its own button.
+   * deactivated plan was a dead end. It is the same PATCH, given its own action.
    */
-  const handleReactivate = async (id: string, name: string) => {
+  const handleReactivate = async (p: SubscriptionPlanItem) => {
     const ok = await confirmDialog({
       title: t("reactivateConfirmTitle"),
-      message: t("reactivateConfirmMessage", { name }),
+      message: t("reactivateConfirmMessage", { name: p.name }),
       confirmLabel: t("reactivateConfirmAction"),
     });
     if (!ok) return;
     try {
-      await updateMut.mutateAsync({ id, isActive: true });
+      await updateMut.mutateAsync({ id: p._id, isActive: true });
     } catch {
       // Reported by the hook’s onError toast.
     }
   };
 
-  /** Mirrors the API's hard-delete guard so the button can say no first. */
-  const canDestroy = (p: SubscriptionPlanItem) =>
-    !p.isDefault && (p.subscriptionCount ?? 0) === 0;
-  const destroyLabel = (p: SubscriptionPlanItem) =>
-    p.isDefault
-      ? t("deleteBlockedDefault")
-      : (p.subscriptionCount ?? 0) > 0
-        ? t("deleteBlockedInUse", { count: p.subscriptionCount ?? 0 })
-        : t("deletePlanTooltip");
-
   /** Destroys the row. Offered only on an already-inactive plan; the API
    *  refuses if it is the default or any subscription still references it. */
-  const handleDestroy = async (id: string, name: string) => {
+  const handleDestroy = async (p: SubscriptionPlanItem) => {
     const ok = await confirmDialog({
       title: t("deleteConfirmTitle"),
-      message: t("deleteConfirmMessage", { name }),
+      message: t("deleteConfirmMessage", { name: p.name }),
       confirmLabel: t("deleteConfirmAction"),
       variant: "destructive",
     });
     if (!ok) return;
     try {
-      await deleteMut.mutateAsync({ id, hard: true });
+      await deleteMut.mutateAsync({ id: p._id, hard: true });
     } catch {
       // Reported by the hook’s onError toast.
     }
@@ -403,17 +365,14 @@ export default function AdminSubscriptionPlansPage() {
   };
 
   const isSaving = createMut.isPending || updateMut.isPending;
-
-  if (isLoading) {
-    return (
-      <div className="page-container">
-        <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} />
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-28 animate-pulse rounded-2xl border border-border bg-background/70" />
-        ))}
-      </div>
-    );
-  }
+  // The row a deactivate / reactivate / delete is running for (saving the
+  // form also runs updateMut, but it carries no row to dim).
+  const deleting = deleteMut.variables;
+  const pendingId = deleteMut.isPending
+    ? (typeof deleting === "string" ? deleting : deleting?.id) ?? null
+    : updateMut.isPending && !showForm
+      ? updateMut.variables?.id ?? null
+      : null;
 
   return (
     <div className="page-container">
@@ -831,7 +790,9 @@ export default function AdminSubscriptionPlansPage() {
       )}
 
       {/* ─── Plans List ─── */}
-      {!plans?.length ? (
+      {isLoading ? (
+        <PlansListSkeleton />
+      ) : !plans?.length ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-center">
           <Crown className="mb-4 h-12 w-12 text-muted-foreground/40" />
           <h2 className="heading-subsection font-semibold text-foreground">{t("noPlanEmptyState")}</h2>
@@ -845,277 +806,17 @@ export default function AdminSubscriptionPlansPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {plans.map((p) => {
-            const isExpanded = expandedId === p._id;
-            const limits = p.employerLimits ?? p.jobSeekerLimits;
-            const enabledAI = limits?.aiFeatures?.filter((a) => a.enabled).length ?? 0;
-
-            return (
-              <div
-                key={p._id}
-                className={`rounded-2xl border transition-colors ${
-                  p.isActive
-                    ? "border-border bg-card"
-                    : "border-border/50 bg-muted/30 opacity-60"
-                }`}
-              >
-                {/* Header row */}
-                <div className="flex items-center gap-4 p-5">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base font-semibold text-foreground">{p.name}</h3>
-                      <Badge className={`text-xs ${TIER_COLORS[p.tier] ?? TIER_COLORS[0]}`}>
-                        {t("tierBadge", { tier: p.tier })}
-                      </Badge>
-                      {p.isDefault && (
-                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">
-                          {t("defaultBadge")}
-                        </Badge>
-                      )}
-                      {!p.isActive && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">
-                          {t("inactiveBadge")}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>
-                        {p.currency === systemCurrency
-                          ? `${p.price} ${p.currency}`
-                          : convertAndFormat(p.price, p.currency, systemCurrency)}
-                        {" / "}{p.billingCycle}
-                      </span>
-                      <span>·</span>
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="h-3.5 w-3.5" /> {t("aiFeatureCount", { count: enabledAI })}
-                      </span>
-                      {p.targetRole === "employer" && p.employerLimits && (
-                        <>
-                          <span>·</span>
-                          <span className="flex items-center gap-1">
-                            <Briefcase className="h-3.5 w-3.5" />
-                            {t("jobsLimitDisplay", { jobs: p.employerLimits.maxActiveJobs === -1 ? t("unlimitedSymbol") : p.employerLimits.maxActiveJobs })}
-                          </span>
-                          <span>·</span>
-                          <span className="flex items-center gap-1">
-                            <Users className="h-3.5 w-3.5" />
-                            {t("seatsLimitDisplay", { seats: p.employerLimits.maxTeamMembers === -1 ? t("unlimitedSymbol") : p.employerLimits.maxTeamMembers })}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDuplicate(p)}
-                      className="h-8 w-8 p-0 rounded-lg"
-                      title={t("duplicateTooltip")}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEdit(p)}
-                      className="h-8 w-8 p-0 rounded-lg"
-                      title={t("editTooltip")}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    {/* An active plan can only be deactivated; an inactive one
-                        can be brought back or destroyed. Rendering the same red
-                        trash on both meant the button did nothing on a plan that
-                        was already off, and there was no way back at all. */}
-                    {p.isActive ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeactivate(p._id, p.name)}
-                        disabled={deleteMut.isPending}
-                        className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive"
-                        aria-label={t("deactivateTooltip")}
-                        title={t("deactivateTooltip")}
-                      >
-                        {deleteMut.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Power className="h-4 w-4" />
-                        )}
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleReactivate(p._id, p.name)}
-                          disabled={updateMut.isPending}
-                          className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-primary"
-                          aria-label={t("reactivateTooltip")}
-                          title={t("reactivateTooltip")}
-                        >
-                          {updateMut.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <RotateCcw className="h-4 w-4" />
-                          )}
-                        </Button>
-                        {/* A plan with any subscription history cannot be
-                            destroyed — billing records render its name. Say so
-                            on the disabled button rather than letting the admin
-                            confirm a permanent delete that then 409s. */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDestroy(p._id, p.name)}
-                          disabled={deleteMut.isPending || !canDestroy(p)}
-                          className="h-8 w-8 p-0 rounded-lg text-destructive hover:text-destructive disabled:opacity-40"
-                          aria-label={destroyLabel(p)}
-                          title={destroyLabel(p)}
-                        >
-                          {deleteMut.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </>
-                    )}
-                    <Button aria-label={isExpanded ? ta("collapse") : ta("expand")}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setExpandedId(isExpanded ? null : p._id)}
-                      className="h-8 w-8 p-0 rounded-lg"
-                    >
-                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Expanded detail */}
-                {isExpanded && (
-                  <div className="border-t border-border px-5 py-4 space-y-4 bg-muted/20">
-                    {p.description && (
-                      <p className="text-sm text-muted-foreground">{p.description}</p>
-                    )}
-
-                    {/* Numeric limits */}
-                    {p.targetRole === "employer" && p.employerLimits && (
-                      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                        {([
-                          ["maxActiveJobsDetail", p.employerLimits.maxActiveJobs],
-                          ["appViewsPerMonthDetail", p.employerLimits.maxApplicationsViewPerMonth],
-                          ["teamSeatsDetail", p.employerLimits.maxTeamMembers],
-                          ["featuredJobsDetail", p.employerLimits.featuredJobListings],
-                        ] as [string, number][]).map(([labelKey, val]) => (
-                          <div key={labelKey} className="rounded-xl border border-border bg-background chip-pad">
-                            <p className="text-xs text-muted-foreground">{t(labelKey)}</p>
-                            <p className="text-lg font-semibold">{val === -1 ? t("unlimitedValue") : val}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {p.targetRole === "job_seeker" && p.jobSeekerLimits && (
-                      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                        <div className="rounded-xl border border-border bg-background chip-pad">
-                          <p className="text-xs text-muted-foreground">{t("maxApplicationsJobSeekerLabel")}</p>
-                          <p className="text-lg font-semibold">
-                            {p.jobSeekerLimits.maxApplicationsPerMonth === -1
-                              ? t("unlimitedValue")
-                              : p.jobSeekerLimits.maxApplicationsPerMonth}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Boolean features */}
-                    <div>
-                      <h5 className="mb-2 text-sm font-medium text-foreground">{t("featuresHeading")}</h5>
-                      <div className="flex flex-wrap gap-2">
-                        {p.targetRole === "employer" && p.employerLimits && (
-                          <>
-                            <FeatureBadge t={t} labelKey="analyticsFeatureLabel" value={p.employerLimits.analyticsLevel !== "none"} detail={p.employerLimits.analyticsLevel} />
-                            <FeatureBadge t={t} labelKey="dataExportFeatureLabel" value={p.employerLimits.dataExport} />
-                            <FeatureBadge t={t} labelKey="commTemplatesFeatureLabel" value={p.employerLimits.commTemplates} />
-                            <FeatureBadge t={t} labelKey="scorecardsFeatureLabel" value={p.employerLimits.scorecardEvaluations} />
-                            <FeatureBadge t={t} labelKey="matchingWeightsFeatureLabel" value={p.employerLimits.matchingWeightCustomization} />
-                            <FeatureBadge t={t} labelKey="workflowFeatureLabel" value={p.employerLimits.workflowCustomization} />
-                            <FeatureBadge t={t} labelKey="prioritySupportFeatureLabel" value={p.employerLimits.prioritySupport} />
-                            <FeatureBadge t={t} labelKey="brandedPageFeatureLabel" value={p.employerLimits.brandedCompanyPage} />
-                          </>
-                        )}
-                        {p.targetRole === "job_seeker" && p.jobSeekerLimits && (
-                          <>
-                            <FeatureBadge t={t} labelKey="visibilityBoostFeatureLabel" value={p.jobSeekerLimits.profileVisibilityBoost} />
-                            <FeatureBadge t={t} labelKey="salaryInsightsFeatureLabel" value={p.jobSeekerLimits.salaryInsights} />
-                            <FeatureBadge t={t} labelKey="priorityReviewFeatureLabel" value={p.jobSeekerLimits.priorityApplicationReview} />
-                            <FeatureBadge t={t} labelKey="resumeBuilderFeatureLabel" value={p.jobSeekerLimits.resumeBuilderAccess} />
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* AI features */}
-                    {limits?.aiFeatures && limits.aiFeatures.some((a) => a.enabled) && (
-                      <div>
-                        <h5 className="mb-2 text-sm font-medium text-foreground flex items-center gap-1.5">
-                          <Sparkles className="h-4 w-4 text-sky-500" /> {t("aiFeatureHeading")}
-                        </h5>
-                        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                          {limits.aiFeatures
-                            .filter((a) => a.enabled)
-                            .map((a) => (
-                              <div
-                                key={a.feature}
-                                className="flex items-center justify-between rounded-lg border border-border/50 bg-background/60 chip-pad"
-                              >
-                                <span className="text-sm">{t(AI_FEATURE_LABEL_KEYS[a.feature] ?? a.feature)}</span>
-                                <span className="text-xs font-medium text-muted-foreground">
-                                  {a.monthlyLimit === 0 ? t("unlimitedValue") : t("monthlyLimitFormat", { limit: a.monthlyLimit })}
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <PlansList
+          plans={plans}
+          systemCurrency={systemCurrency}
+          pendingId={pendingId}
+          onEdit={openEdit}
+          onDuplicate={handleDuplicate}
+          onDeactivate={(p) => void handleDeactivate(p)}
+          onReactivate={(p) => void handleReactivate(p)}
+          onDestroy={(p) => void handleDestroy(p)}
+        />
       )}
     </div>
-  );
-}
-
-// ── Helper Components ──────────────────────────────────────────────
-function FeatureBadge({
-  t,
-  labelKey,
-  value,
-  detail,
-}: {
-  t: (key: string) => string;
-  labelKey: string;
-  value: boolean;
-  detail?: string;
-}) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
-        value
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-muted text-muted-foreground line-through"
-      }`}
-    >
-      {value ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-      {t(labelKey)}
-      {detail && value && <span className="opacity-60">({detail})</span>}
-    </span>
   );
 }

@@ -15,6 +15,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { sendEmail } from "@/lib/communications/email";
+import { broadcastRecipientQuery } from "@/lib/communications/broadcastAudience";
 import logger from "@/lib/logger";
 import type { AdminBroadcastEvent } from "./events";
 
@@ -45,10 +46,8 @@ export const adminBroadcastSender = inngest.createFunction(
 
     await connectDB();
 
-    const baseQuery: Record<string, unknown> = { isActive: true };
-    if (!targetAll && targetRoles && targetRoles.length > 0) {
-      baseQuery.role = targetRoles.length === 1 ? targetRoles[0] : { $in: targetRoles };
-    }
+    // Same audience the admin confirmed a count for (see broadcastAudience.ts).
+    const baseQuery = broadcastRecipientQuery(Boolean(targetAll), targetRoles);
     const needsEmail = channels.includes("email");
     const needsInApp = channels.includes("in_app");
     const html = needsEmail ? broadcastHtml(title, message) : "";

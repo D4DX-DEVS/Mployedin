@@ -52,6 +52,16 @@ jest.mock("@/models/Employer", () => ({
   default: {
     exists: jest.fn(),
     findOne: jest.fn(),
+    // Company-name lookup: only "Beta Industries" exists.
+    find: jest.fn((filter: { companyName?: { $regex: string; $options: string } }) => ({
+      select: () => ({
+        lean: () => Promise.resolve(
+          filter.companyName && new RegExp(filter.companyName.$regex, filter.companyName.$options).test("Beta Industries")
+            ? [{ _id: "emp_beta" }]
+            : [],
+        ),
+      }),
+    })),
   },
 }));
 
@@ -116,5 +126,32 @@ describe("Admin Jobs API", () => {
     await GET(makeRequest("/api/admin/jobs?expiring=365d"), { params: Promise.resolve({}) });
 
     expect(Job.find.mock.calls[0][0].expiresAt).toBeUndefined();
+  });
+
+  it("GET /api/admin/jobs?search matches a job title and company typed together", async () => {
+    const { GET } = await import("@/app/api/admin/jobs/route");
+
+    await GET(makeRequest("/api/admin/jobs?search=Accountant%20Beta"), { params: Promise.resolve({}) });
+
+    const query = Job.find.mock.calls[0][0];
+    expect(query.$or).toBeUndefined();
+    // One clause per word, all required.
+    expect(query.$and).toHaveLength(2);
+    const [accountant, beta] = query.$and;
+    expect(accountant.$or).toContainEqual({ title: { $regex: "Accountant", $options: "i" } });
+    expect(accountant.$or).not.toContainEqual(expect.objectContaining({ employerId: expect.anything() }));
+    expect(beta.$or).toContainEqual({ employerId: { $in: ["emp_beta"] } });
+  });
+
+  it("GET /api/admin/jobs?search keeps a location filter alongside the words", async () => {
+    const { GET } = await import("@/app/api/admin/jobs/route");
+
+    await GET(makeRequest("/api/admin/jobs?search=Beta&location=Dubai"), { params: Promise.resolve({}) });
+
+    const query = Job.find.mock.calls[0][0];
+    expect(query.$or).toBeUndefined();
+    expect(query.$and).toHaveLength(2);
+    expect(query.$and[0].$or).toContainEqual({ "location.city": { $regex: "Dubai", $options: "i" } });
+    expect(query.$and[1].$or).toContainEqual({ employerId: { $in: ["emp_beta"] } });
   });
 });

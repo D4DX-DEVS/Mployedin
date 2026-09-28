@@ -11,7 +11,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
@@ -21,10 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, ListTree } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, ListTree } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 
 interface AttributeItem {
   _id: string;
@@ -76,7 +77,6 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "slug", "sortOrder", "createdAt"] });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
   const order = sortOrder === "desc" ? "desc" : "asc";
-  const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<AttributeItem | null>(null);
@@ -103,8 +103,6 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all";
-
   const sortOptions = [
     { value: "sortOrder", label: t("order") },
     { value: "name", label: t("nameEnglish") },
@@ -112,6 +110,8 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
     { value: "slug", label: t("slug") },
     { value: "createdAt", label: t("createdAt") },
   ];
+  const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all";
+
   const toggleSort = (field: string) => {
     if (sortBy === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     else {
@@ -168,6 +168,32 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
     fetchItems();
   };
 
+  const rowActionsFor = (item: AttributeItem): { quick: RowAction[]; menu: RowAction[] } => {
+    // Edit is the everyday action: a labelled button. Delete stays in "…".
+    const quick: RowAction[] = [];
+    const menu: RowAction[] = [];
+    if (can("job_attributes", "update")) {
+      quick.push({
+        key: "edit",
+        label: t("edit"),
+        icon: Pencil,
+        iconOnly: true,
+        onSelect: () => setEditItem(item),
+      });
+    }
+    if (can("job_attributes", "delete")) {
+      menu.push({
+        key: "delete",
+        label: t("delete"),
+        icon: Trash2,
+        iconOnly: true,
+        onSelect: () => handleDelete(item._id),
+        destructive: true,
+      });
+    }
+    return { quick, menu };
+  };
+
   return (
     <div className="page-container">
       <PlatformDataTabs />
@@ -184,90 +210,53 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
         title={displayTitle}
         description={displayDescription}
         actions={
-          <>
+          can("job_attributes", "create") && (
             <Button
-              type="button"
-              variant="outline"
+              onClick={() => setShowAdd(true)}
               size="sm"
-              onClick={() => setShowFilters((v) => !v)}
-              aria-label={t("filter")}
-              className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium shrink-0 ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
+              aria-label={t("addNew")}
+              className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("filter")}</span>
-              {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">!</span>}
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("addNew")}</span>
             </Button>
-            {can("job_attributes", "create") && (
-              <Button
-                onClick={() => setShowAdd(true)}
-                size="sm"
-                aria-label={t("addNew")}
-                className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("addNew")}</span>
-              </Button>
-            )}
-          </>
+          )
         }
       />
 
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); resetPage(); } : undefined}
+        clearLabel={t("clear")}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearch(v); resetPage(); }}
+          placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("all") },
+            { value: "active", label: t("active") },
+            { value: "inactive", label: t("inactive") },
+          ]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={t("status")}
+        />
+        {/* Sorting lives here as well as on the column heads: phone cards have no heads. */}
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={sortOptions}
+          order={order}
+          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+          className="shrink-0"
+        />
+      </InlineFilterBar>
+
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        <div className="border-b border-border/80 panel-head">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id={`${category}-search`}
-              aria-label={`${t("search")} ${displayTitle.toLowerCase()}`}
-              placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none"
-            />
-            </div>
-            <TableSortControl
-              value={sortBy}
-              onValueChange={(value) => { setSortBy(value); resetPage(); }}
-              options={sortOptions}
-              order={order}
-              onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
-              className="shrink-0"
-              compact
-            />
-          </div>
-        </div>
-
-        {/* Collapsible filter panel: stacked on mobile */}
-        {showFilters && (
-          <div className="grid gap-2 bg-secondary/30 sm:gap-3 sm:flex sm:flex-wrap sm:items-center panel-head">
-            <label htmlFor={`${category}-status`} className="text-xs font-medium text-muted-foreground">{t("status")}</label>
-            <SearchableSelect
-              id={`${category}-status`}
-              className="h-9 w-full rounded-lg border-border bg-card text-sm sm:w-[140px] sm:h-8"
-              options={[
-                { value: "all", label: t("all") },
-                { value: "active", label: t("active") },
-                { value: "inactive", label: t("inactive") },
-              ]}
-              value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder={t("status")}
-            />
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
-                className="h-9 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground sm:h-8"
-              >
-                <RotateCcw className="h-3 w-3" /> {t("clear")}
-              </Button>
-            )}
-          </div>
-        )}
-
         {/* Table: semantic table with responsive-card-table */}
         <div className="overflow-x-auto" data-mobile-table="responsive">
           <Table className="responsive-card-table">
@@ -314,20 +303,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
                     <TableCell className="text-center"><StatusBadge status={item.isActive ? "active" : "inactive"} /></TableCell>
                     {(can("job_attributes", "update") || can("job_attributes", "delete")) && (
                       <TableCell>
-                        <div className="flex justify-end gap-1">
-                          {can("job_attributes", "update") && (
-                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
-                              <Pencil className="h-3.5 w-3.5 text-primary" />
-                              <span>{t("edit")}</span>
-                            </Button>
-                          )}
-                          {can("job_attributes", "delete") && (
-                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              <span>{t("delete")}</span>
-                            </Button>
-                          )}
-                        </div>
+                        <RowActions name={item.name} {...rowActionsFor(item)} />
                       </TableCell>
                     )}
                   </TableRow>
@@ -336,18 +312,16 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
             </TableBody>
           </Table>
         </div>
-
-        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            limit={limit}
-            onPageChange={setPage}
-            onLimitChange={setLimit}
-          />
-        </div>
       </section>
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+      />
 
       <CrudModal
         open={showAdd}

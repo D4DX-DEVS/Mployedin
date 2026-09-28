@@ -131,10 +131,10 @@ export const createLeadTool: CopilotTool<{
 
     let territoryId: unknown;
     let superAgentId: unknown;
-    if (args.country) {
+    if (args.country || args.city) {
       const routeResult = await autoRouteLead({ country: args.country, city: args.city }).catch(() => null);
       if (routeResult) {
-        territoryId = routeResult.territoryId;
+        territoryId = routeResult.territoryId ?? undefined;
         superAgentId = routeResult.superAgentId;
       }
     }
@@ -154,7 +154,7 @@ export const createLeadTool: CopilotTool<{
       status: "new",
       notes: args.notes ? sanitizeAIInput(args.notes, 2000) : undefined,
       territoryId,
-      autoRouted: Boolean(territoryId),
+      autoRouted: Boolean(superAgentId),
       activityLog: [{ action: "created", timestamp: new Date() }],
     });
 

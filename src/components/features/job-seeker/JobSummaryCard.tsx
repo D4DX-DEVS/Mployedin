@@ -311,14 +311,14 @@ function CompanyMark({
   return (
     <div
       className={cn(
-        "flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl text-xs font-semibold",
+        "flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-xs font-semibold",
         palette.bg,
         palette.text
       )}
     >
       {logo ? (
          
-        <img src={logo} alt={alt} className="h-full w-full object-cover" />
+        <img src={logo} alt={alt} className="h-full w-full bg-card object-contain p-1" />
       ) : (
         initialsOf(name)
       )}

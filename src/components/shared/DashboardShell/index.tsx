@@ -35,6 +35,8 @@ import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner"
 import { TemporaryPasswordNotice } from "@/components/shared/TemporaryPasswordNotice";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
+import { PageNavIconProvider } from "@/components/shared/PageNavIcon";
+import { resolvePageNavIcon } from "@/lib/nav/pageNavIcon";
 import { WORKSPACE_BOTTOM_NAV_TABS } from "@/lib/nav/bottomNavTabs";
 import type { NavBadgeKey } from "@/lib/nav/menuConfig";
 import { useAdminActionCounts } from "@/hooks/useAdminActionCounts";
@@ -157,6 +159,8 @@ export function DashboardShell({
   // and Settings were all unreachable without navigating home first. The
   // header stays.
   const hasBottomNav = bottomNavTabs.length > 0;
+  // Page headers that pass no `icon` show the sidebar icon of this route.
+  const pageNavIcon = resolvePageNavIcon(navGroups, pathname);
 
   const isPathInLeaf = (item: NavItem) =>
     pathname === item.href || (!item.href.endsWith("/admin") && pathname.startsWith(`${item.href}/`));
@@ -308,7 +312,7 @@ export function DashboardShell({
           {isJobSeeker ? (
             <>
               <main className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
-                {children}
+                <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
               </main>
               <JobSeekerBottomNav locale={locale} navGroups={navGroups} counts={navCounts} />
             </>
@@ -316,7 +320,7 @@ export function DashboardShell({
             // `relative` keeps absolute descendants (sr-only labels) inside this
             // scroller; without it they anchor to <body> and stretch the page.
             <main className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
-              {children}
+              <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
             </main>
           )}
           {/* Workspace phones get a tab bar for each role's daily destinations;

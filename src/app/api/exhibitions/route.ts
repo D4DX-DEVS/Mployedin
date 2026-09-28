@@ -29,6 +29,11 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const country = searchParams.get("country") ?? "";
   const budgetRange = searchParams.get("budgetRange") ?? "";
   const reviewer = searchParams.get("reviewer") ?? "";
+  // Whitelisted: the admin queue sorts by these columns only.
+  const SORTABLE = ["createdAt", "eventStartDate", "estimatedBudget", "eventName"] as const;
+  const sortParam = searchParams.get("sortBy") ?? "";
+  const sortBy = (SORTABLE as readonly string[]).includes(sortParam) ? sortParam : "createdAt";
+  const sortDir = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { isDeleted: { $ne: true } };
@@ -111,11 +116,11 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     ];
   }
 
-  const [items, total, summaryRows, countries] = await Promise.all([
+  const [items, total, summaryRows, countries, budgetRows] = await Promise.all([
     ExhibitionRequest.find(query)
       .populate("agentId", "name email")
       .populate("reviewedBy", "name")
-      .sort({ createdAt: -1 })
+      .sort({ [sortBy]: sortDir, _id: sortDir })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),
@@ -123,6 +128,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     ExhibitionRequest.aggregate<{
       _id: null;
       total: number;
+      open: number;
       pendingReview: number;
       financeReview: number;
       awaitingApproval: number;
@@ -137,6 +143,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
         $group: {
           _id: null,
           total: { $sum: 1 },
+          open: { $sum: { $cond: [{ $in: ["$status", ["submitted", "under_review", "revision_requested", "approved", "budget_approved", "resources_assigned", "active"]] }, 1, 0] } },
           pendingReview: { $sum: { $cond: [{ $in: ["$status", ["submitted", "under_review"]] }, 1, 0] } },
           financeReview: { $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] } },
           awaitingApproval: { $sum: { $cond: [{ $in: ["$status", ["budget_approved", "resources_assigned"]] }, 1, 0] } },
@@ -149,9 +156,24 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       },
     ]),
     ExhibitionRequest.distinct("country", { ...scopeQuery, country: { $nin: [null, ""] } }),
+    // Budgets per currency. The summary sums above add USD, INR and AED
+    // together; the page labelled that total "AED".
+    ExhibitionRequest.aggregate<{ _id: string | null; requested: number; approved: number; utilized: number }>([
+      { $match: scopeQuery },
+      {
+        $group: {
+          _id: "$budgetCurrency",
+          requested: { $sum: { $ifNull: ["$estimatedBudget", 0] } },
+          approved: { $sum: { $ifNull: ["$approvedBudget", 0] } },
+          utilized: { $sum: { $ifNull: ["$actualSpend", 0] } },
+        },
+      },
+      { $sort: { requested: -1 } },
+    ]),
   ]);
   const summary = summaryRows[0] ?? {
     total: 0,
+    open: 0,
     pendingReview: 0,
     financeReview: 0,
     awaitingApproval: 0,
@@ -169,6 +191,12 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     totalPages: Math.max(1, Math.ceil(total / limit)),
     summary,
     countries: countries.filter(Boolean).sort(),
+    budgets: budgetRows.map((row) => ({
+      currency: row._id || "USD",
+      requested: row.requested,
+      approved: row.approved,
+      utilized: row.utilized,
+    })),
   });
 }
 

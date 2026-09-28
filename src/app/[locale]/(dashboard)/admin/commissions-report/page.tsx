@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ReportTabs } from "@/components/features/admin/ReportTabs";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { toast } from "sonner";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -80,9 +80,17 @@ interface Summary {
   currency: string;
 }
 
+interface CurrencyTotal {
+  currency: string;
+  total: number;
+  count: number;
+}
+
 interface ReportData {
   year: number;
   summary: Summary;
+  /** Every currency the year holds; the rest of the payload covers `summary.currency` only. */
+  currencies: CurrencyTotal[];
   monthlyTrend: MonthlyItem[];
   quarterlyBreakdown: QuarterlyItem[];
   typeBreakdown: TypeBreakdown[];
@@ -93,7 +101,11 @@ interface ReportData {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const TYPE_LABEL_KEYS: Record<string, "placementType" | "overrideType" | "bonusType"> = {
+  placement: "placementType",
+  override: "overrideType",
+  bonus: "bonusType",
+};
 
 const TYPE_COLORS: Record<string, string> = {
   placement: "#6366f1",
@@ -107,10 +119,10 @@ const STATUS_BADGE: Record<string, string> = {
   paid: "bg-emerald-100 text-emerald-800",
 };
 
-function fmt(value: number, currency = "AED"): string {
-  if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${formatCount(value)}`;
+/* Every amount carries the currency the API reports for it — this used to
+   default to "AED", which is how an INR year was labelled AED. */
+function fmt(value: number, currency: string, locale: string, notation: "compact" | "standard" = "compact"): string {
+  return formatCount(value, { style: "currency", currency, notation, maximumFractionDigits: notation === "compact" ? 1 : 0 }, locale);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -136,27 +148,39 @@ function DeltaChip({ value }: { value: number }) {
 export default function AdminCommissionsReportPage() {
   const t = useTranslations("adminCommissionsReport");
   const ta = useTranslations("a11y");
+  const locale = useLocale();
   const currentYear = new Date().getFullYear();
   const [yearFilter, setYearFilter] = useState(currentYear);
+  // Null lets the API pick the year's largest currency.
+  const [currencyFilter, setCurrencyFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [data, setData] = useState<ReportData | null>(null);
 
+  const monthsShort = useMemo(() => {
+    const format = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+    return Array.from({ length: 12 }, (_, i) => format.format(new Date(Date.UTC(2020, i, 1))));
+  }, [locale]);
+
+  /* A failed load shows an error with a retry. It used to leave the table
+     saying "No commission data for 2026", which read as a fact. */
   const fetchReport = useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
     try {
-      const res = await fetch(`/api/admin/commissions-report?year=${yearFilter}`);
-      if (res.ok) {
-        setData(await res.json());
-      } else {
-        toast.error(t("failedToLoadReport"));
-      }
+      const params = new URLSearchParams({ year: String(yearFilter) });
+      if (currencyFilter) params.set("currency", currencyFilter);
+      const res = await fetch(`/api/admin/commissions-report?${params}`);
+      if (!res.ok) throw new Error(String(res.status));
+      setData(await res.json());
     } catch {
-      toast.error(t("failedToLoadReport"));
+      setData(null);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
-  }, [yearFilter, t]);
+  }, [yearFilter, currencyFilter]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
@@ -173,36 +197,41 @@ export default function AdminCommissionsReportPage() {
     );
   }, [data, searchQuery]);
 
-  // Export config
+  const s = data?.summary;
+  const currency = s?.currency ?? "AED";
+  const money = (value: number, notation: "compact" | "standard" = "compact") => fmt(value, currency, locale, notation);
+  const typeLabel = (type: string) => (TYPE_LABEL_KEYS[type] ? t(TYPE_LABEL_KEYS[type]) : type);
+
+  // Export config — the amount headers name the currency the rows are in.
   const exportColumns: ExportColumn<AgentRow>[] = [
     { header: t("exportHeaderAgent"), key: "agentName" },
     { header: t("exportHeaderEmail"), key: "agentEmail" },
     { header: t("exportHeaderSuperAgent"), key: "superAgentName" },
-    { header: t("exportHeaderTotal"), key: "total" },
-    { header: t("exportHeaderPending"), key: "pending" },
-    { header: t("exportHeaderApproved"), key: "approved" },
-    { header: t("exportHeaderPaid"), key: "paid" },
+    { header: t("exportHeaderTotal", { currency }), key: "total" },
+    { header: t("exportHeaderPending", { currency }), key: "pending" },
+    { header: t("exportHeaderApproved", { currency }), key: "approved" },
+    { header: t("exportHeaderPaid", { currency }), key: "paid" },
     { header: t("exportHeaderCommissionCount"), key: "count" },
     { header: t("exportHeaderAvgRate"), key: "avgRate" },
   ];
-  const { handleExportCsv, handleExportExcel } = useTableExport({ data: filteredAgents, columns: exportColumns, filename: `commissions-report-${yearFilter}` });
+  const { handleExportCsv, handleExportExcel } = useTableExport({ data: filteredAgents, columns: exportColumns, filename: `commissions-report-${yearFilter}-${currency}` });
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
+  // Stable data keys; the translated names go on the <Bar name>. recharts reads
+  // a dot in a dataKey as a path, so a translated key can empty the chart.
   const chartData = data?.monthlyTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
-    Pending: m.pending,
-    Approved: m.approved,
-    Paid: m.paid,
+    name: monthsShort[m.month - 1],
+    pending: m.pending,
+    approved: m.approved,
+    paid: m.paid,
   })) ?? [];
 
-  const pieData = data?.typeBreakdown.map((t) => ({
-    name: t.type.charAt(0).toUpperCase() + t.type.slice(1),
-    value: t.amount,
-    color: TYPE_COLORS[t.type] ?? "#94a3b8",
+  const pieData = data?.typeBreakdown.map((item) => ({
+    name: typeLabel(item.type),
+    value: item.amount,
+    color: TYPE_COLORS[item.type] ?? "#94a3b8",
   })) ?? [];
-
-  const s = data?.summary;
 
   return (
     <div className="page-container">
@@ -225,36 +254,60 @@ export default function AdminCommissionsReportPage() {
                 ))}
               </SelectContent>
             </Select>
+            {/* Only when the year holds more than one currency: amounts in
+                different currencies are shown one currency at a time. */}
+            {data && data.currencies.length > 1 ? (
+              <Select value={currency} onValueChange={setCurrencyFilter}>
+                <SelectTrigger aria-label={t("currencyFilterLabel")} className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.currencies.map((row) => (
+                    <SelectItem key={row.currency} value={row.currency}>{row.currency}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             <Button aria-label={ta("refresh")} variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="rounded-xl border-border/70 bg-background/90">
               <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </>
         )}
         metrics={[
-          { label: t("totalCommissions"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50" },
-          { label: t("pending"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
-          { label: t("approved"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
-          { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("totalCommissions"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalCommissions) : "—", icon: CircleDollarSign, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50" },
+          { label: t("pending"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalPending) : "—", icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("approved"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalApproved) : "—", icon: CheckCircle2, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalPaid) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
           { label: t("avgRate"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
       />
 
+      {loadFailed ? (
+        <ErrorState title={t("failedToLoadReport")} onRetry={() => { void fetchReport(); }} />
+      ) : (
+        <>
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 workspace-panel-surface rounded-2xl panel-body">
           <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
+          {/* The axes are laid out left-to-right in both locales; under RTL the
+              tick labels anchored the wrong way and ran into the axis line. */}
+          <div className="[direction:ltr]">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
-              <ReTooltip formatter={(v) => fmt(v as number)} />
+              {/* Compact notation scales with the data; dividing by 1000
+                  unconditionally printed "0K" down the whole axis. */}
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => formatCount(v, { notation: "compact", maximumFractionDigits: 1 }, locale)} />
+              <ReTooltip formatter={(v) => money(Number(v), "standard")} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Pending" fill="#fbbf24" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Approved" fill="#6366f1" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Paid" fill="#10b981" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="pending" name={t("pending")} fill="#fbbf24" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="approved" name={t("approved")} fill="#6366f1" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="paid" name={t("paidOut")} fill="#10b981" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </section>
 
         <section className="workspace-panel-surface rounded-2xl panel-body">
@@ -267,7 +320,7 @@ export default function AdminCommissionsReportPage() {
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
-                <ReTooltip formatter={(v) => fmt(v as number)} />
+                <ReTooltip formatter={(v) => money(Number(v), "standard")} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
@@ -275,18 +328,15 @@ export default function AdminCommissionsReportPage() {
             <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
           )}
           <div className="mt-2 space-y-1.5">
-            {data?.typeBreakdown.map((typeItem) => {
-              const typeKey = typeItem.type === "placement" ? "placementType" : typeItem.type === "override" ? "overrideType" : "bonusType";
-              return (
-                <div key={typeItem.type} className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5 capitalize">
-                    <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[typeItem.type] ?? "#94a3b8" }} />
-                    {t(typeKey as any)}
-                  </span>
-                  <span className="font-medium">{typeItem.percent}%</span>
-                </div>
-              );
-            })}
+            {data?.typeBreakdown.map((typeItem) => (
+              <div key={typeItem.type} className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 capitalize">
+                  <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[typeItem.type] ?? "#94a3b8" }} />
+                  {typeLabel(typeItem.type)}
+                </span>
+                <span className="font-medium">{typeItem.percent}%</span>
+              </div>
+            ))}
           </div>
         </section>
       </div>
@@ -297,13 +347,13 @@ export default function AdminCommissionsReportPage() {
           {data.quarterlyBreakdown.map((q) => (
             <div key={q.label} className="workspace-glass-panel card-pad rounded-2xl">
               <p className="text-xs font-semibold text-muted-foreground">{q.label}</p>
-              <p className="mt-1 text-lg font-bold">{fmt(q.total, data.summary.currency)}</p>
+              <p className="mt-1 text-lg font-bold">{money(q.total)}</p>
               <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
                 <span>{t("quarterlyBreakdownCommissionsLabel", { count: q.count })}</span>
               </div>
               <div className="mt-1 flex gap-1">
                 <StatusBadge status="approved" />
-                <span className="text-xs">{fmt(q.approved, data.summary.currency)}</span>
+                <span className="text-xs">{money(q.approved)}</span>
               </div>
             </div>
           ))}
@@ -365,10 +415,10 @@ export default function AdminCommissionsReportPage() {
                       <div className="text-xs text-muted-foreground">{agent.agentEmail}</div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{agent.superAgentName || "—"}</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(agent.total)}</TableCell>
-                    <TableCell className="text-right text-amber-600">{fmt(agent.pending)}</TableCell>
-                    <TableCell className="text-right text-indigo-600">{fmt(agent.approved)}</TableCell>
-                    <TableCell className="text-right text-emerald-600">{fmt(agent.paid)}</TableCell>
+                    <TableCell className="text-right font-semibold">{money(agent.total, "standard")}</TableCell>
+                    <TableCell className="text-right text-amber-600">{money(agent.pending, "standard")}</TableCell>
+                    <TableCell className="text-right text-indigo-600">{money(agent.approved, "standard")}</TableCell>
+                    <TableCell className="text-right text-emerald-600">{money(agent.paid, "standard")}</TableCell>
                     <TableCell className="text-right">{agent.count}</TableCell>
                     <TableCell className="text-right">{agent.avgRate ? `${Number(agent.avgRate).toFixed(1)}%` : "—"}</TableCell>
                   </TableRow>
@@ -378,6 +428,8 @@ export default function AdminCommissionsReportPage() {
           </Table>
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }

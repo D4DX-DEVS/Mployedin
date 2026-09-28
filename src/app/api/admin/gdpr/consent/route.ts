@@ -19,6 +19,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit") ?? 10)));
   const search = url.searchParams.get("search") ?? "";
+  const sortDir = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   const filter: Record<string, unknown> = {};
   if (search) {
@@ -30,7 +31,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   const [items, total] = await Promise.all([
-    ConsentLog.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    ConsentLog.find(filter).sort({ createdAt: sortDir, _id: sortDir }).skip((page - 1) * limit).limit(limit).lean(),
     ConsentLog.countDocuments(filter),
   ]);
 

@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
-import { Search, UserCheck, Ban, Shield, ChevronDown, Inbox, Plus, Check, Users, MoreHorizontal, Pencil, KeyRound, Trash2 } from "lucide-react";
+import { UserCheck, Ban, Shield, Inbox, Plus, Users, Pencil, KeyRound, Trash2 } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { InlinePicker, RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { ROLE_COLORS } from "@/lib/ui/statusColors";
@@ -33,13 +35,9 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
-import { AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface User {
@@ -87,6 +85,7 @@ export default function AdminUsersPage() {
   const order = sortOrder === "desc" ? "desc" : "asc";
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selected, setSelected] = useState<string[]>([]);
+  const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
   const [bulkAction, setBulkAction] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -312,7 +311,14 @@ export default function AdminUsersPage() {
 
   /** Roles read as "job seeker" in prose, matching the badges in the table. */
   function roleLabel(role: string) {
-    return role.replace("_", " ");
+    const labels: Record<string, string> = {
+      admin: t("roleAdmin"),
+      super_agent: t("roleSuperAgent"),
+      agent: t("roleAgent"),
+      employer: t("roleEmployer"),
+      job_seeker: t("roleJobSeeker"),
+    };
+    return labels[role] ?? role.replace("_", " ");
   }
 
   /**
@@ -347,7 +353,9 @@ export default function AdminUsersPage() {
     });
     if (!ok) return;
 
+    setRoleChangingId(user._id);
     const changed = await updateUser(user._id, { role: newRole });
+    setRoleChangingId(null);
     if (changed) toast.success(t("toastRoleChanged", { name, role: roleLabel(newRole) }));
   }
 
@@ -552,6 +560,47 @@ export default function AdminUsersPage() {
   const toggleAll = () =>
     setSelected(s => s.length === users.length ? [] : users.map(u => u._id));
 
+  const rowActionsFor = (user: User): { quick: RowAction[]; menu: RowAction[] } => {
+    const menu: RowAction[] = [
+      {
+        key: "permissions",
+        label: t("managePermissions"),
+        icon: Shield,
+        onSelect: () => openPermissions(user),
+      },
+      {
+        key: "resetPassword",
+        label: t("sendPasswordReset"),
+        icon: KeyRound,
+        onSelect: () => void sendPasswordReset(user),
+      },
+      {
+        key: "toggleActive",
+        label: user.isActive ? t("deactivate_user") : t("activate_user"),
+        icon: user.isActive ? Ban : UserCheck,
+        onSelect: () => void toggleUserActive(user),
+        destructive: user.isActive,
+      },
+      {
+        key: "delete",
+        label: t("deleteUserAction"),
+        icon: Trash2,
+        onSelect: () => void deleteUserAccount(user),
+        destructive: true,
+      },
+    ];
+
+    const quick = {
+      key: "edit",
+      label: t("editUser"),
+      icon: Pencil,
+      iconOnly: true,
+      onSelect: () => openEdit(user),
+    };
+
+    return { quick: [quick], menu };
+  };
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -561,83 +610,63 @@ export default function AdminUsersPage() {
         icon={Users}
         title={t("userManagement")}
         description={t("userManagementDesc", { total: formatCount(total) })}
+        actions={
+          <Button onClick={() => setShowCreate(true)} size="sm" className="h-9 rounded-xl shadow-sm">
+            <Plus className="h-4 w-4" />
+            {t("createUser")}
+          </Button>
+        }
       />
 
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <InlineSearchSelect
+          options={[
+            { value: "all", label: t("allRoles") },
+            ...ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
+            { value: "unknown", label: t("unknownRole") },
+          ]}
+          value={roleFilter}
+          onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
+          placeholder={t("allRoles")}
+          className="h-11 w-40 rounded-lg text-xs sm:h-9 sm:text-sm"
+        />
+        <InlineSearchSelect
+          options={[
+            { value: "all", label: t("allStatus") },
+            { value: "true", label: t("active") },
+            { value: "false", label: t("inactive") },
+          ]}
+          value={activeFilter}
+          onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
+          placeholder={t("allStatus")}
+          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+        />
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(v) => { setSortBy(v); resetPage(); }}
+          options={[
+            { value: "createdAt", label: t("joinedTableHeader") },
+            { value: "lastLogin", label: t("exportHeaderLastLogin") },
+            { value: "name", label: t("userTableHeader") },
+            { value: "role", label: t("roleTableHeader") },
+          ]}
+          order={order}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
+
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        {/* data-table-toolbar opts this hand-rolled header into the shared
-            mobile toolbar rules, same as pages built on <TableToolbar>. */}
-        <div data-table-toolbar="compact-admin" className="flex flex-col gap-2 border-b border-border/80 panel-head sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2">
-            <div className="relative min-w-0 flex-1 basis-full sm:basis-auto sm:flex-none">
-              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input aria-label={t("searchPlaceholder")}
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder={t("searchPlaceholder")}
-                className="h-11 w-full rounded-lg ps-8 text-xs sm:h-9 sm:w-52 sm:text-sm"
-              />
-            </div>
-            <div className="min-w-0 flex-1 sm:w-auto sm:min-w-[130px] sm:flex-none">
-              <InlineSearchSelect
-                options={[
-                  { value: "all", label: t("allRoles") },
-                  ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
-                  { value: "unknown", label: t("unknownRole") },
-                ]}
-                value={roleFilter}
-                onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
-                placeholder={t("allRoles")}
-              />
-            </div>
-            <div className="min-w-0 flex-1 sm:w-auto sm:min-w-[120px] sm:flex-none">
-              <InlineSearchSelect
-                options={[
-                  { value: "all", label: t("allStatus") },
-                  { value: "true", label: t("active") },
-                  { value: "false", label: t("inactive") },
-                ]}
-                value={activeFilter}
-                onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
-                placeholder={t("allStatus")}
-              />
-            </div>
-            <TableSortControl
-              value={sortBy}
-              onValueChange={(value) => { setSortBy(value); resetPage(); }}
-              options={[
-                { value: "name", label: t("userTableHeader") },
-                { value: "email", label: t("email") },
-                { value: "role", label: t("roleTableHeader") },
-                { value: "createdAt", label: t("joinedTableHeader") },
-                { value: "lastLogin", label: t("exportHeaderLastLogin") },
-              ]}
-              order={order}
-              onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
-              compact
-              className="shrink-0"
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="dense" aria-label={t("export")} className="shrink-0 rounded-lg border-border/80 px-2 text-xs sm:px-3 sm:text-sm">
-                  <Download className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("export")}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>{t("export")}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />{t("csv")}</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />{t("excel")}</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />{t("pdf")}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 rounded-lg px-2 text-xs sm:px-3 sm:text-sm">
-              <Plus className="h-3.5 w-3.5" /> {t("createUser")}
-            </Button>
-          </div>
-        </div>
 
         {/* Bulk Actions Bar */}
         {selected.length > 0 && (
@@ -684,7 +713,7 @@ export default function AdminUsersPage() {
               <TableHead>{t("statusTableHeader")}</TableHead>
               <TableHead><SortableTableHeader label={t("exportHeaderLastLogin")} active={sortBy === "lastLogin"} order={order} onClick={() => { setSortBy("lastLogin"); setSortOrder(sortBy === "lastLogin" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
               <TableHead><SortableTableHeader label={t("joinedTableHeader")} active={sortBy === "createdAt"} order={order} onClick={() => { setSortBy("createdAt"); setSortOrder(sortBy === "createdAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
-              <TableHead className="text-end">{t("actionsTableHeader")}</TableHead>
+              <TableHead className="text-right">{t("actionsTableHeader")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -705,7 +734,7 @@ export default function AdminUsersPage() {
               const lastLogin = user.lastLogin ? formatDate(new Date(user.lastLogin), dateOpts, locale) : null;
 
               return (
-                <TableRow key={user._id} className={selected.includes(user._id) ? "bg-primary/5" : ""}>
+                <TableRow key={user._id} className={`${selected.includes(user._id) ? "bg-primary/5" : ""} group`}>
                   <TableCell>
                     <Checkbox
                       aria-label={t("selectUser", { name: user.name || user.email })}
@@ -724,6 +753,7 @@ export default function AdminUsersPage() {
                         email={user.email}
                         src={user.avatar}
                         className="mt-0.5 h-8 w-8 shrink-0"
+                        colorful
                       />
                       <div className="min-w-0">
                         <p className="font-medium">{user.name || t("unnamed")}</p>
@@ -740,32 +770,20 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button type="button" className="flex items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-muted/40 transition-colors">
-                            <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>
-                              {user.role.replace("_", " ")}
-                            </Badge>
-                            <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-40">
-                          <DropdownMenuLabel className="text-xs">{t("changeRole")}</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          {ROLES.map((r) => (
-                            <DropdownMenuItem
-                              key={r}
-                              onClick={() => changeUserRole(user, r)}
-                              className="capitalize text-xs gap-2"
-                            >
-                              <Badge className={`${ROLE_COLORS[r] ?? ""} border text-[11px] px-1.5 py-0`}>
-                                {r.replace("_", " ")}
-                              </Badge>
-                              {r === user.role && <Check className="h-3 w-3 ml-auto text-primary" />}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {/* Same pill as a row status: current role + chevron, one click to
+                          open, one to pick; changeUserRole still confirms first. */}
+                      <InlinePicker
+                        name={user.name || user.email}
+                        align="start"
+                        picker={{
+                          label: `${t("changeRole")}: ${user.name || user.email}`,
+                          value: user.role,
+                          display: <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>{roleLabel(user.role)}</Badge>,
+                          options: ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
+                          onChange: (r) => { void changeUserRole(user, r); },
+                          pending: roleChangingId === user._id,
+                        }}
+                      />
                       {user.permissionMode === "custom" && (
                         <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">{t("customPermissions")}</Badge>
                       )}
@@ -778,49 +796,8 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">{lastLogin ?? t("never")}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{joined}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 max-sm:min-h-11 max-sm:min-w-11"
-                            aria-label={t("rowActionsFor", { name: user.name || user.email })}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem onClick={() => openEdit(user)}>
-                            <Pencil className="h-4 w-4" /> {t("editUser")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openPermissions(user)}>
-                            <Shield className="h-4 w-4" /> {t("managePermissions")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => void sendPasswordReset(user)}>
-                            <KeyRound className="h-4 w-4" /> {t("sendPasswordReset")}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => void toggleUserActive(user)}
-                            className={user.isActive ? "text-destructive focus:text-destructive" : ""}
-                          >
-                            {user.isActive ? (
-                              <><Ban className="h-4 w-4" /> {t("deactivate_user")}</>
-                            ) : (
-                              <><UserCheck className="h-4 w-4" /> {t("activate_user")}</>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => void deleteUserAccount(user)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" /> {t("deleteUserAction")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                  <TableCell className="text-right">
+                    <RowActions name={user.name || user.email} {...rowActionsFor(user)} />
                   </TableCell>
                 </TableRow>
               );
@@ -882,7 +859,7 @@ export default function AdminUsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="create-role">{t("role")} <span className="text-destructive">*</span></Label>
                 <InlineSearchSelect
-                  options={ROLES.map((r) => ({ value: r, label: r.replace("_", " ") }))}
+                  options={ROLES.map((r) => ({ value: r, label: roleLabel(r) }))}
                   value={createForm.role}
                   onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v }))}
                   placeholder={t("selectRole")}

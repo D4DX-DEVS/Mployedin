@@ -7,9 +7,11 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useConfirm } from "@/hooks/useConfirm";
+import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
   Table,
   TableBody,
@@ -26,14 +28,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Inbox, Eye, Trash2, Mail, MailOpen, MessageSquare, Send } from "lucide-react";
-import CmsHeroFilters, {
+import {
   type CmsFilterField,
   type CmsFilterValues,
   buildCmsQueryParams,
   cmsFiltersAreActive,
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { formatCount, formatDate, formatDateTime } from "@/lib/ui/intlFormat";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface ContactItem {
   _id: string;
@@ -52,6 +58,7 @@ interface ContactItem {
 
 export default function ContactSubmissionsPage() {
   const t = useTranslations("adminCmsContactSubmissions");
+  const { can } = usePermissions();
   const [items, setItems] = useState<ContactItem[]>([]);
   const [loading, setLoading] = useState(true);
   /* The "new contact enquiry" notification links here with ?status=unread.
@@ -65,11 +72,18 @@ export default function ContactSubmissionsPage() {
     const fromUrl = searchParams.get("status");
     return fromUrl ? { ...defaults, status: fromUrl } : defaults;
   });
-  const [showFilters, setShowFilters] = useState(false);
   const [viewItem, setViewItem] = useState<ContactItem | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replySending, setReplySending] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  /** Same column flips it; a new text column starts A–Z, the date newest first. */
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder(field === "createdAt" ? "desc" : "asc"); }
+    resetPage();
+  };
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const contactFilterFields: CmsFilterField[] = [
@@ -98,7 +112,7 @@ export default function ContactSubmissionsPage() {
       const params = buildCmsQueryParams(
         filterValues,
         contactFilterFields,
-        new URLSearchParams({ page: String(page), limit: String(limit) })
+        new URLSearchParams({ page: String(page), limit: String(limit), sortBy, sortOrder })
       );
       const r = await fetch(`/api/admin/cms/contact-submissions?${params}`);
       const d = await r.json();
@@ -109,7 +123,7 @@ export default function ContactSubmissionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, filterValues, updateTotal]);
+  }, [page, limit, filterValues, sortBy, sortOrder, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -208,27 +222,61 @@ export default function ContactSubmissionsPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-        <CmsHeroFilters
-          inToolbar
-          fields={contactFilterFields}
-          values={filterValues}
-          onChange={handleFilterChange}
-          onReset={resetFilters}
-          hasActiveFilters={hasActiveFilters}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters((v) => !v)}
-          searchPlaceholder={t("searchPlaceholder")}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={hasActiveFilters ? resetFilters : undefined}
+        clearLabel={t("clearFiltersButton")}
+      >
+        <InlineFilterSearch
+          value={filterValues.search}
+          onChange={(value) => { handleFilterChange({ ...filterValues, search: value }); }}
+          placeholder={t("searchPlaceholder")}
         />
+        <SearchableSelect
+          id="contact-status-filter"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allMessagesOption") },
+            { value: "unread", label: t("unreadOption") },
+            { value: "read", label: t("readOption") },
+          ]}
+          value={filterValues.status}
+          onValueChange={(value) => { handleFilterChange({ ...filterValues, status: value }); }}
+          placeholder={t("readStatusLabel")}
+        />
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={[
+            { value: "createdAt", label: t("tableHeaderDate") },
+            { value: "name", label: t("tableHeaderName") },
+            { value: "email", label: t("tableHeaderEmail") },
+            { value: "subject", label: t("tableHeaderSubject") },
+          ]}
+          order={sortOrder}
+          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl border-t-0 rounded-t-none">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
                 <TableHead className="w-[30px]"></TableHead>
-                <TableHead>{t("tableHeaderName")}</TableHead>
-                <TableHead>{t("tableHeaderEmail")}</TableHead>
-                <TableHead>{t("tableHeaderSubject")}</TableHead>
-                <TableHead>{t("tableHeaderDate")}</TableHead>
+<TableHead>
+                  <SortableTableHeader label={t("tableHeaderName")} active={sortBy === "name"} order={sortOrder} onClick={() => sortByColumn("name")} />
+                </TableHead>
+<TableHead>
+                  <SortableTableHeader label={t("tableHeaderEmail")} active={sortBy === "email"} order={sortOrder} onClick={() => sortByColumn("email")} />
+                </TableHead>
+<TableHead>
+                  <SortableTableHeader label={t("tableHeaderSubject")} active={sortBy === "subject"} order={sortOrder} onClick={() => sortByColumn("subject")} />
+                </TableHead>
+<TableHead>
+                  <SortableTableHeader label={t("tableHeaderDate")} active={sortBy === "createdAt"} order={sortOrder} onClick={() => sortByColumn("createdAt")} />
+                </TableHead>
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -274,55 +322,80 @@ export default function ContactSubmissionsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((item) => (
-                  <TableRow key={item._id} className={`border-border/70 ${!item.isRead ? "bg-primary/5" : ""}`}>
-                    <TableCell>
-                      {item.isRead
-                        ? <MailOpen className="h-4 w-4 text-muted-foreground" />
-                        : <Mail className="h-4 w-4 text-primary" />
-                      }
-                    </TableCell>
-                    <TableCell className={!item.isRead ? "font-semibold text-foreground" : "font-medium text-foreground"}>{item.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.email}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {item.subject || "—"}
-                      {item.repliedAt && (
-                        <span className="ms-2 rounded-full bg-status-selected-bg px-2 py-0.5 text-[11px] font-medium text-status-selected">
-                          {t("repliedBadge")}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(new Date(item.createdAt))}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="xs" onClick={() => handleView(item)} title={t("viewButtonTitle")}>
-                          <Eye className="h-3.5 w-3.5 text-primary" />
-                        </Button>
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("deleteButtonTitle")}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                items.map((item) => {
+                  const rowActionsFor = (row: ContactItem): { quick: RowAction[]; menu: RowAction[] } => {
+                    const quick: RowAction[] = [];
+                    const menu: RowAction[] = [];
+
+                    quick.push({
+                      key: "view",
+                      label: t("viewButtonTitle"),
+                      icon: Eye,
+                      onSelect: () => handleView(row),
+                    });
+
+                    if (can("cms", "delete")) {
+                      menu.push({
+                        key: "delete",
+                        label: t("deleteButtonTitle"),
+                        icon: Trash2,
+                        onSelect: () => handleDelete(row._id),
+                        destructive: true,
+                      });
+                    }
+
+                    return { quick, menu };
+                  };
+
+                  return (
+                    <TableRow key={item._id} className={`border-border/70 ${!item.isRead ? "bg-primary/5" : ""}`}>
+                      <TableCell>
+                        {item.isRead
+                          ? <MailOpen className="h-4 w-4 text-muted-foreground" />
+                          : <Mail className="h-4 w-4 text-primary" />
+                        }
+                      </TableCell>
+                      <TableCell className={!item.isRead ? "font-semibold text-foreground" : "font-medium text-foreground"}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <UserAvatar name={item.name} email={item.email} className="h-8 w-8" colorful />
+                          <span className="truncate">{item.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{item.email}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {item.subject || "—"}
+                        {item.repliedAt && (
+                          <span className="ms-2 rounded-full bg-status-selected-bg px-2 py-0.5 text-[11px] font-medium text-status-selected">
+                            {t("repliedBadge")}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatDate(new Date(item.createdAt), { day: "2-digit", month: "short", year: "numeric" })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <RowActions
+                          name={item.name}
+                          {...rowActionsFor(item)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
         </div>
-
-        <div className="border-t border-border/80 px-5 py-3">
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            limit={limit}
-            total={total}
-            onPageChange={setPage}
-            onLimitChange={(v) => { setLimit(v); resetPage(); }}
-          />
-        </div>
       </section>
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        limit={limit}
+        total={total}
+        onPageChange={setPage}
+        onLimitChange={(v) => { setLimit(v); resetPage(); }}
+      />
 
       {/* View Dialog */}
       <Dialog open={!!viewItem} onOpenChange={(open) => { if (!open) setViewItem(null); }}>

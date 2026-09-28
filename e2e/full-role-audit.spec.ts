@@ -24,7 +24,7 @@ const ROLES: RoleDef[] = [
       "/admin", "/admin/activity-timeline", "/admin/agents", "/admin/analytics", "/admin/applications",
       "/admin/audit", "/admin/audit-logs", "/admin/bulk-import", "/admin/cms",
       "/admin/cms/banners", "/admin/cms/blogs", "/admin/cms/contact-submissions", "/admin/cms/faqs",
-      "/admin/cms/static-pages", "/admin/cms/static-pages/new", "/admin/cms/testimonials", "/admin/cms/videos",
+      "/admin/cms/static-pages", "/admin/cms/company-reviews", "/admin/cms/testimonials", "/admin/cms/videos",
       "/admin/commissions", "/admin/commissions-report", "/admin/communications", "/admin/employers",
       "/admin/exhibitions", "/admin/exhibitions/analytics", "/admin/gdpr", "/admin/impersonate",
       "/admin/interviews", "/admin/invoices", "/admin/invoices/new", "/admin/job-attributes",

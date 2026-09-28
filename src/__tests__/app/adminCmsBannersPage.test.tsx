@@ -79,7 +79,6 @@ describe("BannersAdminPage", () => {
   });
 
   it("renders the banners page inside the shared admin workspace container and surfaces", async () => {
-    const user = userEvent.setup();
     const view = render(<BannersAdminPage />);
 
     await waitFor(() => {
@@ -93,12 +92,9 @@ describe("BannersAdminPage", () => {
 
     expect(workspaceRoot).toHaveClass("page-container", "admin-cms-page-container");
     expect(workspaceRoot).not.toHaveClass("space-y-3");
+    // Status filter sits inline in the filter bar; there is no Show Filters toggle.
     expect(screen.getByRole("heading", { name: "Banners" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add new/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Status filter")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /filter/i }));
-
     expect(screen.getByLabelText("Status filter")).toBeInTheDocument();
     expect(screen.getByTestId("pagination-controls")).toBeInTheDocument();
   });

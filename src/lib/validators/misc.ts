@@ -150,4 +150,8 @@ export const jobSeekerRegisterSchema = z.object({
   password: strongPasswordSchema,
   /** Shape is enforced by attachJobSeekerReferral; a bad code never blocks signup. */
   referralCode: z.string().trim().max(32).optional(),
+  /** The Terms/Privacy checkbox; recorded in the consent log when true. */
+  termsAccepted: z.boolean().optional(),
+  /** The visitor's cookie-banner choice, if they made one before signing up. */
+  cookieConsent: z.enum(["accepted", "declined"]).optional(),
 });

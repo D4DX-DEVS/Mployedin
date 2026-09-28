@@ -10,6 +10,9 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
@@ -18,13 +21,10 @@ import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox,
-  Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList, Download,
-  Clock, CheckCircle2, TrendingUp, X,
+  Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox, Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList, Download, Clock, CheckCircle2, TrendingUp, X, Trash2,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -135,6 +135,9 @@ export default function AdminInvoicesPage() {
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "", { allow: INVOICE_STATUSES });
   /** Rows needing a person: an unverified payment notice, or an open dispute. */
   const [attentionFilter, setAttentionFilter] = useUrlFilter("attention", "", { allow: ["payment_notice", "dispute"] });
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "dueDate", "totalAmount", "invoiceNumber"] });
+  const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
   const [categoryFilter, setCategoryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -148,11 +151,17 @@ export default function AdminInvoicesPage() {
 
   const [displayCurrency, setDisplayCurrency] = useState("AED");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder(field === "invoiceNumber" ? "asc" : "desc"); }
+    resetPage();
+  };
 
   // Invoice Builder & Detail View
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  // ?invoice=<id> opens that invoice on arrival (the Commissions ledger links here).
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(() => searchParams.get("invoice"));
 
   // Analytics
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
@@ -176,6 +185,8 @@ export default function AdminInvoicesPage() {
       if (searchTerm.trim()) params.set("search", searchTerm.trim());
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
 
       const res = await fetch(`/api/invoices?${params}`);
       if (!res.ok) throw new Error(t("failedToLoadInvoices"));
@@ -190,7 +201,7 @@ export default function AdminInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, attentionFilter, categoryFilter, typeFilter, searchTerm, dateFrom, dateTo, page, limit, updateTotal]);
+  }, [statusFilter, attentionFilter, categoryFilter, typeFilter, searchTerm, dateFrom, dateTo, sortBy, sortOrder, page, limit, updateTotal]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { document.title = "Finance · MPLOYEDIN"; }, []);
@@ -359,68 +370,84 @@ export default function AdminInvoicesPage() {
             <ErrorState title={t("failedToLoadInvoices")} onRetry={fetchInvoices} />
           )}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-            {/* Toolbar: search, filters, export */}
-            <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4 panel-head">
-              <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("invoiceLedger")}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
-                <div className="relative flex-1 sm:flex-none sm:min-w-0 sm:w-52">
-                  <Input aria-label={t("searchPlaceholder")}
-                    value={searchTerm}
-                    onChange={(v) => { setSearchTerm(v.target.value); resetPage(); }}
-                    placeholder={t("searchPlaceholder")}
-                    className="h-9 rounded-lg text-sm"
-                  />
-                </div>
-                <SearchableSelect id="adm-inv-status" className="h-9 w-32 sm:w-40 rounded-lg text-sm" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("statusAllStatuses")} />
-                <SearchableSelect id="adm-inv-cat" className="h-9 w-32 sm:w-40 rounded-lg text-sm" options={CATEGORY_OPTIONS} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("categoryAllCategories")} />
-                {/* No dropdown for this filter — it only arrives from a dashboard link —
-                    so it shows as a chip the admin can see and remove. */}
-                {attentionFilter && (
-                  <button
-                    type="button"
-                    onClick={() => { setAttentionFilter(""); resetPage(); }}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary hover:bg-primary/10"
-                    aria-label={t("attentionClearAria")}
-                  >
-                    {attentionFilter === "payment_notice" ? t("attentionPaymentNotice") : t("attentionDispute")}
-                    <X className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                )}
-                {invoices.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Button size="sm" variant="outline" onClick={handleExportCsv} className="h-9 text-xs rounded-lg">{t("exportLabel")}</Button>
-                  </div>
-                )}
-              </div>
-            </div>
+          <InlineFilterBar
+            className="workspace-panel-surface rounded-2xl border-b-0"
+            onExportCsv={invoices.length > 0 ? handleExportCsv : undefined}
+          >
+            <InlineFilterSearch
+              value={searchTerm}
+              onChange={(value) => { setSearchTerm(value); resetPage(); }}
+              placeholder={t("searchPlaceholder")}
+            />
+            <SearchableSelect
+              id="adm-inv-status"
+              className={INLINE_FILTER_CONTROL}
+              options={STATUS_OPTIONS}
+              value={statusFilter || "all"}
+              onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+              placeholder={t("statusAllStatuses")}
+            />
+            <SearchableSelect
+              id="adm-inv-cat"
+              className={INLINE_FILTER_CONTROL}
+              options={CATEGORY_OPTIONS}
+              value={categoryFilter || "all"}
+              onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
+              placeholder={t("categoryAllCategories")}
+            />
+            <TableSortControl
+              value={sortBy}
+              onValueChange={(v) => { setSortBy(v); resetPage(); }}
+              options={[
+                { value: "createdAt", label: t("sortDateAdded") },
+                { value: "dueDate", label: t("tableHeaderDueDate") },
+                { value: "totalAmount", label: t("tableHeaderTotal") },
+                { value: "invoiceNumber", label: t("tableHeaderInvoiceNumber") },
+              ]}
+              order={sortOrder}
+              onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+              compact
+            />
+          </InlineFilterBar>
 
-            <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="heading-subsection font-semibold text-foreground">{t("allInvoices")}</h2>
-                <p className="text-sm text-muted-foreground">{t("recordsCount", { shown: invoices.length, total: formatCount(total) })}</p>
-              </div>
+          {attentionFilter && (
+            <div className="mb-3 flex items-center">
+              <button
+                type="button"
+                onClick={() => { setAttentionFilter(""); resetPage(); }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/10"
+                aria-label={t("attentionClearAria")}
+              >
+                {attentionFilter === "payment_notice" ? t("attentionPaymentNotice") : t("attentionDispute")}
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
             </div>
+          )}
+
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+
 
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                    <TableHead className="md:min-w-[120px]">{t("tableHeaderInvoiceNumber")}</TableHead>
+                    <TableHead className="md:min-w-[120px]">
+                      <SortableTableHeader label={t("tableHeaderInvoiceNumber")} active={sortBy === "invoiceNumber"} order={sortOrder} onClick={() => sortByColumn("invoiceNumber")} />
+                    </TableHead>
                     <TableHead className="md:min-w-[140px]">{t("tableHeaderEmployer")}</TableHead>
                     <TableHead className="md:min-w-[130px]">{t("tableHeaderJob")}</TableHead>
                     <TableHead>{t("tableHeaderCategory")}</TableHead>
-                    <TableHead className="text-right">{t("tableHeaderTotal")}</TableHead>
+                    <TableHead className="text-right">
+                      <SortableTableHeader label={t("tableHeaderTotal")} active={sortBy === "totalAmount"} order={sortOrder} onClick={() => sortByColumn("totalAmount")} />
+                    </TableHead>
                     <TableHead className="text-right">{t("tableHeaderPaid")}</TableHead>
                     <TableHead className="text-right">{t("tableHeaderBalance")}</TableHead>
                     <TableHead className="text-right">{t("tableHeaderTax")}</TableHead>
                     <TableHead>{t("tableHeaderCommission")}</TableHead>
                     <TableHead>{t("tableHeaderStatus")}</TableHead>
-                    <TableHead>{t("tableHeaderDueDate")}</TableHead>
+                    <TableHead>
+                      <SortableTableHeader label={t("tableHeaderDueDate")} active={sortBy === "dueDate"} order={sortOrder} onClick={() => sortByColumn("dueDate")} />
+                    </TableHead>
                     <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -457,38 +484,52 @@ export default function AdminInvoicesPage() {
                           ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell><StatusBadge status={inv.status} /></TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate)) : "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0" title={t("viewDetails")}><Eye className="h-3.5 w-3.5" /></Button>
-                            {["issued", "sent", "paid", "partially_paid", "overdue"].includes(inv.status) && (
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title={t("downloadPdf")} onClick={async () => {
-                                try {
-                                  const res = await fetch(`/api/invoices/${inv._id}/pdf`);
-                                  if (!res.ok) throw new Error(t("failedToDownloadInvoice"));
-                                  const blob = await res.blob();
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = `${inv.invoiceNumber}.pdf`;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                } catch { toast.error(t("failedToDownloadPdf")); }
-                              }}><Download className="h-3.5 w-3.5" /></Button>
-                            )}
-                            {can("subscriptions", "update") && inv.status === "draft" && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[11px] text-sky-600 hover:bg-sky-50">{t("issue")}</Button>
-                            )}
-                            {can("subscriptions", "update") && ["issued", "sent"].includes(inv.status) && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "paid")} className="h-7 px-2 text-[11px] text-emerald-600 hover:bg-emerald-50">{t("markAsPaid")}</Button>
-                            )}
-                            {can("subscriptions", "update") && !["void", "cancelled", "refunded", "paid", "credit_note"].includes(inv.status) && (
-                              <Button variant="ghost" size="sm" onClick={async () => {
-                                const ok = await confirmDialog(t("confirmVoidMessage"));
-                                if (ok) updateStatus(inv._id, "void");
-                              }} className="h-7 px-2 text-[11px] text-rose-600 hover:bg-rose-50">{t("void")}</Button>
-                            )}
-                          </div>
+                        <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
+                        <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                          <RowActions
+                            name={inv.invoiceNumber}
+                            quick={[{ key: "view", label: t("viewDetails"), icon: Eye, onSelect: () => setSelectedInvoiceId(inv._id) }]}
+                            menu={
+                              (() => {
+                                const items: RowAction[] = [];
+                                if (["issued", "sent", "paid", "partially_paid", "overdue"].includes(inv.status)) {
+                                  items.push({
+                                    key: "download",
+                                    label: t("downloadPdf"),
+                                    icon: Download,
+                                    onSelect: async () => {
+                                      try {
+                                        const res = await fetch(`/api/invoices/${inv._id}/pdf`);
+                                        if (!res.ok) throw new Error(t("failedToDownloadInvoice"));
+                                        const blob = await res.blob();
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement("a");
+                                        a.href = url;
+                                        a.download = `${inv.invoiceNumber}.pdf`;
+                                        a.click();
+                                        URL.revokeObjectURL(url);
+                                      } catch { toast.error(t("failedToDownloadPdf")); }
+                                    }
+                                  });
+                                }
+                                if (can("subscriptions", "update")) {
+                                  if (inv.status === "draft") {
+                                    items.push({ key: "issue", label: t("issue"), icon: CheckCircle2, onSelect: () => updateStatus(inv._id, "issued") });
+                                  }
+                                  if (["issued", "sent"].includes(inv.status)) {
+                                    items.push({ key: "paid", label: t("markAsPaid"), icon: CheckCircle2, onSelect: () => updateStatus(inv._id, "paid") });
+                                  }
+                                  if (!["void", "cancelled", "refunded", "paid", "credit_note"].includes(inv.status)) {
+                                    items.push({ key: "void", label: t("void"), icon: Trash2, onSelect: async () => {
+                                      const ok = await confirmDialog(t("confirmVoidMessage"));
+                                      if (ok) updateStatus(inv._id, "void");
+                                    }, destructive: true });
+                                  }
+                                }
+                                return items;
+                              })()
+                            }
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -510,7 +551,15 @@ export default function AdminInvoicesPage() {
       <InvoiceDetailView
         invoiceId={selectedInvoiceId}
         open={!!selectedInvoiceId}
-        onClose={() => setSelectedInvoiceId(null)}
+        onClose={() => {
+          setSelectedInvoiceId(null);
+          // Drop the deep link so a refresh does not reopen the dialog.
+          if (searchParams.get("invoice")) {
+            const rest = new URLSearchParams(searchParams.toString());
+            rest.delete("invoice");
+            router.replace(`/${locale}/admin/invoices${rest.size ? `?${rest}` : ""}`, { scroll: false });
+          }
+        }}
         onRefresh={() => { fetchInvoices(); refreshAnalytics(); }}
         role="admin"
       />

@@ -25,7 +25,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await validateBody(req, videoUpdateSchema) as Record<string, unknown>;
-  const allowed = ["title", "titleAr", "description", "descriptionAr", "url", "thumbnail", "sortOrder", "isActive"];
+  const allowed = ["title", "titleAr", "description", "descriptionAr", "url", "sortOrder", "isActive"];
   const update: Record<string, unknown> = {};
   for (const k of allowed) {
     if (body[k] !== undefined) update[k] = body[k];

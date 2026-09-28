@@ -25,6 +25,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const search = url.searchParams.get("search") ?? "";
   const type = url.searchParams.get("type") ?? "";
   const status = url.searchParams.get("status") ?? "";
+  // Whitelisted sort for the list's control and column heads; _id breaks ties.
+  const sortField = url.searchParams.get("sortBy") === "completedAt" ? "completedAt" : "createdAt";
+  const sortDir = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   const filter: Record<string, unknown> = {};
   if (type && type !== "all" && (GDPR_REQUEST_TYPES as string[]).includes(type)) {
@@ -43,7 +46,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   const [items, total, totalRequests, pendingRequests, completedRequests, responseAgg, totalUsers, consentAgg] =
     await Promise.all([
-      GdprRequest.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      GdprRequest.find(filter).sort({ [sortField]: sortDir, _id: sortDir }).skip((page - 1) * limit).limit(limit).lean(),
       GdprRequest.countDocuments(filter),
       GdprRequest.countDocuments({}),
       GdprRequest.countDocuments({ status: { $in: ["pending", "in_progress"] } }),

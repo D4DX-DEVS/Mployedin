@@ -2,18 +2,57 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { escapeRegex } from "@/lib/security/sanitize";
-import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import StaticPage from "@/models/StaticPage";
 import type { UserRole } from "@/models/User";
-import { validateBody } from "@/lib/validators";
-import { staticPageCreateSchema } from "@/lib/validators/cms";
-import { sanitizeHtml } from "@/lib/security/sanitize-html";
-import { slugify } from "@/lib/slug";
+import { LEGAL_PAGES, LEGAL_PAGE_SLUGS } from "@/lib/cms/legalPages";
+import { cmsListSort } from "@/lib/cms/listSort";
+
+const SORT_FIELDS = ["createdAt", "slug", "title", "updatedAt"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-async function getHandler(req: NextRequest, ctx: AuthCtx) {
+/**
+ * Static Pages is a fixed editor for the four legal pages — there is no POST
+ * (a new slug had no public route) and no DELETE. A legal page missing from the
+ * database would otherwise be impossible to create, so the list upserts each
+ * missing one as an inactive, empty draft; `$setOnInsert` never touches a page
+ * that already exists. `timestamps: false` matters: Mongoose otherwise adds
+ * `$set: { updatedAt: now }` to every matched page, and the public pages print
+ * updatedAt as "Last updated" — each admin visit re-dated all four.
+ */
+// Two first-ever list loads can race to insert the same missing page; the
+// loser's E11000 just means the page now exists.
+function onlyDuplicateKeys(err: unknown): boolean {
+  const e = err as { code?: number; writeErrors?: { code?: number }[] };
+  if (e?.writeErrors?.length) return e.writeErrors.every((w) => w.code === 11000);
+  return e?.code === 11000;
+}
+
+async function ensureLegalPages() {
+  const now = new Date();
+  await StaticPage.bulkWrite(
+    LEGAL_PAGES.map((page) => ({
+      updateOne: {
+        filter: { slug: page.slug },
+        update: {
+          $setOnInsert: {
+            slug: page.slug, title: page.title, titleAr: page.titleAr, body: "", bodyAr: "", isActive: false,
+            createdAt: now, updatedAt: now,
+          },
+        },
+        upsert: true,
+        timestamps: false,
+      },
+    })),
+    { ordered: false },
+  ).catch((err: unknown) => {
+    if (!onlyDuplicateKeys(err)) throw err;
+  });
+}
+
+async function getHandler(req: NextRequest, _ctx: AuthCtx) {
   await connectDB();
+  await ensureLegalPages();
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") ?? "";
@@ -22,7 +61,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10")));
   const skip = (page - 1) * limit;
 
-  const query: Record<string, unknown> = {};
+  const query: Record<string, unknown> = { slug: { $in: LEGAL_PAGE_SLUGS } };
   if (status === "active") query.isActive = true;
   else if (status === "inactive") query.isActive = false;
 
@@ -36,7 +75,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const [items, total] = await Promise.all([
-    StaticPage.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    StaticPage.find(query).sort(cmsListSort(searchParams, SORT_FIELDS, { createdAt: -1 })).skip(skip).limit(limit).lean(),
     StaticPage.countDocuments(query),
   ]);
 
@@ -46,42 +85,4 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
-async function postHandler(req: NextRequest, ctx: AuthCtx) {
-  await connectDB();
-  const body = await validateBody(req, staticPageCreateSchema);
-
-  const { title, titleAr, slug: customSlug, body: pageBody, bodyAr, isActive } = body;
-  if (!title || !pageBody) {
-    return NextResponse.json({ error: "Title and body are required" }, { status: 400 });
-  }
-
-  const slug = customSlug ? slugify(customSlug) : slugify(title);
-
-  const existing = await StaticPage.findOne({ slug });
-  if (existing) {
-    return NextResponse.json({ error: `A page with slug "${slug}" already exists` }, { status: 409 });
-  }
-
-  const item = await StaticPage.create({
-    slug,
-    title: title.trim(),
-    titleAr: (titleAr ?? "").trim(),
-    body: sanitizeHtml(pageBody),
-    bodyAr: sanitizeHtml(bodyAr),
-    isActive: isActive !== false,
-  });
-
-  await logActivity({
-    ...actorFromCtx(ctx),
-    action: "static-page.create",
-    resource: "cms",
-    resourceId: item._id?.toString(),
-    changes: { after: { title, slug } },
-    req,
-  });
-
-  return NextResponse.json({ item }, { status: 201 });
-}
-
 export const GET = withAuth(getHandler, { resource: "cms", action: "read" });
-export const POST = withAuth(postHandler, { resource: "cms", action: "create" });
