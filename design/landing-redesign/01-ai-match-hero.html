@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -14,16 +14,16 @@
       <p class="artifact-lede">A landing hero concept that makes AI useful at first glance: visitors can choose their path, see a realistic match preview, and open the explanation before they commit their profile or search.</p>
       <span class="artifact-note">Illustrative prototype · scores and roles are demo content</span>
 
-      <section class="surface surface-pad section-gap" aria-labelledby="hero-heading">
+      <section id="search" class="surface surface-pad section-gap" aria-labelledby="hero-heading">
         <div class="grid-2">
           <div class="hero-copy">
             <div class="mode-switch" role="group" aria-label="Choose your path">
-              <button type="button" aria-pressed="true">Find a job</button>
-              <button type="button" aria-pressed="false">Hire talent</button>
+              <button id="job-mode" type="button" aria-pressed="true">Find a job</button>
+              <button id="employer-mode" type="button" aria-pressed="false">Hire talent</button>
             </div>
             <p class="artifact-kicker" style="margin-top: 24px">Smarter careers · stronger teams</p>
             <h2 id="hero-heading">A clearer next move, backed by useful signals.</h2>
-            <p>Tell us what you want next. MPLOYEDIN uses your skills, experience, preferences, and live role requirements to surface opportunities worth your time.</p>
+            <p id="hero-description">Tell us what you want next. MPLOYEDIN uses your skills, experience, preferences, and live role requirements to surface opportunities worth your time.</p>
             <div class="hero-actions">
               <a class="button" href="#search">Explore matched roles <span aria-hidden="true">→</span></a>
               <a class="button secondary" href="#why">See how matching works</a>
@@ -66,7 +66,7 @@
               <ul>
                 <li>Skills overlap: product discovery and prototyping</li>
                 <li>Preference fit: hybrid work in the Gulf</li>
-                <li>Employer status: verified profile</li>
+                <li>Employer status: verification status shown to you</li>
               </ul>
             </details>
           </aside>
@@ -78,8 +78,24 @@
         <article class="card"><span class="icon-box" aria-hidden="true">↔</span><h3>Keep both paths visible</h3><p>Retain the efficient audience switch while preserving role-specific intent below the hero.</p></article>
         <article class="card"><span class="icon-box" aria-hidden="true">✓</span><h3>Build trust early</h3><p>Pair verification and privacy cues with every recommendation claim.</p></article>
       </section>
-      <p class="artifact-footer">Addresses F1/F2/F4 and A11Y-06 · Use as a coded hero prototype before production implementation.</p>
+      <p class="artifact-footer">Addresses F1/F2/F4 and A11Y-06 · Demo claims and score inputs must be mapped to real data and consent rules before production.</p>
     </div>
-  </main>
+</main>
+  <script>
+    const modes = { job: document.getElementById('job-mode'), employer: document.getElementById('employer-mode') };
+    const heading = document.getElementById('hero-heading');
+    const description = document.getElementById('hero-description');
+    const matchHeading = document.getElementById('match-heading');
+    const setMode = (mode) => {
+      const employer = mode === 'employer';
+      modes.job.setAttribute('aria-pressed', String(!employer));
+      modes.employer.setAttribute('aria-pressed', String(employer));
+      heading.textContent = employer ? 'Turn the right talent signal into a confident shortlist.' : 'A clearer next move, backed by useful signals.';
+      description.textContent = employer ? 'Describe the outcomes and skills you need. MPLOYEDIN helps you review relevant candidates with the reasons behind each recommendation.' : 'Tell us what you want next. MPLOYEDIN uses your skills, experience, preferences, and live role requirements to surface opportunities worth your time.';
+      matchHeading.textContent = employer ? 'Your strongest candidates' : 'Your best matches';
+    };
+    modes.job.addEventListener('click', () => setMode('job'));
+    modes.employer.addEventListener('click', () => setMode('employer'));
+  </script>
 </body>
 </html>

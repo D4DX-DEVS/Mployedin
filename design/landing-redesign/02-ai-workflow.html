@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -25,24 +25,29 @@
 
         <div id="job-panel" role="tabpanel" aria-labelledby="job-tab">
           <div class="step-tabs" role="tablist" aria-label="Professional workflow steps">
-            <button class="step-tab" type="button" role="tab" aria-selected="true">01 · Shape your signal</button>
-            <button class="step-tab" type="button" role="tab" aria-selected="false">02 · Review recommendations</button>
-            <button class="step-tab" type="button" role="tab" aria-selected="false">03 · Move with confidence</button>
+            <button class="step-tab" type="button" role="tab" aria-selected="true" aria-controls="job-step-panel" id="job-step-1-tab" tabindex="0">01 · Shape your signal</button>
+            <button class="step-tab" type="button" role="tab" aria-selected="false" aria-controls="job-step-panel" id="job-step-2-tab" tabindex="-1">02 · Review recommendations</button>
+            <button class="step-tab" type="button" role="tab" aria-selected="false" aria-controls="job-step-panel" id="job-step-3-tab" tabindex="-1">03 · Move with confidence</button>
           </div>
-          <div class="step-panel">
+          <div id="job-step-panel" class="step-panel" role="tabpanel" aria-labelledby="job-step-1-tab" tabindex="0">
             <span class="step-number">01</span>
-            <div><h3>Shape your signal</h3><p>Build one profile around the work you want, then choose which details are visible to employers.</p><div class="step-list"><div><span>✓</span><span>Skills, experience, goals, and location preferences</span></div><div><span>✓</span><span>Clear profile completion guidance before matching starts</span></div><div><span>✓</span><span>Private by default until you choose to apply or be discovered</span></div></div></div>
+            <div><h3>Shape your signal</h3><p>Build one profile around the work you want, then choose which details are visible to employers.</p><div class="step-list"><div><span>✓</span><span>Skills, experience, goals, and location preferences</span></div><div><span>✓</span><span>Clear profile completion guidance before matching starts</span></div><div><span>✓</span><span>Discoverability can be controlled before employers find you</span></div></div></div>
           </div>
         </div>
 
         <div id="employer-panel" role="tabpanel" aria-labelledby="employer-tab" hidden>
-          <div class="step-panel"><span class="step-number">01</span><div><h3>Define the role signal</h3><p>Describe the outcomes, skills, and location constraints that matter before reviewing recommendations.</p></div></div>
+          <div class="step-tabs" role="tablist" aria-label="Employer workflow steps">
+            <button class="step-tab" type="button" role="tab" aria-selected="true" aria-controls="employer-step-panel" id="employer-step-1-tab" tabindex="0">01 · Define the role signal</button>
+            <button class="step-tab" type="button" role="tab" aria-selected="false" aria-controls="employer-step-panel" id="employer-step-2-tab" tabindex="-1">02 · Review explainable matches</button>
+            <button class="step-tab" type="button" role="tab" aria-selected="false" aria-controls="employer-step-panel" id="employer-step-3-tab" tabindex="-1">03 · Move the shortlist forward</button>
+          </div>
+          <div id="employer-step-panel" class="step-panel" role="tabpanel" aria-labelledby="employer-step-1-tab" tabindex="0"><span class="step-number">01</span><div><h3>Define the role signal</h3><p>Describe the outcomes, skills, and location constraints that matter before reviewing recommendations.</p><div class="step-list"><div><span>✓</span><span>Set the must-have skills and role context</span></div><div><span>✓</span><span>Keep requirements readable for candidates</span></div><div><span>✓</span><span>Review why each candidate appears</span></div></div></div></div>
         </div>
       </section>
 
       <section class="grid-2 section-gap" aria-label="Role outcomes">
-        <article class="card role-card"><div><span class="icon-box" aria-hidden="true">◎</span><h3>For professionals</h3><p>See why a role is relevant, save it, apply directly, and keep interviews and offers in one workspace.</p></div><a class="button" href="#professional">Build your profile <span aria-hidden="true">→</span></a></article>
-        <article class="card role-card"><div><span class="icon-box" aria-hidden="true">▣</span><h3>For employers</h3><p>Post a clearer role, review explainable matches, and move qualified candidates through one pipeline.</p></div><a class="button secondary" href="#employer">Start hiring <span aria-hidden="true">→</span></a></article>
+        <article id="professional" class="card role-card"><div><span class="icon-box" aria-hidden="true">◎</span><h3>For professionals</h3><p>See why a role is relevant, save it, apply directly, and keep interviews and offers in one workspace.</p></div><a class="button" href="#job-panel">Build your profile <span aria-hidden="true">→</span></a></article>
+        <article id="employer" class="card role-card"><div><span class="icon-box" aria-hidden="true">▣</span><h3>For employers</h3><p>Post a clearer role, review explainable matches, and move qualified candidates through one pipeline.</p></div><a class="button secondary" href="#employer-panel">Start hiring <span aria-hidden="true">→</span></a></article>
       </section>
       <p class="artifact-footer">Addresses F2/F3/F4 and CONTENT-01 · Keep the workflow short, role-specific, and repeat one CTA after each major section.</p>
     </div>
@@ -50,25 +55,42 @@
   <script>
     const audienceTabs = [...document.querySelectorAll('[role="tablist"] > [role="tab"]')].filter((tab) => tab.id === 'job-tab' || tab.id === 'employer-tab');
     const panels = { 'job-tab': document.getElementById('job-panel'), 'employer-tab': document.getElementById('employer-panel') };
+    const activateTab = (tab, group) => {
+      group.forEach((item) => { item.setAttribute('aria-selected', String(item === tab)); item.tabIndex = item === tab ? 0 : -1; });
+      tab.focus();
+    };
+    const addArrowNavigation = (group) => group.forEach((tab, index) => tab.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? group.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + group.length) % group.length;
+      activateTab(group[next], group);
+      group[next].click();
+    }));
     audienceTabs.forEach((tab) => tab.addEventListener('click', () => {
       audienceTabs.forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
       Object.entries(panels).forEach(([id, panel]) => { if (panel) panel.hidden = id !== tab.id; });
     }));
-    const steps = [...document.querySelectorAll('#job-panel .step-tabs [role="tab"]')];
-    const stepCopy = [
-      ['01', 'Shape your signal', 'Build one profile around the work you want, then choose which details are visible to employers.', ['Skills, experience, goals, and location preferences', 'Clear profile completion guidance before matching starts', 'Private by default until you choose to apply or be discovered']],
+    const stepCopy = {
+      job: [
+      ['01', 'Shape your signal', 'Build one profile around the work you want, then choose which details are visible to employers.', ['Skills, experience, goals, and location preferences', 'Clear profile completion guidance before matching starts', 'Discoverability can be controlled before employers find you']],
       ['02', 'Review recommendations', 'See a short list of relevant roles with the signals, freshness, and employer status behind each recommendation.', ['Compare the role requirements with your chosen profile details', 'Save, dismiss, or open the full role without losing context', 'Ask why a recommendation appeared before you continue']],
       ['03', 'Move with confidence', 'Apply directly and keep every next step visible after the first click.', ['Track applications, interviews, messages, and offers in one workspace', 'Control what employers can see as your journey changes', 'Return to unfinished work without starting over']],
-    ];
-    const stepPanel = document.querySelector('#job-panel .step-panel');
-    const renderStep = (index) => {
-      const [number, title, description, bullets] = stepCopy[index];
-      stepPanel.innerHTML = '<span class="step-number">' + number + '</span><div><h3>' + title + '</h3><p>' + description + '</p><div class="step-list">' + bullets.map((bullet) => '<div><span>✓</span><span>' + bullet + '</span></div>').join('') + '</div></div>';
+      ],
+      employer: [
+        ['01', 'Define the role signal', 'Describe the outcomes, skills, and location constraints that matter before reviewing recommendations.', ['Set the must-have skills and role context', 'Keep requirements readable for candidates', 'Review why each candidate appears']],
+        ['02', 'Review explainable matches', 'Open a shortlist with the signals and verification states that explain each recommendation.', ['Compare role requirements with candidate experience', 'See freshness and verification status beside a match', 'Keep human review in the decision loop']],
+        ['03', 'Move the shortlist forward', 'Coordinate interviews and next steps from a focused hiring workspace.', ['Invite the right people into the review', 'Track decisions and candidate communication', 'Confirm the next action before leaving the page']],
+      ],
     };
-    steps.forEach((tab, index) => tab.addEventListener('click', () => {
-      steps.forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
-      renderStep(index);
-    }));
+    const renderStep = (panel, copy, index) => {
+      const [number, title, description, bullets] = copy[index];
+      panel.innerHTML = '<span class="step-number">' + number + '</span><div><h3>' + title + '</h3><p>' + description + '</p><div class="step-list">' + bullets.map((bullet) => '<div><span>✓</span><span>' + bullet + '</span></div>').join('') + '</div></div>';
+    };
+    const groups = [
+      { tabs: [...document.querySelectorAll('#job-panel .step-tabs [role="tab"]')], panel: document.getElementById('job-step-panel'), copy: stepCopy.job },
+      { tabs: [...document.querySelectorAll('#employer-panel .step-tabs [role="tab"]')], panel: document.getElementById('employer-step-panel'), copy: stepCopy.employer },
+    ];
+    groups.forEach(({ tabs, panel, copy }) => { addArrowNavigation(tabs); tabs.forEach((tab, index) => tab.addEventListener('click', () => { activateTab(tab, tabs); panel.setAttribute('aria-labelledby', tab.id); renderStep(panel, copy, index); })); });
   </script>
 </body>
 </html>
