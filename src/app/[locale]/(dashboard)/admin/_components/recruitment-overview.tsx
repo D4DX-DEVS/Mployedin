@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlarmClock, CalendarX2, FilePen, Gauge, PauseCircle, Timer, Workflow } from "lucide-react";
+import { AlarmClock, ArrowRight, CalendarX2, FilePen, Gauge, PauseCircle, PieChart, Timer, Workflow } from "lucide-react";
 import type { ApplicationStatus } from "@/models/Application";
 import type { HiringFunnel, RecruitmentOverview } from "@/lib/admin/dashboard/types";
 import { formatCount } from "@/lib/ui/intlFormat";
@@ -20,8 +20,8 @@ const STATUS_KEYS: Partial<Record<ApplicationStatus, string>> = {
 
 const STAGE_BARS: Partial<Record<ApplicationStatus, string>> = {
   hired: "bg-emerald-500",
-  rejected: "bg-rose-500",
-  withdrawn: "bg-slate-400",
+  rejected: "bg-primary",
+  withdrawn: "bg-primary/50",
 };
 
 /** One decimal place; null when there is nothing to divide by. */
@@ -56,7 +56,7 @@ function Pipeline({ data, locale, t }: Pick<Props, "data" | "locale" | "t">) {
             >
               <span className="truncate text-xs text-muted-foreground">{label}</span>
               <span className="h-2 overflow-hidden rounded-full bg-secondary">
-                <span className={`block h-full rounded-full ${STAGE_BARS[stage.status] ?? "bg-violet-500"}`} style={{ width: `${width}%` }} />
+                <span className={`block h-full rounded-full ${STAGE_BARS[stage.status] ?? "bg-primary"}`} style={{ width: `${width}%` }} />
               </span>
               <span className="min-w-16 text-end text-xs tabular-nums text-foreground">
                 <span className="font-semibold">{formatCount(stage.count)}</span>
@@ -105,7 +105,7 @@ function Funnel({ funnel, t }: { funnel: HiringFunnel; t: DashboardTranslator })
                 <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{value === null ? "—" : `${value}%`}</span>
               </div>
               <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary" aria-hidden="true">
-                <span className="block h-full rounded-full bg-violet-500" style={{ width: `${value ?? 0}%` }} />
+                <span className="block h-full rounded-full bg-primary" style={{ width: `${value ?? 0}%` }} />
               </div>
               <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{t(`funnel.reached.${step.key}`, { part: step.part, whole: step.whole })}</p>
             </li>
@@ -147,7 +147,7 @@ export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props)
     <DashboardSection
       id="admin-recruitment"
       icon={Workflow}
-      iconClassName="bg-violet-100 text-violet-800"
+      iconClassName="bg-primary/10 text-primary"
       title={t("recruitment.title")}
       description={t("recruitment.description")}
     >
@@ -176,7 +176,7 @@ export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props)
                 {
                   key: "jobs-low-volume",
                   icon: Gauge,
-                  tone: jobs.lowVolume > 0 ? "amber" : "slate",
+                  tone: jobs.lowVolume > 0 ? "sky" : "slate",
                   value: jobs.lowVolume,
                   label: t("jobHealth.lowVolume"),
                   meta: shareOf(jobs.lowVolume, jobs.activeJobs),
@@ -184,7 +184,7 @@ export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props)
                 {
                   key: "jobs-expiring",
                   icon: AlarmClock,
-                  tone: jobs.expiringSoon > 0 ? "amber" : "slate",
+                  tone: jobs.expiringSoon > 0 ? "sky" : "slate",
                   value: jobs.expiringSoon,
                   label: t("jobHealth.expiringSoon"),
                   href: `/${locale}/admin/jobs?expiring=7d`,
@@ -204,5 +204,171 @@ export function AdminRecruitmentOverview({ data, show, days, locale, t }: Props)
         )}
       </div>
     </DashboardSection>
+  );
+}
+
+/** A small executive pulse for the default dashboard view. Detailed pipeline, job and funnel cards live in Quick analysis. */
+export function AdminRecruitmentPulse({ data, show, locale, t }: Props) {
+  const total = data.pipeline.reduce((sum, stage) => sum + stage.count, 0);
+  const interviewRate = rate(data.funnel.reachedInterview, data.funnel.applications);
+  const metrics = [
+    show.applications && {
+      label: t("recruitment.pipelineTitle"),
+      value: formatCount(total),
+      detail: t("recruitment.pipelineSubtitle", { count: total }),
+      href: `/${locale}/admin/applications`,
+      tone: "bg-primary/10 text-primary",
+    },
+    show.applications && {
+      label: t("funnel.toInterview"),
+      value: interviewRate === null ? "—" : `${interviewRate}%`,
+      detail: t("funnel.reached.toInterview", { part: data.funnel.reachedInterview, whole: data.funnel.applications }),
+      href: `/${locale}/admin/applications?status=interview_scheduled`,
+      tone: "bg-primary/10 text-primary",
+    },
+    show.jobs && {
+      label: t("jobHealth.lowVolume"),
+      value: formatCount(data.jobs.lowVolume),
+      detail: t("jobHealth.subtitle", { count: data.jobs.activeJobs }),
+      href: `/${locale}/admin/jobs`,
+      tone: "bg-primary/10 text-primary",
+    },
+  ].filter(Boolean) as Array<{ label: string; value: string; detail: string; href: string; tone: string }>;
+  const pulseAction = show.applications
+    ? { href: `/${locale}/admin/applications`, label: t("recruitment.viewApplications") }
+    : show.jobs
+      ? { href: `/${locale}/admin/jobs`, label: t("jobHealth.viewJobs") }
+      : undefined;
+
+  return (
+    <>
+      <DashboardSection
+        id="admin-recruitment-pulse"
+        icon={Workflow}
+        iconClassName="bg-primary/10 text-primary"
+        title={t("recruitment.title")}
+        description={t("recruitment.description")}
+        action={pulseAction}
+      >
+        <div className={`grid gap-2.5 ${cardGrid(metrics.length).grid}`}>
+          {metrics.map((metric) => (
+            <Link
+              key={metric.label}
+              href={metric.href}
+              className="group flex min-w-0 items-center gap-3 rounded-xl bg-card/80 p-3 ring-1 ring-inset ring-border/60 transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${metric.tone}`}>
+                <Workflow className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-semibold text-foreground">{metric.label}</span>
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">{metric.detail}</span>
+              </span>
+              <span className="shrink-0 text-xl font-semibold tabular-nums text-foreground">{metric.value}</span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
+            </Link>
+          ))}
+        </div>
+      </DashboardSection>
+      <AdminRecruitmentAnalytics data={data} show={show} locale={locale} t={t} />
+    </>
+  );
+}
+
+/** Detailed charts live in their own band below the compact recruitment pulse. */
+export function AdminRecruitmentAnalytics({ data, show, locale, t }: Pick<Props, "data" | "show" | "locale" | "t">) {
+  const cards = [show.applications && "pipeline", show.jobs && "jobs"].filter(Boolean) as string[];
+  const grid = cardGrid(cards.length, 2);
+  const cell = (card: string) => grid.cell(cards.indexOf(card));
+
+  if (cards.length === 0) return null;
+
+  return (
+    <DashboardSection
+      id="admin-recruitment-analytics"
+      icon={PieChart}
+      iconClassName="bg-primary/10 text-primary"
+      title={t("recruitment.analyticsTitle")}
+      description={t("recruitment.analyticsDescription")}
+    >
+      <div className={`grid items-stretch gap-2.5 ${grid.grid}`}>
+        {show.applications && (
+          <DashboardCard
+            title={t("recruitment.pipelineTitle")}
+            subtitle={t("recruitment.pipelineSubtitle", { count: data.pipeline.reduce((sum, stage) => sum + stage.count, 0) })}
+            action={{ href: `/${locale}/admin/applications`, label: t("recruitment.viewApplications") }}
+            className={cell("pipeline")}
+          >
+            <PipelineDonut data={data} t={t} />
+          </DashboardCard>
+        )}
+        {show.jobs && (
+          <DashboardCard
+            title={t("jobHealth.title")}
+            subtitle={t("jobHealth.subtitle", { count: data.jobs.activeJobs })}
+            action={{ href: `/${locale}/admin/jobs`, label: t("jobHealth.viewJobs") }}
+            className={cell("jobs")}
+          >
+            <StatList
+              rows={[
+                { key: "jobs-active", icon: Workflow, tone: "sky", value: data.jobs.activeJobs, label: t("jobHealth.active") },
+                { key: "jobs-low-volume", icon: Gauge, tone: data.jobs.lowVolume > 0 ? "sky" : "slate", value: data.jobs.lowVolume, label: t("jobHealth.lowVolume") },
+                { key: "jobs-expiring", icon: AlarmClock, tone: data.jobs.expiringSoon > 0 ? "sky" : "slate", value: data.jobs.expiringSoon, label: t("jobHealth.expiringSoon") },
+                { key: "jobs-paused", icon: PauseCircle, tone: "slate", value: data.jobs.paused, label: t("jobHealth.paused") },
+              ]}
+            />
+          </DashboardCard>
+        )}
+      </div>
+    </DashboardSection>
+  );
+}
+
+function PipelineDonut({ data, t }: Pick<Props, "data" | "t">) {
+  const stages = data.pipeline.filter((stage) => stage.count > 0);
+  const total = stages.reduce((sum, stage) => sum + stage.count, 0);
+  const colors = ["hsl(var(--primary))", "#16a34a"];
+  let cursor = 0;
+  const segments = stages.map((stage, index) => {
+    const start = total > 0 ? (cursor / total) * 360 : 0;
+    cursor += stage.count;
+    const end = total > 0 ? (cursor / total) * 360 : 0;
+    return { stage, color: colors[index % colors.length], start, end };
+  });
+  const gradient = segments.length > 0
+    ? `conic-gradient(${segments.map((segment) => `${segment.color} ${segment.start}deg ${segment.end}deg`).join(", ")})`
+    : "hsl(var(--muted))";
+
+  return (
+    <div
+      className="flex min-w-0 items-center gap-3 rounded-xl bg-card/80 p-3 ring-1 ring-inset ring-border/60"
+      role="group"
+      aria-label={t("recruitment.pipelineSubtitle", { count: total })}
+    >
+      <div className="relative h-20 w-20 shrink-0 rounded-full p-2" style={{ background: gradient }} aria-hidden="true">
+        <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-card text-center">
+          <PieChart className="mb-0.5 h-3.5 w-3.5 text-primary" />
+          <span className="text-lg font-semibold leading-5 tabular-nums text-foreground">{formatCount(total)}</span>
+        </div>
+      </div>
+      <div className="min-w-0 space-y-1">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+          <PieChart className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+          {t("recruitment.pipelineTitle")}
+        </p>
+        <ul className="space-y-0.5">
+          {segments.map(({ stage, color }) => {
+            const label = t(`statuses.${STATUS_KEYS[stage.status] ?? "unknown"}`);
+            return (
+              <li key={stage.status} className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
+                <span className="truncate">{label}</span>
+                <span className="ms-auto tabular-nums text-foreground">{stage.count}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
   );
 }

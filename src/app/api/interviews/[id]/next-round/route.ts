@@ -14,6 +14,14 @@ import { verifyInterviewAccess } from "@/lib/interviews/access";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import type { UserRole } from "@/models/User";
+import {
+  DEFAULT_INTERVIEW_MINUTES,
+  conflictWindow,
+  findOverlap,
+  type ExistingInterview,
+} from "@/lib/interviews/conflict";
+import { FALLBACK_TIME_ZONE, formatZonedDateTime, isValidTimeZone } from "@/lib/datetime/zone";
+import { addMinutes } from "date-fns";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
@@ -59,6 +67,61 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   const body = await validateBody(req, nextRoundSchema);
   const nextRound = (prevInterview.interviewRound ?? 1) + 1;
+  const reqDate = new Date(body.scheduledAt);
+  const seekerDoc = await JobSeeker.findById(prevInterview.jobSeekerId)
+    .select("settings")
+    .lean() as {
+      settings?: {
+        instantBooking?: boolean;
+        weeklyAvailability?: string[];
+        availableHours?: { day: string; startTime: string; endTime: string }[];
+        timeBuffer?: number;
+        timezone?: string;
+      };
+    } | null;
+
+  // A next round follows the same candidate availability rules as the first
+  // round. Previously this shortcut only checked that the prior round passed,
+  // so it could create an unavailable or overlapping booking.
+  if (seekerDoc?.settings?.instantBooking) {
+    const configuredTimeZone = seekerDoc.settings.timezone;
+    const tz = isValidTimeZone(configuredTimeZone) ? configuredTimeZone : FALLBACK_TIME_ZONE;
+    const localDayName = (() => {
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      return days[new Date(reqDate.toLocaleString("en-US", { timeZone: tz })).getDay()];
+    })();
+    const localStart = reqDate.toLocaleString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false });
+    const weekly = seekerDoc.settings.weeklyAvailability ?? ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    if (!weekly.includes(localDayName)) {
+      return NextResponse.json({ error: `Candidate is not available on ${localDayName}s (${tz})` }, { status: 409 });
+    }
+    const hours = seekerDoc.settings.availableHours?.find((entry) => entry.day === localDayName);
+    if (hours) {
+      const end = addMinutes(reqDate, body.duration ?? 45).toLocaleString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false });
+      if (localStart < hours.startTime || end > hours.endTime) {
+        return NextResponse.json({ error: `Candidate is available ${hours.startTime}–${hours.endTime} ${tz} on ${localDayName}. Requested time ${localStart}–${end} is outside that window.` }, { status: 409 });
+      }
+    }
+  }
+
+  const duration = body.duration ?? DEFAULT_INTERVIEW_MINUTES;
+  const buffer = seekerDoc?.settings?.timeBuffer ?? 30;
+  const configuredTimeZone = seekerDoc?.settings?.timezone;
+  const recipientTimeZone = isValidTimeZone(configuredTimeZone) ? configuredTimeZone : FALLBACK_TIME_ZONE;
+  const { from, to } = conflictWindow(reqDate, duration, buffer);
+  const interviewModel = Interview as unknown as {
+    find?: (query: Record<string, unknown>) => { select: (fields: string) => { lean: () => Promise<unknown[]> } };
+  };
+  const nearby = interviewModel.find
+    ? await interviewModel.find({
+        jobSeekerId: prevInterview.jobSeekerId,
+        status: { $in: ["scheduled", "confirmed"] },
+        scheduledAt: { $gte: from, $lt: to },
+      }).select("scheduledAt duration").lean()
+    : [];
+  if (findOverlap(reqDate, duration, buffer, nearby as ExistingInterview[])) {
+    return NextResponse.json({ error: "Time slot conflicts with an existing interview (including buffer time)." }, { status: 409 });
+  }
 
   const newInterview = await Interview.create({
     applicationId: prevInterview.applicationId,
@@ -68,7 +131,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     agentId: prevInterview.agentId,
     type: body.type,
     scheduledAt: new Date(body.scheduledAt),
-    duration: body.duration ?? 45,
+    duration,
     location: body.location,
     meetLink: resolveMeetingLink(body.type, body.meetLink),
     instructions: body.instructions,
@@ -105,10 +168,19 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     await notify({
       userId: String(jobSeeker.userId),
       type: "interview_scheduled",
-      title: `Round ${nextRound} Interview Scheduled`,
-      message: `You have been moved to round ${nextRound} for "${jobTitle}". Check your interview details.`,
-      link: `/en/job-seeker/interviews`,
+      title: "Interview Scheduled",
+      message: `Your interview for "${jobTitle}" is scheduled. Check your interview details.`,
+      link: `/job-seeker/interviews`,
       sendEmail: true,
+      titleKey: "interviewScheduledTitle",
+      bodyKey: "interviewScheduledBody",
+      params: {
+        jobTitle,
+        location: body.location ?? "",
+        dateIso: reqDate.toISOString(),
+        date: formatZonedDateTime(reqDate, { timeZone: recipientTimeZone, locale: "en", dateStyle: "long" }),
+        timeZone: recipientTimeZone,
+      },
       metadata: {
         jobTitle,
         interviewId: String(newInterview._id),

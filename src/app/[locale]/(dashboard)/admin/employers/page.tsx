@@ -6,6 +6,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { PageHero } from "@/components/shared/PageHero";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -19,6 +21,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,7 +34,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2, UserCog } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, Loader2, UserCog, MoreHorizontal, Building2, MapPin, Mail, UserRoundCheck, UserRoundX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AssignAgentDialog } from "./_components/AssignAgentDialog";
 import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
@@ -74,6 +77,9 @@ export default function AdminEmployersPage() {
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   // "none" surfaces employers waiting for an agent — e.g. super-agent link signups.
   const [agentFilter, setAgentFilter] = useUrlFilter("agent", "all", { allow: ["all", "none", "any"] });
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "companyName", { allow: ["companyName", "industry", "createdAt"] });
+  const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
+  const order = sortOrder === "desc" ? "desc" : "asc";
   const [assignItem, setAssignItem] = useState<Employer | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
@@ -128,6 +134,12 @@ export default function AdminEmployersPage() {
     title: t("exportTitle"),
   });
 
+  const visibleStats = useMemo(() => ({
+    active: employers.filter((employer) => employer.isActive !== false).length,
+    assigned: employers.filter((employer) => Boolean(employer.assignedAgent)).length,
+    verified: employers.filter((employer) => Boolean(employer.domainVerified)).length,
+  }), [employers]);
+
   const fetchEmployers = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -135,6 +147,8 @@ export default function AdminEmployersPage() {
     if (search) params.set("search", search);
     if (agentFilter !== "all") params.set("agentId", agentFilter);
     params.set("status", "all");
+    params.set("sortBy", sortBy);
+    params.set("sortOrder", sortOrder);
     try {
       const res = await fetch(`/api/employers?${params}`);
       if (res.ok) {
@@ -151,7 +165,7 @@ export default function AdminEmployersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, agentFilter, page, limit, t]);
+  }, [search, agentFilter, sortBy, sortOrder, page, limit, t]);
 
   useEffect(() => { fetchEmployers(); }, [fetchEmployers]);
 
@@ -160,11 +174,11 @@ export default function AdminEmployersPage() {
   const fields: CrudField[] = useMemo(() => [
     { name: "name", label: t("fieldContactName"), type: "text", required: true },
     { name: "email", label: t("fieldEmail"), type: "email", required: true },
-    { name: "password", label: t("fieldPassword"), type: "text", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
+    { name: "password", label: t("fieldPassword"), type: "password", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
     { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
     { name: "industry", label: t("fieldIndustry"), type: "text" },
     { name: "location", label: t("fieldLocation"), type: "text" },
-    { name: "phone", label: t("fieldPhone"), type: "text" },
+    { name: "phone", label: t("fieldPhone"), type: "phone" },
   ], [t, tf]);
   const editFields = useMemo(() => fields.filter((f) => f.name !== "password"), [fields]);
 
@@ -284,32 +298,76 @@ export default function AdminEmployersPage() {
     setVerifyLoading(false);
   };
 
+  const canManageRows = can("employers", "update") || can("employers", "delete") || can("employers", "approve");
+  const tableColumnCount = canManageRows ? 5 : 4;
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
 
       <PageHero
-        compact
+        compactMetrics
         compactOnMobile
+        icon={Building2}
         title={t("pageTitle")}
         description={t("pageDescription")}
+        actions={can("employers", "create") ? (
+          <Button onClick={() => setShowAdd(true)} size="sm" className="h-9 rounded-xl shadow-sm">
+            <Plus className="h-4 w-4" />
+            {t("addEmployerButton")}
+          </Button>
+        ) : undefined}
+        metrics={[
+          {
+            label: t("metricTotal"),
+            value: loading ? "—" : total,
+            note: t("metricTotalNote"),
+            icon: Building2,
+            iconSurfaceClassName: "bg-primary/10",
+            iconClassName: "text-primary",
+          },
+          {
+            label: t("metricActive"),
+            value: loading ? "—" : visibleStats.active,
+            note: t("metricPageNote"),
+            icon: UserRoundCheck,
+            iconSurfaceClassName: "bg-emerald-500/10",
+            iconClassName: "text-emerald-600",
+          },
+          {
+            label: t("metricAssigned"),
+            value: loading ? "—" : visibleStats.assigned,
+            note: t("metricPageNote"),
+            icon: UserCog,
+            iconSurfaceClassName: "bg-sky-500/10",
+            iconClassName: "text-sky-600",
+          },
+          {
+            label: t("metricVerified"),
+            value: loading ? "—" : visibleStats.verified,
+            note: t("metricPageNote"),
+            icon: ShieldCheck,
+            iconSurfaceClassName: "bg-violet-500/10",
+            iconClassName: "text-violet-600",
+          },
+        ]}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        {/* data-table-toolbar opts this hand-rolled header into the shared
-            mobile toolbar rules, same as pages built on <TableToolbar>. */}
-        <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 panel-head">
-            <div className="relative toolbar-search-field">
-              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input aria-label={t("searchPlaceholder")}
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder={t("searchPlaceholder")}
-                className="h-11 w-52 rounded-lg ps-8 text-sm sm:h-9"
-              />
-            </div>
-            <Select value={agentFilter} onValueChange={(v) => { setAgentFilter(v); resetPage(); }}>
-              <SelectTrigger aria-label={t("agentFilterLabel")} className="h-11 w-44 rounded-lg text-sm sm:h-9">
+      <TableToolbar
+        title={t("directoryTitle")}
+        description={t("directoryDescription")}
+        search={search}
+        onSearchChange={(value) => { setSearch(value); resetPage(); }}
+        searchPlaceholder={t("searchPlaceholder")}
+        filterLabel={t("agentFilterLabel")}
+        hasActiveFilters={agentFilter !== "all"}
+        filterContent={(
+          <div className="grid gap-2 sm:max-w-xs">
+            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-agent-filter">
+              {t("agentFilterLabel")}
+            </label>
+            <Select value={agentFilter} onValueChange={(value) => { setAgentFilter(value); resetPage(); }}>
+              <SelectTrigger id="employer-agent-filter" className="h-10 rounded-xl bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -318,26 +376,28 @@ export default function AdminEmployersPage() {
                 <SelectItem value="any">{t("agentFilterAny")}</SelectItem>
               </SelectContent>
             </Select>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
-                  <Download className="h-3.5 w-3.5" /> {t("exportLabel")}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>{t("exportLabel")}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />{t("exportCsv")}</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />{t("exportExcel")}</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />{t("exportPdf")}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {can("employers", "create") && (
-              <Button onClick={() => setShowAdd(true)} size="sm" className="h-8 rounded-lg">
-                <Plus className="h-3.5 w-3.5" /> {t("addEmployerButton")}
-              </Button>
-            )}
-        </div>
+          </div>
+        )}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        right={(
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={[
+              { value: "companyName", label: t("tableHeaderCompany") },
+              { value: "industry", label: t("tableHeaderIndustry") },
+              { value: "createdAt", label: t("tableHeaderJoined") },
+            ]}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            compact
+          />
+        )}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={fetchEmployers} />
@@ -346,106 +406,145 @@ export default function AdminEmployersPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>{t("tableHeaderCompany")}</TableHead>
-              <TableHead>{t("tableHeaderEmail")}</TableHead>
-              <TableHead>{t("tableHeaderIndustry")}</TableHead>
-              <TableHead>{t("tableHeaderAgent")}</TableHead>
-              <TableHead>{t("tableHeaderJoined")}</TableHead>
-              {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
+              <TableHead className="min-w-[260px]"><SortableTableHeader label={t("tableHeaderCompany")} active={sortBy === "companyName"} order={order} onClick={() => { setSortBy("companyName"); setSortOrder(sortBy === "companyName" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead className="min-w-[180px]"><SortableTableHeader label={t("tableHeaderIndustry")} active={sortBy === "industry"} order={order} onClick={() => { setSortBy("industry"); setSortOrder(sortBy === "industry" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead className="min-w-[180px]">{t("tableHeaderAgent")}</TableHead>
+              <TableHead className="whitespace-nowrap"><SortableTableHeader label={t("tableHeaderJoined")} active={sortBy === "createdAt"} order={order} onClick={() => { setSortBy("createdAt"); setSortOrder(sortBy === "createdAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              {canManageRows && (
                 <TableHead>{t("tableHeaderActions")}</TableHead>
               )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableBodySkeleton rows={5} cols={6} />
+              <TableBodySkeleton rows={5} cols={tableColumnCount} />
             ) : employers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="py-12">
+                <TableCell colSpan={tableColumnCount} className="py-16">
                   <EmptyState title={t("noEmployersFound")} icon={Inbox} />
                 </TableCell>
               </TableRow>
             ) : employers.map((emp) => (
-              <TableRow key={emp._id}>
-                <TableCell>
-                  <div className="flex flex-col items-start gap-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{emp.companyName || emp.name}</span>
-                      {emp.domainVerified && (
-                        <Badge className="text-[11px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">{t("verifiedBadge")}</Badge>
-                      )}
+              <TableRow key={emp._id} className="group">
+                <TableCell className="py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar className="h-10 w-10 rounded-xl bg-primary/10 ring-0">
+                      <AvatarFallback className="rounded-xl bg-primary/10 text-xs font-bold text-primary">
+                        {(emp.companyName || emp.name || "?")
+                          .split(/\s+/)
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((part) => part[0])
+                          .join("")
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-semibold text-foreground">{emp.companyName || emp.name}</span>
+                        {emp.domainVerified && (
+                          <Badge className="gap-1 rounded-full border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                            <ShieldCheck className="h-3 w-3" />
+                            {t("verifiedBadge")}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                        <Mail className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{emp.email ?? emp.contactEmail ?? "—"}</span>
+                      </div>
+                      <div className="mt-2">
+                        <StatusBadge status={emp.status ?? (emp.isActive !== false ? "active" : "inactive")} />
+                      </div>
                     </div>
-                    <StatusBadge status={emp.status ?? (emp.isActive !== false ? "active" : "inactive")} />
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{emp.email ?? emp.contactEmail ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{emp.industry ?? "—"}</TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <p className="font-medium text-foreground">{emp.industry ?? "—"}</p>
+                    {emp.location && (
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{emp.location}</span>
+                      </p>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   {emp.assignedAgent ? (
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{emp.assignedAgent.name}</p>
-                      {emp.assignedAgent.superAgentName && (
-                        <p className="truncate text-xs text-muted-foreground">{t("underSuperAgent", { name: emp.assignedAgent.superAgentName })}</p>
-                      )}
+                    <div className="flex min-w-0 items-start gap-2">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">
+                        <UserRoundCheck className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{emp.assignedAgent.name}</p>
+                        {emp.assignedAgent.superAgentName && (
+                          <p className="truncate text-xs text-muted-foreground">{t("underSuperAgent", { name: emp.assignedAgent.superAgentName })}</p>
+                        )}
+                      </div>
                     </div>
                   ) : (
-                    <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[11px] text-amber-800">{t("noAgentBadge")}</Badge>
+                    <Badge variant="outline" className="gap-1.5 rounded-full border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] text-amber-800">
+                      <UserRoundX className="h-3 w-3" />
+                      {t("noAgentBadge")}
+                    </Badge>
                   )}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{formatDate(new Date(emp.createdAt))}</TableCell>
-                {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
+                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(new Date(emp.createdAt))}</TableCell>
+                {canManageRows && (
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      {can("employers", "approve") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setVerifyItem(emp)}
-                          title={emp.domainVerified ? t("verifiedButtonTitle") : t("verifyButtonTitle")}
-                        >
-                          <ShieldCheck className={`h-3.5 w-3.5 ${emp.domainVerified ? "text-emerald-600" : "text-muted-foreground"}`} />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="iconDense" className="opacity-70 transition-opacity group-hover:opacity-100" aria-label={t("rowActions")}>
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      )}
-                      {can("employers", "update") && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setAssignItem(emp)}
-                          title={emp.assignedAgent ? t("changeAgentTitle") : t("assignAgentTitle")}
-                          aria-label={emp.assignedAgent ? t("changeAgentTitle") : t("assignAgentTitle")}
-                        >
-                          <UserCog className={`h-3.5 w-3.5 ${emp.assignedAgent ? "text-primary" : "text-amber-600"}`} />
-                        </Button>
-                      )}
-                      {can("employers", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => setEditItem(emp)} title={t("editButtonTitle")}>
-                          <Pencil className="h-3.5 w-3.5 text-primary" />
-                        </Button>
-                      )}
-                      {can("employers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(emp._id)} title={t("deactivateButtonTitle")}>
-                          <Ban className="h-3.5 w-3.5 text-amber-500" />
-                        </Button>
-                      )}
-                      {can("employers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(emp._id)} title={t("deleteButtonTitle")}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => handleSwitchToEmployerView(emp.employerProfileId ?? emp._id)}
-                        disabled={switchingEmployerId === (emp.employerProfileId ?? emp._id) || emp.isActive === false}
-                        title={t("switchViewTitle")}
-                      >
-                        {switchingEmployerId === (emp.employerProfileId ?? emp._id) ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600" />
-                        ) : (
-                          <LogIn className="h-3.5 w-3.5 text-sky-600" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuLabel className="max-w-[190px] truncate">{emp.companyName || emp.name}</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {can("employers", "approve") && (
+                          <DropdownMenuItem onClick={() => setVerifyItem(emp)}>
+                            <ShieldCheck className={emp.domainVerified ? "text-emerald-600" : ""} />
+                            {emp.domainVerified ? t("verifiedButtonTitle") : t("verifyButtonTitle")}
+                          </DropdownMenuItem>
                         )}
-                      </Button>
-                    </div>
+                        {can("employers", "update") && (
+                          <DropdownMenuItem onClick={() => setAssignItem(emp)}>
+                            <UserCog className={emp.assignedAgent ? "text-primary" : "text-amber-600"} />
+                            {emp.assignedAgent ? t("changeAgentTitle") : t("assignAgentTitle")}
+                          </DropdownMenuItem>
+                        )}
+                        {can("employers", "update") && (
+                          <DropdownMenuItem onClick={() => setEditItem(emp)}>
+                            <Pencil className="text-primary" />
+                            {t("editButtonTitle")}
+                          </DropdownMenuItem>
+                        )}
+                        {can("employers", "delete") && (
+                          <DropdownMenuItem onClick={() => handleDelete(emp._id)}>
+                            <Ban className="text-amber-500" />
+                            {t("deactivateButtonTitle")}
+                          </DropdownMenuItem>
+                        )}
+                        {can("employers", "delete") && (
+                          <DropdownMenuItem onClick={() => handlePermanentDelete(emp._id)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="text-destructive" />
+                            {t("deleteButtonTitle")}
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => handleSwitchToEmployerView(emp.employerProfileId ?? emp._id)}
+                          disabled={switchingEmployerId === (emp.employerProfileId ?? emp._id) || emp.isActive === false}
+                        >
+                          {switchingEmployerId === (emp.employerProfileId ?? emp._id) ? (
+                            <Loader2 className="animate-spin text-sky-600" />
+                          ) : (
+                            <LogIn className="text-sky-600" />
+                          )}
+                          {t("switchViewTitle")}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 )}
               </TableRow>

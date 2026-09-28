@@ -9,6 +9,7 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -23,6 +24,7 @@ import {
 import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw, ListTree } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 
 interface AttributeItem {
   _id: string;
@@ -71,6 +73,9 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "slug", "sortOrder", "createdAt"] });
+  const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
+  const order = sortOrder === "desc" ? "desc" : "asc";
   const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
@@ -82,6 +87,8 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set("search", search);
       if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
       const res = await fetch(`/api/admin/job-attributes/${category}?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -92,11 +99,27 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       // silently fail
     }
     setLoading(false);
-  }, [category, search, statusFilter, page, limit, updateTotal]);
+  }, [category, search, statusFilter, sortBy, sortOrder, page, limit, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all";
+
+  const sortOptions = [
+    { value: "sortOrder", label: t("order") },
+    { value: "name", label: t("nameEnglish") },
+    { value: "nameAr", label: t("nameArabic") },
+    { value: "slug", label: t("slug") },
+    { value: "createdAt", label: t("createdAt") },
+  ];
+  const toggleSort = (field: string) => {
+    if (sortBy === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+    resetPage();
+  };
 
   const handleCreate = async (values: Record<string, string>) => {
     const body: Record<string, unknown> = {
@@ -191,7 +214,8 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="border-b border-border/80 panel-head">
-          <div className="relative">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               id={`${category}-search`}
@@ -200,6 +224,16 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
               value={search}
               onChange={(e) => { setSearch(e.target.value); resetPage(); }}
               className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none"
+            />
+            </div>
+            <TableSortControl
+              value={sortBy}
+              onValueChange={(value) => { setSortBy(value); resetPage(); }}
+              options={sortOptions}
+              order={order}
+              onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+              className="shrink-0"
+              compact
             />
           </div>
         </div>
@@ -239,10 +273,10 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
           <Table className="responsive-card-table">
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead data-label={t("nameEnglish")}>{t("nameEnglish")}</TableHead>
-                <TableHead data-label={t("nameArabic")}>{t("nameArabic")}</TableHead>
-                <TableHead data-label={t("slug")}>{t("slug")}</TableHead>
-                <TableHead className="w-[80px]" data-label={t("order")}>{t("order")}</TableHead>
+                <TableHead data-label={t("nameEnglish")}><SortableTableHeader label={t("nameEnglish")} active={sortBy === "name"} order={order} onClick={() => toggleSort("name")} /></TableHead>
+                <TableHead data-label={t("nameArabic")}><SortableTableHeader label={t("nameArabic")} active={sortBy === "nameAr"} order={order} onClick={() => toggleSort("nameAr")} /></TableHead>
+                <TableHead data-label={t("slug")}><SortableTableHeader label={t("slug")} active={sortBy === "slug"} order={order} onClick={() => toggleSort("slug")} /></TableHead>
+                <TableHead className="w-[80px]" data-label={t("order")}><SortableTableHeader label={t("order")} active={sortBy === "sortOrder"} order={order} onClick={() => toggleSort("sortOrder")} /></TableHead>
                 <TableHead data-label={t("status")}>{t("status")}</TableHead>
                 {(can("job_attributes", "update") || can("job_attributes", "delete")) && (
                   <TableHead className="text-right" data-label={t("actions")}>{t("actions")}</TableHead>
@@ -282,13 +316,15 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           {can("job_attributes", "update") && (
-                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })} className="h-8 w-8">
+                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
                               <Pencil className="h-3.5 w-3.5 text-primary" />
+                              <span>{t("edit")}</span>
                             </Button>
                           )}
                           {can("job_attributes", "delete") && (
-                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 w-8">
+                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 gap-1 px-2 text-xs">
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              <span>{t("delete")}</span>
                             </Button>
                           )}
                         </div>

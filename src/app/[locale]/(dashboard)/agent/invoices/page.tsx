@@ -221,7 +221,7 @@ export default function AgentInvoicesPage() {
                 <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("periodOneYear") : p}</button>
               ))}
             </div>
-            <Button variant="outline" size="dense" onClick={refreshAnalytics} className="gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refreshButton")}</Button>
+            <Button variant="outline" size="iconDense" onClick={refreshAnalytics} aria-label={t("refreshButton")} title={t("refreshButton")}><RefreshCw className="h-3.5 w-3.5" /></Button>
           </div>
           {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={analyticsData.currency} />}
           {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}

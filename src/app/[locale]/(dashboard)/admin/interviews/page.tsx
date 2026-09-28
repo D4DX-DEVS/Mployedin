@@ -1,34 +1,34 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  Search, Inbox, Calendar, Video, MapPin, Blend, Sparkles,
+  Inbox, Calendar, Video, MapPin, Blend, Sparkles,
   TrendingUp, AlertTriangle, Clock, BarChart3, RotateCcw, CheckCircle2,
-  Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { usePagination } from "@/hooks/usePagination";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
-import { formatDateTime } from "@/lib/ui/intlFormat";
+import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 interface Interview {
   _id: string;
   scheduledAt: string;
-  status: "scheduled" | "confirmed" | "rescheduled" | "completed" | "cancelled" | "no_show";
+  status: "scheduled" | "confirmed" | "rescheduled" | "completed" | "cancelled";
   outcome?: string;
   type: string;
   location?: string;
@@ -80,7 +80,6 @@ function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTran
       title: t("noShowAlert"),
       body: t("noShowAlertBody", {
         count: noShow,
-        plural: noShow > 1 ? t("noShowPlural") : "",
         rate: noShowRate,
         message: noShowRate > 15 ? t("noShowHighRate") : t("noShowAcceptable"),
       }),
@@ -96,7 +95,6 @@ function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTran
       title: t("upcomingInterviews"),
       body: t("upcomingInterviewsBody", {
         upcoming: upcoming.length,
-        plural: upcoming.length !== 1 ? t("upcomingPlural") : "",
         overdue: overdueCount > 0 ? t("overdueMessage", { count: overdueCount }) : t("allOnTrack"),
       }),
       color: overdueCount > 0 ? "text-status-shortlisted" : "text-status-applied",
@@ -129,6 +127,12 @@ const INSIGHT_ICONS = {
 
 const TYPE_ICON = { video: Video, offline: MapPin, hybrid: Blend } as const;
 
+/** Keep malformed legacy names readable while React still renders them as text. */
+function cleanInterviewName(name?: string) {
+  const cleaned = (name ?? "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  return cleaned || "—";
+}
+
 /* ---------- Page ---------- */
 
 /** The statuses `/api/interviews/[id]` accepts, in the order an admin uses them. */
@@ -138,13 +142,13 @@ const INTERVIEW_STATUS_OPTIONS = [
   "rescheduled",
   "completed",
   "cancelled",
-  "no_show",
 ] as const;
 
 type InterviewStatusOption = (typeof INTERVIEW_STATUS_OPTIONS)[number];
 
 export default function AdminInterviewOversightPage() {
   const t = useTranslations("adminInterviews");
+  const locale = useLocale();
   /* Written out rather than `t(`status_${value}`)`: a key built from a template
      literal is invisible to the key-parity check and to tsc, and next-intl
      throws on an unknown key — one unmapped status would take the page down.
@@ -156,7 +160,6 @@ export default function AdminInterviewOversightPage() {
     rescheduled: t("status_rescheduled"),
     completed: t("status_completed"),
     cancelled: t("status_cancelled"),
-    no_show: t("status_no_show"),
   };
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -175,9 +178,12 @@ export default function AdminInterviewOversightPage() {
   const [selectedEmployer, setSelectedEmployer] = useState("all");
   const [selectedAgent, setSelectedAgent] = useState("all");
   const [selectedSuperAgent, setSelectedSuperAgent] = useState("all");
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "scheduledAt", { allow: ["scheduledAt", "status", "type"] });
+  const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  const order = sortOrder === "asc" ? "asc" : "desc";
 
-  const [showFilters, setShowFilters] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const aiInsights = useMemo(() => computeAiInsights(interviews, t), [interviews, t]);
 
   useEffect(() => {
@@ -218,7 +224,7 @@ export default function AdminInterviewOversightPage() {
           const err = await saRes.json().catch(() => ({}));
           toast.error(err.error || t("failedToLoadFilterOptions"));
         }
-      } catch (error) {
+      } catch {
         toast.error(t("failedToLoadFilterOptions"));
       }
     })();
@@ -258,6 +264,8 @@ export default function AdminInterviewOversightPage() {
       if (selectedEmployer !== "all") params.set("employerId", selectedEmployer);
       if (selectedAgent !== "all") params.set("agentId", selectedAgent);
       if (selectedSuperAgent !== "all") params.set("superAgentId", selectedSuperAgent);
+      params.set("sortBy", sortBy);
+      params.set("sortOrder", sortOrder);
 
       const res = await fetch(`/api/admin/interviews?${params}`);
       if (res.ok) {
@@ -272,7 +280,7 @@ export default function AdminInterviewOversightPage() {
         setLoadFailed(true);
         toast.error(err.error || t("failedToLoadInterviews"));
       }
-    } catch (error) {
+    } catch {
       // Without this the table body just goes empty, which is indistinguishable
       // from "no interviews" once the toast has gone.
       setLoadFailed(true);
@@ -280,12 +288,12 @@ export default function AdminInterviewOversightPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, limit, updateTotal, t]);
+  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, sortBy, sortOrder, limit, updateTotal, t]);
 
   useEffect(() => { load(); }, [load]);
 
   const exportColumns: ExportColumn<Interview>[] = [
-    { header: t("candidate"), key: "jobSeeker" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).jobSeeker?.name ?? "—" },
+    { header: t("candidate"), key: "jobSeeker" as keyof Interview, formatter: (_v, r) => cleanInterviewName((r as unknown as Interview).jobSeeker?.name) },
     { header: t("exportHeaderEmployer"), key: "employer" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).employer?.companyName ?? "—" },
     { header: t("exportHeaderJob"), key: "job" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).job?.title ?? "—" },
     { header: t("type"), key: "type" },
@@ -309,6 +317,8 @@ export default function AdminInterviewOversightPage() {
   const completedCount = hasServerCounts ? (statusCounts.completed ?? 0) : interviews.filter((i) => i.status === "completed").length;
   const cancelledCount = hasServerCounts ? (statusCounts.cancelled ?? 0) : interviews.filter((i) => i.status === "cancelled").length;
   const noShowCount = serverNoShow ?? interviews.filter((i) => i.outcome === "no_show").length;
+  const advancedFilterCount = [typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent]
+    .filter((value) => value !== "all").length;
 
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -331,9 +341,7 @@ export default function AdminInterviewOversightPage() {
         return;
       }
       toast.success(t("statusUpdated"));
-      setInterviews((previous) =>
-        previous.map((interview) => (interview._id === id ? { ...interview, status: status as Interview["status"] } : interview)),
-      );
+      await load();
     } catch {
       toast.error(t("statusUpdateFailed"));
     } finally {
@@ -367,33 +375,6 @@ export default function AdminInterviewOversightPage() {
           { label: t("noShows"), value: noShowCount, note: t("missed"), icon: AlertTriangle, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
         ]}
         compactOnMobile
-        footer={(
-          <>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
-            >
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              {showFilters ? t("hideFilters") : t("showFilters")}
-              {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
-              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-            </button>
-            <div className="flex items-center gap-2">
-              {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
-                  <RotateCcw className="h-3 w-3" />
-                  {t("clearActiveFilters", { count: activeFilterCount, plural: activeFilterCount > 1 ? t("clearFilterPlural") : "" })}
-                </Button>
-              )}
-              <TableToolbar
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-              />
-            </div>
-          </>
-        )}
       >
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
@@ -433,38 +414,26 @@ export default function AdminInterviewOversightPage() {
           </div>
         )}
 
-        {/* ─── Expandable Filters ─────────────────────────────────────── */}
-        {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder={t("searchCandidateOrCompany")}
-                aria-label={t("searchCandidateOrCompany")}
-                className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-4 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              />
-            </div>
+      </DashboardPageHeader>
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SearchableSelect
-                id="admin-interviews-status"
-                className="h-11 w-full rounded-xl border-border bg-card"
-                options={[
-                  { value: "all", label: t("allStatuses") },
-                  { value: "scheduled", label: t("statusScheduled") },
-                  { value: "completed", label: t("statusCompleted") },
-                  { value: "cancelled", label: t("statusCancelled") },
-                  { value: "no_show", label: t("statusNoShow") },
-                ]}
-                value={statusFilter}
-                onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-                placeholder={t("allStatuses")}
-              />
+      {/* ─── Table ────────────────────────────────────────────────────── */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <InlineFilterBar
+          className="border-b border-border/80"
+          onClear={activeFilterCount > 0 ? clearAllFilters : undefined}
+          clearLabel={t("clearActiveFilters", { count: activeFilterCount })}
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          moreLabel={showAdvancedFilters ? t("hideFilters") : t("showFilters")}
+          moreActiveCount={advancedFilterCount}
+          moreOpen={showAdvancedFilters}
+          onMoreOpenChange={setShowAdvancedFilters}
+          more={(
+            <>
               <SearchableSelect
                 id="admin-interviews-type"
-                className="h-11 w-full rounded-xl border-border bg-card"
+                className={INLINE_FILTER_CONTROL}
                 options={[
                   { value: "all", label: t("allTypes") },
                   { value: "video", label: t("typeVideo") },
@@ -477,7 +446,7 @@ export default function AdminInterviewOversightPage() {
               />
               <SearchableSelect
                 id="admin-interviews-daterange"
-                className="h-11 w-full rounded-xl border-border bg-card"
+                className={INLINE_FILTER_CONTROL}
                 options={[
                   { value: "all", label: t("allDates") },
                   { value: "today", label: t("today") },
@@ -494,7 +463,7 @@ export default function AdminInterviewOversightPage() {
               {employers.length > 1 && (
                 <SearchableSelect
                   id="admin-interviews-employer"
-                  className="h-11 w-full rounded-xl border-border bg-card"
+                  className={INLINE_FILTER_CONTROL}
                   options={employers}
                   value={selectedEmployer}
                   onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
@@ -504,7 +473,7 @@ export default function AdminInterviewOversightPage() {
               {agents.length > 1 && (
                 <SearchableSelect
                   id="admin-interviews-agent"
-                  className="h-11 w-full rounded-xl border-border bg-card"
+                  className={INLINE_FILTER_CONTROL}
                   options={agents}
                   value={selectedAgent}
                   onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
@@ -514,32 +483,65 @@ export default function AdminInterviewOversightPage() {
               {superAgents.length > 1 && (
                 <SearchableSelect
                   id="admin-interviews-sa"
-                  className="h-11 w-full rounded-xl border-border bg-card"
+                  className={INLINE_FILTER_CONTROL}
                   options={superAgents}
                   value={selectedSuperAgent}
                   onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
                   placeholder={t("allSuperAgents")}
                 />
               )}
-            </div>
-          </div>
-        )}
-      </DashboardPageHeader>
+            </>
+          )}
+        >
+          <InlineFilterSearch
+            value={search}
+            onChange={(value) => { setSearch(value); resetPage(); }}
+            placeholder={t("searchCandidateOrCompany")}
+          />
+          <SearchableSelect
+            id="admin-interviews-status"
+            className={INLINE_FILTER_CONTROL}
+            options={[
+              { value: "all", label: t("allStatuses") },
+              { value: "scheduled", label: t("statusScheduled") },
+              { value: "confirmed", label: t("status_confirmed") },
+              { value: "rescheduled", label: t("status_rescheduled") },
+              { value: "completed", label: t("statusCompleted") },
+              { value: "cancelled", label: t("statusCancelled") },
+            ]}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("allStatuses")}
+          />
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={[
+              { value: "scheduledAt", label: t("date") },
+              { value: "status", label: t("status") },
+              { value: "type", label: t("type") },
+            ]}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            compact
+          />
+        </InlineFilterBar>
 
-      {/* ─── Table ────────────────────────────────────────────────────── */}
-      {loadFailed && !loading ? (
-        <ErrorState onRetry={() => void load()} />
-      ) : (
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {loadFailed && !loading ? (
+          <div className="p-6">
+            <ErrorState onRetry={() => void load()} />
+          </div>
+        ) : (
+        <>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="md:min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("candidate")}</TableHead>
                 <TableHead className="md:min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("role")}</TableHead>
-                <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("type")}</TableHead>
+                <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]"><SortableTableHeader label={t("type")} active={sortBy === "type"} order={order} onClick={() => { setSortBy("type"); setSortOrder(sortBy === "type" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
                 <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("agent")}</TableHead>
-                <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("date")}</TableHead>
+                <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]"><SortableTableHeader label={t("date")} active={sortBy === "scheduledAt"} order={order} onClick={() => { setSortBy("scheduledAt"); setSortOrder(sortBy === "scheduledAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
                 <TableHead className="md:min-w-[150px] px-4 py-3 text-end text-[11px] font-semibold uppercase tracking-[0.12em]">{t("manage")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -569,10 +571,11 @@ export default function AdminInterviewOversightPage() {
                 </TableRow>
               ) : interviews.map((iv) => {
                 const TypeIcon = TYPE_ICON[iv.type as keyof typeof TYPE_ICON] ?? Calendar;
+                const candidateName = cleanInterviewName(iv.jobSeeker?.name);
                 return (
                   <TableRow key={iv._id} className="group transition-colors">
                     <TableCell className="px-4 py-3">
-                      <p className="font-medium">{iv.jobSeeker?.name ?? "—"}</p>
+                      <p id={`interview-candidate-${iv._id}`} className="font-medium">{candidateName}</p>
                       <p className="text-xs text-muted-foreground">{iv.jobSeeker?.email}</p>
                       <StatusBadge status={iv.status} />
                     </TableCell>
@@ -583,7 +586,9 @@ export default function AdminInterviewOversightPage() {
                     <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-sm capitalize text-muted-foreground">{iv.type || "—"}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {iv.type === "video" ? t("typeVideo") : iv.type === "offline" ? t("typeOffline") : iv.type === "hybrid" ? t("typeHybrid") : "—"}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3">
@@ -591,7 +596,7 @@ export default function AdminInterviewOversightPage() {
                     </TableCell>
                     <TableCell className="whitespace-nowrap px-4 py-3">
                       <span className="text-sm text-muted-foreground">
-                        {new Date(iv.scheduledAt).toLocaleDateString("en-AE", { day: "2-digit", month: "short", year: "numeric" })}
+                        {formatDate(iv.scheduledAt, { day: "2-digit", month: "short", year: "numeric" }, locale)}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-end">
@@ -603,6 +608,7 @@ export default function AdminInterviewOversightPage() {
                           if (value && value !== iv.status) void changeInterviewStatus(iv._id, value);
                         }}
                         placeholder={t("status")}
+                        ariaLabel={t("changeStatusFor", { candidate: candidateName })}
                         disabled={updatingId === iv._id}
                       />
                     </TableCell>
@@ -616,8 +622,9 @@ export default function AdminInterviewOversightPage() {
         <div className="border-t border-border/60 px-4 py-4">
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
         </div>
+        </>
+        )}
       </section>
-      )}
     </div>
   );
 }

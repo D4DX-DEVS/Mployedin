@@ -82,13 +82,16 @@ export function DashboardPageHeader({
       data-dashboard-page-header="component"
       data-compact={compact ? "true" : undefined}
       className={cn(
-        "dashboard-page-header workspace-hero-surface overflow-hidden rounded-2xl px-4 py-3 sm:px-5 sm:py-4",
-        compact && "px-3 py-2.5 sm:px-5 sm:py-4",
+        // The header is a content alignment rail, not another card around the
+        // page. The shared page gutter owns its placement; the identity icon
+        // and metric strip are the visual anchors used by every route.
+        "dashboard-page-header px-0 py-3 sm:py-4",
+        compact && "px-0 py-2.5 sm:py-4",
         className
       )}
     >
       <div className={cn(
-        "flex gap-3 lg:flex-row lg:items-end lg:justify-between",
+        "flex gap-3 lg:flex-row lg:items-center lg:justify-between",
         inlineActions ? "flex-row items-start justify-between" : "flex-col",
         compact && "flex-row items-center justify-between gap-2 sm:gap-3"
       )}>
@@ -98,33 +101,37 @@ export function DashboardPageHeader({
             is a full sentence that never wraps, that squeezed "Employer
             Relationships" into a ~100px column — one or two characters per line,
             a 479px header. A floor here makes the row wrap instead of crushing. */}
-        <div data-header-text="" className="min-w-0 max-w-3xl flex-1 basis-0 lg:min-w-[16rem]">
-          {eyebrow && (
-            <div className="hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:flex">
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">{eyebrow}</span>
-            </div>
-          )}
-          <Heading className={cn(
-            "text-xl font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-[1.625rem]"
-            // Sharing the row with the actions leaves ~165px on a 390px screen,
-            // so the compact title steps down to 16px there — at 24px
-            // "Candidate Matching" broke across two lines. That step-down lives
-            // in globals.css (search "Compact page header"), not here: the
-            // dashboard page-title rules set this h1 from --text-page-title
-            // with !important from inside @layer components, which outranks any
-            // utility on the element — even `!text-base`. Full size from sm.
-          )}>
-            {title}
-          </Heading>
-          {description && (
-            <p data-header-description="" className={cn(
-              "mt-1 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm",
-              compactOnMobile && "hidden sm:block"
+        <div data-header-identity="" className="dashboard-page-header-identity min-w-0 max-w-3xl flex-1 basis-0 lg:min-w-[16rem]">
+          <span data-header-icon="" className="dashboard-page-header-icon" aria-hidden="true">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div data-header-text="" className="min-w-0">
+            {eyebrow && (
+              <div className="hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:flex">
+                <span className="truncate">{eyebrow}</span>
+              </div>
+            )}
+            <Heading className={cn(
+              "text-xl font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-[1.625rem]"
+              // Sharing the row with the actions leaves ~165px on a 390px screen,
+              // so the compact title steps down to 16px there — at 24px
+              // "Candidate Matching" broke across two lines. That step-down lives
+              // in globals.css (search "Compact page header"), not here: the
+              // dashboard page-title rules set this h1 from --text-page-title
+              // with !important from inside @layer components, which outranks any
+              // utility on the element — even `!text-base`. Full size from sm.
             )}>
-              {description}
-            </p>
-          )}
+              {title}
+            </Heading>
+            {description && (
+              <p data-header-description="" className={cn(
+                "mt-1 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm",
+                compactOnMobile && "hidden sm:block"
+              )}>
+                {description}
+              </p>
+            )}
+          </div>
         </div>
 
         {(summary || actions) && (

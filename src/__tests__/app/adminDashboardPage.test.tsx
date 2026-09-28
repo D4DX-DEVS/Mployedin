@@ -268,7 +268,7 @@ describe("Platform snapshot", () => {
     const panel = sectionNamed(/^platform snapshot$/i);
     expect(within(panel).getByText("41 more than previous 30 days")).toBeInTheDocument();
     expect(within(panel).getByText("3 fewer than previous 30 days")).toBeInTheDocument();
-    expect(within(panel).getByText("+41")).toBeInTheDocument();
+    expect(within(panel).getAllByText("+41").length).toBeGreaterThan(0);
     expect(panel.textContent).not.toContain("4100%");
   });
 
@@ -422,10 +422,12 @@ describe("AdminDashboardPage", () => {
     });
   }
 
-  it("hands every section the period from the URL, falling back to 30 days", async () => {
+  it("hands the active dashboard view the period from the URL, falling back to 30 days", async () => {
     authMock.mockResolvedValue({ user: { id: "admin-1", role: "admin", name: "Super Admin" } });
     const contexts = sectionContexts(await page("7d"));
-    expect(contexts).toHaveLength(7);
+    // The dashboard is URL-driven: overview streams the snapshot and compact
+    // recruitment pulse; attention and analysis load their own views.
+    expect(contexts).toHaveLength(2);
     expect(contexts.every((context) => context.period.key === "7d")).toBe(true);
 
     expect(sectionContexts(await page("365d"))[0].period.key).toBe("30d");

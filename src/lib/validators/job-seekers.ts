@@ -46,7 +46,7 @@ export const jobSeekerProfileUpdateSchema = z
     coverLetter: z.string().max(10000).trim().optional(),
     cv: z.string().url().max(2048).optional(),
     avatar: z.string().url().max(2048).optional(),
-    phone: z.string().max(20).trim().optional(),
+    phone: commonSchemas.phone.optional().or(z.literal("")),
     dateOfBirth: z.string().max(30).optional(),
     preferredJobType: z.enum(["remote", "hybrid", "onsite", "any"]).optional(),
     preferredRoles: z.array(z.string().max(100).trim()).max(20).optional(),

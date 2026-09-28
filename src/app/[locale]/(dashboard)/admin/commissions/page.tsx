@@ -517,7 +517,7 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleClawback(c._id, c.amount)}
-                          className="text-rose-700 hover:bg-rose-50"
+                          className="gap-1 text-rose-700 hover:bg-rose-50"
                           title={t("clawbackTitle")}
                         >
                           {t("clawbackButton")}
@@ -528,7 +528,7 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleResolveDispute(c._id)}
-                          className="text-emerald-700 hover:bg-emerald-50"
+                          className="gap-1 text-emerald-700 hover:bg-emerald-50"
                           title={t("resolveTitle")}
                         >
                           {t("resolveButton")}
@@ -541,8 +541,10 @@ export default function AdminCommissionsPage() {
                           onClick={() => setEditItem(c)}
                           title={t("editButton")}
                           aria-label={`${t("editAriaLabel")} ${c.agentId?.fullName ?? "agent"}`}
+                          className="h-8 gap-1 px-2 text-xs"
                         >
                           <Pencil className="h-3.5 w-3.5 text-primary" />
+                          {t("editButton")}
                         </Button>
                       )}
                       {can("commissions", "delete") && (
@@ -552,8 +554,10 @@ export default function AdminCommissionsPage() {
                           onClick={() => handleDelete(c._id)}
                           title={t("deleteButton")}
                           aria-label={`${t("deleteAriaLabel")} ${c.agentId?.fullName ?? "agent"}`}
+                          className="h-8 gap-1 px-2 text-xs"
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          {t("deleteButton")}
                         </Button>
                       )}
                     </div>

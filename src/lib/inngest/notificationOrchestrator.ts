@@ -25,6 +25,9 @@ import { sendWhatsApp } from "@/lib/communications/whatsapp";
 import { sendPushToUser, isPushEnabled } from "@/lib/push";
 import { getSystemConfig, getUserOverride } from "@/models/SystemConfig";
 import type { NotificationInstantEvent } from "./events";
+import { IntlMessageFormat } from "intl-messageformat";
+import enMessages from "../../../messages/en.json";
+import arMessages from "../../../messages/ar.json";
 
 const DEDUP_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -38,8 +41,11 @@ export const notificationOrchestrator = inngest.createFunction(
     concurrency: { limit: 5 },
     triggers: [{ event: "notification/instant" }],
   },
-  async ({ event, step }: { event: { data: NotificationInstantEvent["data"] }; step: any }) => {
-    const { userId, type, title, message, link, sendEmail: wantEmail, sendWhatsApp: wantWhatsApp, metadata } = event.data;
+  async ({ event, step }: {
+    event: { data: NotificationInstantEvent["data"] };
+    step: { run: <T>(name: string, fn: () => Promise<T>) => Promise<T> };
+  }) => {
+    const { userId, type, title, message, link, sendEmail: wantEmail, sendWhatsApp: wantWhatsApp, titleKey, bodyKey, params } = event.data;
 
     await connectDB();
 
@@ -96,21 +102,32 @@ export const notificationOrchestrator = inngest.createFunction(
 
     const deliveredChannels: string[] = ["in_app"];
 
+    const recipient = await step.run("load-recipient", () =>
+      User.findById(userId).select("name email role locale phone").lean(),
+    ) as { name?: string; email?: string; role?: string; locale?: string; phone?: string } | null;
+    const localized = localizeNotification({
+      locale: recipient?.locale,
+      title,
+      message,
+      titleKey,
+      bodyKey,
+      params,
+    });
+
     // 4. Email delivery
     const shouldEmail = wantEmail && categoryPref.channels.includes("email");
     if (shouldEmail) {
       await step.run("send-email", async () => {
-        const user = await User.findById(userId).select("name email role locale").lean();
-        if (!user?.email) return;
+        if (!recipient?.email) return;
 
         await sendEmail({
-          to: user.email,
-          subject: title,
-          html: buildNotificationEmailHtml(title, message, link, {
+          to: recipient.email,
+          subject: localized.title,
+          html: buildNotificationEmailHtml(localized.title, localized.message, link, {
             userId,
             category,
-            role: (user as { role?: string }).role,
-            locale: (user as { locale?: string }).locale,
+            role: recipient.role,
+            locale: recipient.locale,
           }),
           userId,
           source: "orchestrator",
@@ -124,13 +141,12 @@ export const notificationOrchestrator = inngest.createFunction(
     const shouldWhatsApp = wantWhatsApp && categoryPref.channels.includes("whatsapp");
     if (shouldWhatsApp) {
       await step.run("send-whatsapp", async () => {
-        const user = await User.findById(userId).select("phone").lean();
-        const phone = (user as { phone?: string } | null)?.phone;
+        const phone = recipient?.phone;
         if (!phone) return;
 
         await sendWhatsApp({
           to: phone,
-          body: `${title}\n\n${message}`,
+          body: `${localized.title}\n\n${localized.message}`,
         });
       });
       deliveredChannels.push("whatsapp");
@@ -140,7 +156,7 @@ export const notificationOrchestrator = inngest.createFunction(
     // VAPID keys are configured AND the user's category is enabled (checked above).
     if (isPushEnabled()) {
       await step.run("send-push", () =>
-        sendPushToUser(userId, { title, body: message, link })
+        sendPushToUser(userId, { title: localized.title, body: localized.message, link })
       );
       deliveredChannels.push("push");
     }
@@ -148,6 +164,32 @@ export const notificationOrchestrator = inngest.createFunction(
     return { delivered: deliveredChannels, type, userId };
   },
 );
+
+function localizeNotification(input: {
+  locale?: string;
+  title: string;
+  message: string;
+  titleKey?: string;
+  bodyKey?: string;
+  params?: Record<string, unknown>;
+}): { title: string; message: string } {
+  const locale = input.locale === "ar" ? "ar" : "en";
+  const messages = locale === "ar" ? arMessages : enMessages;
+  const namespace = messages.notificationContent as Record<string, unknown>;
+  const format = (key: string | undefined, fallback: string) => {
+    const template = key ? namespace[key] : undefined;
+    if (typeof template !== "string") return fallback;
+    try {
+      return String(new IntlMessageFormat(template, locale).format(input.params ?? {}));
+    } catch {
+      return fallback;
+    }
+  };
+  return {
+    title: format(input.titleKey, input.title),
+    message: format(input.bodyKey, input.message),
+  };
+}
 
 /**
  * Build a branded notification email HTML.

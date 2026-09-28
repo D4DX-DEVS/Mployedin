@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
@@ -38,6 +39,7 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 
 interface AgentRef {
   _id: string;
@@ -58,6 +60,7 @@ interface SuperAgent {
   _id: string;
   name: string;
   email: string;
+  avatar?: string;
   isActive: boolean;
   createdAt: string;
   superAgentProfile: SAProfile | null;
@@ -421,11 +424,11 @@ export default function AdminSuperAgentsPage() {
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
+        <div data-table-toolbar="compact-admin" className="flex flex-col gap-2 border-b border-border/80 panel-head sm:flex-row sm:items-center sm:justify-between">
           {/* data-table-toolbar + toolbar-search-field opt this hand-rolled
               header into the shared mobile toolbar rules — three rows on a
               phone before. */}
-          <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <div className="relative toolbar-search-field">
               <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input aria-label={t("searchPlaceholder")}
@@ -447,6 +450,8 @@ export default function AdminSuperAgentsPage() {
                 placeholder={t("statusFilterAll")}
               />
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="dense" className="rounded-lg border-border/80">
@@ -506,10 +511,13 @@ export default function AdminSuperAgentsPage() {
             ) : superAgents.map((sa) => (
               <TableRow key={sa._id}>
                 <TableCell>
-                  <div className="flex flex-col items-start gap-1.5">
-                    <span className="font-medium">{sa.name}</span>
-                    <span className="text-xs text-muted-foreground">{sa.email}</span>
-                    <StatusBadge status={sa.isActive !== false ? "active" : "inactive"} />
+                  <div className="flex items-start gap-3">
+                    <UserAvatar name={sa.name} email={sa.email} src={sa.avatar} className="h-9 w-9" />
+                    <div className="flex min-w-0 flex-col items-start gap-1.5">
+                      <span className="font-medium">{sa.name}</span>
+                      <span className="text-xs text-muted-foreground">{sa.email}</span>
+                      <StatusBadge status={sa.isActive !== false ? "active" : "inactive"} />
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -541,22 +549,26 @@ export default function AdminSuperAgentsPage() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {can("super_agents", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => openEdit(sa)} title={t("editTooltip")}>
+                        <Button variant="ghost" size="xs" onClick={() => openEdit(sa)} title={t("editTooltip")} className="h-8 gap-1 px-2 text-xs">
                           <Pencil className="h-3.5 w-3.5 text-primary" />
+                          <span>{t("editTooltip")}</span>
                         </Button>
                       )}
                       {can("super_agents", "delete") && (sa.isActive !== false ? (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(sa._id)} title={t("deactivateTooltip")}>
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(sa._id)} title={t("deactivateTooltip")} className="h-8 gap-1 px-2 text-xs">
                           <Ban className="h-3.5 w-3.5 text-amber-500" />
+                          <span>{t("deactivateTooltip")}</span>
                         </Button>
                       ) : (
-                        <Button variant="ghost" size="xs" onClick={() => handleActivate(sa._id)} title={t("activateTooltip")}>
+                        <Button variant="ghost" size="xs" onClick={() => handleActivate(sa._id)} title={t("activateTooltip")} className="h-8 gap-1 px-2 text-xs">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>{t("activateTooltip")}</span>
                         </Button>
                       ))}
                       {can("super_agents", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(sa._id)} title={t("deletePermanentlyTooltip")}>
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(sa._id)} title={t("deletePermanentlyTooltip")} className="h-8 gap-1 px-2 text-xs">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          <span>{t("deletePermanentlyTooltip")}</span>
                         </Button>
                       )}
                     </div>
@@ -600,7 +612,7 @@ export default function AdminSuperAgentsPage() {
               </div>
               <div className="field">
                 <Label>{t("passwordLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
-                <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-super-agent-password-hint" />
+                <PasswordInput value={addForm.password} onChange={(password) => setAddForm((f) => ({ ...f, password }))} placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })} aria-describedby="add-super-agent-password-hint" />
                 <p id="add-super-agent-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
               </div>
               <div className="field">

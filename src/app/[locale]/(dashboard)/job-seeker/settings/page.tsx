@@ -44,6 +44,7 @@ import { AvailabilityCalendar, type DayAvailability } from "@/components/feature
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { getCsrfToken } from "@/lib/security/csrf-client";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -259,6 +260,8 @@ export default function JobSeekerSettingsPage() {
   // Deep-linked seekers (email footers, bookmarks) have nothing to pop.
   const { goBack } = useBackNavigation(`/${locale}/job-seeker`);
   const t = useTranslations("jobSeekerExtra.settings");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, type: "success", message: "" });
@@ -327,6 +330,12 @@ export default function JobSeekerSettingsPage() {
   }, [session?.user?.image, updateSession]);
 
   const handleAvatarRemove = useCallback(async () => {
+    const ok = await confirm({
+      message: tConfirm("removeMessage"),
+      confirmLabel: tConfirm("remove"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setAvatarUploading(true);
     setAvatarError("");
     try {
@@ -343,7 +352,7 @@ export default function JobSeekerSettingsPage() {
     } finally {
       setAvatarUploading(false);
     }
-  }, [updateSession]);
+  }, [confirm, tConfirm, updateSession]);
 
   const form = useForm<SettingsForm>({
     resolver: zodResolver(settingsFormSchema),
@@ -443,6 +452,7 @@ export default function JobSeekerSettingsPage() {
 
   return (
     <TooltipProvider>
+      {ConfirmDialogNode}
       <form
         id="settings-form"
         onSubmit={handleSubmit(onSubmit)}
@@ -591,23 +601,23 @@ export default function JobSeekerSettingsPage() {
 
         {/* ── Tabs ────────────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full h-auto p-1 rounded-2xl flex flex-wrap gap-1 bg-muted/40 border border-border/40">
-            <TabsTrigger value="interviews" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsList className="w-full flex-wrap">
+            <TabsTrigger value="interviews" className="flex-1 gap-2">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.interviews")}</span>
               <span className="sm:hidden">{t("tabs.schedule")}</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="profile" className="flex-1 gap-2">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.profileVisibility")}</span>
               <span className="sm:hidden">{t("tabs.visibility")}</span>
             </TabsTrigger>
-            <TabsTrigger value="resume-ai" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="resume-ai" className="flex-1 gap-2">
               <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.resumeAi")}</span>
               <span className="sm:hidden">{t("tabs.ai")}</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="notifications" className="flex-1 gap-2">
               <Bell className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.notifications")}</span>
               <span className="sm:hidden">{t("tabs.alerts")}</span>

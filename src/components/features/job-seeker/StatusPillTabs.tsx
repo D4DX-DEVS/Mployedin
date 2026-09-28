@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export interface StatusPillTabsProps<T extends string> {
@@ -108,7 +107,7 @@ export function StatusPillTabs<T extends string>({
         role="tablist"
         aria-label={label}
         onKeyDown={handleKeyDown}
-        className="scrollbar-none flex snap-x snap-proximity items-center gap-1.5 overflow-x-auto sm:gap-1 sm:rounded-full sm:border sm:border-border/70 sm:bg-muted/20 sm:p-1 sm:[mask-image:linear-gradient(to_right,black_92%,transparent)] sm:rtl:[mask-image:linear-gradient(to_left,black_92%,transparent)] lg:[mask-image:none] lg:rtl:[mask-image:none]"
+        className={cn("reference-tablist scrollbar-none snap-x snap-proximity sm:[mask-image:linear-gradient(to_right,black_92%,transparent)] sm:rtl:[mask-image:linear-gradient(to_left,black_92%,transparent)] lg:[mask-image:none] lg:rtl:[mask-image:none]", className)}
       >
         {tabs.map((tab) => {
           const isActive = tab === active;
@@ -122,21 +121,9 @@ export function StatusPillTabs<T extends string>({
               aria-controls={`${idPrefix}-panel-${tab}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(tab)}
-              className={cn(
-                "relative min-h-11 shrink-0 snap-start rounded-full border px-3 py-2 text-xs font-medium transition-colors duration-200 sm:min-h-0 sm:border-0 sm:px-3.5 sm:py-1.5 sm:text-sm sm:shadow-none",
-                isActive
-                  ? "border-transparent text-primary-foreground"
-                  : "border-border/60 bg-background text-muted-foreground shadow-sm hover:bg-muted/60 hover:text-foreground sm:bg-transparent"
-              )}
+              className={cn("reference-tab snap-start", isActive ? "border-primary bg-secondary/40 text-foreground" : "text-muted-foreground hover:text-foreground")}
             >
-              {isActive && (
-                <motion.span
-                  layoutId={`${idPrefix}-status-pill`}
-                  className="absolute inset-0 rounded-full bg-primary shadow-[0_10px_22px_rgba(37,99,235,0.24)]"
-                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                />
-              )}
-              <span className="relative z-10 inline-flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5">
                 {renderLabel(tab)}
                 {(() => {
                   const count = renderCount?.(tab);

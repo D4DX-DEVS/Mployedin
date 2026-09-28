@@ -75,6 +75,14 @@ describe("memberCanAccessPath", () => {
     expect(memberCanAccessPath("/api/employers/team", settingsOnly)).toBe(false);
   });
 
+  it("lets an applicant reviewer use AI search on the applications list, and nobody else", () => {
+    const reviewer = computeEffectivePermissions(["viewer"], { canReviewApplicants: true });
+    expect(memberCanAccessPath("/api/ai/application-search-filters", reviewer)).toBe(true);
+    expect(memberCanAccessPath("/api/ai/application-search-filters", screeningOnly)).toBe(false);
+    // The prefix is this one endpoint, not every AI route.
+    expect(memberCanAccessPath("/api/ai/copilot", reviewer)).toBe(false);
+  });
+
   it("allows /api/employers/me even for a member holding none of the granted functions", () => {
     const noFunctions = computeEffectivePermissions(["viewer"]);
     expect(memberCanAccessPath("/api/employers/me", noFunctions)).toBe(true);

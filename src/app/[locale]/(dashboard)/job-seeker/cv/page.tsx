@@ -44,6 +44,7 @@ import { TipsDrawer, type TipKey } from "./tips-drawer";
 import { SortableList, SortableItem } from "./sortable";
 import { htmlToPlainText, plainTextToHtml } from "./rich-text";
 import { MonthYearPicker } from "./month-picker";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 /* Reorder an array to match a new ordering of index-string ids. */
 function reorderByIds<T>(arr: T[], ids: string[]): T[] {
@@ -657,7 +658,7 @@ export default function CVBuilderPage() {
                       onChange={(v) => setForm((f) => ({ ...f, fullName: v }))} placeholder={t("placeholders.fullName")} />
                     <FormField label={t("fields.email")} value={form.email}
                       onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder={t("placeholders.email")} />
-                    <FormField label={t("fields.phone")} value={form.phone}
+                    <FormField label={t("fields.phone")} value={form.phone} type="phone"
                       onChange={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="+971 50 000 0000" />
                     <FormField label={t("fields.nationality")} value={form.nationality}
                       onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} placeholder={t("placeholders.nationality")} />
@@ -1116,6 +1117,9 @@ function FormField({
   type?: string;
 }) {
   const id = useId();
+  if (type === "phone") {
+    return <PhoneInput id={id} label={label} value={value} onChange={onChange ?? (() => undefined)} placeholder={placeholder} />;
+  }
   return (
     <div className="field">
       <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>

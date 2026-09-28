@@ -30,10 +30,14 @@ export function DashboardSection({
     <section
       aria-labelledby={headingId}
       className={cn("workspace-panel-surface overflow-hidden rounded-2xl", className)}
+      data-dashboard-overview-section=""
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-2 pt-3 sm:px-5 sm:pb-3 sm:pt-4">
+      <div
+        data-dashboard-overview-header=""
+        className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 px-4 pb-3 pt-3 sm:px-5 sm:pt-4"
+      >
         <div className="min-w-0">
-          <h2 id={headingId} className="heading-label font-semibold tracking-tight text-foreground">
+          <h2 id={headingId} className="heading-section font-semibold tracking-tight text-foreground">
             {title}
           </h2>
           {description && (
@@ -42,7 +46,7 @@ export function DashboardSection({
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
-      <div className={cn("border-t border-border/60", bodyClassName)}>{children}</div>
+      <div data-dashboard-overview-body="" className={cn(bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -87,10 +91,14 @@ export function DashboardNextAction({
     <section
       aria-labelledby={headingId}
       className={cn("workspace-panel-surface overflow-hidden rounded-2xl", className)}
+      data-dashboard-overview-section=""
     >
-      <div className="flex flex-wrap items-start justify-between gap-2 px-4 pb-2 pt-3 sm:px-5 sm:pb-3 sm:pt-4">
+      <div
+        data-dashboard-overview-header=""
+        className="flex flex-wrap items-start justify-between gap-2 border-b border-border/70 px-4 pb-3 pt-3 sm:px-5 sm:pt-4"
+      >
         <div className="min-w-0">
-          <h2 id={headingId} className="heading-label font-semibold tracking-tight text-foreground">
+          <h2 id={headingId} className="heading-section font-semibold tracking-tight text-foreground">
             {title}
           </h2>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:text-sm">{description}</p>
@@ -139,10 +147,11 @@ export function DashboardSignalStrip({
     <section
       aria-labelledby={headingId}
       className={cn("workspace-panel-surface overflow-hidden rounded-2xl", className)}
+      data-dashboard-overview-section=""
     >
       <h2
         id={headingId}
-        className="heading-label border-b border-border/60 px-4 py-2.5 font-semibold tracking-tight text-foreground sm:px-5"
+        className="heading-section border-b border-border/70 px-4 py-3 font-semibold tracking-tight text-foreground sm:px-5"
       >
         {title}
       </h2>

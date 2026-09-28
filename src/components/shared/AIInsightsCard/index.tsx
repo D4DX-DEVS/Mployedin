@@ -76,6 +76,7 @@ export function AIInsightsCard({ role, context }: AIInsightsCardProps) {
             setRefreshKey(k => k + 1);
           }}
           title={t("refreshInsights")}
+          aria-label={t("refreshInsights")}
           className="p-1 rounded hover:bg-primary/10 text-muted-foreground transition-colors"
         >
           <RefreshCw className="h-3.5 w-3.5" />

@@ -298,7 +298,7 @@ export default function RegisterPage() {
             autoComplete="name"
             aria-invalid={fieldErrors.name ? true : undefined}
             aria-describedby={fieldErrors.name ? "name-error" : undefined}
-            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
           <FieldError id="name-error" message={fieldErrors.name} />
         </div>
@@ -315,7 +315,7 @@ export default function RegisterPage() {
             autoComplete="email"
             aria-invalid={fieldErrors.email ? true : undefined}
             aria-describedby={fieldErrors.email ? "email-error" : undefined}
-            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
           <FieldError id="email-error" message={fieldErrors.email} />
         </div>
@@ -332,7 +332,7 @@ export default function RegisterPage() {
             autoComplete="new-password"
             aria-invalid={fieldErrors.password ? true : undefined}
             aria-describedby={fieldErrors.password ? "password-error" : undefined}
-            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
           <FieldError id="password-error" message={fieldErrors.password} />
         </div>
@@ -349,7 +349,7 @@ export default function RegisterPage() {
             autoComplete="new-password"
             aria-invalid={fieldErrors.confirmPassword ? true : undefined}
             aria-describedby={fieldErrors.confirmPassword ? "confirmPassword-error" : undefined}
-            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
           <FieldError id="confirmPassword-error" message={fieldErrors.confirmPassword} />
         </div>

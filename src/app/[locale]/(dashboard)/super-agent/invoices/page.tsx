@@ -241,7 +241,7 @@ export default function SuperAgentInvoicesPage() {
                 </div>
               )}
             </div>
-            <Button variant="outline" size="dense" onClick={refreshAnalytics} className="gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refresh")}</Button>
+            <Button variant="outline" size="iconDense" onClick={refreshAnalytics} aria-label={t("refresh")} title={t("refresh")}><RefreshCw className="h-3.5 w-3.5" /></Button>
           </div>
           {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={analyticsData.currency} />}
           {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}

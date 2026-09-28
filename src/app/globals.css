@@ -111,17 +111,17 @@ input[type="number"] {
    ═══════════════════════════════════════════════ */
 :root {
   /* ── BRAND PALETTE ── */
-  --brand-blue: 223 58% 37%;
-  /* #284595 — primary from legacy site CTAs */
-  --brand-blue-hover: 223 58% 31%;
-  /* darker on hover */
-  --brand-blue-light: 199 74% 58%;
-  /* accent/highlights */
+  --brand-blue: 221 98% 41%;
+  /* #0242CE — primary from the Mployedin logo */
+  --brand-blue-hover: 226 91% 31%;
+  /* #072A98 — darker logo blue on hover */
+  --brand-blue-light: 201 80% 50%;
+  /* #199CE5 — logo accent/highlights */
   --brand-blue-pale: 204 70% 95%;
   /* bg tints, chips */
   --brand-blue-dark: 225 57% 27%;
   /* #1e2f6c — legacy deep navy */
-  --brand-cyan: 198 74% 60%;
+  --brand-cyan: 201 80% 50%;
   /* logo accent / secondary highlight */
   --brand-white: 0 0% 100%;
   --brand-text: 224 33% 18%;
@@ -130,15 +130,15 @@ input[type="number"] {
   /* #667085 */
 
   /* ── SEMANTIC TOKENS (shadcn/ui reads these) ── */
-  --background: 210 20% 97%;
-  /* Legacy site page background */
+  --background: 0 0% 100%;
+  /* Application canvas: keep the page background pure white. */
   --foreground: 224 33% 18%;
   /* Legacy site text tone */
   --card: 0 0% 100%;
   --card-foreground: 224 33% 18%;
   --popover: 0 0% 100%;
   --popover-foreground: 224 33% 18%;
-  --primary: 223 58% 37%;
+  --primary: 221 98% 41%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 22% 95%;
   --secondary-foreground: 224 33% 18%;
@@ -150,8 +150,8 @@ input[type="number"] {
   --destructive-foreground: 210 40% 98%;
   --border: 214 26% 88%;
   --input: 214 26% 88%;
-  --ring: 223 58% 37%;
-  --focus-ring: 223 72% 34%;
+  --ring: 221 98% 41%;
+  --focus-ring: 226 91% 31%;
   --radius: 1rem;
   /* Rounder corners for modern feel */
 
@@ -197,11 +197,18 @@ input[type="number"] {
   /* ── SURFACE VARIANTS ── */
   --surface-1: 0 0% 100%;
   /* cards */
-  --surface-2: 210 20% 97%;
-  /* page bg */
+  --surface-2: 0 0% 100%;
+  /* page canvas */
   --surface-3: 204 70% 95%;
   /* tinted */
   --surface-elevated: 0 0% 100%;
+  /* Neutral workspace surfaces inspired by Align UI: a quiet canvas, a
+     slightly raised menu rail, and white content surfaces with one divider. */
+  --workspace-canvas: 0 0% 100%;
+  --workspace-menu: 0 0% 100%;
+  --workspace-surface: 0 0% 100%;
+  --workspace-surface-muted: 210 20% 96%;
+  --workspace-divider: 214 20% 84%;
   --workspace-shadow-hero: 0 24px 60px -36px hsl(var(--brand-blue) / 0.3);
   --workspace-shadow-panel: 0 24px 60px -46px rgba(15, 23, 42, 0.35);
 
@@ -216,13 +223,13 @@ input[type="number"] {
   --brand-text: 224 33% 18%;
   --brand-muted: 218 15% 46%;
 
-  --background: 210 20% 97%;
+  --background: 0 0% 100%;
   --foreground: 224 33% 18%;
   --card: 0 0% 100%;
   --card-foreground: 224 33% 18%;
   --popover: 0 0% 100%;
   --popover-foreground: 224 33% 18%;
-  --primary: 223 58% 37%;
+  --primary: 221 98% 41%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 22% 95%;
   --secondary-foreground: 224 33% 18%;
@@ -234,11 +241,11 @@ input[type="number"] {
   --destructive-foreground: 210 40% 98%;
   --border: 214 26% 88%;
   --input: 214 26% 88%;
-  --ring: 223 58% 37%;
-  --focus-ring: 223 72% 34%;
+  --ring: 221 98% 41%;
+  --focus-ring: 226 91% 31%;
 
   --surface-1: 0 0% 100%;
-  --surface-2: 210 20% 97%;
+  --surface-2: 0 0% 100%;
   --surface-3: 204 70% 95%;
   --surface-elevated: 0 0% 100%;
 
@@ -315,6 +322,33 @@ body {
    unlayered — a utility class sits in @layer utilities and would lose. */
 [cmdk-input-wrapper] > input.searchable-select-search:focus-visible {
   outline: none;
+}
+
+/* The command palette already uses a rounded focus-within ring around its
+   search field. Keep the shared keyboard outline from drawing a second box
+   around the input itself. */
+.command-dialog [cmdk-input-wrapper] > input:focus-visible {
+  outline: none;
+}
+
+/* Searchable dropdowns use the same single rounded field as resource search.
+   The admin touch-target floor stays off the input so the field does not grow
+   into a second padded card inside the dropdown. */
+.inline-select-search-input {
+  min-height: 0 !important;
+  height: 2.25rem;
+  border: 1px solid hsl(var(--input));
+  border-radius: 0.5rem;
+  background: hsl(var(--background));
+}
+
+.searchable-select-input-wrapper > svg {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 /* …replaced by tinting the field's own divider, so focus stays visible. */
@@ -655,10 +689,10 @@ body {
   }
 
   .dashboard-shell-workspace {
-    --workspace-radius-hero: 1rem;
-    --workspace-radius-panel: 1rem;
+    --workspace-radius-hero: 0.75rem;
+    --workspace-radius-panel: 0.875rem;
     --workspace-radius-card: 0.75rem;
-    --workspace-radius-control: 0.625rem;
+    --workspace-radius-control: 0.5rem;
     --workspace-panel-padding-mobile: 0.75rem;
     --workspace-panel-padding-desktop: 1.25rem;
     --workspace-section-gap: 1rem;
@@ -923,6 +957,190 @@ body {
   .dashboard-main [class*="grid-cols"] > * {
     min-width: 0;
   }
+}
+
+/* ── Opaque dashboard surfaces ────────────────────────────────────────────
+   The dashboard reference uses solid surfaces and hairline dividers. Legacy
+   routes still carry glass-era class names, so normalize them here instead of
+   editing every page individually. Dialog backdrops remain owned by Dialog;
+   this only removes decorative dashboard translucency and blur. */
+.dashboard-shell-workspace :where(.glass, .workspace-glass-panel, .workspace-panel-surface, .workspace-hero-surface, .page-header-root, .card-base) {
+  background: hsl(var(--workspace-surface)) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: var(--workspace-radius-panel) !important;
+  border-color: hsl(var(--workspace-divider)) !important;
+  border-width: 1px !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.035) !important;
+}
+
+.dashboard-shell-workspace :where(.backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary
+  :is([aria-current="page"], button[aria-expanded="true"], [class*="bg-primary/10"]) {
+  background: hsl(var(--workspace-surface-muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary
+  :is([aria-current="page"], button[aria-expanded="true"], [class*="bg-primary/10"]) > svg {
+  color: hsl(var(--primary)) !important;
+}
+
+.dashboard-shell-workspace :where(input, textarea, select, [role="combobox"], [data-slot="select-trigger"]) {
+  border-color: hsl(var(--workspace-divider)) !important;
+}
+
+.dashboard-shell-workspace :where(button, a)[class*="border"] {
+  border-color: hsl(var(--workspace-divider)) !important;
+}
+
+.dashboard-shell-workspace,
+.dashboard-shell-workspace :where(button, input, textarea, select) {
+  font-family: var(--font-manrope), Manrope, system-ui, sans-serif;
+}
+
+/* ── Reference dashboard card rhythm ─────────────────────────────────────
+   The reference keeps each widget as a quiet white card: a visible neutral
+   outline, a compact header, and one divider before the content. Apply the
+   same structure to the shared dashboard section/card primitives so Admin,
+   Agent, Employer, and Super Agent pages read as one system. */
+.dashboard-shell-workspace :where([data-surface="light-panel"], [data-surface="light-card"]) {
+  background: hsl(var(--workspace-surface)) !important;
+  border: 1px solid hsl(var(--workspace-divider)) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.025) !important;
+}
+
+.dashboard-shell-workspace [data-surface="light-panel"] > [data-dashboard-section-header] {
+  border-bottom: 1px solid hsl(var(--workspace-divider));
+  padding-bottom: 0.75rem;
+}
+
+.dashboard-shell-workspace [data-surface="light-card"] > [data-dashboard-card-header] {
+  border-bottom-color: hsl(var(--workspace-divider));
+}
+
+.dashboard-shell-workspace [data-surface="light-card"] > [data-dashboard-card-body] {
+  min-height: 0;
+}
+
+.dashboard-shell-workspace [data-dashboard-overview-header] {
+  border-bottom-color: hsl(var(--workspace-divider));
+}
+
+/* DashboardSection intentionally becomes a flat flow on phones; preserve that
+   behavior even though the shared desktop surface rule uses !important. */
+@media (max-width: 639px) {
+  .dashboard-shell-workspace [data-surface="light-panel"] {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .dashboard-shell-workspace [data-surface="light-panel"] > [data-dashboard-section-header] {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* ── Global white application canvas ──────────────────────────────────────
+   Keep every light route on the same white page surface. The reusable panel
+   classes carry the dividers that separate content without reintroducing gray
+   canvas bands between cards. */
+html,
+body,
+body > div {
+  background-color: hsl(var(--background));
+}
+
+.dashboard-shell,
+.dashboard-main,
+.dashboard-main-workspace,
+.page-container,
+.admin-page-frame {
+  background-color: hsl(var(--background)) !important;
+  background-image: none !important;
+}
+
+:where(.workspace-panel-surface, .workspace-subtle-surface, .workspace-glass-panel, .card-base) {
+  background-color: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+:where(.workspace-panel-surface, .workspace-subtle-surface, .workspace-glass-panel, .card-base)
+  > :where([data-dashboard-overview-header], [data-dashboard-section-header], [data-dashboard-card-header]) {
+  border-bottom-color: hsl(var(--border));
+}
+
+/* Job listings use one quiet card boundary and reserve borders for structure;
+   their secondary actions are intentionally borderless. */
+.job-listing-card {
+  border: 1px solid hsl(var(--border));
+}
+
+.job-listing-card:hover {
+  border-color: hsl(var(--border));
+}
+
+/* Shared tab treatment inspired by the calendar reference: a quiet white
+   strip, compact labels, and one clear active underline instead of floating
+   pills. All dashboard tabs and Radix tab controls use these classes. */
+.reference-tablist {
+  display: flex;
+  min-height: 2.75rem;
+  width: 100%;
+  align-items: stretch;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  padding: 0 0.25rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.reference-tab {
+  position: relative;
+  display: inline-flex;
+  min-height: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0.375rem 0.375rem 0 0;
+  padding: 0.625rem 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.reference-tab:hover {
+  background: hsl(var(--muted) / 0.45);
+  color: hsl(var(--foreground));
+}
+
+.reference-tab[aria-selected="true"],
+.reference-tab[aria-current="page"],
+.reference-tab[data-state="active"] {
+  border-bottom-color: hsl(var(--primary));
+  background: hsl(var(--secondary) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+.reference-tab:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
 }
 
 /* ── STATUS BADGE CLASSES ── */
@@ -1360,20 +1578,18 @@ input::placeholder {
    Four steps, defined once — .heading-page / -section / -subsection / -label.
    Deliberately small headings (uppercase eyebrows at text-[11px], hero/empty
    states at text-3xl) are left off the scale on purpose. Measured 2026-08-25. */
-/* Steps are >=4px apart at both widths. The previous ramp put desktop h2 at
-   18px against 16px body and mobile h2 at 16px against 14-16px body, so a
-   section header carried the same visual weight as the copy under it and the
-   page read as one flat block. 24/20/16 mobile, 30/24/18 desktop.
-   Measured 2026-08-28. */
+/* Section titles stay compact and consistent with the Align-style workspace
+   reference. A single 17px step keeps h2 headings readable without competing
+   with page heroes or making dense dashboard panels feel oversized. */
 :root {
   --text-page-title: 1.5rem;
-  --text-section: 1.25rem;
+  --text-section: 1.0625rem;
   --text-subsection: 1rem;
 }
 @media (min-width: 768px) {
   :root {
     --text-page-title: 1.875rem;
-    --text-section: 1.5rem;
+    --text-section: 1.0625rem;
     --text-subsection: 1.125rem;
   }
 }
@@ -1387,7 +1603,7 @@ input::placeholder {
   }
   .heading-section {
     font-size: var(--text-section);
-    line-height: 1.3;
+    line-height: 1.35;
     font-weight: 600;
   }
   .heading-subsection {
@@ -1762,6 +1978,152 @@ input::placeholder {
     margin-bottom: calc(1rem * var(--tw-space-y-reverse));
   }
 }
+
+/* ── Neutral workspace canvas ─────────────────────────────────────────────
+   Align UI's strength is the quiet surface hierarchy: one soft canvas, a
+   barely raised navigation rail, white work surfaces, and hairline dividers.
+   Keep the existing blue active states, but remove the competing gradients so
+   the same background language carries across every modern dashboard role. */
+.dashboard-shell-workspace {
+  background: hsl(var(--workspace-canvas)) !important;
+}
+
+.dashboard-shell-workspace .dashboard-topbar-workspace {
+  background: hsl(var(--workspace-surface)) !important;
+  background-image: none !important;
+  border-bottom-color: hsl(var(--workspace-divider)) !important;
+  box-shadow: 0 1px 0 rgb(15 23 42 / 0.02) !important;
+  backdrop-filter: none !important;
+}
+
+.dashboard-shell-workspace .dashboard-main-workspace,
+.dashboard-role-admin .admin-page-frame {
+  background: hsl(var(--workspace-canvas)) !important;
+  background-image: none !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary,
+.dashboard-shell-workspace .dashboard-sidebar-secondary {
+  background: hsl(var(--workspace-menu)) !important;
+  background-image: none !important;
+  border-color: hsl(var(--workspace-divider)) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary > div:first-child,
+.dashboard-shell-workspace .dashboard-sidebar-secondary > div > div:first-child {
+  background: hsl(var(--workspace-surface)) !important;
+  background-image: none !important;
+  border-color: hsl(var(--workspace-divider)) !important;
+}
+
+.dashboard-shell-workspace .dashboard-main-workspace
+  :is(.workspace-hero-surface, .workspace-panel-surface, .workspace-glass-panel, .card-base) {
+  background: hsl(var(--workspace-surface)) !important;
+  background-image: none !important;
+  border-color: hsl(var(--workspace-divider) / 0.9) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.025) !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary .sidebar-item-active,
+.dashboard-shell-workspace .dashboard-sidebar-primary [aria-current="page"] {
+  position: relative;
+  background: hsl(var(--workspace-surface-muted)) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary [aria-current="page"]::before {
+  position: absolute;
+  inset-inline-start: -0.25rem;
+  top: 50%;
+  width: 0.1875rem;
+  height: 1.125rem;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  content: "";
+  transform: translateY(-50%);
+}
+
+/* ── AlignUI navigation rhythm ───────────────────────────────────────────
+   Keep the rail quiet and grouped: one small section label, compact text
+   rows, and a single soft active surface. The same hooks cover the primary
+   rail and the contextual submenu without changing route behavior. */
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-section-label],
+.dashboard-shell-workspace .dashboard-sidebar-secondary [data-sidebar-section-label] {
+  font-family: var(--font-manrope), Manrope, system-ui, sans-serif;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1rem;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground) / 0.72);
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item],
+.dashboard-shell-workspace .dashboard-sidebar-secondary [data-sidebar-subitem] {
+  min-height: 2.5rem;
+  border: 0 !important;
+  border-radius: 0.625rem !important;
+  box-shadow: none !important;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item] {
+  padding-block: 0.625rem;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-secondary [data-sidebar-subitem] {
+  padding-block: 0.5625rem;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item]:hover,
+.dashboard-shell-workspace .dashboard-sidebar-secondary [data-sidebar-subitem]:hover {
+  background: hsl(var(--workspace-surface-muted)) !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item][aria-current="page"],
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item][aria-expanded="true"],
+.dashboard-shell-workspace .dashboard-sidebar-secondary [data-sidebar-subitem][aria-current="page"] {
+  background: hsl(var(--workspace-surface-muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item][aria-current="page"] > svg,
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item][aria-expanded="true"] > svg,
+.dashboard-shell-workspace .dashboard-sidebar-secondary [data-sidebar-subitem][aria-current="page"] > svg {
+  color: hsl(var(--primary)) !important;
+}
+
+.dashboard-shell-workspace .dashboard-sidebar-primary [data-sidebar-item]:focus-visible,
+.dashboard-shell-workspace .dashboard-sidebar-secondary [data-sidebar-subitem]:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ── Shared toolbar control rhythm ────────────────────────────────────────
+   Search, filters, export and primary actions are one control row. Give every
+   actual control the same box height, including hand-authored toolbars that
+   opt into `data-table-toolbar`, so pages cannot drift through h-8/h-9/h-11
+   overrides. Keep the 44px touch target on phones and the compact 40px desktop
+   rhythm used by the rest of the workspace. */
+.dashboard-shell-workspace [data-table-toolbar] {
+  --toolbar-control-height: 2.25rem;
+}
+
+.dashboard-shell-workspace [data-table-toolbar]
+  :is(input, select, button, [role="combobox"], [data-slot="select-trigger"]) {
+  height: var(--toolbar-control-height) !important;
+  min-height: var(--toolbar-control-height) !important;
+}
+
+@media (max-width: 639px) {
+  .dashboard-shell-workspace [data-table-toolbar] {
+    --toolbar-control-height: 2.75rem;
+  }
+}
 }
 
 /* `.tap-target-box` is deliberately phone-only — see the block above. This is
@@ -1854,7 +2216,7 @@ table.workspace-list-table thead tr {
 }
 
 table.workspace-list-table thead th {
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground) / 0.78);
   font-size: 0.75rem;
   font-weight: 650;
   letter-spacing: 0.015em;
@@ -3712,12 +4074,13 @@ table.workspace-list-table tbody tr:focus-visible {
     }
   }
 
-  /* 2 — title: the same token employer's header reads, so the two can never
-     drift apart. 20px on phones, 24px from 768. */
+  /* 2 — title: match the top-bar greeting's compact 18px scale. The icon and
+     supporting line keep the hierarchy clear without making list headers feel
+     like oversized hero cards. */
   :is(.dashboard-role-admin, .dashboard-role-super-agent) .dashboard-main
     [data-dashboard-page-header][data-dashboard-page-header][data-dashboard-page-header] :is(h1, h2) {
-    font-size: var(--text-workspace-title) !important;
-    line-height: 1.25 !important;
+    font-size: 1.125rem !important;
+    line-height: 1.5 !important;
     font-weight: 600;
     letter-spacing: -0.02em;
   }
@@ -3846,5 +4209,162 @@ table.workspace-list-table tbody tr:focus-visible {
 @media (max-width: 1023px) {
   .dashboard-shell-admin .dashboard-main:has(.page-container.dashboard-overview-page) {
     padding-bottom: calc(3.125rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── Admin workspace frame ────────────────────────────────────────────────
+   Admin has several generations of pages: newer routes use PageHero and
+   TableToolbar, while CMS, taxonomy and settings still render their own
+   panels. The route layout supplies one frame so the same surface, spacing and
+   table treatment reaches both groups without duplicating markup in 67 pages.
+   This is scoped to the real admin role; agent and super-agent keep their own
+   workspace density. */
+@layer components {
+  .dashboard-role-admin .admin-page-frame {
+    --page-gutter: clamp(0.875rem, 2vw, 1.5rem);
+    --page-gap: clamp(0.875rem, 1.8vw, 1.25rem);
+    min-height: 100%;
+    background:
+      radial-gradient(circle at 8% 0%, hsl(var(--brand-cyan) / 0.055), transparent 26rem),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--surface-2) / 0.9));
+  }
+
+  .dashboard-role-admin .admin-page-frame .page-container {
+    max-width: 1440px;
+  }
+
+  .dashboard-role-admin .admin-page-frame
+    :is(.workspace-panel-surface, .card-base, [data-admin-panel]) {
+    border-color: hsl(var(--border) / 0.78);
+    box-shadow: 0 10px 28px -26px rgb(15 23 42 / 0.42);
+  }
+
+  .dashboard-role-admin .admin-page-frame
+    :is(.workspace-panel-surface, .card-base, [data-admin-panel])
+    :is(.panel-head, .panel-body, .panel-foot) {
+    border-color: hsl(var(--border) / 0.7);
+  }
+
+  /* Hand-authored admin lists now read like the shared shadcn table surface.
+     The selector only reaches tables inside a panel, leaving detail layouts
+     and form grids untouched. */
+  .dashboard-role-admin .admin-page-frame
+    :is(.workspace-panel-surface, .card-base, [data-admin-panel])
+    table thead tr {
+    background: hsl(var(--muted) / 0.42);
+  }
+
+  .dashboard-role-admin .admin-page-frame
+    :is(.workspace-panel-surface, .card-base, [data-admin-panel])
+    table thead th {
+    color: hsl(var(--foreground) / 0.8);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-role-admin .admin-page-frame
+    :is(.workspace-panel-surface, .card-base, [data-admin-panel])
+    table tbody tr {
+    border-color: hsl(var(--border) / 0.62);
+    transition: background-color 150ms ease;
+  }
+
+  .dashboard-role-admin .admin-page-frame
+    :is(.workspace-panel-surface, .card-base, [data-admin-panel])
+    table tbody tr:hover {
+    background: hsl(var(--primary) / 0.035);
+  }
+
+  .dashboard-role-admin .admin-page-frame
+    :is(input, textarea, [role="combobox"], select):focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.35);
+    outline-offset: 1px;
+  }
+
+  @media (max-width: 639px) {
+    .dashboard-role-admin .admin-page-frame .page-container {
+      padding-inline: 0.75rem;
+    }
+
+    .dashboard-role-admin .admin-page-frame
+      :is(.workspace-panel-surface, .card-base, [data-admin-panel]) {
+      border-radius: 1rem;
+    }
+  }
+}
+
+/* Page headers are information rails, not cards. Keep the shared component's
+   semantic surface class for compatibility, while presenting every heading and
+   its actions as a flat row against the page canvas. This final component-layer
+   rule also neutralizes the role-specific hero surface overrides above. */
+@layer components {
+  .dashboard-main :is(
+    [data-dashboard-page-header="component"][data-dashboard-page-header="component"],
+    .page-header-root
+  ) {
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding-inline: 0 !important;
+    padding-block: 0.75rem !important;
+  }
+
+  @media (min-width: 640px) {
+    .dashboard-main :is(
+      [data-dashboard-page-header="component"][data-dashboard-page-header="component"],
+      .page-header-root
+    ) {
+      padding-inline: 0 !important;
+      padding-block: 1rem !important;
+    }
+  }
+
+  /* Shared reference header: one quiet identity badge, a readable title, and
+     one supporting line. These hooks cover PageHeader, WorkspaceHeader and
+     DashboardPageHeader so list, detail and analytics routes share the same
+     hierarchy without page-specific markup or color drift. */
+  .dashboard-main :is(.page-header-identity, .workspace-header-identity, .dashboard-page-header-identity) {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .dashboard-main :is(.page-header-icon, .workspace-header-icon, .dashboard-page-header-icon) {
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid hsl(var(--border));
+    border-radius: 9999px;
+    background: hsl(var(--secondary) / 0.5);
+    color: hsl(var(--primary));
+  }
+
+  .dashboard-main :is(.page-header-title, .workspace-header-title, [data-dashboard-page-header="component"] h1, [data-dashboard-page-header="component"] h2) {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.025em !important;
+  }
+
+  .dashboard-main :is(.page-header-description, .workspace-header-context, [data-header-description]) {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  @media (max-width: 639px) {
+    .dashboard-main :is(.page-header-icon, .workspace-header-icon, .dashboard-page-header-icon) {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
   }
 }

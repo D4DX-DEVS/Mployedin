@@ -138,8 +138,8 @@ export default function AdminSystemHealthPage() {
               {getStatusIcon(overallStatus)}
               {overallStatus === "healthy" ? t("statusOperational") : overallStatus === "critical" ? t("statusCritical") : overallStatus === "warning" ? t("statusDegraded") : t("statusChecking")}
             </div>
-            <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading} className="max-sm:min-h-11">
-              <RefreshCcw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> {t("buttonRefresh")}
+            <Button variant="outline" size="iconDense" onClick={fetchHealth} disabled={loading} aria-label={t("buttonRefresh")} title={t("buttonRefresh")}>
+              <RefreshCcw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </>
         }

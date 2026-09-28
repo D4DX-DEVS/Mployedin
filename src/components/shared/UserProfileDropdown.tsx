@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import Image from "next/image";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   LogOut,
   KeyRound,
-  User as UserIcon,
   Shield,
   Clock,
   Settings,
@@ -17,6 +15,7 @@ import {
   AlertTriangle,
   Crown,
   UserRound,
+  Camera,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -68,11 +68,50 @@ export function UserProfileDropdown({
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const { data: session } = useSession();
-  const userImage = session?.user?.image;
+  const { data: session, update: updateSession } = useSession();
+  const [profileImage, setProfileImage] = useState<string | null>(companyLogo ?? session?.user?.image ?? null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const t = useTranslations("profileDropdown");
   const isAr = locale === "ar";
+
+  useEffect(() => {
+    setProfileImage(companyLogo ?? session?.user?.image ?? null);
+  }, [companyLogo, session?.user?.image]);
+
+  const avatarUpload = async (file: File) => {
+    setAvatarError(false);
+    if (!file.type.startsWith("image/") || file.size > 2 * 1024 * 1024) {
+      setAvatarError(true);
+      return;
+    }
+
+    const isEmployer = userRole === "employer";
+    const endpoint = isEmployer
+      ? "/api/employers/logo"
+      : userRole === "super_agent"
+        ? "/api/super-agent/avatar"
+        : userRole === "job_seeker"
+          ? "/api/job-seekers/avatar"
+          : "/api/agent/avatar";
+    const form = new FormData();
+    form.append(isEmployer ? "logo" : "avatar", file);
+    setAvatarUploading(true);
+    try {
+      const response = await fetch(endpoint, { method: "POST", body: form });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || typeof data.url !== "string") throw new Error("upload failed");
+      setProfileImage(data.url);
+      if (!isEmployer) await updateSession({ image: data.url });
+    } catch {
+      setAvatarError(true);
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  };
 
   const roleKey = ROLE_KEYS[userRole] ?? userRole;
 
@@ -128,15 +167,6 @@ export function UserProfileDropdown({
     }
   };
 
-  const initials = userName
-    ? userName
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
-    : "U";
-
   return (
     <>
       <DropdownMenu>
@@ -145,13 +175,7 @@ export function UserProfileDropdown({
             aria-label="Open user menu"
             className="flex h-11 w-11 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
           >
-            {companyLogo ? (
-              <Image src={companyLogo} alt="Company logo" width={36} height={36} className="w-full h-full object-contain" unoptimized />
-            ) : userImage ? (
-              <Image src={userImage} alt={userName} width={36} height={36} className="w-full h-full object-cover" unoptimized />
-            ) : (
-              initials
-            )}
+            <UserAvatar name={userName} email={userEmail} src={profileImage} className="h-11 w-11" />
           </button>
         </DropdownMenuTrigger>
 
@@ -162,15 +186,7 @@ export function UserProfileDropdown({
         >
           <DropdownMenuLabel className="font-normal">
             <div className="flex items-start gap-3 py-1 w-full text-left">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 overflow-hidden">
-                {companyLogo ? (
-                  <Image src={companyLogo} alt="Company logo" width={40} height={40} className="w-full h-full object-contain" unoptimized />
-                ) : userImage ? (
-                  <Image src={userImage} alt={userName} width={40} height={40} className="w-full h-full object-cover" unoptimized />
-                ) : (
-                  initials
-                )}
-              </div>
+              <UserAvatar name={userName} email={userEmail} src={profileImage} className="h-10 w-10" />
               <div className="flex flex-col gap-0.5 min-w-0">
                 <p className="text-sm font-semibold leading-none truncate">
                   {userName}
@@ -183,6 +199,29 @@ export function UserProfileDropdown({
           </DropdownMenuLabel>
 
           <DropdownMenuSeparator />
+
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void avatarUpload(file);
+            }}
+          />
+          <DropdownMenuItem
+            className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+            disabled={avatarUploading}
+            onSelect={(event) => {
+              event.preventDefault();
+              avatarInputRef.current?.click();
+            }}
+          >
+            <Camera className="h-4 w-4" />
+            <span className="font-medium text-sm">{avatarUploading ? t("uploadingPhoto") : profileImage ? t("changePhoto") : t("uploadPhoto")}</span>
+          </DropdownMenuItem>
+          {avatarError && <p className="px-2 py-1 text-xs text-destructive">{t("photoUploadError")}</p>}
 
           {/* Staff read these two rows constantly — which workspace am I in,
               when was this account last used. A job seeker has exactly one role
@@ -222,9 +261,9 @@ export function UserProfileDropdown({
             onClick={(e) => e.stopPropagation()}
           >
             <span className="truncate text-sm text-muted-foreground">{t("preferences")}</span>
-            {/* Force the switcher to its compact flag-only width — its sm: breakpoint
-                is viewport-based and would overflow this 288px menu. */}
-            <div className="flex shrink-0 items-center gap-2 [&>div:first-child]:!w-16 [&>div:first-child]:[&_span]:hidden">
+            {/* Keep both language labels visible in the account menu so the
+                control reads as a switch instead of two unexplained flags. */}
+            <div className="flex shrink-0 items-center">
               <LanguageSwitcher />
             </div>
           </div>

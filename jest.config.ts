@@ -10,6 +10,7 @@ const config: Config = {
   // Use jsdom by default for React component tests;
   // API tests override to "node" via docblock: @jest-environment node
   testEnvironment: "jsdom",
+  setupFiles: ["<rootDir>/src/test-utils/setup-before.ts"],
   transformIgnorePatterns: [
     "/node_modules/(?!(next-intl|use-intl|@formatjs|intl-messageformat|next-auth|@auth/core|oauth4webapi|@panva)/)",
   ],

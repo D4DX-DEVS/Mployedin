@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { MapPin, Phone, Mail, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 const COMPANY_ADDRESS = "MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR";
 const SUPPORT_EMAIL = "support@mployedin.com";
@@ -145,8 +146,12 @@ export default function ContactPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="contact-phone" className="text-sm font-medium mb-1.5 block">{t("phoneMobile")}</label>
-                      <Input id="contact-phone" type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+971 50 XXX XXXX" dir="ltr" />
+                      <PhoneInput
+                        id="contact-phone"
+                        label={t("phoneMobile")}
+                        value={form.phone}
+                        onChange={(phone) => setForm((prev) => ({ ...prev, phone }))}
+                      />
                     </div>
                     <div>
                       <label htmlFor="contact-subject" className="text-sm font-medium mb-1.5 block">{t("subjectField")}</label>

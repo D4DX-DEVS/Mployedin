@@ -1,41 +1,33 @@
 import { Suspense } from "react";
 import { auth } from "@/lib/auth/config";
-import { Activity } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { DASHBOARD_PERIODS, resolveDashboardPeriod } from "@/lib/admin/dashboard/period";
 import { canAccess } from "@/lib/permissions/matrix";
 import type { CustomPermissions, PermissionMode, Resource, UserRole } from "@/types/user";
 import { DashboardToolbar } from "./_components/dashboard-toolbar";
 import {
   FinanceSkeleton,
-  HealthSkeleton,
   PeopleSkeleton,
   QueueSkeleton,
-  RecentSkeleton,
   RecruitmentSkeleton,
   SnapshotSkeleton,
 } from "./_components/section-states";
 import {
   FinanceSection,
-  HealthSection,
   PeopleSection,
   QueueSection,
-  RecentSection,
   RecruitmentSection,
   SnapshotSection,
   type SectionContext,
 } from "./_components/sections";
+import { AdminDashboardTabs, type DashboardTab } from "./_components/admin-dashboard-tabs";
 
 /*
  * Admin dashboard, ordered by what an admin opens it for:
- *   1. what needs a decision or is going wrong (the action queue);
- *   2. the platform in five numbers;
- *   3. recruitment, then the people and network behind it;
- *   4. money;
- *   5. whether the systems underneath are healthy;
- *   6. what just happened.
+ *   1. the platform in five numbers and the recruitment pulse;
+ *   2. what needs a decision or is going wrong (the action queue);
+ *   3. recruitment, people and finance analysis behind the snapshot.
  *
  * Each metric has one home. Counts of things to act on live only in the
  * queue; the sections hold the context around them. Every figure is counted
@@ -50,7 +42,7 @@ export default async function AdminDashboardPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ period?: string | string[] }>;
+  searchParams: Promise<{ period?: string | string[]; tab?: string | string[] }>;
 }) {
   const session = await auth();
   const { locale } = await params;
@@ -61,8 +53,11 @@ export default async function AdminDashboardPage({
     redirect(`/${locale}/login`);
   }
 
-  const { period: periodParam } = await searchParams;
+  const { period: periodParam, tab: tabParam } = await searchParams;
   const period = resolveDashboardPeriod(Array.isArray(periodParam) ? periodParam[0] : periodParam);
+  const requestedTab = Array.isArray(tabParam) ? tabParam[0] : tabParam;
+  const activeTab: DashboardTab = requestedTab === "attention" || requestedTab === "analysis" ? requestedTab : "overview";
+  const tabHref = (tab: DashboardTab) => `/${locale}/admin?tab=${tab}&period=${period.key}`;
 
   // Custom permissions can narrow an admin; every section asks the same matrix
   // the APIs behind its destination pages enforce.
@@ -81,14 +76,6 @@ export default async function AdminDashboardPage({
   const context: SectionContext = { can, period, locale };
 
   const now = period.now;
-  const hour = now.getHours();
-  const adminName = user.name ?? t("hero.fallbackName");
-  const greeting =
-    hour < 12
-      ? t("hero.greetingMorning", { name: adminName })
-      : hour < 17
-        ? t("hero.greetingAfternoon", { name: adminName })
-        : t("hero.greetingEvening", { name: adminName });
   const updatedLabel = t("hero.updated", {
     time: now.toLocaleString(locale, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
   });
@@ -96,10 +83,15 @@ export default async function AdminDashboardPage({
 
   return (
     <div className="page-container dashboard-overview-page">
-      <DashboardPageHeader
-        icon={Activity}
-        title={greeting}
-        description={t("hero.description")}
+      <AdminDashboardTabs
+        activeTab={activeTab}
+        ariaLabel={t("tabs.ariaLabel")}
+        labels={{
+          overview: t("tabs.overview"),
+          attention: t("tabs.attention"),
+          analysis: t("tabs.analysis"),
+        }}
+        hrefFor={tabHref}
         actions={
           <DashboardToolbar
             updatedLabel={updatedLabel}
@@ -115,35 +107,36 @@ export default async function AdminDashboardPage({
             }}
           />
         }
-      />
-
-      <Suspense fallback={<QueueSkeleton label={loading(t("queue.title"))} />}>
-        <QueueSection {...context} />
-      </Suspense>
-
-      <Suspense key={`snapshot-${period.key}`} fallback={<SnapshotSkeleton label={loading(t("snapshot.title"))} />}>
-        <SnapshotSection {...context} />
-      </Suspense>
-
-      <Suspense key={`recruitment-${period.key}`} fallback={<RecruitmentSkeleton label={loading(t("recruitment.title"))} />}>
-        <RecruitmentSection {...context} />
-      </Suspense>
-
-      <Suspense key={`people-${period.key}`} fallback={<PeopleSkeleton label={loading(t("people.title"))} />}>
-        <PeopleSection {...context} />
-      </Suspense>
-
-      <Suspense key={`finance-${period.key}`} fallback={<FinanceSkeleton label={loading(t("finance.title"))} />}>
-        <FinanceSection {...context} />
-      </Suspense>
-
-      <Suspense fallback={<HealthSkeleton label={loading(t("health.title"))} />}>
-        <HealthSection {...context} />
-      </Suspense>
-
-      <Suspense fallback={<RecentSkeleton label={loading(t("recent.title"))} />}>
-        <RecentSection {...context} />
-      </Suspense>
+      >
+        {activeTab === "overview" && (
+          <div className="space-y-4">
+            <Suspense key={`snapshot-${period.key}`} fallback={<SnapshotSkeleton label={loading(t("snapshot.title"))} />}>
+              <SnapshotSection {...context} />
+            </Suspense>
+            <Suspense key={`recruitment-${period.key}`} fallback={<RecruitmentSkeleton label={loading(t("recruitment.title"))} />}>
+              <RecruitmentSection {...context} compact />
+            </Suspense>
+          </div>
+        )}
+        {activeTab === "attention" && (
+          <Suspense fallback={<QueueSkeleton label={loading(t("queue.title"))} />}>
+            <QueueSection {...context} />
+          </Suspense>
+        )}
+        {activeTab === "analysis" && (
+          <div className="space-y-4">
+            <Suspense key={`recruitment-${period.key}`} fallback={<RecruitmentSkeleton label={loading(t("recruitment.title"))} />}>
+              <RecruitmentSection {...context} />
+            </Suspense>
+            <Suspense key={`people-${period.key}`} fallback={<PeopleSkeleton label={loading(t("people.title"))} />}>
+              <PeopleSection {...context} />
+            </Suspense>
+            <Suspense key={`finance-${period.key}`} fallback={<FinanceSkeleton label={loading(t("finance.title"))} />}>
+              <FinanceSection {...context} />
+            </Suspense>
+          </div>
+        )}
+      </AdminDashboardTabs>
     </div>
   );
 }

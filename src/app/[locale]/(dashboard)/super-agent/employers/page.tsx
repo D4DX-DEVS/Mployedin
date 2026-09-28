@@ -154,10 +154,10 @@ export default function SuperAgentEmployersPage() {
   const onboardFields: CrudField[] = useMemo(() => [
     { name: "name", label: t("contactNameLabel"), type: "text", required: true },
     { name: "email", label: tc("email"), type: "text", required: true },
-    { name: "password", label: t("tempPasswordLabel"), type: "text", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
+    { name: "password", label: t("tempPasswordLabel"), type: "password", required: true, placeholder: tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH }), hint: tf("passwordHint", { min: PASSWORD_MIN_LENGTH }) },
     { name: "companyName", label: t("companyNameLabel"), type: "text", required: true },
     { name: "industry", label: t("industryLabel"), type: "text" },
-    { name: "phone", label: tc("phone"), type: "text" },
+    { name: "phone", label: tc("phone"), type: "phone" },
   ], [t, tc, tf]);
 
   const loadEmployers = useCallback(async () => {

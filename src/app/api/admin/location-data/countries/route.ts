@@ -21,6 +21,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
+  const requestedSort = searchParams.get("sortBy") ?? "sortOrder";
+  const sortDir = searchParams.get("sortOrder") === "desc" ? -1 : 1;
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10")));
   const skip = (page - 1) * limit;
@@ -39,8 +41,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     ];
   }
 
+  const sortBy = new Set(["name", "nameAr", "code", "sortOrder"]).has(requestedSort) ? requestedSort : "sortOrder";
   const [items, total] = await Promise.all([
-    Country.find(query).sort({ sortOrder: 1, name: 1 }).skip(skip).limit(limit).lean(),
+    Country.find(query).sort({ [sortBy]: sortDir, ...(sortBy === "sortOrder" ? { name: 1 } : {}) }).skip(skip).limit(limit).lean(),
     Country.countDocuments(query),
   ]);
 

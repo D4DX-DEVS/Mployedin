@@ -30,6 +30,7 @@ import { JobSeekerSectionNav, PROFILE_SECTION_PATHS } from "@/components/feature
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { getCsrfToken } from "@/lib/security/csrf-client";
+import { useConfirm } from "@/hooks/useConfirm";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,8 @@ export default function JobSeekerProfilePage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("jobSeekerExtra.profile");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -235,6 +238,12 @@ export default function JobSeekerProfilePage() {
   }, [session?.user?.image, updateSession]);
 
   const handleAvatarRemove = useCallback(async () => {
+    const ok = await confirm({
+      message: tConfirm("removeMessage"),
+      confirmLabel: tConfirm("remove"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setAvatarUploading(true);
     setAvatarError("");
     try {
@@ -251,7 +260,7 @@ export default function JobSeekerProfilePage() {
     } finally {
       setAvatarUploading(false);
     }
-  }, [updateSession]);
+  }, [confirm, tConfirm, updateSession]);
 
   // ── Save handlers ──────────────────────────────────────────────────────
 
@@ -451,6 +460,7 @@ export default function JobSeekerProfilePage() {
 
   return (
     <div className="page-container max-w-5xl">
+      {ConfirmDialogNode}
 
       {/* ── Page Header ────────────────────────────────────────────────── */}
       <PageHeader

@@ -158,7 +158,7 @@ function getLeadFields(t: ReturnType<typeof useTranslations>, stageConfig: Recor
     { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
     { name: "contactPerson", label: t("fieldContactPerson"), type: "text", required: true },
     { name: "contactEmail", label: t("fieldContactEmail"), type: "email" },
-    { name: "contactPhone", label: t("fieldContactPhone"), type: "text" },
+    { name: "contactPhone", label: t("fieldContactPhone"), type: "phone" },
     { name: "country", label: t("fieldCountry"), type: "text" },
     { name: "industry", label: t("fieldIndustry"), type: "text" },
     { name: "expectedRevenue", label: t("fieldExpectedRevenue"), type: "number" },

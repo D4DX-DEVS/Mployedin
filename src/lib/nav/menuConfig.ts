@@ -37,6 +37,14 @@ export interface NavItem {
   group?: string;
   groupAr?: string;
   /**
+   * Render this item's children as a contextual tab row in the workspace.
+   *
+   * Children stay available in the sidebar submenu by default. This opt-in is
+   * deliberately narrow so broad navigation sections such as Recruitment or
+   * People do not duplicate their menus in a second horizontal navigation.
+   */
+  contextTabs?: boolean;
+  /**
    * Which granted company function this row needs. Employer rows only.
    *
    * An employer who owns their company holds every flag, so their rail is
@@ -342,8 +350,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             // data edited a few times a year. They are one entry now; the
             // destination renders a tab bar across all eight, and every
             // original route still resolves.
-            title: "Platform Data",
-            titleAr: "بيانات المنصة",
+            title: "Master Data",
+            titleAr: "البيانات الرئيسية",
             href: p("/admin/job-attributes/industries"),
             icon: "SlidersHorizontal",
             description: "Industries, skills, subjects and locations",
@@ -359,7 +367,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             // pages. Clicking a tab therefore moved the highlighted sidebar
             // group, which read as being thrown to an unrelated page.
             //
-            // Same shape as Platform Data above: one entry here, the tab bar at
+            // Same shape as Master Data above: one entry here, the tab bar at
             // the destination, every original route still resolving.
             title: "Reports",
             titleAr: "التقارير",
@@ -369,12 +377,13 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "المنصة والذكاء الاصطناعي والأهداف والعمولات والاشتراكات",
           },
           {
-            title: "System",
-            titleAr: "النظام",
+            title: "Settings",
+            titleAr: "الإعدادات",
             href: p("/admin/settings"),
             icon: "Settings",
             description: "Settings & configuration",
             descriptionAr: "الإعدادات والتكوين",
+            contextTabs: true,
             children: [
               {
                 title: "Settings",
@@ -1133,6 +1142,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "Settings",
             description: "Company, billing and hiring setup",
             descriptionAr: "الشركة والفوترة وإعداد التوظيف",
+            contextTabs: true,
             children: [
               {
                 title: "Company Profile",

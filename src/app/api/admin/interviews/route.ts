@@ -3,6 +3,9 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Interview from "@/models/Interview";
 import Agent from "@/models/Agent";
+import Employer from "@/models/Employer";
+import JobSeeker from "@/models/JobSeeker";
+import User from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 import mongoose from "mongoose";
 
@@ -22,6 +25,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const superAgentId = url.searchParams.get("superAgentId") ?? "";
   const type = url.searchParams.get("type") ?? "";
   const dateRange = url.searchParams.get("dateRange") ?? "";
+  const requestedSort = url.searchParams.get("sortBy") ?? "scheduledAt";
+  const sortBy = ["scheduledAt", "status", "type"].includes(requestedSort) ? requestedSort : "scheduledAt";
+  const sortOrder = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filter: Record<string, any> = {};
@@ -70,13 +76,34 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
+  // Resolve text search to ids before pagination. Filtering populated names
+  // after skip/limit made matches on later pages invisible and reported a
+  // page-sized total instead of the real result count.
+  if (search.trim()) {
+    const rx = new RegExp(escapeRegex(search.trim()), "i");
+    const [users, employers] = await Promise.all([
+      User.find({ name: rx }).select("_id").lean(),
+      Employer.find({ companyName: rx }).select("_id").lean(),
+    ]);
+    const seekers = users.length
+      ? await JobSeeker.find({ userId: { $in: users.map((user) => user._id) } }).select("_id").lean()
+      : [];
+    const searchClauses: Record<string, unknown>[] = [];
+    if (seekers.length) searchClauses.push({ jobSeekerId: { $in: seekers.map((seeker) => seeker._id) } });
+    if (employers.length) searchClauses.push({ employerId: { $in: employers.map((employer) => employer._id) } });
+    if (!searchClauses.length) {
+      return NextResponse.json({ interviews: [], total: 0, statusCounts: {}, noShowCount: 0 });
+    }
+    filter.$and = [...(Array.isArray(filter.$and) ? filter.$and : []), { $or: searchClauses }];
+  }
+
   const [interviews, totalCount, statusAgg, noShowCount] = await Promise.all([
     Interview.find(filter)
       .populate({ path: "jobSeekerId", select: "userId", populate: { path: "userId", select: "name email" } })
       .populate("employerId", "companyName")
       .populate("jobId", "title")
       .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name" } })
-      .sort({ scheduledAt: -1 })
+      .sort({ [sortBy]: sortOrder, ...(sortBy !== "scheduledAt" ? { scheduledAt: -1 } : {}) })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),
@@ -103,16 +130,5 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     agent: iv.agentId?.userId ? { _id: iv.agentId._id, name: iv.agentId.userId.name } : null,
   }));
 
-  let total = totalCount;
-
-  if (search) {
-    const rx = new RegExp(escapeRegex(search), "i");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mapped = mapped.filter((iv: any) =>
-      rx.test(iv.jobSeeker?.name ?? "") || rx.test(iv.employer?.companyName ?? "")
-    );
-    total = mapped.length;
-  }
-
-  return NextResponse.json({ interviews: mapped, total, statusCounts, noShowCount });
+  return NextResponse.json({ interviews: mapped, total: totalCount, statusCounts, noShowCount });
 }, { resource: "interviews", action: "read" });

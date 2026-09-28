@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import type React from "react";
 import { Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
+import Script from "next/script";
 import { headers } from "next/headers";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 import { CspNonceProvider } from "@/components/shared/CspNonceProvider";
 import "@/app/globals.css";
-import { getStorageFallbackScript } from "@/lib/storage-fallback";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -79,19 +79,13 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
-        {/* React only exempts *async* scripts from the "script tag inside
-            component" client-render warning (it treats them as hoistable
-            resources). Browsers ignore `async` on inline scripts — they still
-            execute immediately during HTML parsing, so the no-FOUC theme init
-            behavior is unchanged. suppressHydrationWarning is required because
-            browsers blank out the nonce content attribute after load, which
-            otherwise produces a server/client hydration mismatch. */}
-        <script
+        {/* Load the storage fallback before hydration through Next's script
+            loader; a raw inline script here triggers a React client warning. */}
+        <Script
           id="storage-fallback-init"
-          async
-          suppressHydrationWarning
+          strategy="beforeInteractive"
+          src="/storage-fallback.js"
           nonce={nonce}
-          dangerouslySetInnerHTML={{ __html: getStorageFallbackScript() }}
         />
       </head>
       <body
@@ -102,7 +96,7 @@ export default async function RootLayout({
         {/* Publishes the nonce to runtime style injectors (react-style-singleton,
             which Radix uses for dialog/dropdown scroll-lock) before anything can
             open and inject a <style>. Setting window.__webpack_nonce__ from the
-            inline script above did not work: webpack rewrites that identifier to
+            the former inline script did not work: webpack rewrites that identifier to
             __webpack_require__.nc at build time, so the value never reached
             get-nonce and prod logged a style-src-elem violation on every menu. */}
         <CspNonceProvider nonce={nonce} />

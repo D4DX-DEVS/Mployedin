@@ -205,13 +205,14 @@ export default function ActivityHistoryPage() {
 
         <Button
           variant="outline"
-          className="ms-auto h-11 shrink-0 rounded-xl sm:h-10"
+          size="iconDense"
+          className="ms-auto shrink-0"
           onClick={handleRefresh}
           disabled={refreshing}
           aria-label={t("refresh")}
+          title={t("refresh")}
         >
-          <RefreshCw className={cn("h-3.5 w-3.5 sm:mr-1.5", refreshing && "animate-spin")} />
-          <span className="hidden sm:inline">{t("refresh")}</span>
+          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
         </Button>
       </div>
 

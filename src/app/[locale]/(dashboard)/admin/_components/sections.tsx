@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import { permittedQueueGroups } from "@/lib/admin/actionQueue";
 import { getAdminActionQueue } from "@/lib/admin/actionQueue.server";
+import { cachedDashboardSection } from "@/lib/admin/dashboard/cache";
 import { getFinanceOverview } from "@/lib/admin/dashboard/finance.server";
 import { getHealthChecks } from "@/lib/admin/dashboard/health.server";
 import { getPeopleOverview } from "@/lib/admin/dashboard/people.server";
@@ -18,7 +19,7 @@ import { AdminHealthPanel } from "./health-panel";
 import { AdminPeopleOverview } from "./people-overview";
 import { AdminPlatformSnapshot, type SnapshotKey } from "./platform-snapshot";
 import { AdminRecentActivity, type RecentActivityFilter, type RecentActivityRow } from "./recent-activity";
-import { AdminRecruitmentOverview } from "./recruitment-overview";
+import { AdminRecruitmentOverview, AdminRecruitmentPulse } from "./recruitment-overview";
 import { SectionError } from "./section-error";
 import type { DashboardTranslator } from "./types";
 
@@ -50,6 +51,8 @@ export async function QueueSection({ can, locale }: SectionContext) {
   const groups = permittedQueueGroups(can);
   if (groups.length === 0) return null;
   const t = await getTranslations("adminDashboard");
+  // Never cached: a stale "needs action" list hides work or sends the admin to
+  // records that no longer need them. The aggregates below tolerate 60s of age.
   const result = await load("queue", () => getAdminActionQueue(can));
   if (!result.ok) return <Failed id="admin-action-queue" title={t("queue.title")} t={t} />;
   return <AdminActionQueue items={result.data} groups={groups} locale={locale} t={t} />;
@@ -67,18 +70,23 @@ export async function SnapshotSection({ can, period, locale }: SectionContext) {
   const keys = (Object.keys(SNAPSHOT_RESOURCES) as SnapshotKey[]).filter((key) => can(SNAPSHOT_RESOURCES[key]));
   if (keys.length === 0) return null;
   const t = await getTranslations("adminDashboard");
-  const result = await load("snapshot", () => getPlatformSnapshot(period));
+  // Data is permission-independent here; `keys` only filters rendering.
+  const result = await load("snapshot", () => cachedDashboardSection("snapshot", period.key, () => getPlatformSnapshot(period)));
   if (!result.ok) return <Failed id="admin-snapshot" title={t("snapshot.title")} t={t} />;
   return <AdminPlatformSnapshot data={result.data} keys={keys} days={period.days} locale={locale} t={t} />;
 }
 
-export async function RecruitmentSection({ can, period, locale }: SectionContext) {
+export async function RecruitmentSection({ can, period, locale, compact = false }: SectionContext & { compact?: boolean }) {
   const show = { applications: can("applications"), jobs: can("jobs") };
   if (!show.applications && !show.jobs) return null;
   const t = await getTranslations("adminDashboard");
-  const result = await load("recruitment", () => getRecruitmentOverview(period));
+  const result = await load("recruitment", () => cachedDashboardSection("recruitment", period.key, () => getRecruitmentOverview(period)));
   if (!result.ok) return <Failed id="admin-recruitment" title={t("recruitment.title")} t={t} />;
-  return <AdminRecruitmentOverview data={result.data} show={show} days={period.days} locale={locale} t={t} />;
+  return compact ? (
+    <AdminRecruitmentPulse data={result.data} show={show} days={period.days} locale={locale} t={t} />
+  ) : (
+    <AdminRecruitmentOverview data={result.data} show={show} days={period.days} locale={locale} t={t} />
+  );
 }
 
 export async function PeopleSection({ can, period, locale }: SectionContext) {
@@ -86,7 +94,9 @@ export async function PeopleSection({ can, period, locale }: SectionContext) {
   const showRoles = can("users");
   if (!showRoles && !access.employers && !access.agents) return null;
   const t = await getTranslations("adminDashboard");
-  const result = await load("people", () => getPeopleOverview(period, access));
+  // The employer/agent panels differ by permission, so the flags are in the key.
+  const key = `${period.key}:employers-${access.employers ? 1 : 0}:agents-${access.agents ? 1 : 0}`;
+  const result = await load("people", () => cachedDashboardSection("people", key, () => getPeopleOverview(period, access)));
   if (!result.ok) return <Failed id="admin-people" title={t("people.title")} t={t} />;
   return <AdminPeopleOverview data={result.data} showRoles={showRoles} days={period.days} locale={locale} t={t} />;
 }
@@ -96,7 +106,8 @@ export async function FinanceSection({ can, period, locale }: SectionContext) {
   const commissions = can("commissions");
   if (!show.invoices && !show.subscriptions && !commissions) return null;
   const t = await getTranslations("adminDashboard");
-  const result = await load("finance", () => getFinanceOverview(period, { commissions }));
+  const key = `${period.key}:commissions-${commissions ? 1 : 0}`;
+  const result = await load("finance", () => cachedDashboardSection("finance", key, () => getFinanceOverview(period, { commissions })));
   if (!result.ok) return <Failed id="admin-finance" title={t("finance.title")} t={t} />;
   return <AdminFinanceOverview data={result.data} show={show} days={period.days} locale={locale} t={t} />;
 }
@@ -105,7 +116,7 @@ export async function FinanceSection({ can, period, locale }: SectionContext) {
 export async function HealthSection({ can, period, locale }: SectionContext) {
   if (!can("audit_logs")) return null;
   const t = await getTranslations("adminDashboard");
-  const result = await load("health", () => getHealthChecks(period));
+  const result = await load("health", () => cachedDashboardSection("health", period.key, () => getHealthChecks(period)));
   if (!result.ok) return <Failed id="admin-health" title={t("health.title")} t={t} />;
   return <AdminHealthPanel checks={result.data} locale={locale} t={t} />;
 }
@@ -232,7 +243,8 @@ export async function RecentSection({ can, period, locale }: SectionContext) {
   const categories = (Object.keys(CATEGORY_RESOURCES) as RecentEventCategory[]).filter((category) => can(CATEGORY_RESOURCES[category]));
   if (categories.length === 0) return null;
   const t = await getTranslations("adminDashboard");
-  const result = await load("recent", () => getRecentEvents(new Set(categories)));
+  // Only readable categories are ever queried, so they are the cache key.
+  const result = await load("recent", () => cachedDashboardSection("recent", categories.join(","), () => getRecentEvents(new Set(categories))));
   if (!result.ok) return <Failed id="admin-recent" title={t("recent.title")} t={t} />;
   const filters: RecentActivityFilter[] = ["all", ...categories];
 

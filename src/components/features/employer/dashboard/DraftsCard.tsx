@@ -94,13 +94,13 @@ export function DraftsCard({ locale, onCountChange }: DraftsCardProps) {
         bodyClassName="flex flex-1 flex-col"
         action={
           nonEmpty.length > 1 ? (
-            <TabsList aria-label={t("tabsLabel")} className="h-9 gap-0.5">
+            <TabsList aria-label={t("tabsLabel")} className="gap-0.5">
               {tabs
                 .filter((tab) => counts[tab.kind] > 0)
                 .map((tab) => {
                   const Icon = tab.icon;
                   return (
-                    <TabsTrigger key={tab.kind} value={tab.kind} className="h-7 gap-1.5 px-2 text-xs">
+                    <TabsTrigger key={tab.kind} value={tab.kind} className="gap-1.5">
                       <Icon className={`h-3.5 w-3.5 ${tab.accent}`} aria-hidden="true" />
                       {tab.label}
                       <span className="rounded-full bg-secondary px-1.5 text-[11px] font-semibold tabular-nums text-foreground">

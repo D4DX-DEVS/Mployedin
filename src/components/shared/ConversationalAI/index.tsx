@@ -14,6 +14,7 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useTranslations } from "next-intl";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Message {
   role: "user" | "assistant";
@@ -167,6 +168,8 @@ export function ConversationalAI({
   const locale = useLocale();
   const isRtl = locale === "ar";
   const t = useTranslations("ai");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -348,7 +351,14 @@ export function ConversationalAI({
 
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await csrfFetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
+    const ok = await confirm({
+      message: tConfirm("deleteMessage"),
+      confirmLabel: tConfirm("delete"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    const response = await csrfFetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
+    if (!response.ok) return;
     setThreads((prev) => prev.filter((t) => t._id !== id));
     if (threadId === id) newConversation();
   };
@@ -487,6 +497,7 @@ export function ConversationalAI({
 
   return createPortal(
     <>
+      {ConfirmDialogNode}
       {!open && (
         <button
           onClick={() => setOpen(true)}

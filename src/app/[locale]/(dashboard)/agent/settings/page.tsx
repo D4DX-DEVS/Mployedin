@@ -28,6 +28,8 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 import { AssignedRegionFields, type SupervisingSuperAgent } from "@/components/features/settings/AssignedRegionFields";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
+import { useConfirm } from "@/hooks/useConfirm";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -153,6 +155,8 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function ProfileTab() {
   const { data: session, update: updateSession } = useSession();
   const t = useTranslations("agentSettings");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const locale = useLocale();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -254,6 +258,12 @@ function ProfileTab() {
   }, [t, updateSession]);
 
   const handleRemove = useCallback(async () => {
+    const ok = await confirm({
+      message: tConfirm("removeMessage"),
+      confirmLabel: tConfirm("remove"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     setUploading(true);
     setError("");
     try {
@@ -271,7 +281,7 @@ function ProfileTab() {
     } finally {
       setUploading(false);
     }
-  }, [t, updateSession]);
+  }, [confirm, t, tConfirm, updateSession]);
 
   const handleProfileSave = async () => {
     if (!name.trim()) return;
@@ -295,6 +305,7 @@ function ProfileTab() {
 
   return (
     <>
+      {ConfirmDialogNode}
       {/* Role Badge Hero with Avatar */}
       <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-primary/[0.06] via-primary/[0.03] to-transparent">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/[0.04] rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -398,16 +409,12 @@ function ProfileTab() {
                   </p>
                 </div>
                 <div className="field">
-                  <Label htmlFor="agent-phone" className="text-sm font-medium text-foreground">
-                    {t("profile.phone")}
-                  </Label>
-                  <Input
+                  <PhoneInput
                     id="agent-phone"
-                    type="tel"
+                    label={t("profile.phone")}
                     placeholder={t("profile.phonePlaceholder")}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    maxLength={20}
+                    onChange={setPhone}
                   />
                   <p className="text-[11px] text-muted-foreground">
                     {t("profile.phoneHelp")}
@@ -1226,7 +1233,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
             </div>
             <div className="field">
               <Label htmlFor="inv-phone" className="text-sm font-medium">{t("invoice.billingPhone")}</Label>
-              <Input id="inv-phone" type="tel" placeholder={t("invoice.billingPhonePlaceholder")} value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
+              <PhoneInput id="inv-phone" label={t("invoice.billingPhone")} placeholder={t("invoice.billingPhonePlaceholder")} value={form.billingPhone} onChange={(value) => update("billingPhone", value)} />
             </div>
           </div>
           <div className="field">

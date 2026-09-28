@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { User, MapPin, CheckCircle, ChevronRight, ChevronLeft, Loader2, Briefcase, Shield } from "lucide-react";
 import { FormInput, FormSelect } from "@/components/shared/AppForm";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 
 interface Step1Data {
   fullName: string;
@@ -208,7 +209,7 @@ export default function AgentRegisterPage() {
               <h2 className="heading-section font-semibold">{t("personalInformation")}</h2>
               <FormInput label={t("fullNameLabel")} value={step1.fullName} onChange={(e) => updateStep1("fullName", e.target.value)} placeholder={t("fullNamePlaceholder")} />
               <FormInput label={t("emailAddressLabel")} type="email" value={step1.email} onChange={(e) => updateStep1("email", e.target.value)} placeholder="agent@example.com" />
-              <FormInput label={t("phoneNumberLabel")} value={step1.phone} onChange={(e) => updateStep1("phone", e.target.value)} placeholder="+971 50 000 0000" />
+              <PhoneInput label={t("phoneNumberLabel")} value={step1.phone} onChange={(phone) => updateStep1("phone", phone)} placeholder="+971 50 000 0000" />
               <FormInput label={t("passwordLabel")} type="password" value={step1.password} onChange={(e) => updateStep1("password", e.target.value)} placeholder={t("passwordPlaceholder")} />
               <FormInput label={t("confirmPasswordLabel")} type="password" value={step1.confirmPassword} onChange={(e) => updateStep1("confirmPassword", e.target.value)} placeholder={t("confirmPasswordPlaceholder")} />
             </div>

@@ -538,10 +538,11 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => setEditItem(p)}
-                          className="text-status-applied hover:bg-blue-50"
+                          className="h-8 gap-1 px-2 text-xs text-status-applied hover:bg-blue-50"
                           title={t("edit")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
+                          {t("edit")}
                         </Button>
                       )}
                       {can("placements", "delete") && (
@@ -549,10 +550,11 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleDelete(p._id)}
-                          className="text-status-rejected hover:bg-status-rejected-bg"
+                          className="h-8 gap-1 px-2 text-xs text-status-rejected hover:bg-status-rejected-bg"
                           title={t("delete")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
+                          {t("delete")}
                         </Button>
                       )}
                     </div>

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Building2, FileCheck, UserCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { normalizeWebsiteUrl } from "@/lib/validators/website";
 
@@ -642,9 +643,9 @@ export default function EmployerRegisterPage() {
                   setStep3(p => ({ ...p, contactEmail: e.target.value }));
                 }} />
             </div>
-            <FormInput label={t("phone")} value={step3.contactPhone}
+            <PhoneInput label={t("phone")} value={step3.contactPhone}
               placeholder={t("phonePlaceholder")}
-              onChange={(e) => setStep3(p => ({ ...p, contactPhone: e.target.value }))} />
+              onChange={(phone) => setStep3(p => ({ ...p, contactPhone: phone }))} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div data-registration-field="password">
                 <FormInput label={t("password")} required type="password" value={step3.password}

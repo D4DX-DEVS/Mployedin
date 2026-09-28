@@ -10,5 +10,5 @@ export default async function AdminLayout({
 }) {
   const { locale } = await params;
   await requireRole(locale, ["admin"]);
-  return children;
+  return <div className="admin-page-frame">{children}</div>;
 }

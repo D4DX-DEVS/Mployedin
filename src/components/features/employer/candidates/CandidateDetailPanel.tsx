@@ -472,7 +472,7 @@ export function CandidateDetailPanel({
 
         {/* Tabs */}
         <section className="rounded-xl border border-border bg-card">
-          <div role="tablist" className="flex items-center gap-1 overflow-x-auto border-b border-border px-2">
+          <div role="tablist" className="reference-tablist">
             <TabButton
               id="tab-profile"
               ariaControls="panel-profile"
@@ -697,8 +697,8 @@ function TabButton({
       onClick={onClick}
       onKeyDown={onKeyDown}
       className={cn(
-        "whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
-        active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+        "reference-tab",
+        active ? "border-primary bg-secondary/40 text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
       {children}

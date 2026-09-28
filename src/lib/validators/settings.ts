@@ -27,7 +27,7 @@ export const invoiceDefaultsUpdateSchema = z.object({
   billingCompanyName: z.string().max(200).trim().optional(),
   billingContactPerson: z.string().max(200).trim().optional(),
   billingEmail: z.string().max(200).email().optional().or(z.literal("")),
-  billingPhone: z.string().max(50).trim().optional(),
+  billingPhone: commonSchemas.phone.optional().or(z.literal("")),
   billingAddress: z.string().max(500).trim().optional(),
   billingCountry: z.string().max(5).trim().optional(),
   billingTaxId: z.string().max(50).trim().optional(),
@@ -36,13 +36,13 @@ export const invoiceDefaultsUpdateSchema = z.object({
 /** PATCH /api/super-agent/profile */
 export const superAgentProfileUpdateSchema = z.object({
   name: z.string().min(1).max(80).trim().optional(),
-  phone: z.string().max(20).trim().optional(),
+  phone: commonSchemas.phone.optional().or(z.literal("")),
 });
 
 /** PATCH /api/agent/profile */
 export const agentProfileUpdateSchema = z.object({
   name: z.string().min(1).max(80).trim().optional(),
-  phone: z.string().max(20).trim().optional(),
+  phone: commonSchemas.phone.optional().or(z.literal("")),
 });
 
 const notificationCategorySchema = z.object({

@@ -249,6 +249,42 @@ describe("EmployerApplicationsPage", () => {
     expect(screen.getByText("Strengths")).toBeInTheDocument();
   });
 
+  it("turns a sentence typed in the search box into filters with Ask AI, and Undo restores it", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        filters: { search: "frontend", status: "shortlisted", scoreBand: "excellent", skills: ["React"], dateFrom: "2026-09-01" },
+        degraded: false,
+      }),
+    } as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const user = userEvent.setup();
+    render(<ApplicationsWorkspace />);
+
+    const box = screen.getByRole("textbox", { name: /search/i });
+    await user.type(box, "shortlisted react frontend people scoring high");
+    await user.click(screen.getByRole("button", { name: /ask ai/i }));
+
+    await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "shortlisted", scoreMin: 80, skills: ["React"], search: "frontend" }),
+    ));
+    expect(fetchMock).toHaveBeenCalledWith("/api/ai/application-search-filters", expect.objectContaining({ method: "POST" }));
+    expect(box).toHaveValue("frontend");
+    // Dates have no control on this page, so they are not claimed as applied.
+    const line = screen.getByRole("status");
+    expect(line).toHaveTextContent("AI applied");
+    expect(line).toHaveTextContent("React");
+    expect(line).not.toHaveTextContent("2026");
+
+    await user.click(screen.getByRole("button", { name: /undo/i }));
+
+    expect(box).toHaveValue("shortlisted react frontend people scoring high");
+    await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: undefined, scoreMin: undefined, skills: undefined }),
+    ));
+  });
+
   it("keeps the Needs review deep link in the URL after the filter reset (A26)", async () => {
     const user = userEvent.setup();
     render(<ApplicationsWorkspace jobId="job-1" embedded />);

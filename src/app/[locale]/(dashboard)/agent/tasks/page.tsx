@@ -19,6 +19,7 @@ import {
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { useConfirm } from "@/hooks/useConfirm";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -74,6 +75,8 @@ const getPriorityOptions = (t: any) => [
 export default function AgentTasksPage() {
   const t = useTranslations("agentTasks");
   const tc = useTranslations("common");
+  const tConfirm = useTranslations("confirm");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0, overdue: 0 });
@@ -171,6 +174,12 @@ export default function AgentTasksPage() {
   };
 
   const deleteTask = async (id: string) => {
+    const ok = await confirm({
+      message: tConfirm("deleteMessage"),
+      confirmLabel: tConfirm("delete"),
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       const res = await csrfFetch(`/api/agent/tasks/${id}`, { method: "DELETE" });
       if (res.ok) {
@@ -186,6 +195,8 @@ export default function AgentTasksPage() {
   };
 
   return (
+    <>
+    {ConfirmDialogNode}
     <div className="page-container">
       {/* Hero */}
       <WorkspaceHeader
@@ -356,5 +367,6 @@ export default function AgentTasksPage() {
         />
       )}
     </div>
+    </>
   );
 }

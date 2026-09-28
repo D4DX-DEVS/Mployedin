@@ -50,6 +50,9 @@ export const MEMBER_ROUTE_FUNCTIONS: ReadonlyArray<readonly [string, PermissionF
   ["/api/applications", "canReviewApplicants"],
   ["/api/application-forms", "canReviewApplicants"],
   ["/api/application-feedback", "canReviewApplicants"],
+  // Ask AI in the applications search box: it only turns a sentence into the
+  // list's own filters, so whoever may read the list may use it.
+  ["/api/ai/application-search-filters", "canReviewApplicants"],
   ["/api/interviews", "canScheduleInterviews"],
   ["/api/calendar", "canScheduleInterviews"],
   ["/api/offers", "canSendOffers"],

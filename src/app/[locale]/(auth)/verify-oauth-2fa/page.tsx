@@ -162,7 +162,7 @@ export default function VerifyOAuth2faPage() {
             onChange={(e) => setCode(e.target.value)}
             autoFocus
             required
-            className="h-12 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            className="h-12 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
         </div>
 

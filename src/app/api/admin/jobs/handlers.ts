@@ -30,6 +30,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const employmentType = searchParams.get("employmentType") ?? "";
   const location = searchParams.get("location") ?? "";
   const skills = searchParams.get("skills") ?? "";
+  const sortBy = searchParams.get("sortBy") ?? "newest";
   const expiringDays = JOB_EXPIRING_WINDOWS[searchParams.get("expiring") ?? ""];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,16 +152,33 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  const [rawJobs, total] = await Promise.all([
-    Job.find(query)
-      .sort({ createdAt: -1 })
+  const sortSpec = sortBy === "oldest" ? { createdAt: 1 as const } : { createdAt: -1 as const };
+  const total = await Job.countDocuments(query);
+  let rawJobs;
+  if (sortBy === "applications_desc" || sortBy === "applications_asc") {
+    const orderedIds = await Job.aggregate([
+      { $match: query },
+      { $addFields: { applicantCount: { $size: { $ifNull: ["$applicantIds", []] } } } },
+      { $sort: { applicantCount: sortBy === "applications_desc" ? -1 : 1, createdAt: -1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+      { $project: { _id: 1 } },
+    ]);
+    const idOrder = orderedIds.map((job) => String(job._id));
+    const loaded = await Job.find({ _id: { $in: orderedIds.map((job) => job._id) } })
+      .populate("employerId", "companyName country industry")
+      .populate({ path: "agentId", select: "userId superAgentId commissionRate", populate: [{ path: "userId", select: "name email" }, { path: "superAgentId", select: "userId overrideRate", populate: { path: "userId", select: "name" } }] })
+      .lean();
+    rawJobs = loaded.sort((a, b) => idOrder.indexOf(String(a._id)) - idOrder.indexOf(String(b._id)));
+  } else {
+    rawJobs = await Job.find(query)
+      .sort(sortSpec)
       .skip((page - 1) * limit)
       .limit(limit)
       .populate("employerId", "companyName country industry")
       .populate({ path: "agentId", select: "userId superAgentId commissionRate", populate: [{ path: "userId", select: "name email" }, { path: "superAgentId", select: "userId overrideRate", populate: { path: "userId", select: "name" } }] })
-      .lean(),
-    Job.countDocuments(query),
-  ]);
+      .lean();
+  }
 
   // Platform-wide status + applicant counts for the stat tiles, independent of the
   // current status tab and of pagination (single source of truth — fixes M-1).

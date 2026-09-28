@@ -14,6 +14,9 @@ export interface NotificationInstantEvent {
     sendEmail?: boolean;
     sendWhatsApp?: boolean;
     metadata?: Record<string, unknown>;
+    titleKey?: string;
+    bodyKey?: string;
+    params?: Record<string, unknown>;
   };
 }
 

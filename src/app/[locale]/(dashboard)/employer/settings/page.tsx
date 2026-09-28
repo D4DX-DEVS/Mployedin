@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  Save, Building2, Globe, Phone, Mail, Shield, FileText,
+  Save, Building2, Globe, Mail, Shield, FileText,
   Briefcase, Bell, AlertTriangle, Linkedin, Twitter, Facebook, Instagram,
   MapPin, Calendar, Users, Eye, EyeOff, Link2, CheckCircle2, Clock, Sparkles,
   ChevronRight, Camera, X, Upload, Trash2, Send,
@@ -24,6 +24,7 @@ import { LogoUpload } from "@/components/features/employer/LogoUpload";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { useConfirm } from "@/hooks/useConfirm";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
@@ -770,19 +771,14 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div data-field="phone" className="transition-all duration-300">
-                        <FieldLabel required htmlFor="phone">{t("phone")}</FieldLabel>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-                          <Input
-                            id="phone"
-                            type="tel"
-                            className="pl-10"
-                            value={form.phone}
-                            onChange={(e) => setField("phone", e.target.value)}
-                            placeholder={t("phonePlaceholder")}
-                            required
-                          />
-                        </div>
+                        <PhoneInput
+                          id="phone"
+                          label={t("phone")}
+                          value={form.phone}
+                          onChange={(value) => setField("phone", value)}
+                          placeholder={t("phonePlaceholder")}
+                          required
+                        />
                       </div>
                     </div>
 

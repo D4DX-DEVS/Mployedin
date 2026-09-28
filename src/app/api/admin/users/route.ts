@@ -121,6 +121,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const role = searchParams.get("role") ?? "";
   const search = searchParams.get("search") ?? "";
   const isActive = searchParams.get("isActive") ?? "";
+  const requestedSort = searchParams.get("sortBy") ?? "createdAt";
+  const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+  const allowedSortFields = new Set(["name", "email", "role", "createdAt", "lastLogin"]);
+  const sortBy = allowedSortFields.has(requestedSort) ? requestedSort : "createdAt";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -141,7 +145,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const [users, total] = await Promise.all([
     User.find(query)
       .select("-passwordHash")
-      .sort({ createdAt: -1 })
+      .sort({ [sortBy]: sortOrder, _id: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),

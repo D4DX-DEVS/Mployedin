@@ -370,9 +370,10 @@ export default function CmsPage({
                             }
                             title={t("edit")}
                             aria-label={t("edit")}
-                            className="h-8 w-8"
+                            className="h-8 gap-1 px-2 text-xs"
                           >
                             <Pencil className="h-3.5 w-3.5" />
+                            <span>{t("edit")}</span>
                           </Button>
                         )}
                         {can(resource as "cms", "delete") && (
@@ -382,9 +383,10 @@ export default function CmsPage({
                             onClick={() => handleDelete(String(item._id))}
                             title={t("delete")}
                             aria-label={t("delete")}
-                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            className="h-8 gap-1 px-2 text-xs text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
+                            <span>{t("delete")}</span>
                           </Button>
                         )}
                       </div>

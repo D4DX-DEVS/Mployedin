@@ -14,6 +14,7 @@ import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Ch
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
@@ -515,20 +516,13 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
               />
             </div>
 
-            <div className="field">
-              <Label htmlFor="confirm-phone" className="text-xs font-medium text-foreground">
-                {t("phone")}
-              </Label>
-              <Input
-                id="confirm-phone"
-                type="tel"
-                value={confirmPhone}
-                onChange={(e) => setConfirmPhone(e.target.value)}
-                placeholder={t("enterPhone")}
-                className="rounded-xl"
-                maxLength={25}
-              />
-            </div>
+            <PhoneInput
+              id="confirm-phone"
+              label={t("phone")}
+              value={confirmPhone}
+              onChange={setConfirmPhone}
+              placeholder={t("enterPhone")}
+            />
 
             <div className="field">
               <Label htmlFor="confirm-headline" className="text-xs font-medium text-foreground">

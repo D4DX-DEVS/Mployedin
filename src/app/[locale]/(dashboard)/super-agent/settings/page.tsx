@@ -35,6 +35,7 @@ import {
 } from "@/lib/currency";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 import { AssignedRegionFields } from "@/components/features/settings/AssignedRegionFields";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
@@ -455,16 +456,12 @@ function ProfileTab() {
                   </p>
                 </div>
                 <div className="field">
-                  <Label htmlFor="sa-phone" className="text-sm font-medium text-foreground">
-                    {tc("phone")}
-                  </Label>
-                  <Input
+                  <PhoneInput
                     id="sa-phone"
-                    type="tel"
+                    label={tc("phone")}
                     placeholder={t("phonePlaceholder")}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    maxLength={20}
+                    onChange={setPhone}
                   />
                   <p className="text-[11px] text-muted-foreground">
                     {t("phoneDesc")}
@@ -1315,7 +1312,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
             </div>
             <div className="field">
               <Label htmlFor="inv-phone" className="text-sm font-medium">{t("billingPhone")}</Label>
-              <Input id="inv-phone" type="tel" placeholder={t("billingPhonePlaceholder")} value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
+              <PhoneInput id="inv-phone" label={t("billingPhone")} placeholder={t("billingPhonePlaceholder")} value={form.billingPhone} onChange={(value) => update("billingPhone", value)} />
             </div>
           </div>
           <div className="field">

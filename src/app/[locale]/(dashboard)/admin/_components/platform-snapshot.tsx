@@ -10,13 +10,15 @@ import type { DashboardTranslator } from "./types";
 export type SnapshotKey = keyof PlatformSnapshot;
 
 /** `scope` says what the big number counts; `added` names what the period figure counts. */
-const CARDS: Record<SnapshotKey, { icon: LucideIcon; tone: string; path: string; scope: "allTime" | "now" }> = {
-  users: { icon: Users, tone: "bg-sky-100 text-sky-800", path: "/admin/users", scope: "allTime" },
-  activeJobs: { icon: Briefcase, tone: "bg-emerald-100 text-emerald-800", path: "/admin/jobs?status=active", scope: "now" },
-  applications: { icon: FileText, tone: "bg-violet-100 text-violet-800", path: "/admin/applications", scope: "allTime" },
-  interviews: { icon: CalendarClock, tone: "bg-amber-100 text-amber-900", path: "/admin/interviews", scope: "allTime" },
-  placements: { icon: BadgeCheck, tone: "bg-emerald-100 text-emerald-800", path: "/admin/placements", scope: "allTime" },
+const CARDS: Record<SnapshotKey, { icon: LucideIcon; path: string; scope: "allTime" | "now" }> = {
+  users: { icon: Users, path: "/admin/users", scope: "allTime" },
+  activeJobs: { icon: Briefcase, path: "/admin/jobs?status=active", scope: "now" },
+  applications: { icon: FileText, path: "/admin/applications", scope: "allTime" },
+  interviews: { icon: CalendarClock, path: "/admin/interviews", scope: "allTime" },
+  placements: { icon: BadgeCheck, path: "/admin/placements", scope: "allTime" },
 };
+
+const ICON_TONE = "bg-primary/10 text-primary";
 
 /**
  * Columns per breakpoint so no row is left with a hole: one row per metric on
@@ -39,23 +41,29 @@ function trend(window: WindowedCount) {
   const signed = change.kind === "percent" || change.kind === "count" ? change.value : 0;
   const direction = change.kind === "new" ? "up" : signed > 0 ? "up" : signed < 0 ? "down" : "flat";
   const Icon = direction === "up" ? ArrowUpRight : direction === "down" ? ArrowDownRight : Minus;
-  const tone = direction === "up" ? "text-emerald-800" : direction === "down" ? "text-rose-800" : "text-muted-foreground";
+  const tone = direction === "up" ? "text-emerald-700" : direction === "down" ? "text-primary" : "text-muted-foreground";
   return { change, value: Math.abs(signed), direction, Icon, tone };
 }
 
-/** Phone row suffix: "Up 12%" or "+41", only when there is a previous period to compare with. */
-function ShortChange({ window, t }: { window: WindowedCount; t: DashboardTranslator }) {
+/** Compact phone suffix; the full comparison remains available to assistive tech. */
+function ShortChange({ window, days, t }: { window: WindowedCount; days: number; t: DashboardTranslator }) {
   const { change, value, direction, Icon, tone } = trend(window);
-  if (change.kind === "none" || change.kind === "new") return null;
+  const label =
+    change.kind === "none"
+      ? t("snapshot.changeNone")
+      : change.kind === "new"
+        ? t("snapshot.changeNew", { days })
+        : t(change.kind === "percent" ? "snapshot.changePercent" : "snapshot.changeCount", { value, direction, days });
+  const compact = change.kind === "none" || change.kind === "new" ? "—" : `${change.kind === "count" && direction === "down" ? "−" : change.kind === "count" && direction === "up" ? "+" : ""}${value}${change.kind === "percent" ? "%" : ""}`;
   return (
-    <span className={`inline-flex shrink-0 items-center gap-0.5 font-semibold ${tone}`}>
+    <span className={`inline-flex shrink-0 items-center gap-0.5 font-semibold ${tone}`} aria-label={label} title={label}>
       <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
-      {t(change.kind === "percent" ? "snapshot.changeShort" : "snapshot.changeShortCount", { value, direction })}
+      <span aria-hidden="true">{compact}</span>
     </span>
   );
 }
 
-/** "Up 12% vs previous 30 days" as a tinted pill — or "41 more than…" over a tiny baseline — with the direction as an icon and in words. */
+/** A compact delta pill; the full comparison is retained as a label and tooltip. */
 function Change({ window, days, t }: { window: WindowedCount; days: number; t: DashboardTranslator }) {
   const { change, value, direction, Icon, tone } = trend(window);
   const text =
@@ -64,20 +72,14 @@ function Change({ window, days, t }: { window: WindowedCount; days: number; t: D
       : change.kind === "new"
         ? t("snapshot.changeNew", { days })
         : t(change.kind === "percent" ? "snapshot.changePercent" : "snapshot.changeCount", { value, direction, days });
-  // Filled pill like the reference KPI cards; plain text looked flat next to the colored tiles.
-  // No sparkline: only two windows (current + previous) are queried, so a series would be fabricated.
+  const compact = change.kind === "none" || change.kind === "new" ? "—" : `${change.kind === "count" && direction === "down" ? "−" : change.kind === "count" && direction === "up" ? "+" : ""}${value}${change.kind === "percent" ? "%" : ""}`;
   const pill =
-    change.kind === "none" || change.kind === "new"
-      ? "bg-secondary text-muted-foreground"
-      : direction === "up"
-        ? "bg-emerald-100 text-emerald-800"
-        : direction === "down"
-          ? "bg-rose-100 text-rose-800"
-          : "bg-secondary text-muted-foreground";
+    direction === "up" ? "bg-emerald-50 text-emerald-700" : "bg-primary/10 text-primary";
   return (
-    <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold leading-4 ${pill}`}>
+    <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold leading-4 ${pill}`} aria-label={text} title={text}>
       <Icon className={`h-3 w-3 shrink-0 ${tone}`} aria-hidden="true" />
-      {text}
+      <span aria-hidden="true">{compact}</span>
+      <span className="sr-only">{text}</span>
     </span>
   );
 }
@@ -101,7 +103,7 @@ export function AdminPlatformSnapshot({ data, keys, days, locale, t }: Props) {
     <DashboardSection
       id="admin-snapshot"
       icon={LayoutDashboard}
-      iconClassName="bg-sky-100 text-sky-800"
+      iconClassName={ICON_TONE}
       title={t("snapshot.title")}
       description={t("snapshot.description", { days })}
       action={{ href: `/${locale}/admin/analytics`, label: t("snapshot.viewAnalytics") }}
@@ -119,21 +121,21 @@ export function AdminPlatformSnapshot({ data, keys, days, locale, t }: Props) {
               >
                 {/* Phones: one row per metric. */}
                 <span className="flex items-center gap-2.5 [flex-wrap:nowrap] sm:hidden">
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${card.tone}`}>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${ICON_TONE}`}>
                     <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-semibold text-foreground">{t(`snapshot.${key}`)}</span>
                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground [flex-wrap:nowrap]">
                       <span className="truncate">{t(`snapshot.added.${key}`, { count: metric.added.current, days })}</span>
-                      <ShortChange window={metric.added} t={t} />
+                      <ShortChange window={metric.added} days={days} t={t} />
                     </span>
                   </span>
                   <span className="shrink-0 text-lg font-semibold tabular-nums text-foreground">{formatCount(metric.total)}</span>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground rtl:rotate-180" aria-hidden="true" />
                 </span>
                 <span className="hidden items-center gap-2 [flex-wrap:nowrap] sm:flex">
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${card.tone}`}>
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${ICON_TONE}`}>
                     <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{t(`snapshot.${key}`)}</span>
