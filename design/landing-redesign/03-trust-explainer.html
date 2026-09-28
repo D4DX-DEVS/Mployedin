@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artifact 03 — Trust and AI Controls</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="artifact-shell">
+    <div class="artifact-wrap">
+      <span class="artifact-kicker">Artifact 03 · Trust by design</span>
+      <h1 class="artifact-title">Make the AI promise answerable.</h1>
+      <p class="artifact-lede">A proof and controls module for the landing page. It separates verified product facts from recommendation signals and gives visitors a clear privacy choice before they create a profile.</p>
+      <span class="artifact-note">Illustrative prototype · no real account settings are changed</span>
+
+      <section class="surface surface-pad section-gap" aria-labelledby="trust-heading">
+        <div class="trust-grid">
+          <div>
+            <span class="artifact-kicker">AI matching, explained</span>
+            <h2 id="trust-heading" class="artifact-title" style="font-size:clamp(2rem,4vw,3.5rem)">Helpful signals. Clear limits. Your choice.</h2>
+            <p class="artifact-lede">A match score helps you decide where to look first. It does not guarantee an interview, an offer, or a perfect fit.</p>
+            <div class="callout"><strong>Trust cue:</strong> show the source and freshness of a signal beside the score, then link to the full explanation and privacy policy.</div>
+          </div>
+          <div>
+            <div class="muted-label">What the visitor can verify</div>
+            <div class="trust-list">
+              <div class="trust-row"><span class="icon-box" aria-hidden="true">✓</span><div><strong>Employer profile</strong><span>Identity and company details checked by the platform</span></div><span class="status">Verified</span></div>
+              <div class="trust-row"><span class="icon-box" aria-hidden="true">↗</span><div><strong>Role requirements</strong><span>Skills and location criteria supplied with this role</span></div><span class="status">Current</span></div>
+              <div class="trust-row"><span class="icon-box" aria-hidden="true">◷</span><div><strong>Recommendation signal</strong><span>Generated from the details you choose to share</span></div><span class="status" style="color:var(--amber-ink);background:var(--amber)">Advisory</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid-2 section-gap" aria-labelledby="control-heading">
+        <article class="card">
+          <span class="artifact-kicker">Before you continue</span>
+          <h2 id="control-heading" style="margin:8px 0 0;font-size:1.5rem;letter-spacing:-.03em">Choose what matching can use</h2>
+          <p style="margin-top:8px">These controls are written as a design requirement. The final product should connect them to real account settings and consent records.</p>
+          <ul class="check-list">
+            <li class="check-row"><input type="checkbox" checked aria-label="Use skills and experience" /><span><strong>Skills and experience</strong><br />Use profile details to compare with role requirements.</span></li>
+            <li class="check-row"><input type="checkbox" checked aria-label="Use location preferences" /><span><strong>Location preferences</strong><br />Use preferred countries, cities, or remote settings.</span></li>
+            <li class="check-row"><input type="checkbox" aria-label="Allow discoverability" /><span><strong>Be discoverable to employers</strong><br />Keep this off until the visitor chooses to be found.</span></li>
+          </ul>
+          <div class="hero-actions"><a class="button" href="#privacy">Read privacy controls</a><a class="button secondary" href="#continue">Continue with current choices</a></div>
+        </article>
+        <article class="card">
+          <span class="artifact-kicker">Proof that survives empty CMS content</span>
+          <h2 style="margin:8px 0 0;font-size:1.5rem;letter-spacing:-.03em">Stable trust block</h2>
+          <p style="margin-top:8px">Keep these facts available even when banners, testimonials, videos, or blog posts are not populated.</p>
+          <div class="trust-list">
+            <div class="trust-row"><span class="icon-box" aria-hidden="true">◉</span><div><strong>Direct applications</strong><span>No third-party application detour</span></div></div>
+            <div class="trust-row"><span class="icon-box" aria-hidden="true">⌁</span><div><strong>Data controls</strong><span>Choose profile visibility and matching inputs</span></div></div>
+            <div class="trust-row"><span class="icon-box" aria-hidden="true">?</span><div><strong>Human-readable help</strong><span>Explain a score, report an issue, or contact support</span></div></div>
+          </div>
+        </article>
+      </section>
+      <p class="artifact-footer">Addresses F1/F5, A11Y-06, CONTENT-02 · Use beside the hero preview and before the main conversion CTA.</p>
+    </div>
+  </main>
+</body>
+</html>
