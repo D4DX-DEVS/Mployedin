@@ -28,6 +28,25 @@ export { MajorSubject } from "./MajorSubject";
 export { JobSkill } from "./JobSkill";
 export { Industry } from "./Industry";
 export { Gender } from "./Gender";
+export { FunctionalArea } from "./FunctionalArea";
+export { CareerLevel } from "./CareerLevel";
+export { DegreeLevel } from "./DegreeLevel";
+export { DegreeType } from "./DegreeType";
+export { JobExperience } from "./JobExperience";
+export { JobShift } from "./JobShift";
+export { JobType } from "./JobType";
+export { LanguageLevel } from "./LanguageLevel";
+export { OwnershipType } from "./OwnershipType";
+export { ResultType } from "./ResultType";
+export { SalaryPeriod } from "./SalaryPeriod";
+export { Benefit } from "./Benefit";
+export { VisaStatus } from "./VisaStatus";
+export { NoticePeriod } from "./NoticePeriod";
+export { CompanySize } from "./CompanySize";
+export { Nationality } from "./Nationality";
+export { JobRole } from "./JobRole";
+export { Currency } from "./Currency";
+export { Language } from "./Language";
 
 // ── Location Master Data ──────────────────────────────────────────────────────
 export { Country } from "./Country";

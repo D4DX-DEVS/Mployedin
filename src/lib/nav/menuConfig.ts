@@ -344,18 +344,16 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             ],
           },
           {
-            // Eight lookup tables — five job attributes and three location
-            // levels — used to occupy eight of this workspace's fifty-two
-            // leaves, at the same depth as Applications and Placements, for
-            // data edited a few times a year. They are one entry now; the
-            // destination renders a tab bar across all eight, and every
+            // Twenty-seven lookup tables (job attributes, candidate, company,
+            // education, location and finance data) behind one entry; the
+            // destination renders grouped tabs across all of them, and every
             // original route still resolves.
             title: "Master Data",
             titleAr: "البيانات الرئيسية",
             href: p("/admin/job-attributes/industries"),
             icon: "SlidersHorizontal",
-            description: "Industries, skills, subjects and locations",
-            descriptionAr: "القطاعات والمهارات والتخصصات والمواقع",
+            description: "Job roles, skills, industries, locations, currencies and more",
+            descriptionAr: "المسميات الوظيفية والمهارات والقطاعات والمواقع والعملات والمزيد",
           },
           {
             // Five reporting destinations, one sidebar row.

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Bot, FilePenLine, Wand2 } from "lucide-react";
+import { Bot, FilePenLine, Inbox, Wand2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DashboardSection } from "@/components/shared/DashboardOverview";
+import { Panel } from "@/components/shared/DashboardKit";
 import { AIChatDraftsCard } from "./AIChatDraftsCard";
 import { DraftExtractionsCard } from "./DraftExtractionsCard";
 import { DraftJobsCard } from "./DraftJobsCard";
@@ -13,7 +13,7 @@ type DraftKind = "jobs" | "chats" | "extractions";
 
 interface DraftsCardProps {
   locale: string;
-  /** Reports the combined draft count so the parent row can collapse when empty. */
+  /** Reports the combined draft count so a parent layout can react. */
   onCountChange?: (count: number) => void;
 }
 
@@ -23,18 +23,15 @@ const ORDER: DraftKind[] = ["jobs", "chats", "extractions"];
  * One "Drafts to resume" panel that folds the three draft sources (job drafts,
  * AI chat threads, AI extraction sessions) into tabs.
  *
- * Replaces the vertical stack of three cards on the employer dashboard. The
- * stack was ~3× taller than the match-estimates card beside it, so the grid's
- * stretch alignment opened a large void in the left card; a single card with
- * header + tabs + ≤3 rows matches the left card's header + 3 rows.
- *
  * The source cards stay mounted (forceMount) so they keep fetching and
  * reporting counts; inactive panels are just `hidden`. Tabs only appear when
- * more than one source has drafts.
+ * more than one source has drafts. Once every source has reported and none
+ * has anything, the panel shows an empty state rather than vanishing, so the
+ * grid cell beside "Top jobs" never goes dead.
  */
 export function DraftsCard({ locale, onCountChange }: DraftsCardProps) {
   const t = useTranslations("employerDashboard.drafts");
-  const [counts, setCounts] = useState<Record<DraftKind, number>>({ jobs: 0, chats: 0, extractions: 0 });
+  const [counts, setCounts] = useState<Record<DraftKind, number | null>>({ jobs: null, chats: null, extractions: null });
   const [active, setActive] = useState<DraftKind>("jobs");
   // Until the user picks a tab, follow ORDER — the three sources fetch in
   // parallel, so whichever answers first must not win the default slot.
@@ -51,9 +48,10 @@ export function DraftsCard({ locale, onCountChange }: DraftsCardProps) {
   const setChats = useCallback((count: number) => setCount("chats", count), [setCount]);
   const setExtractions = useCallback((count: number) => setCount("extractions", count), [setCount]);
 
-  const nonEmpty = ORDER.filter((k) => counts[k] > 0);
+  const nonEmpty = ORDER.filter((k) => (counts[k] ?? 0) > 0);
   const nonEmptyKey = nonEmpty.join(",");
-  const total = counts.jobs + counts.chats + counts.extractions;
+  const total = (counts.jobs ?? 0) + (counts.chats ?? 0) + (counts.extractions ?? 0);
+  const settled = ORDER.every((k) => counts[k] !== null);
 
   useEffect(() => {
     onCountChange?.(total);
@@ -86,17 +84,17 @@ export function DraftsCard({ locale, onCountChange }: DraftsCardProps) {
       }}
       className="contents"
     >
-      <DashboardSection
-        headingId="employer-drafts-to-resume"
+      <Panel
+        id="employer-drafts-to-resume"
+        icon={FilePenLine}
+        iconClassName="bg-amber-100 text-amber-800"
         title={t("title")}
-        description={t("subtitle")}
-        className={`flex h-full flex-col ${total === 0 ? "hidden" : ""}`}
-        bodyClassName="flex flex-1 flex-col"
-        action={
+        subtitle={t("subtitle")}
+        aside={
           nonEmpty.length > 1 ? (
             <TabsList aria-label={t("tabsLabel")} className="gap-0.5">
               {tabs
-                .filter((tab) => counts[tab.kind] > 0)
+                .filter((tab) => (counts[tab.kind] ?? 0) > 0)
                 .map((tab) => {
                   const Icon = tab.icon;
                   return (
@@ -113,9 +111,15 @@ export function DraftsCard({ locale, onCountChange }: DraftsCardProps) {
           ) : undefined
         }
       >
-        {/* Panels + their <ul> are flex-1 so any leftover height (the match card's
-            header wraps its action link at lg) spreads across the rows instead of
-            sitting as a blank strip under the last one. */}
+        {settled && total === 0 && (
+          <div className="flex flex-1 items-center gap-3 rounded-lg bg-muted/40 px-3 py-4" data-drafts-empty>
+            <Inbox className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t("emptyTitle")}</p>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{t("emptyDescription")}</p>
+            </div>
+          </div>
+        )}
         <TabsContent value="jobs" forceMount className="mt-0 flex flex-1 flex-col data-[state=inactive]:hidden">
           <DraftJobsCard locale={locale} variant="rows" onCountChange={setJobs} />
         </TabsContent>
@@ -125,7 +129,7 @@ export function DraftsCard({ locale, onCountChange }: DraftsCardProps) {
         <TabsContent value="extractions" forceMount className="mt-0 flex flex-1 flex-col data-[state=inactive]:hidden">
           <DraftExtractionsCard locale={locale} variant="rows" onCountChange={setExtractions} />
         </TabsContent>
-      </DashboardSection>
+      </Panel>
     </Tabs>
   );
 }

@@ -4,8 +4,15 @@ import * as React from "react";
 import { Check, ChevronsUpDown, Globe, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useLocale } from "next-intl";
+import { useCountrySearch } from "@/hooks/useCountrySearch";
+import { useHasQueryClient } from "@/hooks/useHasQueryClient";
 
-/** Comprehensive country list */
+/**
+ * Fallback country list, shown while `/api/countries` (the admin-managed
+ * Countries table) loads or if it is unavailable. The stored value is always
+ * the English country name, whichever list the option came from.
+ */
 const ALL_COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia",
   "Australia", "Austria", "Azerbaijan", "Bahrain", "Bangladesh", "Belarus", "Belgium",
@@ -29,8 +36,20 @@ const ALL_COUNTRIES = [
   "Sudan", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania",
   "Thailand", "Tunisia", "Turkey", "Turkmenistan", "Uganda", "Ukraine",
   "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe", "Remote / Global",
+  "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe",
 ] as const;
+
+/** Not a country: kept as a synthetic option after whichever list is active. */
+const REMOTE_GLOBAL = "Remote / Global";
+
+interface CountryOptionItem {
+  /** Stored value — the English country name. */
+  value: string;
+  /** Display label, localised when the master list has a translation. */
+  label: string;
+}
+
+const FALLBACK_OPTIONS: CountryOptionItem[] = [...ALL_COUNTRIES, REMOTE_GLOBAL].map((name) => ({ value: name, label: name }));
 
 interface CountrySelectProps {
   value?: string;
@@ -40,33 +59,61 @@ interface CountrySelectProps {
   className?: string;
 }
 
-export function CountrySelect({
+/**
+ * Country picker fed by the admin-managed Countries table, with the static
+ * list as fallback. Works without a QueryClientProvider (static list only).
+ */
+export function CountrySelect(props: CountrySelectProps) {
+  const hasQueryClient = useHasQueryClient();
+  return hasQueryClient ? <LiveCountrySelect {...props} /> : <CountrySelectView {...props} countries={FALLBACK_OPTIONS} />;
+}
+
+function LiveCountrySelect(props: CountrySelectProps) {
+  const locale = useLocale();
+  const { data } = useCountrySearch("", { loadAll: true });
+  const countries = React.useMemo<CountryOptionItem[]>(() => {
+    if (!data || data.length === 0) return FALLBACK_OPTIONS;
+    return [
+      ...data.map((c) => ({ value: c.name, label: locale === "ar" && c.nameAr ? c.nameAr : c.name })),
+      { value: REMOTE_GLOBAL, label: REMOTE_GLOBAL },
+    ];
+  }, [data, locale]);
+  return <CountrySelectView {...props} countries={countries} />;
+}
+
+function CountrySelectView({
   value,
   onValueChange,
   placeholder = "Select country…",
   disabled = false,
   className,
-}: CountrySelectProps) {
+  countries,
+}: CountrySelectProps & { countries: CountryOptionItem[] }) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [customCountries, setCustomCountries] = React.useState<string[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const allOptions = React.useMemo(
-    () => [...ALL_COUNTRIES, ...customCountries],
-    [customCountries]
+  const allOptions = React.useMemo<CountryOptionItem[]>(
+    () => [...countries, ...customCountries.map((name) => ({ value: name, label: name }))],
+    [countries, customCountries]
+  );
+
+  const selectedLabel = React.useMemo(
+    () => (value ? allOptions.find((c) => c.value === value)?.label ?? value : undefined),
+    [value, allOptions]
   );
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return allOptions;
     const q = search.toLowerCase();
-    return allOptions.filter((c) => c.toLowerCase().includes(q));
+    return allOptions.filter((c) => c.value.toLowerCase().includes(q) || c.label.toLowerCase().includes(q));
   }, [search, allOptions]);
 
   const canAddCustom = React.useMemo(() => {
     if (!search.trim() || search.trim().length < 2) return false;
     const q = search.trim().toLowerCase();
-    return !allOptions.some((c) => c.toLowerCase() === q);
+    return !allOptions.some((c) => c.value.toLowerCase() === q || c.label.toLowerCase() === q);
   }, [search, allOptions]);
 
   const handleAddCustom = () => {
@@ -100,7 +147,7 @@ export function CountrySelect({
           {value ? (
             <span className="flex items-center gap-2 min-w-0">
               <Globe className="h-4 w-4 shrink-0 text-primary/60" />
-              <span className="font-medium truncate">{value}</span>
+              <span className="font-medium truncate">{selectedLabel}</span>
             </span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
@@ -151,13 +198,13 @@ export function CountrySelect({
             </p>
           ) : (
             filtered.map((country) => {
-              const isSelected = value === country;
+              const isSelected = value === country.value;
               return (
                 <button
-                  key={country}
+                  key={country.value}
                   type="button"
                   onClick={() => {
-                    onValueChange(country);
+                    onValueChange(country.value);
                     setOpen(false);
                   }}
                   className={cn(
@@ -171,7 +218,7 @@ export function CountrySelect({
                     "h-4 w-4 shrink-0",
                     isSelected ? "text-primary" : "text-muted-foreground/50"
                   )} />
-                  <span className="font-medium">{country}</span>
+                  <span className="font-medium">{country.label}</span>
                   {isSelected && (
                     <Check className="ms-auto h-4 w-4 shrink-0 text-primary" />
                   )}

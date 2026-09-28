@@ -18,6 +18,15 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+// The form's dropdowns are fed by admin-managed master data; the page falls
+// back to its static option arrays when the lists are empty.
+jest.mock("@/hooks/useMasterData", () => ({
+  useMasterData: () => ({ options: [], items: [], isPending: false, isError: false }),
+}));
+jest.mock("@/hooks/useCountrySearch", () => ({
+  useCountrySearch: () => ({ data: undefined, isPending: false, isError: false }),
+}));
+
 jest.mock("next-auth/react", () => ({
   useSession: () => ({
     data: {

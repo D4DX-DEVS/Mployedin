@@ -384,3 +384,39 @@ export function RecentSkeleton({ label }: { label: string }) {
     </section>
   );
 }
+
+/** One panel-shaped placeholder; `span` lets it fill the grid cell(s) its section will take. */
+export function PanelSkeleton({ label, rows = 5, className = "" }: { label: string; rows?: number; className?: string }) {
+  return (
+    <section aria-busy="true" aria-label={label} className={`workspace-panel-surface rounded-2xl p-4 ${className}`} data-surface="light-panel">
+      <div className="flex items-center gap-2.5">
+        <Skeleton className="h-8 w-8 rounded-lg" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-3 w-52" />
+        </div>
+      </div>
+      <div className="mt-4 space-y-2.5">
+        {Array.from({ length: rows }, (_, row) => (
+          <Skeleton key={row} className="h-6 w-full" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Six KPI tiles. */
+export function KpiStripSkeleton({ label }: { label: string }) {
+  return (
+    <div aria-busy="true" aria-label={label} className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      {Array.from({ length: 6 }, (_, i) => (
+        <div key={i} className="rounded-2xl border border-border/80 bg-card p-3.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="mt-3 h-7 w-20" />
+          <Skeleton className="mt-2 h-3 w-28" />
+          <Skeleton className="mt-2 h-5 w-14 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}

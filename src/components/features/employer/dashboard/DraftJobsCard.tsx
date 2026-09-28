@@ -60,7 +60,10 @@ export function DraftJobsCard({ locale, variant = "card", onCountChange }: Draft
         // supports all three. (Route matches the literal "true" — "1" silently
         // falls through to the public active-jobs listing.)
         const res = await fetch("/api/jobs?myJobs=true&status=draft&limit=3", { cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setDrafts([]);
+          return;
+        }
         const data = (await res.json()) as { jobs?: DraftJobSummary[] };
         if (!cancelled) setDrafts(data.jobs ?? []);
       } catch {

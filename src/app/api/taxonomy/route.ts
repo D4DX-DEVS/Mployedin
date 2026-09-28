@@ -137,12 +137,18 @@ async function fetchFromDb(type: TaxonomyType, q: string, limit: number): Promis
       return [...cities.map((d) => d.name), ...countries.map((d) => d.name)];
     }
     case "roles": {
-      // No dedicated roles model — surface distinct titles from live job postings.
+      // Master job roles first (name or alias match), then distinct titles
+      // from live postings so brand-new titles still surface.
+      const { default: JobRole } = await import("@/models/JobRole");
       const { default: Job } = await import("@/models/Job");
-      const filter: Record<string, unknown> = { status: "active" };
-      if (regex) filter.title = regex;
-      const titles = (await Job.distinct("title", filter)) as string[];
-      return titles.slice(0, limit);
+      const roleFilter: Record<string, unknown> = regex
+        ? { isActive: true, $or: [{ name: regex }, { aliases: regex }] }
+        : { isActive: true };
+      const [roles, titles] = await Promise.all([
+        JobRole.find(roleFilter).select("name").sort({ sortOrder: 1, name: 1 }).limit(limit).lean(),
+        Job.distinct("title", regex ? { status: "active", title: regex } : { status: "active" }) as Promise<string[]>,
+      ]);
+      return [...roles.map((d) => d.name), ...titles.slice(0, limit)];
     }
     default:
       return [];

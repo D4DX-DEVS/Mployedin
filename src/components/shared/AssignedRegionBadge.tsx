@@ -19,7 +19,7 @@ interface AssignedRegionBadgeProps {
  * the tooltip. No region is said out loud (amber) rather than hidden, since
  * an agent without one sees no regional work and should know to ask an admin.
  *
- * No "use client": it renders inside server headers (AgentSmartHeader) and
+ * No "use client": it renders inside server headers (the agent home) and
  * client settings pages alike.
  */
 export function AssignedRegionBadge({ regions, className }: AssignedRegionBadgeProps) {

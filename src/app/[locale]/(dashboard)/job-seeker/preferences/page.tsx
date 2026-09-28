@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MasterDataSelect } from "@/components/ui/master-data-select";
 import { TagAutocomplete } from "@/components/ui/tag-autocomplete";
 import {
   Target,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 
+/** Fallback for the admin-managed "currencies" list; the stored value is the ISO code. */
 const CURRENCIES = ["USD", "INR", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
 
 const JOB_TYPES = [
@@ -594,9 +596,12 @@ export default function JobPreferencesPage() {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("currency")}
               </label>
-              <SearchableSelect
+              <MasterDataSelect
+                category="currencies"
+                valueKey="code"
+                fallback={CURRENCIES.map((c) => ({ value: c, label: c }))}
                 className="h-9 text-sm"
-                options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                aria-label={t("currency")}
                 value={prefs.preferredSalary.currency}
                 onValueChange={(v) =>
                   setPrefs((p) => ({

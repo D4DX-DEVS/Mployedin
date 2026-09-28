@@ -2,15 +2,17 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
+  BellRing,
   CheckCircle2,
-  ChevronRight,
   ClipboardList,
   Gift,
   Target,
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { Panel } from "@/components/shared/DashboardKit";
 import type { AgentActionCounts, AgentQueueItem, AgentQueueKind } from "@/lib/agents/workQueue";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 type CountKey = keyof AgentActionCounts;
 
@@ -47,6 +49,14 @@ const KIND_ICON: Record<AgentQueueKind, LucideIcon> = {
   newCandidate: Users,
 };
 
+/** Rows three or more days late read as critical; due today as upcoming. */
+const LATENESS_BADGE = (daysLate: number) =>
+  daysLate >= 3
+    ? "bg-rose-100 text-rose-800 ring-rose-200"
+    : daysLate >= 1
+      ? "bg-amber-100 text-amber-900 ring-amber-200"
+      : "bg-muted text-muted-foreground ring-border";
+
 /** Which filtered list each count opens. */
 export const AGENT_QUEUE_COUNT_HREFS: Record<CountKey, string> = {
   dueFollowUps: "/agent/leads?followUp=due",
@@ -66,110 +76,84 @@ export const AGENT_QUEUE_COUNT_ORDER: readonly CountKey[] = [
 ];
 
 /**
- * The work, before the numbers.
- *
- * The agent home opened on portfolio totals — active employers, active jobs,
- * total applications — and five static shortcut tiles. Not one item on it was a
- * thing to do today, while the data for exactly that (task due dates, lead
- * follow-up dates, interviews with no outcome) already existed and never
- * surfaced. This panel is that list, ranked by how late each item is, and every
- * row lands on the filtered view holding it.
- *
- * Rendered on phones as well as desktop: the old "Recommended next" card was
- * `max-sm:hidden`, so the one prioritisation element in the workspace was
- * invisible on the device agents actually use.
+ * The work, before the numbers: follow-ups due, overdue tasks, interviews with
+ * no outcome, offers with no reply and candidates not yet reviewed, ranked by
+ * how late each is. Every count chip and every row lands on the filtered
+ * view holding it, so the badge and the list it opens always agree.
  *
  * Strings arrive as props rather than being looked up here, matching the other
  * shared dashboard components — and keeping this a plain synchronous component.
  */
 export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQueueProps) {
+  const hasCounts = AGENT_QUEUE_COUNT_ORDER.some((key) => counts[key] > 0);
   return (
-    /* Same surface, radius and heading scale as the employer home's
-       "Recommended next" panel (PriorityActions), so the two homes read as
-       one product. */
-    <section
-      aria-labelledby="agent-today-queue"
-      className="workspace-panel-surface rounded-2xl panel-body"
+    <Panel
+      id="agent-today-queue"
+      icon={BellRing}
+      iconClassName={hasCounts ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"}
+      title={labels.title}
+      subtitle={labels.description}
+      action={{ href: `/${locale}/agent/tasks`, label: labels.viewTasks }}
+      bodyClassName="gap-3"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h2
-            id="agent-today-queue"
-            className="heading-label font-semibold tracking-tight text-foreground"
-          >
-            {labels.title}
-          </h2>
-          <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:text-sm">{labels.description}</p>
-        </div>
-        <Link
-          href={`/${locale}/agent/tasks`}
-          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:text-sm"
-        >
-          {labels.viewTasks}
-          <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
-        </Link>
-      </div>
-
       {/* Counts first, as one row of chips that each open the list they
-          total. They were five stacked tiles (90px); the chips take one line
-          on desktop and two on a phone. Only counts that need action: a row
-          of faded "0" chips was noise (owner, 2026-09-24). */}
-      {AGENT_QUEUE_COUNT_ORDER.some((key) => counts[key] > 0) && (
-      <ul className="mt-3 flex flex-wrap gap-2">
-        {AGENT_QUEUE_COUNT_ORDER.filter((key) => counts[key] > 0).map((key) => (
-          <li key={key}>
-            <Link
-              href={`/${locale}${AGENT_QUEUE_COUNT_HREFS[key]}`}
-              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border/70 bg-background/70 py-1 pe-3 ps-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-            >
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold tabular-nums text-primary">
-                {counts[key]}
-              </span>
-              {labels.summary[key]}
-            </Link>
-          </li>
-        ))}
-      </ul>
+          total. Only counts that need action get a chip: a row of faded "0"
+          chips was noise (owner, 2026-09-24). */}
+      {hasCounts && (
+        <ul className="flex flex-wrap gap-1.5">
+          {AGENT_QUEUE_COUNT_ORDER.filter((key) => counts[key] > 0).map((key) => (
+            <li key={key}>
+              <Link
+                href={`/${locale}${AGENT_QUEUE_COUNT_HREFS[key]}`}
+                className="inline-flex min-h-7 items-center gap-1.5 rounded-full bg-secondary py-0.5 pe-2.5 ps-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1 text-[11px] font-semibold tabular-nums text-primary">
+                  {formatCount(counts[key])}
+                </span>
+                {labels.summary[key]}
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
 
       {items.length > 0 ? (
-        <ul className="mt-3 flex flex-col divide-y divide-border/70">
+        <ul className="-mx-1 max-h-[27rem] divide-y divide-border/60 overflow-y-auto px-1">
           {items.map((item) => {
             const Icon = KIND_ICON[item.kind];
+            const rowKey = `${item.kind}-${item.id}`;
             return (
-              <li key={`${item.kind}-${item.id}`}>
+              <li key={rowKey}>
                 <Link
                   href={`/${locale}${item.href}`}
-                  className="group flex min-h-12 items-center gap-3 py-2 transition-colors hover:bg-secondary/50"
+                  data-queue-kind={item.kind}
+                  className="group flex items-center gap-2.5 py-2 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-status-rejected-bg text-status-rejected">
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${LATENESS_BADGE(item.daysLate)}`}>
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-semibold text-foreground">
-                      {item.subject || labels.kind[item.kind]}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold leading-4 text-foreground">{item.subject || labels.kind[item.kind]}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">
                       {labels.reason[item.kind]}
                       {" · "}
-                      {labels.lateness[`${item.kind}-${item.id}`]}
+                      {labels.lateness[rowKey]}
                     </span>
                   </span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
                 </Link>
               </li>
             );
           })}
         </ul>
       ) : (
-        <div className="workspace-empty-state mt-3 flex items-center gap-3 rounded-2xl p-4">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-status-selected" aria-hidden="true" />
-          <div>
-            <p className="text-sm font-medium text-foreground">{labels.emptyTitle}</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">{labels.emptyDescription}</p>
-          </div>
-        </div>
+        <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-xs text-emerald-900 ring-1 ring-inset ring-emerald-100">
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            <span className="font-medium">{labels.emptyTitle}</span> {labels.emptyDescription}
+          </span>
+        </p>
       )}
-    </section>
+    </Panel>
   );
 }

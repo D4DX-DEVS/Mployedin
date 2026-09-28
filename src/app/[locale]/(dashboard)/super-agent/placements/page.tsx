@@ -24,6 +24,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { useMasterData } from "@/hooks/useMasterData";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -77,29 +78,13 @@ const INITIAL_FILTERS: Filters = {
   agentId: "", employerId: "", sortBy: "createdAt", sortOrder: "desc",
 };
 
+// Placement.visaStatus is a fixed model enum (filters and counts key on these
+// values), so it deliberately stays hardcoded rather than moving to master data.
 const VISA_STATUSES: VisaStatus[] = ["not_required", "pending", "approved", "rejected", "stamped"];
 
-// Static currency options - currency codes are data, first label translated at render time
-const CURRENCY_OPTIONS = [
-  { value: "", label: "" }, // Label will be translated in component
-  { value: "AED", label: "AED" },
-  { value: "USD", label: "USD" },
-  { value: "EUR", label: "EUR" },
-  { value: "GBP", label: "GBP" },
-  { value: "SAR", label: "SAR" },
-  { value: "QAR", label: "QAR" },
-  { value: "KWD", label: "KWD" },
-  { value: "BHD", label: "BHD" },
-  { value: "OMR", label: "OMR" },
-  { value: "EGP", label: "EGP" },
-  { value: "INR", label: "INR" },
-];
-
-// Prepare currency options with translated "All currencies" label
-const getCurrencyOptions = (t: ReturnType<typeof useTranslations>) => [
-  { value: "", label: t("currencyFilterAllLabel") },
-  ...CURRENCY_OPTIONS.slice(1),
-];
+// Fallback currency codes, shown while the admin-managed `currencies` master
+// list loads or if the API is unavailable. The filter value is the ISO code.
+const CURRENCY_FALLBACK = ["AED", "USD", "EUR", "GBP", "SAR", "QAR", "KWD", "BHD", "OMR", "EGP", "INR"].map((code) => ({ value: code, label: code }));
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -160,6 +145,15 @@ export default function SuperAgentPlacementsPage() {
   // Tiles and the visa strip describe the whole filtered set, so they come from
   // the API's aggregates. Counting `placements` only ever saw the current page.
   const [visaCounts, setVisaCounts] = useState<Record<string, number>>({});
+  const { options: currencyMasterOptions } = useMasterData("currencies", { valueKey: "code" });
+  const currencyOptions = useMemo(() => {
+    const list = currencyMasterOptions.length > 0
+      ? currencyMasterOptions.map((o) => ({ value: o.value, label: o.label === o.value ? o.value : `${o.value} — ${o.label}` }))
+      : CURRENCY_FALLBACK;
+    // Keep an already-selected code visible even if the admin retired it.
+    const withCurrent = filters.currency && !list.some((o) => o.value === filters.currency) ? [{ value: filters.currency, label: filters.currency }, ...list] : list;
+    return [{ value: "", label: t("currencyFilterAllLabel") }, ...withCurrent];
+  }, [currencyMasterOptions, filters.currency, t]);
   const [totals, setTotals] = useState({ commissionPaid: 0, employers: 0, upcomingStarts: 0 });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
@@ -428,7 +422,7 @@ export default function SuperAgentPlacementsPage() {
               <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterCurrency")}</label>
-                  <SearchableSelect options={getCurrencyOptions(t)} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
+                  <SearchableSelect options={currencyOptions} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSalaryMin")}</label>

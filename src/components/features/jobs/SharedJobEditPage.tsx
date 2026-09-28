@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,8 @@ import { WordingWarning } from "@/components/features/employer/job-form/WordingW
 import { useJobDetail, useUpdateJob } from "@/hooks/useJobs";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import type { CountryOption } from "@/hooks/useCountrySearch";
+import { useMasterData } from "@/hooks/useMasterData";
+import { MasterDataSelect } from "@/components/ui/master-data-select";
 import { useTranslations } from "next-intl";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
@@ -32,6 +34,8 @@ import { KNOCKOUT_NUMBER_TYPES, KNOCKOUT_OPTION_TYPES } from "@/lib/matching/kno
 const KNOCKOUT_TYPES = new Set<string>([...KNOCKOUT_OPTION_TYPES, ...KNOCKOUT_NUMBER_TYPES]);
 
 // ─── Constants ───────────────────────────────────────────────────
+// Fallbacks only: the live category list is admin → Master Data → Functional
+// Areas and the live currency list (with symbols) is Master Data → Currencies.
 const JOB_CATEGORIES = [
   "Technology", "Healthcare", "Finance", "Construction", "Hospitality",
   "Education", "Manufacturing", "Logistics", "Oil & Gas", "Retail",
@@ -120,9 +124,9 @@ interface SharedJobEditPageProps {
 }
 
 // ─── Salary formatter ─────────────────────────────────────────────
-function formatSalary(value: number, currency: string, period: string): string {
+function formatSalary(value: number, currency: string, period: string, symbols: Record<string, string> = CURRENCY_SYMBOLS): string {
   if (!value) return "—";
-  const sym = CURRENCY_SYMBOLS[currency] ?? currency + " ";
+  const sym = symbols[currency] ?? currency + " ";
   // When period is LPA, user enters value directly in lakhs (e.g. 35 = 35L)
   if (period === "lpa") {
     return `${sym}${value % 1 === 0 ? value : value.toFixed(1)}L`;
@@ -314,6 +318,22 @@ export function SharedJobEditPage({
   const [aiState, setAiState] = useState<"idle" | "generating" | "done">("idle");
   const [aiSuggestion, setAiSuggestion] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Currencies from master data (ISO code stored); symbols fall back to the static map.
+  const { items: currencyItems, options: currencyOptions, isPending: currenciesPending, isError: currenciesError } = useMasterData("currencies", { valueKey: "code" });
+  const currencySymbols = useMemo(() => {
+    const map: Record<string, string> = { ...CURRENCY_SYMBOLS };
+    for (const c of currencyItems) {
+      if (c.code) map[c.code] = c.symbol ?? c.code;
+    }
+    return map;
+  }, [currencyItems]);
+  const currencyChoices = useMemo(() => {
+    const live = currencyOptions.length > 0 || (!currenciesPending && !currenciesError)
+      ? currencyOptions.map((o) => ({ value: o.value, label: `${currencySymbols[o.value] ?? o.value} ${o.value} — ${o.label}` }))
+      : Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => ({ value: code, label: `${sym} ${code}` }));
+    return live;
+  }, [currencyOptions, currenciesPending, currenciesError, currencySymbols]);
 
   // Country search
   const [countryQuery, setCountryQuery] = useState("");
@@ -591,7 +611,7 @@ export function SharedJobEditPage({
         body: JSON.stringify({
           messages: [{
             role: "user",
-            content: `Write a professional job description for "${form.title}" based in ${locationLabel} (${form.category || "general"} sector). ${form.requirements.skills.length ? "Required skills: " + form.requirements.skills.join(", ") + "." : ""} ${form.salary.min ? "Salary: " + formatSalary(form.salary.min, form.salary.currency, form.salary.period) + " – " + formatSalary(form.salary.max, form.salary.currency, form.salary.period) + "." : ""} Include key responsibilities, required qualifications, and what makes this role exciting. Use clear bullet points. Max 350 words.`,
+            content: `Write a professional job description for "${form.title}" based in ${locationLabel} (${form.category || "general"} sector). ${form.requirements.skills.length ? "Required skills: " + form.requirements.skills.join(", ") + "." : ""} ${form.salary.min ? "Salary: " + formatSalary(form.salary.min, form.salary.currency, form.salary.period, currencySymbols) + " – " + formatSalary(form.salary.max, form.salary.currency, form.salary.period, currencySymbols) + "." : ""} Include key responsibilities, required qualifications, and what makes this role exciting. Use clear bullet points. Max 350 words.`,
           }],
           context: "employer_assist",
         }),
@@ -623,7 +643,7 @@ export function SharedJobEditPage({
     );
   }
 
-  const sym = CURRENCY_SYMBOLS[form.salary.currency] ?? form.salary.currency + " ";
+  const sym = currencySymbols[form.salary.currency] ?? form.salary.currency + " ";
   const isSubmitting = submitState === "saving" || submitState === "publishing";
 
   return (
@@ -690,8 +710,10 @@ export function SharedJobEditPage({
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label={t("category")}>
-                <SearchableSelect
-                  options={JOB_CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) }))}
+                <MasterDataSelect
+                  category="functional-areas"
+                  valueKey="name"
+                  fallback={JOB_CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) }))}
                   value={form.category}
                   onValueChange={(v) => setField("category", v)}
                   placeholder={t("placeholderCategory")}
@@ -1051,7 +1073,11 @@ export function SharedJobEditPage({
               </Field>
               <Field label={t("currency")}>
                 <SearchableSelect
-                  options={Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => ({ value: code, label: `${sym} ${code}` }))}
+                  options={
+                    form.salary.currency && !currencyChoices.some((o) => o.value === form.salary.currency)
+                      ? [{ value: form.salary.currency, label: form.salary.currency }, ...currencyChoices]
+                      : currencyChoices
+                  }
                   value={form.salary.currency}
                   onValueChange={(v) => setField("salary", { ...form.salary, currency: v })}
                 />
@@ -1083,9 +1109,9 @@ export function SharedJobEditPage({
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-sm chip-pad">
                 <span className="text-muted-foreground text-xs">{t("salaryPreview")} </span>
                 <span className="font-semibold text-emerald-700">
-                  {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period) : "—"}
+                  {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period, currencySymbols) : "—"}
                   {" – "}
-                  {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
+                  {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period, currencySymbols) : "—"}
                   <span className="font-normal text-xs ms-1">{t("perPeriod", { period: form.salary.period === "lpa" ? "LPA" : form.salary.period })}</span>
                 </span>
                 {form.salary.isNegotiable && <span className="text-xs text-muted-foreground ms-2">({t("negotiableYes")})</span>}
@@ -1390,9 +1416,9 @@ export function SharedJobEditPage({
                   <div className="flex items-center gap-1.5 text-sm">
                     <DollarSign className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                     <span className="font-semibold text-emerald-700">
-                      {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period) : "—"}
+                      {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period, currencySymbols) : "—"}
                       {" – "}
-                      {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
+                      {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period, currencySymbols) : "—"}
                     </span>
                     <span className="text-xs text-muted-foreground">{t("perPeriod", { period: form.salary.period === "lpa" ? "LPA" : form.salary.period })}</span>
                   </div>

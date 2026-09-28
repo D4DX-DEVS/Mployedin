@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MasterDataSelect } from "@/components/ui/master-data-select";
 import { Autocomplete, TagAutocomplete } from "@/components/ui/tag-autocomplete";
 import type { TaxonomyType } from "@/lib/taxonomy/seeds";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -659,8 +660,11 @@ export default function CVBuilderPage() {
                       onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder={t("placeholders.email")} />
                     <FormField label={t("fields.phone")} value={form.phone}
                       onChange={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="+971 50 000 0000" />
-                    <FormField label={t("fields.nationality")} value={form.nationality}
-                      onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} placeholder={t("placeholders.nationality")} />
+                    <div className="field">
+                      <Label className="text-xs text-muted-foreground">{t("fields.nationality")}</Label>
+                      <MasterDataSelect category="nationalities" valueKey="name" remoteSearch aria-label={t("fields.nationality")} placeholder={t("placeholders.nationality")}
+                        value={form.nationality} onValueChange={(v) => setForm((f) => ({ ...f, nationality: v }))} />
+                    </div>
                     <div className="md:col-span-2">
                       <AutoFormField label={t("fields.currentLocation")} value={form.currentLocation} taxonomy="locations"
                         onChange={(v) => setForm((f) => ({ ...f, currentLocation: v }))} placeholder={t("placeholders.location")} />
@@ -896,8 +900,11 @@ export default function CVBuilderPage() {
                     {form.languages.map((lang, i) => (
                       <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
                       <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-3 pl-9 group">
-                        <FormField label={t("fields.language")} value={lang.language}
-                          onChange={(v) => updateLanguage(i, "language", v)} placeholder={t("placeholders.language")} />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">{t("fields.language")}</Label>
+                          <MasterDataSelect category="languages" valueKey="name" aria-label={t("fields.language")} placeholder={t("placeholders.language")}
+                            value={lang.language} onValueChange={(v) => updateLanguage(i, "language", v)} />
+                        </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs text-muted-foreground">{t("fields.proficiency")}</Label>
                           <SearchableSelect ariaLabel={t("fields.proficiency")} options={proficiencyOptions} value={lang.proficiency}

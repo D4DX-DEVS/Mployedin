@@ -16,14 +16,15 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
   const parsedLimit = parseInt(searchParams.get("limit") ?? "20", 10);
-  const limit = Math.min(50, Number.isNaN(parsedLimit) ? 20 : Math.max(1, parsedLimit));
+  // 300 lets the country selects load the whole active list (ISO has ~250 entries).
+  const limit = Math.min(300, Number.isNaN(parsedLimit) ? 20 : Math.max(1, parsedLimit));
 
   const query = q
     ? { name: { $regex: escapeRegex(q), $options: "i" }, isActive: true }
     : { isActive: true };
 
   const countries = await Country.find(query)
-    .select("name code currencyCode currencySymbol phoneCode")
+    .select("name nameAr code currencyCode currencySymbol phoneCode")
     .sort({ sortOrder: 1, name: 1 })
     .limit(limit)
     .lean();

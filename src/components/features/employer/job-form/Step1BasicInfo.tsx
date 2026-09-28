@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Wifi, Sparkles, UserCog, X } from "lucide-react";
@@ -9,11 +9,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MasterDataSelect } from "@/components/ui/master-data-select";
 import { Badge } from "@/components/ui/badge";
+import { useMasterData } from "@/hooks/useMasterData";
+import { useCountrySearch } from "@/hooks/useCountrySearch";
 import { getLocalizedCountryName } from "@/lib/i18n/locations";
 import { cn } from "@/lib/utils";
-import { JOB_CATEGORIES, COUNTRIES, EMPLOYMENT_TYPES, WORK_MODES, type JobFormValues } from "./jobFormSchema";
+import {
+  JOB_CATEGORIES,
+  COUNTRIES,
+  COUNTRY_CURRENCY_MAP,
+  EMPLOYMENT_TYPES,
+  REMOTE_GLOBAL_COUNTRY,
+  WORK_MODES,
+  type JobFormValues,
+} from "./jobFormSchema";
 
+/**
+ * Translation keys for the FALLBACK category list. The live list comes from
+ * admin → Master Data → Functional Areas (localised by the hook); these only
+ * label the hardcoded options shown while it loads or if the API is down.
+ */
 const CATEGORY_TRANSLATION_KEYS: Record<(typeof JOB_CATEGORIES)[number], string> = {
   Technology: "technology",
   Healthcare: "healthcare",
@@ -59,6 +75,48 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   const remoteCountries = watch("location.remoteCountries") ?? [];
 
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
+  // Admin-managed job roles (Master Data → Job Roles) — offered as suggestions
+  // only; the title stays free text so an employer is never boxed in by the list.
+  const roleQuery = (title ?? "").trim();
+  const { options: roleOptions } = useMasterData("job-roles", {
+    q: roleQuery,
+    limit: 8,
+    enabled: roleQuery.length >= 2,
+  });
+  const roleSuggestions = useMemo(() => {
+    if (roleQuery.length < 2) return [];
+    const seen = new Set(titleSuggestions.map((s) => s.toLowerCase()));
+    seen.add(roleQuery.toLowerCase());
+    return roleOptions
+      .map((o) => o.value)
+      .filter((name) => {
+        const key = name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [roleOptions, roleQuery, titleSuggestions]);
+  const combinedTitleSuggestions = useMemo(
+    () => [...titleSuggestions, ...roleSuggestions],
+    [titleSuggestions, roleSuggestions],
+  );
+
+  // Countries come from the admin-managed Countries table; the static list is
+  // the fallback while it loads or if the API fails. "Remote / Global" is a
+  // special option that never lives in that table.
+  const { data: apiCountries } = useCountrySearch("", { loadAll: true });
+  const countryNames = useMemo<readonly string[]>(() => {
+    if (!apiCountries || apiCountries.length === 0) return COUNTRIES;
+    const names = apiCountries.map((c) => c.name).filter((n) => n !== REMOTE_GLOBAL_COUNTRY);
+    return [...names, REMOTE_GLOBAL_COUNTRY];
+  }, [apiCountries]);
+  const countryCurrency = useMemo(() => {
+    const map: Record<string, string> = { ...COUNTRY_CURRENCY_MAP };
+    for (const c of apiCountries ?? []) {
+      if (c.currencyCode && c.currencyCode.length === 3) map[c.name] = c.currencyCode;
+    }
+    return map;
+  }, [apiCountries]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
   // Suggestions are optional, but failing invisibly told an employer nothing
@@ -93,9 +151,16 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   // Debounced fetch on title change
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    if (!title || title.length < 4) {
+    if (!title || title.length < 2) {
       setTitleSuggestions([]);
       setShowSuggestions(false);
+      return;
+    }
+    if (title.length < 4) {
+      // Too short for the AI suggestions, but the master-data roles already
+      // match from two characters.
+      setTitleSuggestions([]);
+      setShowSuggestions(true);
       return;
     }
 
@@ -161,7 +226,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
     onSuggestionsLoaded?.(suggestions);
   }
 
-  function getCountryLabel(country: (typeof COUNTRIES)[number]) {
+  function getCountryLabel(country: string) {
     return getLocalizedCountryName(country, locale, {
       remoteGlobalLabel: t("countries.remoteGlobal"),
     });
@@ -208,11 +273,11 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               className={cn(errors.title && "border-destructive")}
               autoComplete="off"
               aria-autocomplete="list"
-              aria-expanded={showSuggestions && titleSuggestions.length > 0}
-              aria-controls={titleSuggestions.length > 0 ? suggestionsListId : undefined}
+              aria-expanded={showSuggestions && combinedTitleSuggestions.length > 0}
+              aria-controls={combinedTitleSuggestions.length > 0 ? suggestionsListId : undefined}
               aria-invalid={!!errors.title}
               aria-describedby={errors.title ? "job-title-error" : undefined}
-              onFocus={() => titleSuggestions.length > 0 && setShowSuggestions(true)}
+              onFocus={() => combinedTitleSuggestions.length > 0 && setShowSuggestions(true)}
             />
             {fetchingSuggestions && (
               <div className="absolute end-3 top-1/2 -translate-y-1/2">
@@ -221,7 +286,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             )}
 
             <AnimatePresence>
-              {showSuggestions && titleSuggestions.length > 0 && (
+              {showSuggestions && combinedTitleSuggestions.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -242,7 +307,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                     </button>
                   )}
                   <ul>
-                    {titleSuggestions.map((suggestedTitle) => (
+                    {combinedTitleSuggestions.map((suggestedTitle) => (
                       <li key={suggestedTitle}>
                         <button
                           type="button"
@@ -273,8 +338,10 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
         {/* Category */}
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">{t("category")}</Label>
-          <SearchableSelect
-            options={JOB_CATEGORIES.map((categoryValue) => ({
+          <MasterDataSelect
+            category="functional-areas"
+            valueKey="name"
+            fallback={JOB_CATEGORIES.map((categoryValue) => ({
               value: categoryValue,
               label: t(`categories.${CATEGORY_TRANSLATION_KEYS[categoryValue]}`),
             }))}
@@ -368,23 +435,17 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             </Label>
             <SearchableSelect
               id="location-country"
-              options={COUNTRIES.map((country) => ({ value: country, label: getCountryLabel(country) }))}
+              options={countryNames.map((country) => ({ value: country, label: getCountryLabel(country) }))}
               value={watch("location.country") ?? ""}
               aria-invalid={!!errors.location?.country}
               aria-describedby={errors.location?.country ? "location-country-error" : undefined}
               onValueChange={(v) => {
                 setValue("location.country", v, { shouldValidate: true });
-                // Auto-select currency based on country
-                import("./jobFormSchema")
-                  .then(({ COUNTRY_CURRENCY_MAP }) => {
-                    const currency = COUNTRY_CURRENCY_MAP[v];
-                    if (currency) {
-                      setValue("salary.currency", currency, { shouldValidate: false });
-                    }
-                  })
-                  .catch(() => {
-                    // ignore auto-currency lookup failures
-                  });
+                // Auto-select currency based on country (admin table first, static map as fallback)
+                const currency = countryCurrency[v];
+                if (currency) {
+                  setValue("salary.currency", currency, { shouldValidate: false });
+                }
               }}
               placeholder={t("countryPlaceholder")}
             />
@@ -469,7 +530,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                 </Label>
                 <SearchableSelect
                   id="remote-countries"
-                  options={COUNTRIES.filter((c) => !remoteCountries.includes(c)).map((country) => ({
+                  options={countryNames.filter((c) => !remoteCountries.includes(c)).map((country) => ({
                     value: country,
                     label: getCountryLabel(country),
                   }))}

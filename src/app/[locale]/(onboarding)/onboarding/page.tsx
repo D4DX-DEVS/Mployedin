@@ -14,6 +14,9 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useMasterData } from "@/hooks/useMasterData";
+import { useCountrySearch } from "@/hooks/useCountrySearch";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -173,8 +176,36 @@ const COUNTRY_CODES = [
   { code: "+263", country: "ZW", name: "Zimbabwe", flag: "🇿🇼" },
 ];
 
+type DialCode = (typeof COUNTRY_CODES)[number];
+
+/** ISO alpha-2 → flag emoji via regional indicator symbols. */
+function flagFor(iso: string): string {
+  const cc = iso.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc)) return "🏳️";
+  return String.fromCodePoint(...[...cc].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+/**
+ * Dial codes from the admin-managed countries table (/api/countries phoneCode)
+ * layered over the static list: an admin edit wins for a country both have,
+ * countries only the API knows are appended, and the static list fills in
+ * while loading / if the API is down.
+ */
+function mergeDialCodes(api: { name: string; code: string; phoneCode?: string }[] | undefined): DialCode[] {
+  if (!api || api.length === 0) return COUNTRY_CODES;
+  const byIso = new Map<string, DialCode>(COUNTRY_CODES.map((c) => [c.country, c]));
+  for (const c of api) {
+    const digits = (c.phoneCode ?? "").replace(/\D/g, "");
+    if (!digits || !c.code) continue;
+    const iso = c.code.toUpperCase();
+    byIso.set(iso, { code: `+${digits}`, country: iso, name: c.name, flag: byIso.get(iso)?.flag ?? flagFor(iso) });
+  }
+  return [...byIso.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 const NOTICE_PERIODS = ["15 Days", "1 Month", "2 Months", "3 Months", "More than 3 Months", "Serving Notice Period"];
 
+/** Fallback for the admin-managed "industries" list; the stored value is the English name. */
 const INDUSTRY_OPTIONS = [
   "IT Services & Consulting", "Analytics / KPO / Research", "BPM / BPO",
   "Banking / Financial Services", "Healthcare / Pharma", "E-commerce",
@@ -239,7 +270,11 @@ const COURSE_SUGGESTIONS: Record<string, string[]> = {
 
 const COURSE_TYPES = ["Full Time", "Part Time", "Distance Learning"];
 
+/** Fallback for the admin-managed "genders" list; the stored value is the English name. */
 const GENDERS = ["Male", "Female", "Transgender"];
+
+/** Fallback for the admin-managed "currencies" list; the stored value is the ISO code. */
+const CURRENCY_CODES = ["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD", "OMR", "BHD"];
 
 const YEARS_RANGE = Array.from({ length: 40 }, (_, i) => String(new Date().getFullYear() - i));
 
@@ -247,7 +282,7 @@ const YEARS_RANGE = Array.from({ length: 40 }, (_, i) => String(new Date().getFu
 // Note: STEPS labels/subtitles are translated dynamically inside the component
 
 // ── Tiny helpers ──────────────────────────────────────────────────────────────
-function CountryCodeSelect({ value, onChange, t }: { value: string; onChange: (code: string) => void; t: ReturnType<typeof useTranslations> }) {
+function CountryCodeSelect({ value, onChange, t, codes = COUNTRY_CODES }: { value: string; onChange: (code: string) => void; t: ReturnType<typeof useTranslations>; codes?: DialCode[] }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -261,11 +296,11 @@ function CountryCodeSelect({ value, onChange, t }: { value: string; onChange: (c
     return () => document.removeEventListener("mousedown", handle);
   }, [open]);
 
-  const selected = COUNTRY_CODES.find((c) => c.code === value) ?? COUNTRY_CODES[0];
+  const selected = codes.find((c) => c.code === value) ?? COUNTRY_CODES.find((c) => c.code === value) ?? codes[0];
   const q = search.trim().toLowerCase();
   const filtered = q
-    ? COUNTRY_CODES.filter((c) => c.code.includes(q) || c.country.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
-    : COUNTRY_CODES;
+    ? codes.filter((c) => c.code.includes(q) || c.country.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+    : codes;
 
   return (
     <div ref={ref} className="relative shrink-0">
@@ -378,6 +413,17 @@ const NOTICE_PERIOD_LABELS: Record<string, string> = Object.fromEntries(
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function JobSeekerOnboardingPage() {
+  // The onboarding layout has no DashboardProviders, so the master-data hooks
+  // below get their own QueryClient here.
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } }));
+  return (
+    <QueryClientProvider client={queryClient}>
+      <JobSeekerOnboardingForm />
+    </QueryClientProvider>
+  );
+}
+
+function JobSeekerOnboardingForm() {
   const t = useTranslations("onboarding");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -398,6 +444,24 @@ export default function JobSeekerOnboardingPage() {
   const [saveError, setSaveError] = useState("");
   const [industryOpen, setIndustryOpen] = useState(false);
   const [industrySearch, setIndustrySearch] = useState("");
+
+  // Admin-managed lookup lists (Master Data). Each falls back to the static
+  // array while loading or if the API fails, and stores the same value the
+  // field always stored (English name; ISO code for currencies).
+  const genderData = useMasterData("genders");
+  const genderOptions: { value: string; label: string }[] = genderData.options.length > 0 || (!genderData.isPending && !genderData.isError)
+    ? genderData.options.map((o) => ({ value: o.value, label: o.label }))
+    : GENDERS.map((g) => ({ value: g, label: g }));
+  const industryData = useMasterData("industries");
+  const industryOptions: { value: string; label: string }[] = industryData.options.length > 0 || (!industryData.isPending && !industryData.isError)
+    ? industryData.options.map((o) => ({ value: o.value, label: o.label }))
+    : INDUSTRY_OPTIONS.map((i) => ({ value: i, label: i }));
+  const currencyData = useMasterData("currencies", { valueKey: "code" });
+  const currencyOptions: { value: string; label: string }[] = currencyData.options.length > 0 || (!currencyData.isPending && !currencyData.isError)
+    ? currencyData.options.map((o) => ({ value: o.value, label: o.value }))
+    : CURRENCY_CODES.map((c) => ({ value: c, label: c }));
+  const { data: apiCountries } = useCountrySearch("", { loadAll: true });
+  const dialCodes = mergeDialCodes(apiCountries);
   const industryRef = useRef<HTMLDivElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
 
@@ -1257,6 +1321,7 @@ export default function JobSeekerOnboardingPage() {
                       value={step0.countryCode}
                       onChange={(code) => setStep0((p) => ({ ...p, countryCode: code }))}
                       t={t}
+                      codes={dialCodes}
                     />
                     <div className="relative flex-1">
                       <Input id="ob-mobileNumber"
@@ -1503,8 +1568,8 @@ export default function JobSeekerOnboardingPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD", "OMR", "BHD"].map((c) => (
-                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            {currencyOptions.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -1557,7 +1622,7 @@ export default function JobSeekerOnboardingPage() {
                       <div className="relative">
                         {step1.industry ? (
                           <div className="flex flex-wrap gap-2 rounded-lg border border-gray-300 min-h-[44px] chip-pad">
-                            <TagChip label={step1.industry} onRemove={() => setStep1((p) => ({ ...p, industry: "" }))} />
+                            <TagChip label={industryOptions.find((o) => o.value === step1.industry)?.label ?? step1.industry} onRemove={() => setStep1((p) => ({ ...p, industry: "" }))} />
                           </div>
                         ) : (
                           <Input id="ob-industry"
@@ -1579,14 +1644,14 @@ export default function JobSeekerOnboardingPage() {
                         )}
                         {industryOpen && !step1.industry && (
                           <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
-                            {INDUSTRY_OPTIONS.filter((i) => i.toLowerCase().includes(industrySearch.toLowerCase())).map((opt) => (
+                            {industryOptions.filter((i) => `${i.label} ${i.value}`.toLowerCase().includes(industrySearch.toLowerCase())).map((opt) => (
                               <button
-                                key={opt}
+                                key={opt.value}
                                 type="button"
-                                onClick={() => { setStep1((p) => ({ ...p, industry: opt })); setIndustryOpen(false); setIndustrySearch(""); }}
+                                onClick={() => { setStep1((p) => ({ ...p, industry: opt.value })); setIndustryOpen(false); setIndustrySearch(""); }}
                                 className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
                               >
-                                {opt}
+                                {opt.label}
                               </button>
                             ))}
                           </div>
@@ -1885,8 +1950,8 @@ export default function JobSeekerOnboardingPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD"].map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        {currencyOptions.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1907,12 +1972,12 @@ export default function JobSeekerOnboardingPage() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-800">{t("gender")}</Label>
                   <div className="flex flex-wrap gap-2">
-                    {GENDERS.map((g) => (
+                    {genderOptions.map((g) => (
                       <ChipButton
-                        key={g}
-                        label={g}
-                        selected={step3.gender === g}
-                        onClick={() => setStep3((p) => ({ ...p, gender: p.gender === g ? "" : g }))}
+                        key={g.value}
+                        label={g.label}
+                        selected={step3.gender === g.value}
+                        onClick={() => setStep3((p) => ({ ...p, gender: p.gender === g.value ? "" : g.value }))}
                       />
                     ))}
                   </div>

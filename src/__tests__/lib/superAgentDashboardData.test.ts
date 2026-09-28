@@ -53,19 +53,20 @@ jest.mock("@/models/Agent", () => ({
   default: {
     find: () => chain([{ _id: "a1", userId: "u1" }, { _id: "a2", userId: "u2" }]),
     countDocuments: jest.fn(async () => 1),
+    aggregate: jest.fn(async () => []),
   },
 }));
 jest.mock("@/models/User", () => ({
   __esModule: true,
   default: {
     countDocuments: jest.fn(async () => 2),
-    find: () => chain([{ _id: "u1", name: "Agent Rajesh" }, { _id: "u2", name: "Agent Anita" }]),
+    find: () => chain([{ _id: "u1", name: "Agent Rajesh", isActive: true }, { _id: "u2", name: "Agent Anita", isActive: true }]),
   },
 }));
 const employerCount = jest.fn();
 const jobCount = jest.fn();
 const leadCount = jest.fn();
-jest.mock("@/models/Employer", () => ({ __esModule: true, default: { countDocuments: (...a: unknown[]) => employerCount(...a) } }));
+jest.mock("@/models/Employer", () => ({ __esModule: true, default: { countDocuments: (...a: unknown[]) => employerCount(...a), aggregate: jest.fn(async () => []) } }));
 jest.mock("@/models/Job", () => ({
   __esModule: true,
   default: {
@@ -78,7 +79,7 @@ jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: { countDocuments: jest.fn(async () => 7), aggregate: (...a: unknown[]) => appAggregate(...a) },
 }));
-jest.mock("@/models/Placement", () => ({ __esModule: true, default: { countDocuments: (...a: unknown[]) => placementCount(...a) } }));
+jest.mock("@/models/Placement", () => ({ __esModule: true, default: { countDocuments: (...a: unknown[]) => placementCount(...a), aggregate: jest.fn(async () => []) } }));
 jest.mock("@/models/Lead", () => ({
   __esModule: true,
   default: {
@@ -87,8 +88,20 @@ jest.mock("@/models/Lead", () => ({
     aggregate: (...a: unknown[]) => leadAggregate(...a),
   },
 }));
-jest.mock("@/models/Commission", () => ({ __esModule: true, default: { countDocuments: jest.fn(async () => 0) } }));
-jest.mock("@/models/ExhibitionRequest", () => ({ __esModule: true, default: { countDocuments: jest.fn(async () => 15) } }));
+const commissionAggregate = jest.fn();
+jest.mock("@/models/Commission", () => ({
+  __esModule: true,
+  default: { countDocuments: jest.fn(async () => 0), aggregate: (...a: unknown[]) => commissionAggregate(...a) },
+}));
+jest.mock("@/models/ExhibitionRequest", () => ({
+  __esModule: true,
+  default: {
+    countDocuments: jest.fn(async () => 15),
+    aggregate: jest.fn(async () => [{ _id: "submitted", count: 10 }, { _id: "under_review", count: 5 }, { _id: "approved", count: 2 }, { _id: "active", count: 1 }]),
+  },
+}));
+const targetCount = jest.fn();
+jest.mock("@/models/TargetProfile", () => ({ __esModule: true, default: { countDocuments: (...a: unknown[]) => targetCount(...a) } }));
 
 // 20:00Z on 30 Sep = 01:30 IST on 1 Oct: "this month" is October in Kolkata.
 const NOW = new Date("2026-09-30T20:00:00Z");
@@ -105,6 +118,25 @@ beforeEach(() => {
   leadAggregate.mockResolvedValue([{ _id: "2026-10", count: 4 }, { _id: "2026-06", count: 2 }]);
   jobAggregate.mockResolvedValue([{ _id: "2026-10", count: 1 }]);
   appAggregate.mockResolvedValue([{ _id: "2026-09", count: 6 }]);
+  targetCount.mockResolvedValue(1);
+  // Status/currency groups for the open statuses, then paid this month, then paid last month;
+  // the two daily series come back empty.
+  commissionAggregate.mockImplementation(async (pipeline: { $match: Record<string, unknown>; $group?: { _id: Record<string, unknown> } }[]) => {
+    const match = pipeline[0].$match;
+    const groupId = pipeline[1].$group?._id ?? {};
+    if ("$dateToString" in groupId) return []; // the two daily series
+    if (match.status === "paid") {
+      const paidAt = match.paidAt as { $gte: Date; $lt?: Date };
+      return paidAt.$lt
+        ? [{ _id: { status: "paid", currency: "AED" }, count: 1, amount: 600 }]
+        : [{ _id: { status: "paid", currency: "AED" }, count: 2, amount: 900 }];
+    }
+    return [
+      { _id: { status: "pending", currency: "AED" }, count: 3, amount: 1200 },
+      { _id: { status: "pending", currency: "INR" }, count: 1, amount: 50000 },
+      { _id: { status: "approved", currency: "AED" }, count: 1, amount: 400 },
+    ];
+  });
 });
 
 describe("loadSuperAgentDashboard", () => {
@@ -171,5 +203,49 @@ describe("loadSuperAgentDashboard", () => {
     expect(data.queue.inactiveAgents).toBe(0); // 2 agents, 2 active
     expect(data.queue.idleAgents).toBe(1); // a2 has no lead
     expect(data.region).toEqual({ assignedCityIds: ["c_tirur"], assignedStateIds: [] });
+  });
+
+  it("adds a 30-day daily series for the sparklines, zero-filled in the SA's zone", async () => {
+    const data = await loadSuperAgentDashboard("sa_user", NOW);
+    expect(data.daily).toHaveLength(30);
+    // 1 Oct local is the last day; 2 Sep local the first.
+    expect(data.daily[29].day).toBe("2026-10-01");
+    expect(data.daily[0].day).toBe("2026-09-02");
+    expect(data.daily[0]).toEqual({ day: "2026-09-02", agents: 0, employers: 0, jobs: 0, placements: 0 });
+    // Placements over the last 30 local days start at local midnight 29 days back.
+    expect(placementCount).toHaveBeenCalledWith(expect.objectContaining({ placedAt: { $gte: new Date("2026-09-01T18:30:00Z") } }));
+  });
+
+  it("splits the roster into a partition and keeps the previous-month baselines", async () => {
+    const data = await loadSuperAgentDashboard("sa_user", NOW);
+    expect(data.team).toEqual({ total: 2, engaged: 1, idle: 1, inactive: 0 });
+    expect(data.kpis.newEmployersLastMonth).toBe(2);
+    expect(data.kpis.jobsPostedLastMonth).toBe(90);
+    expect(employerCount).toHaveBeenCalledWith({
+      agentId: { $in: [A1, A2] }, roleArchivedAt: null,
+      createdAt: { $gte: new Date("2026-08-31T18:30:00Z"), $lt: new Date("2026-09-30T18:30:00Z") },
+    });
+  });
+
+  it("summarises the SA's own commissions in the busiest currency, by stage", async () => {
+    const data = await loadSuperAgentDashboard("sa_user", NOW);
+    expect(data.commissions.currency).toBe("AED");
+    expect(data.commissions.pending).toEqual({ count: 3, amount: 1200 });
+    expect(data.commissions.approved).toEqual({ count: 1, amount: 400 });
+    expect(data.commissions.disputed).toEqual({ count: 0, amount: 0 });
+    expect(data.commissions.paidThisMonth).toEqual({ count: 2, amount: 900 });
+    expect(data.commissions.paidLastMonth).toEqual({ count: 1, amount: 600 });
+    expect(data.commissions.daily).toHaveLength(30);
+    // Scoped to Commission.superAgentId, the shape /api/commissions uses.
+    expect(commissionAggregate).toHaveBeenCalledWith(expect.arrayContaining([
+      { $match: { superAgentId: "sa1", status: { $in: ["pending", "approved", "disputed"] } } },
+    ]));
+  });
+
+  it("buckets the team's exhibition requests by stage and counts agents with a target for the local year", async () => {
+    const data = await loadSuperAgentDashboard("sa_user", NOW);
+    expect(data.exhibitions).toEqual({ awaitingReview: 15, revisionRequested: 0, approved: 2, active: 1 });
+    expect(data.targets).toEqual({ year: 2026, agentsWithTarget: 1, agentsTotal: 2 });
+    expect(targetCount).toHaveBeenCalledWith({ assigneeRole: "agent", assigneeId: { $in: ["u1", "u2"] }, year: 2026, status: "active" });
   });
 });

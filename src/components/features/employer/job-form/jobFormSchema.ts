@@ -2,6 +2,15 @@ import { z } from "zod";
 import { knockoutRuleOf } from "@/lib/matching/knockouts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+//
+// The option lists below are FALLBACKS. The forms read their live options from
+// the admin-managed master data (`useMasterData` → /api/master-data/<category>,
+// `/api/countries`) and only show these arrays while that loads or if it fails.
+//   JOB_CATEGORIES → functional-areas (Job.category stores the English name)
+//   CURRENCIES     → currencies (Job.salary.currency stores the ISO code)
+//   COUNTRIES      → /api/countries (Job.location.country stores the name)
+// SALARY_PERIODS / EMPLOYMENT_TYPES / WORK_MODES are enum-backed in the Job
+// model and matching logic, so they stay hardcoded on purpose.
 
 export const JOB_CATEGORIES = [
   "Technology",
@@ -33,6 +42,7 @@ export const CURRENCIES = [
   { code: "GBP", symbol: "£", label: "GBP — British Pound" },
 ] as const;
 
+/** Well-known codes; the admin can add more, so salary.currency is typed as string. */
 export type CurrencyCode = (typeof CURRENCIES)[number]["code"];
 
 export const SALARY_PERIODS = [
@@ -56,7 +66,7 @@ export const WORK_MODES = [
 ] as const;
 
 /** Map country name to default currency code */
-export const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
+export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   "United Arab Emirates": "AED",
   UAE: "AED",
   "Saudi Arabia": "SAR",
@@ -73,6 +83,9 @@ export const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
   Germany: "EUR",
   France: "EUR",
 };
+
+/** Special "country" value for jobs that can be done from anywhere. */
+export const REMOTE_GLOBAL_COUNTRY = "Remote / Global";
 
 export const COUNTRIES = [
   "United Arab Emirates",
@@ -96,7 +109,7 @@ export const COUNTRIES = [
 ] as const;
 
 /** Salary preset suggestions by currency */
-export const SALARY_PRESETS: Partial<Record<CurrencyCode, Array<{ label: string; min: number; max: number; period?: string }>>> = {
+export const SALARY_PRESETS: Partial<Record<string, Array<{ label: string; min: number; max: number; period?: string }>>> = {
   AED: [
     { label: "5k–10k/mo", min: 5000, max: 10000 },
     { label: "10k–20k/mo", min: 10000, max: 20000 },
@@ -252,11 +265,11 @@ export const JOB_FORM_STEPS = [
 ] as const;
 
 /** Format salary for display */
-export function formatSalary(amount: number, currency: CurrencyCode, period: string): string {
+export function formatSalary(amount: number, currency: string, period: string, symbols?: Record<string, string>): string {
   if (amount === 0) return "";
 
   const currencyObj = CURRENCIES.find((c) => c.code === currency);
-  const symbol = currencyObj?.symbol ?? currency;
+  const symbol = symbols?.[currency] ?? currencyObj?.symbol ?? currency;
 
   // When period is LPA, user enters value directly in lakhs (e.g. 35 = 35L)
   if (period === "lpa") {

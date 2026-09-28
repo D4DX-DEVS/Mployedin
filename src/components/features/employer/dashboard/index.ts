@@ -1,10 +1,12 @@
-export { SmartHeader } from "./SmartHeader";
-export { InteractivePipeline } from "./InteractivePipeline";
-export { DashboardStatCards } from "./DashboardStatCards";
-export { PriorityActions } from "./PriorityActions";
+export { EmployerHeader } from "./EmployerHeader";
+export { EmployerKpiStrip, windowDelta } from "./EmployerKpiStrip";
+export { ApplicationsTrendPanel } from "./ApplicationsTrendPanel";
+export { AttentionPanel, buildAttentionItems, type AttentionItem } from "./AttentionPanel";
+export { PipelinePanel } from "./PipelinePanel";
+export { JobsHealthPanel } from "./JobsHealthPanel";
+export { TopJobsPanel } from "./TopJobsPanel";
 export { AIRecommendedCandidatesCard } from "./AIRecommendedCandidatesCard";
 export { DraftExtractionsCard } from "./DraftExtractionsCard";
 export { DraftJobsCard } from "./DraftJobsCard";
 export { AIChatDraftsCard } from "./AIChatDraftsCard";
 export { DraftsCard } from "./DraftsCard";
-export { DashboardInsightsRow } from "./DashboardInsightsRow";

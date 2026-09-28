@@ -5,6 +5,8 @@ import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SUPPORTED_CURRENCIES, type CurrencyInfo } from "@/lib/currency";
+import { useMasterData } from "@/hooks/useMasterData";
+import { useHasQueryClient } from "@/hooks/useHasQueryClient";
 
 interface CurrencySelectProps {
   value?: string;
@@ -18,7 +20,31 @@ interface CurrencySelectProps {
   searchLabel?: string;
 }
 
-export function CurrencySelect({
+/**
+ * Currency picker fed by the admin-managed `currencies` master list (code,
+ * symbol, localised name). `SUPPORTED_CURRENCIES` from `@/lib/currency` is the
+ * fallback while loading, on API error, or when no QueryClientProvider is
+ * mounted. The stored value is always the ISO 4217 code.
+ */
+export function CurrencySelect(props: CurrencySelectProps) {
+  const hasQueryClient = useHasQueryClient();
+  return hasQueryClient ? <LiveCurrencySelect {...props} /> : <CurrencySelectView {...props} currencies={SUPPORTED_CURRENCIES} />;
+}
+
+function LiveCurrencySelect(props: CurrencySelectProps) {
+  const { options } = useMasterData("currencies", { valueKey: "code" });
+  const currencies = React.useMemo<CurrencyInfo[]>(() => {
+    if (options.length === 0) return SUPPORTED_CURRENCIES;
+    return options.map((o) => ({
+      code: o.value,
+      symbol: o.item.symbol || o.value,
+      label: o.label,
+    }));
+  }, [options]);
+  return <CurrencySelectView {...props} currencies={currencies} />;
+}
+
+function CurrencySelectView({
   value,
   onValueChange,
   placeholder = "Select currency…",
@@ -26,23 +52,30 @@ export function CurrencySelect({
   className,
   ariaLabel,
   searchLabel,
-}: CurrencySelectProps) {
+  currencies,
+}: CurrencySelectProps & { currencies: CurrencyInfo[] }) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const selected = SUPPORTED_CURRENCIES.find((c) => c.code === value);
+  // Keep a stored code visible even if the admin retired it from the list.
+  const selected = React.useMemo<CurrencyInfo | undefined>(() => {
+    if (!value) return undefined;
+    return currencies.find((c) => c.code === value)
+      ?? SUPPORTED_CURRENCIES.find((c) => c.code === value)
+      ?? { code: value, symbol: value, label: value };
+  }, [value, currencies]);
 
   const filtered = React.useMemo(() => {
-    if (!search.trim()) return SUPPORTED_CURRENCIES;
+    if (!search.trim()) return currencies;
     const q = search.toLowerCase();
-    return SUPPORTED_CURRENCIES.filter(
+    return currencies.filter(
       (c) =>
         c.code.toLowerCase().includes(q) ||
         c.label.toLowerCase().includes(q) ||
         c.symbol.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, currencies]);
 
   React.useEffect(() => {
     if (open) {

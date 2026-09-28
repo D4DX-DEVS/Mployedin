@@ -26,6 +26,7 @@ import {
   FormSelect,
 } from "@/components/shared/AppForm";
 import { cn } from "@/lib/utils";
+import { MasterDataSelect } from "@/components/ui/master-data-select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -435,14 +436,20 @@ export default function PersonalDetailsPage() {
 
             {form.languages.map((entry, idx) => (
               <div key={idx} className="flex items-end gap-3">
-                <div className="flex-1">
-                  <FormInput
-                    label={idx === 0 ? t("language") : undefined}
-                    aria-label={idx === 0 ? undefined : t("language")}
+                <div className="flex-1 space-y-1">
+                  {idx === 0 && (
+                    <label htmlFor={`personal-language-${idx}`} className="block text-xs font-medium text-muted-foreground">
+                      {t("language")}
+                    </label>
+                  )}
+                  <MasterDataSelect
+                    id={`personal-language-${idx}`}
+                    category="languages"
+                    valueKey="name"
+                    aria-label={t("language")}
                     placeholder={t("languagePlaceholder")}
                     value={entry.language}
-                    onChange={(e) => updateLanguage(idx, { language: e.target.value })}
-                    maxLength={100}
+                    onValueChange={(v) => updateLanguage(idx, { language: v })}
                   />
                 </div>
                 <div className="w-44 shrink-0">

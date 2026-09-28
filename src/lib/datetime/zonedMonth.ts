@@ -61,3 +61,27 @@ export function recentMonthKeys(timeZone: string, now: Date, count: number): str
   }
   return keys;
 }
+
+/**
+ * The instant local midnight falls, `daysBack` days before the local date
+ * `now` is on (0 = today). Pairs with `recentDayKeys` for daily series.
+ */
+export function dayStartInZone(timeZone: string, now: Date, daysBack = 0): Date {
+  const p = zonedParts(now, timeZone);
+  const localMidnight = new Date(Date.UTC(p.year, p.month - 1, p.day - daysBack));
+  return new Date(localMidnight.getTime() - zoneOffsetMs(localMidnight, timeZone));
+}
+
+/**
+ * "YYYY-MM-DD" keys for the last `count` local days ending today, oldest
+ * first — the format MongoDB's `$dateToString: "%Y-%m-%d"` produces.
+ */
+export function recentDayKeys(timeZone: string, now: Date, count: number): string[] {
+  const p = zonedParts(now, timeZone);
+  const keys: string[] = [];
+  for (let back = count - 1; back >= 0; back -= 1) {
+    const d = new Date(Date.UTC(p.year, p.month - 1, p.day - back));
+    keys.push(d.toISOString().slice(0, 10));
+  }
+  return keys;
+}

@@ -52,7 +52,10 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
     (async () => {
       try {
         const res = await fetch("/api/ai/chat/drafts", { cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setDrafts([]);
+          return;
+        }
         const data = (await res.json()) as { threads?: ChatThreadSummary[] };
         if (!cancelled) setDrafts(data.threads ?? []);
       } catch {

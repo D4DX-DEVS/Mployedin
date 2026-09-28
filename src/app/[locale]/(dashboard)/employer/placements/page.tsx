@@ -22,6 +22,8 @@ import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 const PLACEMENT_STATUSES = ["active", "completed", "terminated"] as const;
+// Enum-backed on Placement.visaStatus (and the /api/placements filter), so it
+// intentionally stays hardcoded instead of reading Master Data → Visa Statuses.
 const VISA_STATUSES = ["not_required", "pending", "approved", "rejected", "stamped"] as const;
 
 export default function EmployerPlacementsPage() {

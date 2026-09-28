@@ -11,12 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
+import { useMasterData } from "@/hooks/useMasterData";
 import {
   CURRENCIES,
   SALARY_PERIODS,
   SALARY_PRESETS,
   type JobFormValues,
-  type CurrencyCode,
 } from "./jobFormSchema";
 import { requiresSalaryDisclosure } from "@/lib/job-attributes/salary-jurisdictions";
 import { SalaryBenchmarkWidget } from "./SalaryBenchmarkWidget";
@@ -32,7 +32,7 @@ export function Step4SalarySettings() {
     formState: { errors },
   } = useFormContext<JobFormValues>();
 
-  const currency = (watch("salary.currency") ?? "USD") as CurrencyCode;
+  const currency = watch("salary.currency") ?? "USD";
   const period = watch("salary.period") ?? "monthly";
   const isNegotiable = watch("salary.isNegotiable");
   const salaryMin = watch("salary.min");
@@ -49,6 +49,17 @@ export function Step4SalarySettings() {
 
   const presets = SALARY_PRESETS[currency] ?? [];
   const currencyNames = new Intl.DisplayNames([locale], { type: "currency" });
+
+  // Currencies come from admin → Master Data → Currencies (ISO code stored);
+  // the static CURRENCIES list is the fallback while loading / on API error.
+  const { options: currencyOptions, isPending: currenciesPending, isError: currenciesError } = useMasterData("currencies", { valueKey: "code" });
+  const currencyChoices = (() => {
+    const live = currencyOptions.length > 0 || (!currenciesPending && !currenciesError)
+      ? currencyOptions.map((o) => ({ value: o.value, label: `${o.value} - ${o.label}` }))
+      : CURRENCIES.map((c) => ({ value: c.code, label: `${c.code} - ${currencyNames.of(c.code) ?? c.label}` }));
+    // Keep a stored code visible even if the admin retired it.
+    return live.some((o) => o.value === currency) ? live : [{ value: currency, label: currency }, ...live];
+  })();
 
   function formatAmount(amount: number, salaryCurrency = currency) {
     return new Intl.NumberFormat(numberLocale, {
@@ -156,11 +167,9 @@ export function Step4SalarySettings() {
                   </Label>
                   <SearchableSelect
                     id="currency"
-                    options={CURRENCIES.map((c) => ({
-                      value: c.code,
-                      label: `${c.code} - ${currencyNames.of(c.code) ?? c.label}`,
-                    }))}
+                    options={currencyChoices}
                     value={currency}
+                    loading={currenciesPending && currencyOptions.length === 0}
                     onValueChange={(v) =>
                       setValue("salary.currency", v, { shouldValidate: true })
                     }

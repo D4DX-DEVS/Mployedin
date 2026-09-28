@@ -18,8 +18,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { CurrencySelect } from "@/components/ui/currency-select";
 import { CountrySelect } from "@/components/ui/country-select";
 import { JOB_CATEGORIES } from "@/components/features/employer/job-form/jobFormSchema";
+import { MasterDataSelect } from "@/components/ui/master-data-select";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 
+// Job.employmentType is a model enum — stays hardcoded (labels via i18n).
 const EMPLOYMENT_TYPES = [
   "full_time",
   "part_time",
@@ -27,6 +29,9 @@ const EMPLOYMENT_TYPES = [
   "internship",
   "freelance",
 ] as const;
+
+/** Fallback for the category select while the functional-areas master list loads. */
+const CATEGORY_FALLBACK = JOB_CATEGORIES.map((c) => ({ value: c, label: c }));
 
 interface Employer {
   _id: string;
@@ -185,16 +190,17 @@ export default function AgentJobPosterPage() {
 
           <div>
             <label htmlFor={`${fieldId}-category`} className="block text-xs font-medium text-muted-foreground mb-1.5">{t("form.category")}</label>
-            <Select required value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-              <SelectTrigger id={`${fieldId}-category`} className="h-11 rounded-xl">
-                <SelectValue placeholder={t("form.categoryPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {JOB_CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MasterDataSelect
+              id={`${fieldId}-category`}
+              category="functional-areas"
+              valueKey="name"
+              value={form.category}
+              onValueChange={(v) => setForm({ ...form, category: v })}
+              placeholder={t("form.categoryPlaceholder")}
+              fallback={CATEGORY_FALLBACK}
+              aria-label={t("form.category")}
+              className="h-11 rounded-xl"
+            />
           </div>
 
           <div>

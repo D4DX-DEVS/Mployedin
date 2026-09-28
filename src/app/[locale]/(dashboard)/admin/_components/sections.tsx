@@ -6,21 +6,26 @@ import { getAdminActionQueue } from "@/lib/admin/actionQueue.server";
 import { cachedDashboardSection } from "@/lib/admin/dashboard/cache";
 import { getFinanceOverview } from "@/lib/admin/dashboard/finance.server";
 import { getHealthChecks } from "@/lib/admin/dashboard/health.server";
+import { getDataInsights } from "@/lib/admin/dashboard/insights.server";
 import { getPeopleOverview } from "@/lib/admin/dashboard/people.server";
 import type { DashboardPeriod } from "@/lib/admin/dashboard/period";
 import { getRecentEvents } from "@/lib/admin/dashboard/recent.server";
 import { getRecruitmentOverview } from "@/lib/admin/dashboard/recruitment.server";
 import { getPlatformSnapshot } from "@/lib/admin/dashboard/snapshot.server";
+import { getDashboardTrends } from "@/lib/admin/dashboard/trends.server";
 import type { RecentEvent, RecentEventCategory } from "@/lib/admin/dashboard/types";
 import type { Resource } from "@/types/user";
-import { AdminActionQueue } from "./action-queue";
-import { AdminFinanceOverview } from "./finance-overview";
-import { AdminHealthPanel } from "./health-panel";
-import { AdminPeopleOverview } from "./people-overview";
-import { AdminPlatformSnapshot, type SnapshotKey } from "./platform-snapshot";
+import { ActivityTrendPanel } from "./activity-trend";
+import { AttentionPanel } from "./attention-panel";
+import { InvoicesPanel, RevenuePanel, SubscriptionsPanel } from "./finance-panels";
+import { HealthPanel } from "./health-compact";
+import { InsightsPanel } from "./insights-panel";
+import { KpiStrip, type KpiKey } from "./kpi-strip";
+import { AgentOpsPanel, EmployerHealthPanel, UsersByRolePanel } from "./people-panels";
 import { AdminRecentActivity, type RecentActivityFilter, type RecentActivityRow } from "./recent-activity";
-import { AdminRecruitmentOverview, AdminRecruitmentPulse } from "./recruitment-overview";
+import { FunnelPanel, JobHealthPanel, PipelinePanel } from "./recruitment-panels";
 import { SectionError } from "./section-error";
+import { TopEmployersPanel } from "./top-employers";
 import type { DashboardTranslator } from "./types";
 
 export interface SectionContext {
@@ -47,6 +52,18 @@ function Failed({ id, title, t }: { id: string; title: string; t: DashboardTrans
   return <SectionError id={id} title={title} message={t("sectionError.message")} retryLabel={t("sectionError.retry")} />;
 }
 
+/* ── Shared loaders (React `cache` inside cachedDashboardSection keeps one query per key per TTL) ── */
+
+const trends = (period: DashboardPeriod) => cachedDashboardSection("trends", period.key, () => getDashboardTrends(period));
+const snapshot = (period: DashboardPeriod) => cachedDashboardSection("snapshot", period.key, () => getPlatformSnapshot(period));
+const recruitment = (period: DashboardPeriod) => cachedDashboardSection("recruitment", period.key, () => getRecruitmentOverview(period));
+const people = (period: DashboardPeriod, access: { employers: boolean; agents: boolean }) =>
+  cachedDashboardSection("people", `${period.key}:employers-${access.employers ? 1 : 0}:agents-${access.agents ? 1 : 0}`, () => getPeopleOverview(period, access));
+const finance = (period: DashboardPeriod, commissions: boolean) =>
+  cachedDashboardSection("finance", `${period.key}:commissions-${commissions ? 1 : 0}`, () => getFinanceOverview(period, { commissions }));
+
+/* ── Sections ── */
+
 export async function QueueSection({ can, locale }: SectionContext) {
   const groups = permittedQueueGroups(can);
   if (groups.length === 0) return null;
@@ -55,37 +72,76 @@ export async function QueueSection({ can, locale }: SectionContext) {
   // records that no longer need them. The aggregates below tolerate 60s of age.
   const result = await load("queue", () => getAdminActionQueue(can));
   if (!result.ok) return <Failed id="admin-action-queue" title={t("queue.title")} t={t} />;
-  return <AdminActionQueue items={result.data} groups={groups} locale={locale} t={t} />;
+  return <AttentionPanel items={result.data} groups={groups} locale={locale} t={t} />;
 }
 
-const SNAPSHOT_RESOURCES: Record<SnapshotKey, Resource> = {
+const KPI_RESOURCES: Record<KpiKey, Resource> = {
   users: "users",
+  companies: "employers",
   activeJobs: "jobs",
   applications: "applications",
-  interviews: "interviews",
   placements: "placements",
+  revenue: "invoices",
 };
 
+/** Headline numbers: the five platform totals plus companies and money collected. */
 export async function SnapshotSection({ can, period, locale }: SectionContext) {
-  const keys = (Object.keys(SNAPSHOT_RESOURCES) as SnapshotKey[]).filter((key) => can(SNAPSHOT_RESOURCES[key]));
+  const keys = (Object.keys(KPI_RESOURCES) as KpiKey[]).filter((key) => can(KPI_RESOURCES[key]));
   if (keys.length === 0) return null;
   const t = await getTranslations("adminDashboard");
-  // Data is permission-independent here; `keys` only filters rendering.
-  const result = await load("snapshot", () => cachedDashboardSection("snapshot", period.key, () => getPlatformSnapshot(period)));
+  const wantCompanies = keys.includes("companies");
+  const wantRevenue = keys.includes("revenue");
+  const result = await load("snapshot", async () => {
+    const [snap, tr, ppl, fin] = await Promise.all([
+      snapshot(period),
+      trends(period),
+      wantCompanies ? people(period, { employers: true, agents: can("agents") }) : null,
+      wantRevenue ? finance(period, can("commissions")) : null,
+    ]);
+    const currency = tr.primaryCurrency;
+    const monthKey = (d: Date) => d.toISOString().slice(0, 7);
+    // Collected in the period vs the period before, from the daily payments the
+    // finance overview already sums; revenue rows are monthly so we use the
+    // finance "collected" figure for the current window and the same-length
+    // window before it is approximated from the monthly series.
+    const collectedNow = fin?.money.find((m) => m.currency === (currency ?? fin.money[0]?.currency))?.collected ?? 0;
+    const prevStart = period.previousStart;
+    const prevMonths = new Set<string>();
+    for (let d = new Date(prevStart); d < period.start; d = new Date(d.getTime() + 24 * 60 * 60 * 1000)) prevMonths.add(monthKey(d));
+    const collectedPrev = tr.revenue.filter((r) => r.currency === currency && prevMonths.has(r.month)).reduce((s, r) => s + r.collected, 0);
+    return {
+      snapshot: snap,
+      daily: tr.daily,
+      companies: ppl?.employers ? { total: ppl.employers.companies, added: { current: ppl.employers.newCompaniesInPeriod, previous: 0 } } : null,
+      revenue: fin ? { currency: currency ?? fin.money[0]?.currency ?? "AED", current: collectedNow, previous: collectedPrev } : null,
+    };
+  });
   if (!result.ok) return <Failed id="admin-snapshot" title={t("snapshot.title")} t={t} />;
-  return <AdminPlatformSnapshot data={result.data} keys={keys} days={period.days} locale={locale} t={t} />;
+  return <KpiStrip data={result.data} keys={keys} days={period.days} locale={locale} t={t} />;
 }
 
-export async function RecruitmentSection({ can, period, locale, compact = false }: SectionContext & { compact?: boolean }) {
+export async function TrendSection({ can, period, locale }: SectionContext) {
+  const show = { users: can("users"), jobs: can("jobs"), applications: can("applications") };
+  if (!show.users && !show.jobs && !show.applications) return null;
+  const t = await getTranslations("adminDashboard");
+  const result = await load("trends", () => trends(period));
+  if (!result.ok) return <Failed id="admin-trend" title={t("trends.title")} t={t} />;
+  return <ActivityTrendPanel daily={result.data.daily} show={show} days={period.days} locale={locale} t={t} />;
+}
+
+export async function RecruitmentSection({ can, period, locale }: SectionContext) {
   const show = { applications: can("applications"), jobs: can("jobs") };
   if (!show.applications && !show.jobs) return null;
   const t = await getTranslations("adminDashboard");
-  const result = await load("recruitment", () => cachedDashboardSection("recruitment", period.key, () => getRecruitmentOverview(period)));
+  const result = await load("recruitment", () => recruitment(period));
   if (!result.ok) return <Failed id="admin-recruitment" title={t("recruitment.title")} t={t} />;
-  return compact ? (
-    <AdminRecruitmentPulse data={result.data} show={show} days={period.days} locale={locale} t={t} />
-  ) : (
-    <AdminRecruitmentOverview data={result.data} show={show} days={period.days} locale={locale} t={t} />
+  const props = { data: result.data, show, days: period.days, locale, t };
+  return (
+    <>
+      {show.applications && <FunnelPanel {...props} />}
+      {show.applications && <PipelinePanel {...props} />}
+      {show.jobs && <JobHealthPanel {...props} />}
+    </>
   );
 }
 
@@ -94,22 +150,55 @@ export async function PeopleSection({ can, period, locale }: SectionContext) {
   const showRoles = can("users");
   if (!showRoles && !access.employers && !access.agents) return null;
   const t = await getTranslations("adminDashboard");
-  // The employer/agent panels differ by permission, so the flags are in the key.
-  const key = `${period.key}:employers-${access.employers ? 1 : 0}:agents-${access.agents ? 1 : 0}`;
-  const result = await load("people", () => cachedDashboardSection("people", key, () => getPeopleOverview(period, access)));
+  const result = await load("people", () => people(period, access));
   if (!result.ok) return <Failed id="admin-people" title={t("people.title")} t={t} />;
-  return <AdminPeopleOverview data={result.data} showRoles={showRoles} days={period.days} locale={locale} t={t} />;
+  const props = { data: result.data, showRoles, days: period.days, locale, t };
+  return (
+    <>
+      {showRoles && <UsersByRolePanel {...props} />}
+      {access.employers && <EmployerHealthPanel {...props} />}
+      {access.agents && <AgentOpsPanel {...props} />}
+    </>
+  );
+}
+
+export async function TopEmployersSection({ can, period, locale }: SectionContext) {
+  if (!can("employers") || !can("applications")) return null;
+  const t = await getTranslations("adminDashboard");
+  const result = await load("trends", () => trends(period));
+  if (!result.ok) return <Failed id="admin-top-employers" title={t("topEmployers.title")} t={t} />;
+  return <TopEmployersPanel employers={result.data.topEmployers} days={period.days} locale={locale} t={t} />;
+}
+
+export async function RevenueSection({ can, period, locale }: SectionContext) {
+  if (!can("invoices")) return null;
+  const t = await getTranslations("adminDashboard");
+  const result = await load("trends", () => trends(period));
+  if (!result.ok) return <Failed id="admin-revenue" title={t("revenue.title")} t={t} />;
+  return <RevenuePanel revenue={result.data.revenue} currency={result.data.primaryCurrency} now={period.now} locale={locale} t={t} />;
 }
 
 export async function FinanceSection({ can, period, locale }: SectionContext) {
   const show = { invoices: can("invoices"), subscriptions: can("subscriptions") };
-  const commissions = can("commissions");
-  if (!show.invoices && !show.subscriptions && !commissions) return null;
+  if (!show.invoices && !show.subscriptions) return null;
   const t = await getTranslations("adminDashboard");
-  const key = `${period.key}:commissions-${commissions ? 1 : 0}`;
-  const result = await load("finance", () => cachedDashboardSection("finance", key, () => getFinanceOverview(period, { commissions })));
+  const result = await load("finance", () => finance(period, can("commissions")));
   if (!result.ok) return <Failed id="admin-finance" title={t("finance.title")} t={t} />;
-  return <AdminFinanceOverview data={result.data} show={show} days={period.days} locale={locale} t={t} />;
+  const props = { data: result.data, show, days: period.days, locale, t };
+  return (
+    <>
+      {show.invoices && <InvoicesPanel {...props} />}
+      {show.subscriptions && <SubscriptionsPanel {...props} />}
+    </>
+  );
+}
+
+export async function InsightsSection({ can, period, locale }: SectionContext) {
+  if (!can("users") && !can("jobs") && !can("employers")) return null;
+  const t = await getTranslations("adminDashboard");
+  const result = await load("insights", () => cachedDashboardSection("insights", period.key, () => getDataInsights(period)));
+  if (!result.ok) return <Failed id="admin-insights" title={t("insights.title")} t={t} />;
+  return <InsightsPanel insights={result.data} locale={locale} t={t} />;
 }
 
 /** The same permission as the full system-health page. */
@@ -118,7 +207,7 @@ export async function HealthSection({ can, period, locale }: SectionContext) {
   const t = await getTranslations("adminDashboard");
   const result = await load("health", () => cachedDashboardSection("health", period.key, () => getHealthChecks(period)));
   if (!result.ok) return <Failed id="admin-health" title={t("health.title")} t={t} />;
-  return <AdminHealthPanel checks={result.data} locale={locale} t={t} />;
+  return <HealthPanel checks={result.data} locale={locale} t={t} />;
 }
 
 const CATEGORY_RESOURCES: Record<RecentEventCategory, Resource> = {
@@ -208,7 +297,6 @@ function recentRows(events: readonly RecentEvent[], now: Date, locale: string, t
       case "application": {
         const base =
           event.status === "applied" ? t("recent.applicationNew") : t("recent.applicationMoved", { status: statusLabel(event.status) });
-        // Subject is "Name · Job title" (see recent.server); appending keeps rows distinct without new keys.
         return event.subject ? `${base} — ${event.subject}` : base;
       }
       case "interview":
@@ -243,7 +331,6 @@ export async function RecentSection({ can, period, locale }: SectionContext) {
   const categories = (Object.keys(CATEGORY_RESOURCES) as RecentEventCategory[]).filter((category) => can(CATEGORY_RESOURCES[category]));
   if (categories.length === 0) return null;
   const t = await getTranslations("adminDashboard");
-  // Only readable categories are ever queried, so they are the cache key.
   const result = await load("recent", () => cachedDashboardSection("recent", categories.join(","), () => getRecentEvents(new Set(categories))));
   if (!result.ok) return <Failed id="admin-recent" title={t("recent.title")} t={t} />;
   const filters: RecentActivityFilter[] = ["all", ...categories];

@@ -60,6 +60,7 @@
     "candidates": "Candidates"
   },
   "auth": {
+    "signInTemporarilyUnavailable": "Sign-in is temporarily unavailable. Please try again in a minute.",
     "login": "Login",
     "logout": "Logout",
     "register": "Register",
@@ -97,6 +98,8 @@
     "oauth2faRecoveryUsed": "Recovery code used — please enroll new codes from your settings when convenient.",
     "accountLocked": "Your account is temporarily locked after too many failed attempts. Try again in 15 minutes or reset your password.",
     "accountInactive": "This account has been deactivated. Contact support@mployedin.com to have it restored.",
+    "invalidRole": "Your account has an unrecognised role, so you have been signed out. Contact support@mployedin.com.",
+    "oauthUnverified": "We could not confirm this Google account's email address. Verify it with Google, or sign in with your email and password.",
     "googlePopupBlocked": "Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.",
     "loginRateLimited": "Too many failed sign-in attempts from this network. Please wait five minutes and try again.",
     "resetPassword": "Reset Password",
@@ -1130,7 +1133,8 @@
       "confirmed": "Confirmed",
       "declined": "Declined",
       "completed": "Completed",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "rescheduled": "Rescheduled"
     },
     "round": "Round {round}",
     "documentTitle": "Interviews · MPLOYEDIN",
@@ -2392,7 +2396,9 @@
         "education": "Most openings right now ask for a higher qualification than your profile lists."
       },
       "noLocationTitle": "Where do you want to work?",
-      "addCountryCta": "Add a preferred country"
+      "addCountryCta": "Add a preferred country",
+      "forYou": "Recommended for you",
+      "strongCount": "{count, plural, one {# strong match for your profile} other {# strong matches for your profile}}"
     },
     "appliedJobs": {
       "eyebrow": "Already applied",
@@ -2433,7 +2439,11 @@
       "selected": "Selected",
       "interview": "Interview",
       "rejected": "Rejected",
-      "applied": "Applied"
+      "applied": "Applied",
+      "shortlisted": "Shortlisted",
+      "offer": "Offer",
+      "hired": "Hired",
+      "withdrawn": "Withdrawn"
     },
     "drawer": {
       "eyebrow": "AI suggestions",
@@ -2513,7 +2523,18 @@
     "recentApplications": {
       "title": "Recently applied",
       "viewAll": "View all applications",
-      "empty": "You have not applied to anything yet."
+      "empty": "You have not applied to anything yet.",
+      "subtitle": "Status and your next step",
+      "nextStep": {
+        "applied": "Waiting for the employer to review",
+        "shortlisted": "You're shortlisted — an interview may follow",
+        "interview_scheduled": "Check your interview details",
+        "selected": "You've been selected — watch for the offer",
+        "offer": "Review and respond to the offer",
+        "hired": "Congratulations — you're hired",
+        "rejected": "Not this time — keep applying",
+        "withdrawn": "You withdrew this application"
+      }
     },
     "profileMini": {
       "title": "Your profile",
@@ -2538,6 +2559,71 @@
     },
     "encouragement": {
       "cta": "Explore jobs"
+    },
+    "sectionLoading": "Loading {section}",
+    "sectionError": {
+      "message": "This section could not be loaded.",
+      "retry": "Retry"
+    },
+    "header": {
+      "quickActionsLabel": "Quick actions",
+      "findJobs": "Find jobs",
+      "buildCv": "Build CV",
+      "messages": "Messages",
+      "completeProfile": "Complete profile",
+      "viewProfile": "View profile",
+      "profileComplete": "Profile complete",
+      "missingDetails": "{count, plural, =0 {Almost there — a few details left.} one {# detail left for better matches} other {# details left for better matches}}"
+    },
+    "kpi": {
+      "title": "Your numbers",
+      "applications": "Applications sent",
+      "applicationsHint": "All time · last 7 days trend",
+      "interviews": "Interviews upcoming",
+      "interviewsHint": "Scheduled and confirmed",
+      "views": "Recruiter views",
+      "viewsHint": "Last 30 days",
+      "offers": "Offers pending",
+      "offersHint": "Waiting for your answer",
+      "messages": "Unread messages",
+      "messagesHint": "From employers and recruiters",
+      "alerts": "Job alerts",
+      "alertsHint": "Active saved searches",
+      "deltaNone": "No change from last week",
+      "deltaUp": "Up {value} from last week",
+      "deltaDown": "Down {value} from last week"
+    },
+    "statusBreakdown": {
+      "title": "Application status",
+      "subtitle": "Where your applications stand",
+      "total": "Applications",
+      "empty": "Your applications will show up here once you apply.",
+      "applied": "Applied",
+      "shortlisted": "Shortlisted",
+      "interview": "Interview",
+      "offer": "Offer",
+      "hired": "Hired",
+      "rejected": "Not selected"
+    },
+    "interviews": {
+      "title": "Upcoming interviews",
+      "subtitle": "{count, plural, one {# interview coming up} other {# interviews coming up}}",
+      "emptyHint": "Nothing scheduled yet",
+      "empty": "No upcoming interviews. Keep applying to get invited.",
+      "viewAll": "All interviews",
+      "join": "Join",
+      "types": {
+        "video": "Video call",
+        "offline": "In person",
+        "hybrid": "Hybrid"
+      }
+    },
+    "boost": {
+      "title": "Boost your profile",
+      "subtitle": "{count, plural, one {# thing that would improve your matches} other {# things that would improve your matches}}",
+      "allDone": "Nothing missing",
+      "allDoneHint": "Your profile has everything we match on. Keep it current so recruiters find you.",
+      "linkedin": "Add your LinkedIn profile"
     }
   },
   "ai": {
@@ -2721,6 +2807,12 @@
     "clearFilters": "Clear filters"
   },
   "landing": {
+    "faqCategoryGeneral": "General",
+    "faqCategoryJobSeeker": "Job seekers",
+    "faqCategoryEmployer": "Employers",
+    "faqCategoryAgent": "Agents",
+    "faqCategoryBilling": "Billing",
+    "faqCategoryPrivacy": "Privacy",
     "hero": "AI-Powered Recruitment",
     "heroSub": "Connect top talent with leading employers across the Gulf region.",
     "getStarted": "Get Started",
@@ -3798,7 +3890,9 @@
       "tabsLabel": "Draft type",
       "tabJobs": "Jobs",
       "tabChats": "AI chats",
-      "tabExtractions": "Extractions"
+      "tabExtractions": "Extractions",
+      "emptyTitle": "No drafts to resume",
+      "emptyDescription": "Unfinished job posts, AI chats and extractions will appear here."
     },
     "draftJobs": {
       "cardTitle": "Continue editing",
@@ -3997,9 +4091,123 @@
       "interviewsComing": "{count} interview coming up — prepare questions with AI",
       "interviewsComingPlural": "{count} interviews coming up — prepare questions with AI",
       "messageCandidates": "Message candidates directly to speed up hiring"
+    },
+    "overview": {
+      "subtitle": "Your hiring at a glance — applications, interviews and offers over the last 30 days.",
+      "sectionLoading": "Loading {section}",
+      "aiMatchesTitle": "Profile match estimates",
+      "actions": {
+        "label": "Quick actions",
+        "postJob": "Post a job",
+        "postJobAi": "Create job with AI",
+        "candidates": "View candidates",
+        "interviews": "Interviews",
+        "talentPool": "Talent pool"
+      },
+      "kpi": {
+        "title": "Key numbers",
+        "activeJobs": "Active jobs",
+        "newApplications": "New applications ({days}d)",
+        "highMatches": "High AI matches",
+        "upcomingInterviews": "Upcoming interviews",
+        "offersPending": "Offers pending",
+        "companyViews": "Company views ({days}d)",
+        "hires": "Hires ({days}d)",
+        "postedInWindow": "{count, plural, one {# posted} other {# posted}} in {days} days",
+        "awaitingReview": "{count, plural, one {# awaiting review} other {# awaiting review}}",
+        "highMatchesInWindow": "{count} new in {days} days",
+        "interviewsToday": "{count, plural, =0 {None today} one {# today} other {# today}}",
+        "offersInWindow": "{count, plural, one {# sent} other {# sent}} in {days} days",
+        "viewsHint": "Job seekers who opened your company profile",
+        "hiresTotal": "{count, plural, one {# hire overall} other {# hires overall}}",
+        "changeNone": "No change against the previous period",
+        "changeNew": "New in the last {days} days",
+        "changePercent": "{direction, select, up {Up} down {Down} other {Unchanged}} {value}% vs previous {days} days"
+      },
+      "trend": {
+        "title": "Applications trend",
+        "subtitle": "{count, plural, one {# application} other {# applications}} in the last {days} days",
+        "viewAnalytics": "View analytics",
+        "empty": "No applications or interviews in this period yet.",
+        "applications": "Applications",
+        "interviews": "Interviews"
+      },
+      "attention": {
+        "title": "Needs your attention",
+        "itemsNeedAction": "{count, plural, one {# item waiting on you} other {# items waiting on you}}",
+        "allClear": "All clear",
+        "allClearDetail": "Nothing is waiting on you right now.",
+        "levels": {
+          "critical": "Critical",
+          "warning": "Needs action",
+          "upcoming": "Upcoming"
+        },
+        "items": {
+          "noActiveJobs": "Post your first job",
+          "noActiveJobsDetail": "Applications start once a job is live",
+          "unreviewed48h": "{count, plural, one {# application unreviewed for 48h+} other {# applications unreviewed for 48h+}}",
+          "unreviewed48hDetail": "Candidates waiting longest, oldest first",
+          "newApplications": "{count, plural, one {# new application} other {# new applications}}",
+          "newApplicationsDetail": "Waiting for a first look",
+          "interviewsToday": "{count, plural, one {# interview today} other {# interviews today}}",
+          "interviewsTodayDetail": "Today's schedule",
+          "offersAwaiting": "{count, plural, one {# offer awaiting response} other {# offers awaiting response}}",
+          "offersAwaitingDetail": "Pending or countered by the candidate",
+          "expiringJobs": "{count, plural, one {# job expires within 7 days} other {# jobs expire within 7 days}}",
+          "expiringJobsDetail": "Extend or close before they lapse",
+          "jobsWithoutApplications": "{count, plural, one {# active job without applications} other {# active jobs without applications}}",
+          "jobsWithoutApplicationsDetail": "Consider sharpening the description or salary",
+          "draftJobs": "{count, plural, one {# draft job} other {# draft jobs}}",
+          "draftJobsDetail": "Finish and publish",
+          "setupIncomplete": "{count, plural, one {# setup step left} other {# setup steps left}}",
+          "setupIncompleteDetail": "Complete your company workspace"
+        }
+      },
+      "pipeline": {
+        "title": "Hiring pipeline",
+        "subtitle": "{count, plural, one {# application by status} other {# applications by status}}",
+        "viewAll": "View applications",
+        "total": "Total",
+        "empty": "No applications yet.",
+        "statuses": {
+          "applied": "Applied",
+          "shortlisted": "Shortlisted",
+          "interviewScheduled": "Interview scheduled",
+          "selected": "Selected",
+          "offer": "Offer",
+          "hired": "Hired",
+          "rejected": "Rejected",
+          "withdrawn": "Withdrawn",
+          "unknown": "Other"
+        }
+      },
+      "jobsHealth": {
+        "title": "Jobs health",
+        "subtitle": "{count, plural, one {# active job} other {# active jobs}}",
+        "viewJobs": "View jobs",
+        "active": "Active",
+        "paused": "Paused",
+        "drafts": "Drafts",
+        "expiring7d": "Expiring within 7 days",
+        "noApplications": "No applications yet"
+      },
+      "topJobs": {
+        "title": "Top jobs by applications",
+        "subtitle": "{count, plural, one {# application} other {# applications}} in the last {days} days",
+        "viewJobs": "View jobs",
+        "empty": "No applications in this period yet.",
+        "untitled": "Untitled job",
+        "status": {
+          "draft": "Draft",
+          "paused": "Paused",
+          "closed": "Closed",
+          "expired": "Expired"
+        }
+      }
     }
   },
   "footer": {
+    "about": "About us",
     "digitalPlatform": "Digital hiring platform",
     "description": "MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for Gulf markets.",
     "aiMatching": "AI-powered matching",
@@ -4726,6 +4934,8 @@
     "selectConversationHint": "Choose a conversation from the left, or start a new chat."
   },
   "employerApplications": {
+    "invalidTransition": "That stage change isn't allowed from the candidate's current stage.",
+    "bulkInvalidSkipped": "{count, plural, one {# candidate was} other {# candidates were}} skipped because their current stage doesn't allow that move.",
     "emailPreviewSubject": "Subject:",
     "activityEyebrow": "Application Activity",
     "activitySubtitle": "Recent workflow events for this application",
@@ -5457,6 +5667,69 @@
     "fieldPhone": "phone number"
   },
   "adminDashboard": {
+    "hero": {
+      "greetingMorning": "Good morning, {name}",
+      "greetingAfternoon": "Good afternoon, {name}",
+      "greetingEvening": "Good evening, {name}",
+      "fallbackName": "Admin",
+      "updated": "Updated {time}",
+      "description": "Platform overview for the selected period.",
+      "title": "Overview",
+      "subtitle": "How the platform is doing over the last {days} days."
+    },
+    "quickActions": {
+      "label": "Quick actions",
+      "postJob": "Post a job",
+      "addUser": "Add user",
+      "createInvoice": "Create invoice",
+      "broadcast": "Send broadcast",
+      "bulkImport": "Bulk import"
+    },
+    "kpi": {
+      "companies": "Companies",
+      "added": "{count} new in {days} days",
+      "revenue": "Collected ({currency})",
+      "collected": "Payments in the last {days} days",
+      "total": "Total"
+    },
+    "trends": {
+      "title": "Activity trend",
+      "description": "New users, jobs and applications per day over the last {days} days.",
+      "users": "New users",
+      "jobs": "Jobs posted",
+      "applications": "Applications",
+      "empty": "No activity recorded in this period yet."
+    },
+    "revenue": {
+      "title": "Revenue collected",
+      "description": "Payments received per month, last 12 months, in {currency}.",
+      "collected": "Collected",
+      "empty": "No payments recorded in the last 12 months."
+    },
+    "topEmployers": {
+      "title": "Top employers",
+      "description": "Companies whose jobs drew the most applications in the last {days} days.",
+      "company": "Company",
+      "activeJobs": "Active jobs",
+      "empty": "No applications in this period yet."
+    },
+    "insights": {
+      "title": "Quick findings",
+      "description": "Records missing something a user could fix — worth a nudge.",
+      "empty": "No data gaps found. Everything looks complete.",
+      "items": {
+        "seekersIncompleteProfile": "Job seekers with profile under 50% complete",
+        "seekersNotOnboarded": "Job seekers who never finished onboarding",
+        "seekersNoSkills": "Job seekers with no skills listed",
+        "usersUnverifiedEmail": "Accounts with unverified email",
+        "usersDormant": "Employers & job seekers inactive for 30+ days",
+        "employersBasicVerification": "Companies still at basic verification",
+        "employersNoLogo": "Companies without a logo",
+        "jobsNoSalary": "Active jobs hiding or missing salary",
+        "jobsExpiring": "Active jobs expiring within 7 days",
+        "jobsStaleDrafts": "Draft jobs untouched for 30+ days"
+      }
+    },
     "roles": {
       "admin": "Admin",
       "superAgent": "Super Agent",
@@ -5481,14 +5754,6 @@
       "withdrawn": "Withdrawn",
       "unknown": "Unknown",
       "paused": "Paused"
-    },
-    "hero": {
-      "greetingMorning": "Good morning, {name}",
-      "greetingAfternoon": "Good afternoon, {name}",
-      "greetingEvening": "Good evening, {name}",
-      "fallbackName": "Admin",
-      "updated": "Updated {time}",
-      "description": "Platform overview for the selected period."
     },
     "tabs": {
       "overview": "Overview",
@@ -5644,14 +5909,16 @@
       "pipelineTitle": "Application pipeline",
       "pipelineSubtitle": "{count, plural, one {# application by current status} other {# applications by current status}}",
       "analyticsTitle": "Recruitment analytics",
-      "analyticsDescription": "A closer look at application status and job demand."
+      "analyticsDescription": "A closer look at application status and job demand.",
+      "empty": "No applications yet."
     },
     "people": {
       "title": "People & network",
       "description": "Who is on the platform, how employers are doing, and whether the agent network is working.",
       "usersByRole": "Users by role",
       "usersByRoleSubtitle": "{count, plural, one {# account} other {# accounts}}",
-      "viewUsers": "View users"
+      "viewUsers": "View users",
+      "empty": "No users yet."
     },
     "finance": {
       "title": "Finance & subscriptions",
@@ -5769,8 +6036,11 @@
       "pace": {
         "behind": "{count} below target",
         "onPace": "{count} on target",
-        "achieved": "{count} at or above target"
-      }
+        "achieved": "{count} at or above target",
+        "behindLabel": "Agents below target",
+        "achievedLabel": "Agents at or above target"
+      },
+      "signedIn": "Signed in this week"
     },
     "payments": {
       "title": "Payments & commissions",
@@ -5815,7 +6085,8 @@
         "inactiveAgentsHint": "Reactivate them or hand their work to someone else.",
         "idleAgentsTitle": "{count, plural, one {Agent has no leads yet} other {Agents have no leads yet}}",
         "idleAgentsHint": "Give them leads so they can start working."
-      }
+      },
+      "itemsNeedAction": "{count, plural, one {# item needs your action} other {# items need your action}}"
     },
     "taskFirst": {
       "recommendedNext": "Recommended next",
@@ -5978,14 +6249,16 @@
       "jobsPerEmployerBasis": "{jobs} jobs / {employers} employers",
       "applicationsPerJob": "Applications per job",
       "applicationsPerJobBasis": "{applications} applications / {jobs} jobs",
-      "placementRateBasis": "{placements} placements / {applications} applications"
+      "placementRateBasis": "{placements} placements / {applications} applications",
+      "shortDescription": "Volume per stage across your team; not conversion rates."
     },
     "activity": {
       "title": "Team activity",
       "description": "Leads, jobs posted and applications per month, last 6 months.",
       "month": "Month",
       "emptyTitle": "No team activity in the last 6 months",
-      "emptyDescription": "Bars appear as your agents add leads, post jobs and receive applications."
+      "emptyDescription": "Bars appear as your agents add leads, post jobs and receive applications.",
+      "viewReports": "View reports"
     },
     "topAgents": {
       "title": "Top agents",
@@ -5993,6 +6266,64 @@
       "rank": "#",
       "agent": "Agent",
       "jobs": "Jobs"
+    },
+    "sectionLoading": "Loading {section}",
+    "sectionError": {
+      "message": "This section could not be loaded. Refresh the page to try again."
+    },
+    "quickActions": {
+      "label": "Quick actions",
+      "addAgent": "Add agent",
+      "assignTerritory": "Assign territory",
+      "reviewCommissions": "Review commissions",
+      "exhibitions": "Exhibitions"
+    },
+    "kpi": {
+      "title": "Headline numbers",
+      "employersInRegion": "Employers in region",
+      "liveRoles": "Live roles",
+      "placements30d": "Placements (30d)",
+      "commissionPending": "Commission pending approval",
+      "commissionPaidMonth": "Commission paid this month",
+      "addedThisMonth": "{count, plural, =0 {None added this month} one {# added this month} other {# added this month}}",
+      "previous30": "{count, plural, =0 {None in the 30 days before} one {# in the 30 days before} other {# in the 30 days before}}",
+      "awaitingApproval": "{count, plural, =0 {Nothing awaiting approval} one {# commission awaiting approval} other {# commissions awaiting approval}}",
+      "paidCount": "{count, plural, =0 {No payouts yet this month} one {# payout this month} other {# payouts this month}}",
+      "vsLastMonth": "{current} this month against {previous} last month",
+      "vsLastMonthPaid": "{current} paid this month against {previous} last month",
+      "vsPrevious30": "{current} in the last 30 days against {previous} in the 30 before",
+      "noChangeMonth": "No change from last month",
+      "noChange30": "No change from the previous 30 days"
+    },
+    "team": {
+      "title": "Agent status",
+      "description": "Every agent on your roster, by state.",
+      "totalLabel": "Agents",
+      "engaged": "Working leads",
+      "idle": "No leads yet",
+      "inactive": "Deactivated",
+      "viewRoster": "View roster",
+      "empty": "No agents on your roster yet."
+    },
+    "commission": {
+      "title": "Commission summary",
+      "description": "Your commissions by stage, in {currency}.",
+      "pending": "{count, plural, =0 {Pending approval} one {Pending approval · # record} other {Pending approval · # records}}",
+      "approved": "{count, plural, =0 {Approved, awaiting payout} one {Approved, awaiting payout · # record} other {Approved, awaiting payout · # records}}",
+      "paidThisMonth": "{count, plural, =0 {Paid this month} one {Paid this month · # record} other {Paid this month · # records}}",
+      "disputed": "{count, plural, =0 {Disputed} one {Disputed · # record} other {Disputed · # records}}",
+      "viewAll": "View commissions"
+    },
+    "exhibitions": {
+      "title": "Exhibitions & targets",
+      "description": "Your team's exhibition requests by stage, and target coverage.",
+      "awaitingReview": "Awaiting your review",
+      "revisionRequested": "Revision requested",
+      "approved": "Approved, being resourced",
+      "active": "Running now",
+      "targetsSet": "Agents with a {year} target",
+      "targetsRatio": "{withTarget} / {total}",
+      "viewAll": "View exhibitions"
     }
   },
   "agentDashboard": {
@@ -6008,7 +6339,9 @@
     "hero": {
       "eyebrow": "Agent workspace",
       "title": "Agent Dashboard",
-      "description": "Stay on top of assigned employers, active roles, and candidate momentum from the same modern workspace now used across hiring."
+      "description": "Stay on top of assigned employers, active roles, and candidate momentum from the same modern workspace now used across hiring.",
+      "subtitleOverview": "Your book at a glance: accounts, roles, candidates and commission.",
+      "updated": "Updated {time}"
     },
     "portfolio": {
       "eyebrow": "Portfolio",
@@ -6166,7 +6499,102 @@
       "interviews": "Interviews",
       "offers": "Offers",
       "emptyTitle": "No roles to compare yet",
-      "emptyDescription": "Once you have live roles with applicants, their conversion appears here."
+      "emptyDescription": "Once you have live roles with applicants, their conversion appears here.",
+      "rates": "{interviewRate}% reach interview · {offerRate}% reach offer",
+      "flow": "{interviews} interviews · {offers} offers"
+    },
+    "sectionLoading": "Loading {section}",
+    "sectionError": {
+      "message": "This section could not load. Try again.",
+      "retry": "Retry"
+    },
+    "quickActions": {
+      "label": "Quick actions",
+      "addLead": "Add lead",
+      "postJob": "Post job for employer",
+      "addCandidate": "Add candidate",
+      "logFollowUp": "Log follow-up"
+    },
+    "kpi": {
+      "title": "Key figures",
+      "assignedToYou": "Employers assigned to you",
+      "ofPosted": "{count, plural, one {# role posted in total} other {# roles posted in total}}",
+      "candidatesSourced": "Candidates sourced",
+      "interviewsArranged": "Interviews arranged",
+      "placements": "Placements",
+      "lastDays": "Last {days} days",
+      "allTime": "{count, plural, one {# all time} other {# all time}}",
+      "commissionHint": "Pending, approved and paid",
+      "changeNone": "None in either period",
+      "changeNew": "None in the previous {days} days",
+      "changeFlat": "No change vs previous {days} days",
+      "changePercent": "{direction, select, up {Up {value}% vs previous {days} days} down {Down {value}% vs previous {days} days} other {No change vs previous {days} days}}",
+      "changeCount": "{direction, select, up {Up {value} vs previous {days} days} down {Down {value} vs previous {days} days} other {No change vs previous {days} days}}"
+    },
+    "target": {
+      "title": "Monthly target",
+      "subtitle": "Progress against your {month} target.",
+      "overall": "Overall",
+      "employers": "Employers onboarded",
+      "placements": "Placements",
+      "finance": "Revenue",
+      "achievedOf": "{achieved} of {target}",
+      "notSetHint": "Your super-agent has not distributed a target for this month yet.",
+      "viewReport": "Target report"
+    },
+    "queue": {
+      "title": "Needs your attention"
+    },
+    "trends": {
+      "title": "Activity",
+      "subtitle": "Leads, applications and placements per day over the last {days} days.",
+      "leads": "Leads",
+      "applications": "Applications",
+      "placements": "Placements",
+      "empty": "No activity in this period yet.",
+      "viewReports": "Reports"
+    },
+    "leadFunnel": {
+      "title": "Lead funnel",
+      "subtitle": "{total, plural, one {# lead} other {# leads}}, {converted} converted.",
+      "viewAll": "All leads",
+      "empty": "No employer leads yet. Add one to start the funnel.",
+      "open": "Still open",
+      "stages": {
+        "new": "New",
+        "contacted": "Contacted",
+        "interested": "Interested",
+        "negotiating": "Negotiating",
+        "converted": "Converted",
+        "lost": "Lost"
+      }
+    },
+    "pipelineStatus": {
+      "title": "Pipeline by status",
+      "subtitle": "{count, plural, one {# application across your roles.} other {# applications across your roles.}}",
+      "total": "Total",
+      "empty": "No applications on your roles yet.",
+      "viewAll": "All candidates",
+      "statuses": {
+        "applied": "Applied",
+        "shortlisted": "Shortlisted",
+        "interviewScheduled": "Interview scheduled",
+        "selected": "Selected",
+        "offer": "Offer",
+        "hired": "Hired",
+        "rejected": "Rejected",
+        "withdrawn": "Withdrawn"
+      }
+    },
+    "commission": {
+      "title": "Commission",
+      "subtitle": "{month}, by status.",
+      "pending": "{count, plural, one {Pending (# line)} other {Pending (# lines)}}",
+      "approved": "{count, plural, one {Approved (# line)} other {Approved (# lines)}}",
+      "paid": "{count, plural, one {Paid (# line)} other {Paid (# lines)}}",
+      "disputed": "{count, plural, one {Disputed (# line)} other {Disputed (# lines)}}",
+      "viewAll": "All commissions",
+      "empty": "No commission lines this month yet."
     }
   },
   "agentCommon": {
@@ -9680,6 +10108,7 @@
     "system": "System"
   },
   "employerCandidateProfile": {
+    "cvAvailableAfterApply": "CV available after the candidate applies",
     "matchedSkills": "Matching skills",
     "insightsForJob": "for {job}",
     "currentRoleBadge": "Current",
@@ -10232,7 +10661,45 @@
     "majorSubjectsTitle": "Major Subjects",
     "majorSubjectsDescription": "Manage academic major and specialization options",
     "maritalStatusesTitle": "Marital Status",
-    "maritalStatusesDescription": "Manage marital status options"
+    "maritalStatusesDescription": "Manage marital status options",
+    "functionalAreasTitle": "Functional Areas",
+    "functionalAreasDescription": "Manage job functional area / department options",
+    "jobRolesTitle": "Job Roles & Positions",
+    "jobRolesDescription": "Manage job titles and positions used in postings and profiles",
+    "careerLevelsTitle": "Career Levels",
+    "careerLevelsDescription": "Manage seniority / career level options",
+    "jobTypesTitle": "Job Types",
+    "jobTypesDescription": "Manage employment type options (full-time, contract, …)",
+    "jobShiftsTitle": "Job Shifts",
+    "jobShiftsDescription": "Manage work shift options",
+    "jobExperiencesTitle": "Experience Ranges",
+    "jobExperiencesDescription": "Manage years-of-experience range options",
+    "degreeLevelsTitle": "Degree Levels",
+    "degreeLevelsDescription": "Manage education level options",
+    "degreeTypesTitle": "Degree Types",
+    "degreeTypesDescription": "Manage degree / qualification type options",
+    "resultTypesTitle": "Result Types",
+    "resultTypesDescription": "Manage academic result / grading type options",
+    "languageLevelsTitle": "Language Levels",
+    "languageLevelsDescription": "Manage language proficiency level options",
+    "languagesTitle": "Languages",
+    "languagesDescription": "Manage spoken language options",
+    "salaryPeriodsTitle": "Salary Periods",
+    "salaryPeriodsDescription": "Manage salary period options (monthly, yearly, …)",
+    "currenciesTitle": "Currencies",
+    "currenciesDescription": "Manage ISO currency options and symbols",
+    "ownershipTypesTitle": "Ownership Types",
+    "ownershipTypesDescription": "Manage company ownership type options",
+    "companySizesTitle": "Company Sizes",
+    "companySizesDescription": "Manage company headcount range options",
+    "benefitsTitle": "Benefits",
+    "benefitsDescription": "Manage job benefit and perk options",
+    "visaStatusesTitle": "Visa Statuses",
+    "visaStatusesDescription": "Manage visa / residency status options",
+    "noticePeriodsTitle": "Notice Periods",
+    "noticePeriodsDescription": "Manage notice period options",
+    "nationalitiesTitle": "Nationalities",
+    "nationalitiesDescription": "Manage nationality options"
   },
   "adminLocationData": {
     "filter": "Filter",
@@ -10305,6 +10772,8 @@
     "confirmDeleteCity": "Are you sure you want to delete this city?"
   },
   "adminApplications": {
+    "invalidTransition": "That stage change isn't allowed from the application's current stage.",
+    "bulkInvalidSkipped": "{count, plural, one {# application was} other {# applications were}} skipped because their current stage doesn't allow that move.",
     "recruitmentControl": "Recruitment Control",
     "applications": "Applications",
     "applicationsDescription": "View and manage all job applications across the platform — track pipeline health, AI match scores, and candidate sources.",
@@ -10958,7 +11427,32 @@
     "genders": "Genders",
     "countries": "Countries",
     "states": "States",
-    "cities": "Cities"
+    "cities": "Cities",
+    "functionalAreas": "Functional Areas",
+    "jobRoles": "Job Roles & Positions",
+    "careerLevels": "Career Levels",
+    "jobTypes": "Job Types",
+    "jobShifts": "Job Shifts",
+    "jobExperiences": "Experience Ranges",
+    "degreeLevels": "Degree Levels",
+    "degreeTypes": "Degree Types",
+    "resultTypes": "Result Types",
+    "languageLevels": "Language Levels",
+    "languages": "Languages",
+    "salaryPeriods": "Salary Periods",
+    "currencies": "Currencies",
+    "ownershipTypes": "Ownership Types",
+    "companySizes": "Company Sizes",
+    "benefits": "Benefits",
+    "visaStatuses": "Visa Statuses",
+    "noticePeriods": "Notice Periods",
+    "nationalities": "Nationalities",
+    "groupJobs": "Jobs",
+    "groupCandidate": "Candidate",
+    "groupCompany": "Company",
+    "groupEducation": "Education",
+    "groupLocations": "Locations",
+    "groupFinance": "Finance"
   },
   "adminReportTabs": {
     "tabsLabel": "Reports",
@@ -14183,6 +14677,7 @@
     }
   },
   "superAgentCommissions": {
+    "paidByAdmin": "Paid by admin",
     "statusUpdateFailed": "We couldn't update commission status",
     "pageTitle": "Commission Management",
     "pageDescription": "Review and approve payout records, and check the regional override rate.",
@@ -15678,6 +16173,13 @@
     "jobSearch": "Job Search",
     "stickyApply": "Easy Apply"
   },
+  "publicNotFound": {
+    "metaTitle": "Page not found",
+    "title": "We couldn't find that page",
+    "description": "The page or job you're looking for doesn't exist, has closed, or has moved.",
+    "browseJobs": "Browse jobs",
+    "home": "Go to home page"
+  },
   "applicationDetail": {
     "errorLoadingDetails": "Could not load application details.",
     "applicationNotFound": "Application not found",
@@ -16122,6 +16624,7 @@
     "resourceTargets": "Targets",
     "resourceOnboarding": "Onboarding",
     "resourceInvoices": "Invoices",
+    "resourceInsights": "Insights (AI data access)",
     "actionCreate": "Create",
     "actionRead": "Read",
     "actionUpdate": "Update",
@@ -17058,7 +17561,8 @@
     "scopeReadApplications": "View your job applications",
     "scopeReadProfile": "View your job seeker profile",
     "scopeReadEmployerJobs": "View your company's job postings",
-    "scopeReadApplicants": "View applicants to your job postings"
+    "scopeReadApplicants": "View applicants to your job postings",
+    "scopeReadInsights": "Read platform-wide analytics and records (admins only)"
   },
   "employerCompliance": {
     "wording": {
@@ -17180,6 +17684,61 @@
     "title": "Needs your attention",
     "viewTasks": "View tasks"
   },
+  "aiAccess": {
+    "title": "AI Data Access",
+    "description": "Read-only API keys that let AI assistants (ChatGPT, Claude, n8n…) pull platform data and build reports.",
+    "activeKeys": "Active keys",
+    "totalKeys": "All keys",
+    "totalRequests": "Requests served",
+    "createKey": "Create key",
+    "nameLabel": "Key name",
+    "namePlaceholder": "e.g. ChatGPT weekly report",
+    "nameRequired": "Enter a name for the key",
+    "piiLabel": "Include personal data (pii:read)",
+    "piiHelp": "Off: names, e-mails and phones are masked. Turn on only for trusted, internal tools.",
+    "rateLimitLabel": "Requests per minute",
+    "expiresInDaysLabel": "Expires in (days)",
+    "neverExpires": "Never",
+    "keyShownOnce": "Copy this key now. It will not be shown again.",
+    "done": "Done",
+    "created": "Key created",
+    "createFailed": "Could not create the key",
+    "keysHeading": "Keys",
+    "refresh": "Refresh",
+    "emptyTitle": "No keys yet",
+    "emptyDescription": "Create a key to connect an AI assistant to your platform data.",
+    "colName": "Name",
+    "colPrefix": "Prefix",
+    "colScopes": "Scopes",
+    "colCreated": "Created",
+    "colLastUsed": "Last used",
+    "colRequests": "Requests",
+    "colStatus": "Status",
+    "colActions": "Actions",
+    "byCreator": "by {name}",
+    "never": "Never",
+    "statusActive": "Active",
+    "statusExpired": "Expired",
+    "statusRevoked": "Revoked",
+    "perMinute": "{count}/min",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke key?",
+    "revokeMessage": "Any AI tool using \"{name}\" will stop working immediately. This cannot be undone.",
+    "revoked": "Key revoked",
+    "revokeFailed": "Could not revoke the key",
+    "quickStartHeading": "Quick start",
+    "quickStartIntro": "Give the key to your AI tool as a Bearer token. Every call is read-only, rate-limited and audited.",
+    "curlHeading": "Call the API",
+    "mcpHeading": "Claude / ChatGPT connector (MCP)",
+    "mcpHelp": "Admins can instead connect this MCP URL and approve the read:insights scope — no key needed.",
+    "schemaLink": "Schema",
+    "openapiLink": "OpenAPI (for GPT Actions)",
+    "docsLink": "Docs",
+    "tryHeading": "Try it",
+    "tryHelp": "Runs the request with your admin session.",
+    "tryButton": "Run",
+    "tryFailed": "Could not run the request"
+  },
   "a11y": {
     "close": "Close",
     "back": "Go back",
@@ -17252,6 +17811,7 @@
     "allStagesPresent": "Every stage is already in your pipeline."
   },
   "employerJobWorkspace": {
+    "boardMoveNotAllowed": "{name} can't move to {stage} from their current stage.",
     "tabOverview": "Overview",
     "tabApplications": "Applications",
     "tabInterviews": "Interviews",
@@ -17795,5 +18355,8 @@
     "scoreRange": "AI score {min}–{max}%",
     "fromDate": "From {date}",
     "toDate": "Until {date}"
+  },
+  "masterDataSelect": {
+    "select": "Select…"
   }
 }

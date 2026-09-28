@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useMasterData } from "@/hooks/useMasterData";
+import { useCountrySearch } from "@/hooks/useCountrySearch";
 import Link from "next/link";
 import { Building2, FileCheck, UserCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,12 @@ interface Step3Data {
 type RegistrationField = keyof Step1Data | keyof Step2Data | keyof Step3Data | "terms";
 type FieldErrors = Partial<Record<RegistrationField, string>>;
 
+// The three option lists below are FALLBACKS (shown while the admin-managed
+// lists load, or if /api/master-data and /api/countries are unavailable):
+//   INDUSTRY_VALUES → master data "industries" (stores the English name, like
+//                     the employer settings page and /api/taxonomy do)
+//   SIZE_VALUES     → master data "company-sizes" (stores the English name)
+//   COUNTRY_CODES   → /api/countries (stores the ISO alpha-2 code)
 const INDUSTRY_VALUES = [
   "technology",
   "construction",
@@ -173,7 +182,17 @@ function getCountryOptions(locale: string) {
   }));
 }
 
+/** The auth layout has no QueryClientProvider; the lookups below need one. */
 export default function EmployerRegisterPage() {
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } }));
+  return (
+    <QueryClientProvider client={queryClient}>
+      <EmployerRegisterForm />
+    </QueryClientProvider>
+  );
+}
+
+function EmployerRegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{ locale?: string }>();
@@ -197,15 +216,36 @@ export default function EmployerRegisterPage() {
     contactName: "", contactTitle: "", contactEmail: "", contactPhone: "", password: "", confirmPassword: "",
   });
 
-  const industryOptions = useMemo(
-    () => INDUSTRY_VALUES.map((value) => ({ value, label: t(`industries.${value}`) })),
-    [t]
-  );
-  const sizeOptions = useMemo(
-    () => SIZE_VALUES.map((value) => ({ value, label: t(`sizes.${value}`) })),
-    [t]
-  );
-  const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
+  // Admin-managed lists (Master Data / Countries), each with its static fallback.
+  const industries = useMasterData("industries", { valueKey: "name" });
+  const companySizes = useMasterData("company-sizes", { valueKey: "name" });
+  const { data: apiCountries } = useCountrySearch("", { loadAll: true });
+
+  const industryOptions = useMemo(() => {
+    const live = industries.options.length > 0 || (!industries.isPending && !industries.isError);
+    const base = live
+      ? industries.options.map((o) => ({ value: o.value, label: o.label }))
+      : INDUSTRY_VALUES.map((value) => ({ value, label: t(`industries.${value}`) }));
+    return step1.industry && !base.some((o) => o.value === step1.industry)
+      ? [{ value: step1.industry, label: step1.industry }, ...base]
+      : base;
+  }, [industries.options, industries.isPending, industries.isError, step1.industry, t]);
+  const sizeOptions = useMemo(() => {
+    const live = companySizes.options.length > 0 || (!companySizes.isPending && !companySizes.isError);
+    const base = live
+      ? companySizes.options.map((o) => ({ value: o.value, label: o.label }))
+      : SIZE_VALUES.map((value) => ({ value, label: t(`sizes.${value}`) }));
+    return step1.size && !base.some((o) => o.value === step1.size)
+      ? [{ value: step1.size, label: step1.size }, ...base]
+      : base;
+  }, [companySizes.options, companySizes.isPending, companySizes.isError, step1.size, t]);
+  const countryOptions = useMemo(() => {
+    if (!apiCountries || apiCountries.length === 0) return getCountryOptions(locale);
+    const displayNames = new Intl.DisplayNames([locale === "ar" ? "ar" : "en"], { type: "region" });
+    return apiCountries
+      .filter((c) => c.code)
+      .map((c) => ({ value: c.code, label: (locale === "ar" ? displayNames.of(c.code) : undefined) ?? c.name }));
+  }, [apiCountries, locale]);
   const verificationLevels = useMemo(
     () =>
       VERIFICATION_LEVEL_VALUES.map((value) => ({

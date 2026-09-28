@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MasterDataSelect } from "@/components/ui/master-data-select";
 import { Autocomplete } from "@/components/ui/tag-autocomplete";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +33,7 @@ import { useTranslations } from "next-intl";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+/** Fallback only — the live list is admin → Master Data → Company Sizes (English name stored). */
 const COMPANY_SIZES = [
   "1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001+",
 ];
@@ -647,8 +649,10 @@ function CompanySettingsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                       <div>
                         <FieldLabel>{t("companySize")}</FieldLabel>
-                        <SearchableSelect
-                          options={COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))}
+                        <MasterDataSelect
+                          category="company-sizes"
+                          valueKey="name"
+                          fallback={COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))}
                           value={form.companySize}
                           onValueChange={(v) => setField("companySize", v)}
                           placeholder={t("selectSize")}

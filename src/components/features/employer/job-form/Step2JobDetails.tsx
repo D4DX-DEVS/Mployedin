@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useMasterData, type MasterDataCategory } from "@/hooks/useMasterData";
 import type { JobFormValues } from "./jobFormSchema";
 
 const MIN_CHARS = 20;
@@ -46,6 +47,7 @@ function ListField({
   placeholder,
   maxItems,
   optionalLabel,
+  suggestionCategory,
 }: {
   label: string;
   hint: string;
@@ -53,13 +55,22 @@ function ListField({
   placeholder: string;
   maxItems: number;
   optionalLabel: string;
+  /** Admin-managed list (Master Data) offered as one-tap suggestions; typing stays free. */
+  suggestionCategory?: MasterDataCategory;
 }) {
   const { watch, setValue } = useFormContext<JobFormValues>();
   const [inputValue, setInputValue] = useState("");
   const items = watch(fieldName) ?? [];
+  const { options: suggestionOptions } = useMasterData(suggestionCategory ?? "benefits", {
+    enabled: Boolean(suggestionCategory),
+    limit: 60,
+  });
+  const suggestions = suggestionCategory
+    ? suggestionOptions.filter((o) => !items.includes(o.value)).slice(0, 12)
+    : [];
 
-  function addItem() {
-    const trimmed = inputValue.trim();
+  function addItem(raw = inputValue) {
+    const trimmed = raw.trim();
     if (!trimmed || items.includes(trimmed) || items.length >= maxItems) return;
     setValue(fieldName, [...items, trimmed], { shouldValidate: true });
     setInputValue("");
@@ -102,10 +113,24 @@ function ListField({
           className="flex-1 text-sm"
           maxLength={500}
         />
-        <Button type="button" size="sm" variant="outline" onClick={addItem} className="px-3 shrink-0">
+        <Button type="button" size="sm" variant="outline" onClick={() => addItem()} className="px-3 shrink-0">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
+      {suggestions.length > 0 && items.length < maxItems && (
+        <div className="flex flex-wrap gap-1.5">
+          {suggestions.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => addItem(o.value)}
+              className="rounded-full border border-border/70 bg-background px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              + {o.label}
+            </button>
+          ))}
+        </div>
+      )}
       {items.length > 0 && (
         <ul className="space-y-1.5">
           {items.map((item, i) => (
@@ -446,6 +471,7 @@ export function Step2JobDetails() {
         placeholder={t("listFields.benefits.placeholder")}
         maxItems={20}
         optionalLabel={t("listFields.optional")}
+        suggestionCategory="benefits"
       />
       <ListField
         label={t("listFields.learningOutcomes.label")}

@@ -64,7 +64,10 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
     (async () => {
       try {
         const res = await fetch("/api/ai/job-extract/drafts", { cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setDrafts([]);
+          return;
+        }
         const data = (await res.json()) as { drafts: DraftSummary[] };
         if (!cancelled) setDrafts(data.drafts ?? []);
       } catch {

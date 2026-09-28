@@ -11,6 +11,8 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useCountrySearch } from "@/hooks/useCountrySearch";
+import { useHasQueryClient } from "@/hooks/useHasQueryClient";
 
 function joinIds(...ids: Array<string | undefined>) {
   const value = ids.filter(Boolean).join(" ");
@@ -689,7 +691,19 @@ export function FormSwitch({ label, description, checked, onChange, disabled }: 
 // ──────────────────────────────────────────────────────────
 // FormPhone
 // ──────────────────────────────────────────────────────────
-const COUNTRY_CODES = [
+interface DialCode {
+  /** Dial prefix including "+", e.g. "+971". */
+  code: string;
+  flag: string;
+  label: string;
+}
+
+/**
+ * Fallback dial codes, used while `/api/countries` (admin-managed Countries
+ * table, `phoneCode` field) loads, if it fails, or when no QueryClientProvider
+ * is mounted. The stored phone value is always "<dial code> <number>".
+ */
+const COUNTRY_CODES: DialCode[] = [
   { code: "+971", flag: "🇦🇪", label: "UAE" },
   { code: "+966", flag: "🇸🇦", label: "KSA" },
   { code: "+974", flag: "🇶🇦", label: "Qatar" },
@@ -703,6 +717,33 @@ const COUNTRY_CODES = [
   { code: "+20",  flag: "🇪🇬", label: "Egypt" },
 ];
 
+/** Regional-indicator flag emoji for an ISO 3166-1 alpha-2 code. */
+function flagEmoji(iso2: string): string {
+  const cc = iso2.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc)) return "";
+  return String.fromCodePoint(...[...cc].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+/** Dial codes derived from the Countries table; falls back to COUNTRY_CODES. */
+function useLiveDialCodes(): DialCode[] {
+  const { data } = useCountrySearch("", { loadAll: true });
+  return useMemo(() => {
+    if (!data || data.length === 0) return COUNTRY_CODES;
+    const seen = new Set<string>();
+    const codes: DialCode[] = [];
+    for (const c of data) {
+      const digits = (c.phoneCode ?? "").replace(/\D/g, "");
+      if (!digits) continue;
+      const code = `+${digits}`;
+      // Shared prefixes (+1 US/Canada, +44 UK/Guernsey…) keep the first country in admin sort order.
+      if (seen.has(code)) continue;
+      seen.add(code);
+      codes.push({ code, flag: flagEmoji(c.code), label: c.name });
+    }
+    return codes.length > 0 ? codes : COUNTRY_CODES;
+  }, [data]);
+}
+
 interface FormPhoneProps {
   label?: string;
   error?: string;
@@ -712,7 +753,18 @@ interface FormPhoneProps {
   required?: boolean;
 }
 
-export function FormPhone({ label, error, hint, value, onChange, required }: FormPhoneProps) {
+/** Phone input with a dial-code select fed by the admin-managed Countries table. */
+export function FormPhone(props: FormPhoneProps) {
+  const hasQueryClient = useHasQueryClient();
+  return hasQueryClient ? <LiveFormPhone {...props} /> : <FormPhoneView {...props} dialCodes={COUNTRY_CODES} />;
+}
+
+function LiveFormPhone(props: FormPhoneProps) {
+  const dialCodes = useLiveDialCodes();
+  return <FormPhoneView {...props} dialCodes={dialCodes} />;
+}
+
+function FormPhoneView({ label, error, hint, value, onChange, required, dialCodes }: FormPhoneProps & { dialCodes: DialCode[] }) {
   const t = useTranslations("common");
   const generatedId = useId();
   const controlId = `form-phone-${generatedId}`;
@@ -720,6 +772,8 @@ export function FormPhone({ label, error, hint, value, onChange, required }: For
   const errorId = `${controlId}-error`;
   const [countryCode, setCountryCode] = useState("+971");
   const number = value.startsWith("+") ? value.replace(/^\+\d+\s?/, "") : value;
+  // Keep the current code selectable even if the admin list does not carry it.
+  const dialOptions = dialCodes.some((c) => c.code === countryCode) ? dialCodes : [{ code: countryCode, flag: "", label: countryCode }, ...dialCodes];
 
   const updateValue = (code: string, num: string) => {
     onChange(`${code} ${num}`);
@@ -739,8 +793,8 @@ export function FormPhone({ label, error, hint, value, onChange, required }: For
               <SelectValue placeholder="Select code" />
             </SelectTrigger>
             <SelectContent>
-              {COUNTRY_CODES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>{c.flag} {c.code}</SelectItem>
+              {dialOptions.map((c) => (
+                <SelectItem key={c.code} value={c.code} textValue={`${c.label} ${c.code}`}>{c.flag} {c.code}</SelectItem>
               ))}
             </SelectContent>
           </Select>

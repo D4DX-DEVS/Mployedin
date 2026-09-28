@@ -343,6 +343,7 @@ export async function ensureIndexes() {
     "majorsubjects", "degreetypes", "degreelevels", "jobshifts",
     "jobtypes", "jobskills", "jobexperiences", "industries",
     "genders", "functionalareas", "careerlevels", "languagelevels",
+    "benefits", "visastatuses", "noticeperiods", "companysizes", "nationalities",
   ];
 
   for (const col of attributeCollections) {
@@ -351,6 +352,23 @@ export async function ensureIndexes() {
       { key: { isActive: 1, sortOrder: 1 } },
     ]);
   }
+
+  await safeCreateIndexes(db, "jobroles", [
+    { key: { slug: 1 }, unique: true },
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { functionalAreaId: 1 } },
+    { key: { name: "text", nameAr: "text", aliases: "text" }, name: "jobroles_text" },
+  ]);
+  await safeCreateIndexes(db, "currencies", [
+    { key: { slug: 1 }, unique: true },
+    { key: { code: 1 }, unique: true },
+    { key: { isActive: 1, sortOrder: 1 } },
+  ]);
+  await safeCreateIndexes(db, "languages", [
+    { key: { slug: 1 }, unique: true },
+    { key: { code: 1 }, unique: true },
+    { key: { isActive: 1, sortOrder: 1 } },
+  ]);
 
   // ── Location Master Data ───────────────────────────────────────────────────
   await safeCreateIndexes(db, "countries", [

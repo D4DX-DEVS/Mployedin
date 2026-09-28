@@ -1,5 +1,13 @@
 import { formatCount } from "@/lib/ui/intlFormat";
-/** Country-to-currency mapping and formatting utilities */
+/**
+ * Country-to-currency mapping and formatting utilities.
+ *
+ * NOTE: the list of currencies offered in forms is admin-managed under
+ * Master Data → Currencies (`GET /api/master-data/currencies`, hook
+ * `useMasterData("currencies", { valueKey: "code" })`). The static tables
+ * below are kept as the offline/loading fallback for the selects and for the
+ * synchronous helpers (formatting, conversion, country → currency defaults).
+ */
 
 export interface CurrencyInfo {
   code: string;

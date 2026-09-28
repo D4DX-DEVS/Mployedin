@@ -32,6 +32,13 @@ jest.mock("@/components/shared/PaginationControls", () => ({
   PaginationControls: () => <div data-testid="pagination-controls" />,
 }));
 
+// Placements' currency filter reads the admin-managed currencies list; the
+// pages render without a QueryClientProvider here, so stub the hook.
+jest.mock("@/hooks/useMasterData", () => ({
+  useMasterData: () => ({ options: [], items: [], isPending: false, isError: false }),
+  masterDataLabel: (item: { name: string }) => item.name,
+}));
+
 // TODO: Tests need updating after page refactor - headings and structure changed
 describe.skip("SuperAgent dark-mode page surfaces", () => {
   const originalFetch = global.fetch;
