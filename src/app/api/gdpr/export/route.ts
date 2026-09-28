@@ -3,27 +3,28 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
+import Employer from "@/models/Employer";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Notification from "@/models/Notification";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import GdprRequest from "@/models/GdprRequest";
+import ConsentLog from "@/models/ConsentLog";
 import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
-import { redactUserMessages } from "@/lib/gdpr/redactMessages";
-import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
+import { createDeletionRequest } from "@/lib/gdpr/deletionRequest";
 
 /**
  * Record a completed self-service request in the GDPR register the admin page
- * reads (`/api/admin/gdpr`). Best-effort: the export / erasure itself has
- * already happened, so a register write failure must not fail the request.
+ * reads (`/api/admin/gdpr`). Best-effort: the export itself has already
+ * happened, so a register write failure must not fail the request.
  */
 async function recordGdprRequest(input: {
   userId: string;
   userName: string;
   userEmail: string;
-  requestType: "export" | "delete";
+  requestType: "export";
   req: NextRequest;
 }): Promise<void> {
   try {
@@ -44,6 +45,8 @@ async function recordGdprRequest(input: {
 /**
  * GET /api/gdpr/export
  * Returns all data associated with the current user (GDPR data export).
+ * Includes user profile, applications, interviews, notifications, consent logs,
+ * GDPR requests, and for employers their company profile.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Max 3 exports per day per user to prevent data harvesting abuse
@@ -58,14 +61,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // PROFILE _id, not the User _id — querying by ctx.userId always returned
   // empty arrays, making the export incomplete. Resolve the profile first.
   const seekerProfile = await JobSeeker.findOne({ userId: ctx.userId }).lean<{ _id: unknown } | null>();
+  const employerProfile = ctx.role === "employer" ? await Employer.findOne({ userId: ctx.userId }).lean() : null;
 
-  const [user, applications, interviews, notifications] = await Promise.all([
+  const [user, applications, interviews, notifications, consentLogs, gdprRequests] = await Promise.all([
     User.findById(ctx.userId).select("-passwordHash").lean(),
     seekerProfile
       ? Application.find({ jobSeekerId: seekerProfile._id }).populate("jobId", "title location").lean()
       : [],
     seekerProfile ? Interview.find({ jobSeekerId: seekerProfile._id }).lean() : [],
     Notification.find({ userId: ctx.userId }).lean(),
+    ConsentLog.find({ userId: ctx.userId }).lean(),
+    GdprRequest.find({ userId: ctx.userId }).lean(),
   ]);
 
   await logActivity({ ...actorFromCtx(ctx), action: "gdpr.export", resource: "users", resourceId: ctx.userId, req });
@@ -82,117 +88,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     exportedAt: new Date().toISOString(),
     user,
     seekerProfile,
+    employerProfile,
     applications,
     interviews,
     notifications,
+    consentLogs,
+    gdprRequests,
   });
 });
 
 /**
- * DELETE /api/gdpr/export
- * Right to erasure — anonymizes the user's account and deletes personal data.
+ * DELETE /api/gdpr/export — kept for older clients. Asking for erasure no
+ * longer erases on the spot: it opens a deletion request an admin completes
+ * from the GDPR register (the same path as POST /api/gdpr/requests).
  */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
-
-  const anonymizedEmail = `deleted_${ctx.userId}@anonymized.mployedin.com`;
-
-  const [, seekerBefore] = await Promise.all([
-    // Anonymize user account
-    User.findByIdAndUpdate(ctx.userId, {
-      name: "Deleted User",
-      email: anonymizedEmail,
-      phone: null,
-      isActive: false,
-      deletedAt: new Date(),
-    }),
-    // Delete job seeker profile data. Field names MUST match the schema exactly
-    // or $unset silently no-ops: `cv` (holds originalUrl + parsed resume text)
-    // and `experience` were previously misnamed `cvUrl`/`workExperience`, so
-    // that PII survived "erasure". Also clear financial PII (bank/IBAN).
-    // findOneAndUpdate returns the PRE-update doc, so `seekerBefore` still
-    // carries cv.originalUrl for the storage hard-delete below.
-    JobSeeker.findOneAndUpdate(
-      { userId: ctx.userId },
-      {
-        $unset: {
-          cv: 1,
-          skills: 1,
-          experience: 1,
-          education: 1,
-          languages: 1,
-          nationality: 1,
-          passportNumber: 1,
-          bankAccountNumber: 1,
-          iban: 1,
-          documents: 1,
-        },
-      }
-    ).select("cv documents").lean<{ _id?: unknown; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
-    // Delete notifications
-    Notification.deleteMany({ userId: ctx.userId }),
-  ]);
-
-  // Messages the user wrote, and their name on other people's conversation lists.
-  try {
-    await redactUserMessages(ctx.userId);
-  } catch (err) {
-    // The account is already deactivated, so the user can't retry: record it for staff.
-    logger.error({ err, userId: ctx.userId }, "[gdpr] message redaction failed during erasure");
+  const result = await createDeletionRequest(req, ctx);
+  if (!result.ok) {
+    return result.code === "ADMIN_ACCOUNT"
+      ? NextResponse.json({ error: "Administrator accounts can't be deleted this way.", code: result.code }, { status: 403 })
+      : NextResponse.json({ error: "You already have a deletion request open.", code: result.code }, { status: 409 });
   }
-
-  // Hard-delete uploaded files from storage — DB erasure alone left the objects
-  // behind. Best-effort: a storage failure must not fail the erasure itself
-  // (fields are already unset; the bucket is private). Besides the CV, the
-  // seeker's document library and every application attachment are theirs too,
-  // and stayed downloadable by employers after erasure.
-  const fileUrls = [
-    seekerBefore?.cv?.originalUrl,
-    ...(seekerBefore?.documents ?? []).map((d) => d.url),
-  ];
-  if (seekerBefore?._id) {
-    const applications = await Application.find({ jobSeekerId: seekerBefore._id })
-      .select("documents")
-      .lean<{ documents?: { url?: string }[] }[]>();
-    fileUrls.push(...applications.flatMap((a) => (a.documents ?? []).map((d) => d.url)));
-    await Application.updateMany({ jobSeekerId: seekerBefore._id }, { $set: { documents: [] } });
-  }
-  const { deleteFile } = await import("@/lib/storage/spaces");
-  for (const url of new Set(fileUrls.filter((u): u is string => Boolean(u)))) {
-    try {
-      await deleteFile(url);
-    } catch (err) {
-      // Best-effort, but the DB no longer references this object: the log line
-      // is the only record left of what still needs deleting from the bucket.
-      logger.warn({ err, userId: ctx.userId, url }, "[gdpr] erasure could not delete stored file");
-    }
-  }
-  // The CV records hold each CV's full text and what was read from it.
-  if (seekerBefore?._id) {
-    try {
-      await deleteCvRecordsOfSeeker(seekerBefore._id as string);
-    } catch (err) {
-      logger.error({ err, userId: ctx.userId }, "[gdpr] erasure could not delete CV records");
-    }
-  }
-
-  // Log the erasure
-  await logActivity({
-    ...actorFromCtx(ctx),
-    action: "gdpr.erasure",
-    resource: "users",
-    resourceId: ctx.userId,
-    meta: { reason: "GDPR right to erasure" },
-    req,
-  });
-  // The register must not keep the erased identity — record the anonymised one.
-  await recordGdprRequest({
-    userId: ctx.userId,
-    userName: "Deleted User",
-    userEmail: anonymizedEmail,
-    requestType: "delete",
-    req,
-  });
-
-  return NextResponse.json({ success: true, message: "Account data has been anonymized per GDPR request." });
+  return NextResponse.json({ success: true, requestId: result.requestId }, { status: 202 });
 });

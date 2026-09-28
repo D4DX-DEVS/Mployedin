@@ -8,6 +8,7 @@ import { workflowUpdateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { normalizeWorkflowStages, type WorkflowStageLike } from "@/lib/hiring/pipeline";
 import { pickHiringRuleFields, resolveHiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
+import { findUsableWorkflowTemplate } from "@/lib/hiring/jobWorkflow";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; }
@@ -15,6 +16,8 @@ interface AuthCtx { userId: string; role: UserRole; }
 interface StoredWorkflow {
   stages?: unknown;
   settings?: HiringRulesInput;
+  /** The template new jobs fall back to when none matches their details. */
+  defaultTemplateId?: unknown;
 }
 
 /**
@@ -28,8 +31,12 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("workflow").lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id workflow").lean();
   const workflow = employer?.workflow as StoredWorkflow | undefined;
+  // A default that was archived since reads as "none" — matching skips it too.
+  const defaultTemplate = workflow?.defaultTemplateId
+    ? await findUsableWorkflowTemplate(String(workflow.defaultTemplateId), employer?._id)
+    : null;
   const stored = workflow?.stages;
   const stages = Array.isArray(stored) && stored.length > 0
     ? normalizeWorkflowStages(stored as WorkflowStageLike[])
@@ -38,6 +45,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     stages,
     settings: resolveHiringRules(undefined, workflow?.settings),
+    defaultTemplateId: defaultTemplate ? String(defaultTemplate._id) : null,
   });
 }
 
@@ -51,14 +59,22 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();
-  const { stages, settings } = await validateBody(req, workflowUpdateSchema);
+  const { stages, settings, defaultTemplateId } = await validateBody(req, workflowUpdateSchema);
 
-  const existing = await Employer.findOne({ userId: ctx.userId }).select("workflow").lean();
+  const existing = await Employer.findOne({ userId: ctx.userId }).select("_id workflow").lean();
   const current = (existing?.workflow as StoredWorkflow | undefined)?.settings;
-  const $set: Record<string, unknown> = {
-    "workflow.settings": { ...pickHiringRuleFields(current), ...pickHiringRuleFields(settings) },
-  };
+  const $set: Record<string, unknown> = {};
+  if (settings || stages) {
+    $set["workflow.settings"] = { ...pickHiringRuleFields(current), ...pickHiringRuleFields(settings) };
+  }
   if (stages) $set["workflow.stages"] = normalizeWorkflowStages(stages);
+  if (defaultTemplateId !== undefined) {
+    if (defaultTemplateId !== null && !(await findUsableWorkflowTemplate(defaultTemplateId, existing?._id))) {
+      return NextResponse.json({ error: "Workflow template not found" }, { status: 404 });
+    }
+    $set["workflow.defaultTemplateId"] = defaultTemplateId;
+  }
+  if (Object.keys($set).length === 0) return NextResponse.json({ success: true });
 
   await Employer.findOneAndUpdate({ userId: ctx.userId }, { $set }, { upsert: true });
 

@@ -781,3 +781,24 @@ export async function notifyAdminsContactSubmission(
     ),
   );
 }
+
+/** A user asked for their account to be deleted — it waits in the GDPR register. */
+export async function notifyAdminsGdprDeletionRequest(userName: string, requestId: string): Promise<void> {
+  const adminIds = await getAdminUserIds();
+  await Promise.all(
+    adminIds.map((adminUserId) =>
+      notify({
+        userId: adminUserId,
+        type: "system",
+        title: "Account deletion requested",
+        message: `${userName} asked for their account to be deleted.`,
+        link: "/admin/gdpr",
+        sendEmail: false,
+        metadata: { requestId, userName },
+        titleKey: "adminGdprDeletionTitle",
+        bodyKey: "adminGdprDeletionBody",
+        params: { userName },
+      }),
+    ),
+  );
+}

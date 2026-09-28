@@ -22,6 +22,8 @@ import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import logger from "@/lib/logger";
 import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hiring/pipeline";
+import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
+import { stageQueryFilter } from "@/lib/hiring/workflowStages";
 import { escapeRegex } from "@/lib/security/sanitize";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +37,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   const status = searchParams.get("status") ?? "";
+  // One workflow stage of the selected job (a board column), when several
+  // stages share a status. Needs jobId + status.
+  const stageIdParam = searchParams.get("stageId") ?? "";
   // "Has reached at least this stage". A shortlist that matched only the
   // current stage lost people the moment they advanced to Interviewing, even
   // though shortlisting is exactly what put them there.
@@ -158,11 +163,25 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.jobId = new mongoose.Types.ObjectId(jobId);
   }
 
+  // The job's workflow, read once when a stage filter or stage counts need it.
+  const wantsStageCounts = fetchCounts && ctx.role === "employer" && Boolean(jobId);
+  const jobStages = jobId && (stageIdParam || wantsStageCounts)
+    ? effectiveJobStages(await Job.findById(jobId).select("workflow").lean<JobWorkflowCarrier | null>())
+    : null;
+  if (stageIdParam && jobStages && status) {
+    const stageFilter = stageQueryFilter(jobStages, status, stageIdParam);
+    if (!stageFilter) {
+      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
+    }
+    Object.assign(query, stageFilter);
+  }
+
   // Pipeline scope for the employer header strip: every application in the
   // selected job (or all jobs) before status/search/score filters narrow the
   // page, so the strip reads as totals rather than describing this page.
   const scopeQuery = { ...query };
   delete scopeQuery.status;
+  delete scopeQuery.stageId;
 
   // Date range filter on appliedAt
   if (dateFrom || dateTo) {
@@ -541,6 +560,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   let statusCounts: Record<string, number> | null = null;
+  // Selected job only: counts per status AND stage, for the workflow board's columns.
+  let stageCounts: { status: string; stageId: string | null; count: number }[] | null = null;
   // Reported beside the funnel, so it has to span the whole scope like the
   // funnel does — the client used to count the page it had in hand.
   let highMatchCount: number | null = null;
@@ -557,6 +578,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ]);
     statusCounts = Object.fromEntries(rows.map((r) => [String(r._id), r.count]));
     highMatchCount = highRows[0]?.count ?? 0;
+    if (wantsStageCounts) {
+      stageCounts = await Application.aggregate<{ _id: { status: string; stageId?: string | null }; count: number }>([
+        { $match: scopeQuery },
+        { $group: { _id: { status: "$status", stageId: "$stageId" }, count: { $sum: 1 } } },
+      ]).then((stageRows) => stageRows.map((r) => ({ status: r._id.status, stageId: r._id.stageId ?? null, count: r.count })));
+    }
   } else if (fetchCounts && ctx.role === "job_seeker") {
     /* The seeker's status pills sit directly above the list they filter, so
        their counts follow every active filter except the status being chosen
@@ -598,6 +625,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ...(fetchEmployers ? { allEmployers } : {}),
     ...(fetchStats ? { stats } : {}),
     ...(statusCounts ? { statusCounts } : {}),
+    ...(stageCounts ? { stageCounts } : {}),
     ...(highMatchCount !== null ? { highMatchCount } : {}),
   });
 }

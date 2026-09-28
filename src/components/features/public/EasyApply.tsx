@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useSignupConsentPrompt } from "@/components/features/auth/SignupConsentDialog";
+import { CONSENT_REQUIRED_CODE, signupConsentCredentials } from "@/lib/auth/signupConsent";
 import { useSession, signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -77,7 +79,28 @@ interface CvExtractResponse {
 const PROFILE_CV_KEY = "__profile_cv__";
 const NO_CV_KEY = "__none__";
 
-export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions = [] }: EasyApplyProps) {
+/**
+ * The consent dialog sits outside the flow below, which returns a different
+ * card for every step: a new account from Google or an e-mail code is only
+ * made once the Terms & Privacy box is ticked (lib/auth/signupConsent.ts).
+ */
+export default function EasyApply(props: EasyApplyProps) {
+  const { ask, dialog } = useSignupConsentPrompt(props.locale);
+  return (
+    <>
+      {dialog}
+      <EasyApplyFlow {...props} askSignupConsent={ask} />
+    </>
+  );
+}
+
+function EasyApplyFlow({
+  jobId,
+  jobTitle,
+  locale,
+  screeningQuestions = [],
+  askSignupConsent,
+}: EasyApplyProps & { askSignupConsent: () => Promise<boolean> }) {
   const t = useTranslations("easyApply");
   const { data: session, status, update } = useSession();
   const router = useRouter();
@@ -360,7 +383,15 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
     try {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
       const idToken = await result.user.getIdToken();
-      const res = await signIn("firebase", { idToken, redirect: false });
+      let res = await signIn("firebase", { idToken, redirect: false });
+      if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
+        if (!(await askSignupConsent())) {
+          setAnonError(t("signupConsentNeeded"));
+          setAnonPhase("idle");
+          return;
+        }
+        res = await signIn("firebase", { idToken, ...signupConsentCredentials(), redirect: false });
+      }
       if (res?.error) {
         if ((res as { code?: string }).code === "account_inactive") {
           setAnonError(t("accountInactive"));
@@ -448,11 +479,21 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
     setAnonPhase("auth");
     try {
-      const res = await signIn("email-otp", {
+      let res = await signIn("email-otp", {
         email: anonEmail,
         otp: anonOtpCode,
         redirect: false,
       });
+      // A code that would make a new account waits for the Terms & Privacy
+      // tick; the same code is sent again once it is given.
+      if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
+        if (!(await askSignupConsent())) {
+          setAnonError(t("signupConsentNeeded"));
+          setAnonPhase("idle");
+          return;
+        }
+        res = await signIn("email-otp", { email: anonEmail, otp: anonOtpCode, ...signupConsentCredentials(), redirect: false });
+      }
 
       if (res?.error) {
         if (res.error.includes("expired")) {

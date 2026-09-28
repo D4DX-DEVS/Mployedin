@@ -6,20 +6,16 @@
  * per-application attachments (Application.documents). Both used to survive
  * erasure, still downloadable by the employers the seeker had applied to. The
  * CV records (each CV's full text and reading) go too.
+ *
+ * The erasure runs when an admin completes a deletion request
+ * (lib/gdpr/erasure.ts), not on the user's own DELETE any more.
  */
-import { NextRequest } from "next/server";
-
 const USER_ID = "64e000000000000000000001";
 const SEEKER_ID = "64e0000000000000000000aa";
 
 jest.mock("@/lib/gdpr/redactMessages", () => ({ redactUserMessages: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/audit/log", () => ({ actorFromCtx: jest.fn(() => ({})), logActivity: jest.fn().mockResolvedValue(undefined) }));
-jest.mock("@/lib/security/rateLimit", () => ({ checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }) }));
-jest.mock("@/lib/auth/withAuth", () => ({
-  withAuth: (handler: (req: NextRequest, ctx: unknown) => Promise<Response>) =>
-    (req: NextRequest) => handler(req, { userId: USER_ID, role: "job_seeker", locale: "en" }),
-}));
 
 const deleteFile = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/storage/spaces", () => ({ deleteFile: (...a: unknown[]) => deleteFile(...a) }));
@@ -52,11 +48,11 @@ jest.mock("@/models/GdprRequest", () => ({ __esModule: true, default: { create: 
 const deleteCvRecordsOfSeeker = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/cv/cvDocuments", () => ({ deleteCvRecordsOfSeeker: (...a: unknown[]) => deleteCvRecordsOfSeeker(...a) }));
 
-describe("DELETE /api/gdpr/export removes every uploaded file", () => {
+describe("eraseUserPersonalData removes every uploaded file", () => {
   it("unsets the document library and application attachments and deletes their objects", async () => {
-    const { DELETE } = await import("@/app/api/gdpr/export/route");
-    const res = await DELETE(new NextRequest("http://localhost/api/gdpr/export", { method: "DELETE" }), { params: Promise.resolve({}) });
-    expect(res.status).toBe(200);
+    const { eraseUserPersonalData } = await import("@/lib/gdpr/erasure");
+    const result = await eraseUserPersonalData(USER_ID);
+    expect(result.anonymizedEmail).toBe(`deleted_${USER_ID}@anonymized.mployedin.com`);
 
     const [, update] = seekerUpdate.mock.calls[0] as unknown as [unknown, { $unset: Record<string, unknown> }];
     expect(update.$unset).toHaveProperty("documents");

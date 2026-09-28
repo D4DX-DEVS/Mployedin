@@ -10,6 +10,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PrivacySettingsLink } from "@/components/features/privacy/PrivacySettingsLink";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -1472,6 +1473,8 @@ function SecurityTab() {
       <TwoFactorCard />
 
       <ChangeEmailCard />
+
+      <PrivacySettingsLink href="/super-agent/settings/privacy" />
     </>
   );
 }

@@ -5,6 +5,7 @@ import TargetProfile from "@/models/TargetProfile";
 import User from "@/models/User";
 import { enrichProfiles, expectedProgressPct, type EnrichedProfile } from "@/lib/targets/profileAchievementCalculator";
 import { targetPace } from "@/lib/admin/dashboard/people.server";
+import { financeTotals } from "@/lib/targets/financeTotals";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -13,19 +14,6 @@ const MIN_YEAR = 2020;
 const MAX_YEAR = 2100;
 
 interface Progress { target: number; achieved: number }
-interface MoneyProgress extends Progress { currency: string }
-
-/** Finance by currency, largest target first. Amounts are never added across currencies. */
-function financeByCurrency(profiles: EnrichedProfile[]): MoneyProgress[] {
-  const byCurrency = new Map<string, MoneyProgress>();
-  for (const profile of profiles) {
-    const row = byCurrency.get(profile.currency) ?? { currency: profile.currency, target: 0, achieved: 0 };
-    row.target += profile.financeTarget;
-    row.achieved += profile.financeAchieved;
-    byCurrency.set(profile.currency, row);
-  }
-  return [...byCurrency.values()].sort((left, right) => right.target - left.target || right.achieved - left.achieved);
-}
 
 function sum(profiles: EnrichedProfile[], target: "employerTarget" | "employeeTarget", achieved: "employerAchieved" | "employeeAchieved"): Progress {
   return {
@@ -67,8 +55,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
      add parents and children together, doubling every team. */
   const activeIds = new Set(enriched.map((profile) => profile._id));
   const topLevel = enriched.filter((profile) => !profile.parentProfileId || !activeIds.has(profile.parentProfileId));
-  const finance = financeByCurrency(topLevel);
-  const mainCurrency = finance[0]?.currency ?? null;
+  const finance = financeTotals(topLevel);
+  const mainCurrency = finance.currency;
 
   const pace = { achieved: 0, onPace: 0, behind: 0 };
   for (const profile of enriched) pace[targetPace(profile)] += 1;
@@ -122,12 +110,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     totals: {
       employers: sum(topLevel, "employerTarget", "employerAchieved"),
       employees: sum(topLevel, "employeeTarget", "employeeAchieved"),
-      finance: {
-        currency: mainCurrency,
-        target: finance[0]?.target ?? 0,
-        achieved: finance[0]?.achieved ?? 0,
-        others: finance.slice(1),
-      },
+      finance,
       people: { total: enriched.length, ...pace },
     },
     monthly,

@@ -14,6 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 import { postSignInPath } from "@/lib/auth/roleHome";
+import { useSignupConsentPrompt } from "@/components/features/auth/SignupConsentDialog";
+import { CONSENT_REQUIRED_CODE, rememberSignupConsent, signupConsentCredentials } from "@/lib/auth/signupConsent";
 
 const REMEMBER_ME_KEY = "mployedin_remember_email";
 
@@ -70,6 +72,8 @@ export default function LoginPage() {
   const [callbackPath, setCallbackPath] = useState<string | null>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const anyLoading = loading || googleLoading || linkedInLoading || appleLoading;
+  const { ask: askSignupConsent, dialog: signupConsentDialog } = useSignupConsentPrompt(locale);
+  const consentPromptShown = useRef(false);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem(REMEMBER_ME_KEY);
@@ -89,12 +93,30 @@ export default function LoginPage() {
       setError({ kind: "session", message: t("sessionExpiredInactivity") });
     }
     const oauthError = params.get("error");
-    if (oauthError === "OAuthAccountNotLinked") {
+    const consentProvider = params.get("provider");
+    if (oauthError === CONSENT_REQUIRED_CODE && (consentProvider === "linkedin" || consentProvider === "apple")) {
+      // A first LinkedIn / Apple sign-in came back without the Terms & Privacy
+      // tick, so no account was made: ask, then go through the provider again.
+      if (!consentPromptShown.current) {
+        consentPromptShown.current = true;
+        window.history.replaceState(null, "", window.location.pathname);
+        void askSignupConsent().then((agreed) => {
+          if (!agreed) {
+            setError({ kind: "oauth", message: t("signupConsentNeeded") });
+            return;
+          }
+          rememberSignupConsent();
+          if (consentProvider === "apple") setAppleLoading(true);
+          else setLinkedInLoading(true);
+          void signIn(consentProvider, { callbackUrl: getOAuthRedirectUrl(locale) });
+        });
+      }
+    } else if (oauthError === "OAuthAccountNotLinked") {
       setError({ kind: "oauth", message: t("oauthAccountNotLinked") });
     } else if (oauthError) {
       setError({ kind: "oauth", message: t("oauthError") });
     }
-  }, [t, locale]);
+  }, [t, locale, askSignupConsent]);
 
   useEffect(() => {
     if (error) errorRef.current?.focus();
@@ -107,7 +129,16 @@ export default function LoginPage() {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
       const idToken = await result.user.getIdToken();
 
-      const res = await signIn("firebase", { idToken, redirect: false });
+      let res = await signIn("firebase", { idToken, redirect: false });
+      if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
+        // A first Google sign-in makes an account: ask for the Terms & Privacy
+        // tick, then sign in again with the same token.
+        if (!(await askSignupConsent())) {
+          setError({ kind: "oauth", message: t("signupConsentNeeded") });
+          return;
+        }
+        res = await signIn("firebase", { idToken, ...signupConsentCredentials(), redirect: false });
+      }
       if (res?.error) {
         // Google itself authenticated them — the refusal came from our side, so
         // say which side and why instead of a bare "sign-in failed".
@@ -210,6 +241,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex w-full flex-col gap-4">
+      {signupConsentDialog}
       <div className="flex items-center justify-end gap-4">
         <div className="flex items-center gap-2 text-xs sm:text-sm">
           <span className="hidden text-muted-foreground sm:inline">{t("noAccount")}</span>

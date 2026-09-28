@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { JobTemplatePickers } from "./JobTemplatePickers";
-import type { WorkflowTemplateItem } from "@/hooks/useWorkflowTemplates";
 import type { MatchingWeightTemplateItem } from "@/hooks/useMatchingWeightTemplates";
 import type { JobFormValues } from "./jobFormSchema";
 
@@ -34,9 +33,9 @@ export function AdvancedSettingsSection() {
   const expiresAt = watch("expiresAt");
   const maxApplicants = watch("maxApplicants");
   const agentId = watch("agentId");
+  const workflowTemplateId = watch("workflowTemplateId");
 
   const [agents, setAgents] = useState<AssignedAgent[]>([]);
-  const [selectedWorkflowTemplateId, setSelectedWorkflowTemplateId] = useState<string | null>(null);
   const [selectedMatchingWeightTemplateId, setSelectedMatchingWeightTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -109,7 +108,7 @@ export function AdvancedSettingsSection() {
                 {t("agentBadge", { name: agents.find((a) => a._id === agentId)?.name ?? t("assigned") })}
               </Badge>
             )}
-            {selectedWorkflowTemplateId && (
+            {typeof workflowTemplateId === "string" && (
               <Badge variant="secondary" className="text-[11px]">
                 {t("workflowTemplateBadge")}
               </Badge>
@@ -247,9 +246,7 @@ export function AdvancedSettingsSection() {
                 </p>
                 <div className="mt-2">
                   <JobTemplatePickers
-                    selectedWorkflowTemplateId={selectedWorkflowTemplateId}
                     selectedMatchingWeightTemplateId={selectedMatchingWeightTemplateId}
-                    onWorkflowTemplateSelect={(t: WorkflowTemplateItem | null) => setSelectedWorkflowTemplateId(t?._id ?? null)}
                     onMatchingWeightTemplateSelect={(t: MatchingWeightTemplateItem | null) => {
                       setSelectedMatchingWeightTemplateId(t?._id ?? null);
                       // Saved onto the job right after it is created; they rank its applicants.

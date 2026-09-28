@@ -7,6 +7,7 @@ import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { workflowTemplateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { clearOtherDefaults, serializeWorkflowTemplate, templateWriteFields } from "@/lib/hiring/workflowTemplateStore";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -29,11 +30,12 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
       { scope: "system" },
       { scope: "employer", employerId: employer._id },
     ],
+    isActive: { $ne: false },
   })
     .sort({ scope: 1, isDefault: -1, createdAt: -1 })
     .lean();
 
-  return NextResponse.json({ templates });
+  return NextResponse.json({ templates: templates.map((t) => serializeWorkflowTemplate(t)) });
 }
 
 /** POST — employer creates a custom workflow template */
@@ -48,16 +50,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const body = await validateBody(req, workflowTemplateSchema);
 
   const template = await WorkflowTemplate.create({
-    ...body,
-    settings: {
-      aiAutoScreen: body.settings?.aiAutoScreen ?? true,
-      notifyOnStageChange: body.settings?.notifyOnStageChange ?? true,
-      autoRejectBelow: body.settings?.autoRejectBelow ?? 40,
-    },
+    ...templateWriteFields(body),
+    version: 1,
     scope: "employer",
     employerId: employer._id,
     createdBy: ctx.userId,
   });
+  if (template.isDefault) await clearOtherDefaults(template);
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -68,7 +67,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     req,
   });
 
-  return NextResponse.json({ template }, { status: 201 });
+  return NextResponse.json({ template: serializeWorkflowTemplate(template.toObject(), 0) }, { status: 201 });
 }
 
 export const GET = withAuth(getHandler, { resource: "employers", action: "read" });

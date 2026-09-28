@@ -7,7 +7,15 @@ import { ChevronLeft, ChevronRight, Dot, FolderOpen, MoreVertical } from "lucide
 import { cn } from "@/lib/utils";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { useInfiniteApplications, type ApplicationsFilters } from "@/hooks/useApplications";
-import { PIPELINE_STAGES, OFF_PATH_STATUSES, STAGE_LABEL_KEYS, STAGE_DOT_CLASS } from "@/lib/hiring/pipeline";
+import { OFF_PATH_STATUSES, STAGE_LABEL_KEYS, STAGE_DOT_CLASS } from "@/lib/hiring/pipeline";
+import {
+  DEFAULT_WORKFLOW_STAGE_DEFS,
+  columnCounts,
+  stageForApplication,
+  workflowColumns,
+  type WorkflowStageDef,
+} from "@/lib/hiring/workflowStages";
+import { useStageLabel } from "@/components/features/workflow/WorkflowStageChips";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -34,8 +42,21 @@ export interface ApplicationsBoardProps {
   locale: string;
   baseFilters: BoardFilters;
   statusCounts?: Record<string, number>;
+  /** The job's workflow stages; the columns. Absent = the standard pipeline. */
+  stages?: readonly WorkflowStageDef[];
+  /** Per status + stage totals for the job, so split statuses show each column's own count. */
+  stageCounts?: readonly { status: string; stageId?: string | null; count: number }[];
   onOpen: (app: Applicant, trigger?: HTMLElement | null) => void;
-  onMove: (app: Applicant, status: string) => Promise<void>;
+  /** `stageId` is passed only for a column that is one of several stages sharing a status. */
+  onMove: (app: Applicant, status: string, stageId?: string) => Promise<void>;
+}
+
+/** A place a card can go: a column of the board, or an off-path status. */
+interface MoveTarget {
+  key: string;
+  status: string;
+  stageId: string | null;
+  label: string;
 }
 
 // Shape of next-intl's translator, so the hooks' `t` can be passed straight down.
@@ -48,7 +69,7 @@ type Translate = (key: string, values?: Record<string, string | number | Date>) 
  * "drag not working". `dataTransfer` still carries the id (Firefox refuses to
  * start a drag without data) but the object itself travels through this ref.
  */
-type DragState = MutableRefObject<{ app: Applicant; fromStatus: string } | null>;
+type DragState = MutableRefObject<{ app: Applicant; fromKey: string } | null>;
 
 function initials(name?: string): string {
   return (name ?? "")
@@ -99,20 +120,21 @@ function daysSinceDate(dateStr?: string): number {
 
 interface BoardCardProps {
   app: Applicant;
-  status: string;
+  /** The column this card is shown in. */
+  columnKey: string;
+  moveTargets: readonly MoveTarget[];
   t: Translate;
-  tp: Translate;
   onOpen: (app: Applicant, trigger?: HTMLElement | null) => void;
-  onMoveCard: (app: Applicant, newStatus: string) => Promise<void>;
+  onMoveCard: (app: Applicant, target: MoveTarget) => Promise<void>;
   isMoving: boolean;
   dragState: DragState;
 }
 
 function BoardCard({
   app,
-  status,
+  columnKey,
+  moveTargets,
   t,
-  tp,
   onOpen,
   onMoveCard,
   isMoving,
@@ -136,7 +158,7 @@ function BoardCard({
       aria-busy={isMoving || undefined}
       draggable={!isMoving}
       onDragStart={(e) => {
-        dragState.current = { app, fromStatus: status };
+        dragState.current = { app, fromKey: columnKey };
         if (e.dataTransfer) {
           e.dataTransfer.effectAllowed = "move";
           e.dataTransfer.setData("text/plain", app._id);
@@ -206,17 +228,17 @@ function BoardCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            {/* Only the canonical stages are move targets; Reject is its own verb
+            {/* The job's stages are the move targets; Reject is its own verb
                 and Withdrawn belongs to the candidate. */}
-            {PIPELINE_STAGES
-              .filter((s) => s !== status)
-              .map((s) => (
-                <DropdownMenuItem key={s} onClick={() => void onMoveCard(app, s)}>
-                  {tp(STAGE_LABEL_KEYS[s])}
+            {moveTargets
+              .filter((target) => target.key !== columnKey)
+              .map((target) => (
+                <DropdownMenuItem key={target.key} onClick={() => void onMoveCard(app, target)}>
+                  {target.label}
                 </DropdownMenuItem>
               ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void onMoveCard(app, "rejected")} className="text-destructive">
+            <DropdownMenuItem onClick={() => void onMoveCard(app, { key: "rejected", status: "rejected", stageId: null, label: t("boardReject") })} className="text-destructive">
               {t("boardReject")}
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -228,18 +250,24 @@ function BoardCard({
 }
 
 interface BoardColumnProps {
+  /** The column's identity (a stage id, or the status for a single-stage status). */
+  columnKey: string;
   status: string;
+  /** Set when the column is one of several stages sharing `status`. */
+  stageId: string | null;
   label: string;
   /** Whole-job count for this status from the list's `statusCounts`; shown until the column's own total arrives. */
   count: number;
   jobId: string;
   baseFilters: BoardFilters;
   t: Translate;
-  tp: Translate;
+  moveTargets: readonly MoveTarget[];
   onOpen: (app: Applicant, trigger?: HTMLElement | null) => void;
-  onMoveCard: (app: Applicant, newStatus: string) => Promise<void>;
+  onMoveCard: (app: Applicant, target: MoveTarget) => Promise<void>;
   movingId: string | null;
   dragState: DragState;
+  /** Below xl the board scrolls sideways; wider than six columns it scrolls on xl too. */
+  fitsRow?: boolean;
   /**
    * `column`: a pipeline stage — header, vertical card stack, drop target.
    * `strip`: rows of an off-path status inside the "Rejected & withdrawn"
@@ -250,17 +278,20 @@ interface BoardColumnProps {
 }
 
 function BoardColumn({
+  columnKey,
   status,
+  stageId,
   label,
   count,
   jobId,
   baseFilters,
   t,
-  tp,
+  moveTargets,
   onOpen,
   onMoveCard,
   movingId,
   dragState,
+  fitsRow = true,
   layout = "column",
 }: BoardColumnProps) {
   // Each stage loads its own pages: 20 cards, then "Load more" appends the
@@ -268,6 +299,7 @@ function BoardColumn({
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteApplications({
     jobId,
     status,
+    ...(stageId ? { stageId } : {}),
     limit: BOARD_PAGE_SIZE,
     ...baseFilters,
   });
@@ -298,8 +330,8 @@ function BoardColumn({
           setIsOver(false);
           const drag = dragState.current;
           dragState.current = null;
-          if (!drag || drag.fromStatus === status) return;
-          void onMoveCard(drag.app, status);
+          if (!drag || drag.fromKey === columnKey) return;
+          void onMoveCard(drag.app, { key: columnKey, status, stageId, label });
         },
       }
     : {};
@@ -327,9 +359,9 @@ function BoardColumn({
           <BoardCard
             key={app._id}
             app={app}
-            status={status}
+            columnKey={columnKey}
+            moveTargets={moveTargets}
             t={t}
-            tp={tp}
             onOpen={onOpen}
             onMoveCard={onMoveCard}
             isMoving={movingId === app._id}
@@ -366,7 +398,7 @@ function BoardColumn({
   return (
     <section
       aria-label={t("boardColumnLabel", { stage: label, count: total })}
-      data-board-column={status}
+      data-board-column={columnKey}
       data-drop-over={isOver || undefined}
       {...dropHandlers}
       // Phones: one stage fills the board and the row snaps stage by stage.
@@ -375,7 +407,8 @@ function BoardColumn({
       // the sideways scroll moves in full stages. From xl the six stages
       // share the row, nothing off-screen.
       className={cn(
-        "flex min-h-0 shrink-0 basis-full snap-center flex-col rounded-2xl transition-colors sm:basis-64 md:basis-[calc((100%-1.5rem)/3)] sm:snap-start xl:min-w-0 xl:basis-auto",
+        "flex min-h-0 shrink-0 basis-full snap-center flex-col rounded-2xl transition-colors sm:basis-64 md:basis-[calc((100%-1.5rem)/3)] sm:snap-start",
+        fitsRow ? "xl:min-w-0 xl:basis-auto" : "xl:basis-64",
         isOver && "bg-primary/5 ring-2 ring-primary/40"
       )}
     >
@@ -401,19 +434,38 @@ function stageStride(el: HTMLDivElement): number {
   const column = el.querySelector<HTMLElement>("[data-board-column]");
   return (column?.offsetWidth || el.clientWidth) + COLUMN_GAP_PX;
 }
-function stagesPerScreen(el: HTMLDivElement): number {
-  return Math.max(1, Math.min(PIPELINE_STAGES.length, Math.floor((el.clientWidth + COLUMN_GAP_PX + 1) / stageStride(el))));
+function stagesPerScreen(el: HTMLDivElement, columns: number): number {
+  return Math.max(1, Math.min(columns, Math.floor((el.clientWidth + COLUMN_GAP_PX + 1) / stageStride(el))));
 }
+
+/** More columns than this and the board scrolls sideways on wide screens too. */
+const MAX_COLUMNS_IN_ROW = 6;
 
 export function ApplicationsBoard({
   jobId,
   baseFilters,
   statusCounts,
+  stages = DEFAULT_WORKFLOW_STAGE_DEFS,
+  stageCounts,
   onOpen,
   onMove,
 }: ApplicationsBoardProps) {
   const t = useTranslations("employerJobWorkspace");
   const tp = useTranslations("hiringPipeline");
+  const stageLabel = useStageLabel();
+
+  // Columns: the job's stages, plus any status the workflow skips while
+  // candidates sit in it (an interview or offer made elsewhere moves them there).
+  const columns = workflowColumns(stages, statusCounts ?? {}).map((column) => ({
+    ...column,
+    key: column.stageId ?? column.phase,
+    label: column.stage ? stageLabel(column.stage) : tp(STAGE_LABEL_KEYS[column.phase]),
+  }));
+  const perColumn = stageCounts ? columnCounts(stages, stageCounts) : null;
+  const countFor = (column: (typeof columns)[number]): number =>
+    column.stageId && perColumn ? perColumn[`stage:${column.stageId}`] ?? 0 : statusCounts?.[column.phase] ?? 0;
+  const moveTargets: MoveTarget[] = columns.map((c) => ({ key: c.key, status: c.phase, stageId: c.stageId, label: c.label }));
+  const fitsRow = columns.length <= MAX_COLUMNS_IN_ROW;
   const [collapsedOffPath, setCollapsedOffPath] = useState(true);
   const [movingId, setMovingId] = useState<string | null>(null);
   const dragState: DragState = useRef(null);
@@ -425,17 +477,17 @@ export function ApplicationsBoard({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeStage, setActiveStage] = useState(0);
   const [visibleStages, setVisibleStages] = useState(1);
-  const lastStage = PIPELINE_STAGES.length - 1;
-  const firstStageOfLastScreen = PIPELINE_STAGES.length - visibleStages;
+  const lastStage = columns.length - 1;
+  const firstStageOfLastScreen = Math.max(0, columns.length - visibleStages);
   useEffect(() => {
     const measure = () => {
       const el = scrollerRef.current;
-      if (el) setVisibleStages(stagesPerScreen(el));
+      if (el) setVisibleStages(stagesPerScreen(el, columns.length));
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, []);
+  }, [columns.length]);
   const handleScroll = () => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -451,31 +503,29 @@ export function ApplicationsBoard({
     el.scrollTo({ left: (rtl ? -1 : 1) * next * stageStride(el), behavior: "smooth" });
     setActiveStage(next);
   };
-  const stageLabel = visibleStages > 1
-    ? t("boardStagesOf", { from: activeStage + 1, to: Math.min(PIPELINE_STAGES.length, activeStage + visibleStages), count: PIPELINE_STAGES.length })
-    : t("boardStageOf", { index: activeStage + 1, count: PIPELINE_STAGES.length });
+  const pagerLabel = visibleStages > 1
+    ? t("boardStagesOf", { from: activeStage + 1, to: Math.min(columns.length, activeStage + visibleStages), count: columns.length })
+    : t("boardStageOf", { index: activeStage + 1, count: columns.length });
 
   // One move path for drag-and-drop and the card menu: dim the card, PATCH,
   // toast the outcome. The columns refetch when the workspace invalidates.
-  const moveCard = async (app: Applicant, newStatus: string) => {
-    if (newStatus === app.status || movingId) return;
+  const moveCard = async (app: Applicant, target: MoveTarget) => {
+    if (movingId) return;
+    const current = stageForApplication(stages, app.status, app.stageId);
+    const sameStatus = target.status === app.status;
+    if (sameStatus && (!target.stageId || target.stageId === current?.id)) return;
     const name = getCandidateName(app);
     setMovingId(app._id);
     try {
-      await onMove(app, newStatus);
-      toast.success(t("boardMoved", { name, stage: tp(STAGE_LABEL_KEYS[newStatus as keyof typeof STAGE_LABEL_KEYS] ?? newStatus) }));
+      if (target.stageId) await onMove(app, target.status, target.stageId);
+      else await onMove(app, target.status);
+      toast.success(t("boardMoved", { name, stage: target.label }));
     } catch {
       toast.error(t("boardMoveError", { name }));
     } finally {
       setMovingId(null);
     }
   };
-
-  const pipelineStatuses = PIPELINE_STAGES.map((status) => ({
-    status,
-    label: tp(STAGE_LABEL_KEYS[status]),
-    count: statusCounts?.[status] ?? 0,
-  }));
 
   const offPathStatuses = OFF_PATH_STATUSES.map((status) => ({
     status,
@@ -489,7 +539,7 @@ export function ApplicationsBoard({
       {/* Below xl: the stage pager sits above the board so "Stage 1 of 6" (or
           "Stages 1–3 of 6" on a tablet) and the arrows are on screen without
           scrolling past a 70vh column. Swiping the board works too. */}
-      <div className="flex items-center justify-between gap-2 xl:hidden" data-board-pager>
+      <div className={cn("flex items-center justify-between gap-2", fitsRow && "xl:hidden")} data-board-pager>
         <Button
           type="button"
           variant="outline"
@@ -501,7 +551,7 @@ export function ApplicationsBoard({
           <ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
         </Button>
         <p className="min-w-0 truncate text-center text-xs font-medium text-muted-foreground" aria-live="polite">
-          {stageLabel}
+          {pagerLabel}
         </p>
         <Button
           type="button"
@@ -522,22 +572,29 @@ export function ApplicationsBoard({
         ref={scrollerRef}
         onScroll={handleScroll}
         data-board-scroller
-        className="flex h-[70vh] min-h-[24rem] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain xl:grid xl:grid-cols-6 xl:snap-none xl:overflow-visible"
+        style={fitsRow ? ({ "--board-cols": columns.length } as React.CSSProperties) : undefined}
+        className={cn(
+          "flex h-[70vh] min-h-[24rem] snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain",
+          fitsRow && "xl:grid xl:grid-cols-[repeat(var(--board-cols),minmax(0,1fr))] xl:snap-none xl:overflow-visible",
+        )}
       >
-        {pipelineStatuses.map(({ status, label, count }) => (
+        {columns.map((column) => (
           <BoardColumn
-            key={status}
-            status={status}
-            label={label}
-            count={count}
+            key={column.key}
+            columnKey={column.key}
+            status={column.phase}
+            stageId={column.stageId}
+            label={column.label}
+            count={countFor(column)}
             jobId={jobId}
             baseFilters={baseFilters}
             t={t}
-            tp={tp}
+            moveTargets={moveTargets}
             onOpen={onOpen}
             onMoveCard={moveCard}
             movingId={movingId}
             dragState={dragState}
+            fitsRow={fitsRow}
           />
         ))}
       </div>
@@ -573,13 +630,15 @@ export function ApplicationsBoard({
                       {label} ({count})
                     </p>
                     <BoardColumn
+                      columnKey={status}
                       status={status}
+                      stageId={null}
                       label={label}
                       count={count}
                       jobId={jobId}
                       baseFilters={baseFilters}
                       t={t}
-                      tp={tp}
+                      moveTargets={moveTargets}
                       onOpen={onOpen}
                       onMoveCard={moveCard}
                       movingId={movingId}

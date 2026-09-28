@@ -32,6 +32,9 @@ const NOT_IN_MENU = new Set([
   // Delivery channels / digest / unsubscribe. Not a menu entry: it is linked
   // from the Notifications tab of Settings, which owns the simpler toggles.
   "/job-seeker/settings/notifications",
+  // Data & Privacy (download data, delete account, consents): linked from the
+  // Profile tab of Settings, like the notifications page above.
+  "/job-seeker/settings/privacy",
   // Legacy redirect kept so old bookmarks still land on the job feed, which is
   // now the only search surface.
   "/job-seeker/search",

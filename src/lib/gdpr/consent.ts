@@ -23,6 +23,8 @@ export interface RegistrationConsentInput {
   termsAccepted: boolean;
   cookieChoice?: CookieChoice | null;
   ipAddress?: string;
+  /** How the account was made, e.g. "registration:google"; defaults to "registration". */
+  source?: string;
 }
 
 /**
@@ -33,7 +35,7 @@ export async function recordRegistrationConsents(input: RegistrationConsentInput
   const base = {
     userId: input.userId,
     userName: input.userName || "Unknown",
-    source: "registration",
+    source: input.source ?? "registration",
     ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}),
   };
   const rows = [

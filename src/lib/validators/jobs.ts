@@ -110,6 +110,8 @@ export const jobCreateSchema = z.object({
   // entry as "posted" + record the new jobId. Optional — manual creation omits.
   extractionDraftId: commonSchemas.objectId.optional(),
   extractionDraftIndex: z.number().int().min(0).max(199).optional(),
+  // A workflow template the poster picked. Absent/null = matched from the job's details.
+  workflowTemplateId: commonSchemas.objectId.nullable().optional(),
 });
 
 export const jobUpdateSchema = z.object({
@@ -135,4 +137,6 @@ export const jobUpdateSchema = z.object({
   showSalary: z.boolean().optional(),
   visibility: z.enum(["public", "private", "invite_only"]).optional(),
   screeningQuestions: z.array(screeningQuestionSchema).max(20).optional(),
+  // Picked in the job form while the job is still a draft (publish goes through PATCH).
+  workflowTemplateId: commonSchemas.objectId.nullable().optional(),
 });

@@ -1,12 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { WorkflowStage, WorkflowSettings, WorkflowPayload } from "./useWorkflow";
+import type { WorkflowStageDef } from "@/lib/hiring/workflowStages";
+import type { WorkflowResolutionReason } from "@/lib/hiring/workflowTemplateMatch";
 
 export { type WorkflowStage, type WorkflowSettings, type WorkflowPayload };
 
-interface JobWorkflowResponse {
-  stages?: WorkflowStage[] | null;
+/** Where a job's stages came from; null = a job posted before templates (standard pipeline). */
+export interface JobWorkflowTemplateInfo {
+  templateId: string | null;
+  name: string;
+  version: number;
+  source: "auto" | "manual" | "custom";
+  reason: WorkflowResolutionReason | null;
+  appliedAt: string | null;
+}
+
+export interface JobWorkflowResponse {
+  /** The job's stages (its snapshot, or the standard pipeline). */
+  stages: WorkflowStageDef[];
+  template: JobWorkflowTemplateInfo | null;
   settings?: Partial<WorkflowSettings>;
+  /** Whose hiring rules apply. */
   source: "job" | "employer";
+}
+
+/** A per-job save: rules, a template to switch to (null = automatic), or stages for this job only. */
+export interface JobWorkflowPayload {
+  settings?: Partial<WorkflowSettings>;
+  templateId?: string | null;
+  customStages?: Pick<WorkflowStageDef, "id" | "label" | "phase">[];
 }
 
 export const jobWorkflowKeys = {
@@ -34,7 +56,7 @@ export function useJobWorkflow(jobId: string) {
 export function useSaveJobWorkflow(jobId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: WorkflowPayload) => {
+    mutationFn: async (payload: JobWorkflowPayload) => {
       const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/workflow`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -45,6 +67,8 @@ export function useSaveJobWorkflow(jobId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: jobWorkflowKeys.detail(jobId) });
+      // Board columns and stage counts follow the job's stages.
+      qc.invalidateQueries({ queryKey: ["applications"] });
     },
   });
 }

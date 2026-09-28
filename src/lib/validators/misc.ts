@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { commonSchemas } from "./index";
-import { normalizeStageId } from "@/lib/hiring/pipeline";
+import { PIPELINE_STAGES, normalizeStageId } from "@/lib/hiring/pipeline";
+import {
+  MAX_WORKFLOW_STAGES,
+  STAGE_ID_PATTERN,
+  STAGE_LABEL_MAX,
+  validateWorkflowStageDefs,
+  type StageListProblem,
+} from "@/lib/hiring/workflowStages";
 import { SHORTLIST_TARGET_MAX, SHORTLIST_TARGET_MIN } from "@/lib/hiring/workflowSettings";
 
 /** Contact form submission (public, no auth) */
@@ -22,6 +29,36 @@ const hiringRulesSchema = z.object({
   autoRejectEnabled: z.boolean().optional(),
   shortlistTarget: z.number().int().min(SHORTLIST_TARGET_MIN).max(SHORTLIST_TARGET_MAX).optional(),
 });
+
+const STAGE_PROBLEM_MESSAGES: Record<StageListProblem, string> = {
+  too_few: "A workflow needs at least two stages.",
+  too_many: `A workflow can have at most ${MAX_WORKFLOW_STAGES} stages.`,
+  first_not_applied: "The first stage must be an Applied stage.",
+  no_hired: "The workflow needs a Hired stage.",
+  phase_backwards: "Stages must follow the pipeline order.",
+  duplicate_id: "Two stages share the same id.",
+  bad_id: "A stage id is not valid.",
+  empty_label: "Every stage needs a name.",
+};
+
+/** One stage: a name hung on an application status (lib/hiring/workflowStages.ts). */
+const workflowStageDefSchema = z.object({
+  id: z.string().regex(STAGE_ID_PATTERN),
+  label: z.string().trim().min(1).max(STAGE_LABEL_MAX),
+  phase: z.enum(PIPELINE_STAGES),
+  order: z.number().int().min(0).max(100).optional(),
+});
+
+/** A whole stage list, checked the same way the editor checks it. */
+export const workflowStageListSchema = z
+  .array(workflowStageDefSchema)
+  .max(MAX_WORKFLOW_STAGES)
+  .superRefine((stages, ctx) => {
+    for (const problem of validateWorkflowStageDefs(stages)) {
+      ctx.addIssue({ code: "custom", message: STAGE_PROBLEM_MESSAGES[problem] });
+    }
+  })
+  .transform((stages) => stages.map((stage, i) => ({ ...stage, order: i + 1 })));
 
 /**
  * Employer workflow settings (+ optional pipeline stages).
@@ -45,6 +82,12 @@ export const workflowUpdateSchema = z.object({
     .max(20)
     .optional(),
   settings: hiringRulesSchema.optional(),
+  /** Per job: put the job on this template (null = back to automatic matching). */
+  templateId: z.union([commonSchemas.objectId, z.null()]).optional(),
+  /** Per job: stages edited for this job only. */
+  customStages: workflowStageListSchema.optional(),
+  /** Per employer: the template new jobs fall back to when none matches (null = platform default). */
+  defaultTemplateId: z.union([commonSchemas.objectId, z.null()]).optional(),
 });
 
 /** Employer matching weights (must total 100) */
@@ -60,24 +103,35 @@ export const notificationUpdateSchema = z.object({
 
 // ── Template Schemas ──────────────────────────────────────────────────────────
 
-const workflowStageTemplateSchema = z.object({
-  id: z.string().max(50),
-  label: z.string().max(100),
-  enabled: z.boolean(),
-  autoProgress: z.boolean(),
-  order: z.number().int().min(0),
-});
 
-const workflowSettingsTemplateSchema = hiringRulesSchema;
+const matchValues = (max: number) => z.array(z.string().trim().min(1).max(max)).max(30);
+
+/** Which jobs a template is picked for automatically. */
+export const workflowTemplateMatchSchema = z.object({
+  categories: matchValues(100).optional(),
+  employmentTypes: z.array(z.enum(["full_time", "part_time", "contract", "internship", "freelance", "walk_in"])).max(6).optional(),
+  workModes: z.array(z.enum(["onsite", "hybrid", "remote"])).max(3).optional(),
+  titleKeywords: matchValues(60).optional(),
+  minExperienceYears: z.number().int().min(0).max(40).nullable().optional(),
+});
 
 /** Create/Update a workflow template */
 export const workflowTemplateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   description: z.string().max(500).trim().optional(),
-  stages: z.array(workflowStageTemplateSchema).min(1).max(20),
-  settings: workflowSettingsTemplateSchema.optional(),
+  stages: workflowStageListSchema,
+  /** Retired: hiring rules live on the employer and the job, never on a template. Accepted and ignored. */
+  settings: hiringRulesSchema.optional(),
   tags: z.array(z.string().max(50)).max(10).optional(),
   isDefault: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  priority: z.number().int().min(0).max(100).optional(),
+  match: workflowTemplateMatchSchema.optional(),
+});
+
+/** Admin actions on a template that are not an edit. */
+export const workflowTemplateActionSchema = z.object({
+  action: z.enum(["set_default", "unset_default", "archive", "restore", "duplicate"]),
 });
 
 const matchingWeightValuesSchema = z.object({

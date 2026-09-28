@@ -19,3 +19,17 @@ export function readCookieChoice(): CookieChoice | null {
     return null;
   }
 }
+
+/**
+ * Remember the visitor's choice in this browser. The banner and the Data &
+ * Privacy page both write here, so changing it on one is what the other reads.
+ * Returns false when storage is blocked.
+ */
+export function storeCookieChoice(choice: CookieChoice): boolean {
+  try {
+    window.localStorage.setItem(COOKIE_CONSENT_STORAGE_KEY, choice);
+    return true;
+  } catch {
+    return false;
+  }
+}

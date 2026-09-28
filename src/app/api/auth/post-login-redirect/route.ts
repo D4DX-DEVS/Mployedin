@@ -4,6 +4,7 @@ import { getDashboardPath } from "@/lib/permissions/matrix";
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 import { attachJobSeekerReferral } from "@/lib/referrals/attachJobSeeker";
 import { REFERRAL_CODE_RE, REFERRAL_COOKIE_NAME } from "@/lib/referrals/url";
+import { SIGNUP_CONSENT_COOKIE } from "@/lib/auth/signupConsent";
 import logger from "@/lib/logger";
 import type { UserRole } from "@/types/user";
 
@@ -78,6 +79,11 @@ export async function GET(request: Request) {
   );
   if (refCookie !== null) {
     response.cookies.set(REFERRAL_COOKIE_NAME, "", { path: "/", maxAge: 0 });
+  }
+  // The sign-up consent tick has done its job once the account exists.
+  if (readCookie(request.headers.get("cookie") ?? "", SIGNUP_CONSENT_COOKIE) !== null) {
+    const secure = request.url.startsWith("https:");
+    response.cookies.set(SIGNUP_CONSENT_COOKIE, "", { path: "/", maxAge: 0, ...(secure ? { secure: true, sameSite: "none" as const } : {}) });
   }
   return response;
 }

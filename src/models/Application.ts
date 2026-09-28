@@ -85,6 +85,12 @@ export interface IApplication extends Document {
   aiMatchNotifiedAt?: Date;
   /** Set the first time the employer opens this application — drives the "New" badge. */
   viewedByEmployerAt?: Date;
+  /**
+   * The job workflow stage the candidate sits in, when the job's workflow has
+   * several stages for the current status. Unset or unknown = the first stage
+   * of the status (lib/hiring/workflowStages.ts).
+   */
+  stageId?: string;
   matchBreakdown?: IAIMatchBreakdown;
   matchNotes?: string;
   matchStrengths?: string[];
@@ -122,6 +128,9 @@ export interface IApplication extends Document {
   appliedAt: Date;
   statusHistory: {
     status: ApplicationStatus;
+    /** The workflow stage entered, with its name as it read at the time. */
+    stageId?: string;
+    stageLabel?: string;
     changedAt: Date;
     changedBy?: mongoose.Types.ObjectId;
     note?: string;
@@ -168,6 +177,7 @@ const ApplicationSchema = new Schema<IApplication>(
     scoredVia: String,
     aiMatchNotifiedAt: Date,
     viewedByEmployerAt: Date,
+    stageId: String,
     matchBreakdown: {
       skills: Number,
       role: Number,
@@ -251,6 +261,8 @@ const ApplicationSchema = new Schema<IApplication>(
     statusHistory: [
       {
         status: String,
+        stageId: String,
+        stageLabel: String,
         changedAt: { type: Date, default: Date.now },
         changedBy: Schema.Types.ObjectId,
         note: String,

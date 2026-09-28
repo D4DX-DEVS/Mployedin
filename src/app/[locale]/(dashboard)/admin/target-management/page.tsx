@@ -70,7 +70,8 @@ interface Totals {
   totalTeamSize: number;
   employer: { target: number; achieved: number };
   employee: { target: number; achieved: number };
-  finance: { target: number; achieved: number };
+  /** Main currency only; other currencies are listed in `others`, never added in. */
+  finance: { currency: string | null; target: number; achieved: number; others: { currency: string; target: number; achieved: number }[] };
   avgPerformance: number;
   riskBreakdown: { high: number; medium: number; low: number };
   regions: string[];
@@ -364,6 +365,16 @@ export default function AdminTargetManagementPage() {
   };
 
   const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
+  /* The finance total is in one currency, named by the API. It used to be a
+     sum over every currency, labelled with whatever the first row's was. */
+  const financeAmount = (value: number, notation: "standard" | "compact" = "standard") => totals?.finance.currency
+    ? formatCount(value, { style: "currency", currency: totals.finance.currency, notation, maximumFractionDigits: notation === "compact" ? 1 : 0 }, locale)
+    : formatCount(value, { notation }, locale);
+  const financeRatio = (notation: "standard" | "compact") =>
+    `${financeAmount(totals?.finance.achieved ?? 0, notation)} / ${financeAmount(totals?.finance.target ?? 0, notation)}`;
+  // Phones: bare compact numbers. Even "AED 0 / AED 612K" is wider than a third
+  // of the strip; the currency is named in the line under the risk chips.
+  const financeRatioPhone = `${formatCount(totals?.finance.achieved ?? 0, { notation: "compact", maximumFractionDigits: 1 }, locale)} / ${formatCount(totals?.finance.target ?? 0, { notation: "compact", maximumFractionDigits: 1 }, locale)}`;
 
   return (
     <div className="page-container">
@@ -382,7 +393,13 @@ export default function AdminTargetManagementPage() {
           { label: t("supervisorCount"), value: totals?.supervisors ?? 0, note: t("totalAgentsNote", { count: totals?.totalTeamSize ?? 0 }), icon: UsersRound, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
           { label: t("employerMetric"), value: `${formatCount(totals?.employer.achieved ?? 0)} / ${formatCount(totals?.employer.target ?? 0)}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employer.target ?? 0) - (totals?.employer.achieved ?? 0))) }), icon: Building2, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
           { label: t("employeeMetric"), value: `${formatCount(totals?.employee.achieved ?? 0)} / ${formatCount(totals?.employee.target ?? 0)}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employee.target ?? 0) - (totals?.employee.achieved ?? 0))) }), icon: Users, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
-          { label: t("financeMetric"), value: `${formatCount(totals?.finance.achieved ?? 0)} / ${formatCount(totals?.finance.target ?? 0)}`, note: t("balanceNote", { value: `${profiles[0]?.currency ?? "AED"} ${formatCount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0)))}` }), icon: DollarSign, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("financeMetric"), value: (
+            // A full amount pair is wider than a third of a phone screen.
+            <>
+              <span className="sm:hidden">{financeRatioPhone}</span>
+              <span className="hidden sm:inline">{financeRatio("standard")}</span>
+            </>
+          ), note: t("balanceNote", { value: financeAmount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0))) }), icon: DollarSign, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
           { label: t("avgAchievementMetric"), value: `${totals?.avgPerformance ?? 0}%`, icon: Activity, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
           { label: t("activeProfilesLabel"), value: totals?.totalProfiles ?? 0, icon: BarChart3, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
         ]}
@@ -392,6 +409,19 @@ export default function AdminTargetManagementPage() {
             <span className="chip-pad rounded-full bg-status-rejected-bg text-xs font-semibold text-status-rejected">{t("riskHighCount", { count: totals?.riskBreakdown.high ?? 0 })}</span>
             <span className="chip-pad rounded-full bg-status-shortlisted-bg text-xs font-semibold text-status-shortlisted">{t("riskMediumCount", { count: totals?.riskBreakdown.medium ?? 0 })}</span>
             <span className="chip-pad rounded-full bg-status-selected-bg text-xs font-semibold text-status-selected">{t("riskLowCount", { count: totals?.riskBreakdown.low ?? 0 })}</span>
+            {totals?.finance.currency && totals.finance.others.length > 0 ? (
+              <span className="text-xs text-muted-foreground" data-finance-other-currencies>
+                {t("financeOtherCurrenciesNote", {
+                  currency: totals.finance.currency,
+                  others: totals.finance.others.map((row) => row.currency).join(", "),
+                })}
+              </span>
+            ) : totals?.finance.currency ? (
+              // Wider screens show the currency in the figure itself.
+              <span className="text-xs text-muted-foreground sm:hidden" data-finance-currency>
+                {t("financeCurrencyNote", { currency: totals.finance.currency })}
+              </span>
+            ) : null}
           </div>
         }
       />

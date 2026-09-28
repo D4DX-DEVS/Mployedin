@@ -7,6 +7,12 @@ import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { workflowTemplateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import {
+  clearOtherDefaults,
+  serializeWorkflowTemplate,
+  templateWriteFields,
+  workflowTemplateUsage,
+} from "@/lib/hiring/workflowTemplateStore";
 import mongoose from "mongoose";
 import type { UserRole } from "@/types/user";
 
@@ -31,7 +37,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }).lean();
 
   if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ template });
+  return NextResponse.json({ template: serializeWorkflowTemplate(template) });
 }
 
 /** PATCH — only employer-owned templates can be edited */
@@ -51,18 +57,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const template = await WorkflowTemplate.findOneAndUpdate(
     { _id: id, scope: "employer", employerId: employer._id },
-    {
-      $set: {
-        ...body,
-        settings: {
-          aiAutoScreen: body.settings?.aiAutoScreen ?? true,
-          notifyOnStageChange: body.settings?.notifyOnStageChange ?? true,
-          autoRejectBelow: body.settings?.autoRejectBelow ?? 40,
-        },
-      },
-    },
+    // Jobs already on this template keep the snapshot they were given.
+    { $set: templateWriteFields(body), $inc: { version: 1 } },
     { returnDocument: "after" },
-  );
+  ).lean();
 
   if (!template) {
     return NextResponse.json(
@@ -70,6 +68,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       { status: 404 },
     );
   }
+
+  if (template.isDefault) await clearOtherDefaults(template);
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -80,7 +80,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     req,
   });
 
-  return NextResponse.json({ template });
+  return NextResponse.json({ template: serializeWorkflowTemplate(template) });
 }
 
 /** DELETE — only employer-owned templates */
@@ -95,6 +95,12 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
   await connectDB();
   const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
   if (!employer) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
+
+  // A template jobs run on is archived, never deleted: their snapshots name it.
+  const inUse = (await workflowTemplateUsage([id])).get(id) ?? 0;
+  if (inUse > 0) {
+    return NextResponse.json({ error: "TEMPLATE_IN_USE", count: inUse }, { status: 409 });
+  }
 
   const deleted = await WorkflowTemplate.findOneAndDelete({
     _id: id,

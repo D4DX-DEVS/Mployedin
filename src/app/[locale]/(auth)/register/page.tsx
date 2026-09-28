@@ -7,6 +7,8 @@ import { signIn, getSession } from "next-auth/react";
 import { signInWithPopup } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
 import { useTranslations } from "next-intl";
+import { useSignupConsentPrompt } from "@/components/features/auth/SignupConsentDialog";
+import { CONSENT_REQUIRED_CODE, rememberSignupConsent, signupConsentCredentials } from "@/lib/auth/signupConsent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +57,7 @@ export default function RegisterPage() {
   const [linkedInLoading, setLinkedInLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [roleSelected, setRoleSelected] = useState(false);
+  const { ask: askSignupConsent, dialog: signupConsentDialog } = useSignupConsentPrompt(locale);
 
   // ?ref=MPL-… from an agent's job-seeker referral link. Validated before it is
   // trusted; a bad link shows nothing and never blocks the signup.
@@ -90,11 +93,23 @@ export default function RegisterPage() {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
       const idToken = await result.user.getIdToken();
 
-      const res = await signIn("firebase", {
+      const referral = referralCode ? { referralCode } : {};
+      // The box on this form is the consent; without it a new account is
+      // refused and asked for here, then retried with the same token.
+      let res = await signIn("firebase", {
         idToken,
-        ...(referralCode ? { referralCode } : {}),
+        ...referral,
+        ...(agreedToTerms ? signupConsentCredentials() : {}),
         redirect: false,
       });
+      if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
+        if (!(await askSignupConsent())) {
+          setError(t("signupConsentNeeded"));
+          return;
+        }
+        setAgreedToTerms(true);
+        res = await signIn("firebase", { idToken, ...referral, ...signupConsentCredentials(), redirect: false });
+      }
       if (res?.error) {
         // Google authenticated them; a deactivated account is our refusal, not theirs.
         if ((res as { code?: string }).code === "account_inactive") {
@@ -121,6 +136,23 @@ export default function RegisterPage() {
     } finally {
       setGoogleLoading(false);
     }
+  }
+
+  /**
+   * LinkedIn / Apple leave the page, so the Terms & Privacy tick is taken
+   * before going (the form's box, or the dialog when it is unticked) and rides
+   * along in a short-lived cookie.
+   */
+  async function startProviderSignIn(provider: "apple" | "linkedin") {
+    setError("");
+    if (!agreedToTerms) {
+      if (!(await askSignupConsent())) return;
+      setAgreedToTerms(true);
+    }
+    rememberSignupConsent();
+    if (provider === "apple") setAppleLoading(true);
+    else setLinkedInLoading(true);
+    void signIn(provider, { callbackUrl: withCallback("/api/auth/post-login-redirect", callback) });
   }
 
   /** Clear one field's message as soon as the user acts on it. */
@@ -263,6 +295,7 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full flex flex-col gap-8">
+      {signupConsentDialog}
       <div className="lg:hidden flex flex-col gap-2">
         <div className="inline-flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
@@ -438,7 +471,7 @@ export default function RegisterPage() {
           variant="outline"
           type="button"
           className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: withCallback("/api/auth/post-login-redirect", callback) }); }}
+          onClick={() => void startProviderSignIn("apple")}
           disabled={appleLoading}
         >
           {appleLoading ? (
@@ -454,7 +487,7 @@ export default function RegisterPage() {
           variant="outline"
           type="button"
           className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: withCallback("/api/auth/post-login-redirect", callback) }); }}
+          onClick={() => void startProviderSignIn("linkedin")}
           disabled={linkedInLoading}
         >
           {linkedInLoading ? (

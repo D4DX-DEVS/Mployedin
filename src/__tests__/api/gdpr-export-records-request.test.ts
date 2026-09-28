@@ -48,10 +48,18 @@ jest.mock("@/models/Notification", () => ({
   default: { find: jest.fn(() => leanChain([])), deleteMany: jest.fn().mockResolvedValue(undefined) },
 }));
 
+jest.mock("@/models/ConsentLog", () => ({ __esModule: true, default: { find: jest.fn(() => leanChain([])) } }));
+jest.mock("@/models/Employer", () => ({ __esModule: true, default: { findOne: jest.fn(() => leanChain(null)) } }));
+jest.mock("@/lib/notifications/trigger", () => ({ notifyAdminsGdprDeletionRequest: jest.fn().mockResolvedValue(undefined) }));
+
 const gdprCreate = jest.fn().mockResolvedValue({ _id: "req_1" });
 jest.mock("@/models/GdprRequest", () => ({
   __esModule: true,
-  default: { create: (...a: unknown[]) => gdprCreate(...a) },
+  default: {
+    create: (...a: unknown[]) => gdprCreate(...a),
+    find: jest.fn(() => leanChain([])),
+    findOne: jest.fn(() => leanChain(null)),
+  },
 }));
 
 describe("Self-service GDPR actions are recorded in the admin register", () => {
@@ -71,14 +79,13 @@ describe("Self-service GDPR actions are recorded in the admin register", () => {
     }));
   });
 
-  it("DELETE /api/gdpr/export records a completed erasure request without keeping the real e-mail", async () => {
+  it("DELETE /api/gdpr/export opens a pending deletion request for an admin to complete", async () => {
     const { DELETE } = await import("@/app/api/gdpr/export/route");
     const res = await DELETE(new NextRequest("http://localhost:3000/api/gdpr/export", { method: "DELETE" }), { params: Promise.resolve({}) });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
     const recorded = gdprCreate.mock.calls[0][0] as Record<string, unknown>;
     expect(recorded.requestType).toBe("delete");
-    expect(recorded.status).toBe("completed");
-    expect(recorded.userEmail).not.toBe("sara@example.com");
+    expect(recorded.status).toBe("pending");
   });
 });

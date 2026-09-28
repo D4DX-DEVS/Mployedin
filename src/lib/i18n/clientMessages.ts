@@ -17,7 +17,8 @@ export const CLIENT_NAMESPACES = {
   /** Rendered by the [locale] root layout itself, outside every group. */
   root: ["pwaInstallPrompt"],
   public: [
-    "auth", "calendar", "companyReviews", "easyApply", "errorBoundary", "footer",
+    // common: the Dialog close label (the sign-up consent dialog in EasyApply).
+    "auth", "calendar", "common", "companyReviews", "easyApply", "errorBoundary", "footer",
     "landing", "nav", "publicJobDetail", "salaryExplorer", "similarJobs", "socialShare",
   ],
   auth: [

@@ -33,7 +33,7 @@ interface GdprRequest {
   userName: string;
   userEmail: string;
   requestType: "export" | "delete" | "rectification" | "restrict";
-  status: "pending" | "in_progress" | "completed" | "rejected";
+  status: "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
   createdAt: string;
   completedAt?: string;
   notes?: string;
@@ -116,6 +116,7 @@ export default function AdminGdprPage() {
     { value: "in_progress", label: t("inProgressStatusLabel") },
     { value: "completed", label: t("completedStatusLabel") },
     { value: "rejected", label: t("rejectedStatusLabel") },
+    { value: "cancelled", label: t("cancelledStatusLabel") },
   ];
 
   /* ---- Fetch data requests ---- */
@@ -167,17 +168,26 @@ export default function AdminGdprPage() {
   }, [activeTab, fetchRequests, fetchConsentLogs]);
 
   /* ---- Actions ---- */
-  const handleUpdateStatus = async (id: string, status: string, subject: string) => {
+  const handleUpdateStatus = async (id: string, status: string, subject: string, requestType?: string) => {
     // Completed and rejected are terminal (GDPR_REQUEST_TRANSITIONS): once
     // either is saved the request can never move again, so ask first.
     if (status === "completed" || status === "rejected") {
+      let dialogMessage = status === "rejected"
+        ? t("confirmRejectMessage", { name: subject })
+        : t("confirmCompleteMessage", { name: subject });
+      let dialogVariant: "default" | "destructive" = status === "rejected" ? "destructive" : "default";
+
+      // For delete requests being completed, show the destructive warning
+      if (status === "completed" && requestType === "delete") {
+        dialogMessage = t("confirmCompleteDeleteMessage", { name: subject });
+        dialogVariant = "destructive";
+      }
+
       const confirmed = await confirm({
         title: status === "rejected" ? t("confirmRejectTitle") : t("confirmCompleteTitle"),
-        message: status === "rejected"
-          ? t("confirmRejectMessage", { name: subject })
-          : t("confirmCompleteMessage", { name: subject }),
+        message: dialogMessage,
         confirmLabel: status === "rejected" ? t("rejectButton") : t("completeButton"),
-        variant: status === "rejected" ? "destructive" : "default",
+        variant: dialogVariant,
       });
       if (!confirmed) return;
     }
@@ -191,7 +201,8 @@ export default function AdminGdprPage() {
         toast.success(t("statusUpdatedSuccess"));
         fetchRequests();
       } else {
-        toast.error(t("failedUpdateStatus"));
+        const error = (await res.json().catch(() => ({}))) as { code?: string };
+        toast.error(error.code === "ADMIN_ACCOUNT" ? t("cannotEraseAdmin") : t("failedUpdateStatus"));
       }
     } catch {
       toast.error(t("errorUpdatingRequest"));
@@ -397,11 +408,11 @@ export default function AdminGdprPage() {
                               (() => {
                                 const items: RowAction[] = [];
                                 if (r.status === "pending") {
-                                  items.push({ key: "start", label: t("startButton"), icon: Clock, onSelect: () => handleUpdateStatus(r._id, "in_progress", r.userName) });
-                                  items.push({ key: "reject", label: t("rejectButton"), icon: XCircle, onSelect: () => handleUpdateStatus(r._id, "rejected", r.userName), destructive: true });
+                                  items.push({ key: "start", label: t("startButton"), icon: Clock, onSelect: () => handleUpdateStatus(r._id, "in_progress", r.userName, r.requestType) });
+                                  items.push({ key: "reject", label: t("rejectButton"), icon: XCircle, onSelect: () => handleUpdateStatus(r._id, "rejected", r.userName, r.requestType), destructive: true });
                                 }
                                 if (r.status === "in_progress") {
-                                  items.push({ key: "complete", label: t("completeButton"), icon: CheckCircle2, onSelect: () => handleUpdateStatus(r._id, "completed", r.userName) });
+                                  items.push({ key: "complete", label: t("completeButton"), icon: CheckCircle2, onSelect: () => handleUpdateStatus(r._id, "completed", r.userName, r.requestType) });
                                 }
                                 return items;
                               })()

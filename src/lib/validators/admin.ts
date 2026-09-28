@@ -129,7 +129,7 @@ export const adminUserPatchSchema = z.union([
 ]);
 
 /** DELETE /api/admin/users */
-/** PATCH /api/admin/gdpr/[id] — status transitions are enforced in the handler. */
+/** PATCH /api/admin/gdpr/[id] — status transitions are enforced in the handler. Admins cannot set "cancelled" (only users can cancel). */
 export const adminGdprStatusSchema = z.object({
   status: z.enum(["pending", "in_progress", "completed", "rejected"]),
   notes: z.string().trim().max(2000).optional(),

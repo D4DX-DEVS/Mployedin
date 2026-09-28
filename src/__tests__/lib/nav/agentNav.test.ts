@@ -33,6 +33,7 @@ const REACHED_ELSEWHERE: Record<string, string> = {
   "/agent/commissions-report": "Commission report tab on Performance (AgentSectionTabs)",
   "/agent/targets": "Legacy redirect to target-management",
   "/agent/settings": "User profile dropdown in the topbar",
+  "/agent/settings/privacy": "Data & Privacy link in the Account & Security tab of /agent/settings",
 };
 
 function collectRoutes(dir: string, prefix = "/agent"): string[] {

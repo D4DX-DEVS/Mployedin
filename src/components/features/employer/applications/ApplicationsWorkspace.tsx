@@ -107,6 +107,13 @@ import type { Scorecard } from "@/hooks/useScorecards";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
 import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom, type PipelineStage } from "@/lib/hiring/pipeline";
+import {
+  DEFAULT_WORKFLOW_STAGE_DEFS,
+  nextWorkflowStage,
+  stageForApplication,
+  type WorkflowStageDef,
+} from "@/lib/hiring/workflowStages";
+import { useStageLabel } from "@/components/features/workflow/WorkflowStageChips";
 import type { ApplicationStatus } from "@/models/Application";
 import { CandidateJourney } from "@/components/features/employer/applications/CandidateJourney";
 import { useContainerWide } from "@/hooks/useContainerWide";
@@ -178,6 +185,8 @@ export interface Applicant {
     cv?: { originalUrl?: string };
   };
   status: string;
+  /** The job workflow stage it sits in, when several stages share the status (lib/hiring/workflowStages.ts). */
+  stageId?: string;
   aiMatchScore?: number;
   viewedByEmployerAt?: string;
   /** Snapshot at apply time: the candidate joined through a partner referral. Employers never see who. */
@@ -423,6 +432,7 @@ export function ApplicationsWorkspace({
     app: Applicant;
     nextStatus: string;
     reason?: string;
+    stageId?: string;
     interview: OpenInterviewConflict;
   } | null>(null);
   const [resolvingOpenInterview, setResolvingOpenInterview] = useState(false);
@@ -565,6 +575,10 @@ export function ApplicationsWorkspace({
   // The shortlist target from the hiring rules (this job's if customised, else the
   // company's) seeds "Shortlist top N" — the same number the chat tool uses.
   const { data: jobWorkflow } = useJobWorkflow(jobFilter || "");
+  const stageNameOf = useStageLabel();
+  const stageCounts = (applicationsQuery.data?.stageCounts ?? undefined) as
+    | { status: string; stageId?: string | null; count: number }[]
+    | undefined;
   const shortlistTarget = resolveHiringRules(undefined, jobWorkflow?.settings as HiringRulesInput | undefined).shortlistTarget;
 
   // Job filter options — duplicate titles get a "Latest" tag + posting date/time (see helper).
@@ -612,8 +626,8 @@ export function ApplicationsWorkspace({
      
   }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, sortOption, unreviewedOnly]);
 
-  function updateApplicationStatus(id: string, status: string, reason?: string, acknowledgeOpenInterview?: boolean) {
-    return updateStatus.mutateAsync({ id, status, rejectionReason: reason, acknowledgeOpenInterview });
+  function updateApplicationStatus(id: string, status: string, reason?: string, acknowledgeOpenInterview?: boolean, stageId?: string) {
+    return updateStatus.mutateAsync({ id, status, rejectionReason: reason, acknowledgeOpenInterview, stageId });
   }
 
   async function handleGenerateAiMatch(app: Applicant) {
@@ -1175,37 +1189,41 @@ export function ApplicationsWorkspace({
 
   const canUpdate = can("applications", "update");
 
-  async function handleStageChange(app: Applicant, nextStatus: string, reason?: string) {
-    if (nextStatus === app.status) return;
+  async function handleStageChange(app: Applicant, nextStatus: string, reason?: string, stageId?: string) {
+    const statusChanges = nextStatus !== app.status;
+    // Same status, no stage named: nothing to do. Same status, another stage
+    // of the job's workflow (Technical Interview → Culture Fit): a plain move.
+    if (!statusChanges && !stageId) return;
 
-    if (nextStatus === "interview_scheduled") {
+    if (statusChanges && nextStatus === "interview_scheduled") {
       openInterviewModal(app);
       return;
     }
 
-    if (nextStatus === "offer") {
+    if (statusChanges && nextStatus === "offer") {
       setOfferModal({ appId: app._id });
       return;
     }
 
-    await applyStageChange(app, nextStatus, reason);
+    await applyStageChange(app, nextStatus, reason, undefined, stageId);
   }
 
   /** The stage write itself, retried with `acknowledged` once the person has
    *  seen the open interview a backwards move would leave behind. */
-  async function applyStageChange(app: Applicant, nextStatus: string, reason?: string, acknowledged?: boolean) {
+  async function applyStageChange(app: Applicant, nextStatus: string, reason?: string, acknowledged?: boolean, stageId?: string) {
     try {
-      await updateApplicationStatus(app._id, nextStatus, reason, acknowledged);
+      await updateApplicationStatus(app._id, nextStatus, reason, acknowledged, stageId);
       // Keep the open detail panel in sync — the list refetches, but the panel renders
       // from its own snapshot, so without this the stage change never shows.
-      setDetailPanel((prev) => (prev && prev._id === app._id ? { ...prev, status: nextStatus } : prev));
-      const stageLabel = pipelineStages.find((s) => s.value === nextStatus)?.label ?? nextStatus;
+      setDetailPanel((prev) => (prev && prev._id === app._id ? { ...prev, status: nextStatus, stageId } : prev));
+      const namedStage = stageId ? jobWorkflow?.stages?.find((s) => s.id === stageId) : undefined;
+      const stageLabel = namedStage ? stageNameOf(namedStage) : pipelineStages.find((s) => s.value === nextStatus)?.label ?? nextStatus;
       toast.success(t("stageUpdatedTo", { stage: stageLabel }));
       setOpenInterviewWarning(null);
     } catch (err) {
       if (err instanceof OpenInterviewError) {
         // Never silently strand the interview: show it and let them choose.
-        setOpenInterviewWarning({ app, nextStatus, reason, interview: err.interview });
+        setOpenInterviewWarning({ app, nextStatus, reason, stageId, interview: err.interview });
         return;
       }
       toast.error(t("stageUpdateFailed"));
@@ -1215,11 +1233,11 @@ export function ApplicationsWorkspace({
   /** Cancel the stranded interview first, then complete the stage move. */
   async function cancelInterviewAndMove() {
     if (!openInterviewWarning) return;
-    const { app, nextStatus, reason, interview } = openInterviewWarning;
+    const { app, nextStatus, reason, stageId, interview } = openInterviewWarning;
     setResolvingOpenInterview(true);
     try {
       await updateInterview.mutateAsync({ id: interview._id, status: "cancelled" });
-      await applyStageChange(app, nextStatus, reason, true);
+      await applyStageChange(app, nextStatus, reason, true, stageId);
     } catch {
       toast.error(t("stageUpdateFailed"));
     } finally {
@@ -1747,8 +1765,8 @@ export function ApplicationsWorkspace({
             <Button size="sm" className="rounded-xl px-4"
               disabled={resolvingOpenInterview}
               onClick={() => {
-                const { app, nextStatus, reason } = openInterviewWarning;
-                void applyStageChange(app, nextStatus, reason, true);
+                const { app, nextStatus, reason, stageId } = openInterviewWarning;
+                void applyStageChange(app, nextStatus, reason, true, stageId);
               }}>
               {t("openInterviewMoveAnyway")}
             </Button>
@@ -1885,6 +1903,8 @@ export function ApplicationsWorkspace({
               jobId={jobFilter}
               locale={locale}
               statusCounts={statusCounts ?? undefined}
+              stages={jobFilter ? jobWorkflow?.stages : undefined}
+              stageCounts={jobFilter ? stageCounts : undefined}
               baseFilters={{
                 search: debouncedSearch.trim() || undefined,
                 scoreMin: debouncedScoreRange[0] > 0 ? debouncedScoreRange[0] : undefined,
@@ -1897,7 +1917,7 @@ export function ApplicationsWorkspace({
                 unreviewed: unreviewedOnly || undefined,
               }}
               onOpen={openDetailPanel}
-              onMove={async (app, status) => { await updateApplicationStatus(app._id, status); }}
+              onMove={async (app, status, stageId) => { await updateApplicationStatus(app._id, status, undefined, undefined, stageId); }}
             />
           ) : (
             <TableView
@@ -2384,12 +2404,22 @@ function TableView({
   );
 }
 
-function StageStepper({ currentStatus, appliedDate }: { currentStatus: string; appliedDate: string }) {
+function StageStepper({
+  currentStatus,
+  currentStageId,
+  stages,
+  appliedDate,
+}: {
+  currentStatus: string;
+  currentStageId?: string;
+  stages: readonly WorkflowStageDef[];
+  appliedDate: string;
+}) {
   const t = useTranslations("employerApplications");
-  const tp = useTranslations("hiringPipeline");
-  const steps = PIPELINE_STAGES.map((key) => ({ key, label: tp(STAGE_LABEL_KEYS[key]) }));
+  const stageNameOf = useStageLabel();
+  const steps = stages.map((stage) => ({ key: stage.id, label: stageNameOf(stage) }));
   const isRejected = currentStatus === "rejected" || currentStatus === "withdrawn";
-  const currentIndex = steps.findIndex((s) => s.key === currentStatus);
+  const currentIndex = steps.findIndex((s) => s.key === currentStageId);
   const lastIndex = steps.length - 1;
   return (
     <div className="mt-4">
@@ -2455,9 +2485,14 @@ function ApplicationDetailsPanel({
   onViewCv?: (app: Applicant) => void;
   onViewDocument?: (app: Applicant, url: string) => void;
   onCreateOffer?: (app: Applicant) => void;
-  onChangeStatus?: (app: Applicant, nextStatus: string, reason?: string) => Promise<void>;
+  onChangeStatus?: (app: Applicant, nextStatus: string, reason?: string, stageId?: string) => Promise<void>;
   getCandidateName: (app: Applicant) => string;
 }) {
+  // The stages of this candidate's job — the job in view, or theirs in "All jobs".
+  const { data: appJobWorkflow } = useJobWorkflow(app.jobId?._id ?? "");
+  const jobStages: readonly WorkflowStageDef[] = appJobWorkflow?.stages ?? DEFAULT_WORKFLOW_STAGE_DEFS;
+  const stageNameOf = useStageLabel();
+  const currentStage = stageForApplication(jobStages, app.status, app.stageId);
   const [mounted, setMounted] = useState(false);
   const messageRecipientId =
     typeof app.jobSeekerId?.userId === "object" ? app.jobSeekerId.userId?._id ?? "" : "";
@@ -2529,16 +2564,22 @@ function ApplicationDetailsPanel({
         { label: t("salary"), value: app.matchBreakdown.salary },
       ].filter((item) => typeof item.value === "number") as Array<{ label: string; value: number }>)
     : [];
-  const stageOptions = pipelineStages
-    .filter((stage) => stage.value !== app.status)
-    .map((stage) => ({ value: stage.value, label: stage.label }));
+  // The job's stages as move targets ("stage:<id>"), then Reject. A stage
+  // names its status, so a move between two stages of one status is allowed.
+  const stageOptions = [
+    ...jobStages
+      .filter((stage) => stage.id !== currentStage?.id)
+      .map((stage) => ({ value: `stage:${stage.id}`, label: stageNameOf(stage) })),
+    ...(app.status !== "rejected" ? pipelineStages.filter((stage) => stage.value === "rejected") : []),
+  ];
 
   // The stage that actually comes next, so the menu can lead with it. A flat
-  // list of six gave no hint which one was the obvious move. Everything else
-  // stays available underneath — including going back, which is how a mistaken
+  // list gave no hint which one was the obvious move. Everything else stays
+  // available underneath — including going back, which is how a mistaken
   // stage change gets corrected.
-  const currentStageIndex = (PIPELINE_STAGES as readonly string[]).indexOf(app.status);
-  const nextStageValue = currentStageIndex > -1 ? PIPELINE_STAGES[currentStageIndex + 1] : undefined;
+  const isOffPath = app.status === "rejected" || app.status === "withdrawn";
+  const upcomingStage = isOffPath ? null : nextWorkflowStage(jobStages, currentStage);
+  const nextStageValue = upcomingStage ? `stage:${upcomingStage.id}` : undefined;
   const nextStageOption = stageOptions.find((opt) => opt.value === nextStageValue);
   const otherStageOptions = stageOptions.filter((opt) => opt.value !== nextStageOption?.value);
 
@@ -2601,12 +2642,16 @@ function ApplicationDetailsPanel({
     }
   }
 
-  async function handleQuickStageChange(nextStatus: string) {
+  async function handleQuickStageChange(value: string) {
     if (!onChangeStatus) return;
+    // "stage:<id>" = a stage of the job's workflow; anything else is a status.
+    const stage = value.startsWith("stage:") ? jobStages.find((s) => `stage:${s.id}` === value) : undefined;
+    const nextStatus = stage ? stage.phase : value;
+    const sharesStatus = stage ? jobStages.filter((s) => s.phase === stage.phase).length > 1 : false;
 
     setStatusPending(true);
     try {
-      await onChangeStatus(app, nextStatus);
+      await onChangeStatus(app, nextStatus, undefined, stage && sharesStatus ? stage.id : undefined);
       setNextStage("");
       setRejectReason("");
     } finally {
@@ -2881,7 +2926,7 @@ function ApplicationDetailsPanel({
             onOpenChange={setPoolOpen}
           />
 
-          <StageStepper currentStatus={app.status} appliedDate={appliedDate} />
+          <StageStepper currentStatus={app.status} currentStageId={currentStage?.id} stages={jobStages} appliedDate={appliedDate} />
           <CandidateJourney applicationId={app._id} locale={locale} />
         </div>
 

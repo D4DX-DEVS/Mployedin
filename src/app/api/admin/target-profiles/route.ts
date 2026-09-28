@@ -8,6 +8,7 @@ import {
   targetProfileBulkCreateSchema,
   targetProfileCloneSchema,
 } from "@/lib/validators/targetProfiles";
+import { financeTotals } from "@/lib/targets/financeTotals";
 import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import {
   generateMonthlyDistribution,
@@ -184,10 +185,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       target: allRows.reduce((s, r) => s + r.employeeTarget, 0),
       achieved: allRows.reduce((s, r) => s + r.employeeAchieved, 0),
     },
-    finance: {
-      target: allRows.reduce((s, r) => s + r.financeTarget, 0),
-      achieved: allRows.reduce((s, r) => s + r.financeAchieved, 0),
-    },
+    // One currency at a time: this used to add INR plans to AED ones.
+    finance: financeTotals(allRows),
     avgPerformance: allRows.length > 0
       ? Math.round(allRows.reduce((s, r) => s + r.overallProgress, 0) / allRows.length)
       : 0,

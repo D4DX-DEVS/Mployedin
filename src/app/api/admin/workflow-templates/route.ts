@@ -2,26 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import WorkflowTemplate from "@/models/WorkflowTemplate";
+import Job from "@/models/Job";
 import { validateBody } from "@/lib/validators";
 import { workflowTemplateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import {
+  clearOtherDefaults,
+  serializeWorkflowTemplate,
+  templateWriteFields,
+  workflowTemplateUsage,
+} from "@/lib/hiring/workflowTemplateStore";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-/** GET — list all system workflow templates */
+/**
+ * GET — every platform template (archived included) with how many jobs run on
+ * it, plus the job categories in use so the match editor can offer them.
+ */
 async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();
-  const templates = await WorkflowTemplate.find({ scope: "system" })
-    .sort({ isDefault: -1, createdAt: -1 })
-    .lean();
-  return NextResponse.json({ templates });
+  const [templates, categories] = await Promise.all([
+    WorkflowTemplate.find({ scope: "system" }).sort({ isDefault: -1, isActive: -1, name: 1 }).lean(),
+    Job.distinct("category", { deletedAt: null }),
+  ]);
+  const usage = await workflowTemplateUsage(templates.map((t) => t._id));
+  return NextResponse.json({
+    templates: templates.map((t) => serializeWorkflowTemplate(t, usage.get(String(t._id)) ?? 0)),
+    categoryOptions: (categories as unknown[])
+      .filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+      .map((c) => c.trim())
+      .sort((a, b) => a.localeCompare(b)),
+  });
 }
 
-/** POST — create a new system workflow template */
+/** POST — create a platform template */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -30,15 +48,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const body = await validateBody(req, workflowTemplateSchema);
 
   const template = await WorkflowTemplate.create({
-    ...body,
-    settings: {
-      aiAutoScreen: body.settings?.aiAutoScreen ?? true,
-      notifyOnStageChange: body.settings?.notifyOnStageChange ?? true,
-      autoRejectBelow: body.settings?.autoRejectBelow ?? 40,
-    },
+    ...templateWriteFields(body),
+    version: 1,
     scope: "system",
     createdBy: ctx.userId,
   });
+  if (template.isDefault) await clearOtherDefaults(template);
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -49,7 +64,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     req,
   });
 
-  return NextResponse.json({ template }, { status: 201 });
+  return NextResponse.json({ template: serializeWorkflowTemplate(template.toObject(), 0) }, { status: 201 });
 }
 
 export const GET = withAuth(getHandler, { resource: "users", action: "read" });

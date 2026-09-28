@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import TargetProfile from "@/models/TargetProfile";
-import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
+import { enrichProfiles, expectedProgressPct } from "@/lib/targets/profileAchievementCalculator";
 import User from "@/models/User";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -150,7 +150,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   });
 
   // Underperformers — below 50% of expected pace
-  const expectedPct = Math.round((currentMonth / 12) * 100);
+  // Against the plan's own year: today's month made every 2027 plan an underperformer.
+  const expectedPct = expectedProgressPct(year);
   const underperformers = rows
     .filter((r) => r.overallProgress < expectedPct * 0.5)
     .sort((a, b) => a.overallProgress - b.overallProgress)

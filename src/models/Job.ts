@@ -70,9 +70,26 @@ export interface IJobPoster {
 export interface IWorkflowStage {
   id: string;
   label: string;
-  enabled: boolean;
-  autoProgress: boolean;
+  /** The application status this stage runs under. Set on every snapshot taken from a template. */
+  phase?: string;
+  enabled?: boolean;
+  autoProgress?: boolean;
   order: number;
+}
+
+/** Where a job's stage list came from (lib/hiring/jobWorkflow.ts). */
+export type JobWorkflowSource = "auto" | "manual" | "custom";
+
+export interface IJobWorkflowTemplateRef {
+  /** Null when the job runs the standard pipeline (no template matched and no default exists). */
+  templateId?: mongoose.Types.ObjectId | null;
+  name?: string;
+  version?: number;
+  /** auto = picked from the job's details; manual = chosen by a person; custom = stages edited for this job. */
+  source: JobWorkflowSource;
+  /** Why an automatic pick happened ("matched:category,title", "employer_default", …). */
+  reason?: string;
+  appliedAt: Date;
 }
 
 export interface IWorkflowSettings {
@@ -88,10 +105,13 @@ export interface IWorkflowSettings {
 }
 
 export interface IJobWorkflow {
+  /** A snapshot of the template's stages, taken when the job was given it. Read only when `template` is set. */
   stages?: IWorkflowStage[];
   settings?: IWorkflowSettings;
   /** Set by PATCH /api/jobs/[id]/workflow. Absent = the job follows the employer rules. */
   customizedAt?: Date;
+  /** Absent on jobs posted before workflow templates took effect — they run the standard pipeline. */
+  template?: IJobWorkflowTemplateRef;
 }
 
 export interface IMatchingWeights {
@@ -245,6 +265,7 @@ const JobSchema = new Schema<IJob>(
       stages: [{
         id: String,
         label: String,
+        phase: String,
         enabled: { type: Boolean, default: true },
         autoProgress: { type: Boolean, default: false },
         order: Number,
@@ -262,6 +283,16 @@ const JobSchema = new Schema<IJob>(
         shortlistTarget: { type: Number, min: 5, max: 100 },
       },
       customizedAt: Date,
+      // Which workflow the stage snapshot above came from. Set on every job
+      // posted since workflow templates took effect (the pre-save hook below).
+      template: {
+        templateId: { type: Schema.Types.ObjectId, ref: "WorkflowTemplate" },
+        name: String,
+        version: Number,
+        source: { type: String, enum: ["auto", "manual", "custom"] },
+        reason: String,
+        appliedAt: Date,
+      },
     },
     matchingWeights: {
       skills: Number,
@@ -345,6 +376,22 @@ JobSchema.index(
   { title: "text", description: "text", "requirements.skills": "text" },
   { name: "jobs_text_search", weights: { title: 10, "requirements.skills": 5, description: 1 } }
 );
+
+JobSchema.index({ "workflow.template.templateId": 1 });
+
+// Remember the status a job was loaded with, so the workflow hook below can
+// tell a draft being published from a live job being paused or closed.
+JobSchema.post("init", function (doc) {
+  doc.$locals.initialStatus = doc.status;
+});
+
+// Every job runs a hiring workflow: the template its poster picked, or the one
+// its details match (lib/hiring/jobWorkflow.ts). Imported lazily — the helper
+// reads other models. It never throws, so a lookup failure cannot block a save.
+JobSchema.pre("save", async function () {
+  const { applyJobWorkflowOnSave } = await import("@/lib/hiring/jobWorkflow");
+  await applyJobWorkflowOnSave(this as unknown as import("@/lib/hiring/jobWorkflow").WorkflowHookJob);
+});
 
 export const Job =
   mongoose.models.Job || mongoose.model<IJob>("Job", JobSchema);

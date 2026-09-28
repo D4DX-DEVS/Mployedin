@@ -185,6 +185,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   Object.assign(job, updateData);
+  // A workflow template picked in the job form. Only honoured while the job is
+  // still a draft — a live job changes workflow from its Workflow tab.
+  const pickedTemplate = (body as { workflowTemplateId?: string | null }).workflowTemplateId;
+  const locals = (job as { $locals?: Record<string, unknown> }).$locals;
+  if (locals?.initialStatus === "draft") {
+    if (pickedTemplate) locals.workflowTemplateId = pickedTemplate;
+    else if (pickedTemplate === null) locals.rematchWorkflow = true;
+  }
   try {
     // Drafts may be incomplete; full validation applies once leaving draft (matches POST handler)
     await job.save({ validateBeforeSave: job.status !== "draft" });
