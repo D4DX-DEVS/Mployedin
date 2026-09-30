@@ -4404,3 +4404,17 @@ table.workspace-list-table tbody tr:focus-visible {
 :is(button[role="switch"], button[role="checkbox"]) + input[aria-hidden="true"]:dir(rtl) {
   transform: translateX(100%) !important;
 }
+
+/* Job-seeker home greeting (data-greeting on the h1): the page-title rule
+   above pins every dashboard h1 to 24px with !important, so at 375px
+   "Good afternoon, <8-letter name>" wrapped even after the greeting moved to
+   the first name. Same layer as that rule, and three attributes for (0,4,1)
+   against its (0,3,3), as the compact header rule above explains. */
+@layer components {
+  @media (max-width: 639px) {
+    .dashboard-main h1[data-greeting="true"][data-greeting="true"][data-greeting="true"] {
+      font-size: 1.25rem !important;
+      line-height: 1.35 !important;
+    }
+  }
+}
