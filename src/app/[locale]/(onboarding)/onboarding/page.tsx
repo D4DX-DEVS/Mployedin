@@ -17,6 +17,14 @@ import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { SeekerAreaField, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
 import { FALLBACK_PHONE_COUNTRIES } from "@/lib/phone/countries";
+import {
+  areaFromCv,
+  findCatalogueCity,
+  pickCurrentExperience,
+  pickHighestEducation,
+  splitCvPhone,
+  totalExperience,
+} from "@/lib/onboarding/cvPrefill";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -234,6 +242,49 @@ function qualificationLevelFrom(degree?: string): string {
   return "";
 }
 
+/** A job as the profile API returns it, or as a CV reading has it. */
+interface CareerJob {
+  _id?: string;
+  jobTitle?: string;
+  company?: string;
+  country?: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  isCurrent?: boolean;
+}
+
+/** A qualification as the profile API returns it, or as a CV reading has it. */
+interface CareerEducation {
+  _id?: string;
+  degree?: string;
+  course?: string;
+  field?: string;
+  institution?: string;
+  courseType?: string;
+  startYear?: number | string | null;
+  graduationDate?: string | null;
+}
+
+/** A CV writes the course in `degree` ("MBA"); onboarding stores the level label there instead. */
+function educationLevel(entry: CareerEducation): string {
+  return qualificationLevelFrom(entry.degree) || qualificationLevelFrom(entry.course);
+}
+
+/** The education step's answers from a stored or CV-read qualification. */
+function educationAnswers(entry: CareerEducation) {
+  const degreeIsLevel = Boolean(QUALIFICATION_BY_LABEL[entry.degree ?? ""]);
+  const graduated = entry.graduationDate ? new Date(entry.graduationDate) : null;
+  return {
+    qualification: educationLevel(entry),
+    course: entry.course || (degreeIsLevel ? "" : entry.degree ?? ""),
+    courseType: entry.courseType ?? "",
+    specialization: entry.field ?? "",
+    university: entry.institution ?? "",
+    startYear: entry.startYear != null ? String(entry.startYear).slice(0, 4) : "",
+    passingYear: graduated && !Number.isNaN(graduated.getTime()) ? String(graduated.getUTCFullYear()) : "",
+  };
+}
+
 const COURSE_SUGGESTIONS: Record<string, string[]> = {
   graduation: ["B.Tech/B.E.", "B.A", "BCA", "B.B.A/B.M.S", "B.Com", "B.Ed", "B.Pharma", "B.Sc", "LLB", "Diploma"],
   masters: ["M.Tech/M.E.", "MBA/PGDM", "MCA", "M.A", "M.Sc", "M.Com", "LLM"],
@@ -344,6 +395,16 @@ export default function JobSeekerOnboardingPage() {
   /** Set when a CV import finishes, so the skip effect runs against fresh state. */
   const [pendingCvSkip, setPendingCvSkip] = useState(false);
   const [cvParseError, setCvParseError] = useState("");
+  /**
+   * The stored job and qualification the Employment and Education answers were
+   * filled from. Saving names them, so the server updates those two entries and
+   * keeps a CV's other jobs and degrees instead of replacing the lists.
+   */
+  const wizardEntryIds = useRef<{ experience?: string; education?: string }>({});
+  const rememberEntryIds = (saved: unknown) => {
+    const ids = (saved as { entryIds?: { experience?: string; education?: string } } | null)?.entryIds;
+    if (ids) Object.assign(wizardEntryIds.current, ids);
+  };
 
   const [step0, setStep0] = useState<Step0Data>({
     name: userName,
@@ -360,6 +421,16 @@ export default function JobSeekerOnboardingPage() {
   const areaValue: SeekerAreaValue = {
     countryCode: area.countryCode || (FALLBACK_PHONE_COUNTRIES.find((c) => c.dialCode === step0.countryCode)?.code ?? ""),
     city: area.city,
+  };
+  // The other way round too: while the number box is empty, the phone code
+  // follows the chosen country, so an Indian living in India is not left on
+  // the +971 default. A code the seeker picked, a saved number, or a number
+  // already typed is theirs — the two can differ (an Indian number in the UAE).
+  const [phoneCodePicked, setPhoneCodePicked] = useState(false);
+  const changeArea = (next: SeekerAreaValue) => {
+    setArea(next);
+    const dialCode = FALLBACK_PHONE_COUNTRIES.find((c) => c.code === next.countryCode)?.dialCode;
+    if (dialCode && !phoneCodePicked && !step0.phone) setStep0((p) => ({ ...p, countryCode: dialCode }));
   };
 
   // Guard: redirect already-onboarded users away from this page
@@ -390,6 +461,7 @@ export default function JobSeekerOnboardingPage() {
 
           // Pre-fill step0
           const storedPhone = splitPhone(p.phone ?? "");
+          if (storedPhone) setPhoneCodePicked(true);
           setStep0((prev) => ({
             ...prev,
             name: p.fullName || prev.name || userName,
@@ -401,6 +473,8 @@ export default function JobSeekerOnboardingPage() {
           }));
           if (p.area) {
             setArea({ countryCode: p.area.countryCode, city: { id: p.area.cityId, name: p.area.cityName } });
+            const areaDialCode = FALLBACK_PHONE_COUNTRIES.find((c) => c.code === p.area.countryCode)?.dialCode;
+            if (areaDialCode && !storedPhone) setStep0((prev) => ({ ...prev, countryCode: areaDialCode }));
           }
 
           if (isLinkedIn) {
@@ -413,7 +487,10 @@ export default function JobSeekerOnboardingPage() {
           // Restore anything already saved. This used to run only for LinkedIn
           // users, so anyone who left and came back was shown blank Employment
           // and Education steps and had to retype answers we already held.
-          const firstExp = Array.isArray(p.experience) ? p.experience[0] : undefined;
+          // The current job and the highest qualification, as a CV import would
+          // show them — not whichever the list happens to hold first.
+          const firstExp = pickCurrentExperience<CareerJob>(Array.isArray(p.experience) ? p.experience : []);
+          if (firstExp?._id) wizardEntryIds.current.experience = String(firstExp._id);
           setStep1((prev) => ({
             ...prev,
             currentCity: p.currentLocation || prev.currentCity,
@@ -446,24 +523,26 @@ export default function JobSeekerOnboardingPage() {
             } : {}),
           }));
 
-          const firstEdu = Array.isArray(p.education) ? p.education[0] : undefined;
+          const firstEdu = pickHighestEducation<CareerEducation>(Array.isArray(p.education) ? p.education : [], educationLevel);
           if (firstEdu) {
+            if (firstEdu._id) wizardEntryIds.current.education = String(firstEdu._id);
+            // A CV-read entry holds "MBA" as its degree: read as the Masters level
+            // with MBA as the course, not as a qualification value no chip has.
+            const answers = educationAnswers(firstEdu);
             setStep2((prev) => ({
               ...prev,
-              qualification: QUALIFICATION_BY_LABEL[firstEdu.degree ?? ""] ?? firstEdu.degree ?? prev.qualification,
-              course: firstEdu.course || prev.course,
-              courseType: firstEdu.courseType || prev.courseType,
-              specialization: firstEdu.field || prev.specialization,
-              university: firstEdu.institution || prev.university,
-              startYear: firstEdu.startYear != null ? String(firstEdu.startYear) : prev.startYear,
-              passingYear: firstEdu.graduationDate
-                ? String(new Date(firstEdu.graduationDate).getUTCFullYear())
-                : prev.passingYear,
+              qualification: answers.qualification || prev.qualification,
+              course: answers.course || prev.course,
+              courseType: answers.courseType || prev.courseType,
+              specialization: answers.specialization || prev.specialization,
+              university: answers.university || prev.university,
+              startYear: answers.startYear || prev.startYear,
+              passingYear: answers.passingYear || prev.passingYear,
             }));
             // The cascade below each of these is gated on its confirmed flag —
             // without this a restored education stopped the step dead.
-            if (firstEdu.course) setCourseConfirmed(true);
-            if (firstEdu.field) setSpecConfirmed(true);
+            if (answers.course) setCourseConfirmed(true);
+            if (answers.specialization) setSpecConfirmed(true);
           }
 
           setStep3((prev) => ({
@@ -621,13 +700,17 @@ export default function JobSeekerOnboardingPage() {
         const d = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(d.error ?? t("cvParsingFailed"));
       }
-      const { extracted } = await res.json() as {
-        extracted: {
+      const reply = await res.json() as {
+        /** The same file was read before: no AI call, the saved reading (if any) comes back. */
+        duplicate?: boolean;
+        extracted?: {
           fullName?: string;
           phone?: string;
           headline?: string;
           nationality?: string;
           currentLocation?: string;
+          /** The total the CV states ("6+ years" → 6); 0 when it states none. */
+          totalExperienceYears?: number;
           skills?: ({ name: string } | string)[];
           experience?: { jobTitle?: string; company?: string; location?: string; from?: string; to?: string; current?: boolean }[];
           education?: { degree?: string; field?: string; institution?: string; from?: string; to?: string }[];
@@ -635,80 +718,112 @@ export default function JobSeekerOnboardingPage() {
           socialLinks?: { label?: string; url?: string }[];
         } | null;
       };
+      // Uploading the same file again used to end in "Could not extract data":
+      // the duplicate reply carried no reading. With none saved, the profile
+      // the first upload filled is still read below.
+      const extracted = reply.extracted ?? (reply.duplicate ? {} : null);
 
       if (!extracted) {
         throw new Error(t("couldNotExtractCV"));
       }
 
-      // Pre-fill Step 0
+      // Pre-fill Step 0. The number keeps its own country code: its digits used
+      // to land in the box under the +971 default, saving "+971+91 97460 60086".
       if (extracted.fullName) {
         setStep0((p) => ({ ...p, name: extracted.fullName || p.name }));
       }
-      if (extracted.phone) {
-        setStep0((p) => ({ ...p, phone: extracted.phone || p.phone }));
+      // A number without its code ("97460 60086") is read in the country the
+      // CV's location names, so it gets +91 rather than the +971 default.
+      const cvPhone = splitCvPhone(extracted.phone, areaFromCv({ location: extracted.currentLocation })?.countryCode);
+      if (cvPhone) {
+        if (cvPhone.dialCode) setPhoneCodePicked(true);
+        setStep0((p) => ({ ...p, phone: cvPhone.phone, ...(cvPhone.dialCode ? { countryCode: cvPhone.dialCode } : {}) }));
       }
 
-      // Pre-fill Step 1 (Employment)
-      const firstExp = extracted.experience?.[0];
-      if (firstExp) {
+      // The import has just stored the whole reading. Fill the form from that
+      // copy, so each answer names the entry it came from and saving keeps the
+      // CV's other jobs and degrees. The raw reading is the fallback.
+      const stored = await fetch("/api/job-seekers/profile")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { profile?: { experience?: CareerJob[]; education?: CareerEducation[] } } | null) => d?.profile ?? null)
+        .catch(() => null);
+      const jobs: CareerJob[] = stored?.experience?.length
+        ? stored.experience
+        : (extracted.experience ?? []).map((e) => ({
+            jobTitle: e.jobTitle,
+            company: e.company,
+            country: e.location,
+            startDate: e.from,
+            endDate: e.to === "present" ? null : e.to,
+            isCurrent: e.current ?? e.to === "present",
+          }));
+      // The stored reading keeps no start year for a degree; the raw one may.
+      const rawEducation = extracted.education ?? [];
+      const sameText = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+      const degrees: CareerEducation[] = stored?.education?.length
+        ? stored.education.map((d) => ({
+            ...d,
+            startYear: d.startYear
+              ?? rawEducation.find((e) => sameText(e.degree, d.degree) && sameText(e.institution, d.institution))?.from,
+          }))
+        : rawEducation.map((e) => ({
+            degree: e.degree,
+            field: e.field,
+            institution: e.institution,
+            startYear: e.from,
+            graduationDate: e.to,
+          }));
+
+      // Pre-fill Step 1 (Employment): the current job, wherever the CV lists
+      // it, and the total the CV states — not the current job's own length.
+      const job = pickCurrentExperience(jobs);
+      if (job) {
+        wizardEntryIds.current.experience = job._id ? String(job._id) : undefined;
         setStep0((p) => ({ ...p, workStatus: p.workStatus || "experienced" }));
         const skills = extracted.skills?.map((s) => typeof s === "string" ? s : s.name).filter(Boolean) ?? [];
-
-        // Calculate experience duration from start date
-        let expYears = "";
-        let expMonths = "";
-        let startMonth = "";
-        let startYear = "";
-        if (firstExp.from) {
-          const parts = firstExp.from.split("-");
-          startYear = parts[0] || "";
-          startMonth = parts[1] || "";
-          const startDate = new Date(firstExp.from.length === 7 ? `${firstExp.from}-01` : firstExp.from);
-          const endDate = firstExp.to && firstExp.to !== "present"
-            ? new Date(firstExp.to.length === 7 ? `${firstExp.to}-01` : firstExp.to)
-            : new Date();
-          if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-            const totalMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
-            expYears = String(Math.floor(Math.max(0, totalMonths) / 12));
-            expMonths = String(Math.max(0, totalMonths) % 12);
-          }
-        }
+        const total = totalExperience(extracted.totalExperienceYears, jobs);
+        const start = job.startDate ? String(job.startDate) : "";
 
         setStep1((p) => ({
           ...p,
-          isCurrentlyEmployed: firstExp.current ?? p.isCurrentlyEmployed,
-          companyName: firstExp.company || p.companyName,
-          jobTitle: firstExp.jobTitle || p.jobTitle,
-          currentCity: firstExp.location || p.currentCity,
+          isCurrentlyEmployed: job.isCurrent ?? p.isCurrentlyEmployed,
+          companyName: job.company || p.companyName,
+          jobTitle: job.jobTitle || p.jobTitle,
+          currentCity: extracted.currentLocation || job.country || p.currentCity,
           skills: skills.length ? skills.slice(0, 15) : p.skills,
-          ...(startMonth && { startMonth }),
-          ...(startYear && { startYear }),
-          ...(expYears && { experienceYears: expYears }),
-          ...(expMonths && { experienceMonths: expMonths }),
+          ...(start && { startYear: start.slice(0, 4), startMonth: start.slice(5, 7) || p.startMonth }),
+          ...(total && { experienceYears: String(total.years), experienceMonths: String(total.months) }),
         }));
       }
 
-      // Pre-fill Step 2 (Education)
-      const firstEdu = extracted.education?.[0];
-      if (firstEdu) {
-        // A CV says "B.Tech" or "Bachelor of Engineering" — free text that never
-        // matched one of the six qualification slugs. Assigning it raw left the
-        // chip row with nothing selected while `qualification` read as answered,
-        // so the rest of the step never appeared. Map it to a level, and keep the
-        // original wording as the course, which is what it actually names.
-        const level = qualificationLevelFrom(firstEdu.degree);
+      // Pre-fill Step 2 (Education): the highest qualification, which is what
+      // the step asks. A CV's "MBA" maps to the Masters level with MBA as the
+      // course; assigning it raw left no chip selected and stopped the step.
+      const degree = pickHighestEducation(degrees, educationLevel);
+      if (degree) {
+        wizardEntryIds.current.education = degree._id ? String(degree._id) : undefined;
+        const answers = educationAnswers(degree);
         setStep2((p) => ({
           ...p,
-          qualification: level || p.qualification,
-          course: firstEdu.degree || p.course,
-          university: firstEdu.institution || p.university,
-          specialization: firstEdu.field || p.specialization,
-          startYear: firstEdu.from?.slice(0, 4) || p.startYear,
-          passingYear: firstEdu.to?.slice(0, 4) || p.passingYear,
+          qualification: answers.qualification || p.qualification,
+          course: answers.course || p.course,
+          university: answers.university || p.university,
+          specialization: answers.specialization || p.specialization,
+          startYear: answers.startYear || p.startYear,
+          passingYear: answers.passingYear || p.passingYear,
         }));
         // Each field below these is gated on its confirmed flag.
-        if (firstEdu.degree) setCourseConfirmed(true);
-        if (firstEdu.field) setSpecConfirmed(true);
+        if (answers.course) setCourseConfirmed(true);
+        if (answers.specialization) setSpecConfirmed(true);
+      }
+
+      // Where the seeker lives, unless they already chose: the CV's country,
+      // and its city when the catalogue has exactly that name (Kochi → Cochin).
+      const cvArea = areaFromCv({ location: extracted.currentLocation, phoneCountry: cvPhone?.country, dialCode: cvPhone?.dialCode });
+      if (cvArea) {
+        setArea((prev) => (prev.countryCode ? prev : { countryCode: cvArea.countryCode, city: null }));
+        const city = cvArea.cityName ? await findCatalogueCity(cvArea.countryCode, cvArea.cityName) : null;
+        if (city) setArea((prev) => (prev.countryCode === cvArea.countryCode && !prev.city ? { ...prev, city } : prev));
       }
 
       // Pre-fill Step 3 (Headline)
@@ -887,6 +1002,8 @@ export default function JobSeekerOnboardingPage() {
       };
       if (step1.companyName && step1.jobTitle) {
         payload.experience = [{
+          // The stored job this answer came from, so the rest are kept.
+          ...(wizardEntryIds.current.experience ? { _id: wizardEntryIds.current.experience } : {}),
           jobTitle: step1.jobTitle,
           company: step1.companyName,
           startDate: step1.startYear ? `${step1.startYear}-${step1.startMonth || "01"}-01` : undefined,
@@ -900,11 +1017,15 @@ export default function JobSeekerOnboardingPage() {
     if (n === 2) {
       return {
         education: [{
+          // The stored qualification this answer came from, so the rest are kept.
+          ...(wizardEntryIds.current.education ? { _id: wizardEntryIds.current.education } : {}),
           // Store the human label. The raw slug was reaching the profile page
           // verbatim, which read "graduation in C".
           degree: QUALIFICATION_OPTIONS.find((q) => q.value === step2.qualification)?.label
             ?? step2.qualification,
-          institution: step2.university || "",
+          // Only degree-level answers ask for a university. 12th, 10th and
+          // Below 10th have none, and sending "" got the step turned away.
+          institution: step2.university.trim() || undefined,
           // Course and specialization are two separate answers; the old
           // `specialization || course` fallback silently dropped one.
           field: step2.specialization || undefined,
@@ -923,7 +1044,7 @@ export default function JobSeekerOnboardingPage() {
     setSaving(true);
     try {
       const payload = payloadForStep(step);
-      if (payload) await saveStep(payload);
+      if (payload) rememberEntryIds(await saveStep(payload));
       // Sync session JWT with the (possibly CV-parsed) name
       if (step === 0 && step0.name && step0.name !== session?.user?.name) {
         await updateSession({ name: step0.name });
@@ -958,7 +1079,8 @@ export default function JobSeekerOnboardingPage() {
 
     setSaving(true);
     saveStep(merged)
-      .then(async () => {
+      .then(async (saved) => {
+        rememberEntryIds(saved);
         if (step0.name && step0.name !== session?.user?.name) {
           await updateSession({ name: step0.name });
         }
@@ -1202,6 +1324,10 @@ export default function JobSeekerOnboardingPage() {
                         phone: match?.[2]?.replace(/\D/g, "") ?? "",
                       }));
                     }}
+                    onCountryChange={(c) => {
+                      setPhoneCodePicked(true);
+                      setStep0((p) => ({ ...p, countryCode: c.dialCode }));
+                    }}
                     placeholder={t("mobileNumberPlaceholder")}
                     required
                   />
@@ -1212,7 +1338,7 @@ export default function JobSeekerOnboardingPage() {
                 {/* Area — the city agents near the seeker match on */}
                 <div className="space-y-1.5" data-onboarding-field="area">
                   <p className="text-sm font-medium text-gray-800">{tc("seekerArea.title")}</p>
-                  <SeekerAreaField value={areaValue} onChange={setArea} />
+                  <SeekerAreaField value={areaValue} onChange={changeArea} />
                 </div>
 
                 {/* Work status */}

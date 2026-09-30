@@ -135,6 +135,20 @@ describe("onboarding education step", () => {
     // for any server east of UTC.
     expect(stored.graduationDate.toISOString()).toBe("2021-12-31T00:00:00.000Z");
   });
+
+  it("saves a school-level qualification, which asks for no university", async () => {
+    // 12th, 10th and Below 10th show no university field, and the wizard sent
+    // institution: "". A min-length rule answered 400, so these seekers could
+    // not get past Education.
+    // "" from a page loaded before the fix; no key from the current one.
+    for (const entry of [{ degree: "12th", institution: "" }, { degree: "12th" }]) {
+      const set = await storedUpdate({ education: [entry] });
+      const stored = (set.education as Array<Record<string, unknown>>)[0];
+
+      expect(stored.degree).toBe("12th");
+      expect(stored.institution).toBe("");
+    }
+  });
 });
 
 describe("profile read", () => {

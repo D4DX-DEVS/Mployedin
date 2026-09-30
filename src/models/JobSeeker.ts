@@ -289,7 +289,9 @@ const WorkExperienceSchema = new Schema<IWorkExperience>({
 
 const EducationSchema = new Schema<IEducation>({
   degree: { type: String, required: true },
-  institution: { type: String, required: true },
+  // Not required: 12th, 10th and Below 10th have no university, and a required
+  // blank failed every later save() of the seeker.
+  institution: { type: String, default: "" },
   field: String,
   // Onboarding asks for the course and its type as separate required answers.
   // Without these paths Mongoose strict mode dropped the course outright and

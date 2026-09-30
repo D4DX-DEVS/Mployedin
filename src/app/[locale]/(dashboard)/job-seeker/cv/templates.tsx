@@ -149,7 +149,7 @@ function PhotoCircle({
 }: { src?: string; size: number; borderColor?: string }) {
   if (!src) return null;
   return (
-    // eslint-disable-next-line @next/next/no-img-element
+     
     <img
       src={src}
       alt=""
@@ -740,7 +740,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
                   <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: theme.primary }} />
                   <div>
                     <p className="font-bold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
-                    <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{edu.institution} {edu.graduationDate ? `· ${edu.graduationDate}` : ""}</p>
+                    <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{[edu.institution, edu.graduationDate].filter(Boolean).join(" · ")}</p>
                   </div>
                 </div>
               ))}
@@ -822,7 +822,7 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
           {data.education.map((edu, i) => (
             <div key={i}>
               <p className="font-bold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
-              <p className="italic text-gray-500" style={{ fontSize: `${8.5 * scale}px` }}>{edu.institution} {edu.graduationDate ? `· ${formatDateValue(edu.graduationDate, df)}` : ""}</p>
+              <p className="italic text-gray-500" style={{ fontSize: `${8.5 * scale}px` }}>{[edu.institution, edu.graduationDate ? formatDateValue(edu.graduationDate, df) : ""].filter(Boolean).join(" · ")}</p>
             </div>
           ))}
         </div>
@@ -1056,7 +1056,7 @@ export function CompactTemplate({ data, formatting }: { data: CVForm; formatting
         {heading(t("education"))}
         {data.education.map((edu, i) => (
           <div key={i} className="flex justify-between items-baseline gap-2 mt-0.5">
-            <p style={{ fontSize: `${8 * scale}px` }}><span className="font-semibold">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</span> <span className="text-gray-500">— {edu.institution}</span></p>
+            <p style={{ fontSize: `${8 * scale}px` }}><span className="font-semibold">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</span> {edu.institution && <span className="text-gray-500">— {edu.institution}</span>}</p>
             {edu.graduationDate && <span className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{formatDateValue(edu.graduationDate, df)}</span>}
           </div>
         ))}
@@ -1151,7 +1151,7 @@ function useStandardSections(
             <div key={i} className="flex justify-between items-baseline gap-2">
               <p style={{ fontSize: `${8.5 * scale}px` }}>
                 <span className="font-semibold">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</span>
-                <span className="text-gray-500"> — {edu.institution}</span>
+                {edu.institution && <span className="text-gray-500"> — {edu.institution}</span>}
               </p>
               {edu.graduationDate && <span className="text-gray-400" style={{ fontSize: `${7.5 * scale}px` }}>{formatDateValue(edu.graduationDate, df)}</span>}
             </div>
