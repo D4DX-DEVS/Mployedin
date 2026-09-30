@@ -15,6 +15,7 @@ import { useCandidateDetail } from "@/hooks/useCandidates";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { CvInlineFrame } from "@/components/shared/CvInlineFrame";
+import { CandidateLinks } from "@/components/features/employer/applications/CandidateLinks";
 import { useTranslations } from "next-intl";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -36,6 +37,7 @@ interface UnifiedApplication {
   appliedAt: string;
   rejectionReason?: string;
   source?: string;
+  portfolioLinks?: { name: string; url: string; type: string }[];
 }
 
 interface UnifiedInterview {
@@ -557,6 +559,13 @@ export default function UnifiedCandidatePage() {
                 </div>
               );
             })()}
+
+            {/* Portfolio typed on the apply form + profile links (nothing when none). */}
+            <CandidateLinks
+              documents={applications.flatMap((app: UnifiedApplication) => app.portfolioLinks ?? [])}
+              socialLinks={candidate.socialLinks}
+              className="card-base p-5"
+            />
 
             {/* Inline Resume Viewer (desktop) */}
             {cvViewHref && (

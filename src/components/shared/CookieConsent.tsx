@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -25,6 +25,9 @@ interface CookieConsentProps {
 
 export default function CookieConsent({ locale, labels }: CookieConsentProps) {
   const [showBanner, setShowBanner] = useState(false);
+  // Height of the phone tab bar (job seeker, workspace roles), 0 when none shows.
+  const [navOffset, setNavOffset] = useState(0);
+  const bannerRef = useRef<HTMLDivElement>(null);
   const { status } = useSession();
 
   useEffect(() => {
@@ -44,6 +47,35 @@ export default function CookieConsent({ locale, labels }: CookieConsentProps) {
 
     return () => {
       delete document.documentElement.dataset.cookieBanner;
+    };
+  }, [showBanner]);
+
+  useEffect(() => {
+    if (!showBanner) return;
+    const root = document.documentElement;
+
+    // The tab bars are fixed to the same edge and painted above this banner, so
+    // on phones it sat hidden underneath them. Sit on top of whichever one is
+    // showing (lg:hidden bars measure 0 on desktop), and publish the banner's
+    // top edge so the Copilot button can rise clear of the Accept button.
+    const measure = () => {
+      const nav = Array.from(document.querySelectorAll<HTMLElement>("[data-bottom-nav]")).find(
+        (el) => el.offsetHeight > 0
+      );
+      const offset = nav?.offsetHeight ?? 0;
+      setNavOffset(offset);
+      root.style.setProperty("--cookie-banner-top", `${offset + (bannerRef.current?.offsetHeight ?? 0)}px`);
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (bannerRef.current) ro?.observe(bannerRef.current);
+
+    return () => {
+      window.removeEventListener("resize", measure);
+      ro?.disconnect();
+      root.style.removeProperty("--cookie-banner-top");
     };
   }, [showBanner]);
 
@@ -73,7 +105,10 @@ export default function CookieConsent({ locale, labels }: CookieConsentProps) {
       // page's sticky apply bar) measures this banner so it never sits underneath
       // it. Do not key off the aria-label — that string is translated.
       data-cookie-consent=""
+      ref={bannerRef}
       className="pointer-events-none fixed inset-x-0 bottom-0 z-50 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-4"
+      // Above a tab bar the safe-area inset is already inside the bar's height.
+      style={navOffset ? { bottom: navOffset, paddingBottom: "0.5rem" } : undefined}
       role="region"
       aria-live="polite"
       aria-label={labels.policy}

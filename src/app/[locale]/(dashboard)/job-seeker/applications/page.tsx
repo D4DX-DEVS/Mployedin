@@ -450,20 +450,20 @@ function ApplicationCard({
 
   const isActive = !TERMINAL_STATUSES.includes(app.status);
   const jobTitle = job?.title ?? t("jobFallback");
-  const cardLabel = showDetails
-    ? t("hideDetails", { job: jobTitle })
-    : t("viewDetails", { job: jobTitle });
+  const summaryLabel = showDetails
+    ? t("hideSummary", { job: jobTitle })
+    : t("showSummary", { job: jobTitle });
 
   return (
     <>
       <div className="card-base rounded-2xl border border-border/70 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_12px_26px_rgba(15,23,42,0.06)] sm:px-3.5 sm:py-3">
-        <button
-          type="button"
-          className="group flex w-full items-center gap-2.5 text-left"
-          aria-expanded={showDetails}
-          aria-controls={`application-details-${app._id}`}
-          aria-label={cardLabel}
-          onClick={() => setShowDetails((current) => !current)}
+        <div className="flex w-full items-center gap-2.5">
+        {/* The card opens the application's detail page; the chevron keeps the
+            quick inline summary (client report 2026-09-30). */}
+        <Link
+          href={`/${locale}/job-seeker/applications/${app._id}`}
+          className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={t("viewDetails", { job: jobTitle })}
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-primary/10 text-xs font-semibold text-primary shadow-sm sm:h-10 sm:w-10">
             {companyLogo ? (
@@ -526,15 +526,23 @@ function ApplicationCard({
                   {t("match", { score: app.aiMatchScore.toLocaleString(numberLocale) })}
                 </span>
               )}
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:text-foreground",
-                  showDetails && "rotate-180"
-                )}
-              />
+              <ChevronRight className="hidden h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground rtl:rotate-180 sm:block" aria-hidden="true" />
             </div>
           </div>
-        </button>
+        </Link>
+        {hasExpandableDetails && (
+          <button
+            type="button"
+            className="tap-target-box flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-expanded={showDetails}
+            aria-controls={`application-details-${app._id}`}
+            aria-label={summaryLabel}
+            onClick={() => setShowDetails((current) => !current)}
+          >
+            <ChevronDown className={cn("h-4 w-4 transition-transform", showDetails && "rotate-180")} aria-hidden="true" />
+          </button>
+        )}
+        </div>
 
         {(isActive || TERMINAL_STATUSES.includes(app.status)) && (
           <div className="mt-0.5 flex items-center justify-end gap-3 sm:mt-1.5">

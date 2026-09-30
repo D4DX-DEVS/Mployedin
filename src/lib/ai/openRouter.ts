@@ -80,10 +80,18 @@ const RETIRING_ON_SUNSET = [
   "google/gemini-2.5-pro",
 ];
 
-/** Benchmarked 2026-09-22 against 2.5-flash-lite on this codebase's own prompts. */
+/**
+ * Benchmarked 2026-09-22 against 2.5-flash-lite on this codebase's own prompts.
+ *
+ * The smart tier is the cheap model too. google/gemini-3.8-flash answers 400
+ * "Reasoning is mandatory" here, and every call sends reasoning_effort "none",
+ * so poster copy and complex Copilot questions always failed (client report
+ * 2026-09-30). The owner chose this over paying for reasoning;
+ * OPENROUTER_SMART_MODEL still pins a different model.
+ */
 const DEFAULTS = {
   text: "google/gemini-3.1-flash-lite",
-  smart: "google/gemini-3.8-flash",
+  smart: "google/gemini-3.1-flash-lite",
 } as const;
 
 export function isPastTextSunset(now: Date = new Date()): boolean {

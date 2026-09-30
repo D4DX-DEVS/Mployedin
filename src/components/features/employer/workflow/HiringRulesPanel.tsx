@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Bell, ListChecks, ShieldAlert, AlertTriangle } from "lucide-react";
+import { Bell, ListChecks, ShieldAlert, AlertTriangle, UserCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ function clampTarget(raw: string): number {
 }
 
 /**
- * The three hiring rules, and nothing else. Stage editing is gone on purpose:
+ * The hiring rules, and nothing else. Stage editing is gone on purpose:
  * the board, the tabs and the dropdowns all read the fixed pipeline, so a
  * reorder/pause control here changed nothing the employer could see.
  */
@@ -48,13 +48,18 @@ export function HiringRulesPanel({ rules, onChange, disabled = false, idPrefix =
   const autoRejectId = `${idPrefix}-auto-reject`;
   const thresholdId = `${idPrefix}-threshold`;
   const notifyId = `${idPrefix}-notify`;
+  const autoShortlistId = `${idPrefix}-auto-shortlist`;
+  const shortlistLineId = `${idPrefix}-shortlist-line`;
+  // Auto-reject runs first in the screening worker, so a shortlist line under
+  // the reject line shortlists nobody in between.
+  const linesOverlap = rules.autoRejectEnabled && rules.autoShortlistEnabled && rules.autoShortlistAbove < rules.autoRejectBelow;
 
   return (
     <section className="workspace-panel-surface space-y-5 rounded-3xl panel-body">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("rulesEyebrow")}</p>
         <h2 className="heading-subsection mt-2 font-semibold text-foreground">{t("rulesTitle")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("rulesDesc")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("rulesDescAll")}</p>
       </div>
 
       {/* Rule 1 — shortlist target */}
@@ -145,7 +150,66 @@ export function HiringRulesPanel({ rules, onChange, disabled = false, idPrefix =
 
       <div className="border-t border-border/60" />
 
-      {/* Rule 3 — candidate notifications */}
+      {/* Rule 3 — auto-shortlist on arrival (opt-in; client report 2026-09-30) */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10">
+            <UserCheck className="h-4 w-4 text-status-selected" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <p id={autoShortlistId} className="text-sm font-medium text-foreground">{t("autoShortlist")}</p>
+              <div className="flex shrink-0 items-center gap-2">
+                <Switch
+                  className="tap-target-box"
+                  aria-labelledby={autoShortlistId}
+                  checked={rules.autoShortlistEnabled}
+                  disabled={disabled}
+                  onCheckedChange={(v) => onChange({ ...rules, autoShortlistEnabled: v })}
+                />
+                <Badge
+                  variant={rules.autoShortlistEnabled ? "default" : "secondary"}
+                  className="min-w-[3.5rem] justify-center whitespace-nowrap rounded-full px-2 text-[11px]"
+                >
+                  {rules.autoShortlistEnabled ? t("on") : t("off")}
+                </Badge>
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{t("autoShortlistDesc")}</p>
+          </div>
+        </div>
+
+        {rules.autoShortlistEnabled && (
+          <div className="space-y-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3 sm:ms-[3.25rem]">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <label htmlFor={shortlistLineId} className="text-sm font-medium text-foreground">{t("autoShortlistThreshold")}</label>
+              <span className="text-sm font-bold text-status-selected">{t("autoShortlistThresholdValue", { value: rules.autoShortlistAbove })}</span>
+            </div>
+            <input
+              id={shortlistLineId}
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={rules.autoShortlistAbove}
+              disabled={disabled}
+              onChange={(e) => onChange({ ...rules, autoShortlistAbove: Number(e.target.value) })}
+              className="w-full cursor-pointer accent-emerald-600"
+            />
+            <p className="text-xs text-muted-foreground">{t("autoShortlistNote")}</p>
+            {linesOverlap && (
+              <p className="flex items-start gap-1.5 text-xs text-status-rejected">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {t("autoShortlistOverlap", { reject: rules.autoRejectBelow })}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-border/60" />
+
+      {/* Rule 4 — candidate notifications */}
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-500/10">
           <Bell className="h-4 w-4 text-status-applied" aria-hidden="true" />

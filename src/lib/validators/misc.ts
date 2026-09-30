@@ -28,6 +28,8 @@ const hiringRulesSchema = z.object({
   autoRejectBelow: z.number().int().min(0).max(100).optional(),
   autoRejectEnabled: z.boolean().optional(),
   shortlistTarget: z.number().int().min(SHORTLIST_TARGET_MIN).max(SHORTLIST_TARGET_MAX).optional(),
+  autoShortlistEnabled: z.boolean().optional(),
+  autoShortlistAbove: z.number().int().min(0).max(100).optional(),
 });
 
 const STAGE_PROBLEM_MESSAGES: Record<StageListProblem, string> = {

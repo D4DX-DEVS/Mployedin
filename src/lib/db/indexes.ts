@@ -81,6 +81,9 @@ export async function ensureIndexes() {
     { key: { "referral.agentId": 1 } },
     { key: { "referral.superAgentId": 1 } },
     { key: { isAgentReferred: 1 } },
+    // Territory reads: seekers in an agent's / super-agent's area
+    { key: { regionCityId: 1 } },
+    { key: { regionStateId: 1 } },
   ]);
 
   // ── Employers ──────────────────────────────────────────────────────────────

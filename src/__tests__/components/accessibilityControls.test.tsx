@@ -54,6 +54,13 @@ describe("Accessibility panel button", () => {
     expect(src).toMatch(/\bend-4\b/);
     expect(src).not.toMatch(/\b(?:left|right)-\d|\b[mp][lr]-\d|rounded-[lr]-/);
   });
+
+  it("rises above the cookie banner on phones so it can be reached on a first visit", () => {
+    const src = read("src/components/shared/AccessibilityPanel/Launcher.tsx");
+
+    // CookieConsent sets <html data-cookie-banner="visible"> while it shows.
+    expect(src).toContain("max-sm:[:root[data-cookie-banner=visible]_&]:bottom-");
+  });
 });
 
 describe("page landmarks", () => {

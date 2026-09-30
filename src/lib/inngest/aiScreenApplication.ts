@@ -28,7 +28,16 @@ import {
   computeApplicantMatch,
   describeMatchForPrompt,
 } from "@/lib/matching/scoreApplication";
-import { resolveHiringRulesForJob, shouldAutoReject, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
+import {
+  resolveHiringRulesForJob,
+  shouldAutoReject,
+  shouldAutoShortlist,
+  type WorkflowSettingsCarrier,
+} from "@/lib/hiring/workflowSettings";
+import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
+import { stageForApplication } from "@/lib/hiring/workflowStages";
+import { notifyStatusChange } from "@/lib/notifications/trigger";
+import logger from "@/lib/logger";
 import { applicantCvFor } from "@/lib/cv/cvDocuments";
 
 
@@ -72,8 +81,8 @@ export const aiScreenApplication = inngest.createFunction(
       // The reject rule is read here, at screening time, from what the employer
       // has actually saved — never from the event.
       const employer = job.employerId
-        ? ((await Employer.findById(job.employerId).select("workflow matchingWeights").lean()) as
-            (WorkflowSettingsCarrier & { matchingWeights?: unknown }) | null)
+        ? ((await Employer.findById(job.employerId).select("workflow matchingWeights industry").lean()) as
+            (WorkflowSettingsCarrier & { matchingWeights?: unknown; industry?: string }) | null)
         : null;
       const rules = resolveHiringRulesForJob(job as WorkflowSettingsCarrier, employer);
 
@@ -88,6 +97,8 @@ export const aiScreenApplication = inngest.createFunction(
         job: job as Record<string, unknown>,
         seeker: seeker as Record<string, unknown>,
         employerWeights: employer?.matchingWeights,
+        // As the re-score does (scoreApplicationsOfJob), so the two agree.
+        employerIndustry: employer?.industry,
         answers: application.screeningAnswers ?? [],
         cv,
       });
@@ -157,12 +168,38 @@ Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"streng
         });
       }
 
+      // Opt-in auto-shortlist, on arrival only and never past a failed
+      // requirement (client report 2026-09-30). Runs after auto-reject, so a
+      // rejected applicant stays rejected when the two lines overlap.
+      let autoShortlisted = false;
+      if (application.status === "applied" && shouldAutoShortlist(rules, application.aiMatchScore, match.requirementsStatus)) {
+        const stage = stageForApplication(effectiveJobStages(job as JobWorkflowCarrier), "shortlisted", null);
+        application.status = "shortlisted";
+        application.stageId = stage?.id;
+        application.statusHistory.push({
+          status: "shortlisted",
+          ...(stage ? { stageId: stage.id, stageLabel: stage.label } : {}),
+          changedAt: new Date(),
+          note: "Auto-shortlisted by hiring rules",
+        });
+        autoShortlisted = true;
+      }
+
       await application.save();
+
+      // The same candidate update an employer's own move sends, when they get them.
+      const seekerUserId = (seeker as { userId?: unknown }).userId;
+      if (autoShortlisted && rules.notifyOnStageChange && seekerUserId) {
+        notifyStatusChange(String(seekerUserId), String(job.title ?? ""), "shortlisted", String(application._id))
+          .catch((err) => { logger.error({ err, applicationId: String(application._id) }, "[ai-screen] failed to notify auto-shortlist"); });
+      }
+
       return {
         scored: true,
         score: application.aiMatchScore,
         requirements: match.requirementsStatus,
         autoRejected: application.status === "rejected",
+        autoShortlisted,
       };
     });
   }

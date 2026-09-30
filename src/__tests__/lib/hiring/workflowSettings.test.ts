@@ -6,7 +6,9 @@ import {
   SHORTLIST_TARGET_MAX,
   SHORTLIST_TARGET_MIN,
   STRONG_MATCH_THRESHOLD,
+  pickHiringRuleFields,
   resolveHiringRules,
+  shouldAutoShortlist,
 } from "@/lib/hiring/workflowSettings";
 
 describe("resolveHiringRules", () => {
@@ -16,6 +18,8 @@ describe("resolveHiringRules", () => {
       autoRejectBelow: 40,
       notifyOnStageChange: true,
       shortlistTarget: 50,
+      autoShortlistEnabled: false,
+      autoShortlistAbove: 80,
     });
     expect(HIRING_RULE_DEFAULTS.autoRejectEnabled).toBe(false);
     expect(STRONG_MATCH_THRESHOLD).toBe(80);
@@ -41,6 +45,8 @@ describe("resolveHiringRules", () => {
       autoRejectBelow: 55,
       notifyOnStageChange: false,
       shortlistTarget: 20,
+      autoShortlistEnabled: false,
+      autoShortlistAbove: 80,
     });
   });
 
@@ -78,5 +84,33 @@ describe("resolveHiringRulesForJob", () => {
     expect(resolveHiringRulesForJob(unsaved, employer)).toMatchObject({ notifyOnStageChange: false, shortlistTarget: 25 });
     expect(resolveHiringRulesForJob(saved, employer)).toMatchObject({ notifyOnStageChange: true, shortlistTarget: 25 });
     expect(resolveHiringRulesForJob(null, null).autoRejectEnabled).toBe(false);
+  });
+});
+
+describe("auto-shortlist on arrival (client report 2026-09-30)", () => {
+  const on = resolveHiringRules({ autoShortlistEnabled: true, autoShortlistAbove: 75 });
+
+  it("is off unless the employer turns it on", () => {
+    expect(shouldAutoShortlist(resolveHiringRules(), 99, "met")).toBe(false);
+  });
+
+  it("shortlists at or above the line, and not below it", () => {
+    expect(shouldAutoShortlist(on, 75, "met")).toBe(true);
+    expect(shouldAutoShortlist(on, 74, "met")).toBe(false);
+    expect(shouldAutoShortlist(on, null, "met")).toBe(false);
+  });
+
+  it("never shortlists a candidate whose requirements are not met", () => {
+    expect(shouldAutoShortlist(on, 95, "not_met")).toBe(false);
+    // Unverified means nothing failed; the employer sees the badge on the shortlist.
+    expect(shouldAutoShortlist(on, 95, "unverified")).toBe(true);
+  });
+
+  it("clamps the line into 0–100 and keeps only rule fields when saving", () => {
+    expect(resolveHiringRules({ autoShortlistAbove: 250 }).autoShortlistAbove).toBe(100);
+    expect(pickHiringRuleFields({ autoShortlistEnabled: true, autoShortlistAbove: 70, junk: 1 })).toEqual({
+      autoShortlistEnabled: true,
+      autoShortlistAbove: 70,
+    });
   });
 });

@@ -102,6 +102,9 @@ export interface IWorkflowSettings {
   autoRejectEnabled?: boolean;
   /** Default N for "shortlist the best N". */
   shortlistTarget?: number;
+  /** Opt-in: shortlist on arrival at or above autoShortlistAbove. Absent = off. */
+  autoShortlistEnabled?: boolean;
+  autoShortlistAbove?: number;
 }
 
 export interface IJobWorkflow {
@@ -281,6 +284,8 @@ const JobSchema = new Schema<IJob>(
         autoRejectBelow: Number,
         autoRejectEnabled: Boolean,
         shortlistTarget: { type: Number, min: 5, max: 100 },
+        autoShortlistEnabled: Boolean,
+        autoShortlistAbove: { type: Number, min: 0, max: 100 },
       },
       customizedAt: Date,
       // Which workflow the stage snapshot above came from. Set on every job

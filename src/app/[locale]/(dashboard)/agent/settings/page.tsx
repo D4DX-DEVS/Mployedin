@@ -668,6 +668,7 @@ function CommissionTab() {
 
 function NotificationsTab() {
   const t = useTranslations("agentSettings");
+  const tCommon = useTranslations("common");
   const defaultPrefs: NotifPrefs = {
     emailFrequency: "daily",
     categories: {
@@ -794,12 +795,12 @@ function NotificationsTab() {
               <p className="text-xs text-muted-foreground">{t("notifications.digestTimeHelp")}</p>
             </div>
             <div className="field">
-              <Label className="text-sm font-medium text-foreground">{t("notifications.timezone")}</Label>
+              <Label htmlFor="agent-digest-timezone" className="text-sm font-medium text-foreground">{t("notifications.timezone")}</Label>
               <Select
                 value={digestZones.value}
                 onValueChange={(value) => setPrefs((p) => ({ ...p, timezone: value }))}
               >
-                <SelectTrigger className="h-10">
+                <SelectTrigger id="agent-digest-timezone" className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -844,6 +845,10 @@ function NotificationsTab() {
                     }
                   />
                 </div>
+                {/* Password emails never pass through these preferences. */}
+                {cat.key === "system" && (
+                  <p className="mt-2 ms-11 text-xs text-muted-foreground">{tCommon("passwordEmailsAlwaysArrive")}</p>
+                )}
                 {pref.enabled && (
                   <div className="flex items-center gap-2 mt-3 ml-11">
                     {(Object.keys(CH_LABELS) as Channel[]).map((ch) => {
@@ -971,7 +976,7 @@ function AvailabilityTab() {
         <SectionHeader icon={MapPin} title={t("availability.timezoneTitle")} description={t("availability.timezoneDescription")} />
         <div className="p-6">
           <Select value={zones.value} onValueChange={setTimezone}>
-            <SelectTrigger className="h-11 max-w-md">
+            <SelectTrigger aria-label={t("availability.timezoneTitle")} className="h-11 max-w-md">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1014,6 +1019,7 @@ function AvailabilityTab() {
                   <button
                     key={day}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => toggleDay(day)}
                     className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       active

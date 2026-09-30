@@ -136,6 +136,17 @@ describe("PATCH /api/applications/[id] — workflow stages", () => {
     expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "application.status_change" }));
   });
 
+  it("names who moved the candidate, so the owner isn't told about their own move (client report 2026-09-30)", async () => {
+    const { notify } = await import("@/lib/notifications/trigger");
+    const { PATCH } = await import("@/app/api/applications/[id]/route");
+    await PATCH(patch({ stageId: "offer" }), params);
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+      userId: "64b1000000000000000000ee",
+      actorId: USER_ID,
+      titleKey: "stageChangedTitle",
+    }));
+  });
+
   it("a status change without a stage lands in the first stage of that status", async () => {
     app.status = "applied";
     app.stageId = undefined;

@@ -1,8 +1,10 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
+import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
@@ -17,7 +19,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, Handshake, ChevronDown, ChevronUp, Edit2, FileText, Filter, Inbox, MapPin, Search, UserRoundSearch, X } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Handshake, ChevronDown, ChevronUp, Edit2, Eye, FileText, Filter, Inbox, MapPin, Search, UserRoundSearch, Users, X } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
@@ -40,8 +42,13 @@ interface JobSeeker {
   preferredJobType?: string;
   cv?: { originalUrl?: string };
   referralSummary?: ReferralSummary;
+  /** "area": lives in the agent's area — view only; "own": the agent's to edit. */
+  staffAccess?: "own" | "area";
   createdAt: string;
 }
+
+/** Which job seekers the list shows (`?view=`). */
+const VIEWS = ["all", "area", "referred"] as const;
 
 function getCurrentTitle(s: JobSeeker): string | undefined {
   return s.experience?.find((e) => e.isCurrent)?.jobTitle;
@@ -102,16 +109,32 @@ export default function AgentJobSeekersPage() {
   const [locationFilter, setLocationFilter] = useUrlFilter("location", "", { debounceMs: 400 });
   const [skillsFilter, setSkillsFilter] = useUrlFilter("skills", "", { debounceMs: 400 });
   const [hasCV, setHasCV] = useState(false);
-  const [referredMine, setReferredMine] = useState(false);
   const [jobType, setJobType] = useUrlFilter("jobType", "");
   const [sortBy, setSortBy] = useState("newest");
+  // All my job seekers | In my area | Referred by me (client report
+  // 2026-09-30, #5). "Referred by me" used to be a toggle in the filter panel.
+  const [view] = useUrlFilter("view", "all", { allow: VIEWS });
+  const [areaAssigned, setAreaAssigned] = useState(true);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const viewHref = (next: string) => {
+    const query = new URLSearchParams(searchParams.toString());
+    query.delete("page");
+    if (next === "all") query.delete("view"); else query.set("view", next);
+    const qs = query.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
+  const viewTabs: WorkspaceTab[] = [
+    { key: "all", label: t("viewAll"), href: viewHref("all"), icon: Users },
+    { key: "area", label: t("viewArea"), href: viewHref("area"), icon: MapPin },
+    { key: "referred", label: t("filterReferredMine"), href: viewHref("referred"), icon: Handshake },
+  ];
 
   const activeFilterCount = [
     availability,
     locationFilter,
     skillsFilter,
     hasCV,
-    referredMine,
     jobType,
     minProfile > 0 || maxProfile < 100,
   ].filter(Boolean).length;
@@ -123,7 +146,6 @@ export default function AgentJobSeekersPage() {
     setLocationFilter("");
     setSkillsFilter("");
     setHasCV(false);
-    setReferredMine(false);
     setJobType("");
     setSortBy("newest");
   };
@@ -138,22 +160,24 @@ export default function AgentJobSeekersPage() {
     if (skillsFilter) params.set("skills", skillsFilter);
     if (locationFilter) params.set("location", locationFilter);
     if (hasCV) params.set("hasCV", "1");
-    if (referredMine) params.set("referred", "mine");
+    if (view === "referred") params.set("referred", "mine");
+    if (view === "area") params.set("view", "area");
     if (jobType) params.set("jobType", jobType);
     if (sortBy !== "newest") params.set("sort", sortBy);
     const res = await fetch(`/api/job-seekers?${params}`);
     if (res.ok) {
       const data = await res.json();
       setSeekers(data.items ?? []);
+      setAreaAssigned(data.areaAssigned !== false);
       pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
-     
-  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, referredMine, jobType, sortBy, pagination.page, pagination.limit]);
+
+  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, view, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, referredMine, jobType, sortBy]);
+  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, view, jobType, sortBy]);
 
   const handleSave = async (values: Record<string, string>) => {
     if (!editSeeker) return;
@@ -212,6 +236,8 @@ export default function AgentJobSeekersPage() {
           { label: t("cardWithTitlesLabel"), value: withTitles, icon: BriefcaseBusiness, tone: "success" },
         ]}
       />
+
+      <WorkspaceTabs tabs={viewTabs} ariaLabel={t("viewLabel")} activeKey={view} />
 
       {/* One panel: privacy notice, search, filters and the table together.
           The notice was a full-width text banner and the filters had their own
@@ -358,20 +384,6 @@ export default function AgentJobSeekersPage() {
               </Button>
             </div>
 
-            {/* Referred by me */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterReferredMine")}</label>
-              <Button
-                variant={referredMine ? "default" : "outline"}
-                size="sm"
-                className="gap-2 rounded-xl px-4 text-sm"
-                onClick={() => setReferredMine((v) => !v)}
-              >
-                <Handshake className="h-3.5 w-3.5" />
-                {referredMine ? t("filterReferredMine") : tc("all")}
-              </Button>
-            </div>
-
             {/* Sort */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterSortLabel")}</label>
@@ -415,8 +427,22 @@ export default function AgentJobSeekersPage() {
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm">{t("noJobSeekersFound")}</span>
+                    {view === "area" && activeFilterCount === 0 && !search ? (
+                      <>
+                        <MapPin className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">
+                          {areaAssigned ? t("areaEmptyTitle") : t("areaNoRegionTitle")}
+                        </span>
+                        <span className="max-w-md text-xs">
+                          {areaAssigned ? t("areaEmptyDescription") : t("areaNoRegionDescription")}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Inbox className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm">{t("noJobSeekersFound")}</span>
+                      </>
+                    )}
                     {activeFilterCount > 0 && (
                       <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={clearFilters}>{t("clearAllFilters")}</Button>
                     )}
@@ -436,6 +462,15 @@ export default function AgentJobSeekersPage() {
                     {availabilityLabel(s.availabilityStatus)}
                   </span>
                   <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
+                  {s.staffAccess === "area" && (
+                    <span
+                      className="mt-1 ms-1 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium leading-none text-primary"
+                      title={t("inYourAreaViewOnly")}
+                    >
+                      <MapPin className="h-3 w-3" aria-hidden="true" />
+                      {t("inYourAreaChip")}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   <div className="grid w-full min-w-0 gap-1 text-start">
@@ -470,9 +505,18 @@ export default function AgentJobSeekersPage() {
                 </TableCell>
                 {can("job_seekers", "update") && (
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title={tc("edit")} aria-label={t("editJobSeeker", { name: s.userId?.name ?? "job seeker" })} data-table-action="">
-                      <Edit2 className="h-3.5 w-3.5 text-primary" />
-                    </Button>
+                    {/* Seekers who are only in the agent's area are view-only:
+                        the server refuses edits to them. */}
+                    {s.staffAccess === "area" ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={t("inYourAreaViewOnly")}>
+                        <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="sr-only">{t("inYourAreaViewOnly")}</span>
+                      </span>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title={tc("edit")} aria-label={t("editJobSeeker", { name: s.userId?.name ?? "job seeker" })} data-table-action="">
+                        <Edit2 className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                    )}
                   </TableCell>
                 )}
               </TableRow>

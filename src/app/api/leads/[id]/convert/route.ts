@@ -239,6 +239,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Notify agent (if conversion done by super_agent/admin)
   if (ctx.role !== "agent" && agentDoc?.userId) {
     notify({
+      actorId: ctx.userId,
       userId: String(agentDoc.userId),
       type: "lead_converted",
       title: "Lead Converted to Employer",
@@ -255,6 +256,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     if (saUserId) {
       const agentName = convertedByName;
       notify({
+        actorId: ctx.userId,
         userId: saUserId,
         type: "lead_converted",
         title: "Lead Converted to Employer",

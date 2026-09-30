@@ -215,9 +215,21 @@ describe("Provider split", () => {
     delete process.env.OPENROUTER_TEXT_MODEL;
     delete process.env.OPENROUTER_SMART_MODEL;
     expect(OPENROUTER_MODELS.text).toBe("google/gemini-3.1-flash-lite");
-    expect(OPENROUTER_MODELS.smart).toBe("google/gemini-3.8-flash");
     expect(OPENROUTER_MODELS.text).not.toContain("2.5");
     expect(OPENROUTER_MODELS.smart).not.toContain("2.5");
+  });
+
+  it("serves the smart tier from the cheap model unless one is pinned", () => {
+    // google/gemini-3.8-flash on OpenRouter answers 400 "Reasoning is mandatory"
+    // to every call, because text calls send reasoning_effort "none": AI poster
+    // copy and complex Copilot questions always failed, and AI Report failed
+    // once before falling back (client report 2026-09-30). The owner chose the
+    // cheap model over paying for reasoning.
+    delete process.env.OPENROUTER_SMART_MODEL;
+    expect(OPENROUTER_MODELS.smart).toBe(OPENROUTER_MODELS.text);
+    process.env.OPENROUTER_SMART_MODEL = "google/gemini-3.8-flash";
+    expect(OPENROUTER_MODELS.smart).toBe("google/gemini-3.8-flash");
+    delete process.env.OPENROUTER_SMART_MODEL;
   });
 
   it("knows the date OpenRouter retires the 2.5 family", () => {

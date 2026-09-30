@@ -59,6 +59,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       || (await User.findById(ctx.userId).select("name").lean() as { name?: string } | null)?.name
       || "The candidate";
     await notify({
+      actorId: ctx.userId,
       userId: String((employer as { userId: unknown }).userId),
       type: "system",
       title: "Onboarding document signed",

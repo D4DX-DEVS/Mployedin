@@ -9,7 +9,7 @@
  */
 
 import { useLocale, useTranslations } from "next-intl";
-import { CheckCircle2, CircleDashed, HelpCircle, MinusCircle, XCircle } from "lucide-react";
+import { CheckCircle2, CircleDashed, HelpCircle, MinusCircle, TriangleAlert, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLocalizedCountryName } from "@/lib/i18n/locations";
 
@@ -27,7 +27,8 @@ export interface QualificationItem {
 
 const BADGE_STYLE: Record<RequirementsStatus, { icon: typeof CheckCircle2; className: string }> = {
   met: { icon: CheckCircle2, className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
-  not_met: { icon: XCircle, className: "border-rose-500/30 bg-rose-500/10 text-rose-700" },
+  // A warning, not a verdict on the score beside it (client report 2026-09-30).
+  not_met: { icon: TriangleAlert, className: "border-rose-500/30 bg-rose-500/10 text-rose-700" },
   unverified: { icon: HelpCircle, className: "border-amber-500/30 bg-amber-500/10 text-amber-800" },
 };
 
@@ -43,6 +44,10 @@ export function RequirementsBadge({ status, compact = false, className }: Requir
   const t = useTranslations("employerAts");
   if (!status) return null;
   const { icon: Icon, className: tone } = BADGE_STYLE[status];
+  // "Requirements not met" / "Not met" — "Fails" beside a 67% read as a
+  // contradiction, and the warning was easy to miss.
+  const full = status === "not_met" ? t("requirementsNotMet") : t(`status.${status}`);
+  const short = status === "not_met" ? t("requirementsNotMetShort") : t(`statusShort.${status}`);
   return (
     <span
       className={cn(
@@ -56,11 +61,11 @@ export function RequirementsBadge({ status, compact = false, className }: Requir
       <Icon className="size-3 shrink-0" aria-hidden="true" />
       {compact ? (
         <>
-          <span aria-hidden="true">{t(`statusShort.${status}`)}</span>
-          <span className="sr-only">{t(`status.${status}`)}</span>
+          <span aria-hidden="true">{short}</span>
+          <span className="sr-only">{full}</span>
         </>
       ) : (
-        t(`status.${status}`)
+        full
       )}
     </span>
   );
@@ -153,6 +158,8 @@ export function RequirementsChecklist({
     const actual = check.actual || notStated;
     switch (check.key) {
       case "experience":
+        // A soft note: the job sets no minimum, the candidate stated nothing.
+        if (!check.required) return t("detail.experienceNotStated");
         return t("detail.experience", { required, actual });
       case "education":
         return t("detail.education", { required: level(check.required), actual: level(check.actual) });

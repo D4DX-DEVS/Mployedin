@@ -25,7 +25,32 @@ export const RESCORE_EVENT = "job/applicants-rescore";
 
 /** Upper bound per run; a job past this is re-scored best-effort, newest first. */
 const MAX_APPLICANTS = 2000;
-const BATCH_SIZE = 25;
+export const RESCORE_BATCH_SIZE = 25;
+
+/** The applicants a re-score covers, newest first. Withdrawn ones are left as they were. */
+export async function listRescoreTargets(jobId: string, limit: number = MAX_APPLICANTS): Promise<string[]> {
+  const rows = await Application.find({ jobId, status: { $ne: "withdrawn" } })
+    .sort({ appliedAt: -1 })
+    .limit(limit)
+    .select("_id")
+    .lean();
+  return (rows as Array<{ _id: unknown }>).map((row) => String(row._id));
+}
+
+/**
+ * Score one batch with the canonical applicant scorer and write the result.
+ * Shared by this worker and the employer's "Re-score all" (POST /api/jobs/[id]/rescore).
+ */
+export async function rescoreApplicantBatch(jobId: string, ids: string[]): Promise<number> {
+  const scored = await scoreApplicationsOfJob(jobId, ids);
+  if (scored.length === 0) return 0;
+  await Application.bulkWrite(
+    scored.map(({ applicationId, match }) => ({
+      updateOne: { filter: { _id: applicationId }, update: { $set: applicantMatchUpdate(match) } },
+    })),
+  );
+  return scored.length;
+}
 
 export const rescoreJobApplicants = inngest.createFunction(
   {
@@ -47,28 +72,12 @@ export const rescoreJobApplicants = inngest.createFunction(
     const { jobId } = event.data;
     await connectDB();
 
-    const ids: string[] = await step.run("list-applicants", async () => {
-      const rows = await Application.find({ jobId, status: { $ne: "withdrawn" } })
-        .sort({ appliedAt: -1 })
-        .limit(MAX_APPLICANTS)
-        .select("_id")
-        .lean();
-      return (rows as Array<{ _id: unknown }>).map((row) => String(row._id));
-    });
+    const ids: string[] = await step.run("list-applicants", () => listRescoreTargets(jobId));
 
     let rescored = 0;
-    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-      const batch = ids.slice(i, i + BATCH_SIZE);
-      rescored += await step.run(`rescore-${i / BATCH_SIZE}`, async () => {
-        const scored = await scoreApplicationsOfJob(jobId, batch);
-        if (scored.length === 0) return 0;
-        await Application.bulkWrite(
-          scored.map(({ applicationId, match }) => ({
-            updateOne: { filter: { _id: applicationId }, update: { $set: applicantMatchUpdate(match) } },
-          })),
-        );
-        return scored.length;
-      });
+    for (let i = 0; i < ids.length; i += RESCORE_BATCH_SIZE) {
+      const batch = ids.slice(i, i + RESCORE_BATCH_SIZE);
+      rescored += await step.run(`rescore-${i / RESCORE_BATCH_SIZE}`, () => rescoreApplicantBatch(jobId, batch));
     }
 
     logger.info({ jobId, rescored, considered: ids.length }, "[rescore] job applicants re-scored");

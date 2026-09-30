@@ -149,6 +149,28 @@ export function employerRegionMatch(region: RegionInfo): Record<string, unknown>
   return or.length > 0 ? { $or: or } : null;
 }
 
+/**
+ * Query fragment matching job seekers whose area (the catalogue city they
+ * picked, `regionCityId`/`regionStateId` like an employer's) lies inside a
+ * territory. A seeker who hid their profile is never matched: the area makes
+ * someone visible to the staff who cover it, it never overrides "hidden".
+ * `null` for an empty territory.
+ */
+export function seekerRegionMatch(region: RegionInfo): Record<string, unknown> | null {
+  const match = employerRegionMatch(region);
+  return match ? { ...match, profileVisibility: { $ne: "hidden" } } : null;
+}
+
+/** The per-record form of `seekerRegionMatch`. */
+export function seekerInRegion(
+  seeker: { regionCityId?: unknown; regionStateId?: unknown; profileVisibility?: string | null },
+  region: RegionInfo | null,
+): boolean {
+  if (!region || seeker.profileVisibility === "hidden") return false;
+  const has = (ids: mongoose.Types.ObjectId[], id: unknown) => id != null && ids.some((x) => String(x) === String(id));
+  return has(region.assignedCityIds, seeker.regionCityId) || has(region.assignedStateIds, seeker.regionStateId);
+}
+
 /** Live (not role-archived) employers registered inside `region`. */
 async function findRegionEmployerIds(region: RegionInfo): Promise<mongoose.Types.ObjectId[]> {
   const match = employerRegionMatch(region);
@@ -199,6 +221,54 @@ export interface SuperAgentBook {
   saProfileId: mongoose.Types.ObjectId;
   /** `{ $or: [...] }`, or a match-nothing filter when the territory is empty. */
   ownershipMatch: Record<string, unknown>;
+  /** The SA's own cities/states plus their live team agents' — see `territoryFrom`. */
+  territory: RegionInfo;
+}
+
+interface TerritoryAgentDoc {
+  _id: mongoose.Types.ObjectId;
+  assignedCityIds?: mongoose.Types.ObjectId[];
+  assignedStateIds?: mongoose.Types.ObjectId[];
+  roleArchivedAt?: Date | null;
+}
+
+/**
+ * Only the SA's own team (live agents in `agentIds`) extends the territory.
+ * A region-overlap agent from outside the team brings its assigned employers,
+ * not its whole region. territoryCoverage reads the territory the same way, so
+ * the admin's "who covers this employer" matches the book.
+ */
+function territoryFrom(scope: SuperAgentScope, agentDocs: TerritoryAgentDoc[]): RegionInfo {
+  const team = new Set(scope.teamAgentIds.map(String));
+  const territoryAgents = agentDocs.filter((a) => team.has(String(a._id)) && !a.roleArchivedAt);
+  return {
+    assignedCityIds: deduplicateIds([
+      ...scope.assignedCityIds,
+      ...territoryAgents.flatMap((a) => a.assignedCityIds ?? []),
+    ]),
+    assignedStateIds: deduplicateIds([
+      ...scope.assignedStateIds,
+      ...territoryAgents.flatMap((a) => a.assignedStateIds ?? []),
+    ]),
+  };
+}
+
+/**
+ * A super-agent's territory alone, without resolving the whole book. Pass the
+ * scope when the caller already holds it, to skip resolving it twice.
+ */
+export async function getSuperAgentTerritory(
+  saUserId: string,
+  knownScope?: SuperAgentScope | null,
+): Promise<RegionInfo | null> {
+  const scope = knownScope === undefined ? await getSuperAgentScope(saUserId) : knownScope;
+  if (!scope) return null;
+  const teamDocs = scope.teamAgentIds.length > 0
+    ? await Agent.find({ _id: { $in: scope.teamAgentIds } })
+        .select("_id assignedCityIds assignedStateIds roleArchivedAt")
+        .lean<TerritoryAgentDoc[]>()
+    : [];
+  return territoryFrom(scope, teamDocs);
 }
 
 export async function getSuperAgentBook(saUserId: string): Promise<SuperAgentBook | null> {
@@ -224,22 +294,7 @@ export async function getSuperAgentBook(saUserId: string): Promise<SuperAgentBoo
     ]);
   }
 
-  // Only the SA's own team (live agents in `agentIds`) extends the territory.
-  // A region-overlap agent from outside the team brings its assigned
-  // employers, not its whole region. territoryCoverage reads the territory the
-  // same way, so the admin's "who covers this employer" matches the book.
-  const team = new Set(scope.teamAgentIds.map(String));
-  const territoryAgents = agentDocs.filter((a) => team.has(String(a._id)) && !a.roleArchivedAt);
-  const territory: RegionInfo = {
-    assignedCityIds: deduplicateIds([
-      ...scope.assignedCityIds,
-      ...territoryAgents.flatMap((a) => a.assignedCityIds ?? []),
-    ]),
-    assignedStateIds: deduplicateIds([
-      ...scope.assignedStateIds,
-      ...territoryAgents.flatMap((a) => a.assignedStateIds ?? []),
-    ]),
-  };
+  const territory = territoryFrom(scope, agentDocs);
   const regionEmployerIds = await findRegionEmployerIds(territory);
 
   const employerIds = deduplicateIds([
@@ -259,6 +314,7 @@ export async function getSuperAgentBook(saUserId: string): Promise<SuperAgentBoo
     employerIds,
     saProfileId: scope.saProfileId,
     ownershipMatch: ownershipOr.length > 0 ? { $or: ownershipOr } : { employerId: { $in: [] } },
+    territory,
   };
 }
 

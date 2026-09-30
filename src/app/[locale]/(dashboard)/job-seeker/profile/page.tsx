@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { JobSeekerSectionNav, PROFILE_SECTION_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
+import { SeekerAreaCard } from "@/components/features/job-seeker/SeekerAreaCard";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { getCsrfToken } from "@/lib/security/csrf-client";
@@ -549,6 +550,9 @@ export default function JobSeekerProfilePage() {
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground" />
       </button>
+
+      {/* ── Area: the city agents near the seeker match on ─────────────── */}
+      <SeekerAreaCard onSaved={() => { void fetchProfile(); }} />
 
       {/* ── Profile Header Card ─────────────────────────────────────────── */}
       <div className="card-base panel-body">

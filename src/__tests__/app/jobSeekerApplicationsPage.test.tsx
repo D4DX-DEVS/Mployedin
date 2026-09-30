@@ -184,7 +184,12 @@ describe("ApplicationsPage", () => {
       expect(screen.getByRole("heading", { name: /senior full stack developer/i })).toBeInTheDocument();
     });
 
-    const detailToggle = screen.getByRole("button", { name: /view details for senior full stack developer/i });
+    // Client report 2026-09-30: clicking an application must open its detail
+    // page (it existed but nothing linked to it).
+    const detailLink = screen.getByRole("link", { name: /view details for senior full stack developer/i });
+    expect(detailLink).toHaveAttribute("href", "/en/job-seeker/applications/app-1");
+
+    const detailToggle = screen.getByRole("button", { name: /show summary for senior full stack developer/i });
 
     expect(detailToggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("heading", { name: /my applications/i })).toBeInTheDocument();
@@ -200,6 +205,30 @@ describe("ApplicationsPage", () => {
       expect(detailToggle).toHaveAttribute("aria-expanded", "true");
     });
     expect(screen.getByText("Status updated to selected")).toBeInTheDocument();
+  });
+
+  it("still links a plain application with nothing to summarise, and offers no empty toggle", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        applications: [
+          {
+            _id: "app-2",
+            jobId: { _id: "job-2", title: "Accountant" },
+            status: "applied",
+            appliedAt: "2026-09-29T00:00:00.000Z",
+            statusHistory: [],
+          },
+        ],
+        pagination: { total: 1 },
+      }),
+    });
+
+    render(<ApplicationsPage />);
+
+    const link = await screen.findByRole("link", { name: /view details for accountant/i });
+    expect(link).toHaveAttribute("href", "/en/job-seeker/applications/app-2");
+    expect(screen.queryByRole("button", { name: /summary for accountant/i })).not.toBeInTheDocument();
   });
 
   it("wears the journey shell: shared title, truthful context, journey row, no page-level numbers", async () => {

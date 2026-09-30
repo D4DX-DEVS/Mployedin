@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
-import { UserCheck, Ban, Shield, Inbox, Plus, Users, Pencil, KeyRound, Trash2 } from "lucide-react";
+import { UserCheck, Ban, Shield, Inbox, Plus, Users, Pencil, KeyRound, Trash2, UserCog, Info } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -35,6 +37,7 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { assignmentHref } from "@/lib/admin/assignmentLinks";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -56,6 +59,19 @@ interface User {
 
 const ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"];
 
+/* Agents and super agents are created where their super agent, area, team and
+   territory are chosen. Created here they had none of those, and User
+   Management had no way to add them afterwards (client report 2026-09-30). */
+const CREATED_ELSEWHERE: Partial<Record<string, { page: string; note: string; action: string }>> = {
+  agent: { page: "agents", note: "createAgentElsewhere", action: "continueOnAgentsPage" },
+  super_agent: { page: "super-agents", note: "createSuperAgentElsewhere", action: "continueOnSuperAgentsPage" },
+};
+const ASSIGN_LABEL: Partial<Record<string, string>> = {
+  agent: "assignSuperAgentAndArea",
+  super_agent: "assignAgentsAndTerritory",
+  employer: "assignEmployerAgent",
+};
+
 /* The scrolling region inside a dialog whose header and footer stay put. The
    negative inline margins let rows run to the card's edge while the padding
    keeps their content clear of it. */
@@ -69,6 +85,7 @@ export default function AdminUsersPage() {
   const t = useTranslations("adminUsers");
   const tf = useTranslations("formErrors");
   const locale = useLocale();
+  const router = useRouter();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -449,7 +466,10 @@ export default function AdminUsersPage() {
   }
 
   // ── Create User ──────────────────────────────
+  const createdElsewhere = CREATED_ELSEWHERE[createForm.role];
+
   async function handleCreateUser() {
+    if (createdElsewhere) return;
     setCreateError("");
     if (!createForm.name || !createForm.email || !createForm.password || !createForm.role) {
       setCreateError(t("allFieldsRequired"));
@@ -561,7 +581,15 @@ export default function AdminUsersPage() {
     setSelected(s => s.length === users.length ? [] : users.map(u => u._id));
 
   const rowActionsFor = (user: User): { quick: RowAction[]; menu: RowAction[] } => {
+    const assignHref = assignmentHref(user, locale);
+    const assignLabel = ASSIGN_LABEL[user.role];
     const menu: RowAction[] = [
+      ...(assignHref && assignLabel ? [{
+        key: "assign",
+        label: t(assignLabel),
+        icon: UserCog,
+        onSelect: () => router.push(assignHref),
+      }] : []),
       {
         key: "permissions",
         label: t("managePermissions"),
@@ -826,39 +854,46 @@ export default function AdminUsersPage() {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="field">
-                <Label htmlFor="create-name">{t("fullName")} <span className="text-destructive">*</span></Label>
-                <Input
-                  id="create-name"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder={t("johnDoe")}
-                />
-              </div>
-              <div className="field">
-                <Label htmlFor="create-email">{t("email")} <span className="text-destructive">*</span></Label>
-                <Input
-                  id="create-email"
-                  type="email"
-                  value={createForm.email}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder={t("johnAtExample")}
-                />
-              </div>
-              <div className="field">
-                <Label htmlFor="create-password">{t("password")} <span className="text-destructive">*</span></Label>
-                <PasswordInput
-                  id="create-password"
-                  value={createForm.password}
-                  onChange={(password) => setCreateForm((f) => ({ ...f, password }))}
-                  placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
-                  aria-describedby="create-password-hint"
-                />
-                <p id="create-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
-              </div>
+              {/* An agent or super agent is created on its own page (note below), so
+                 nothing typed here would be kept. */}
+              {!createdElsewhere && (
+                <>
+                  <div className="field">
+                    <Label htmlFor="create-name">{t("fullName")} <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="create-name"
+                      value={createForm.name}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                      placeholder={t("johnDoe")}
+                    />
+                  </div>
+                  <div className="field">
+                    <Label htmlFor="create-email">{t("email")} <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="create-email"
+                      type="email"
+                      value={createForm.email}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                      placeholder={t("johnAtExample")}
+                    />
+                  </div>
+                  <div className="field">
+                    <Label htmlFor="create-password">{t("password")} <span className="text-destructive">*</span></Label>
+                    <PasswordInput
+                      id="create-password"
+                      value={createForm.password}
+                      onChange={(password) => setCreateForm((f) => ({ ...f, password }))}
+                      placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
+                      aria-describedby="create-password-hint"
+                    />
+                    <p id="create-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
+                  </div>
+                </>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="create-role">{t("role")} <span className="text-destructive">*</span></Label>
                 <InlineSearchSelect
+                  id="create-role"
                   options={ROLES.map((r) => ({ value: r, label: roleLabel(r) }))}
                   value={createForm.role}
                   onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v }))}
@@ -867,26 +902,39 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
-            {/* Permission editor */}
-            <PermissionEditor
-              baseRole={createForm.role as UserRole}
-              permissionMode={createPermMode}
-              customPermissions={createPerms}
-              onChange={(mode, perms) => {
-                setCreatePermMode(mode);
-                setCreatePerms(perms);
-              }}
-            />
+            {createdElsewhere ? (
+              <p className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 text-sm text-foreground chip-pad">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                {t(createdElsewhere.note)}
+              </p>
+            ) : (
+              /* Permission editor */
+              <PermissionEditor
+                baseRole={createForm.role as UserRole}
+                permissionMode={createPermMode}
+                customPermissions={createPerms}
+                onChange={(mode, perms) => {
+                  setCreatePermMode(mode);
+                  setCreatePerms(perms);
+                }}
+              />
+            )}
           </div>
 
           <DialogFooter className={DIALOG_FOOT}>
             <Button type="button" variant="outline" onClick={() => setShowCreate(false)} disabled={createLoading}>
               {t("cancel")}
             </Button>
-            <Button onClick={handleCreateUser} disabled={createLoading}>
-              {createLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {createLoading ? t("creating") : t("create")}
-            </Button>
+            {createdElsewhere ? (
+              <Button asChild>
+                <Link href={`/${locale}/admin/${createdElsewhere.page}?add=1`}>{t(createdElsewhere.action)}</Link>
+              </Button>
+            ) : (
+              <Button onClick={handleCreateUser} disabled={createLoading}>
+                {createLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {createLoading ? t("creating") : t("create")}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

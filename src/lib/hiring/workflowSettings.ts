@@ -1,8 +1,8 @@
 /**
  * Hiring rules — the only reader of `workflow.settings`.
  *
- * Employers store three rules (auto-reject, candidate notifications,
- * shortlist target) on `Employer.workflow.settings` and may override them per
+ * Employers store their rules (auto-reject, auto-shortlist, candidate
+ * notifications, shortlist target) on `Employer.workflow.settings` and may override them per
  * job on `Job.workflow.settings`. Every consumer — the screening worker, the
  * application routes, the workflow APIs and the copilot — resolves them
  * through this module so the precedence and the defaults live in one place.
@@ -27,6 +27,14 @@ export interface HiringRules {
   notifyOnStageChange: boolean;
   /** Default N for "shortlist the best N" (copilot + page dialog). */
   shortlistTarget: number;
+  /**
+   * Shortlist on arrival when the match score is at or above
+   * `autoShortlistAbove` and no requirement failed. Opt-in, arrival only —
+   * a later re-score never moves anyone (client report 2026-09-30).
+   */
+  autoShortlistEnabled: boolean;
+  /** 0–100. Only meaningful when `autoShortlistEnabled`. */
+  autoShortlistAbove: number;
 }
 
 export const SHORTLIST_TARGET_MIN = 5;
@@ -40,6 +48,8 @@ export const HIRING_RULE_DEFAULTS: Readonly<HiringRules> = Object.freeze({
   autoRejectBelow: 40,
   notifyOnStageChange: true,
   shortlistTarget: 50,
+  autoShortlistEnabled: false,
+  autoShortlistAbove: STRONG_MATCH_THRESHOLD,
 });
 
 /** Whatever shape a stored `workflow.settings` blob happens to have. */
@@ -97,6 +107,8 @@ export function resolveHiringRules(jobSettings?: HiringRulesInput, employerSetti
       SHORTLIST_TARGET_MIN,
       SHORTLIST_TARGET_MAX,
     ),
+    autoShortlistEnabled: pickBoolean(sources, "autoShortlistEnabled", HIRING_RULE_DEFAULTS.autoShortlistEnabled),
+    autoShortlistAbove: pickNumber(sources, "autoShortlistAbove", HIRING_RULE_DEFAULTS.autoShortlistAbove, 0, 100),
   };
 }
 
@@ -124,7 +136,23 @@ export function shouldAutoReject(rules: HiringRules, score: number | null | unde
 }
 
 /**
- * Keep only the four rule fields (with the right types) from a raw blob —
+ * True when the rules say this new applicant goes straight to the shortlist.
+ * A failed requirement always keeps them out — the same line Shortlist Top
+ * draws; "unverified" (nothing failed) may go through, badge and all.
+ */
+export function shouldAutoShortlist(
+  rules: HiringRules,
+  score: number | null | undefined,
+  requirementsStatus: "met" | "not_met" | "unverified" | null | undefined,
+): boolean {
+  return rules.autoShortlistEnabled
+    && typeof score === "number"
+    && score >= rules.autoShortlistAbove
+    && requirementsStatus !== "not_met";
+}
+
+/**
+ * Keep only the rule fields (with the right types) from a raw blob —
  * what the workflow routes persist, so retired keys such as `aiAutoScreen`
  * stop being written back.
  */
@@ -136,5 +164,7 @@ export function pickHiringRuleFields(input: HiringRulesInput): Partial<HiringRul
   if (typeof raw.notifyOnStageChange === "boolean") out.notifyOnStageChange = raw.notifyOnStageChange;
   if (typeof raw.autoRejectBelow === "number" && Number.isFinite(raw.autoRejectBelow)) out.autoRejectBelow = raw.autoRejectBelow;
   if (typeof raw.shortlistTarget === "number" && Number.isFinite(raw.shortlistTarget)) out.shortlistTarget = raw.shortlistTarget;
+  if (typeof raw.autoShortlistEnabled === "boolean") out.autoShortlistEnabled = raw.autoShortlistEnabled;
+  if (typeof raw.autoShortlistAbove === "number" && Number.isFinite(raw.autoShortlistAbove)) out.autoShortlistAbove = raw.autoShortlistAbove;
   return out;
 }

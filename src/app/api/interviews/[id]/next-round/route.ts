@@ -166,6 +166,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   if (jobSeeker?.userId) {
     await notify({
+      actorId: ctx.userId,
       userId: String(jobSeeker.userId),
       type: "interview_scheduled",
       title: "Interview Scheduled",

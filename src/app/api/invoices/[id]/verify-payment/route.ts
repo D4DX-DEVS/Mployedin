@@ -151,6 +151,7 @@ async function postHandler(
       : String(invoice.userId);
 
     await notify({
+      actorId: ctx.userId,
       userId: employerUserId,
       type: "system",
       title: "Payment Verified",
@@ -188,6 +189,7 @@ async function postHandler(
     : String(invoice.userId);
 
   await notify({
+    actorId: ctx.userId,
     userId: employerUserId,
     type: "system",
     title: "Payment Not Verified",

@@ -192,6 +192,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     const invitedUser = await User.findOne({ email }).select("_id").lean();
     if (invitedUser) {
       await notify({
+        actorId: ctx.userId,
         userId: String(invitedUser._id),
         type: "system",
         title: "Team Invitation",

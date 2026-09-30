@@ -59,6 +59,7 @@ async function handler(req: NextRequest, ctx: { userId: string; role: string; lo
   const seekerUserId = String((seeker as { userId: unknown }).userId);
 
   await notify({
+    actorId: ctx.userId,
     userId: seekerUserId,
     type: "application_invite",
     title: "You've been invited to apply",

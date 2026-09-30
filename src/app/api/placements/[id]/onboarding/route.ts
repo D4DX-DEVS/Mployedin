@@ -233,6 +233,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     const candidateUserId = (placement as { jobSeekerId?: { userId?: { _id?: unknown } } })?.jobSeekerId?.userId?._id;
     if (candidateUserId) {
       await notify({
+        actorId: ctx.userId,
         userId: String(candidateUserId),
         type: "system",
         title: "Onboarding document requested",

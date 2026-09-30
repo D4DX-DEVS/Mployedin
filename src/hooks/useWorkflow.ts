@@ -17,6 +17,8 @@ export interface WorkflowSettings {
   autoRejectBelow: number;
   notifyOnStageChange: boolean;
   shortlistTarget: number;
+  autoShortlistEnabled: boolean;
+  autoShortlistAbove: number;
 }
 
 interface WorkflowResponse {

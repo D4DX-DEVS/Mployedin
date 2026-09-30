@@ -16,6 +16,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useOpenFromUrl } from "@/hooks/useOpenFromUrl";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -85,6 +86,8 @@ export default function AdminEmployersPage() {
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
   const order = sortOrder === "desc" ? "desc" : "asc";
   const [assignItem, setAssignItem] = useState<Employer | null>(null);
+  // User Management's "Assign agent" lands here with ?open=<userId>.
+  useOpenFromUrl(employers, setAssignItem);
   const [regionItem, setRegionItem] = useState<Employer | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);

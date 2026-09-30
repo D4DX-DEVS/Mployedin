@@ -64,6 +64,8 @@ export function WorkspaceBottomNav({ locale, tabs, onOpenMenu, menuLabel, ariaLa
 
   return (
     <nav
+      // CookieConsent measures this bar and sits on top of it.
+      data-bottom-nav=""
       className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-md"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label={ariaLabel}

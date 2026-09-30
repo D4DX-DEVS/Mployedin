@@ -64,7 +64,6 @@ interface JobTemplateData {
   location?: { country?: string; city?: string; isRemote?: boolean };
   tags?: string[];
   vacancies?: number;
-  applicationMode?: "auto" | "manual";
 }
 
 interface JobFormWizardProps {
@@ -104,7 +103,6 @@ const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
   qualifications: [],
   benefits: [],
   learningOutcomes: [],
-  applicationMode: "manual",
   visibility: "public",
   vacancies: undefined,
   maxApplicants: undefined,
@@ -515,7 +513,6 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         : current.location,
       requirements: tpl.requirements ?? current.requirements,
       salary: tpl.salary ?? current.salary,
-      applicationMode: tpl.applicationMode ?? current.applicationMode,
       vacancies: tpl.vacancies ?? current.vacancies,
       tags: tpl.tags ?? current.tags,
     });
@@ -763,11 +760,6 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
                           {typeof tpl.vacancies === "number" && tpl.vacancies > 0 && (
                             <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
                               {t("openings", { count: tpl.vacancies })}
-                            </span>
-                          )}
-                          {tpl.applicationMode && (
-                            <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground capitalize">
-                              {t(`applicationModes.${tpl.applicationMode}`)} {t("review")}
                             </span>
                           )}
                         </div>

@@ -851,9 +851,9 @@ function NotificationsTab() {
               <p className="text-xs text-muted-foreground">{t("digestTimeDesc")}</p>
             </div>
             <div className="field">
-              <Label className="text-sm font-medium text-foreground">{t("timezone")}</Label>
+              <Label htmlFor="sa-digest-timezone" className="text-sm font-medium text-foreground">{t("timezone")}</Label>
               <Select value={digestZones.value} onValueChange={(v) => setPrefs((p) => ({ ...p, timezone: v }))}>
-                <SelectTrigger className="h-10 text-sm">
+                <SelectTrigger id="sa-digest-timezone" className="h-10 text-sm">
                   <SelectValue placeholder={t("selectTimezone")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -898,6 +898,10 @@ function NotificationsTab() {
                     }
                   />
                 </div>
+                {/* Password emails never pass through these preferences. */}
+                {cat.key === "system" && (
+                  <p className="mt-2 ms-11 text-xs text-muted-foreground">{tc("passwordEmailsAlwaysArrive")}</p>
+                )}
                 {pref.enabled && (
                   <div className="flex items-center gap-2 mt-3 ml-11">
                     {(Object.keys(CH_LABEL_KEYS) as Channel[]).map((ch) => {
@@ -1026,7 +1030,7 @@ function AvailabilityTab() {
         <SectionHeader icon={MapPin} title={t("timezone")} description={t("timezoneDesc")} />
         <div className="p-6">
           <Select value={zones.value} onValueChange={setTimezone}>
-            <SelectTrigger className="h-11 w-full max-w-md text-sm">
+            <SelectTrigger aria-label={t("timezone")} className="h-11 w-full max-w-md text-sm">
               <SelectValue placeholder={t("selectTimezone")} />
             </SelectTrigger>
             <SelectContent>

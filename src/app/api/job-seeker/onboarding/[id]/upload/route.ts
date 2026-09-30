@@ -93,6 +93,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
       || (await User.findById(ctx.userId).select("name").lean() as { name?: string } | null)?.name
       || "The candidate";
     await notify({
+      actorId: ctx.userId,
       userId: String((employer as { userId: unknown }).userId),
       type: "system",
       title: "Onboarding document uploaded",

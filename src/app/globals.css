@@ -2193,6 +2193,12 @@ input::placeholder {
   }
 }
 
+/* While the cookie banner shows, the button would sit on its Accept button.
+   CookieConsent publishes the banner's top edge (tab bar included). */
+:root[data-cookie-banner="visible"] .copilot-fab {
+  inset-block-end: calc(var(--cookie-banner-top, 7rem) + 0.75rem);
+}
+
 /* Keep fixed consent content compact and give the document enough scrollable
    clearance that it never permanently covers the final page controls. */
 :root[data-cookie-banner="visible"] body {

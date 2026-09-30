@@ -27,7 +27,12 @@ jest.mock("@/models/SuperAgent", () => ({
   default: { findOne: jest.fn(() => ({ select: () => ({ lean: async () => ({ _id: SA_DOC }) }) })) },
 }));
 const scope = jest.fn();
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentScope: (...a: unknown[]) => scope(...a) }));
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getSuperAgentScope: (...a: unknown[]) => scope(...a),
+  // No area assigned: the region clause (seeker-area-scope.test.ts) stays out.
+  getSuperAgentTerritory: async () => null,
+  seekerRegionMatch: () => null,
+}));
 
 const filters: unknown[] = [];
 let seekerExists = false;

@@ -370,6 +370,7 @@
     "citySearching": "Searching…"
   },
   "common": {
+    "passwordEmailsAlwaysArrive": "Password emails always arrive, even if this is off.",
     "stepProgress": "Step {current} of {total}",
     "stepAccount": "Account",
     "stepAssignment": "Assignment",
@@ -504,7 +505,28 @@
     "sortDateAdded": "Date added",
     "requiredFieldsNote": "Fields marked * are required.",
     "selectEllipsis": "Select…",
-    "searching": "Searching…"
+    "searching": "Searching…",
+    "seekerArea": {
+      "title": "Your area",
+      "country": "Country",
+      "countryPlaceholder": "Choose a country",
+      "countrySearch": "Search countries",
+      "countryNoMatch": "No country matches",
+      "city": "City",
+      "cityPlaceholder": "Choose your city",
+      "citySearch": "Search cities",
+      "cityTypeToSearch": "Type at least 2 letters",
+      "cityNoMatch": "No city matches. Try another spelling.",
+      "citySearching": "Searching…",
+      "hint": "Agents who cover your area can see your profile and help you find work. A hidden profile stays hidden.",
+      "notSet": "Add your area so agents near you can help you find work.",
+      "add": "Add area",
+      "change": "Change",
+      "dialogDescription": "Pick the city you live in.",
+      "saved": "Area saved",
+      "saveError": "Couldn't save your area. Please try again.",
+      "pickCity": "Pick your city from the list."
+    }
   },
   "table": {
     "search": "Search...",
@@ -1113,7 +1135,9 @@
       "matchScore": "Match Score",
       "appliedDate": "Applied Date"
     },
-    "withdraw": "Withdraw"
+    "withdraw": "Withdraw",
+    "showSummary": "Show summary for {job}",
+    "hideSummary": "Hide summary for {job}"
   },
   "jobSeekerCalendar": {
     "title": "My Calendar",
@@ -5142,7 +5166,20 @@
     "freeSlotsLabel": "Free slots for {name}",
     "roleFit": "Role fit",
     "ivTimeZoneHint": "Times are in your time zone ({zone})",
-    "searchOrDescribe": "Search or describe who you need"
+    "searchOrDescribe": "Search or describe who you need",
+    "candidateLinksTitle": "Portfolio & links",
+    "candidateLinkNewTab": "(opens in a new tab)",
+    "scoresRefreshed": "{count, plural, =0 {Scores are up to date} one {# score updated} other {# scores updated}}",
+    "scoresRefreshFailed": "We couldn't update the scores. Try again.",
+    "rescoringScores": "Updating scores…",
+    "breakdownCv": "CV",
+    "breakdownNotProvided": "Not provided",
+    "breakdownCvRead": "Read",
+    "breakdownCvReading": "Being read",
+    "breakdownCvUnreadable": "Couldn't be read",
+    "fitStrong": "Strong",
+    "fitFair": "Fair",
+    "fitWeak": "Weak"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -5501,8 +5538,8 @@
     "catOffersDesc": "Candidate accepts, rejects, or negotiates offers",
     "catJobs": "Job Updates",
     "catJobsDesc": "Job expiry and applicant limits",
-    "catSystem": "System & Security",
-    "catSystemDesc": "Login alerts, team changes, and platform notices",
+    "catSystem": "Account & platform notices",
+    "catSystemDesc": "Team, billing and platform notices",
     "freqInstant": "Instant",
     "freqInstantDesc": "As events happen",
     "freqDaily": "Daily",
@@ -6545,8 +6582,8 @@
           "description": "New job postings, expirations, and vacancy changes"
         },
         "system": {
-          "label": "System & Security",
-          "description": "Login alerts, platform notices, and security events"
+          "label": "Account & platform notices",
+          "description": "New sign-ups, requests and platform notices"
         }
       },
       "channels": {
@@ -6554,7 +6591,7 @@
         "email": "Email"
       },
       "pauseAll": "Pause all notifications",
-      "pauseAllDescription": "Temporarily stop all email and in-app notifications",
+      "pauseAllDescription": "Stop notification emails. In-app notifications and password emails still arrive.",
       "save": "Save Notification Settings"
     },
     "availability": {
@@ -7490,7 +7527,15 @@
     "saveError": "We couldn't save your hiring rules. Please try again.",
     "jobFollowsEmployer": "This job follows your company-wide rules. Save here to give it its own.",
     "jobHasOwnRules": "This job has its own rules. They override the company-wide ones.",
-    "saveForJob": "Save rules for this job"
+    "saveForJob": "Save rules for this job",
+    "autoShortlist": "Auto-shortlist on arrival",
+    "autoShortlistDesc": "Off: you shortlist by hand. On: new applicants scoring at or above the line go straight to the shortlist. Anyone who fails a requirement never does.",
+    "autoShortlistThreshold": "Shortlist at or above",
+    "autoShortlistThresholdValue": "{value}% match score",
+    "autoShortlistNote": "Only new applicants are moved. Candidates already in your pipeline stay where they are.",
+    "autoShortlistOverlap": "Auto-reject runs first: scores below {reject}% are rejected, even above this line.",
+    "rulesDescAll": "A few switches. Everything else runs on its own.",
+    "pageDescriptionRules": "Your pipeline and the rules that run it."
   },
   "employerJobNew": {
     "title": "Create a Job Posting",
@@ -9004,8 +9049,8 @@
     "catProfileViewsDesc": "When recruiters view your profile (aggregated daily)",
     "catMarketing": "Tips & Updates",
     "catMarketingDesc": "Career tips, platform updates, and new features",
-    "catSystem": "Security & System",
-    "catSystemDesc": "Password changes, login alerts, and system notices",
+    "catSystem": "Account & platform notices",
+    "catSystemDesc": "Billing reminders, feedback requests and platform notices",
     "channelInApp": "In-App",
     "channelEmail": "Email",
     "channelWhatsApp": "WhatsApp",
@@ -9127,7 +9172,9 @@
     "adminEmployerOutsideTerritoryBody": "{companyName} registered in {region}, which no super agent covers.",
     "adminEmployerNoRegionBody": "{companyName} registered without a recognised city, so no super agent covers it.",
     "adminEmployerAddressChangedTitle": "Employer changed its address",
-    "adminEmployerAddressChangedBody": "{companyName} changed its address from {from} to {to}. Its region was not moved."
+    "adminEmployerAddressChangedBody": "{companyName} changed its address from {from} to {to}. Its region was not moved.",
+    "backgroundCheckRequestedTitle": "Background check requested",
+    "backgroundCheckRequestedBody": "{companyName} requested a background check for \"{jobTitle}\"."
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -10098,7 +10145,8 @@
     "remoteCountriesEmpty": "Add at least one country you can hire from.",
     "remoteScopeUnset": "Not set — until you choose, this job is only matched to candidates in the country above.",
     "placeholderRemoteCountry": "Type a country, then press Enter",
-    "removeCountry": "Remove {country}"
+    "removeCountry": "Remove {country}",
+    "advancedExpiryDesc": "Expiry date"
   },
   "employerPanel": {
     "title": "Hiring Panel Review",
@@ -12350,7 +12398,8 @@
     "toastAgentDeletedPermanently": "Agent permanently deleted",
     "toastFailedDeleteAgent": "We couldn't permanently delete this agent. Please try again.",
     "toastFailedLoadAgents": "We couldn't load agents. Please try again.",
-    "superAgentNoTerritory": "{name} has no territory yet, so there is nowhere to assign. Set their region on the Super Agents page first, or choose None."
+    "superAgentNoTerritory": "{name} has no territory yet, so there is nowhere to assign. Set their region on the Super Agents page first, or choose None.",
+    "regionPickWithinTerritory": "Choose this agent's area from {name}'s territory ({count} location{count,plural,one{} other{s}})."
   },
   "adminCommissions": {
     "financeWorkspace": "Finance workspace",
@@ -13543,7 +13592,14 @@
     "roleSuperAgent": "Super Agent",
     "roleAgent": "Agent",
     "roleEmployer": "Employer",
-    "roleJobSeeker": "Job Seeker"
+    "roleJobSeeker": "Job Seeker",
+    "assignSuperAgentAndArea": "Assign super agent & area",
+    "assignAgentsAndTerritory": "Assign agents & territory",
+    "assignEmployerAgent": "Assign agent",
+    "createAgentElsewhere": "Agents are set up on the Agents page, where you choose their super agent and area.",
+    "createSuperAgentElsewhere": "Super agents are set up on the Super Agents page, where you choose their territory and agents.",
+    "continueOnAgentsPage": "Continue on Agents page",
+    "continueOnSuperAgentsPage": "Continue on Super Agents page"
   },
   "superAgentSettings": {
     "profilePhoto": "Profile photo",
@@ -13598,7 +13654,7 @@
     "notificationCategories": "Notification Categories",
     "notificationCategoriesDesc": "Toggle categories and choose delivery channels",
     "pauseAllNotifications": "Pause all notifications",
-    "pauseAllNotificationsDesc": "Temporarily stop all email and in-app notifications",
+    "pauseAllNotificationsDesc": "Stop notification emails. In-app notifications and password emails still arrive.",
     "saveNotificationSettings": "Save Notification Settings",
     "timezoneDesc": "Your local timezone for scheduling and digest delivery",
     "workingHours": "Working Hours",
@@ -13679,8 +13735,8 @@
     "categoryTeamDesc": "Weekly agent performance summaries and milestones",
     "categoryJobsLabel": "Job Updates",
     "categoryJobsDesc": "New job postings, expirations, and market changes",
-    "categorySystemLabel": "System & Security",
-    "categorySystemDesc": "Login alerts, platform notices, and security events",
+    "categorySystemLabel": "Account & platform notices",
+    "categorySystemDesc": "New sign-ups, requests and platform notices",
     "freqInstantLabel": "Instant",
     "freqInstantDesc": "As events happen",
     "freqDailyLabel": "Daily",
@@ -15114,7 +15170,16 @@
     "modalEditTitle": "Edit Job Seeker",
     "editJobSeeker": "Edit {name}",
     "referredByYouChip": "Referred by you",
-    "filterReferredMine": "Referred by me"
+    "filterReferredMine": "Referred by me",
+    "viewLabel": "Show",
+    "viewAll": "All my job seekers",
+    "viewArea": "In my area",
+    "inYourAreaChip": "In your area",
+    "inYourAreaViewOnly": "Lives in your area. You can view this profile but not edit it.",
+    "areaNoRegionTitle": "You don't have an area yet",
+    "areaNoRegionDescription": "An admin sets the cities you cover. Once they do, job seekers who live there appear here.",
+    "areaEmptyTitle": "No job seekers in your area yet",
+    "areaEmptyDescription": "Job seekers appear here once they pick a city you cover. Hidden profiles never appear."
   },
   "agentEmployers": {
     "heroWorkspace": "Agent workspace",
@@ -17922,7 +17987,8 @@
       "cvRead": "{hasFile, select, yes {Scored from {file} and the profile} other {Scored from the CV and the profile}}",
       "cvReading": "Still being read — the score updates when it's done",
       "cvUnreadable": "{hasFile, select, yes {{file} couldn't be read} other {The CV couldn't be read}} — ask the candidate for a PDF or Word copy",
-      "cvNone": "No CV was sent — scored from the profile only"
+      "cvNone": "No CV was sent — scored from the profile only",
+      "experienceNotStated": "No minimum asked · the candidate hasn't stated their experience"
     },
     "industries": {
       "food_fmcg": "Food & FMCG",
@@ -17995,7 +18061,9 @@
       "reading": "Being read",
       "unreadable": "Couldn't read",
       "none": "Not sent"
-    }
+    },
+    "requirementsNotMet": "Requirements not met",
+    "requirementsNotMetShort": "Not met"
   },
   "assignedRegion": {
     "label": "Region",
@@ -18314,5 +18382,42 @@
     "chicago": "Chicago",
     "tokyo": "Tokyo",
     "auckland": "Auckland"
+  },
+  "staffBackgroundChecks": {
+    "pageTitle": "Background checks",
+    "pageContext": "{count, plural, =0 {No checks} one {# check} other {# checks}} for the employers you work with",
+    "readOnlyNote": "The employer's team runs these checks. Here you can follow where each one stands.",
+    "statusLabel": "Status",
+    "statusAll": "All statuses",
+    "status": {
+      "pending": "Not started",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "outcome": {
+      "clear": "Clear",
+      "flagged": "Flagged",
+      "failed": "Failed",
+      "unable_to_verify": "Couldn't verify",
+      "pending": "Awaiting result"
+    },
+    "type": {
+      "background": "Background",
+      "reference": "References",
+      "both": "Background & references"
+    },
+    "colCandidate": "Candidate",
+    "colEmployerJob": "Employer & job",
+    "colCheck": "Check",
+    "colStatus": "Status",
+    "colRequested": "Requested",
+    "references": "{responded} of {total} references replied",
+    "emptyTitle": "No background checks yet",
+    "emptyDescription": "When an employer you work with requests one, it appears here and you're notified.",
+    "emptyFilteredTitle": "No checks with this status",
+    "clearFilter": "Clear filter",
+    "loadErrorTitle": "Background checks",
+    "unknownCandidate": "Candidate"
   }
 }

@@ -320,6 +320,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     for (const owner of owners) {
       if (!owner.userId) continue;
       notify({
+        actorId: ctx.userId,
         userId: String(owner.userId),
         type: "system",
         title: "Bulk application update",

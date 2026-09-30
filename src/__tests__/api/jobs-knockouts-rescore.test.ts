@@ -44,7 +44,7 @@ jest.mock("@/models/Employer", () => ({
 }));
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: jest.fn() } }));
 
-async function patch(body: Record<string, unknown>) {
+async function patch(body: Record<string, unknown>, jobOverrides: Record<string, unknown> = {}) {
   mockJob = {
     _id: JOB_ID,
     employerId: EMPLOYER,
@@ -55,6 +55,7 @@ async function patch(body: Record<string, unknown>) {
     screeningQuestions: [],
     screeningKnockouts: [],
     save: jest.fn().mockResolvedValue(undefined),
+    ...jobOverrides,
   };
   const { patchHandler } = await import("@/app/api/jobs/[id]/handlers");
   const req = new NextRequest(`http://localhost:3000/api/jobs/${JOB_ID}`, {
@@ -108,6 +109,35 @@ describe("PATCH /api/jobs/[id] — deal-breakers and re-scoring", () => {
   it("queues a re-score when a deal-breaker is added", async () => {
     await patch({ screeningQuestions: [licence] });
     expect(mockQueueRescore).toHaveBeenCalledWith([JOB_ID]);
+  });
+
+  // Client report 2026-09-30: the Edit Job page sends only skills, preferred
+  // skills and experience; replacing the whole object wiped the education,
+  // languages, nationality and AI-read skills the job was scored on.
+  it("keeps requirement fields a partial save does not send", async () => {
+    const res = await patch(
+      { requirements: { skills: ["Driving", "Forklift"], preferredSkills: [], experienceMin: 2, experienceMax: 10 } },
+      { requirements: { skills: ["Driving"], education: "bachelor", languages: ["Arabic"], nationality: ["UAE"], aiSkills: ["Logistics"], experienceMin: 2, experienceMax: 5 } },
+    );
+    expect(res.status).toBe(200);
+    expect(mockJob.requirements).toEqual({
+      skills: ["Driving", "Forklift"],
+      preferredSkills: [],
+      education: "bachelor",
+      languages: ["Arabic"],
+      nationality: ["UAE"],
+      aiSkills: ["Logistics"],
+      experienceMin: 2,
+      experienceMax: 10,
+    });
+  });
+
+  it("still lets a save clear a requirement it sends explicitly", async () => {
+    await patch(
+      { requirements: { education: "" } },
+      { requirements: { skills: ["Driving"], education: "bachelor" } },
+    );
+    expect(mockJob.requirements).toEqual({ skills: ["Driving"], education: "" });
   });
 
   it("does not re-score on a save that changes nothing applicants are scored on", async () => {

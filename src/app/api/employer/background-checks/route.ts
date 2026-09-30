@@ -8,6 +8,8 @@ import BackgroundCheck from "@/models/BackgroundCheck";
 import { validateBody } from "@/lib/validators";
 import { backgroundCheckCreateSchema } from "@/lib/validators/backgroundChecks";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { notify } from "@/lib/notifications/trigger";
+import logger from "@/lib/logger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -70,7 +72,7 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
  */
 async function createHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId companyName").lean();
   if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
 
   const body = await validateBody(req, backgroundCheckCreateSchema);
@@ -112,7 +114,41 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     req,
   }).catch(() => { /* non-blocking */ });
 
+  notifyAgentOfCheck(emp as EmployerForNotice, (application as { jobId: unknown }).jobId, ctx.member?.actorId ?? ctx.userId)
+    .catch((err) => { logger.error({ err, checkId: String(check._id) }, "[background-checks] failed to notify the agent"); });
+
   return NextResponse.json({ check }, { status: 201 });
+}
+
+interface EmployerForNotice { _id: unknown; agentId?: unknown; companyName?: string }
+
+/**
+ * The agent who works with this employer hears that a check was requested
+ * (client report 2026-09-30). They can follow it on their Background checks
+ * page; the employer's team still runs it.
+ */
+async function notifyAgentOfCheck(emp: EmployerForNotice, jobId: unknown, actorId: string): Promise<void> {
+  if (!emp.agentId) return;
+  const [{ default: Agent }, { default: Job }] = await Promise.all([import("@/models/Agent"), import("@/models/Job")]);
+  const [agent, job] = await Promise.all([
+    Agent.findById(emp.agentId).select("userId").lean() as Promise<{ userId?: unknown } | null>,
+    Job.findById(jobId).select("title").lean() as Promise<{ title?: string } | null>,
+  ]);
+  if (!agent?.userId) return;
+  const companyName = emp.companyName ?? "";
+  const jobTitle = job?.title ?? "";
+  await notify({
+    userId: String(agent.userId),
+    actorId,
+    type: "system",
+    title: "Background check requested",
+    message: `${companyName} requested a background check for "${jobTitle}".`,
+    link: "/agent/background-checks",
+    sendEmail: false,
+    titleKey: "backgroundCheckRequestedTitle",
+    bodyKey: "backgroundCheckRequestedBody",
+    params: { companyName, jobTitle },
+  });
 }
 
 export const GET = withAuth(listHandler, { resource: "applications", action: "read" });

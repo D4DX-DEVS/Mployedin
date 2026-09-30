@@ -91,7 +91,7 @@ export default function EmployerWorkflowPage() {
   return (
     <FeatureGate feature="workflowCustomization">
       <div className="page-container">
-        <WorkspaceHeader title={t("pageTitle")} context={t("pageDescription")} actions={saveButton} />
+        <WorkspaceHeader title={t("pageTitle")} context={t("pageDescriptionRules")} actions={saveButton} />
 
         {dirty && (
           <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-status-shortlisted">

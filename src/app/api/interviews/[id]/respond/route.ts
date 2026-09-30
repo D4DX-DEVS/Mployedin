@@ -96,6 +96,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
       "requested a reschedule for";
 
     await notify({
+      actorId: ctx.userId,
       userId: String(employer.userId),
       type: "interview_update",
       title: `Interview ${response === "confirmed" ? "Confirmed" : response === "declined" ? "Declined" : "Reschedule Requested"}`,

@@ -59,7 +59,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { RowActions } from "@/components/shared/RowActions";
-import { RowExpandToggle } from "@/components/shared/RowExpandToggle";
+import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -354,7 +354,7 @@ export default function SuperAgentReferralLinksPage() {
                 <div className="grid min-w-0 flex-[1_1_100%] gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label htmlFor={statusFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
-                  <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as ReferralLinkStatus | ""); pagination.resetPage(); }}>
+                  <Select value={statusFilter || "all"} onValueChange={(v) => { setStatusFilter(v === "all" ? "" : (v as ReferralLinkStatus)); pagination.resetPage(); }}>
                     <SelectTrigger id={statusFilterId} className="h-9 w-full text-sm">
                       <SelectValue placeholder={t("filterAllStatuses")} />
                     </SelectTrigger>
@@ -369,7 +369,7 @@ export default function SuperAgentReferralLinksPage() {
                 </div>
                 <div>
                   <label htmlFor={creatorFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterCreatorRole")}</label>
-                  <Select value={creatorRoleFilter} onValueChange={(v) => { setCreatorRoleFilter(v as ReferralCreatorRole | ""); pagination.resetPage(); }}>
+                  <Select value={creatorRoleFilter || "all"} onValueChange={(v) => { setCreatorRoleFilter(v === "all" ? "" : (v as ReferralCreatorRole)); pagination.resetPage(); }}>
                     <SelectTrigger id={creatorFilterId} className="h-9 w-full text-sm">
                       <SelectValue placeholder={t("filterAllRoles")} />
                     </SelectTrigger>
@@ -477,12 +477,12 @@ export default function SuperAgentReferralLinksPage() {
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeadCode")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
                 <TableHead>{t("tableHeadCreator")}</TableHead>
                 <TableHead>{t("tableHeadRole")}</TableHead>
                 <TableHead>{t("tableHeadLabel")}</TableHead>
                 <TableHead>{t("tableHeadUsed")}</TableHead>
                 <TableHead>{t("tableHeadExpires")}</TableHead>
-                <TableHead>{tc("status")}</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -501,12 +501,12 @@ export default function SuperAgentReferralLinksPage() {
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeadCode")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
                 <TableHead>{t("tableHeadCreator")}</TableHead>
                 <TableHead>{t("tableHeadRole")}</TableHead>
                 <TableHead>{t("tableHeadLabel")}</TableHead>
                 <TableHead>{t("tableHeadUsed")}</TableHead>
                 <TableHead>{t("tableHeadExpires")}</TableHead>
-                <TableHead>{tc("status")}</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -516,8 +516,38 @@ export default function SuperAgentReferralLinksPage() {
                 const isExpanded = expandedId === link._id;
                 return (
                   <Fragment key={link._id}>
-                    <TableRow className="group cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : link._id)}>
+                    <TableRow
+                      className="group cursor-pointer"
+                      onClick={(event) => {
+                        // Below 640px the shared table enhancer turns each row
+                        // into a collapsible card and the row's own tap toggles
+                        // it. Toggling the registrations drawer there would fire
+                        // both, so the chevron stays the phone entry point.
+                        const cardMode =
+                          event.currentTarget.hasAttribute("data-mobile-collapsible") &&
+                          (typeof window.matchMedia !== "function" || window.matchMedia("(max-width: 639px)").matches);
+                        if (cardMode) return;
+                        if (!isRowToggleClick(event)) return;
+                        setExpandedId(isExpanded ? null : link._id);
+                      }}
+                    >
                       <TableCell className="font-mono text-sm font-medium">{link.code}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          status === "active" ? "bg-emerald-100 text-emerald-700" :
+                          status === "expired" ? "bg-amber-100 text-amber-700" :
+                          status === "maxed" ? "bg-orange-100 text-orange-700" :
+                          "bg-red-100 text-red-700"
+                        }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${
+                            status === "active" ? "bg-emerald-500" :
+                            status === "expired" ? "bg-amber-500" :
+                            status === "maxed" ? "bg-orange-500" :
+                            "bg-red-500"
+                          }`} />
+                          {statusLabel(status, t)}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-sm">
                         <div className="flex min-w-0 items-center gap-2">
                           <UserAvatar name={creatorName(link)} className="h-8 w-8 shrink-0" colorful />
@@ -536,22 +566,6 @@ export default function SuperAgentReferralLinksPage() {
                         <span className="inline-flex items-center gap-1">
                           <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
                           {formatDate(link.expiresAt, { day: "2-digit", month: "short", year: "numeric" })}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          status === "active" ? "bg-emerald-100 text-emerald-700" :
-                          status === "expired" ? "bg-amber-100 text-amber-700" :
-                          status === "maxed" ? "bg-orange-100 text-orange-700" :
-                          "bg-red-100 text-red-700"
-                        }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${
-                            status === "active" ? "bg-emerald-500" :
-                            status === "expired" ? "bg-amber-500" :
-                            status === "maxed" ? "bg-orange-500" :
-                            "bg-red-500"
-                          }`} />
-                          {statusLabel(status, t)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">

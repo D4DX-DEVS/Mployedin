@@ -7,6 +7,8 @@ import { validateBody } from "@/lib/validators";
 import { changePasswordSchema } from "@/lib/validators/misc";
 import { logActivity } from "@/lib/audit/log";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { sendEmail, EmailTemplates } from "@/lib/communications/email";
+import logger from "@/lib/logger";
 
 /**
  * POST /api/users/change-password
@@ -73,6 +75,28 @@ export async function POST(req: NextRequest) {
     resourceId: session.user.id,
     req,
   });
+
+  // Security notice, sent straight through sendEmail so no notification
+  // preference or "unsubscribe from all" can stop it — the owner's call: a
+  // changed password always tells the account holder. Non-blocking, as in the
+  // reset route.
+  const dateTime = new Date().toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  });
+  const userId = session.user.id;
+  sendEmail({
+    to: user.email,
+    ...EmailTemplates.passwordResetConfirmation(dateTime),
+    userId,
+    source: "password-change",
+    category: "security",
+  }).catch((err) => logger.error({ err, userId }, "[change-password] confirmation email not sent"));
 
   return NextResponse.json({ success: true });
 }

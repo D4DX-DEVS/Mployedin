@@ -65,7 +65,6 @@ describe("jobCreateSchema", () => {
       requirements: { skills: ["TypeScript"], experienceMin: 2, experienceMax: 5 },
       salary: { min: 50000, max: 80000, currency: "USD", isNegotiable: true, period: "yearly" as const },
       expiresAt: futureDate,
-      applicationMode: "auto" as const,
       employerId: validObjectId,
       vacancies: 3,
       tags: ["remote", "fullstack"],
@@ -73,6 +72,15 @@ describe("jobCreateSchema", () => {
       status: "active" as const,
     };
     expect(jobCreateSchema.safeParse(full).success).toBe(true);
+  });
+
+  test("accepts but drops the removed 'Application mode' from an older form", () => {
+    // "Auto Match (AI)" was never stored on the job, so it did nothing; it was
+    // removed (client report 2026-09-30). A form cached before the release
+    // still sends it and must not be refused.
+    const result = jobCreateSchema.safeParse({ ...validJob, applicationMode: "auto" });
+    expect(result.success).toBe(true);
+    expect(result.success && "applicationMode" in result.data).toBe(false);
   });
 
   test("rejects missing title", () => {
