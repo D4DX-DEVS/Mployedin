@@ -62,9 +62,12 @@ export async function GET(req: NextRequest) {
   );
 
   // ── Merge, de-duplicate case-insensitively, prioritise prefix matches ──
+  // Roles lead with the curated list: live job titles are whatever employers
+  // (and test runs) typed, so they only add what the list lacks.
+  const ordered = type === "roles" ? [...seeds, ...dbItems] : [...dbItems, ...seeds];
   const seen = new Set<string>();
   const merged: string[] = [];
-  for (const item of [...dbItems, ...seeds]) {
+  for (const item of ordered) {
     const key = item.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
@@ -137,12 +140,19 @@ async function fetchFromDb(type: TaxonomyType, q: string, limit: number): Promis
       return [...cities.map((d) => d.name), ...countries.map((d) => d.name)];
     }
     case "roles": {
-      // No dedicated roles model — surface distinct titles from live job postings.
+      // No dedicated roles model — distinct titles of jobs on the public board
+      // supplement the curated list, and only once the seeker has typed: an
+      // empty box listed every live title A–Z, which put test postings first.
+      if (!regex) return [];
       const { default: Job } = await import("@/models/Job");
-      const filter: Record<string, unknown> = { status: "active" };
-      if (regex) filter.title = regex;
-      const titles = (await Job.distinct("title", filter)) as string[];
-      return titles.slice(0, limit);
+      const titles = (await Job.distinct("title", {
+        status: "active",
+        $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }],
+        title: regex,
+      })) as string[];
+      // A role name never carries a long number; generated test titles do
+      // ("AUDIT-T9-PROBE-1787661672601").
+      return titles.filter((t) => !/\d{6,}/.test(t)).slice(0, limit);
     }
     default:
       return [];

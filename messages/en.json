@@ -1661,7 +1661,9 @@
         "setBothSalary": "Set both min & max salary",
         "setSalary": "Set your salary expectations",
         "specifyJobType": "Specify a job type preference"
-      }
+      },
+      "matchPercent": "{score}% match",
+      "noOpenJobs": "No open jobs in your preferred locations yet."
     },
     "personalDetails": {
       "documentTitle": "Personal Details · MPLOYEDIN",
@@ -2482,7 +2484,11 @@
         "education": "Most openings right now ask for a higher qualification than your profile lists."
       },
       "noLocationTitle": "Where do you want to work?",
-      "addCountryCta": "Add a preferred country"
+      "addCountryCta": "Add a preferred country",
+      "moreJobs": "More jobs for you",
+      "closestNote": "None of these is a strong match yet.",
+      "noJobsTitle": "No open jobs for your preferences yet",
+      "noJobsBody": "New jobs are posted all the time. Browse every open job, or add more countries to your preferences."
     },
     "appliedJobs": {
       "eyebrow": "Already applied",

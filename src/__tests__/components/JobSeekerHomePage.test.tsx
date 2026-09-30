@@ -242,76 +242,74 @@ describe("JobSeekerHomePage", () => {
     );
     expect(await screen.findByText("الخطوة التالية المقترحة")).toBeInTheDocument();
   });
-  // "Recommended jobs" lists only what the engine recommends. When that is
-  // nothing — or fewer than four — the page says so and says why, instead of
-  // filling the slots with weaker jobs the digest would never send.
-  const job = (id: string) => ({
+  // The cards are the first four of the Jobs page: strong matches (the ones the
+  // digest email would send) lead, then the closest others. The admin's match
+  // bar gates the email only — it used to empty this list for most seekers.
+  const job = (id: string, recommended = true, matchScore = recommended ? 88 : 39) => ({
     _id: id,
     title: `Job ${id}`,
     createdAt: new Date("2026-09-20").toISOString(),
-    matchScore: 88,
+    matchScore,
+    recommended,
     skills: [],
     matchedSkills: [],
   });
   const withRecommendation = (
     jobs: ReturnType<typeof job>[],
     limitingFactor: string | null,
-    bestScore = 64,
   ): InitialHomeData => ({
     ...initialData,
     jobs,
     recommendation: {
       threshold: 80,
-      bestScore,
-      recommendedCount: jobs.length,
+      bestScore: Math.max(0, ...jobs.map((j) => j.matchScore)),
+      recommendedCount: jobs.filter((j) => j.recommended).length,
       limitingFactor: limitingFactor as never,
     },
   });
 
-  it("explains an empty list and sends a profile gap to the profile", async () => {
-    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "no_skills")} />);
-    expect(await screen.findByText("recommendedJobs.strongOnlyTitle")).toBeInTheDocument();
-    expect(screen.getByText("recommendedJobs.strongOnlyBody")).toBeInTheDocument();
-    expect(screen.getByText("recommendedJobs.blockers.no_skills")).toBeInTheDocument();
+  it("shows the closest jobs when none is a strong match, and says what holds them back", async () => {
+    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([job("a", false), job("b", false)], "no_skills")} />);
+    expect(await screen.findByText("Job a")).toBeInTheDocument();
+    expect(screen.getByText("Job b")).toBeInTheDocument();
+    expect(screen.getByText(/recommendedJobs\.closestNote/)).toBeInTheDocument();
+    expect(screen.getByText(/recommendedJobs\.blockers\.no_skills/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "recommendedJobs.improveProfileCta" })).toHaveAttribute(
       "href",
       "/ar/job-seeker/profile",
     );
-  });
-
-  it("asks where the seeker wants to work when no country is known, without quoting a score", async () => {
-    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "no_location")} />);
-    expect(await screen.findByText("recommendedJobs.noLocationTitle")).toBeInTheDocument();
-    expect(screen.getByText("recommendedJobs.blockers.no_location")).toBeInTheDocument();
-    expect(screen.queryByText("recommendedJobs.strongOnlyBody")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "recommendedJobs.addCountryCta" })).toHaveAttribute(
-      "href",
-      "/ar/job-seeker/preferences",
-    );
+    expect(screen.queryByText("recommendedJobs.strongOnlyTitle")).not.toBeInTheDocument();
+    // Every card is below the bar, so there is no strong group to divide off.
+    expect(screen.queryByText("recommendedJobs.moreJobs")).not.toBeInTheDocument();
   });
 
   it("sends a preference gate to the preferences page", async () => {
-    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "country")} />);
-    expect(await screen.findByText("recommendedJobs.blockers.country")).toBeInTheDocument();
+    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([job("a", false)], "country")} />);
+    expect(await screen.findByText(/recommendedJobs\.blockers\.country/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "recommendedJobs.updatePreferencesCta" })).toHaveAttribute(
       "href",
       "/ar/job-seeker/preferences",
     );
   });
 
-  it("does not quote a closest match when nothing was eligible", async () => {
-    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "country", 0)} />);
-    expect(await screen.findByText("recommendedJobs.strongOnlyBodyNone")).toBeInTheDocument();
-    expect(screen.queryByText("recommendedJobs.strongOnlyBody")).not.toBeInTheDocument();
+  it("leaves out the score blocker, whose copy promises an empty list", async () => {
+    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([job("a", false)], "score")} />);
+    expect(await screen.findByText(/recommendedJobs\.closestNote/)).toBeInTheDocument();
+    expect(screen.queryByText(/recommendedJobs\.blockers\.score/)).not.toBeInTheDocument();
   });
 
-  it("says there are no other strong matches when it has fewer than four", async () => {
-    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([job("a"), job("b")], null)} />);
-    expect(await screen.findByText("recommendedJobs.noOtherStrong")).toBeInTheDocument();
-    expect(screen.queryByText("recommendedJobs.strongOnlyTitle")).not.toBeInTheDocument();
+  it("marks where the strong matches end", async () => {
+    render(
+      <JobSeekerHomePage
+        locale="ar"
+        initialData={withRecommendation([job("a"), job("b"), job("c", false), job("d", false)], null)}
+      />,
+    );
+    expect(await screen.findAllByText("recommendedJobs.moreJobs")).toHaveLength(1);
+    expect(screen.queryByText(/recommendedJobs\.closestNote/)).not.toBeInTheDocument();
   });
 
-  it("adds no note when all four slots hold strong matches", async () => {
+  it("adds no note or divider when all four are strong matches", async () => {
     render(
       <JobSeekerHomePage
         locale="ar"
@@ -319,6 +317,27 @@ describe("JobSeekerHomePage", () => {
       />,
     );
     await screen.findAllByRole("link", { name: /jobCard.viewJob|viewJob/ });
-    expect(screen.queryByText("recommendedJobs.noOtherStrong")).not.toBeInTheDocument();
+    expect(screen.queryByText("recommendedJobs.moreJobs")).not.toBeInTheDocument();
+    expect(screen.queryByText(/recommendedJobs\.closestNote/)).not.toBeInTheDocument();
+  });
+
+  it("treats an empty pool as no open jobs, not as a weak profile", async () => {
+    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "country")} />);
+    expect(await screen.findByText("recommendedJobs.noJobsTitle")).toBeInTheDocument();
+    expect(screen.getByText("recommendedJobs.noJobsBody")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "recommendedJobs.updatePreferencesCta" })).toHaveAttribute(
+      "href",
+      "/ar/job-seeker/preferences",
+    );
+  });
+
+  it("asks where the seeker wants to work when no country is known", async () => {
+    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([], "no_location")} />);
+    expect(await screen.findByText("recommendedJobs.noLocationTitle")).toBeInTheDocument();
+    expect(screen.getByText("recommendedJobs.blockers.no_location")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "recommendedJobs.addCountryCta" })).toHaveAttribute(
+      "href",
+      "/ar/job-seeker/preferences",
+    );
   });
 });

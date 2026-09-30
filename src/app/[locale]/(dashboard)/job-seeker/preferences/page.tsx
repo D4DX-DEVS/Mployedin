@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -137,20 +138,19 @@ function computeMatchScore(prefs: PreferencesData, translate?: (key: string, val
     tips.push({ text: tip("addLocations"), points: 20 });
   }
 
-  if (prefs.preferredSalary.min > 0 && prefs.preferredSalary.max > 0) {
+  // One end of the range is a full answer: the top chip ("₹150k+") saves no
+  // maximum on purpose, and the matcher reads whichever end is set. Asking for
+  // "both" could never be satisfied from that chip.
+  if (prefs.preferredSalary.min > 0 || prefs.preferredSalary.max > 0) {
     score += 20;
-  } else if (prefs.preferredSalary.min > 0 || prefs.preferredSalary.max > 0) {
-    score += 10;
-    tips.push({ text: tip("setBothSalary"), points: 10 });
   } else {
     tips.push({ text: tip("setSalary"), points: 20 });
   }
 
-  if (prefs.preferredJobType !== "any") {
-    score += 15;
-  } else {
-    tips.push({ text: tip("specifyJobType"), points: 15 });
-  }
+  // "Any" is an answer, not a gap — the matcher reads it as no restriction and
+  // the card shows it selected, so a tip asking for a job type contradicted the
+  // page and could not be cleared by clicking "Any".
+  score += 15;
 
   if (prefs.availabilityStatus && prefs.availabilityStatus !== "not_available") {
     score += 10;
@@ -162,6 +162,7 @@ function computeMatchScore(prefs: PreferencesData, translate?: (key: string, val
 interface RecommendedJob {
   _id: string;
   title: string;
+  matchScore?: number;
   location?: { country?: string; city?: string; isRemote?: boolean };
   salary?: { min?: number; max?: number; currency?: string };
   employerId?: { companyName?: string; logo?: string };
@@ -282,6 +283,7 @@ function MatchScoreCard({
 function RecommendedJobCard({ job }: { job: RecommendedJob }) {
   const t = useTranslations("jobSeekerExtra.preferences");
   const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const location = job.location?.isRemote
     ? t("remote")
     : formatLocalizedLocation(job.location, locale, { remoteLabel: t("remote"), fallback: "—" });
@@ -291,7 +293,10 @@ function RecommendedJobCard({ job }: { job: RecommendedJob }) {
       : null;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 hover:border-primary/30 hover:shadow-sm transition-all">
+    <Link
+      href={`/${locale}/job-seeker/jobs/${job._id}`}
+      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 hover:border-primary/30 hover:shadow-sm transition-all"
+    >
       <div className="h-9 w-9 rounded-full bg-primary/10 text-xs font-semibold text-primary flex items-center justify-center shrink-0 overflow-hidden">
         {job.employerId?.logo ? (
            
@@ -311,8 +316,13 @@ function RecommendedJobCard({ job }: { job: RecommendedJob }) {
           {salary && ` · ${salary}`}
         </p>
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-    </div>
+      {typeof job.matchScore === "number" && (
+        <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+          {t("matchPercent", { score: job.matchScore.toLocaleString(numberLocale) })}
+        </span>
+      )}
+      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:rotate-180" aria-hidden="true" />
+    </Link>
   );
 }
 
@@ -386,10 +396,14 @@ export default function JobPreferencesPage() {
   const loadRecommendedJobs = useCallback(async () => {
     setJobsLoading(true);
     try {
-      const res = await fetch("/api/job-seeker/recommended-jobs");
+      // The top of the Jobs page's list — strong matches first, then the
+      // closest others. The admin's match bar gates the job emails only; with
+      // it here, a seeker with no strong match saw an empty panel however
+      // complete their preferences were.
+      const res = await fetch("/api/jobs/recommended?limit=3&sort=match");
       if (res.ok) {
         const data = await res.json();
-        setRecommendedJobs((data.items ?? []).slice(0, 3));
+        setRecommendedJobs((data.jobs ?? []).slice(0, 3));
       }
     } finally {
       setJobsLoading(false);
@@ -760,7 +774,13 @@ export default function JobPreferencesPage() {
             <div className="flex flex-col items-center gap-2 py-6 text-center">
               <Building2 className="h-8 w-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
-                {t("noMatches")}
+                {/* An empty pool with roles and countries set means no open job
+                    in those countries, not unfinished preferences. */}
+                {t(
+                  savedPrefs.preferredRoles.length > 0 && savedPrefs.preferredCountries.length > 0
+                    ? "noOpenJobs"
+                    : "noMatches",
+                )}
               </p>
             </div>
           )}

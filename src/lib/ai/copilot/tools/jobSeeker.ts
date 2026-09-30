@@ -158,7 +158,7 @@ export const searchJobsTool: CopilotTool<{ query?: string; country?: string; rem
 export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
   name: "recommended_jobs",
   description:
-    "The user's recommended jobs: every live job scored against their whole profile AND uploaded CV (skills, experience, preferred roles, countries, pay) by the same matching engine as the Recommended Jobs page, with jobs they already applied to left out. Call this for \"jobs that match me\", \"relevant jobs\" or \"what should I apply to\". Each row has a matchScore (0-100) and a url to the job page, where the user can apply. When nothing is recommended, limitingFactor says why (e.g. no_location = no preferred country set).",
+    "The user's recommended jobs: every live job scored against their whole profile AND uploaded CV (skills, experience, preferred roles, countries, pay) by the same matching engine as the Recommended Jobs page, with jobs they already applied to left out. Call this for \"jobs that match me\", \"relevant jobs\" or \"what should I apply to\". Each row has a matchScore (0-100), strongMatch (true = at or above the platform's recommendation bar) and a url to the job page, where the user can apply. Strong matches come first, then the closest others. When there are no strong matches, limitingFactor says what holds the scores back (e.g. no_location = no preferred country set, no_skills = no skills on the profile).",
   resource: "jobs",
   action: "read",
   roles: ["job_seeker"],
@@ -172,8 +172,9 @@ export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
     const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select(SEEKER_MATCH_FIELDS).lean();
     if (!seeker) return { ok: false, message: "No job seeker profile found for this account." };
 
-    // Same pool, engine and threshold as /api/job-seeker/recommended-jobs, so
-    // Copilot never recommends what the Recommended Jobs page would not.
+    // Same pool, engine and order as the Jobs page and the home page: strong
+    // matches first, then the closest others. The admin's match bar gates the
+    // job EMAILS; applied here it made Copilot answer "no jobs" to most seekers.
     const candidateJobs = await Job.find(
       buildRecommendedJobQuery({
         preferredCountries: seeker.preferredCountries,
@@ -188,7 +189,6 @@ export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
 
     const pool = await scoreSeekerPool(await effectiveSeekerProfile(ctx.userId, seeker), candidateJobs);
     const rows = pool.jobs
-      .filter((j) => j.recommended)
       .slice(0, Math.min(args.limit ?? 5, 10))
       .map((j) => ({
         jobId: String(j._id),
@@ -197,15 +197,18 @@ export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
         location: jobLocation(j),
         salary: jobSalary(j),
         matchScore: j.matchScore,
+        strongMatch: j.recommended,
         matchedSkills: j.matchedSkills.slice(0, 4),
         url: seekerJobUrl(ctx, String(j._id)),
       }));
 
     return {
       ok: true,
-      message: rows.length
-        ? `Found ${pool.recommendedCount} recommended job(s).`
-        : "No job clears the match threshold for this profile yet.",
+      message: !rows.length
+        ? "No open jobs in the user's preferred countries yet."
+        : pool.recommendedCount
+          ? `Found ${pool.recommendedCount} strong match(es); any other rows are the closest open jobs.`
+          : "No job is a strong match yet; these are the closest open jobs, best first.",
       data: {
         jobs: rows,
         totalMatches: pool.recommendedCount,
