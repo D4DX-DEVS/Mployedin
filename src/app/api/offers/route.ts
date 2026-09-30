@@ -328,6 +328,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     const salaryText = `${salary.currency} ${Number(salary.amount).toLocaleString()} / ${salary.period}`;
     const startText = new Date(startDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     await notify({
+      actorId: ctx.userId,
       userId: String(jobSeeker.userId),
       type: "application_status_update",
       title: "Job Offer Received",

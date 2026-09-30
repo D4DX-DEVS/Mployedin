@@ -12,6 +12,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from "next/navigat
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useStartConversation } from "@/hooks/useCandidates";
+import { CandidateLinks } from "@/components/features/employer/applications/CandidateLinks";
 import { CURRENCIES } from "@/components/features/employer/job-form/jobFormSchema";
 import { isFormError } from "@/lib/errors/form-error";
 import { isBreakdownMeasured } from "@/lib/matchBreakdown";
@@ -98,6 +99,11 @@ import {
   type QualificationItem,
   type RequirementsStatus,
 } from "@/components/features/employer/applications/RequirementsChecklist";
+import {
+  matchBreakdownRows,
+  type BreakdownRowState,
+  type FitWord,
+} from "@/components/features/employer/applications/matchBreakdownRows";
 import { buildJobFilterOptions } from "@/lib/jobs/duplicateJobLabels";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -184,6 +190,7 @@ export interface Applicant {
     experience?: { jobTitle?: string; company?: string; isCurrent?: boolean; startDate?: string; endDate?: string }[];
     education?: { degree?: string; institution?: string; field?: string; graduationDate?: string }[];
     cv?: { originalUrl?: string };
+    socialLinks?: { label?: string; url?: string }[];
   };
   status: string;
   /** The job workflow stage it sits in, when several stages share the status (lib/hiring/workflowStages.ts). */
@@ -418,6 +425,7 @@ export function ApplicationsWorkspace({
     matchBreakdown?: { skills?: number; role?: number; experience?: number; location?: number; salary?: number; overall?: number };
   } | null>(null);
   const [bulkMatchProgress, setBulkMatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [rescoring, setRescoring] = useState(false);
 
   // ── Bulk interview & email state ──────────────────────────────────
   const [bulkInterviewModal, setBulkInterviewModal] = useState(false);
@@ -647,6 +655,38 @@ export function ApplicationsWorkspace({
     }
   }
 
+  /** Most distinct jobs one "Score all" re-scores (the all-jobs view can list many). */
+  const MAX_RESCORE_JOBS = 10;
+
+  /**
+   * Re-score every applicant of the jobs in view with the canonical scorer
+   * (POST /api/jobs/[id]/rescore). Returns how many were re-scored, or null
+   * when every request failed (the error is already shown).
+   */
+  async function rescoreJobsInView(): Promise<number | null> {
+    const jobIds = [...new Set(applications.map((app) => app.jobId?._id).filter((id): id is string => Boolean(id)))]
+      .slice(0, MAX_RESCORE_JOBS);
+    if (jobIds.length === 0) return 0;
+    setRescoring(true);
+    let rescored = 0;
+    let failures = 0;
+    try {
+      for (const id of jobIds) {
+        const res = await csrfFetch(`/api/jobs/${id}/rescore`, { method: "POST" }).catch(() => null);
+        if (!res?.ok) { failures++; continue; }
+        rescored += ((await res.json().catch(() => ({}))) as { rescored?: number }).rescored ?? 0;
+      }
+      await qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+    } finally {
+      setRescoring(false);
+    }
+    if (failures === jobIds.length) {
+      toast.error(t("scoresRefreshFailed"));
+      return null;
+    }
+    return rescored;
+  }
+
   /** Run AI match for all applications that don't have a score yet */
   /** Scores every unscored application in view. Like Shortlist Top, each dead
    *  end names its reason — scoring also runs automatically on first load, so
@@ -661,17 +701,26 @@ export function ApplicationsWorkspace({
     // zeroed breakdown: those were unreachable by every scoring path, so the
     // contradictory "85% / Skills 0%" could never be corrected from the UI.
     // The automatic first-load pass stays limited to never-scored rows.
-    const unscored = applications.filter(
+    let unscored = applications.filter(
       (app) => app.aiMatchScore == null
         || (explain && !isBreakdownMeasured(app.matchBreakdown, app.aiMatchScore))
         // Scored before the requirements checklist existed: an explicit run
         // fills it in, so Shortlist Top can tell whether they qualify.
         || (explain && !app.scoredAt),
     );
-    if (!unscored.length) {
-      if (explain) toast.info(t("scoreAllAlreadyScored"));
-      return;
+    if (explain) {
+      // An explicit run also refreshes scores that exist: after the job's
+      // criteria or weights change they describe a job that no longer exists,
+      // and the automatic re-score may not have run (client report 2026-09-30).
+      const refreshed = await rescoreJobsInView();
+      if (refreshed !== null) {
+        toast.success(t("scoresRefreshed", { count: refreshed }));
+        // The re-score rewrote every score, breakdown and checklist in these
+        // jobs; only a never-scored row still lacks the AI strengths/gaps.
+        unscored = applications.filter((app) => app.aiMatchScore == null);
+      }
     }
+    if (!unscored.length) return;
     const items = unscored
       .map((app) => {
         const jobId = app.jobId._id;
@@ -1853,11 +1902,14 @@ export function ApplicationsWorkspace({
               size="sm"
               variant="outline"
               className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs sm:min-h-0 sm:flex-none sm:px-3"
-              disabled={bulkAiMatch.isPending}
+              disabled={bulkAiMatch.isPending || rescoring}
+              aria-busy={rescoring || undefined}
               onClick={() => { void handleBulkAiMatch(true); }}
             >
-              <Sparkles className={`me-2 hidden h-3.5 w-3.5 sm:block ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
-              {bulkMatchProgress
+              <Sparkles className={`me-2 hidden h-3.5 w-3.5 sm:block ${bulkAiMatch.isPending || rescoring ? "animate-pulse text-primary" : ""}`} />
+              {rescoring
+                ? t("rescoringScores")
+                : bulkMatchProgress
                 ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
                 : t("scoreAll")}
             </Button>
@@ -2556,20 +2608,18 @@ function ApplicationDetailsPanel({
   // score. Drawing those as "Skills 0%" contradicts the badge above them, so
   // such a row is treated as never measured and offered a re-score.
   const breakdownMeasured = isBreakdownMeasured(app.matchBreakdown, app.aiMatchScore);
+  // Parts the candidate gave nothing for read "Not provided", and the CV has
+  // its own row (matchBreakdownRows.ts).
   const matchItems = app.matchBreakdown && breakdownMeasured
-    ? ([
-        { label: t("skills"), value: app.matchBreakdown.skills },
-        // Engine rows carry role fit and no location / salary (those are
-        // gates there, not parts); older rows the reverse. Absent ones drop out.
-        { label: t("roleFit"), value: app.matchBreakdown.role },
-        { label: t("experience"), value: app.matchBreakdown.experience },
-        // Present only when the job names a qualification / an industry.
-        { label: t("education"), value: app.matchBreakdown.education },
-        { label: t("industry"), value: app.matchBreakdown.industry },
-        { label: t("location"), value: app.matchBreakdown.location },
-        { label: t("salary"), value: app.matchBreakdown.salary },
-      ].filter((item) => typeof item.value === "number") as Array<{ label: string; value: number }>)
+    ? matchBreakdownRows(app.matchBreakdown, app.qualifications)
     : [];
+  const breakdownStateLabel: Record<BreakdownRowState, string> = {
+    not_provided: t("breakdownNotProvided"),
+    read: t("breakdownCvRead"),
+    reading: t("breakdownCvReading"),
+    unreadable: t("breakdownCvUnreadable"),
+  };
+  const fitLabel: Record<FitWord, string> = { strong: t("fitStrong"), fair: t("fitFair"), weak: t("fitWeak") };
   // The job's stages as move targets ("stage:<id>"), then Reject. A stage
   // names its status, so a move between two stages of one status is allowed.
   const stageOptions = [
@@ -2775,6 +2825,11 @@ function ApplicationDetailsPanel({
               <div className="text-end">
                 <p className="text-2xl font-bold leading-none tracking-tight text-foreground">{app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}</p>
                 <p className={`mt-1 text-xs font-semibold ${matchLabelColor}`}>{matchLabel}</p>
+                {/* The score says how good a fit; this says whether they qualify —
+                    shown beside it so a good score can't hide a failed requirement. */}
+                {app.requirementsStatus === "not_met" ? (
+                  <RequirementsBadge status={app.requirementsStatus} className="mt-1.5" />
+                ) : null}
               </div>
               <Button ref={closeButtonRef} variant="ghost" size="dense" className="w-8 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500" onClick={onClose} aria-label={t("closeCandidateDetails")}>
                 <X className="h-4 w-4" />
@@ -2997,15 +3052,26 @@ function ApplicationDetailsPanel({
                 matchItems.length ? (
                   <div className="mt-3 space-y-2">
                     {matchItems.map((item) => (
-                      <div key={item.label} className="flex items-center gap-2">
-                        <span className="w-20 text-[11px] text-muted-foreground">{item.label}</span>
+                      <div key={item.key} className="flex items-center gap-2">
+                        <span className="w-20 text-[11px] text-muted-foreground">{item.key === "cv" ? t("breakdownCv") : t(item.key)}</span>
                         <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/50">
-                          <div
-                            className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-rose-400"}`}
-                            style={{ width: `${item.value}%` }}
-                          />
+                          {item.value !== null ? (
+                            <div
+                              className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-rose-400"}`}
+                              style={{ width: `${item.value}%` }}
+                            />
+                          ) : null}
                         </div>
-                        <span className="w-9 text-right text-[11px] font-medium text-foreground/80">{item.value}%</span>
+                        {item.value !== null ? (
+                          <span className="w-24 text-end text-[11px] text-foreground/80">
+                            <span className="text-muted-foreground">{fitLabel[item.fit]}</span>{" "}
+                            <span className="font-medium">{item.value}%</span>
+                          </span>
+                        ) : (
+                          <span className={`w-24 text-end text-[11px] font-medium ${item.state === "read" ? "text-emerald-700" : "text-amber-700"}`}>
+                            {breakdownStateLabel[item.state]}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -3116,6 +3182,13 @@ function ApplicationDetailsPanel({
               </div>
             ) : null}
 
+            {/* Portfolio from the apply form + profile links (renders nothing when none). */}
+            <CandidateLinks
+              documents={app.documents}
+              socialLinks={app.jobSeekerId?.socialLinks}
+              className="workspace-glass-panel card-pad rounded-2xl"
+            />
+
             {/* Row 5: Quick Actions (full width) */}
             <div className="workspace-glass-panel card-pad rounded-2xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
@@ -3167,6 +3240,11 @@ function ApplicationDetailsPanel({
                   <p className="mt-3 text-sm text-muted-foreground">{t("noResumeUploaded")}</p>
                 )}
               </div>
+              <CandidateLinks
+                documents={app.documents}
+                socialLinks={app.jobSeekerId?.socialLinks}
+                className="workspace-glass-panel rounded-3xl panel-body"
+              />
             </div>
           ) : null}
 

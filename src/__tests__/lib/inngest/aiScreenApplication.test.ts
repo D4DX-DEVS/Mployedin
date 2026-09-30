@@ -52,11 +52,17 @@ jest.mock("@/lib/matching/seekerMatches", () => ({
   scoreOnePair: (...args: unknown[]) => mockScoreOnePair(...(args as [])),
   storedBreakdown: jest.requireActual("@/lib/matching/seekerMatches").storedBreakdown,
 }));
+const mockNotifyStatusChange = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/notifications/trigger", () => ({
+  notifyStatusChange: (...a: unknown[]) => mockNotifyStatusChange(...a),
+}));
 jest.mock("@/lib/effectiveSeekerProfile", () => ({
   effectiveSeekerProfile: async (_userId: string, doc: unknown) => doc,
 }));
 // Which CV the application is scored on (lib/cv/cvDocuments.ts has its own tests).
-const mockApplicantCvFor = jest.fn(async (..._a: unknown[]): Promise<unknown> => ({ state: "none" }));
+// A read CV by default: with none, typed skills count for less (applicantAts
+// tests), and these tests are about the reject rule, not that discount.
+const mockApplicantCvFor = jest.fn(async (..._a: unknown[]): Promise<unknown> => ({ state: "read", text: "", parsed: null }));
 jest.mock("@/lib/cv/cvDocuments", () => ({ applicantCvFor: (...a: unknown[]) => mockApplicantCvFor(...a) }));
 
 let application: Record<string, unknown> & { status: string; statusHistory: unknown[]; save: jest.Mock };
@@ -106,6 +112,7 @@ async function runWorker(eventData: Record<string, unknown> = {}) {
 
 describe("aiScreenApplication worker", () => {
   beforeEach(() => {
+    mockNotifyStatusChange.mockClear();
     score = 30;
     jobWorkflow = undefined;
     employerWorkflow = undefined;
@@ -199,8 +206,9 @@ describe("aiScreenApplication worker", () => {
     expect(application.seekerMatchScore).toBe(72);
     expect(application.scoredVia).toBe("engine");
     // overall is the final score — so the badge and the breakdown header always
-    // agree. Experience is the employer's reading of 3 years against 0–30.
-    expect(application.matchBreakdown).toEqual({ skills: 72, role: 20, experience: 100, overall: 72 });
+    // agree. Experience is the employer's reading of 3 years against 0–30;
+    // role is "not provided" (25): this seeker neither wants nor has held a role.
+    expect(application.matchBreakdown).toEqual({ skills: 72, role: 25, experience: 100, overall: 72 });
     expect(application.weightsApplied).toBe(true);
   });
 
@@ -213,6 +221,80 @@ describe("aiScreenApplication worker", () => {
     for (const field of ["preferredRoles", "preferredJobType", "workStatus", "cv.rawText"]) {
       expect(fields).toContain(field);
     }
+  });
+
+  it("reads the employer's industry, as the re-score does, so arrival and re-score agree", async () => {
+    // It was left out here and used by the re-score, so one candidate's score
+    // could change after a job edit for no visible reason (client report 2026-09-30).
+    const { Employer } = (await import("@/models/Employer")) as unknown as { Employer: { findById: jest.Mock } };
+    await runWorker();
+    const select = Employer.findById.mock.results.at(-1)!.value.select as jest.Mock;
+    expect(String(select.mock.calls[0][0])).toContain("industry");
+  });
+
+  describe("auto-shortlist (client report 2026-09-30)", () => {
+    const shortlistRule = (extra: Record<string, unknown> = {}) => ({
+      customizedAt: new Date(),
+      settings: { autoShortlistEnabled: true, autoShortlistAbove: 70, ...extra },
+    });
+
+    it("shortlists a new applicant at or above the line, records it and tells the candidate", async () => {
+      score = 72;
+      seekerDoc = { ...seekerDoc, userId: "seeker-user" };
+      jobWorkflow = shortlistRule();
+      const result = await runWorker();
+      expect(application.status).toBe("shortlisted");
+      expect(application.statusHistory).toEqual([
+        expect.objectContaining({ status: "shortlisted", note: "Auto-shortlisted by hiring rules" }),
+      ]);
+      expect(result).toMatchObject({ autoShortlisted: true, autoRejected: false });
+      expect(mockNotifyStatusChange).toHaveBeenCalledWith("seeker-user", "Accountant", "shortlisted", APP_ID);
+    });
+
+    it("stays quiet towards the candidate when candidate notifications are off", async () => {
+      score = 90;
+      seekerDoc = { ...seekerDoc, userId: "seeker-user" };
+      jobWorkflow = shortlistRule({ notifyOnStageChange: false });
+      await runWorker();
+      expect(application.status).toBe("shortlisted");
+      expect(mockNotifyStatusChange).not.toHaveBeenCalled();
+    });
+
+    it("leaves a score below the line, one the employer already moved, and the rule switched off", async () => {
+      score = 69;
+      jobWorkflow = shortlistRule();
+      await runWorker();
+      expect(application.status).toBe("applied");
+
+      // Each run below is a fresh arrival: the worker skips anything already scored.
+      score = 95;
+      application.scoredAt = undefined;
+      application.status = "interview_scheduled";
+      await runWorker();
+      expect(application.status).toBe("interview_scheduled");
+
+      application.scoredAt = undefined;
+      application.status = "applied";
+      jobWorkflow = shortlistRule({ autoShortlistEnabled: false });
+      await runWorker();
+      expect(application.status).toBe("applied");
+    });
+
+    it("never shortlists a candidate who fails a requirement", async () => {
+      score = 95;
+      jobRequirements = { skills: ["Tally"], experienceMin: 10 };
+      jobWorkflow = shortlistRule();
+      await runWorker();
+      expect(application.requirementsStatus).toBe("not_met");
+      expect(application.status).toBe("applied");
+    });
+
+    it("lets auto-reject win when both rules apply", async () => {
+      score = 50;
+      jobWorkflow = shortlistRule({ autoShortlistAbove: 40, autoRejectEnabled: true, autoRejectBelow: 60 });
+      await runWorker();
+      expect(application.status).toBe("rejected");
+    });
   });
 
   it("skips an application that is already scored", async () => {

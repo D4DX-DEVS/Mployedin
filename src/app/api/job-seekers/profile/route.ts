@@ -10,6 +10,7 @@ import logger from "@/lib/logger";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import { recomputeCompleteness } from "@/lib/jobSeeker/persistCompleteness";
+import { resolveEmployerRegion, type EmployerRegion } from "@/lib/agents/territoryCoverage";
 
 export const runtime = "nodejs";
 
@@ -78,7 +79,20 @@ const profileUpdateSchema = z.object({
   preferredCountries: z.array(z.string().max(10)).max(15).optional(),
   sectionVisibility: z.record(z.string(), z.boolean()).optional(),
   profileVisibility: z.enum(["visible", "hidden"]).optional(),
+  // The seeker's area: a catalogue city picked from the list. null clears it.
+  cityId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(),
 }).strict();
+
+interface SeekerArea { cityId: string; cityName: string; countryCode: string }
+
+/** The area a seeker picked, named for the picker: city, and its country. */
+function toArea(region: EmployerRegion | null): SeekerArea | null {
+  return region ? { cityId: String(region.cityId), cityName: region.cityName, countryCode: region.countryCode } : null;
+}
+
+async function describeArea(cityId: unknown): Promise<SeekerArea | null> {
+  return cityId ? toArea(await resolveEmployerRegion({ cityId: String(cityId) })) : null;
+}
 
 // ── GET — return own profile ──────────────────────────────────────────────────
 async function GET(_req: NextRequest, ctx: { userId: string; role: string }) {
@@ -93,8 +107,11 @@ async function GET(_req: NextRequest, ctx: { userId: string; role: string }) {
   // Phone is stored on User, not JobSeeker. Onboarding pre-fills from this
   // response, so without it a seeker resuming the wizard was asked to retype a
   // number we already had.
-  const account = await User.findById(ctx.userId).select("phone").lean<{ phone?: string } | null>();
-  return NextResponse.json({ profile: { ...profile, phone: account?.phone ?? null } });
+  const [account, area] = await Promise.all([
+    User.findById(ctx.userId).select("phone").lean<{ phone?: string } | null>(),
+    describeArea((profile as { regionCityId?: unknown }).regionCityId),
+  ]);
+  return NextResponse.json({ profile: { ...profile, phone: account?.phone ?? null, area } });
 }
 
 // ── PATCH — update own profile ────────────────────────────────────────────────
@@ -108,11 +125,18 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   const {
     name, phone, onboardingComplete,
     education: eduInput, experience: expInput,
-    department, roleCategory, jobRole,
+    department, roleCategory, jobRole, cityId,
     ...seekerData
   } = parsedData;
 
   await connectDB();
+
+  // The area must be a real catalogue city — checked before anything is
+  // written, so a bad pick saves nothing.
+  const area = cityId ? await resolveEmployerRegion({ cityId }) : null;
+  if (cityId && !area) {
+    return NextResponse.json({ error: "Pick your city from the list." }, { status: 400 });
+  }
 
   // Consent history for the GDPR register: remember the previous marketing
   // consent so only real changes are logged (onboarding and profile edits
@@ -140,6 +164,20 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
 
   if (onboardingComplete === true) {
     jsUpdate.isOnboarded = true;
+  }
+
+  // Area: the picked city and its state (what agents' territories match on).
+  // The free-text location line follows the pick unless this save sets it.
+  if (area) {
+    jsUpdate.regionCityId = area.cityId;
+    jsUpdate.regionStateId = area.stateId;
+    if (seekerData.currentLocation === undefined) {
+      const country = area.countryCode ? new Intl.DisplayNames(["en"], { type: "region" }).of(area.countryCode) : "";
+      jsUpdate.currentLocation = country ? `${area.cityName}, ${country}` : area.cityName;
+    }
+  } else if (cityId === null) {
+    jsUpdate.regionCityId = null;
+    jsUpdate.regionStateId = null;
   }
 
   // Career profile lives in a subdocument. Dot-paths so that setting one answer
@@ -219,7 +257,11 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     req,
   });
 
-  return NextResponse.json({ success: true, isOnboarded: updated.isOnboarded });
+  return NextResponse.json({
+    success: true,
+    isOnboarded: updated.isOnboarded,
+    ...(cityId !== undefined ? { area: toArea(area) } : {}),
+  });
 }
 
 const GET_handler = withAuth(GET);

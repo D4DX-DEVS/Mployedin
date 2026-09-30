@@ -83,6 +83,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     const jobTitle = (offer.jobId as unknown as { title?: string })?.title ?? "a position";
     const expiry = new Date(offer.expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     await notify({
+      actorId: ctx.userId,
       userId: String(jobSeeker.userId),
       type: "offer_update",
       title: "Reminder: Pending Job Offer",

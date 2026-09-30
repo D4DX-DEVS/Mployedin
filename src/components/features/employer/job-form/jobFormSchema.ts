@@ -204,7 +204,6 @@ export const jobFormSchema = z.object({
     }),
 
   // Advanced settings
-  applicationMode: z.enum(["auto", "manual"]).default("manual"),
   // From a matching-weight template; PATCHed onto the job after it is created.
   matchingWeights: z.record(z.string(), z.number().min(0).max(100)).optional(),
   // A workflow template picked by hand. Unset = matched from the job's details; null = back to automatic.
@@ -249,7 +248,7 @@ export const JOB_FORM_STEPS = [
   { id: 1, label: "Basic Info", fields: ["title", "category", "location"] },
   { id: 2, label: "Job Details", fields: ["description"] },
   { id: 3, label: "Requirements", fields: ["requirements"] },
-  { id: 4, label: "Salary & Settings", fields: ["salary", "applicationMode", "vacancies"] },
+  { id: 4, label: "Salary & Settings", fields: ["salary", "vacancies"] },
   { id: 5, label: "Screening Questions", fields: ["screeningQuestions"] },
 ] as const;
 

@@ -70,7 +70,7 @@ describe("GET/PATCH /api/employers/workflow", () => {
     const res = await GET(req("http://localhost:3000/api/employers/workflow"), { params: Promise.resolve({}) });
     const data = await res.json();
     expect(res.status).toBe(200);
-    expect(data.settings).toEqual({ autoRejectEnabled: false, autoRejectBelow: 40, notifyOnStageChange: true, shortlistTarget: 50 });
+    expect(data.settings).toEqual({ autoRejectEnabled: false, autoRejectBelow: 40, notifyOnStageChange: true, shortlistTarget: 50, autoShortlistEnabled: false, autoShortlistAbove: 80 });
     expect(data.stages).toHaveLength(2);
   });
 
@@ -87,6 +87,18 @@ describe("GET/PATCH /api/employers/workflow", () => {
     expect(update.$set["workflow.stages"]).toBeUndefined();
     expect(update.$set.workflow).toBeUndefined();
   });
+
+  it("saves the auto-shortlist rule (client report 2026-09-30)", async () => {
+    employerDoc = { _id: EMPLOYER_ID, workflow: { settings: { notifyOnStageChange: true } } };
+    const { PATCH } = await import("@/app/api/employers/workflow/route");
+    const res = await PATCH(
+      req("http://localhost:3000/api/employers/workflow", "PATCH", { settings: { autoShortlistEnabled: true, autoShortlistAbove: 85 } }),
+      { params: Promise.resolve({}) },
+    );
+    expect(res.status).toBe(200);
+    const update = findOneAndUpdate.mock.calls[0][1] as { $set: Record<string, unknown> };
+    expect(update.$set["workflow.settings"]).toEqual({ notifyOnStageChange: true, autoShortlistEnabled: true, autoShortlistAbove: 85 });
+  });
 });
 
 describe("GET/PATCH /api/jobs/[id]/workflow", () => {
@@ -102,7 +114,7 @@ describe("GET/PATCH /api/jobs/[id]/workflow", () => {
     const res = await GET(req(`http://localhost:3000/api/jobs/${JOB_ID}/workflow`), { params: Promise.resolve({ id: JOB_ID }) });
     const data = await res.json();
     expect(data.source).toBe("employer");
-    expect(data.settings).toEqual({ autoRejectEnabled: true, autoRejectBelow: 60, notifyOnStageChange: false, shortlistTarget: 50 });
+    expect(data.settings).toEqual({ autoRejectEnabled: true, autoRejectBelow: 60, notifyOnStageChange: false, shortlistTarget: 50, autoShortlistEnabled: false, autoShortlistAbove: 80 });
   });
 
   it("applies a saved per-job override field by field", async () => {
@@ -111,7 +123,7 @@ describe("GET/PATCH /api/jobs/[id]/workflow", () => {
     const res = await GET(req(`http://localhost:3000/api/jobs/${JOB_ID}/workflow`), { params: Promise.resolve({ id: JOB_ID }) });
     const data = await res.json();
     expect(data.source).toBe("job");
-    expect(data.settings).toEqual({ autoRejectEnabled: false, autoRejectBelow: 60, notifyOnStageChange: false, shortlistTarget: 20 });
+    expect(data.settings).toEqual({ autoRejectEnabled: false, autoRejectBelow: 60, notifyOnStageChange: false, shortlistTarget: 20, autoShortlistEnabled: false, autoShortlistAbove: 80 });
   });
 
   it("a settings-only save stamps customizedAt, merges settings and keeps stored stages", async () => {

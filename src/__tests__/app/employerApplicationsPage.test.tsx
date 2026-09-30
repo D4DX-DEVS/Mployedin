@@ -85,6 +85,7 @@ jest.mock("@/hooks/useApplications", () => ({
   useComputeAiMatch: () => ({ mutateAsync: computeAiMatchMutateAsyncMock, isPending: false, variables: undefined }),
   useBulkAiMatch: () => ({ mutateAsync: bulkAiMatchMutateAsyncMock, isPending: false }),
   fetchShortlistPool: (...args: unknown[]) => fetchShortlistPoolMock(...args),
+  applicationKeys: { all: ["applications"], lists: () => ["applications", "list"] },
 }));
 
 // The stage-move conflict path cancels a stranded interview; useMutation here
@@ -129,10 +130,11 @@ jest.mock("@/components/ui/searchable-select", () => ({
 }));
 
 const toastInfoMock = jest.fn();
+const toastSuccessMock = jest.fn();
 jest.mock("sonner", () => ({
   toast: {
     error: jest.fn(),
-    success: jest.fn(),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
     info: (...args: unknown[]) => toastInfoMock(...args),
   },
 }));
@@ -471,7 +473,17 @@ describe("EmployerApplicationsPage", () => {
   describe("Score All with nothing to score", () => {
     /** Scoring also runs automatically on first load, so the toolbar button is
         usually inert by the time anyone reads it — it must say why. */
-    it("stays clickable and says every applicant is already scored", async () => {
+    // Client report 2026-09-30: after the job's criteria changed, existing
+    // scores were stale and "Score all" only said "already scored". An
+    // explicit run now re-scores the job's applicants with the same scorer.
+    it("stays clickable and refreshes existing scores through the job re-score", async () => {
+      const fetchMock = jest.fn(async (input: RequestInfo | URL, _init?: RequestInit) => ({
+        ok: true,
+        status: 200,
+        json: async () => (String(input).includes("/rescore") ? { rescored: 2, total: 2, queuedRest: false } : {}),
+      }) as Response);
+      global.fetch = fetchMock as unknown as typeof fetch;
+      toastSuccessMock.mockClear();
       const user = userEvent.setup();
       render(<ApplicationsWorkspace jobId="job-1" embedded />);
 
@@ -480,8 +492,43 @@ describe("EmployerApplicationsPage", () => {
 
       await user.click(button);
 
-      await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
-      expect(toastInfoMock.mock.calls[0][0]).toMatch(/already has a match score/i);
+      await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
+      expect(toastSuccessMock.mock.calls[0][0]).toMatch(/2 scores updated/i);
+      const rescoreCall = fetchMock.mock.calls.find(([url]) => String(url).includes("/api/jobs/job-1/rescore"));
+      expect(rescoreCall?.[1]).toMatchObject({ method: "POST" });
+      expect(bulkAiMatchMutateAsyncMock).not.toHaveBeenCalled();
+    });
+
+    it("does not send already-re-scored rows to AI match (legacy rows without scoredAt)", async () => {
+      global.fetch = jest.fn(async (input: RequestInfo | URL, _init?: RequestInit) => ({
+        ok: true,
+        status: 200,
+        json: async () => (String(input).includes("/rescore") ? { rescored: 1, total: 1, queuedRest: false } : {}),
+      }) as Response) as unknown as typeof fetch;
+      useApplicationsMock.mockReturnValue({
+        data: {
+          applications: [
+            {
+              _id: "app-legacy",
+              jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+              jobSeekerId: { _id: "candidate-7", userId: { _id: "user-7", name: "Legacy Row" }, skills: [] },
+              status: "applied",
+              aiMatchScore: 75,
+              matchBreakdown: { skills: 70, experience: 90, overall: 75 },
+              appliedAt: "2026-04-08T00:00:00.000Z",
+            },
+          ],
+          pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+        isLoading: false,
+      });
+      toastSuccessMock.mockClear();
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      await user.click(screen.getByRole("button", { name: /score all/i }));
+
+      await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
       expect(bulkAiMatchMutateAsyncMock).not.toHaveBeenCalled();
     });
 

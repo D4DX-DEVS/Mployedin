@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import { userInitials } from "@/components/shared/UserAvatar";
+import { preferencesFromProfile, type PreferencesData } from "@/lib/jobSeeker/preferences";
 
 const CURRENCIES = ["USD", "INR", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
 
@@ -107,15 +108,6 @@ function getSalaryPresets(currency: string) {
   return (
     SALARY_PRESETS_BY_CURRENCY[currency] ?? SALARY_PRESETS_BY_CURRENCY["USD"]
   );
-}
-
-interface PreferencesData {
-  preferredRoles: string[];
-  preferredCountries: string[];
-  preferredSalary: { min: number; max: number; currency: string };
-  preferredJobType: string;
-  availabilityStatus: string;
-  noticePeriod: number;
 }
 
 interface MatchTip {
@@ -369,23 +361,16 @@ export default function JobPreferencesPage() {
     try {
       const res = await fetch("/api/job-seeker/profile");
       if (res.ok) {
-        const data = await res.json();
-        const js = data;
-        const saved: PreferencesData = {
-          preferredRoles: js.preferredRoles ?? [],
-          preferredCountries: js.preferredCountries ?? [],
-          preferredSalary: js.preferredSalary ?? { min: 0, max: 0, currency: "USD" },
-          preferredJobType: js.preferredJobType ?? "any",
-          availabilityStatus: js.availabilityStatus ?? "immediately",
-          noticePeriod: js.noticePeriod ?? 0,
-        };
+        // Normalised so the form always saves: stored profiles can hold a
+        // salary with no min/max and over-long imported roles.
+        const saved = preferencesFromProfile(await res.json());
         setSavedPrefs(saved);
         // Restore any unsaved draft from sessionStorage
         const raw = sessionStorage.getItem(DRAFT_KEY);
         if (raw) {
           try {
-            const draft = JSON.parse(raw) as PreferencesData;
-            setPrefs(draft);
+            // A draft saved before this fix can carry the same broken shape.
+            setPrefs(preferencesFromProfile(JSON.parse(raw)));
           } catch {
             setPrefs(saved);
           }

@@ -266,7 +266,9 @@ export function JobSeekerHomePage({
     };
   }, [initialData, t]);
 
-  const name = userName ?? t("defaults.jobSeekerName");
+  // First name only, as the super-agent dashboard greets: a full name pushed
+  // the hero heading onto a second line on phones.
+  const name = userName?.trim().split(/\s+/)[0] || t("defaults.jobSeekerName");
 
   // Completeness uses the same formula as the profile page. It is kept as a
   // list rather than a sum so the prompt can say how many details are missing
@@ -395,7 +397,7 @@ export function JobSeekerHomePage({
       <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="heading-page text-foreground">
+            <h1 className="heading-page text-foreground text-balance wrap-break-word">
               {dayPart ? t(`greeting.${dayPart}`, { name }) : t("greeting.hello", { name })}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">{t("greeting.subtitle")}</p>

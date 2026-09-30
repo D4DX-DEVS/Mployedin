@@ -405,7 +405,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       })
       .populate({
         path: "jobSeekerId",
-        select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl",
+        // socialLinks: the employer's review panel shows the candidate's portfolio/profile links.
+        select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl socialLinks",
         populate: { path: "userId", select: "name email avatar" },
       })
       .lean(),

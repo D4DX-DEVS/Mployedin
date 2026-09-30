@@ -370,6 +370,7 @@
     "citySearching": "جارٍ البحث…"
   },
   "common": {
+    "passwordEmailsAlwaysArrive": "تصل رسائل كلمة المرور دائمًا حتى لو أوقفت هذا الخيار.",
     "stepProgress": "الخطوة {current} من {total}",
     "stepAccount": "الحساب",
     "stepAssignment": "التعيين",
@@ -504,7 +505,28 @@
     "sortDateAdded": "تاريخ الإضافة",
     "requiredFieldsNote": "الحقول المميزة بعلامة * مطلوبة.",
     "selectEllipsis": "اختر…",
-    "searching": "جارٍ البحث…"
+    "searching": "جارٍ البحث…",
+    "seekerArea": {
+      "title": "منطقتك",
+      "country": "الدولة",
+      "countryPlaceholder": "اختر الدولة",
+      "countrySearch": "ابحث عن دولة",
+      "countryNoMatch": "لا توجد دولة مطابقة",
+      "city": "المدينة",
+      "cityPlaceholder": "اختر مدينتك",
+      "citySearch": "ابحث عن مدينة",
+      "cityTypeToSearch": "اكتب حرفين على الأقل",
+      "cityNoMatch": "لا توجد مدينة مطابقة. جرّب تهجئة أخرى.",
+      "citySearching": "جارٍ البحث…",
+      "hint": "يمكن للوكلاء الذين يغطون منطقتك رؤية ملفك ومساعدتك في إيجاد عمل. يبقى الملف المخفي مخفيًا.",
+      "notSet": "أضف منطقتك ليتمكن الوكلاء القريبون منك من مساعدتك في إيجاد عمل.",
+      "add": "أضف المنطقة",
+      "change": "تغيير",
+      "dialogDescription": "اختر المدينة التي تعيش فيها.",
+      "saved": "تم حفظ المنطقة",
+      "saveError": "تعذّر حفظ منطقتك. حاول مرة أخرى.",
+      "pickCity": "اختر مدينتك من القائمة."
+    }
   },
   "table": {
     "search": "بحث...",
@@ -1113,7 +1135,9 @@
       "matchScore": "نسبة التطابق",
       "appliedDate": "تاريخ التقديم"
     },
-    "withdraw": "سحب الطلب"
+    "withdraw": "سحب الطلب",
+    "showSummary": "عرض ملخص {job}",
+    "hideSummary": "إخفاء ملخص {job}"
   },
   "jobSeekerCalendar": {
     "title": "تقويمي",
@@ -5142,7 +5166,20 @@
     "freeSlotsLabel": "الأوقات المتاحة لـ {name}",
     "roleFit": "ملاءمة الدور",
     "ivTimeZoneHint": "الأوقات حسب منطقتك الزمنية ({zone})",
-    "searchOrDescribe": "ابحث أو صف من تحتاجه"
+    "searchOrDescribe": "ابحث أو صف من تحتاجه",
+    "candidateLinksTitle": "ملف الأعمال والروابط",
+    "candidateLinkNewTab": "(يفتح في علامة تبويب جديدة)",
+    "scoresRefreshed": "{count, plural, =0 {النتائج محدَّثة} one {تم تحديث نتيجة واحدة} two {تم تحديث نتيجتين} few {تم تحديث # نتائج} many {تم تحديث # نتيجة} other {تم تحديث # نتيجة}}",
+    "scoresRefreshFailed": "تعذّر تحديث النتائج. حاول مرة أخرى.",
+    "rescoringScores": "جارٍ تحديث النتائج…",
+    "breakdownCv": "السيرة الذاتية",
+    "breakdownNotProvided": "غير متوفر",
+    "breakdownCvRead": "تمت قراءتها",
+    "breakdownCvReading": "قيد القراءة",
+    "breakdownCvUnreadable": "تعذّرت قراءتها",
+    "fitStrong": "قوي",
+    "fitFair": "متوسط",
+    "fitWeak": "ضعيف"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -5501,8 +5538,8 @@
     "catOffersDesc": "قبول المرشح للعرض أو رفضه أو التفاوض عليه",
     "catJobs": "تحديثات الوظائف",
     "catJobsDesc": "انتهاء صلاحية الوظائف وحدود المتقدمين",
-    "catSystem": "النظام والأمان",
-    "catSystemDesc": "تنبيهات تسجيل الدخول وتغييرات الفريق وإشعارات المنصة",
+    "catSystem": "إشعارات الحساب والمنصة",
+    "catSystemDesc": "إشعارات الفريق والفواتير والمنصة",
     "freqInstant": "فوري",
     "freqInstantDesc": "عند حدوث الأحداث",
     "freqDaily": "يومي",
@@ -6545,8 +6582,8 @@
           "description": "منشورات وظائف جديدة وانتهاء صلاحيات وتغييرات الشواغر"
         },
         "system": {
-          "label": "النظام والأمان",
-          "description": "تنبيهات تسجيل الدخول وإشعارات المنصة وأحداث الأمان"
+          "label": "إشعارات الحساب والمنصة",
+          "description": "التسجيلات الجديدة والطلبات وإشعارات المنصة"
         }
       },
       "channels": {
@@ -6554,7 +6591,7 @@
         "email": "البريد الإلكتروني"
       },
       "pauseAll": "إيقاف كل الإشعارات",
-      "pauseAllDescription": "إيقاف كل إشعارات البريد وداخل التطبيق مؤقتاً",
+      "pauseAllDescription": "إيقاف رسائل الإشعارات عبر البريد. تبقى الإشعارات داخل التطبيق ورسائل كلمة المرور.",
       "save": "حفظ إعدادات الإشعارات"
     },
     "availability": {
@@ -7490,7 +7527,15 @@
     "saveError": "تعذّر حفظ قواعد التوظيف. يرجى المحاولة مرة أخرى.",
     "jobFollowsEmployer": "تتبع هذه الوظيفة قواعد الشركة العامة. احفظ هنا لمنحها قواعدها الخاصة.",
     "jobHasOwnRules": "لهذه الوظيفة قواعدها الخاصة، وهي تتجاوز قواعد الشركة العامة.",
-    "saveForJob": "حفظ القواعد لهذه الوظيفة"
+    "saveForJob": "حفظ القواعد لهذه الوظيفة",
+    "autoShortlist": "الإضافة التلقائية إلى القائمة المختصرة عند التقديم",
+    "autoShortlistDesc": "إيقاف: تختار القائمة المختصرة بنفسك. تشغيل: ينتقل المتقدمون الجدد الذين تبلغ نتيجتهم الحد أو تتجاوزه مباشرةً إلى القائمة المختصرة، ولا ينتقل أبدًا من لا يستوفي أحد المتطلبات.",
+    "autoShortlistThreshold": "أضف إلى القائمة المختصرة عند",
+    "autoShortlistThresholdValue": "{value}% نسبة التطابق أو أكثر",
+    "autoShortlistNote": "يُنقل المتقدمون الجدد فقط. يبقى المرشحون الموجودون في مسار التوظيف في مكانهم.",
+    "autoShortlistOverlap": "يُطبَّق الرفض التلقائي أولًا: تُرفض النتائج الأقل من {reject}% حتى لو تجاوزت هذا الحد.",
+    "rulesDescAll": "بضعة مفاتيح فقط، وكل شيء آخر يعمل تلقائيًا.",
+    "pageDescriptionRules": "مسار التوظيف والقواعد التي تديره."
   },
   "employerJobNew": {
     "title": "إنشاء إعلان وظيفي",
@@ -9004,8 +9049,8 @@
     "catProfileViewsDesc": "عندما يشاهد مسؤولو التوظيف ملفك (مجمع يومياً)",
     "catMarketing": "نصائح وتحديثات",
     "catMarketingDesc": "نصائح مهنية وتحديثات المنصة والميزات الجديدة",
-    "catSystem": "الأمان والنظام",
-    "catSystemDesc": "تغييرات كلمة المرور وتنبيهات تسجيل الدخول",
+    "catSystem": "إشعارات الحساب والمنصة",
+    "catSystemDesc": "تذكيرات الفواتير وطلبات التقييم وإشعارات المنصة",
     "channelInApp": "داخل التطبيق",
     "channelEmail": "بريد",
     "channelWhatsApp": "واتساب",
@@ -9127,7 +9172,9 @@
     "adminEmployerOutsideTerritoryBody": "سجّل {companyName} في {region}، ولا يغطيها أي وكيل رئيسي.",
     "adminEmployerNoRegionBody": "سجّل {companyName} دون مدينة معروفة، لذلك لا يغطيه أي وكيل رئيسي.",
     "adminEmployerAddressChangedTitle": "غيّر صاحب عمل عنوانه",
-    "adminEmployerAddressChangedBody": "غيّر {companyName} عنوانه من {from} إلى {to}. لم تُنقل منطقته."
+    "adminEmployerAddressChangedBody": "غيّر {companyName} عنوانه من {from} إلى {to}. لم تُنقل منطقته.",
+    "backgroundCheckRequestedTitle": "تم طلب التحقق من الخلفية",
+    "backgroundCheckRequestedBody": "طلبت {companyName} التحقق من الخلفية لوظيفة \"{jobTitle}\"."
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -10098,7 +10145,8 @@
     "remoteCountriesEmpty": "أضف دولة واحدة على الأقل يمكنك التوظيف منها.",
     "remoteScopeUnset": "غير محدد — حتى تختار، تُطابَق هذه الوظيفة مع المرشّحين في الدولة أعلاه فقط.",
     "placeholderRemoteCountry": "اكتب اسم دولة ثم اضغط Enter",
-    "removeCountry": "إزالة {country}"
+    "removeCountry": "إزالة {country}",
+    "advancedExpiryDesc": "تاريخ انتهاء الصلاحية"
   },
   "employerPanel": {
     "title": "مراجعة لجنة التوظيف",
@@ -12350,7 +12398,8 @@
     "toastAgentDeletedPermanently": "تم حذف الوكيل بشكل دائم",
     "toastFailedDeleteAgent": "تعذّر حذف هذا الوكيل نهائيًا. يرجى المحاولة مرة أخرى.",
     "toastFailedLoadAgents": "تعذّر تحميل الوكلاء. يُرجى المحاولة مرة أخرى.",
-    "superAgentNoTerritory": "لم يُحدَّد لـ {name} أي نطاق بعد، لذا لا توجد منطقة للتعيين. حدِّد منطقته أولاً من صفحة الوكلاء الرئيسيين، أو اختر «لا شيء»."
+    "superAgentNoTerritory": "لم يُحدَّد لـ {name} أي نطاق بعد، لذا لا توجد منطقة للتعيين. حدِّد منطقته أولاً من صفحة الوكلاء الرئيسيين، أو اختر «لا شيء».",
+    "regionPickWithinTerritory": "اختر منطقة هذا الوكيل من نطاق {name} ({count} موقع)."
   },
   "adminCommissions": {
     "financeWorkspace": "مساحة العمل المالية",
@@ -13543,7 +13592,14 @@
     "roleSuperAgent": "وكيل كبير",
     "roleAgent": "وكيل",
     "roleEmployer": "صاحب عمل",
-    "roleJobSeeker": "باحث عن عمل"
+    "roleJobSeeker": "باحث عن عمل",
+    "assignSuperAgentAndArea": "تعيين الوكيل الرئيسي والمنطقة",
+    "assignAgentsAndTerritory": "تعيين الوكلاء والنطاق",
+    "assignEmployerAgent": "تعيين وكيل",
+    "createAgentElsewhere": "يتم إعداد الوكلاء من صفحة الوكلاء، حيث تختار الوكيل الرئيسي والمنطقة.",
+    "createSuperAgentElsewhere": "يتم إعداد الوكلاء الرئيسيين من صفحة الوكلاء الرئيسيين، حيث تختار نطاقهم ووكلاءهم.",
+    "continueOnAgentsPage": "المتابعة في صفحة الوكلاء",
+    "continueOnSuperAgentsPage": "المتابعة في صفحة الوكلاء الرئيسيين"
   },
   "superAgentSettings": {
     "profilePhoto": "صورة الملف الشخصي",
@@ -13598,7 +13654,7 @@
     "notificationCategories": "فئات الإخطارات",
     "notificationCategoriesDesc": "قم بتبديل الفئات واختر قنوات التسليم",
     "pauseAllNotifications": "إيقاف جميع الإخطارات مؤقتاً",
-    "pauseAllNotificationsDesc": "توقف مؤقت لجميع إخطارات البريد الإلكتروني والتطبيق",
+    "pauseAllNotificationsDesc": "إيقاف رسائل الإشعارات عبر البريد. تبقى الإشعارات داخل التطبيق ورسائل كلمة المرور.",
     "saveNotificationSettings": "حفظ إعدادات الإخطارات",
     "timezoneDesc": "المنطقة الزمنية المحلية لجدولة وتسليم الملخص",
     "workingHours": "ساعات العمل",
@@ -13679,8 +13735,8 @@
     "categoryTeamDesc": "ملخصات أداء الوكلاء الأسبوعية والإنجازات",
     "categoryJobsLabel": "تحديثات الوظائف",
     "categoryJobsDesc": "إعلانات الوظائف الجديدة والانتهاءات والتغييرات السوقية",
-    "categorySystemLabel": "النظام والأمان",
-    "categorySystemDesc": "تنبيهات تسجيل الدخول والإشعارات والأحداث الأمنية",
+    "categorySystemLabel": "إشعارات الحساب والمنصة",
+    "categorySystemDesc": "التسجيلات الجديدة والطلبات وإشعارات المنصة",
     "freqInstantLabel": "فوري",
     "freqInstantDesc": "عند حدوث الأحداث",
     "freqDailyLabel": "يومي",
@@ -15114,7 +15170,16 @@
     "modalEditTitle": "تحرير طالب الوظيفة",
     "editJobSeeker": "تحرير {name}",
     "referredByYouChip": "أحلته أنت",
-    "filterReferredMine": "من إحالتي"
+    "filterReferredMine": "من إحالتي",
+    "viewLabel": "عرض",
+    "viewAll": "كل الباحثين عن عمل لدي",
+    "viewArea": "في منطقتي",
+    "inYourAreaChip": "في منطقتك",
+    "inYourAreaViewOnly": "يعيش في منطقتك. يمكنك عرض هذا الملف دون تعديله.",
+    "areaNoRegionTitle": "ليست لديك منطقة بعد",
+    "areaNoRegionDescription": "يحدد المسؤول المدن التي تغطيها. بعد ذلك يظهر هنا الباحثون عن عمل الذين يعيشون فيها.",
+    "areaEmptyTitle": "لا يوجد باحثون عن عمل في منطقتك بعد",
+    "areaEmptyDescription": "يظهر الباحثون عن عمل هنا بعد اختيارهم مدينة تغطيها. لا تظهر الملفات المخفية أبدًا."
   },
   "agentEmployers": {
     "heroWorkspace": "مساحة عمل الوكيل",
@@ -17922,7 +17987,8 @@
       "cvRead": "{hasFile, select, yes {احتُسبت النتيجة من {file} ومن الملف الشخصي} other {احتُسبت النتيجة من السيرة الذاتية ومن الملف الشخصي}}",
       "cvReading": "لا تزال قيد القراءة — ستُحدَّث النتيجة عند الانتهاء",
       "cvUnreadable": "{hasFile, select, yes {تعذّرت قراءة {file}} other {تعذّرت قراءة السيرة الذاتية}} — اطلب من المرشح نسخة PDF أو Word",
-      "cvNone": "لم تُرسل سيرة ذاتية — احتُسبت النتيجة من الملف الشخصي فقط"
+      "cvNone": "لم تُرسل سيرة ذاتية — احتُسبت النتيجة من الملف الشخصي فقط",
+      "experienceNotStated": "لا يُشترط حد أدنى · لم يذكر المرشح خبرته"
     },
     "industries": {
       "food_fmcg": "الأغذية والسلع الاستهلاكية",
@@ -17995,7 +18061,9 @@
       "reading": "قيد القراءة",
       "unreadable": "تعذّرت القراءة",
       "none": "لم تُرسل"
-    }
+    },
+    "requirementsNotMet": "المتطلبات غير مستوفاة",
+    "requirementsNotMetShort": "غير مستوفاة"
   },
   "assignedRegion": {
     "label": "المنطقة",
@@ -18314,5 +18382,42 @@
     "chicago": "شيكاغو",
     "tokyo": "طوكيو",
     "auckland": "أوكلاند"
+  },
+  "staffBackgroundChecks": {
+    "pageTitle": "التحقق من الخلفية",
+    "pageContext": "{count, plural, =0 {لا توجد عمليات تحقق} one {عملية تحقق واحدة} two {عمليتا تحقق} few {# عمليات تحقق} many {# عملية تحقق} other {# عملية تحقق}} لأصحاب العمل الذين تعمل معهم",
+    "readOnlyNote": "يُجري فريق صاحب العمل عمليات التحقق هذه، ويمكنك هنا متابعة حالة كل منها.",
+    "statusLabel": "الحالة",
+    "statusAll": "جميع الحالات",
+    "status": {
+      "pending": "لم يبدأ",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "cancelled": "ملغى"
+    },
+    "outcome": {
+      "clear": "سليم",
+      "flagged": "عليه ملاحظات",
+      "failed": "لم يجتز",
+      "unable_to_verify": "تعذّر التحقق",
+      "pending": "بانتظار النتيجة"
+    },
+    "type": {
+      "background": "الخلفية",
+      "reference": "المراجع",
+      "both": "الخلفية والمراجع"
+    },
+    "colCandidate": "المرشح",
+    "colEmployerJob": "صاحب العمل والوظيفة",
+    "colCheck": "التحقق",
+    "colStatus": "الحالة",
+    "colRequested": "تاريخ الطلب",
+    "references": "ردّ {responded} من أصل {total} من المراجع",
+    "emptyTitle": "لا توجد عمليات تحقق بعد",
+    "emptyDescription": "عندما يطلب صاحب عمل تعمل معه عملية تحقق، ستظهر هنا وستصلك إشعارًا بها.",
+    "emptyFilteredTitle": "لا توجد عمليات تحقق بهذه الحالة",
+    "clearFilter": "مسح عامل التصفية",
+    "loadErrorTitle": "التحقق من الخلفية",
+    "unknownCandidate": "مرشح"
   }
 }

@@ -99,7 +99,11 @@ export interface QualificationInput {
 const fmtYears = (years: number) => String(Math.round(years * 10) / 10);
 
 function experienceCheck(seeker: SeekerProfile, job: JobProfile): QualificationCheck | null {
-  if (!(job.minExp > 0)) return null;
+  if (!(job.minExp > 0)) {
+    // No minimum to meet, but the employer still sees that nothing was stated
+    // (the breakdown reads "Not provided"); soft, so it never blocks anyone.
+    return seeker.experienceKnown === false ? { key: "experience", status: "unknown", hard: false } : null;
+  }
   const base = { key: "experience" as const, hard: true, required: fmtYears(job.minExp) };
   if (seeker.experienceKnown === false) return { ...base, status: "unknown" };
   const years = seeker.experienceYears;

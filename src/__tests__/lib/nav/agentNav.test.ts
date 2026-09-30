@@ -85,6 +85,8 @@ describe("agent navigation", () => {
       "Interviews",
       "Offers",
       "Placements",
+      // Follows the employer workspace: checks the employer runs, read-only here.
+      "Background Checks",
     ]);
   });
 

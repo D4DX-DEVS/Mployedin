@@ -52,6 +52,9 @@ jest.mock("@/lib/auth/agentRestrictions", () => ({
     ownershipMatch: { employerId: { $in: bookEmployerIds } },
   })),
   getAgentEmployerIds: jest.fn(async () => [OWNED_AGENT_EMPLOYER]),
+  // An empty territory: no seekers come in through the area either.
+  getSuperAgentTerritory: jest.fn(async () => ({ assignedCityIds: [], assignedStateIds: [] })),
+  seekerRegionMatch: () => null,
 }));
 
 jest.mock("@/lib/search/relatedEntitySearch", () => ({

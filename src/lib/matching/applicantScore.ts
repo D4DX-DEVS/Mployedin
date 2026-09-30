@@ -81,9 +81,28 @@ function roleWords(title: string): Set<string> {
 function roleFit(seeker: SeekerProfile, job: JobProfile, engineRole: number): number {
   const target = roleWords(job.title ?? "");
   if (target.size === 0) return engineRole;
-  const didIt = (seeker.roleHistory ?? []).some((role) => [...roleWords(role.title)].some((w) => target.has(w)));
+  const history = seeker.roleHistory ?? [];
+  // No wanted roles and no past ones: the engine's neutral 50 would rank
+  // "told us nothing" alongside an honest partial fit.
+  if (history.length === 0 && (seeker.preferredRoles ?? []).length === 0) return NOT_PROVIDED_PART;
+  const didIt = history.some((role) => [...roleWords(role.title)].some((w) => target.has(w)));
   return didIt ? Math.max(engineRole, 90) : engineRole;
 }
+
+/**
+ * What a part the candidate gave us nothing for scores: unstated experience,
+ * no roles wanted or held, no education listed. It used to be a neutral 50, so
+ * a blank profile with typed skills ranked 75% "Very good" (client report
+ * 2026-09-30). Missing information now costs, without reading as a failure.
+ */
+export const NOT_PROVIDED_PART = 25;
+
+/**
+ * Credit for required skills the candidate only typed: no CV, and no work
+ * history to have used them in. Applied only when the caller looked and found
+ * no CV — an unreadable or still-processing file is not the candidate's gap.
+ */
+const SELF_REPORTED_SKILLS = 0.75;
 
 /** Share of "role / industry experience" that is industry, when the job names one. */
 const INDUSTRY_SHARE = 0.4;
@@ -95,7 +114,7 @@ const INDUSTRY_SHARE = 0.4;
  * the engine's curve halved a candidate 2.7 years over it.
  */
 export function employerExperienceFit(years: number, known: boolean, minExp: number, maxExp: number): number {
-  if (!known) return 50;
+  if (!known) return NOT_PROVIDED_PART;
   if (years >= minExp && years <= maxExp) return 100;
   if (years < minExp) {
     const short = minExp - years;
@@ -109,7 +128,7 @@ const EDUCATION_PART: Record<QualificationCheck["status"], number> = {
   met: 100,
   partial: 50,
   not_met: 0,
-  unknown: 50,
+  unknown: NOT_PROVIDED_PART,
 };
 
 /**
@@ -164,8 +183,10 @@ export function buildApplicantMatch(input: ApplicantMatchInput): ApplicantMatch 
   const education = checks.find((check) => check.key === "education");
   const role = roleFit(seeker, job, relevance.role);
   const industry = input.industry ? input.industry.score : null;
+  const skills = relevance.requiredCoverage ?? relevance.skills;
+  const selfReported = input.cv?.state === "none" && (seeker.roleHistory ?? []).length === 0;
   const parts = {
-    skills: relevance.requiredCoverage ?? relevance.skills,
+    skills: selfReported ? Math.round(skills * SELF_REPORTED_SKILLS) : skills,
     preferred: mean([relevance.preferredCoverage, preferredAnswersPart(input)]),
     experience: employerExperienceFit(seeker.experienceYears, seeker.experienceKnown !== false, job.minExp, job.maxExp),
     role: industry === null ? role : Math.round((1 - INDUSTRY_SHARE) * role + INDUSTRY_SHARE * industry),

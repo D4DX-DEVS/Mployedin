@@ -30,7 +30,7 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
 
   const seeker = await JobSeeker.findById(jobSeekerId)
     .populate("userId", "name email avatar")
-    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod workStatus profileVisibility isAgentReferred")
+    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod workStatus profileVisibility isAgentReferred socialLinks")
     .lean();
 
   if (!seeker) {
@@ -53,6 +53,8 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
     const user = seeker.userId as { email?: string } | null;
     if (user) delete user.email;
     delete (seeker as { preferredSalary?: unknown }).preferredSalary;
+    // Profile links are contact routes too — only for a candidate who applied or was pooled.
+    delete (seeker as { socialLinks?: unknown }).socialLinks;
   }
 
   const [applications, interviews] = await Promise.all([
@@ -106,6 +108,11 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
       appliedAt: app.appliedAt,
       rejectionReason: app.rejectionReason,
       source: app.source,
+      // The portfolio link typed on the apply form. Only this type: other
+      // documents are stored files and go through the download route.
+      portfolioLinks: (app.documents ?? [])
+        .filter((doc: { type?: string }) => doc.type === "portfolio")
+        .map((doc: { name?: string; url?: string; type?: string }) => ({ name: doc.name ?? "Portfolio", url: doc.url ?? "", type: "portfolio" })),
     })),
     interviews: interviews.map((iv) => ({
       _id: String(iv._id),

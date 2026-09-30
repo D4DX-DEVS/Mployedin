@@ -18,6 +18,7 @@ import { TerritoryOverlapNotice } from "@/components/shared/TerritoryOverlapNoti
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useOpenFromUrl } from "@/hooks/useOpenFromUrl";
 import { usePagination } from "@/hooks/usePagination";
 import { Plus, Pencil, Trash2, MapPin, Globe, Ban, CheckCircle2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -100,9 +101,17 @@ export default function AdminAgentsPage() {
 
   // Super agent options for dropdown
   const [superAgents, setSuperAgents] = useState<SuperAgentOption[]>([]);
+  const [superAgentsLoaded, setSuperAgentsLoaded] = useState(false);
 
   // Create modal
   const [showAdd, setShowAdd] = useState(false);
+  // User Management's "Create user" sends new agents here with ?add=1.
+  const [addParam, setAddParam] = useUrlFilter("add", "");
+  useEffect(() => {
+    if (addParam !== "1") return;
+    setShowAdd(true);
+    setAddParam("");
+  }, [addParam, setAddParam]);
   const [addForm, setAddForm] = useState({ name: "", email: "", password: "", superAgentId: "", commissionRate: "0" });
   const [addCityIds, setAddCityIds] = useState<string[]>([]);
   const [addStateIds, setAddStateIds] = useState<string[]>([]);
@@ -159,7 +168,8 @@ export default function AdminAgentsPage() {
         }));
         setSuperAgents(items);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setSuperAgentsLoaded(true));
   }, []);
 
   const fetchAgents = useCallback(async () => {
@@ -217,18 +227,6 @@ export default function AdminAgentsPage() {
     } catch (error) {
       toast.error(tr("toastFailedActivateAgent"));
     }
-  };
-
-  const applySARegion = (
-    saId: string,
-    setCities: (ids: string[]) => void,
-    setStates: (ids: string[]) => void,
-  ) => {
-    if (!saId) return;
-    const sa = superAgents.find((s) => s.saProfileId === saId || s._id === saId);
-    if (!sa) return;
-    setCities(sa.region.cityIds.map((c) => c._id));
-    setStates(sa.region.stateIds.map((s) => s._id));
   };
 
   /* Once a super agent is chosen, the region picker lists only that super
@@ -296,19 +294,17 @@ export default function AdminAgentsPage() {
       commissionRate: String(agent.agentProfile?.commissionRate ?? 0),
     });
 
-    const ownCities = agent.agentProfile?.assignedCityIds?.map((c) => c._id) ?? [];
-    const ownStates = agent.agentProfile?.assignedStateIds?.map((s) => s._id) ?? [];
-
-    if (ownCities.length === 0 && ownStates.length === 0 && matchedSA) {
-      setEditCityIds(matchedSA.region.cityIds.map((c) => c._id));
-      setEditStateIds(matchedSA.region.stateIds.map((s) => s._id));
-    } else {
-      setEditCityIds(ownCities);
-      setEditStateIds(ownStates);
-    }
+    // Only the agent's own area — an agent without one is shown without one.
+    setEditCityIds(agent.agentProfile?.assignedCityIds?.map((c) => c._id) ?? []);
+    setEditStateIds(agent.agentProfile?.assignedStateIds?.map((s) => s._id) ?? []);
     setEditError("");
     setEditErrorStep(undefined);
   };
+
+  // User Management's "Assign super agent & area" lands here with ?open=<userId>.
+  // Wait for the super agents too: before they load, Edit would show "None"
+  // and saving would take the agent off their super agent.
+  useOpenFromUrl(superAgentsLoaded ? agents : [], openEdit);
 
   const handleEdit = async () => {
     if (!editAgent) return;
@@ -637,8 +633,10 @@ export default function AdminAgentsPage() {
                     onValueChange={(v) => {
                       const id = v === "none" ? "" : v;
                       setAddForm((f) => ({ ...f, superAgentId: id }));
-                      if (id) applySARegion(id, setAddCityIds, setAddStateIds);
-                      else { setAddCityIds([]); setAddStateIds([]); }
+                      // A new agent starts with no area; the admin picks it
+                      // from the super agent's territory (client #14).
+                      setAddCityIds([]);
+                      setAddStateIds([]);
                     }}
                     placeholder={tr("selectSuperAgentPlaceholder")}
                   />
@@ -648,7 +646,7 @@ export default function AdminAgentsPage() {
                     return regionCount > 0 ? (
                       <p className="text-xs text-primary flex items-center gap-1">
                         <Globe className="h-3 w-3" />
-                        {tr("regionAutoFilled", { name: sa?.name || "", count: regionCount })}
+                        {tr("regionPickWithinTerritory", { name: sa?.name || "", count: regionCount })}
                       </p>
                     ) : null;
                   })()}
@@ -733,7 +731,9 @@ export default function AdminAgentsPage() {
                     onValueChange={(v) => {
                       const id = v === "none" ? "" : v;
                       setEditForm((f) => ({ ...f, superAgentId: id }));
-                      if (id) applySARegion(id, setEditCityIds, setEditStateIds);
+                      // Under a different super agent the old area may fall
+                      // outside the new territory; the admin picks it again.
+                      if (id) { setEditCityIds([]); setEditStateIds([]); }
                     }}
                     placeholder={tr("selectSuperAgentPlaceholder")}
                   />
@@ -743,7 +743,7 @@ export default function AdminAgentsPage() {
                     return regionCount > 0 ? (
                       <p className="text-xs text-primary flex items-center gap-1">
                         <Globe className="h-3 w-3" />
-                        {tr("regionFromTerritory", { name: sa?.name || "", count: regionCount })}
+                        {tr("regionPickWithinTerritory", { name: sa?.name || "", count: regionCount })}
                       </p>
                     ) : null;
                   })()}

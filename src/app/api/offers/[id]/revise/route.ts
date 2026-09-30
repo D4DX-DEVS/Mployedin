@@ -98,6 +98,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (jobSeeker) {
     const salaryText = `${salary.currency} ${Number(salary.amount).toLocaleString()} / ${salary.period}`;
     await notify({
+      actorId: ctx.userId,
       userId: String(jobSeeker.userId),
       type: "offer_update",
       title: "Offer Revised",

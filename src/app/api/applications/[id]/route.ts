@@ -266,6 +266,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (emp?.userId) {
       const empUserId = String(emp.userId);
       await notify({
+        actorId: ctx.userId,
         userId: empUserId,
         type: "system",
         title: "Application stage changed",

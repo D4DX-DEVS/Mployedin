@@ -1169,6 +1169,7 @@ const CH_LABELS: Record<Channel, { labelKey: string; Icon: typeof Bell }> = {
 
 function EmployerNotificationsTab() {
   const t = useTranslations("employerSettings");
+  const tCommon = useTranslations("common");
   const [prefs, setPrefs] = useState<NotifPrefs>({
     emailFrequency: "daily",
     categories: {
@@ -1284,6 +1285,10 @@ function EmployerNotificationsTab() {
                     }
                   />
                 </div>
+                {/* Password emails never pass through these preferences. */}
+                {cat.key === "system" && (
+                  <p className="mt-2 ms-11 text-xs text-muted-foreground">{tCommon("passwordEmailsAlwaysArrive")}</p>
+                )}
                 {pref.enabled && (
                   <div className="flex items-center gap-2 mt-3 ms-11">
                     {(Object.keys(CH_LABELS) as Channel[]).map((ch) => {

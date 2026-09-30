@@ -136,6 +136,13 @@ export interface IJobSeeker extends Document {
   genderId?: mongoose.Types.ObjectId;
   maritalStatusId?: mongoose.Types.ObjectId;
   currentLocation?: string;
+  /**
+   * The seeker's area: a catalogue city (and its state) they picked. Agents
+   * and super-agents whose territory covers it can see the profile unless it
+   * is hidden. `currentLocation` stays the free-text line shown on the profile.
+   */
+  regionCityId?: mongoose.Types.ObjectId | null;
+  regionStateId?: mongoose.Types.ObjectId | null;
   permanentAddress?: string;
   hometown?: string;
   pincode?: string;
@@ -428,6 +435,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     genderId: { type: Schema.Types.ObjectId, ref: "Gender" },
     maritalStatusId: { type: Schema.Types.ObjectId, ref: "MaritalStatus" },
     currentLocation: String,
+    regionCityId: { type: Schema.Types.ObjectId, ref: "City", default: null },
+    regionStateId: { type: Schema.Types.ObjectId, ref: "State", default: null },
     permanentAddress: String,
     hometown: String,
     pincode: String,

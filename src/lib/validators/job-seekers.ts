@@ -51,9 +51,10 @@ export const jobSeekerProfileUpdateSchema = z
     preferredJobType: z.enum(["remote", "hybrid", "onsite", "any"]).optional(),
     preferredRoles: z.array(z.string().max(100).trim()).max(20).optional(),
     preferredCountries: z.array(z.string().max(100).trim()).max(20).optional(),
+    // min/max optional: the model's currency default stores `{ currency }` alone.
     preferredSalary: z.object({
-      min: z.number().min(0),
-      max: z.number().min(0),
+      min: z.number().min(0).optional(),
+      max: z.number().min(0).optional(),
       currency: z.string().max(5),
     }).optional(),
     availabilityStatus: z.enum(["immediately", "within_month", "within_3_months", "not_available"]).optional(),

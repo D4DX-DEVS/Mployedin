@@ -283,8 +283,8 @@ export default function NotificationSettingsPage() {
               </p>
               <p className="text-xs text-amber-600 mt-1">
                 {isAr
-                  ? "لن تتلقى أي رسائل بريد إلكتروني. ستظل الإشعارات داخل التطبيق تعمل."
-                  : "You won't receive any emails. In-app notifications will still work."}
+                  ? "ستصلك رسائل كلمة المرور والأمان فقط. ستظل الإشعارات داخل التطبيق تعمل."
+                  : "You'll only receive password and security emails. In-app notifications will still work."}
               </p>
             </div>
           </div>
@@ -367,6 +367,11 @@ export default function NotificationSettingsPage() {
                   />
                 </div>
 
+                {/* Password emails never pass through these preferences. */}
+                {cat.key === "system" && (
+                  <p className={`mt-2 text-xs text-muted-foreground ${isAr ? "mr-11" : "ml-11"}`}>{tCommon("passwordEmailsAlwaysArrive")}</p>
+                )}
+
                 {/* Channel toggles (shown when category is enabled) */}
                 {pref.enabled && (
                   <div className={`flex items-center gap-2 mt-3 ${isAr ? "mr-11" : "ml-11"}`}>
@@ -411,8 +416,8 @@ export default function NotificationSettingsPage() {
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {isAr
-                  ? "أوقف جميع رسائل البريد الإلكتروني. ستبقى الإشعارات داخل التطبيق تعمل."
-                  : "Stop all emails. In-app notifications will still work."}
+                  ? "أوقف جميع رسائل البريد الإلكتروني ما عدا رسائل كلمة المرور والأمان. ستبقى الإشعارات داخل التطبيق تعمل."
+                  : "Stop all emails except password and security emails. In-app notifications will still work."}
               </p>
             </div>
           </div>

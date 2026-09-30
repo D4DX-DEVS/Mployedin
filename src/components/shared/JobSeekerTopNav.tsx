@@ -399,6 +399,8 @@ export function JobSeekerBottomNav({ locale, navGroups, counts }: JobSeekerNavPr
       )}
       <nav
         aria-label={t("jobSeekerMobileNavigation")}
+        // CookieConsent measures this bar and sits on top of it.
+        data-bottom-nav=""
         className="fixed inset-x-0 bottom-0 z-[90] border-t border-border/40 bg-background/95 backdrop-blur-md lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >

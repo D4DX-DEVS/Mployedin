@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import { SeekerAreaField, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
+import { FALLBACK_PHONE_COUNTRIES } from "@/lib/phone/countries";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -306,6 +308,7 @@ const NOTICE_PERIOD_LABELS: Record<string, string> = Object.fromEntries(
 // ── Main component ────────────────────────────────────────────────────────────
 export default function JobSeekerOnboardingPage() {
   const t = useTranslations("onboarding");
+  const tc = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
@@ -350,6 +353,14 @@ export default function JobSeekerOnboardingPage() {
     resumeFile: null,
     marketingConsent: false,
   });
+  // Where the seeker lives, picked from the city list so agents who cover the
+  // area can find them (client report 2026-09-30, #5). Until a country is
+  // chosen, the phone number's country is the starting guess.
+  const [area, setArea] = useState<SeekerAreaValue>({ countryCode: "", city: null });
+  const areaValue: SeekerAreaValue = {
+    countryCode: area.countryCode || (FALLBACK_PHONE_COUNTRIES.find((c) => c.dialCode === step0.countryCode)?.code ?? ""),
+    city: area.city,
+  };
 
   // Guard: redirect already-onboarded users away from this page
   useEffect(() => {
@@ -388,6 +399,9 @@ export default function JobSeekerOnboardingPage() {
             workStatus: p.workStatus || prev.workStatus,
             marketingConsent: p.marketingConsent ?? prev.marketingConsent,
           }));
+          if (p.area) {
+            setArea({ countryCode: p.area.countryCode, city: { id: p.area.cityId, name: p.area.cityName } });
+          }
 
           if (isLinkedIn) {
             if (p.fullName || userName) setLinkedInPrefilled(true);
@@ -850,6 +864,8 @@ export default function JobSeekerOnboardingPage() {
         phone: `${step0.countryCode}${step0.phone}`,
         workStatus: step0.workStatus,
         marketingConsent: step0.marketingConsent,
+        // The server sets the location line from the picked city too.
+        ...(area.city ? { cityId: area.city.id } : {}),
       };
     }
     if (n === 1) {
@@ -865,8 +881,9 @@ export default function JobSeekerOnboardingPage() {
           jobRole: step1.jobRole || undefined,
           // "Current city" is where the seeker lives. It used to be written to
           // experience[].country, which put a city in a country field and left
-          // the seeker with no location at all.
-        currentLocation: step1.currentCity || undefined,
+          // the seeker with no location at all. A city picked on step 0 wins
+          // over the line a CV or LinkedIn import filled in.
+        currentLocation: area.city ? undefined : step1.currentCity || undefined,
       };
       if (step1.companyName && step1.jobTitle) {
         payload.experience = [{
@@ -899,7 +916,7 @@ export default function JobSeekerOnboardingPage() {
       };
     }
     return null;
-  }, [step0, step1, step2]);
+  }, [step0, step1, step2, area.city]);
 
   const handleNext = async () => {
     setSaveError("");
@@ -1192,6 +1209,12 @@ export default function JobSeekerOnboardingPage() {
                   {step0.phone.length >= 7 && <p className="text-xs text-gray-500">{t("recruitersWillContact")}</p>}
                 </div>
 
+                {/* Area — the city agents near the seeker match on */}
+                <div className="space-y-1.5" data-onboarding-field="area">
+                  <p className="text-sm font-medium text-gray-800">{tc("seekerArea.title")}</p>
+                  <SeekerAreaField value={areaValue} onChange={setArea} />
+                </div>
+
                 {/* Work status */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-800">{t("workStatus")} <span className="text-red-500">*</span></Label>
@@ -1359,25 +1382,9 @@ export default function JobSeekerOnboardingPage() {
                       />
                     </div>
 
-                    {/* Current city */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="ob-currentCity" className="text-sm font-medium text-gray-800">{t("currentCity")}</Label>
-                        {linkedInPrefilled && step1.currentCity.trim() && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
-                            <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
-                          </span>
-                        )}
-                      </div>
-                      <Autocomplete id="ob-currentCity"
-                        type="locations"
-                        value={step1.currentCity}
-                        onChange={(v) => setStep1((p) => ({ ...p, currentCity: v }))}
-                        placeholder={t("cityPlaceholder")}
-                        inputClassName="h-11 border-gray-300 focus:border-blue-500"
-                      />
-                      <p className="text-xs text-gray-500">{t("locationHelpsRecruiters")}</p>
-                    </div>
+                    {/* Where the seeker lives is asked on step 0 (Your area), from
+                        the city list. A location line a CV or LinkedIn import
+                        found is still saved when no city was picked. */}
 
                     {/* Duration */}
                     <div className="field">

@@ -96,7 +96,6 @@ interface FormData {
   };
   requirements: { skills: string[]; preferredSkills: string[]; experienceMin: number; experienceMax: number };
   salary: { min: number; max: number; currency: string; period: string; isNegotiable: boolean };
-  applicationMode: "auto" | "manual";
   expiresAt: string;
   tags: string[];
   vacancies: number;
@@ -286,7 +285,6 @@ export function SharedJobEditPage({
     location: { country: "", city: "", isRemote: false, remoteCountries: [] },
     requirements: { skills: [], preferredSkills: [], experienceMin: 0, experienceMax: 5 },
     salary: { min: 0, max: 0, currency: "USD", period: "monthly", isNegotiable: false },
-    applicationMode: "manual",
     expiresAt: "",
     tags: [],
     vacancies: 1,
@@ -372,7 +370,6 @@ export function SharedJobEditPage({
         period: (job.salary as unknown as { period?: string })?.period ?? "monthly",
         isNegotiable: (job.salary as unknown as { isNegotiable?: boolean })?.isNegotiable ?? false,
       },
-      applicationMode: (job as unknown as { applicationMode?: string }).applicationMode as "auto" | "manual" ?? (job as unknown as { workflowMode?: string }).workflowMode as "auto" | "manual" ?? "manual",
       expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
       tags: (job as unknown as { tags?: string[] }).tags ?? [],
       vacancies: (job as unknown as { vacancies?: number }).vacancies ?? 1,
@@ -530,7 +527,6 @@ export function SharedJobEditPage({
         period: form.salary.period,
         isNegotiable: form.salary.isNegotiable,
       },
-      applicationMode: form.applicationMode,
       tags: form.tags,
       vacancies: form.vacancies,
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
@@ -1308,7 +1304,7 @@ export function SharedJobEditPage({
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-semibold">{t("advancedSection")}</p>
-                  <p className="text-xs text-muted-foreground font-normal">{t("advancedDesc")}</p>
+                  <p className="text-xs text-muted-foreground font-normal">{t("advancedExpiryDesc")}</p>
                 </div>
               </div>
               {showAdvanced ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -1322,16 +1318,6 @@ export function SharedJobEditPage({
                       value={form.expiresAt}
                       onChange={(v) => setField("expiresAt", v)}
                       minDate={new Date()}
-                    />
-                  </Field>
-                  <Field label={t("applicationMode")} hint={t("hintAppMode")}>
-                    <SearchableSelect
-                      options={[
-                        { value: "manual", label: t("manualReview") },
-                        { value: "auto", label: t("autoMatch") },
-                      ]}
-                      value={form.applicationMode}
-                      onValueChange={(v) => setField("applicationMode", v as "auto" | "manual")}
                     />
                   </Field>
                 </div>
@@ -1402,7 +1388,6 @@ export function SharedJobEditPage({
                   {form.employmentType && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{form.employmentType === "full_time" ? t("fullTime") : form.employmentType === "part_time" ? t("partTime") : form.employmentType === "contract" ? t("contract") : form.employmentType === "internship" ? t("internship") : t("freelance")}</span>}
                   {form.duration && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">{form.duration}</span>}
                   <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{form.vacancies} {form.vacancies === 1 ? "vacancy" : "vacancies"}</span>
-                  {form.applicationMode === "auto" && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">{t("aiMatching")}</span>}
                 </div>
                 {form.requirements.skills.length > 0 && (
                   <div>

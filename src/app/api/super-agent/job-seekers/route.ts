@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { getSuperAgentScope, getSuperAgentTerritory, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
@@ -77,12 +77,17 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     const seekerIds = agents.flatMap((a: Record<string, unknown>) => (a.assignedJobSeekerIds as string[]) ?? []);
     const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (sa?._id) selfSuperAgentId = String(sa._id);
+    // Plus visible seekers whose area is in the territory (client report
+    // 2026-09-30, #5) — hidden profiles never match.
+    const territory = await getSuperAgentTerritory(ctx.userId, scope);
+    const areaMatch = territory ? seekerRegionMatch(territory) : null;
 
     scopeCondition = {
       $or: [
         { _id: { $in: seekerIds } },
         { "referral.agentId": { $in: agentIds } },
         ...(sa?._id ? [{ "referral.superAgentId": sa._id }] : []),
+        ...(areaMatch ? [areaMatch] : []),
       ],
     };
     conditions.push(scopeCondition);

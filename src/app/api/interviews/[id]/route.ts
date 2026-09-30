@@ -105,6 +105,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
     if (jobSeeker) {
       await notify({
+        actorId: ctx.userId,
         userId: String((jobSeeker as { userId: unknown }).userId),
         type: "interview_scheduled",
         title: "Interview Rescheduled",
@@ -123,6 +124,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
     if (jobSeeker) {
       await notify({
+        actorId: ctx.userId,
         userId: String((jobSeeker as { userId: unknown }).userId),
         type: "interview_update",
         title: "Interview Cancelled",
@@ -158,6 +160,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
       if (jobSeeker) {
         await notify({
+          actorId: ctx.userId,
           userId: String((jobSeeker as { userId: unknown }).userId),
           type: "application_status_update",
           title: "Interview Result",
@@ -180,6 +183,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
       if (jobSeeker) {
         await notify({
+          actorId: ctx.userId,
           userId: String((jobSeeker as { userId: unknown }).userId),
           type: "application_status_update",
           title: "Interview Cleared!",
@@ -222,6 +226,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const cancelledJobTitle = (cancelledJob as { title?: string } | null)?.title ?? "a position";
   if (cancelledJobSeeker) {
     await notify({
+      actorId: ctx.userId,
       userId: String((cancelledJobSeeker as { userId: unknown }).userId),
       type: "interview_update",
       title: "Interview Cancelled",

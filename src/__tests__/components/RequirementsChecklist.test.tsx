@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { RequirementsChecklist } from "@/components/features/employer/applications/RequirementsChecklist";
+import { RequirementsBadge, RequirementsChecklist } from "@/components/features/employer/applications/RequirementsChecklist";
 
 describe("RequirementsChecklist — location", () => {
   it("names countries instead of showing the stored country keys", () => {
@@ -45,5 +45,23 @@ describe("RequirementsChecklist — the CV behind the score", () => {
     );
     expect(screen.getByText("Still being read — the score updates when it's done")).toBeInTheDocument();
     expect(screen.getByText("No CV was sent — scored from the profile only")).toBeInTheDocument();
+  });
+});
+
+describe("RequirementsChecklist — missing information (client report 2026-09-30)", () => {
+  it("notes unstated experience on a job with no minimum, as a note rather than a requirement", () => {
+    render(<RequirementsChecklist status="met" checks={[{ key: "experience", status: "unknown", hard: false }]} />);
+    expect(screen.getByText("No minimum asked · the candidate hasn't stated their experience")).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("Asks + years");
+  });
+
+  it("warns 'Requirements not met' in full, and 'Not met' in the narrow list column", () => {
+    const { unmount } = render(<RequirementsBadge status="not_met" />);
+    expect(screen.getByText("Requirements not met")).toBeInTheDocument();
+    unmount();
+    render(<RequirementsBadge status="not_met" compact />);
+    expect(screen.getByText("Not met")).toBeInTheDocument();
+    expect(screen.getByText("Requirements not met")).toHaveClass("sr-only");
+    expect(screen.queryByText("Fails")).not.toBeInTheDocument();
   });
 });

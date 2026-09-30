@@ -89,6 +89,10 @@ export function Launcher({ ref, label, hint, position, onMove }: LauncherProps) 
       }}
       className={cn(
         "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] end-4 z-40 flex size-12 touch-none select-none items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-white/90 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring print:hidden sm:bottom-auto sm:top-1/2 sm:size-13 sm:-translate-y-1/2",
+        // On a phone's first visit the cookie banner sits over the bottom corner,
+        // so the button could not be reached until the banner was answered. Rise
+        // above it by the clearance globals.css already reserves for the banner.
+        "max-sm:[:root[data-cookie-banner=visible]_&]:bottom-[calc(7rem+env(safe-area-inset-bottom))]",
         dragAt ? "cursor-grabbing scale-105 shadow-2xl" : "cursor-pointer motion-safe:transition-colors",
       )}
     >

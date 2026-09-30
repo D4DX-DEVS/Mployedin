@@ -207,6 +207,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       message = `Your offer has been ${statusLabel}. Check the details for more information.`;
     }
     await notify({
+      actorId: ctx.userId,
       userId: String(employer.userId),
       type: "offer_update",
       title,
@@ -281,6 +282,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const jobSeeker = await JobSeeker.findById(offer.jobSeekerId).select("userId").lean();
   if (jobSeeker) {
     await notify({
+      actorId: ctx.userId,
       userId: String(jobSeeker.userId),
       type: "application_status_update",
       title: "Offer Withdrawn",

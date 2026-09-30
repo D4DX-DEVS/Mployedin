@@ -80,6 +80,11 @@ interface NotifyPayload {
   bodyKey?: string;
   /** ICU params for the localized title/body keys. */
   params?: Record<string, unknown>;
+  /**
+   * Who caused this, when a person did. The recipient is not told about their
+   * own action; anyone else still is (client report 2026-09-30).
+   */
+  actorId?: string | null;
 }
 
 /**
@@ -89,6 +94,7 @@ interface NotifyPayload {
  * the eight helpers that hardcoded `/en/` dropped Arabic readers into English.
  */
 export async function notify(payload: NotifyPayload): Promise<void> {
+  if (payload.actorId && String(payload.actorId) === String(payload.userId)) return;
   await connectDB();
 
   // Merge localization keys into meta so the client can render bilingual text.

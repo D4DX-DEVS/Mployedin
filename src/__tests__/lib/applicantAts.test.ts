@@ -16,7 +16,7 @@ import {
   mergeScreeningKnockouts,
   splitScreeningQuestions,
 } from "@/lib/matching/knockouts";
-import { buildApplicantMatch, employerExperienceFit, weightedApplicantScore } from "@/lib/matching/applicantScore";
+import { buildApplicantMatch, employerExperienceFit, NOT_PROVIDED_PART, weightedApplicantScore } from "@/lib/matching/applicantScore";
 import type { PairScore } from "@/lib/matching/recommend";
 import { DEFAULT_WEIGHTS } from "@/lib/ai/matchingWeights";
 
@@ -117,6 +117,14 @@ describe("requirements checklist", () => {
     const result = check(seeker(), job({ minExp: 0, requiredEducationLevel: 0 }));
     expect(result.checks.map((c) => c.key)).not.toContain("experience");
     expect(result.checks.map((c) => c.key)).not.toContain("education");
+  });
+
+  it("notes unstated experience when the job sets no minimum, without making it a requirement", () => {
+    // The breakdown then reads "Experience: Not provided" instead of a weak
+    // percentage (client report 2026-09-30).
+    const result = check(seeker({ experienceKnown: false, experienceYears: 0 }), job({ minExp: 0, requiredEducationLevel: 0 }));
+    expect(result.checks.find((c) => c.key === "experience")).toEqual({ key: "experience", status: "unknown", hard: false });
+    expect(result.status).toBe("met");
   });
 
   it("counts skills coverage and lists salary and work mode as information only", () => {
@@ -294,7 +302,7 @@ describe("employer ATS: every requirement counts", () => {
     expect(employerExperienceFit(40, true, 8, 20)).toBe(55);
     expect(employerExperienceFit(7.1, true, 8, 20)).toBe(80);
     expect(employerExperienceFit(1, true, 8, 20)).toBe(25);
-    expect(employerExperienceFit(0, false, 8, 20)).toBe(50);
+    expect(employerExperienceFit(0, false, 8, 20)).toBe(NOT_PROVIDED_PART);
   });
 
   it("does not halve the best candidate's experience for being two years over the band", () => {
@@ -375,6 +383,63 @@ describe("preferred screening answers", () => {
   });
 });
 
+describe("missing information lowers the score (client report 2026-09-30)", () => {
+  // The real case: seven typed skills covering all five required, no work
+  // history, no experience stated, no CV — 75% "Very good" with requirements
+  // not met, because every unknown counted as a neutral 50.
+  const blank = () => seeker({
+    skills: ["React", "Node.js", "MongoDB", "AWS", "Docker", "Git", "Linux"],
+    experienceYears: 0,
+    experienceKnown: false,
+    preferredRoles: [],
+    roleHistory: [],
+    cvText: "",
+    educationLevel: 0,
+  });
+  const j = job({ minExp: 2, maxExp: 6, requiredEducationLevel: 0 });
+
+  it("scores unstated experience, role and education below a stated weak fit's neutral", () => {
+    expect(employerExperienceFit(0, false, 8, 20)).toBe(NOT_PROVIDED_PART);
+    expect(NOT_PROVIDED_PART).toBeLessThan(50);
+    const s = blank();
+    const match = buildApplicantMatch({ pair: pairFor(s, j), seeker: s, job: j, weights: null });
+    expect(match.matchBreakdown.experience).toBe(NOT_PROVIDED_PART);
+    expect(match.matchBreakdown.role).toBe(NOT_PROVIDED_PART);
+    const withEducation = job({ minExp: 2, maxExp: 6, requiredEducationLevel: 3 });
+    const edu = buildApplicantMatch({ pair: pairFor(s, withEducation), seeker: s, job: withEducation, weights: null });
+    expect(edu.matchBreakdown.education).toBe(NOT_PROVIDED_PART);
+  });
+
+  it("gives typed skills less credit when there is no CV and no work history behind them", () => {
+    const s = blank();
+    const pair = pairFor(s, j);
+    const noCv = buildApplicantMatch({ pair, seeker: s, job: j, weights: null, cv: { state: "none" } });
+    const notLooked = buildApplicantMatch({ pair, seeker: s, job: j, weights: null });
+    expect(noCv.matchBreakdown.skills).toBeLessThan(notLooked.matchBreakdown.skills);
+    expect(noCv.aiMatchScore).toBeLessThan(notLooked.aiMatchScore);
+    // The client's case now reads as a borderline fit, not "Very good".
+    expect(noCv.aiMatchScore).toBeLessThanOrEqual(50);
+    expect(noCv.aiMatchScore).toBeGreaterThan(0);
+  });
+
+  it("does not discount skills when a CV exists, even one we could not read, or when work history backs them", () => {
+    const s = blank();
+    const pair = pairFor(s, j);
+    const notLooked = buildApplicantMatch({ pair, seeker: s, job: j, weights: null }).matchBreakdown.skills;
+    for (const cv of [{ state: "unreadable" as const }, { state: "reading" as const }]) {
+      expect(buildApplicantMatch({ pair, seeker: s, job: j, weights: null, cv }).matchBreakdown.skills).toBe(notLooked);
+    }
+    const worked = seeker({ ...blank(), roleHistory: [{ title: "Web Developer", years: 2 }] });
+    const workedMatch = buildApplicantMatch({ pair: pairFor(worked, j), seeker: worked, job: j, weights: null, cv: { state: "none" } });
+    expect(workedMatch.matchBreakdown.skills).toBe(buildApplicantMatch({ pair: pairFor(worked, j), seeker: worked, job: j, weights: null }).matchBreakdown.skills);
+  });
+
+  it("still scores a stated weak fit on its own terms", () => {
+    expect(employerExperienceFit(0, true, 8, 20)).toBe(25);
+    expect(employerExperienceFit(6, true, 8, 20)).toBe(50);
+  });
+});
+
 describe("the CV behind the score", () => {
   const read = (fileName?: string): ApplicantCv => ({ state: "read", fileName, text: "", parsed: null });
 
@@ -401,7 +466,10 @@ describe("the CV behind the score", () => {
         ...(cv.fileName ? { label: cv.fileName } : {}),
       });
       expect(match.requirementsStatus).toBe(without.requirementsStatus);
-      expect(match.aiMatchScore).toBe(without.aiMatchScore);
+      // No CV at all (and no work history) makes the typed skills count for
+      // less; a CV that exists — read or not — leaves the score alone.
+      if (cv.state === "none") expect(match.aiMatchScore).toBeLessThan(without.aiMatchScore);
+      else expect(match.aiMatchScore).toBe(without.aiMatchScore);
     }
   });
 

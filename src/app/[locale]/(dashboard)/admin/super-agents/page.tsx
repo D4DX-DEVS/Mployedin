@@ -18,6 +18,7 @@ import { TerritoryOverlapNotice } from "@/components/shared/TerritoryOverlapNoti
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useOpenFromUrl } from "@/hooks/useOpenFromUrl";
 import { usePagination } from "@/hooks/usePagination";
 import { Plus, Pencil, Trash2, MapPin, Globe, Users, Ban, CheckCircle2 } from "lucide-react";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
@@ -106,6 +107,13 @@ export default function AdminSuperAgentsPage() {
 
   // Create modal
   const [showAdd, setShowAdd] = useState(false);
+  // User Management's "Create user" sends new super agents here with ?add=1.
+  const [addParam, setAddParam] = useUrlFilter("add", "");
+  useEffect(() => {
+    if (addParam !== "1") return;
+    setShowAdd(true);
+    setAddParam("");
+  }, [addParam, setAddParam]);
   const [addForm, setAddForm] = useState({ name: "", email: "", password: "", overrideCommissionRate: "0", defaultAgentCommissionRate: "0" });
   const [addCityIds, setAddCityIds] = useState<string[]>([]);
   const [addStateIds, setAddStateIds] = useState<string[]>([]);
@@ -262,6 +270,9 @@ export default function AdminSuperAgentsPage() {
     setEditError("");
     setEditErrorStep(undefined);
   };
+
+  // User Management's "Assign team & territory" lands here with ?open=<userId>.
+  useOpenFromUrl(superAgents, openEdit);
 
   const handleEdit = async () => {
     if (!editSA) return;

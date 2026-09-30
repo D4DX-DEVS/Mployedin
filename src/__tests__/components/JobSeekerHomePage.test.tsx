@@ -156,7 +156,11 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("next-intl", () => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useTranslations: () => (key: string) => getByPath(translations, key) ?? key,
+  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
+    Object.entries(values ?? {}).reduce(
+      (text, [name, value]) => text.replace(`{${name}}`, String(value)),
+      getByPath(translations, key) ?? key,
+    ),
 }));
 
 describe("JobSeekerHomePage", () => {
@@ -206,6 +210,16 @@ describe("JobSeekerHomePage", () => {
     await waitFor(() => {
       expect(global.fetch).not.toHaveBeenCalledWith("/api/ai/daily-insights?locale=ar");
     });
+  });
+
+  it("greets by first name so a long full name does not wrap the heading on phones", async () => {
+    render(
+      <JobSeekerHomePage locale="ar" initialData={initialData} userName="  Muhammed Ilyas MK" />
+    );
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("Muhammed");
+    expect(heading).not.toHaveTextContent("Ilyas");
   });
 
   it("shows a next step only when something is actually waiting", async () => {

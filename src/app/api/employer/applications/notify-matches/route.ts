@@ -58,6 +58,7 @@ async function handler(req: NextRequest, ctx: { userId: string; locale: string }
       if (!seekerUserId) return Promise.resolve();
       const jobTitle = (app.jobId as unknown as { title?: string } | null)?.title ?? "the role";
       return notify({
+        actorId: ctx.userId,
         userId: seekerUserId,
         type: "application_status_update",
         title: "You're a strong match!",

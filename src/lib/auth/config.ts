@@ -465,8 +465,24 @@ export const authConfig: NextAuthConfig = {
             throw new AccountInactiveError();
           }
 
-          // Update lastLogin for returning Firebase/Google users
-          await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
+          // Update lastLogin for returning Firebase/Google users. Google has
+          // verified the address, so count it — as the LinkedIn/Apple branches
+          // of the jwt callback do. Staff-created agents/employers start
+          // unverified and were otherwise sent to /verify-email for a code
+          // straight after a successful Google sign-in.
+          const googleVerifiesEmail = isEmailVerified && !dbUser.isEmailVerified;
+          await User.findByIdAndUpdate(dbUser._id, {
+            lastLogin: new Date(),
+            ...(googleVerifiesEmail
+              ? {
+                  isEmailVerified: true,
+                  emailVerificationToken: undefined,
+                  emailVerificationOtp: undefined,
+                  emailVerificationExpiry: undefined,
+                }
+              : {}),
+          });
+          if (googleVerifiesEmail) dbUser.isEmailVerified = true;
 
           // Look up isOnboarded for existing users
           const fbJobSeeker = await JobSeeker.findOne({ userId: dbUser._id }).select("isOnboarded").lean();

@@ -10,7 +10,7 @@ function setup(overrides: Partial<HiringRules> = {}) {
 }
 
 describe("HiringRulesPanel", () => {
-  it("renders exactly the three rules: shortlist target, auto-reject, candidate notifications", () => {
+  it("renders the rules: shortlist target, auto-reject, auto-shortlist, candidate notifications", () => {
     setup();
     expect(screen.getByLabelText(/shortlist target/i)).toHaveValue(50);
     expect(screen.getByRole("switch", { name: /auto-reject on arrival/i })).toHaveAttribute("aria-checked", "false");
@@ -42,6 +42,29 @@ describe("HiringRulesPanel", () => {
     fireEvent.change(input, { target: { value: "1" } });
     fireEvent.blur(input);
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ shortlistTarget: 5 }));
+  });
+
+  it("offers auto-shortlist, off by default, and reports it switched on", () => {
+    const { onChange } = setup();
+    const toggle = screen.getByRole("switch", { name: /auto-shortlist on arrival/i });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByLabelText(/shortlist at or above/i)).toBeNull();
+    fireEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ autoShortlistEnabled: true }));
+  });
+
+  it("shows the shortlist line when on, and says auto-reject wins where the two overlap", () => {
+    const { onChange } = setup({ autoShortlistEnabled: true, autoShortlistAbove: 75 });
+    const slider = screen.getByLabelText(/shortlist at or above/i);
+    expect(slider).toHaveValue("75");
+    fireEvent.change(slider, { target: { value: "85" } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ autoShortlistAbove: 85 }));
+    expect(screen.queryByText(/auto-reject runs first/i)).toBeNull();
+  });
+
+  it("warns when the shortlist line sits under the reject line", () => {
+    setup({ autoShortlistEnabled: true, autoShortlistAbove: 40, autoRejectEnabled: true, autoRejectBelow: 60 });
+    expect(screen.getByText(/auto-reject runs first/i)).toBeInTheDocument();
   });
 
   it("toggles candidate notifications", () => {

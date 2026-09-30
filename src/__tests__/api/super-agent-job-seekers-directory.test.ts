@@ -35,6 +35,9 @@ jest.mock("@/lib/auth/agentRestrictions", () => ({
     assignedCityIds: [],
     assignedStateIds: [],
   })),
+  // No area assigned: the region clause (seeker-area-scope.test.ts) stays out.
+  getSuperAgentTerritory: jest.fn(async () => null),
+  seekerRegionMatch: jest.fn(() => null),
 }));
 
 jest.mock("@/lib/referrals/summary", () => ({
@@ -266,5 +269,24 @@ describe("GET /api/super-agent/job-seekers — header figures", () => {
     statsRow = undefined;
     const data = await get();
     expect(data.stats).toEqual({ total: 181, active: 0, avgCompletion: 0, withExperience: 0 });
+  });
+});
+
+describe("GET /api/super-agent/job-seekers — area (client report 2026-09-30, #5)", () => {
+  it("adds the visible seekers who live in the territory to the scope", async () => {
+    const restrictions = (await import("@/lib/auth/agentRestrictions")) as unknown as {
+      getSuperAgentTerritory: jest.Mock;
+      seekerRegionMatch: jest.Mock;
+    };
+    const territory = { assignedCityIds: ["city_1"], assignedStateIds: [] };
+    const areaClause = { $or: [{ regionCityId: { $in: ["city_1"] } }], profileVisibility: { $ne: "hidden" } };
+    restrictions.getSuperAgentTerritory.mockResolvedValueOnce(territory);
+    restrictions.seekerRegionMatch.mockReturnValueOnce(areaClause);
+
+    await get();
+
+    expect(restrictions.seekerRegionMatch).toHaveBeenCalledWith(territory);
+    const and = (seen.filters[0] as { $and: Array<{ $or?: unknown[] }> }).$and;
+    expect(and.find((c) => c.$or)?.$or).toContainEqual(areaClause);
   });
 });

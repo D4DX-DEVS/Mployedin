@@ -29,7 +29,6 @@ export function AdvancedSettingsSection() {
   const tAts = useTranslations("employerAts");
   const visibility = watch("visibility");
   const tags = watch("tags") ?? [];
-  const applicationMode = watch("applicationMode");
   const expiresAt = watch("expiresAt");
   const maxApplicants = watch("maxApplicants");
   const agentId = watch("agentId");
@@ -83,9 +82,6 @@ export function AdvancedSettingsSection() {
           </div>
           <div className="flex flex-wrap gap-1.5">
             <Badge variant="secondary" className="text-[11px]">
-              {applicationMode === "auto" ? t("autoMatch") : t("manualReview")}
-            </Badge>
-            <Badge variant="secondary" className="text-[11px]">
               {t(`visibilityBadges.${visibility}`)}
             </Badge>
             {expiresAt && (
@@ -137,37 +133,21 @@ export function AdvancedSettingsSection() {
           >
             <div className="space-y-3 sm:space-y-5 border-t border-border px-5 pb-5 pt-4">
 
-              <div className="grid gap-4 xl:grid-cols-2">
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
-                  <Label className="text-sm font-medium">{t("applicationMode")}</Label>
-                  <SearchableSelect
-                    options={[
-                      { value: "manual", label: t("applicationModes.manual") },
-                      { value: "auto", label: t("applicationModes.auto") },
-                    ]}
-                    value={applicationMode}
-                    onValueChange={(v) =>
-                      setValue("applicationMode", v as "auto" | "manual", { shouldValidate: false })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
-                  <Label className="text-sm font-medium">{t("visibility")}</Label>
-                  <SearchableSelect
-                    options={[
-                      { value: "public", label: t("visibilityOptions.public") },
-                      { value: "private", label: t("visibilityOptions.private") },
-                      { value: "invite_only", label: t("visibilityOptions.invite_only") },
-                    ]}
-                    value={visibility}
-                    onValueChange={(v) =>
-                      setValue("visibility", v as "public" | "private" | "invite_only", {
-                        shouldValidate: false,
-                      })
-                    }
-                  />
-                </div>
+              <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
+                <Label className="text-sm font-medium">{t("visibility")}</Label>
+                <SearchableSelect
+                  options={[
+                    { value: "public", label: t("visibilityOptions.public") },
+                    { value: "private", label: t("visibilityOptions.private") },
+                    { value: "invite_only", label: t("visibilityOptions.invite_only") },
+                  ]}
+                  value={visibility}
+                  onValueChange={(v) =>
+                    setValue("visibility", v as "public" | "private" | "invite_only", {
+                      shouldValidate: false,
+                    })
+                  }
+                />
               </div>
 
               {/* Auto-reject lives in one place — Hiring rules — and every job

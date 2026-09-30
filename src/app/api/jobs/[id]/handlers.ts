@@ -158,7 +158,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // Everyone can update their own job; a few fields stay admin-only.
   const allowedFields = [
     "title", "description", "category", "location", "requirements",
-    "salary", "status", "expiresAt", "applicationMode", "tags", "vacancies",
+    "salary", "status", "expiresAt", "tags", "vacancies",
     "maxApplicants", "showSalary", "visibility", "screeningQuestions",
     "employmentType", "workMode", "duration", "responsibilities",
     "qualifications", "benefits", "learningOutcomes",
@@ -182,6 +182,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     for (const f of adminFields) {
       if (f in bodyRecord) updateData[f] = bodyRecord[f];
     }
+  }
+  // Merge, never replace: assigning a whole object to the nested path unsets
+  // every key it leaves out. The Edit Job page sends only skills, preferred
+  // skills and experience, so each save wiped the education, languages,
+  // nationality and AI-read skills applicants were scored on. A key sent
+  // explicitly (e.g. education: "") still overwrites.
+  if (updateData.requirements && typeof updateData.requirements === "object") {
+    const current = typeof (job as { toObject?: unknown }).toObject === "function"
+      ? (job as unknown as { toObject: () => { requirements?: Record<string, unknown> } }).toObject().requirements
+      : (job as { requirements?: Record<string, unknown> }).requirements;
+    updateData.requirements = { ...(current ?? {}), ...(updateData.requirements as Record<string, unknown>) };
   }
 
   Object.assign(job, updateData);

@@ -35,7 +35,12 @@ jest.mock("@/models/User", () => ({
 }));
 
 const scope = jest.fn();
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentScope: (...a: unknown[]) => scope(...a) }));
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getSuperAgentScope: (...a: unknown[]) => scope(...a),
+  // No area assigned: the region clause (seeker-area-scope.test.ts) stays out.
+  getSuperAgentTerritory: async () => null,
+  seekerRegionMatch: () => null,
+}));
 
 const filters: unknown[] = [];
 const distinctFilters: unknown[] = [];

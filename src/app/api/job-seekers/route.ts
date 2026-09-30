@@ -5,7 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 import SuperAgent from "@/models/SuperAgent";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { getSuperAgentScope, getSuperAgentTerritory, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
 import { decorateReferralSummaries, type ReferralViewer } from "@/lib/referrals/summary";
 import mongoose from "mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -38,13 +38,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const nationality = searchParams.get("nationality")?.trim();          // nationality filter
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0"); // minimum experience years
   const referred = searchParams.get("referred")?.trim();                // any | agent | super_agent | none | mine
+  const view = searchParams.get("view")?.trim();                        // area: only seekers in the caller's area
 
   // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
   const viewer: ReferralViewer = { role: ctx.role as ReferralViewer["role"] };
+  // Staff also see the visible seekers whose area lies in their own region
+  // (client report 2026-09-30, #5). `areaMatch` is that clause; `ownsRow` tells
+  // the rows they own (and may edit) from the ones they can only view.
+  let areaMatch: Record<string, unknown> | null = null;
+  let ownsRow: ((row: Record<string, unknown>) => boolean) | null = null;
   if (ctx.role === "agent") {
     const agent = await Agent.findOne({ userId: ctx.userId })
-      .select("assignedJobSeekerIds")
+      .select("assignedJobSeekerIds assignedCityIds assignedStateIds")
       .lean();
     const agentDocId = agent?._id;
     if (!agentDocId) {
@@ -62,23 +68,43 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         { "referral.agentId": agentDocId },
       ];
       if (assignedIds.length > 0) orConds.push({ _id: { $in: assignedIds } });
-      agentScopeFilter = { $or: orConds };
+      areaMatch = seekerRegionMatch({
+        assignedCityIds: (agent?.assignedCityIds as mongoose.Types.ObjectId[]) ?? [],
+        assignedStateIds: (agent?.assignedStateIds as mongoose.Types.ObjectId[]) ?? [],
+      });
+      agentScopeFilter = { $or: areaMatch ? [...orConds, areaMatch] : orConds };
+      const me = String(agentDocId);
+      const assigned = new Set(assignedIds.map(String));
+      ownsRow = (row) =>
+        String(row.agentId ?? "") === me ||
+        String((row.referral as { agentId?: unknown } | undefined)?.agentId ?? "") === me ||
+        assigned.has(String(row._id));
     }
   } else if (ctx.role === "super_agent") {
     // Match the per-record rule in job-seekers/[id]: a super-agent may only see
     // seekers owned by an agent inside their scope, seekers those agents
-    // referred, and seekers they referred themselves. Empty scope means
-    // nothing, never everything.
+    // referred, seekers they referred themselves, and visible seekers whose
+    // area is in their territory. Empty scope means nothing, never everything.
     const scope = await getSuperAgentScope(ctx.userId);
+    const territory = await getSuperAgentTerritory(ctx.userId, scope);
     const effective = scope?.effectiveAgentIds ?? [];
     const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (sa?._id) viewer.selfSuperAgentId = String(sa._id);
+    areaMatch = territory ? seekerRegionMatch(territory) : null;
     agentScopeFilter = {
       $or: [
         { agentId: { $in: effective } },
         { "referral.agentId": { $in: effective } },
         ...(sa?._id ? [{ "referral.superAgentId": sa._id }] : []),
+        ...(areaMatch ? [areaMatch] : []),
       ],
+    };
+    const team = new Set(effective.map(String));
+    const me = sa?._id ? String(sa._id) : "";
+    ownsRow = (row) => {
+      const referral = row.referral as { agentId?: unknown; superAgentId?: unknown } | undefined;
+      return team.has(String(row.agentId ?? "")) || team.has(String(referral?.agentId ?? "")) ||
+        (me !== "" && String(referral?.superAgentId ?? "") === me);
     };
   }
 
@@ -91,6 +117,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // visible. Declared first so both the aggregate and find paths inherit it.
   filterConditions.push({ roleArchivedAt: null });
   if (Object.keys(agentScopeFilter).length > 0) filterConditions.push(agentScopeFilter);
+
+  // "In my area": only the seekers whose area the caller covers. No region
+  // means nobody, never everybody.
+  if (view === "area" && (ctx.role === "agent" || ctx.role === "super_agent")) {
+    filterConditions.push(areaMatch ?? { _id: { $in: [] } });
+  }
 
   // ── Referral filter ───────────────────────────────────────
   if (referred === "mine") {
@@ -258,7 +290,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           totalExperienceYears: 1, preferredJobType: 1,
           preferredLocations: 1,
           "cv.originalUrl": 1,
-          referral: 1, isAgentReferred: 1,
+          referral: 1, isAgentReferred: 1, agentId: 1,
           createdAt: 1,
         },
       },
@@ -274,7 +306,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const [result] = await JobSeeker.aggregate(pipeline);
     const items = result?.items ?? [];
     const total = result?.count?.[0]?.total ?? 0;
-    return NextResponse.json({ items: await decorateReferralSummaries(items, viewer), total, page, totalPages: Math.ceil(total / limit) });
+    return respond(items, total);
   }
 
   // No search — simple find + populate
@@ -289,5 +321,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     JobSeeker.countDocuments(baseFilter),
   ]);
 
-  return NextResponse.json({ items: await decorateReferralSummaries(items, viewer), total, page, totalPages: Math.ceil(total / limit) });
+  return respond(items as Array<Record<string, unknown>>, total);
+
+  /**
+   * Staff rows say whether the caller owns the seeker ("own": may edit) or
+   * only sees them because they live in the caller's area ("area": view only).
+   * Worked out before the referral is swapped for its summary.
+   */
+  async function respond(rows: Array<Record<string, unknown>>, total: number) {
+    const owned = ownsRow;
+    const marked = owned ? rows.map((row) => ({ ...row, staffAccess: owned(row) ? "own" : "area" })) : rows;
+    return NextResponse.json({
+      items: await decorateReferralSummaries(marked, viewer),
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      ...(owned ? { areaAssigned: areaMatch !== null } : {}),
+    });
+  }
 }, { resource: "job_seekers", action: "read" });

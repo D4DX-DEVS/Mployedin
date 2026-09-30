@@ -131,6 +131,54 @@ describe("Google (Firebase) sign-up", () => {
   });
 });
 
+describe("Google (Firebase) sign-in marks the e-mail verified", () => {
+  // Staff-created agents/employers start unverified. Google proves the address,
+  // as LinkedIn/Apple already count it, so a Google sign-in must not bounce
+  // them to /verify-email for a code (client report "agent google signin wont work").
+  const findByIdAndUpdate = () => (jest.requireMock("@/models/User") as { default: { findByIdAndUpdate: jest.Mock } }).default.findByIdAndUpdate;
+
+  it("verifies an unverified returning account when Google says the e-mail is verified", async () => {
+    mockUserFindOne.mockResolvedValue(user({ role: "agent", isEmailVerified: false }));
+
+    await firebase.authorize({ idToken: "tok" }, request);
+
+    expect(findByIdAndUpdate()).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        isEmailVerified: true,
+        emailVerificationToken: undefined,
+        emailVerificationOtp: undefined,
+        emailVerificationExpiry: undefined,
+      }),
+    );
+  });
+
+  it("leaves the account unverified when Google has not verified the e-mail", async () => {
+    mockVerifyIdToken.mockResolvedValue({ email: EMAIL, email_verified: false, name: "New Person" });
+    mockUserFindOne.mockResolvedValue(user({ role: "agent", isEmailVerified: false }));
+
+    await firebase.authorize({ idToken: "tok" }, request);
+
+    const writes = findByIdAndUpdate().mock.calls.map((c) => c[1] as Record<string, unknown>);
+    expect(writes.some((w) => "isEmailVerified" in w)).toBe(false);
+  });
+
+  it("does not rewrite an account that is already verified", async () => {
+    mockUserFindOne.mockResolvedValue(user({ role: "agent", isEmailVerified: true }));
+
+    await firebase.authorize({ idToken: "tok" }, request);
+
+    const writes = findByIdAndUpdate().mock.calls.map((c) => c[1] as Record<string, unknown>);
+    expect(writes.some((w) => "isEmailVerified" in w)).toBe(false);
+  });
+
+  it("still refuses an inactive account", async () => {
+    mockUserFindOne.mockResolvedValue(user({ role: "agent", isEmailVerified: false, isActive: false }));
+
+    await expect(firebase.authorize({ idToken: "tok" }, request)).rejects.toMatchObject({ code: "account_inactive" });
+  });
+});
+
 describe("LinkedIn / Apple sign-up gate (signIn callback)", () => {
   it("sends a new user without the consent cookie back to the login page", async () => {
     mockUserExists.mockResolvedValue(null);
