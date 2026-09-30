@@ -11,11 +11,16 @@ import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import { recomputeCompleteness } from "@/lib/jobSeeker/persistCompleteness";
 import { resolveEmployerRegion, type EmployerRegion } from "@/lib/agents/territoryCoverage";
+import { mergeEducationEntry, mergeExperienceEntry } from "@/lib/jobSeeker/wizardEntries";
 
 export const runtime = "nodejs";
 
+/** The stored entry an onboarding answer updates, as GET returned it. */
+const entryIdSchema = z.string().regex(/^[a-f\d]{24}$/i).optional();
+
 // ── Zod schema for onboarding profile update ──────────────────────────────────
 const experienceEntrySchema = z.object({
+  _id: entryIdSchema,
   jobTitle: z.string().min(1).max(200),
   company: z.string().min(1).max(200),
   startDate: z.string().optional(),
@@ -27,8 +32,11 @@ const experienceEntrySchema = z.object({
 });
 
 const educationEntrySchema = z.object({
+  _id: entryIdSchema,
   degree: z.string().min(1).max(200),
-  institution: z.string().min(1).max(200).optional(),
+  // Blank is allowed: school-level qualifications have no university, and the
+  // entry is stored with "" either way.
+  institution: z.string().trim().max(200).optional(),
   field: z.string().max(200).optional(),
   course: z.string().max(200).optional(),
   startYear: z.number().int().min(1950).max(2050).optional(),
@@ -186,31 +194,56 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   if (roleCategory !== undefined) jsUpdate["careerProfile.roleCategory"] = roleCategory;
   if (jobRole !== undefined) jsUpdate["careerProfile.jobRole"] = jobRole;
 
+  // Onboarding shows one job and one qualification; a CV import may have stored
+  // several. Its answers update the entry they were filled from and keep the
+  // rest — replacing the lists erased every other job and degree.
+  // ponytail: read-merge-write of the whole lists; a write to the same lists
+  // landing between the read and the $set below is lost (milliseconds, one
+  // seeker in their own onboarding). arrayFilters + $push would close it.
+  type StoredEntry = { _id?: unknown } & Record<string, unknown>;
+  const storedLists = expInput?.length || eduInput?.length
+    ? await JobSeeker.findOne({ userId: ctx.userId })
+      .select("experience education")
+      .lean<{ experience?: StoredEntry[]; education?: StoredEntry[] } | null>()
+    : null;
+  let experienceIndex: number | undefined;
+  let educationIndex: number | undefined;
+
   // Transform education entries for storage
-  if (eduInput) {
-    jsUpdate.education = eduInput.map((e) => ({
-      degree: e.degree,
-      institution: e.institution ?? "",
-      field: e.field,
-      course: e.course,
-      courseType: e.courseType,
-      startYear: e.startYear,
-      // UTC: `new Date(y, 11, 31)` is midnight in the *server's* zone, which
-      // east of UTC lands on 30 December and renders as the wrong year-end.
-      graduationDate: e.passingYear ? new Date(Date.UTC(e.passingYear, 11, 31)) : undefined,
-    }));
+  if (eduInput?.length) {
+    let list = storedLists?.education ?? [];
+    for (const e of eduInput) {
+      ({ list, index: educationIndex } = mergeEducationEntry(list, {
+        _id: e._id,
+        degree: e.degree,
+        institution: e.institution ?? "",
+        field: e.field,
+        course: e.course,
+        courseType: e.courseType,
+        startYear: e.startYear,
+        // UTC: `new Date(y, 11, 31)` is midnight in the *server's* zone, which
+        // east of UTC lands on 30 December and renders as the wrong year-end.
+        graduationDate: e.passingYear ? new Date(Date.UTC(e.passingYear, 11, 31)) : undefined,
+      }));
+    }
+    jsUpdate.education = list;
   }
 
   // Transform experience entries for storage
   if (expInput && expInput.length > 0) {
-    jsUpdate.experience = expInput.map((e) => ({
-      jobTitle: e.jobTitle,
-      company: e.company,
-      startDate: e.startDate ? new Date(e.startDate) : undefined,
-      isCurrent: e.isCurrent ?? false,
-      description: e.description,
-      country: e.country,
-    }));
+    let list = storedLists?.experience ?? [];
+    for (const e of expInput) {
+      ({ list, index: experienceIndex } = mergeExperienceEntry(list, {
+        _id: e._id,
+        jobTitle: e.jobTitle,
+        company: e.company,
+        startDate: e.startDate ? new Date(e.startDate) : undefined,
+        isCurrent: e.isCurrent ?? false,
+        description: e.description,
+        country: e.country,
+      }));
+    }
+    jsUpdate.experience = list;
     // Also store current salary from first experience entry if provided
     const first = expInput[0];
     if (first.annualSalary !== undefined) {
@@ -257,10 +290,22 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     req,
   });
 
+  // The ids of the entries just written, so the form's next save of the same
+  // step updates them instead of adding a copy.
+  const savedId = (list: unknown, index: number | undefined) =>
+    index === undefined ? undefined : (list as Array<{ _id?: unknown }> | undefined)?.[index]?._id;
+  const experienceId = savedId(updated.experience, experienceIndex);
+  const educationId = savedId(updated.education, educationIndex);
+  const entryIds = {
+    ...(experienceId ? { experience: String(experienceId) } : {}),
+    ...(educationId ? { education: String(educationId) } : {}),
+  };
+
   return NextResponse.json({
     success: true,
     isOnboarded: updated.isOnboarded,
     ...(cityId !== undefined ? { area: toArea(area) } : {}),
+    ...(Object.keys(entryIds).length ? { entryIds } : {}),
   });
 }
 

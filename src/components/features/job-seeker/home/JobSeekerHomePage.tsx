@@ -5,7 +5,7 @@ import { HOME_RECOMMENDED_JOB_COUNT } from "@/lib/jobRecommendations";
 import type { LimitingFactor } from "@/lib/matching/recommend";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -46,6 +46,8 @@ type FeedJob = {
   title: string;
   createdAt: string;
   matchScore: number;
+  /** At or above the admin threshold — the jobs the digest email would send. */
+  recommended?: boolean;
   employmentType?: string;
   skills?: string[];
   matchedSkills?: string[];
@@ -112,7 +114,7 @@ type RecommendationSummary = {
 export type InitialHomeData = {
   profile: ProfileData;
   stats: DashboardStats;
-  /** Recommended jobs only: eligible and at or above the admin threshold. */
+  /** The first cards of the Jobs page: strong matches first, then the closest others. */
   jobs: FeedJob[];
   recommendation?: RecommendationSummary;
   appliedJobs?: AppliedJobSnippet[];
@@ -202,7 +204,7 @@ export function JobSeekerHomePage({
         const [profileRes, statsRes, jobsRes, appsRes] = await Promise.all([
           fetch("/api/job-seeker/profile"),
           fetch("/api/dashboard/stats"),
-          fetch(`/api/jobs/recommended?limit=${HOME_RECOMMENDED_JOB_COUNT}&sort=match&recommended=true`),
+          fetch(`/api/jobs/recommended?limit=${HOME_RECOMMENDED_JOB_COUNT}&sort=match`),
           fetch("/api/applications?limit=5&page=1"),
         ]);
 
@@ -310,9 +312,16 @@ export function JobSeekerHomePage({
     ?.slice(0, 2)
     .map((country) => getLocalizedCountryName(country, locale))
     .join(", ");
+  // One end is enough: the top salary chip on Preferences ("₹150k+") saves a
+  // minimum only, and that range used to vanish from the chips.
+  const salaryMin = profile?.preferredSalary?.min ?? 0;
+  const salaryMax = profile?.preferredSalary?.max ?? 0;
+  const salaryCurrency = profile?.preferredSalary?.currency;
   const preferredSalary =
-    profile?.preferredSalary?.min && profile?.preferredSalary?.max && profile?.preferredSalary?.currency
-      ? `${profile.preferredSalary.min.toLocaleString(numberLocale)}-${profile.preferredSalary.max.toLocaleString(numberLocale)} ${profile.preferredSalary.currency}`
+    salaryCurrency && (salaryMin > 0 || salaryMax > 0)
+      ? salaryMax > 0
+        ? `${salaryMin.toLocaleString(numberLocale)}-${salaryMax.toLocaleString(numberLocale)} ${salaryCurrency}`
+        : `${salaryMin.toLocaleString(numberLocale)}+ ${salaryCurrency}`
       : null;
 
   /**
@@ -504,71 +513,78 @@ export function JobSeekerHomePage({
           </div>
         ) : jobs.length > 0 ? (
           <div className="space-y-3">
-            {jobs.slice(0, HOME_RECOMMENDED_JOB_COUNT).map((job, index) => (
-              <JobSummaryCard
-                key={job._id || `job-${index}`}
-                locale={locale}
-                job={{
-                  _id: job._id,
-                  title: job.title,
-                  createdAt: job.createdAt,
-                  matchScore: job.matchScore,
-                  employmentType: job.employmentType,
-                  location: job.location,
-                  salary: job.salary,
-                  skills: job.skills,
-                  matchedSkills: job.matchedSkills,
-                  company: job.employerId
-                    ? { _id: job.employerId._id, name: job.employerId.companyName, logo: job.employerId.logo }
-                    : null,
-                }}
-                actions={
-                  <Button asChild size="sm" className="min-h-11 rounded-xl px-4">
-                    <Link href={`/${locale}/job-seeker/jobs/${job._id}`}>
-                      {tCard("viewJob")}
-                      <ArrowRight className="ms-1.5 h-4 w-4" aria-hidden />
-                    </Link>
-                  </Button>
-                }
-              />
+            {jobs.slice(0, HOME_RECOMMENDED_JOB_COUNT).map((job, index, shown) => (
+              <Fragment key={job._id || `job-${index}`}>
+                {/* Where the strong matches end, as on the Jobs page. */}
+                {index > 0 && !job.recommended && shown[index - 1].recommended && (
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="h-px flex-1 bg-border/60" />
+                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      {t("recommendedJobs.moreJobs")}
+                    </span>
+                    <div className="h-px flex-1 bg-border/60" />
+                  </div>
+                )}
+                <JobSummaryCard
+                  locale={locale}
+                  job={{
+                    _id: job._id,
+                    title: job.title,
+                    createdAt: job.createdAt,
+                    matchScore: job.matchScore,
+                    employmentType: job.employmentType,
+                    location: job.location,
+                    salary: job.salary,
+                    skills: job.skills,
+                    matchedSkills: job.matchedSkills,
+                    company: job.employerId
+                      ? { _id: job.employerId._id, name: job.employerId.companyName, logo: job.employerId.logo }
+                      : null,
+                  }}
+                  actions={
+                    <Button asChild size="sm" className="min-h-11 rounded-xl px-4">
+                      <Link href={`/${locale}/job-seeker/jobs/${job._id}`}>
+                        {tCard("viewJob")}
+                        <ArrowRight className="ms-1.5 h-4 w-4" aria-hidden />
+                      </Link>
+                    </Button>
+                  }
+                />
+              </Fragment>
             ))}
-            {/* Fewer strong matches than cards: say that is all there is, rather
-                than padding the list with weaker jobs under this heading. */}
-            {jobs.length < HOME_RECOMMENDED_JOB_COUNT && (
-              <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 pt-1 text-center text-sm text-muted-foreground">
-                <span>{t("recommendedJobs.noOtherStrong")}</span>
+            {/* No strong match anywhere in the pool: the cards are the closest
+                jobs, so say so and name what holds the score back. The "score"
+                blocker is left out — its copy promises an empty list. */}
+            {recommendation?.recommendedCount === 0 && (
+              <div className="rounded-2xl border border-border/80 bg-muted/30 px-4 pt-3 text-sm text-muted-foreground">
+                <p>
+                  {t("recommendedJobs.closestNote")}
+                  {limitingFactor && limitingFactor !== "score" && ` ${t(`recommendedJobs.blockers.${limitingFactor}`)}`}
+                </p>
                 <Link href={improveHref} className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline">
                   {improveLabel}
                 </Link>
-              </p>
+              </div>
             )}
           </div>
         ) : hasPreferences ? (
+          // Nothing open in the seeker's countries (or they applied to all of
+          // it) — a job-supply answer, not a profile one.
           <div className="rounded-2xl border border-dashed border-border/80 bg-card/80 px-4 py-8 text-center shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06)] sm:px-6 sm:py-12">
             <div className="mx-auto mb-3.5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
-              <CheckCircle2 className="h-6 w-6" aria-hidden />
+              <Search className="h-6 w-6" aria-hidden />
             </div>
             <div className="text-lg font-semibold">
-              {t(noLocation ? "recommendedJobs.noLocationTitle" : "recommendedJobs.strongOnlyTitle")}
+              {t(noLocation ? "recommendedJobs.noLocationTitle" : "recommendedJobs.noJobsTitle")}
             </div>
-            {recommendation && !noLocation && (
-              <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
-                {recommendation.bestScore > 0
-                  ? t("recommendedJobs.strongOnlyBody", {
-                      threshold: recommendation.threshold,
-                      best: recommendation.bestScore,
-                    })
-                  : t("recommendedJobs.strongOnlyBodyNone", { threshold: recommendation.threshold })}
-              </p>
-            )}
-            {limitingFactor && (
-              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                {t(`recommendedJobs.blockers.${limitingFactor}`)}
-              </p>
-            )}
+            <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
+              {t(noLocation ? "recommendedJobs.blockers.no_location" : "recommendedJobs.noJobsBody")}
+            </p>
             <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row">
               <Button asChild className="min-h-11 rounded-full px-6 shadow-sm">
-                <Link href={improveHref}>{improveLabel}</Link>
+                <Link href={`/${locale}/job-seeker/preferences`}>
+                  {t(noLocation ? "recommendedJobs.addCountryCta" : "recommendedJobs.updatePreferencesCta")}
+                </Link>
               </Button>
               <Button asChild variant="outline" className="min-h-11 rounded-full px-6">
                 <Link href={`/${locale}/job-seeker/jobs`}>

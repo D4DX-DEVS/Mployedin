@@ -19,6 +19,8 @@ interface PhoneInputProps {
   id?: string;
   onBlur?: () => void;
   onValidityChange?: (valid: boolean) => void;
+  /** The seeker picked a code (or pasted a number with one). Fires even with no number typed, when `onChange` does not. */
+  onCountryChange?: (country: PhoneCountry) => void;
 }
 
 function splitStoredValue(value: string, countries: PhoneCountry[], fallback: PhoneCountry) {
@@ -42,6 +44,7 @@ export function PhoneInput({
   id,
   onBlur,
   onValidityChange,
+  onCountryChange,
 }: PhoneInputProps) {
   const t = useTranslations("common");
   const translate = (key: "country" | "searchCountry" | "invalidPhoneNumber", fallbackText: string) => {
@@ -63,9 +66,9 @@ export function PhoneInput({
     label: `${flagForCountry(country.code)} ${country.dialCode} ${locale === "ar" ? (country.nameAr || country.name) : country.name}`,
     triggerLabel: `${flagForCountry(country.code)} ${country.dialCode}`,
   })), [countries, locale]);
-  const localNumber = value.trim().startsWith(selected.dialCode)
-    ? value.trim().slice(selected.dialCode.length).replace(/\D/g, "")
-    : value.replace(/\D/g, "");
+  // Strip the value's own code, not the picked one's: "+971 " under a new pick
+  // otherwise showed "971" in the box.
+  const localNumber = value.trim().startsWith("+") ? initial.local : value.replace(/\D/g, "");
   const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
@@ -92,10 +95,16 @@ export function PhoneInput({
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    const next = initial.country.code;
-    if (next !== selectedCode && countries.some((country) => country.code === next)) setSelectedCode(next);
-  }, [countries, initial.country.code, selectedCode]);
+  // Follow the value only when its own dial code changes (a saved number
+  // loading in). Re-reading it whenever the pick changed snapped every pick
+  // made before typing back to the value's code — UAE — and turned Canada
+  // into the US, since both are +1.
+  const valueDialCode = value.trim().startsWith("+") ? initial.country.dialCode : "";
+  const [syncedDialCode, setSyncedDialCode] = useState(valueDialCode);
+  if (valueDialCode !== syncedDialCode) {
+    setSyncedDialCode(valueDialCode);
+    if (valueDialCode && valueDialCode !== selected.dialCode) setSelectedCode(initial.country.code);
+  }
 
   const validate = () => {
     const valid = (!required && !localNumber) || Boolean(localNumber && selected?.code && isValidPhoneNumber(localNumber, selected.code as CountryCode));
@@ -109,7 +118,10 @@ export function PhoneInput({
     if (next.trim().startsWith("+")) {
       const pasted = splitStoredValue(next, countries, selected);
       effectiveCountry = pasted.country;
-      if (pasted.country.code !== selected.code) setSelectedCode(pasted.country.code);
+      if (pasted.country.code !== selected.code) {
+        setSelectedCode(pasted.country.code);
+        onCountryChange?.(pasted.country);
+      }
       next = pasted.local;
     }
     const digits = next.replace(/\D/g, "");
@@ -129,6 +141,7 @@ export function PhoneInput({
           onValueChange={(code) => {
           const next = countries.find((country) => country.code === code) ?? fallback;
           setSelectedCode(next.code);
+          onCountryChange?.(next);
           if (localNumber) onChange(`${next.dialCode} ${localNumber}`);
           setInvalid(false);
           onValidityChange?.((!required && !localNumber) || Boolean(localNumber && isValidPhoneNumber(localNumber, next.code as CountryCode)));

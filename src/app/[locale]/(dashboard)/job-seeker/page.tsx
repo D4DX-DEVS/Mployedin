@@ -171,15 +171,15 @@ export default async function JobSeekerPage({
 
   const seekerProfile = await effectiveSeekerProfile(userId, seeker);
 
-  // The engine the emails use, so the cards here are the jobs the digest would
-  // send and carry the same percentage. Only `recommended` jobs (eligible and
-  // at or above the admin threshold) may sit under "Recommended jobs"; this
-  // list used to be the top four of the whole pool, which led with a 67% job
-  // whenever nothing better existed. An empty answer is final and the page
-  // explains it with the pool's limitingFactor.
+  // The engine the emails use, so every card carries the same percentage as
+  // the digest. The cards are the first four of the Jobs page — strong matches
+  // (eligible and at or above the admin threshold) lead, then the closest
+  // others. That threshold decides what gets EMAILED; applied here too it left
+  // most seekers facing an empty "no strong matches" box instead of any jobs.
+  // The `recommended` flag travels with each job so the page can mark where
+  // the strong matches end.
   const pool = await scoreSeekerPool(seekerProfile, recentJobs as Array<Record<string, unknown>>);
   const scoredJobs = pool.jobs
-    .filter((job) => job.recommended)
     .slice(0, HOME_RECOMMENDED_JOB_COUNT)
     // Fully serialize to plain primitives — populated subdocs still carry
     // Mongoose ObjectIds, which cannot cross the server/client boundary.
@@ -194,6 +194,7 @@ export default async function JobSeekerPage({
         title: String(job.title ?? ""),
         createdAt: isNaN(rawDate.getTime()) ? new Date(0).toISOString() : rawDate.toISOString(),
         matchScore: job.matchScore,
+        recommended: job.recommended,
         employmentType: job.employmentType ? String(job.employmentType) : undefined,
         // The card shows three skills and marks the ones the seeker already
         // has, so both the list and the overlap have to reach the client.

@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
           if (profile.availabilityStatus) parts.push(`Availability: ${profile.availabilityStatus.replace(/_/g, " ")}`);
           if (profile.education?.length) {
             const eduStr = profile.education.map((e: { degree: string; institution: string; field?: string }) =>
-              `${e.degree}${e.field ? ` in ${e.field}` : ""} from ${e.institution}`
+              `${e.degree}${e.field ? ` in ${e.field}` : ""}${e.institution ? ` from ${e.institution}` : ""}`
             ).join("; ");
             parts.push(`Education: ${eduStr}`);
           }

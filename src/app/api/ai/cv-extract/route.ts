@@ -18,6 +18,7 @@ import logger from "@/lib/logger";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 import { extractResumeText } from "@/lib/ats/analyzeCv";
 import { saveReadCv } from "@/lib/cv/cvDocuments";
+import CvDocument from "@/models/CvDocument";
 import {
   CV_PARSE_PROMPT,
   MAX_CV_TEXT,
@@ -91,12 +92,26 @@ export async function POST(req: NextRequest) {
       { "cv.contentHash": 1, "cv.originalUrl": 1, profileCompleteness: 1 }
     ).lean();
     if (existing?.cv?.contentHash === contentHash) {
+      // Hand back the reading saved the first time, so the form can fill in
+      // again: with none, onboarding said it "could not extract" a CV it had
+      // read. Best-effort — the duplicate answer stands without it.
+      let saved: unknown = null;
+      try {
+        const doc = await CvDocument.findOne({ jobSeekerId: existing._id, fingerprint: contentHash, status: "processed" })
+          .sort({ processedAt: -1 })
+          .select("parsed")
+          .lean<{ parsed?: unknown } | null>();
+        saved = doc?.parsed ?? null;
+      } catch (err) {
+        logger.warn({ err }, "[CV Extract] couldn't load the saved reading for a re-upload");
+      }
       return NextResponse.json({
         success: true,
         duplicate: true,
         message: "This CV was already processed — extraction skipped.",
         profileCompleteness: existing.profileCompleteness ?? 0,
         cvUrl: existing.cv?.originalUrl ?? null,
+        extracted: saved,
       });
     }
 

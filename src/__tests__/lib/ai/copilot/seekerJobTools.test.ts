@@ -45,7 +45,9 @@ beforeEach(() => {
 });
 
 describe("recommended_jobs", () => {
-  it("lists only engine-recommended jobs, each with an apply link in the page's locale", async () => {
+  // Same list as the Jobs page: strong matches first, then the closest others.
+  // The admin's match bar gates the job emails, not what Copilot may show.
+  it("lists strong matches first, then the closest others, each with an apply link in the page's locale", async () => {
     (scoreSeekerPool as jest.Mock).mockResolvedValue({
       jobs: [
         { ...jobA, recommended: true, matchScore: 91, matchedSkills: ["React"] },
@@ -59,9 +61,23 @@ describe("recommended_jobs", () => {
     const data = res.data as { jobs: Array<Record<string, unknown>>; totalMatches: number; hasCv: boolean };
 
     expect(res.ok).toBe(true);
-    expect(data.jobs).toHaveLength(1);
-    expect(data.jobs[0]).toMatchObject({ jobId: JOB_A, matchScore: 91, company: "Acme", url: `/ar/job-seeker/jobs/${JOB_A}` });
+    expect(data.jobs).toHaveLength(2);
+    expect(data.jobs[0]).toMatchObject({ jobId: JOB_A, matchScore: 91, strongMatch: true, company: "Acme", url: `/ar/job-seeker/jobs/${JOB_A}` });
+    expect(data.jobs[1]).toMatchObject({ matchScore: 40, strongMatch: false });
+    expect(data.totalMatches).toBe(1);
     expect(data.hasCv).toBe(true);
+  });
+
+  it("still lists the closest jobs when none is a strong match, and says what holds them back", async () => {
+    (scoreSeekerPool as jest.Mock).mockResolvedValue({
+      jobs: [{ ...jobB, recommended: false, matchScore: 39, matchedSkills: [] }],
+      recommendedCount: 0,
+      threshold: 80,
+      limitingFactor: "no_skills",
+    });
+    const res = await recommendedJobsTool.execute({}, ctx());
+    expect(res.message).toMatch(/closest open jobs/);
+    expect(res.data).toMatchObject({ jobs: [{ matchScore: 39, strongMatch: false }], totalMatches: 0, limitingFactor: "no_skills" });
   });
 
   it("leaves out jobs the seeker already applied to", async () => {
@@ -70,7 +86,7 @@ describe("recommended_jobs", () => {
     expect(JSON.stringify(mockJobFind.mock.calls[0][0])).toContain(APPLIED);
   });
 
-  it("says why when nothing clears the threshold", async () => {
+  it("says why when the pool is empty", async () => {
     (scoreSeekerPool as jest.Mock).mockResolvedValue({ jobs: [], recommendedCount: 0, threshold: 80, limitingFactor: "no_location" });
     const res = await recommendedJobsTool.execute({}, ctx());
     expect(res.ok).toBe(true);
