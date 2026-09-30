@@ -1,4 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
 import { LEGAL_PAGES, LEGAL_PAGE_SLUGS, isLegalPageSlug, legalPageBySlug } from "@/lib/cms/legalPages";
+import { isPublicRoute } from "@/lib/routing/publicRoutes";
 import { FAQ_CATEGORIES, isFaqCategory } from "@/lib/cms/faqCategories";
 import {
   bannerCreateSchema,
@@ -9,9 +12,16 @@ import {
 } from "@/lib/validators/cms";
 
 describe("legal page registry", () => {
-  it("lists exactly the four pages that have a public route", () => {
-    expect(LEGAL_PAGE_SLUGS).toEqual(["privacy-policy", "terms-and-conditions", "cookie-policy", "gdpr"]);
-    expect(LEGAL_PAGES.map((p) => p.path)).toEqual(["/privacy", "/terms", "/cookies", "/gdpr"]);
+  it("lists exactly the pages that have a public route", () => {
+    expect(LEGAL_PAGE_SLUGS).toEqual(["privacy-policy", "terms-and-conditions", "cookie-policy", "gdpr", "accessibility-statement"]);
+    expect(LEGAL_PAGES.map((p) => p.path)).toEqual(["/privacy", "/terms", "/cookies", "/gdpr", "/accessibility"]);
+  });
+
+  it.each(LEGAL_PAGES.map((p) => [p.path]))("%s has a page, is reachable signed out and is in the sitemap", (legalPath) => {
+    const root = process.cwd();
+    expect(fs.existsSync(path.join(root, "src/app/[locale]/(public)", legalPath, "page.tsx"))).toBe(true);
+    expect(isPublicRoute(`/en${legalPath}`)).toBe(true);
+    expect(fs.readFileSync(path.join(root, "src/app/sitemap.ts"), "utf8")).toContain(`["${legalPath}",`);
   });
 
   it("rejects a slug with no public route", () => {

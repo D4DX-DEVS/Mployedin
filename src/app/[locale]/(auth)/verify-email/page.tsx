@@ -45,9 +45,13 @@ function SuccessCTA({ callback, locale, pending }: { callback: string | null; lo
     );
   }
 
+  // A plain <a>, not <Link>: sign-in navigated to the dashboard and the proxy
+  // redirected here, and the client router keeps that redirect for ~5 minutes.
+  // A client-side navigation lands straight back on this page without asking
+  // the server. Loading the page from the server uses the refreshed session.
   return (
     <Button size="lg" asChild className="w-full max-w-xs">
-      <Link href={href}>{user?.role ? t("continueToDashboard") : t("continueToSignIn")}</Link>
+      <a href={href}>{user?.role ? t("continueToDashboard") : t("continueToSignIn")}</a>
     </Button>
   );
 }

@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
+import { CookieConsentMount } from "@/components/shared/CookieConsentMount";
+import { AccessibilityPanel } from "@/components/shared/AccessibilityPanel";
+import { isLegalPagePublished } from "@/lib/cms/legalPageStatus";
+import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
 
 export default async function AuthLayout({
   children,
@@ -23,27 +27,37 @@ export default async function AuthLayout({
 }) {
   const { locale } = await params;
   const t = await getTranslations("authLayout");
+  const statementPublished = await isLegalPagePublished("accessibility-statement");
   const messages = await getMessages();
 
   return (
     <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "auth")}>
       <div className="flex min-h-screen bg-background">
-        <section className="relative flex w-full flex-col bg-background px-5 py-5 sm:px-8 sm:py-7 lg:w-[42%] lg:min-w-[430px] lg:px-10 xl:w-[40%] xl:px-14">
-          <Link href={`/${locale}`} className="absolute start-5 top-5 z-20 inline-flex items-center sm:start-8 sm:top-7 lg:start-10 xl:start-14" aria-label="Mployedin">
-            <Image src="/logo.png" alt="Mployedin" width={106} height={37} className="h-auto w-[106px] object-contain" priority />
-          </Link>
-          <div className="flex flex-1 flex-col justify-center">
+        <AccessibilityPanel locale={locale} statementPublished={statementPublished} />
+        <div className="relative flex w-full flex-col bg-background px-5 py-5 sm:px-8 sm:py-7 lg:w-[42%] lg:min-w-[430px] lg:px-10 xl:w-[40%] xl:px-14">
+          {/* In flow, not absolute: a form taller than the viewport (register)
+              started at the top and slid under the logo. */}
+          {/* header/aside/main give every part of the page a landmark. */}
+          <header className="relative z-20 shrink-0 self-start">
+            <Link href={`/${locale}`} className="inline-flex items-center" aria-label="Mployedin">
+              <Image src="/logo.png" alt="Mployedin" width={106} height={37} className="h-auto w-[106px] object-contain" priority />
+            </Link>
+          </header>
+          <main id={MAIN_CONTENT_ID} className="flex flex-1 flex-col justify-center">
             <div className="mx-auto flex w-full max-w-md flex-1 items-center">
               <div className="w-full py-4 sm:py-8">
                 <SessionWrapper disableIdleTimeout>
-                  <CsrfProvider>{children}</CsrfProvider>
+                  <CsrfProvider>
+                    {children}
+                    <CookieConsentMount locale={locale} />
+                  </CsrfProvider>
                 </SessionWrapper>
               </div>
             </div>
-          </div>
-        </section>
+          </main>
+        </div>
 
-        <section className="relative hidden flex-1 overflow-hidden border-s border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:flex">
+        <aside className="relative hidden flex-1 overflow-hidden border-s border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:flex">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.2)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.2)_1px,transparent_1px)] bg-[size:76px_76px] opacity-35" />
           <div className="absolute left-[-12%] top-[-12%] h-[360px] w-[360px] rounded-full bg-brand-blue/15 blur-[110px]" />
           <div className="absolute bottom-[-18%] right-[-10%] h-[420px] w-[420px] rounded-full bg-brand-cyan/15 blur-[130px]" />
@@ -146,7 +160,7 @@ export default async function AuthLayout({
           <p className="absolute bottom-6 inset-x-0 text-center text-sm text-muted-foreground/70">
             {t("copyright", { year: new Date().getFullYear() })}
           </p>
-        </section>
+        </aside>
       </div>
     </NextIntlClientProvider>
   );

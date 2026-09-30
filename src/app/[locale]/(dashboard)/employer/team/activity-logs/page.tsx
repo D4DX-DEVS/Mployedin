@@ -40,10 +40,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
-import { formatCount, formatDateTime } from "@/lib/ui/intlFormat";
+import { formatCount, formatDate, formatDateTime, formatTime } from "@/lib/ui/intlFormat";
 
 /* ─── Types ─── */
 interface TeamMember {
@@ -136,7 +143,6 @@ function formatAction(action: string): string {
 /* ─── Component ─── */
 export default function TeamActivityLogsPage() {
   const t = useTranslations("employerActivityLogs");
-  const tc = useTranslations("employerCommon");
   const { locale } = useParams<{ locale: string }>();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -154,7 +160,7 @@ export default function TeamActivityLogsPage() {
     usePagination(25);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "\u2014" },
+    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? formatDateTime(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "\u2014" },
     { header: t("actor"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.name ?? "System" },
     { header: t("email"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.email ?? "\u2014" },
     { header: t("action"), key: "action", formatter: (v) => String(v ?? "\u2014") },
@@ -428,73 +434,57 @@ export default function TeamActivityLogsPage() {
 
       {/* Activity Log */}
       {error ? (
-        <div className="card-base text-center py-16">
-          <p className="text-sm font-semibold text-destructive">{tc("somethingWentWrong")}</p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={fetchLogs}>
-            {tc("tryAgain")}
-          </Button>
-        </div>
+        <ErrorState onRetry={fetchLogs} />
       ) : loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
-          ))}
+        <div className="workspace-panel-surface overflow-hidden rounded-2xl">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableBody>
+                <TableBodySkeleton rows={8} cols={6} />
+              </TableBody>
+            </Table>
+          </div>
         </div>
       ) : logs.length === 0 ? (
-        <div className="card-base text-center py-16">
-          <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <p className="font-semibold text-foreground">{t("noLogs")}</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("noLogsDesc")}
-          </p>
-        </div>
+        <EmptyState title={t("noLogs")} description={t("noLogsDesc")} icon={Activity} />
       ) : (
         <>
           {/* ── Desktop Table ── */}
-          <div className="hidden md:block rounded-xl border overflow-x-auto bg-background" tabIndex={0}>
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
-                <tr>
-                  <th className="text-start px-4 py-3">{t("timestamp")}</th>
-                  <th className="text-start px-4 py-3">{t("teamMember")}</th>
-                  <th className="text-start px-4 py-3">{t("action")}</th>
-                  <th className="text-start px-4 py-3">{t("resource")}</th>
-                  <th className="text-start px-4 py-3">{t("details")}</th>
-                  <th className="text-start px-4 py-3">{t("ipAddress")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
+          <div className="workspace-panel-surface hidden overflow-hidden rounded-2xl md:block">
+          <div className="overflow-x-auto" tabIndex={0}>
+            <Table className="text-sm">
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="text-start">{t("timestamp")}</TableHead>
+                  <TableHead className="text-start">{t("teamMember")}</TableHead>
+                  <TableHead className="text-start">{t("action")}</TableHead>
+                  <TableHead className="text-start">{t("resource")}</TableHead>
+                  <TableHead className="text-start">{t("details")}</TableHead>
+                  <TableHead className="text-start">{t("ipAddress")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {logs.map((log) => {
                   const dt = new Date(log.createdAt);
-                  const dateStr = dt.toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
-                    month: "short",
-                    day: "numeric",
-                  });
-                  const timeStr = dt.toLocaleTimeString(locale === "ar" ? "ar" : "en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                  const dateStr = formatDate(dt, { day: "2-digit", month: "short", year: "numeric" }, locale);
+                  const timeStr = formatTime(dt, { hour: "2-digit", minute: "2-digit" }, locale);
 
                   return (
-                    <tr
+                    <TableRow
                       key={log._id}
-                      className="hover:bg-muted/20 transition-colors"
+                      className="group"
                     >
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" />
                           <span>{dateStr}</span>
                           <span className="opacity-60">{timeStr}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         {log.actorId ? (
                           <div className="flex items-center gap-2">
-                            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
-                              {(log.actorId.name ?? log.actorId.email ?? "?")
-                                .charAt(0)
-                                .toUpperCase()}
-                            </div>
+                            <UserAvatar name={log.actorId.name} email={log.actorId.email} className="h-7 w-7 shrink-0 text-xs" colorful />
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">
                                 {log.actorId.name ?? "Unknown"}
@@ -507,24 +497,24 @@ export default function TeamActivityLogsPage() {
                         ) : (
                           <span className="text-xs text-muted-foreground">{t("system")}</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getActionColor(log.action)}`}>
                             {getActionIcon(log.action)}
                             {formatAction(log.action)}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant="outline"
                           className="text-xs capitalize"
                         >
                           {log.resource}
                         </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-48 truncate">
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-48 truncate">
                         {log.meta
                           ? Object.entries(log.meta)
                               .filter(([k]) => !["__v", "password", "token"].includes(k))
@@ -534,27 +524,23 @@ export default function TeamActivityLogsPage() {
                           : log.resourceId
                             ? `ID: ${log.resourceId.slice(-8)}`
                             : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
                         {log.ipAddress !== "unknown" ? log.ipAddress : "—"}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
+          </div>
           </div>
 
           {/* ── Mobile Card List ── */}
           <div className="md:hidden space-y-2">
             {logs.map((log) => {
               const dt = new Date(log.createdAt);
-              const dateStr = dt.toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+              const dateStr = `${formatDate(dt, { day: "2-digit", month: "short", year: "numeric" }, locale)} ${formatTime(dt, { hour: "2-digit", minute: "2-digit" }, locale)}`;
 
               return (
                 /* Card hierarchy: the action is the primary line (semibold,
@@ -565,9 +551,7 @@ export default function TeamActivityLogsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {log.actorId && (
-                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
-                          {(log.actorId.name ?? "?").charAt(0).toUpperCase()}
-                        </div>
+                        <UserAvatar name={log.actorId.name} email={log.actorId.email} className="h-7 w-7 shrink-0 text-xs" colorful />
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">

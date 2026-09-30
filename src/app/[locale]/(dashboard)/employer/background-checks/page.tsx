@@ -22,6 +22,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 type CheckType = "background" | "reference" | "both";
 type CheckStatus = "pending" | "in_progress" | "completed" | "cancelled";
@@ -503,7 +504,7 @@ export default function BackgroundChecksPage() {
                     <div className="flex items-center gap-2">
                       <Input placeholder={t("fields.refName")} value={r.name} onChange={(e) => updateRef(i, { name: e.target.value })} />
                       {refs.length > 1 && (
-                        <Button type="button" size="icon" variant="ghost" onClick={() => setRefs((p) => p.filter((_, idx) => idx !== i))}>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => setRefs((p) => p.filter((_, idx) => idx !== i))} aria-label={t("removeReference")}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
@@ -611,7 +612,7 @@ export default function BackgroundChecksPage() {
                 {detail.verifiedBy && (
                   <p className="text-xs text-muted-foreground">
                     {t("verifiedBy", { name: detail.verifiedBy.name ?? detail.verifiedBy.email ?? "" })}
-                    {detail.verifiedAt ? ` · ${new Date(detail.verifiedAt).toLocaleDateString()}` : ""}
+                    {detail.verifiedAt ? ` · ${formatDate(new Date(detail.verifiedAt), { day: "2-digit", month: "short", year: "numeric" }, locale)}` : ""}
                   </p>
                 )}
 

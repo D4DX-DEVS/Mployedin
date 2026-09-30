@@ -10,6 +10,8 @@ describe("isPublicRoute", () => {
     "/ar/companies",
     "/en/terms",
     "/ar/gdpr",
+    "/en/accessibility",
+    "/ar/accessibility",
     "/ar/salary-explorer",
     "/ar/agent-register",
     "/ar/jobs/abc123",

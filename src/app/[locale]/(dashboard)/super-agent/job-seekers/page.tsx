@@ -7,19 +7,23 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentPageIntro, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
-  RotateCcw, Users, Briefcase, GraduationCap,
-  Star, MapPin,
+  Users, Briefcase, GraduationCap,
+  Star, MapPin, Mail,
 } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 
 /* ------------------------------------------------------------------ */
@@ -65,6 +69,7 @@ export default function SuperAgentJobSeekersPage() {
 
   const [seekers, setSeekers] = useState<JobSeekerItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allCountries") }]);
   const [totalStats, setTotalStats] = useState({ total: 0, active: 0, avgCompletion: 0, withExperience: 0 });
@@ -93,6 +98,7 @@ export default function SuperAgentJobSeekersPage() {
 
   const fetchSeekers = useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
     try {
       const params = pagination.paginationParams();
       if (filters.search) params.set("search", filters.search);
@@ -116,9 +122,11 @@ export default function SuperAgentJobSeekersPage() {
         /* A non-ok response used to fall through silently: the table stayed
            empty and the header read 0 / 0 / 0% / 0, which is indistinguishable
            from a region with no candidates. */
+        setLoadFailed(true);
         toast.error(t("failedToLoadJobSeekers"));
       }
     } catch {
+      setLoadFailed(true);
       toast.error(t("failedToLoadJobSeekers"));
     } finally {
       setLoading(false);
@@ -152,66 +160,58 @@ export default function SuperAgentJobSeekersPage() {
         metrics={metricsItems}
       />
 
-      <TableToolbar
-        title={t("browseRegionalCandidates")}
-        description={t("searchAndFilterDescription")}
-        search={filters.search}
-        onSearchChange={(v) => updateFilter("search", v)}
-        searchPlaceholder={t("searchPlaceholder")}
-        hasActiveFilters={filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all"}
-        actions={
-          <>
-            {/* Privacy detail at the point candidate data is shown, as an icon +
-                popover. It was a full-width text banner above the metrics. */}
-            <CandidateDataNotice variant="candidateList" compact />
-            {(filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all") ? (
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                {t("reset")}
-              </button>
-            ) : null}
-          </>
-        }
-        filterContent={
-          <div className="flex flex-wrap items-center gap-3">
-            <SearchableSelect
-              options={countryOptions}
-              value={filters.country}
-              onValueChange={(v) => updateFilter("country", v)}
-              placeholder={t("allCountries")}
-              className="h-11 w-[180px] rounded-xl border-border bg-card"
-            />
-            <SearchableSelect
-              options={EXPERIENCE_OPTIONS}
-              value={filters.experienceMin}
-              onValueChange={(v) => updateFilter("experienceMin", v)}
-              placeholder={t("allExperience")}
-              className="h-11 w-[180px] rounded-xl border-border bg-card"
-            />
-            <SearchableSelect
-              options={AVAILABILITY_OPTIONS}
-              value={filters.availability}
-              onValueChange={(v) => updateFilter("availability", v)}
-              placeholder={t("allAvailability")}
-              className="h-11 w-[180px] rounded-xl border-border bg-card"
-            />
-          </div>
-        }
-      />
+      <div className="workspace-panel-surface rounded-2xl border-b-0">
+        <h2 className="heading-section font-semibold text-foreground">{t("browseRegionalCandidates")}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t("searchAndFilterDescription")}</p>
+      </div>
+
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={(filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all") ? handleClearFilters : undefined}
+      >
+        <InlineFilterSearch
+          value={filters.search}
+          onChange={(v) => updateFilter("search", v)}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          options={countryOptions}
+          value={filters.country}
+          onValueChange={(v) => updateFilter("country", v)}
+          placeholder={t("allCountries")}
+          className={INLINE_FILTER_CONTROL}
+        />
+        <SearchableSelect
+          options={EXPERIENCE_OPTIONS}
+          value={filters.experienceMin}
+          onValueChange={(v) => updateFilter("experienceMin", v)}
+          placeholder={t("allExperience")}
+          className={INLINE_FILTER_CONTROL}
+        />
+        <SearchableSelect
+          options={AVAILABILITY_OPTIONS}
+          value={filters.availability}
+          onValueChange={(v) => updateFilter("availability", v)}
+          placeholder={t("allAvailability")}
+          className={INLINE_FILTER_CONTROL}
+        />
+        {/* Privacy detail at the point candidate data is shown, as an icon +
+            popover. It was a full-width text banner above the metrics. */}
+        <CandidateDataNotice variant="candidateList" compact />
+      </InlineFilterBar>
 
       {/* Heading kept for screen readers only, the same convention agents,
           commissions and leads already use: this is the page's one list
           section, sitting directly under the h1, and the visible eyebrow +
           title + sentence only narrated the toolbar below it. */}
       <SuperAgentSection title={t("candidates")} className="[&>div:first-child]:sr-only">
-        <div className="overflow-x-auto rounded-3xl border border-border/60">
+        {loadFailed && !loading ? (
+          <ErrorState onRetry={() => fetchSeekers()} />
+        ) : (
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-background/60 hover:bg-background/60">
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{tc("name")}</TableHead>
                 <TableHead>{t("currentRole")}</TableHead>
                 <TableHead>{t("profile")}</TableHead>
@@ -220,52 +220,47 @@ export default function SuperAgentJobSeekersPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 4 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={4} />
               ) : seekers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                        <Users className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{t("noJobSeekersFound")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("tryAdjustingFilters")}</p>
-                      </div>
-                    </div>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="py-12">
+                    <EmptyState title={t("noJobSeekersFound")} description={t("tryAdjustingFilters")} icon={Users} />
                   </TableCell>
                 </TableRow>
               ) : seekers.map((s) => (
-                <TableRow key={s._id} className="bg-transparent">
+                <TableRow key={s._id} className="group">
                   <TableCell>
-                    <p className="font-medium text-foreground">{s.fullName}</p>
-                    <p className="text-xs text-muted-foreground">{s.email}</p>
-                    {/* A location is free text a candidate wrote — "Riyadh, Al
-                        Murooj, Saudi Arabia (Transferable Iqama)" is one real
-                        value — so the line is clamped. `truncate` has to sit on
-                        the text, not on the inline-flex row, or it paints no
-                        ellipsis. */}
-                    <span className="flex max-w-[260px] items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate" title={[s.location, s.country].filter(Boolean).join(", ")}>
-                        {[s.location, s.country].filter(Boolean).join(", ") || "—"}
-                      </span>
-                    </span>
-                    {s.referralSummary ? (
-                      <span className="mt-1 block">
-                        <ReferralSourceChip namespace="superAgentJobSeekers" summary={s.referralSummary} />
-                      </span>
-                    ) : null}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar name={s.fullName} email={s.email} className="h-9 w-9 shrink-0" colorful />
+                      <div className="min-w-0 space-y-1">
+                        <p className="truncate font-medium text-foreground">{s.fullName}</p>
+                        <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                          <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{s.email}</span>
+                        </p>
+                        {/* A location is free text a candidate wrote — "Riyadh, Al
+                            Murooj, Saudi Arabia (Transferable Iqama)" is one real
+                            value — so the line is clamped. `truncate` has to sit on
+                            the text, not on the inline-flex row, or it paints no
+                            ellipsis. */}
+                        <span className="flex max-w-[260px] items-center gap-1 text-sm text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate" title={[s.location, s.country].filter(Boolean).join(", ")}>
+                            {[s.location, s.country].filter(Boolean).join(", ") || "—"}
+                          </span>
+                        </span>
+                        {s.referralSummary ? (
+                          <span className="mt-1 block">
+                            <ReferralSourceChip namespace="superAgentJobSeekers" summary={s.referralSummary} />
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm">
-                    <span className="block max-w-[240px] truncate" title={s.currentJobTitle || undefined}>
-                      {s.currentJobTitle || "—"}
+                    <span className="flex max-w-[240px] items-center gap-1.5 truncate" title={s.currentJobTitle || undefined}>
+                      <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="truncate">{s.currentJobTitle || "—"}</span>
                     </span>
                     {/* Half these profiles were filled from a CV that never wrote a
                         years figure. Printing "0 yrs" beside a role someone
@@ -294,23 +289,22 @@ export default function SuperAgentJobSeekersPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(s.createdAt))}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(s.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
+        )}
 
-        <div className="mt-4">
-          <PaginationControls
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            limit={pagination.limit}
-            total={pagination.total}
-            onPageChange={pagination.setPage}
-            onLimitChange={pagination.setLimit}
-          />
-        </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          limit={pagination.limit}
+          total={pagination.total}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
       </SuperAgentSection>
     </div>
   );

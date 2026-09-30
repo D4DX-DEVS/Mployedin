@@ -12,11 +12,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Copy, Trash2, Search, FileText, Inbox, Pencil, ArrowRight, Loader2, Briefcase,
+  Copy, Trash2, FileText, Inbox, Pencil, ArrowRight, Briefcase,
 } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { useConfirm } from "@/hooks/useConfirm";
 import {
   useJobTemplateLibrary,
@@ -129,28 +132,23 @@ export default function EmployerJobTemplatesPage() {
         }
       />
 
-      <div className="workspace-toolbar">
-        <div className="workspace-toolbar-search">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            placeholder={t("search")}
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
-            aria-label={t("search")}
-          />
-        </div>
-      </div>
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={search ? () => handleSearchChange("") : undefined}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={handleSearchChange}
+          placeholder={t("search")}
+        />
+      </InlineFilterBar>
 
       {/* Template Grid — the items are cards themselves, so on phones the outer
           panel surface read as a card inside a card with double edges. Panel
           chrome only from sm up. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none">
+      <section className="workspace-panel-surface rounded-3xl panel-body overflow-hidden max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none">
         {isError ? (
-          <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-            <p className="text-sm font-semibold text-destructive">{t("loadError")}</p>
-            <Button variant="outline" onClick={() => refetch()}>{t("retry")}</Button>
-          </div>
+          <ErrorState onRetry={() => refetch()} />
         ) : loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -212,42 +210,34 @@ export default function EmployerJobTemplatesPage() {
                   <span className="text-[11px] text-muted-foreground">
                     <RelativeDate date={tmpl.updatedAt} prefix={t("savedAgoPrefix")} />
                   </span>
-                  <div className="flex items-center gap-0.5">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(tmpl)} aria-label={t("edit")}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(tmpl)} aria-label={t("duplicate")} disabled={duplicateTemplate.isPending}>
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(tmpl)} aria-label={t("deleteAction")}>
-                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                    </Button>
-                    <Button size="sm" onClick={() => handleUse(tmpl)} disabled={busyId === tmpl._id}>
-                      {busyId === tmpl._id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <>{t("use")} <ArrowRight className="h-3.5 w-3.5 ml-1" /></>
-                      )}
-                    </Button>
-                  </div>
+                  <RowActions
+                    name={tmpl.name}
+                    quick={[
+                      { key: "use", label: t("use"), icon: ArrowRight, pending: busyId === tmpl._id, disabled: busyId === tmpl._id, onSelect: () => handleUse(tmpl) },
+                    ]}
+                    menu={[
+                      { key: "edit", label: t("edit"), icon: Pencil, onSelect: () => openEdit(tmpl) },
+                      { key: "duplicate", label: t("duplicate"), icon: Copy, pending: duplicateTemplate.isPending, disabled: duplicateTemplate.isPending, onSelect: () => handleDuplicate(tmpl) },
+                      { key: "delete", label: t("deleteAction"), icon: Trash2, destructive: true, onSelect: () => handleDelete(tmpl) },
+                    ]}
+                  />
                 </div>
               </div>
             ))}
           </div>
         )}
-
-        {!loading && total > 0 && (
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            limit={limit}
-            onPageChange={setPage}
-            onLimitChange={(l) => { setLimit(l); setPage(1); }}
-            className="mt-5 pt-4 border-t border-border/50"
-          />
-        )}
       </section>
+
+      {!loading && total > 0 && (
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(l) => { setLimit(l); setPage(1); }}
+        />
+      )}
 
       {/* Rename/Edit dialog */}
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>

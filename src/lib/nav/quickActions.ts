@@ -161,7 +161,7 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
     },
     {
       key: "reviewFailingWebhooks",
-      href: "/admin/webhooks?status=failed",
+      href: "/admin/webhooks?status=failing",
       icon: "Activity",
       labelKey: "reviewFailingWebhooks",
       descriptionKey: "reviewFailingWebhooksDesc",

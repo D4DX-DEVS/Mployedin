@@ -31,17 +31,23 @@ jest.mock("@/lib/communications/email", () => ({
 jest.mock("@/lib/auth/emailVerification", () => ({ hashOtp: () => "otp" }));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn(), info: jest.fn() } }));
 jest.mock("@/lib/referrals/attachJobSeeker", () => ({ attachJobSeekerReferral: jest.fn() }));
+jest.mock("@/lib/gdpr/termsVersion", () => ({ getCurrentTermsVersion: jest.fn(async () => "2026-09-29") }));
 
 const USER_ID = "64e000000000000000000001";
+const userCreate = jest.fn();
+const userUpdateOne = jest.fn();
 jest.mock("@/models/User", () => ({
   __esModule: true,
   default: {
     findOne: jest.fn(async () => null),
-    create: jest.fn(async () => ({ _id: USER_ID })),
+    create: (...a: unknown[]) => userCreate(...a),
+    updateOne: (...a: unknown[]) => userUpdateOne(...a),
     findById: jest.fn(() => ({ select: () => ({ lean: async () => ({ name: "Sara Ahmed" }) }) })),
+    findByIdAndDelete: jest.fn(async () => null),
   },
 }));
 jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: { create: jest.fn(async () => ({ _id: "js" })) } }));
+jest.mock("@/models/Agent", () => ({ __esModule: true, default: { create: jest.fn(async () => ({ _id: "ag" })) } }));
 
 const insertMany = jest.fn();
 const consentCreate = jest.fn();
@@ -77,6 +83,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   insertMany.mockResolvedValue([]);
   consentCreate.mockResolvedValue({});
+  userCreate.mockResolvedValue({ _id: USER_ID });
+  userUpdateOne.mockResolvedValue({ modifiedCount: 1 });
 });
 
 describe("job-seeker registration", () => {
@@ -86,15 +94,35 @@ describe("job-seeker registration", () => {
 
     expect(res.status).toBe(201);
     expect(insertMany).toHaveBeenCalledWith([
-      expect.objectContaining({ userId: USER_ID, userName: "Sara Ahmed", consentType: "terms_and_privacy", granted: true, source: "registration", ipAddress: "10.0.0.1" }),
+      expect.objectContaining({ userId: USER_ID, userName: "Sara Ahmed", consentType: "terms_and_privacy", granted: true, source: "registration", ipAddress: "10.0.0.1", policyVersion: "2026-09-29" }),
       expect.objectContaining({ consentType: "cookies", granted: false, source: "registration" }),
     ]);
   });
 
-  it("records nothing it was not told (no flag, no cookie choice)", async () => {
+  it("stores the accepted version on the user, so they are not asked again", async () => {
     const { POST } = await import("@/app/api/auth/job-seeker-register/route");
-    await POST(register({}));
+    await POST(register({ termsAccepted: true }));
+    expect(userUpdateOne).toHaveBeenCalledWith(
+      { _id: USER_ID },
+      { $set: expect.objectContaining({ termsAcceptedVersion: "2026-09-29", termsAcceptedAt: expect.any(Date) }) },
+    );
+  });
+
+  it("refuses an account without the Terms/Privacy tick (a direct API call skipped the form)", async () => {
+    const { POST } = await import("@/app/api/auth/job-seeker-register/route");
+    for (const body of [{}, { termsAccepted: false }, { termsAccepted: "true" }]) {
+      const res = await POST(register(body));
+      expect(res.status).toBe(400);
+    }
+    expect(userCreate).not.toHaveBeenCalled();
     expect(insertMany).not.toHaveBeenCalled();
+  });
+
+  it("does not store a version when the log row failed", async () => {
+    insertMany.mockRejectedValue(new Error("db down"));
+    const { POST } = await import("@/app/api/auth/job-seeker-register/route");
+    await POST(register({ termsAccepted: true }));
+    expect(userUpdateOne).not.toHaveBeenCalled();
   });
 
   it("still registers when the consent log cannot be written", async () => {
@@ -111,9 +139,41 @@ describe("job-seeker registration", () => {
   });
 });
 
+describe("agent registration", () => {
+  const agentBody = (extra: Record<string, unknown>) =>
+    new NextRequest("http://localhost/api/auth/agent-register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fullName: "Ravi Kumar", email: "ravi@example.com", password: "Str0ng!Passw0rd#2026", country: "IN", ...extra }),
+    });
+
+  it("refuses an account without the Terms/Privacy tick", async () => {
+    const { POST } = await import("@/app/api/auth/agent-register/route");
+    const res = await POST(agentBody({}));
+    expect(res.status).toBe(400);
+    expect(userCreate).not.toHaveBeenCalled();
+  });
+
+  it("logs the acceptance and the cookie choice", async () => {
+    const { POST } = await import("@/app/api/auth/agent-register/route");
+    const res = await POST(agentBody({ termsAccepted: true, cookieConsent: "accepted" }));
+    expect(res.status).toBe(200);
+    expect(insertMany).toHaveBeenCalledWith([
+      expect.objectContaining({ userId: USER_ID, userName: "Ravi Kumar", consentType: "terms_and_privacy", granted: true, source: "registration", policyVersion: "2026-09-29" }),
+      expect.objectContaining({ consentType: "cookies", granted: true }),
+    ]);
+  });
+});
+
 // Multipart with eleven collaborators: a source guard, like the other employer-register tests.
 describe("employer registration", () => {
   const src = fs.readFileSync(path.join(process.cwd(), "src/app/api/auth/employer-register/route.ts"), "utf8");
+
+  it("refuses the form without the Terms/Privacy tick, before creating anything", () => {
+    const guard = src.indexOf('if (get("termsAccepted") !== "true")');
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(src.indexOf("User.create("));
+  });
 
   it("logs consent from the form's termsAccepted and cookieConsent fields", () => {
     expect(src).toMatch(/recordRegistrationConsents\(\{[\s\S]*?termsAccepted: get\("termsAccepted"\) === "true"/);

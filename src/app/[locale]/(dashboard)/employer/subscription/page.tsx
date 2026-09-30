@@ -34,6 +34,10 @@ import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { CurrencySelector } from "@/components/shared/CurrencySelector";
 import { PricingGrid } from "@/components/subscription/PricingGrid";
 import { convertAndFormat } from "@/lib/currency";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
@@ -41,7 +45,7 @@ import { toast } from "sonner";
 
 function formatDate(d: string | undefined) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  return formatIntlDate(new Date(d), { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function daysUntil(d: string | undefined) {
@@ -361,33 +365,33 @@ function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: Invoic
         <span className="text-xs text-muted-foreground">{t("invoiceCountLabel", { count: invoices.length })}</span>
       </div>
       <div className="overflow-x-auto" tabIndex={0}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-muted-foreground border-b border-border/40">
-              <th className="pb-2 pr-4 font-medium">{t("invoiceIdHeader")}</th>
-              <th className="pb-2 pr-4 font-medium">{t("date")}</th>
-              <th className="pb-2 pr-4 font-medium">{t("plan")}</th>
-              <th className="pb-2 pr-4 font-medium">{t("amount")}</th>
-              <th className="pb-2 font-medium">{t("status")}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table className="text-sm">
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="font-medium">{t("invoiceIdHeader")}</TableHead>
+              <TableHead className="font-medium">{t("date")}</TableHead>
+              <TableHead className="font-medium">{t("plan")}</TableHead>
+              <TableHead className="font-medium">{t("amount")}</TableHead>
+              <TableHead className="font-medium">{t("status")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {visible.map((inv) => (
-              <tr key={inv._id} className="border-b border-border/20 last:border-0">
-                <td className="py-3 pr-4 font-mono text-xs">{inv.invoiceNumber}</td>
-                <td className="py-3 pr-4 text-muted-foreground">{formatDate(inv.issuedAt)}</td>
-                <td className="py-3 pr-4">{inv.planName}</td>
-                <td className="py-3 pr-4 font-medium">
+              <TableRow key={inv._id} className="group">
+                <TableCell className="font-mono text-xs">{inv.invoiceNumber}</TableCell>
+                <TableCell className="text-muted-foreground">{formatDate(inv.issuedAt)}</TableCell>
+                <TableCell>{inv.planName}</TableCell>
+                <TableCell className="font-medium">
                   {convertAndFormat(inv.amount, inv.currency ?? "AED", displayCurrency, rates)}
                   {displayCurrency !== (inv.currency ?? "AED") && <span className="block text-[11px] text-muted-foreground/50">{inv.amount} {inv.currency}</span>}
-                </td>
-                <td className="py-3">
+                </TableCell>
+                <TableCell>
                   <Badge variant="outline" className={`text-xs ${inv.status === "paid" ? "text-emerald-500 border-emerald-500/30" : inv.status === "void" ? "text-red-500 border-red-500/30" : "text-amber-500 border-amber-500/30"}`}>{inv.status}</Badge>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {invoices.length > 3 && (
         <button onClick={() => setExpanded(!expanded)} className="text-xs text-sky-500 hover:text-sky-600 flex items-center gap-1 mx-auto">

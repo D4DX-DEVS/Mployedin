@@ -240,13 +240,13 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                           {job.title}
                         </h2>
                         {(employer?.domainVerified || employer?.isAgentVerified) && (
-                          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium"><Check className="h-3 w-3" aria-hidden="true" />{t("verified")}</span>
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] bg-green-500/10 text-green-800 px-2 py-0.5 rounded-full font-medium"><Check className="h-3 w-3" aria-hidden="true" />{t("verified")}</span>
                         )}
                         {daysLeft !== null && daysLeft <= 14 && (
                           <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full font-medium ${
                             daysLeft <= 7
-                              ? "bg-orange-500/10 text-orange-600"
-                              : "bg-yellow-500/10 text-yellow-600"
+                              ? "bg-orange-500/10 text-orange-800"
+                              : "bg-yellow-500/10 text-yellow-800"
                           }`}>
                             {t("closesInDays", { days: daysLeft.toLocaleString(numberLocale) })}
                           </span>
@@ -283,12 +283,12 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                       {job.requirements?.skills?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-3">
                           {job.requirements.skills.slice(0, 5).map((s: string) => (
-                            <span key={s} className="text-[11px] bg-muted px-2 py-0.5 rounded-md text-muted-foreground">
+                            <span key={s} className="text-[11px] bg-muted px-2 py-0.5 rounded-md text-foreground/80">
                               {s}
                             </span>
                           ))}
                           {job.requirements.skills.length > 5 && (
-                            <span className="text-[11px] text-muted-foreground/60">{t("moreSkills", { count: job.requirements.skills.length - 5 })}</span>
+                            <span className="text-[11px] text-muted-foreground">{t("moreSkills", { count: job.requirements.skills.length - 5 })}</span>
                           )}
                         </div>
                       )}

@@ -18,15 +18,15 @@ export const CLIENT_NAMESPACES = {
   root: ["pwaInstallPrompt"],
   public: [
     // common: the Dialog close label (the sign-up consent dialog in EasyApply).
-    "auth", "calendar", "common", "companyReviews", "easyApply", "errorBoundary", "footer",
+    "a11y", "auth", "calendar", "common", "companyReviews", "easyApply", "errorBoundary", "footer",
     "landing", "nav", "publicJobDetail", "salaryExplorer", "similarJobs", "socialShare",
   ],
   auth: [
-    "agentRegister", "auth", "calendar", "common", "confirmEmailChange", "employerRegister",
+    "a11y", "agentRegister", "auth", "calendar", "common", "confirmEmailChange", "employerRegister",
     "forgotPasswordPage", "formErrors", "interviewResponse", "mcpAuthorize", "resetPassword",
     "teamJoin", "verifyEmail",
   ],
-  onboarding: ["common", "footer", "onboarding"],
+  onboarding: ["a11y", "common", "footer", "onboarding"],
   poster: ["posterShareView"],
 } as const satisfies Record<string, readonly string[]>;
 

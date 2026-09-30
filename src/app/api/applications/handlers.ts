@@ -104,15 +104,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     accessibleJobIds = jobs.map((j) => j._id);
     query.jobId = { $in: accessibleJobIds };
   } else if (ctx.role === "agent") {
-    // Agent sees applications for their jobs + jobs from assigned employers
+    // Agent sees applications for their jobs + jobs from employers they see
+    // (assigned, or registered in their region — getAgentEmployerIds)
     const { Agent } = await import("@/models/Agent");
-    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const { getAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (agentDoc) {
+      const visibleEmployerIds = await getAgentEmployerIds(ctx.userId);
       const jobFilter: Record<string, unknown> = {
         $or: [
           { agentId: agentDoc._id },
-          ...(agentDoc.assignedEmployerIds?.length
-            ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }]
+          ...(visibleEmployerIds.length > 0
+            ? [{ employerId: { $in: visibleEmployerIds } }]
             : []),
         ],
       };
@@ -434,12 +437,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       if (emp) jobQuery = { employerId: emp._id };
     } else if (ctx.role === "agent") {
       const { Agent } = await import("@/models/Agent");
-      const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+      const { getAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
+      const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
       if (agentDoc) {
+        const visibleEmployerIds = await getAgentEmployerIds(ctx.userId);
         jobQuery = {
           $or: [
             { agentId: agentDoc._id },
-            ...(agentDoc.assignedEmployerIds?.length ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }] : []),
+            ...(visibleEmployerIds.length > 0 ? [{ employerId: { $in: visibleEmployerIds } }] : []),
           ],
         };
       }

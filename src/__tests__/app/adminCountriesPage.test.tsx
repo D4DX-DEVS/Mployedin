@@ -18,6 +18,14 @@ const paginationState = {
   resetPage: jest.fn(),
 };
 
+// CountriesPage keeps its filters in the URL (useUrlFilter).
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useParams: () => ({ locale: "en" }),
+  usePathname: () => "/en/admin/countries",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 jest.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({
     can: () => true,
@@ -110,7 +118,7 @@ describe("AdminCountriesPage", () => {
     expect(screen.getByRole("button", { name: /add new/i })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/admin/location-data/countries?page=1&limit=10");
+      expect(fetchMock).toHaveBeenCalledWith("/api/admin/location-data/countries?page=1&limit=10&sortBy=sortOrder&sortOrder=asc");
     });
 
     expect(await screen.findByText("United Arab Emirates")).toBeInTheDocument();

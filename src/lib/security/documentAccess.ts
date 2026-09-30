@@ -95,32 +95,29 @@ export async function canAccessApplicationDocument(
     return app.tier === "strict" ? isOfferOrHiredStage(app.status) : true;
   }
 
-  // Agent — assigned to the application (directly or via employer assignment).
+  // Agent — on the application, or the employer is one they see (assigned, or
+  // registered in their region).
   if (role === "agent") {
     const { Agent } = await import("@/models/Agent");
-    const agent = await Agent.findOne({ userId }).select("_id assignedEmployerIds").lean();
+    const { agentCanSeeEmployer } = await import("@/lib/auth/agentRestrictions");
+    const agent = await Agent.findOne({ userId }).select("_id").lean();
     if (!agent) return false;
     const assigned =
       (app.agentId && String(app.agentId) === String(agent._id)) ||
-      ((agent.assignedEmployerIds as unknown[] | undefined) ?? []).some(
-        (id) => String(id) === String(app.employerId)
-      );
+      (await agentCanSeeEmployer(userId, app.employerId));
     if (!assigned) return false;
     return app.tier === "strict" ? isOfferOrHiredStage(app.status) : true;
   }
 
-  // Super agent — supervises the agent involved in the application.
+  // Super agent — the application is in their book: one of their agents is on
+  // it, or its employer is (the same set their applications page lists).
   if (role === "super_agent") {
-    const { default: SuperAgent } = await import("@/models/SuperAgent");
-    const sa = await SuperAgent.findOne({ userId }).select("agentIds").lean();
-    if (!sa) return false;
-    const supervised = ((sa.agentIds as unknown[] | undefined) ?? []).map(String);
-    let involved = !!app.agentId && supervised.includes(String(app.agentId));
-    if (!involved) {
-      const { Employer } = await import("@/models/Employer");
-      const employer = await Employer.findById(app.employerId).select("agentId").lean();
-      involved = !!employer?.agentId && supervised.includes(String(employer.agentId));
-    }
+    const { getSuperAgentBook } = await import("@/lib/auth/agentRestrictions");
+    const book = await getSuperAgentBook(userId);
+    if (!book) return false;
+    const involved =
+      (!!app.agentId && book.agentIds.some((id) => String(id) === String(app.agentId))) ||
+      book.employerIds.some((id) => String(id) === String(app.employerId));
     if (!involved) return false;
     return app.tier === "strict" ? isOfferOrHiredStage(app.status) : true;
   }

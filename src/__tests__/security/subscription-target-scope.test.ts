@@ -15,6 +15,12 @@ const saSelectMock = jest.fn(() => ({ lean: saLeanMock }));
 const saFindOneMock = jest.fn(() => ({ select: saSelectMock }));
 
 const agentFindLeanMock = jest.fn();
+// Employer.find is called by getSuperAgentBook twice: once for employers that
+// point at an in-scope agent, once for employers registered in the territory.
+let employerFindRows: (filter: Record<string, unknown>) => Array<{ _id: string }> = () => [];
+const employerFindMock = jest.fn((filter: Record<string, unknown>) => ({
+  select: () => ({ lean: () => Promise.resolve(employerFindRows(filter)) }),
+}));
 const agentFindSelectMock = jest.fn(() => ({ lean: agentFindLeanMock }));
 const agentFindMock = jest.fn(() => ({ select: agentFindSelectMock }));
 
@@ -26,7 +32,7 @@ jest.mock("@/lib/db/mongoose", () => ({
 
 jest.mock("@/models/Employer", () => ({
   __esModule: true,
-  Employer: { findOne: employerFindOneMock, find: jest.fn() },
+  Employer: { findOne: employerFindOneMock, find: employerFindMock },
 }));
 
 jest.mock("@/models/Agent", () => ({
@@ -56,6 +62,7 @@ const TARGET_USER_ID = "64b000000000000000000004";
 describe("canManageSubscriptionTarget", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    employerFindRows = () => [];
   });
 
   it("allows admin for any target", async () => {
@@ -104,6 +111,27 @@ describe("canManageSubscriptionTarget", () => {
       assignedStateIds: [],
     });
     agentFindLeanMock.mockResolvedValue([]);
+    // The employer points at the team agent.
+    employerFindRows = (filter) => ("agentId" in filter ? [{ _id: EMPLOYER_ID }] : []);
+    await expect(
+      canManageSubscriptionTarget({ userId: "sa-user", role: "super_agent" }, TARGET_USER_ID)
+    ).resolves.toBe(true);
+  });
+
+  it("allows super_agent for an employer registered in their territory with no agent", async () => {
+    const DUBAI = "64b0000000000000000000d1";
+    employerLeanMock.mockResolvedValue({ _id: EMPLOYER_ID, agentId: undefined });
+    saLeanMock.mockResolvedValue({
+      _id: "64b000000000000000000005",
+      agentIds: [],
+      assignedCityIds: [DUBAI],
+      assignedStateIds: [],
+    });
+    agentFindLeanMock.mockResolvedValue([]);
+    employerFindRows = (filter) => {
+      const or = (filter.$or as Array<Record<string, { $in: string[] }>>) ?? [];
+      return or.some((c) => c.regionCityId?.$in.includes(DUBAI)) ? [{ _id: EMPLOYER_ID }] : [];
+    };
     await expect(
       canManageSubscriptionTarget({ userId: "sa-user", role: "super_agent" }, TARGET_USER_ID)
     ).resolves.toBe(true);

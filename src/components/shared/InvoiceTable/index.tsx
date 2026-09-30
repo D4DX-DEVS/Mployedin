@@ -2,10 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { Eye, Inbox } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ListSkeleton } from "@/components/shared/ListSkeleton";
+import { RowActions } from "@/components/shared/RowActions";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -57,6 +57,11 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
       key: "invoiceNumber",
       header: t("invoiceNumber"),
       cell: (inv) => <p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p>,
+    },
+    {
+      key: "status",
+      header: tc("status"),
+      cell: (inv) => <StatusBadge status={inv.status} />,
     },
     {
       key: "employer",
@@ -121,16 +126,11 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
       },
     },
     {
-      key: "status",
-      header: tc("status"),
-      cell: (inv) => <StatusBadge status={inv.status} />,
-    },
-    {
       key: "dueDate",
       header: t("dueDate"),
       headerClassName: hiddenMd,
       cellClassName: `${hiddenMd ?? ""} text-xs text-muted-foreground`.trim(),
-      cell: (inv) => (inv.dueDate ? formatDate(new Date(inv.dueDate)) : "—"),
+      cell: (inv) => (inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"),
     },
     {
       key: "actions",
@@ -138,9 +138,12 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
       headerClassName: "text-right",
       cell: (inv) => (
         <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" onClick={() => onSelect(inv._id)} title={tc("view")} className="sm:min-h-10 sm:min-w-10 sm:p-2.5" aria-label={tc("view")}>
-            <Eye className="h-4 w-4" />
-          </Button>
+          <RowActions
+            name={inv.invoiceNumber}
+            quick={[
+              { key: "view", label: tc("view"), icon: Eye, iconOnly: true, onSelect: () => onSelect(inv._id) },
+            ]}
+          />
         </div>
       ),
     },
@@ -150,7 +153,7 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
     <div className="overflow-x-auto">
       <Table className="responsive-card-table">
         <TableHeader>
-          <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
+          <TableRow className="bg-muted/30 hover:bg-muted/30">
             {columns.map((col) => (
               <TableHead key={col.key} className={col.headerClassName}>{col.header}</TableHead>
             ))}
@@ -158,11 +161,7 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow className="border-border/70 hover:bg-transparent">
-              <TableCell colSpan={columns.length} className="p-4">
-                <ListSkeleton count={5} itemClassName="h-10 rounded-lg" />
-              </TableCell>
-            </TableRow>
+            <TableBodySkeleton rows={5} cols={columns.length} />
           ) : invoices.length === 0 ? (
             <TableRow className="border-border/70 hover:bg-transparent">
               <TableCell colSpan={columns.length} className="p-0">
@@ -179,7 +178,12 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
               <TableRow
                 key={inv._id}
                 className="border-border/70 cursor-pointer hover:bg-secondary/30"
-                onClick={() => onSelect(inv._id)}
+                data-mobile-collapsible=""
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest("[data-table-action]")) return;
+                  onSelect(inv._id);
+                }}
               >
                 {columns.map((col) => (
                   <TableCell key={col.key} className={col.cellClassName}>{col.cell(inv)}</TableCell>

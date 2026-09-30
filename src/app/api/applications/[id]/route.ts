@@ -10,7 +10,7 @@ import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notifyStatusChange } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { agentCanSeeEmployer, getSuperAgentBook } from "@/lib/auth/agentRestrictions";
 import { memberMayAccessJob } from "@/lib/permissions/team";
 import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
 import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
@@ -24,9 +24,10 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; member?: Aut
 
 /**
  * Scope guard for agent / super_agent access to a single application, mirroring
- * the applications LIST route. Agents are limited to applications for jobs they
- * own or whose employer is in their assigned set; super_agents to jobs whose
- * agent is within their jurisdiction. Returns 403 when out of scope, else null.
+ * the applications LIST routes. Agents are limited to applications for jobs they
+ * own or whose employer they see (assigned, or registered in their region);
+ * super_agents to their book — a job one of their agents posted, or one at an
+ * employer in it. Returns 403 when out of scope, else null.
  * Admin / employer / job_seeker are authorized by their own branches.
  */
 async function verifyAgentScopeForApplication(
@@ -35,18 +36,23 @@ async function verifyAgentScopeForApplication(
   ctx: AuthCtx
 ): Promise<NextResponse | null> {
   if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     const ok = Boolean(
       agent && (
         String(jobAgentId) === String(agent._id) ||
-        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(jobEmployerId))
+        (await agentCanSeeEmployer(ctx.userId, jobEmployerId))
       )
     );
     return ok ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (ctx.role === "super_agent") {
-    const scope = await getSuperAgentScope(ctx.userId);
-    const ok = Boolean(jobAgentId && scope?.effectiveAgentIds.some((id) => String(id) === String(jobAgentId)));
+    const book = await getSuperAgentBook(ctx.userId);
+    const ok = Boolean(
+      book && (
+        (jobAgentId && book.agentIds.some((id) => String(id) === String(jobAgentId))) ||
+        book.employerIds.some((id) => String(id) === String(jobEmployerId))
+      )
+    );
     return ok ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return null;

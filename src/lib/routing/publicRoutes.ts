@@ -27,6 +27,7 @@ const PUBLIC_ROUTES = [
   "/cookies",
   "/terms",
   "/gdpr",
+  "/accessibility",
   "/companies",
   "/poster",
   "/salary-explorer",

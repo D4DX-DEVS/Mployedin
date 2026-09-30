@@ -22,6 +22,7 @@ import {
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { RequiredMark } from "./required-mark";
 import { cn } from "@/lib/utils";
 
 interface DateTimePickerProps {
@@ -35,6 +36,9 @@ interface DateTimePickerProps {
   className?: string;
   required?: boolean;
   id?: string;
+  /** Set on the trigger itself; a wrapping role="group" does not reach it. */
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
   /** "datetime" shows date+time; "date" shows date only; "time" shows time only */
   mode?: "datetime" | "date" | "time";
   container?: HTMLElement | null;
@@ -70,6 +74,8 @@ export function DateTimePicker({
   className,
   required,
   id,
+  ariaInvalid,
+  ariaDescribedBy,
   mode = "datetime",
   container,
   modal = false,
@@ -169,7 +175,7 @@ export function DateTimePicker({
     <div className={className}>
       {label && (
         <label className="block text-xs font-medium mb-1.5">
-          {label} {required && <span className="text-destructive">*</span>}
+          {label} {required && <RequiredMark />}
         </label>
       )}
       <Popover open={open} onOpenChange={setOpen} modal={modal}>
@@ -177,7 +183,11 @@ export function DateTimePicker({
           <button
             id={id}
             type="button"
-            aria-label={label ?? resolvedPlaceholder}
+            /* A button cannot carry aria-required and the visible * is
+               aria-hidden, so the name says it. */
+            aria-label={label ? (required ? t("requiredLabel", { label }) : label) : resolvedPlaceholder}
+            aria-invalid={ariaInvalid || undefined}
+            aria-describedby={ariaDescribedBy}
             className={cn(
               "w-full h-9 px-3 text-sm text-start flex items-center gap-2 rounded-lg border border-border bg-background transition-colors",
               "hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",

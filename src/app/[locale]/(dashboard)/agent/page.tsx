@@ -20,6 +20,7 @@ import {
 } from "@/components/features/agent/dashboard";
 import { getAgentActionCounts, getAgentQueueItems, resolveAgentScope, EMPTY_AGENT_COUNTS } from "@/lib/agents/workQueue";
 import { resolveAssignedRegions } from "@/lib/agents/assignedRegion";
+import { getAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { calculateMonthlyAchievements } from "@/lib/targets/profileAchievementCalculator";
 import { formatCurrency } from "@/lib/currency";
 import { isValidTimeZone } from "@/lib/datetime/zone";
@@ -59,7 +60,9 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   const assignedRegions = await resolveAssignedRegions(agentDoc, locale);
 
   const agentId = agentDoc?._id;
-  const employerCount = agentDoc?.assignedEmployerIds?.length ?? 0;
+  // Employers the agent sees — assigned, or registered in their region.
+  const visibleEmployerIds = agentId ? await getAgentEmployerIds(String(session.user.id)) : [];
+  const employerCount = visibleEmployerIds.length;
 
   // Every figure on this page is counted live. The funnel used to read the
   // `performance.*` counters on the Agent document — fire-and-forget
@@ -79,12 +82,12 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   let jobMetrics: AgentRoleMetric[] = [];
 
   if (agentId) {
-    // Portfolio scope: jobs owned directly or via assigned employers.
+    // Portfolio scope: jobs owned directly or via the employers the agent sees.
     const portfolioFilter = {
       $or: [
         { agentId },
-        ...(agentDoc?.assignedEmployerIds?.length
-          ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }]
+        ...(visibleEmployerIds.length > 0
+          ? [{ employerId: { $in: visibleEmployerIds } }]
           : []),
       ],
     };

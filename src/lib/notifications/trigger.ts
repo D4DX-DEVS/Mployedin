@@ -728,6 +728,92 @@ export async function notifyAdminsEmployerRegistered(
   );
 }
 
+/**
+ * An employer registered in a region this super-agent or agent covers. Every
+ * covering member hears about it — territories may overlap. In-app only.
+ */
+export async function notifyRegionEmployerRegistered(
+  userId: string,
+  role: "super_agent" | "agent",
+  companyName: string,
+  cityName: string,
+  employerId: string,
+): Promise<void> {
+  const segment = role === "super_agent" ? "super-agent" : "agent";
+  await notify({
+    userId,
+    type: "employer_registered",
+    title: "New employer in your region",
+    message: `${companyName} registered in ${cityName}.`,
+    link: `/${segment}/employers?search=${encodeURIComponent(companyName)}`,
+    sendEmail: false,
+    metadata: { companyName, employerId, cityName },
+    titleKey: "regionEmployerRegisteredTitle",
+    bodyKey: "regionEmployerRegisteredBody",
+    params: { companyName, cityName },
+  });
+}
+
+/**
+ * No super-agent covers the region an employer registered in (or the city was
+ * not recognised), so nobody but an admin sees the company until an admin
+ * moves it into a covered region or extends a territory.
+ */
+export async function notifyAdminsEmployerOutsideTerritory(
+  companyName: string,
+  employerId: string,
+  regionLabel: string | null,
+): Promise<void> {
+  const adminIds = await getAdminUserIds();
+  await Promise.all(
+    adminIds.map((adminUserId) =>
+      notify({
+        userId: adminUserId,
+        type: "employer_registered",
+        title: "Employer outside every territory",
+        message: regionLabel
+          ? `${companyName} registered in ${regionLabel}, which no super agent covers.`
+          : `${companyName} registered without a recognised city, so no super agent covers it.`,
+        link: `/admin/employers?search=${encodeURIComponent(companyName)}`,
+        sendEmail: false,
+        metadata: { employerId, companyName, regionLabel },
+        titleKey: "adminEmployerOutsideTerritoryTitle",
+        bodyKey: regionLabel ? "adminEmployerOutsideTerritoryBody" : "adminEmployerNoRegionBody",
+        params: { companyName, region: regionLabel ?? "" },
+      }),
+    ),
+  );
+}
+
+/**
+ * An employer edited its address. Its region (and so which super-agents and
+ * agents see it) does not follow — an admin moves it by hand if needed.
+ */
+export async function notifyAdminsEmployerAddressChanged(
+  companyName: string,
+  employerId: string,
+  from: string,
+  to: string,
+): Promise<void> {
+  const adminIds = await getAdminUserIds();
+  await Promise.all(
+    adminIds.map((adminUserId) =>
+      notify({
+        userId: adminUserId,
+        type: "employer_registered",
+        title: "Employer changed its address",
+        message: `${companyName} changed its address from ${from} to ${to}. Its region was not moved.`,
+        link: `/admin/employers?search=${encodeURIComponent(companyName)}`,
+        sendEmail: false,
+        metadata: { employerId, companyName, from, to },
+        titleKey: "adminEmployerAddressChangedTitle",
+        bodyKey: "adminEmployerAddressChangedBody",
+        params: { companyName, from, to },
+      }),
+    ),
+  );
+}
+
 /** A placement completed — the platform's revenue event. */
 export async function notifyAdminsPlacement(
   candidateName: string,

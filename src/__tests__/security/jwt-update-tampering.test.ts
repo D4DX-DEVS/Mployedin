@@ -40,6 +40,13 @@ jest.mock("@/models/JobSeeker", () => ({
   default: { findOne: (...a: unknown[]) => mockJobSeekerFindOne(...a), create: jest.fn() },
 }));
 jest.mock("@/models/Employer", () => ({ __esModule: true, Employer: { findOne: jest.fn(), findById: jest.fn() } }));
+// The periodic re-check also asks which Terms version is current (jwtTermsPending.test.ts).
+jest.mock("@/lib/gdpr/termsVersion", () => ({
+  __esModule: true,
+  getCurrentTermsVersion: jest.fn().mockResolvedValue("v1"),
+  isTermsAcceptancePending: jest.fn().mockResolvedValue(false),
+  termsPendingFor: () => false,
+}));
 jest.mock("@/models/CompanyUser", () => ({ __esModule: true, CompanyUser: {}, getDefaultPermissions: jest.fn() }));
 jest.mock("@/lib/audit/log", () => ({ __esModule: true, logActivity: jest.fn() }));
 jest.mock("@/lib/communications/email", () => ({ __esModule: true, sendEmail: jest.fn(), EmailTemplates: {} }));

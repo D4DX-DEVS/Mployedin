@@ -16,6 +16,7 @@ import { escapeRegex } from "@/lib/security/sanitize";
  *   - level=states&countryId=xxx → states for a country
  *   - level=cities&stateId=xxx → cities for a state
  *   - search=xxx → search cities by name (returns up to 50)
+ *   - search=xxx&country=AE → the same, limited to one country (ISO code)
  */
 export async function GET(req: NextRequest) {
   // Public and DB-backed — throttle per IP like the sibling reference-data routes.
@@ -42,9 +43,18 @@ export async function GET(req: NextRequest) {
 
   try {
     if (search) {
-      // Search cities across all countries
+      // Search cities across all countries, or within one when `country` is set
+      const countryCode = searchParams.get("country")?.trim().toUpperCase();
+      let stateFilter: Record<string, unknown> = {};
+      if (countryCode) {
+        const country = await Country.findOne({ code: countryCode }).select("_id").lean();
+        if (!country) return NextResponse.json({ results: [] });
+        const countryStateIds = await State.find({ countryId: country._id }).distinct("_id");
+        stateFilter = { stateId: { $in: countryStateIds } };
+      }
       const cities = await City.find({
         isActive: true,
+        ...stateFilter,
         name: new RegExp(escapeRegex(search), "i"),
       })
         .sort({ name: 1 })

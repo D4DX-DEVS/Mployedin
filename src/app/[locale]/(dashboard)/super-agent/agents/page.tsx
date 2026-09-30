@@ -15,8 +15,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Activity, ArrowUpDown, BriefcaseBusiness, ChevronDown, ChevronUp,
-  Filter, RotateCcw, Search, SlidersHorizontal, Target, Users2,
+  Activity, BriefcaseBusiness,
+  Mail, Target, Users2,
   Plus,
 } from "lucide-react";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -34,7 +34,12 @@ import { SuperAgentInsightsPanel } from "@/components/features/super-agent/Insig
 import { AIExplainButton } from "@/components/shared/AIExplainButton";
 import { cn } from "@/lib/utils";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 
 interface AgentRow {
@@ -146,7 +151,6 @@ export default function SuperAgentAgentsPage() {
   const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const { filters, setFilter, resetFilters } = useUrlFilters(
@@ -328,26 +332,8 @@ export default function SuperAgentAgentsPage() {
     { label: t("placements"), value: totals.placements, note: t("placementsHelper"), icon: BriefcaseBusiness },
   ];
 
-  /* ── Sortable Header Cell ── */
-  function SortHeader({ field, children }: { field: string; children: React.ReactNode }) {
-    const active = filters.sortBy === field;
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(field)}
-        className="group inline-flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors"
-      >
-        {children}
-        {active ? (
-          filters.sortOrder === "asc"
-            ? <ChevronUp className="h-3.5 w-3.5 text-primary" />
-            : <ChevronDown className="h-3.5 w-3.5 text-primary" />
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-        )}
-      </button>
-    );
-  }
+  /* Sort order for the column heads: the filter state carries strings. */
+  const sortOrder = filters.sortOrder === "asc" ? "asc" : "desc";
 
   return (
     <div className="page-container">
@@ -374,72 +360,18 @@ export default function SuperAgentAgentsPage() {
 
       <SuperAgentSection title={t("teamReviewTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Error State ---- */}
-        {error && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p className="text-sm text-destructive">{t("loadAgentsError")}</p>
-            <button
-              type="button"
-              onClick={() => fetchAgents()}
-              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
-            >
-              {tc("tryAgain")}
-            </button>
-          </div>
-        )}
+        {error && <ErrorState onRetry={() => fetchAgents()} />}
 
-        {/* ── Search Row + Advanced Toggle ── */}
-        <TableToolbar
-          search={filters.search}
-          onSearchChange={(v) => { setFilter("search", v); resetPage(); }}
-          searchPlaceholder={t("searchAgentsPlaceholder")}
+        {/* ── Search + everyday filters in plain sight, ranges and sorts behind More ── */}
+        <InlineFilterBar
+          className="mb-4"
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          hasActiveFilters={activeFilterCount > 0 || filters.performance !== ""}
-          actions={
-            (activeFilterCount > 0 || filters.search || filters.performance) ? (
-              <button
-                type="button"
-                onClick={() => { resetFilters(); resetPage(); }}
-                className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                {tc("reset")}
-              </button>
-            ) : undefined
-          }
-          filterContent={
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                {/* Account status */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{tc("status")}</label>
-                  <SearchableSelect
-                    options={[
-                      { value: "", label: tc("all") },
-                      { value: "active", label: tc("active") },
-                      { value: "inactive", label: t("badgeDeactivated") },
-                    ]}
-                    value={filters.status}
-                    onValueChange={(v) => { setFilter("status", v); resetPage(); }}
-                    placeholder={tc("all")}
-                    className="h-11 rounded-xl border-border bg-card"
-                  />
-                </div>
-
-                {/* Performance */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{t("filterPerformance")}</label>
-                  <SearchableSelect
-                    options={getPerformanceOptions(t)}
-                    value={filters.performance}
-                    onValueChange={(v) => { setFilter("performance", v); resetPage(); }}
-                    placeholder={t("allAgents")}
-                    searchPlaceholder={t("filterPerformancePlaceholder")}
-                    className="h-11 rounded-xl border-border bg-card"
-                  />
-                </div>
-
+          onClear={(activeFilterCount > 0 || filters.search || filters.performance) ? () => { resetFilters(); resetPage(); } : undefined}
+          more={(
+            <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+              <div className="grid min-w-0 flex-[1_1_100%] gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {/* Leads Range */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterLeadsCount")}</label>
@@ -493,7 +425,7 @@ export default function SuperAgentAgentsPage() {
               </div>
 
               {/* Quick Filter Chips */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-[1_1_100%] flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilterLabel")}:</span>
                 {[
                   { label: t("quickFilterTopPerformers"), action: () => { setFilter("performance", "high_performer"); resetPage(); } },
@@ -514,43 +446,55 @@ export default function SuperAgentAgentsPage() {
                 ))}
               </div>
             </div>
-          }
-          className="mb-4"
-        />
+          )}
+          moreActiveCount={[filters.leadsMin, filters.leadsMax, filters.convRateMin, filters.convRateMax].filter(Boolean).length}
+        >
+          <InlineFilterSearch
+            value={filters.search}
+            onChange={(v) => { setFilter("search", v); resetPage(); }}
+            placeholder={t("searchAgentsPlaceholder")}
+          />
+          <SearchableSelect
+            options={[
+              { value: "", label: tc("all") },
+              { value: "active", label: tc("active") },
+              { value: "inactive", label: t("badgeDeactivated") },
+            ]}
+            value={filters.status}
+            onValueChange={(v) => { setFilter("status", v); resetPage(); }}
+            placeholder={tc("all")}
+            className={INLINE_FILTER_CONTROL}
+          />
+          <SearchableSelect
+            options={getPerformanceOptions(t)}
+            value={filters.performance}
+            onValueChange={(v) => { setFilter("performance", v); resetPage(); }}
+            placeholder={t("allAgents")}
+            className={INLINE_FILTER_CONTROL}
+          />
+        </InlineFilterBar>
 
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead><SortHeader field="name">{t("agent")}</SortHeader></TableHead>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>
+                  <SortableTableHeader label={t("agent")} active={filters.sortBy === "name"} order={sortOrder} onClick={() => toggleSort("name")} />
+                </TableHead>
                 <TableHead>{t("progress")}</TableHead>
                 <TableHead className="text-right" title={t("convRateExplainer")}>
-                  <SortHeader field="conversionRate">{t("convRateShort")}</SortHeader>
+                  <SortableTableHeader label={t("convRateShort")} active={filters.sortBy === "conversionRate"} order={sortOrder} onClick={() => toggleSort("conversionRate")} />
                 </TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 4 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={4} />
               ) : agents.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                        <Users2 className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{t("noAgentsFound")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("noAgentsFoundHelper")}</p>
-                      </div>
-                    </div>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="py-12">
+                    <EmptyState title={t("noAgentsFound")} description={t("noAgentsFoundHelper")} icon={Users2} />
                   </TableCell>
                 </TableRow>
               ) : agents.map((a) => {
@@ -558,7 +502,7 @@ export default function SuperAgentAgentsPage() {
                 return (
                 <TableRow
                   key={a._id}
-                  className="bg-transparent cursor-pointer hover:bg-muted/40 transition-colors"
+                  className="group cursor-pointer transition-colors"
                   onClick={() => router.push(`/${locale}/super-agent/agents/${a.agentId}`)}
                 >
                   <TableCell>
@@ -567,31 +511,37 @@ export default function SuperAgentAgentsPage() {
                         row, which crammed the email into a fragment beside the
                         name. A grid container keeps its own layout, so name,
                         email and badges each hold a full-width line. */}
-                    <div className="grid w-full min-w-0 gap-1 max-sm:pe-12">
-                      <p className="truncate font-medium text-foreground">{a.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{a.email}</p>
-                      <div className="flex flex-wrap items-center gap-1">
-                        {badges.map((b) => (
-                          <span key={b.label} className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
-                            {b.label}
-                          </span>
-                        ))}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar name={a.name} email={a.email} className="h-9 w-9 shrink-0" colorful />
+                      <div className="grid w-full min-w-0 gap-1 max-sm:pe-12">
+                        <p className="truncate font-medium text-foreground">{a.name}</p>
+                        <p className="flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground">
+                          <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{a.email}</span>
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {badges.map((b) => (
+                            <span key={b.label} className={cn("text-[11px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
+                              {b.label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      {/* Phones: the AI sparkle is pinned to the card's top end
-                          corner (the row is position:relative in card mode),
-                          clear of the expand chevron, instead of floating
-                          wherever the identity line happens to wrap. */}
-                      <span
-                        className="sm:hidden max-sm:absolute max-sm:end-8 max-sm:top-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <AIExplainButton
-                          rowData={aiRowData(a)}
-                          entityLabel={t("entityLabelAgentPerformance")}
-                          context={t("aiExplainContext")}
-                        />
-                      </span>
                     </div>
+                    {/* Phones: the AI sparkle is pinned to the card's top end
+                        corner (the row is position:relative in card mode),
+                        clear of the expand chevron, instead of floating
+                        wherever the identity line happens to wrap. */}
+                    <span
+                      className="sm:hidden max-sm:absolute max-sm:end-8 max-sm:top-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <AIExplainButton
+                        rowData={aiRowData(a)}
+                        entityLabel={t("entityLabelAgentPerformance")}
+                        context={t("aiExplainContext")}
+                      />
+                    </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2 text-xs">
@@ -631,10 +581,9 @@ export default function SuperAgentAgentsPage() {
           </Table>
         </div>
 
-        <div className="mt-4">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </SuperAgentSection>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       {/* ── Create Agent: Account → Region, on the Add Employer frame ── */}
       <StepFormDialog

@@ -110,6 +110,9 @@ interface TeamAllocationDialogProps {
   supervisorProfile: SupervisorProfile | null;
   teamProfiles: TeamProfile[];
   onSuccess: () => void | Promise<void>;
+  /** Pre-fills the agent search when opened from a row's Adjust action, so the
+   *  dialog lands on that agent instead of ignoring which row was clicked. */
+  initialFilterName?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -174,6 +177,7 @@ export function TeamAllocationDialog({
   supervisorProfile,
   teamProfiles,
   onSuccess,
+  initialFilterName = "",
 }: TeamAllocationDialogProps) {
   const t = useTranslations("teamAllocationDialog");
   const [saving, setSaving] = useState(false);
@@ -196,7 +200,7 @@ export function TeamAllocationDialog({
     initializedRef.current = true;
 
     setMode("manual");
-    setFilterName("");
+    setFilterName(initialFilterName);
     setLoading(true);
 
     (async () => {
@@ -243,7 +247,7 @@ export function TeamAllocationDialog({
         setLoading(false);
       }
     })();
-  }, [open, teamProfiles]);
+  }, [open, teamProfiles, initialFilterName]);
 
   /* ---- Update target for an agent ---- */
   const updateTarget = useCallback((agentId: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {

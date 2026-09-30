@@ -21,8 +21,12 @@ jest.mock("@/lib/notifications/trigger", () => ({ notifyInterviewScheduled: jest
 jest.mock("@/lib/interviews/sendInvite", () => ({ sendInterviewInvite: jest.fn() }));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 const getSuperAgentBook = jest.fn();
+// Whether the agent sees the job's employer: assigned to it, or it is
+// registered inside the agent's region.
+const agentCanSeeEmployer = jest.fn().mockResolvedValue(false);
 jest.mock("@/lib/auth/agentRestrictions", () => ({
   getSuperAgentBook: (...a: unknown[]) => getSuperAgentBook(...a),
+  agentCanSeeEmployer: (...a: unknown[]) => agentCanSeeEmployer(...a),
 }));
 const book = (agentIds: string[], employerIds: string[] = []) => ({ saProfileId: "x", agentIds, employerIds, ownershipMatch: {} });
 
@@ -126,5 +130,15 @@ it("lets a super-agent in through an employer in their book, whoever posted the 
   getSuperAgentBook.mockResolvedValue(book(["999999999999999999999999"], [EMP]));
   currentCtx = { userId: "5", role: "super_agent", locale: "en" };
   await post().catch(() => undefined);
+  expect(seekerFindById).toHaveBeenCalled();
+});
+
+it("lets an agent in through an employer registered in their region", async () => {
+  // Not the job's agent and not assigned to the employer, but the employer's
+  // region is inside the agent's territory — every agent covering it sees it.
+  agentCanSeeEmployer.mockResolvedValueOnce(true);
+  currentCtx = { userId: "6", role: "agent", locale: "en" };
+  await post().catch(() => undefined);
+  expect(agentCanSeeEmployer).toHaveBeenCalledWith("6", EMP);
   expect(seekerFindById).toHaveBeenCalled();
 });

@@ -3,7 +3,7 @@ import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
-import { getSuperAgentBook } from "@/lib/auth/agentRestrictions";
+import { agentCanSeeEmployer, getSuperAgentBook } from "@/lib/auth/agentRestrictions";
 import { memberMayAccessJob } from "@/lib/permissions/team";
 import type { UserRole } from "@/models/User";
 
@@ -50,11 +50,11 @@ export async function verifyInterviewAccess(
   }
 
   if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     const ok = Boolean(
       agent && (
         String(job.agentId) === String(agent._id) ||
-        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(job.employerId))
+        (await agentCanSeeEmployer(ctx.userId, job.employerId))
       )
     );
     if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

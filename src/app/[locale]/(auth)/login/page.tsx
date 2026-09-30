@@ -10,12 +10,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldError } from "@/components/shared/FieldError";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 import { postSignInPath } from "@/lib/auth/roleHome";
 import { useSignupConsentPrompt } from "@/components/features/auth/SignupConsentDialog";
 import { CONSENT_REQUIRED_CODE, rememberSignupConsent, signupConsentCredentials } from "@/lib/auth/signupConsent";
+import { EMAIL_PATTERN } from "@/lib/errors/email-pattern";
 
 const REMEMBER_ME_KEY = "mployedin_remember_email";
 
@@ -33,6 +35,11 @@ interface LoginErrorState {
   kind: LoginErrorKind;
   message: string;
 }
+
+/** The ids of the fields below, in the order a failed submit focuses them. */
+type LoginField = "email" | "password" | "totp-code";
+type LoginFieldErrors = Partial<Record<LoginField, string>>;
+const FIELD_ORDER: LoginField[] = ["email", "password", "totp-code"];
 
 // Reads the live URL, so it is only safe inside effects and event handlers.
 // During SSR there is no `window`; render-time consumers must use the
@@ -56,9 +63,12 @@ export default function LoginPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const t = useTranslations("auth");
+  const tf = useTranslations("formErrors");
+  const tc = useTranslations("common");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<LoginErrorState | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
@@ -173,9 +183,32 @@ export default function LoginPage() {
     }
   }
 
+  function clearFieldError(field: LoginField) {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const nextErrors: LoginFieldErrors = {};
+    if (!email.trim()) nextErrors.email = tf("emailRequired");
+    else if (!EMAIL_PATTERN.test(email.trim())) nextErrors.email = tf("emailInvalid");
+    if (!password) nextErrors.password = tf("passwordRequired");
+    if (requires2fa && totpCode.length !== 6) nextErrors["totp-code"] = tf("twoFactorCodeRequired");
+    setFieldErrors(nextErrors);
+    const firstInvalid = FIELD_ORDER.find((field) => nextErrors[field]);
+    if (firstInvalid) {
+      // Take a keyboard or screen-reader user straight to what needs fixing.
+      document.getElementById(firstInvalid)?.focus();
+      return;
+    }
+
     setLoading(true);
 
     if (rememberMe) {
@@ -335,25 +368,32 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      {/* `noValidate`: the browser's own bubbles are untranslated, vanish after
+          a moment and are not tied to the field, so handleSubmit checks the
+          fields and writes the reason under each one instead. */}
+      <form onSubmit={handleSubmit} noValidate className="space-y-3">
+        <p className="text-xs text-muted-foreground">{tc("requiredFieldsNote")}</p>
         <div className="field">
-          <Label htmlFor="email" className="text-sm font-medium">{t("emailAddress")}</Label>
+          <Label htmlFor="email" required className="text-sm font-medium">{t("emailAddress")}</Label>
           <Input
             id="email"
             type="email"
             placeholder={t("emailPlaceholder")}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
             required
             autoComplete="email"
             autoFocus
+            aria-invalid={fieldErrors.email ? true : undefined}
+            aria-describedby={fieldErrors.email ? "email-error" : undefined}
             className="h-11 rounded-xl border-border/70 bg-background/70 px-4 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
+          <FieldError id="email-error" message={fieldErrors.email} />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium">{t("password")}</Label>
+            <Label htmlFor="password" required className="text-sm font-medium">{t("password")}</Label>
             <Link
               href={`/${locale}/forgot-password`}
               className="inline-flex min-h-11 items-center text-sm font-medium text-primary transition-colors hover:text-primary/80"
@@ -367,9 +407,11 @@ export default function LoginPage() {
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); clearFieldError("password"); }}
               required
               autoComplete="current-password"
+              aria-invalid={fieldErrors.password ? true : undefined}
+              aria-describedby={fieldErrors.password ? "password-error" : undefined}
               className="h-11 rounded-xl border-border/70 bg-background/70 px-4 pe-11 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
             />
             <button
@@ -381,11 +423,12 @@ export default function LoginPage() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+          <FieldError id="password-error" message={fieldErrors.password} />
         </div>
 
         {requires2fa && (
           <div className="field rounded-xl border border-primary/20 bg-primary/[0.04] card-pad">
-            <Label htmlFor="totp-code" className="text-sm font-medium">{t("twoFactorCode")}</Label>
+            <Label htmlFor="totp-code" required className="text-sm font-medium">{t("twoFactorCode")}</Label>
             <p className="text-xs text-muted-foreground">{t("twoFactorPrompt")}</p>
             <Input
               id="totp-code"
@@ -394,15 +437,16 @@ export default function LoginPage() {
               autoComplete="one-time-code"
               placeholder="123456"
               value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(e) => { setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); clearFieldError("totp-code"); }}
               autoFocus
               required
               maxLength={6}
               pattern="[0-9]{6}"
-              aria-invalid={error?.kind === "two-factor"}
-              aria-describedby={error?.kind === "two-factor" ? "login-error" : undefined}
+              aria-invalid={error?.kind === "two-factor" || fieldErrors["totp-code"] ? true : undefined}
+              aria-describedby={fieldErrors["totp-code"] ? "totp-code-error" : error?.kind === "two-factor" ? "login-error" : undefined}
               className="h-11 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
             />
+            <FieldError id="totp-code-error" message={fieldErrors["totp-code"]} />
           </div>
         )}
 

@@ -29,6 +29,13 @@ jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
   useSearchParams: () => new URLSearchParams("token=abc123&email=test@example.com"),
 }));
+// Marks client-side (router) navigations so a test can tell them from full page loads.
+jest.mock("next/link", () => ({
+  __esModule: true,
+  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+    <a data-client-nav href={href} {...props}>{children}</a>
+  ),
+}));
 
 import VerifyEmailPage from "@/app/[locale]/(auth)/verify-email/page";
 
@@ -51,6 +58,19 @@ it("refreshes the session once it has loaded, not while it is loading", async ()
   rerender(<VerifyEmailPage />);
   expect(update).toHaveBeenCalledTimes(1);
   await waitFor(() => expect(screen.getByRole("link", { name: "continueToDashboard" })).toHaveAttribute("href", "/en/employer"));
+});
+
+// Sign-in sent this user to the dashboard and the proxy redirected them here.
+// The Next client router remembers that redirect for about 5 minutes, so a
+// client-side navigation to the dashboard landed back on this page without
+// asking the server (reproduced 2026-09-29 with an admin-created super agent).
+// Reloading worked. The button has to load the page from the server.
+it("goes to the dashboard with a full page load, not a client-side navigation", async () => {
+  sessionStatus = "authenticated";
+  render(<VerifyEmailPage />);
+  const cta = await screen.findByRole("link", { name: "continueToDashboard" });
+  expect(cta).toHaveAttribute("href", "/en/employer");
+  expect(cta).not.toHaveAttribute("data-client-nav");
 });
 
 it("does not try to refresh for a visitor who is signed out", async () => {

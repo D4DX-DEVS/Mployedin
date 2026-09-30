@@ -59,7 +59,7 @@ describe("SuperAgent workspace surfaces", () => {
       </>
     );
 
-    expect(screen.getByRole("heading", { name: "Lead Pipeline" }).closest("section")).toHaveClass("workspace-hero-surface");
+    expect(screen.getByRole("heading", { name: "Lead Pipeline" }).closest("section")).toHaveClass("dashboard-page-header");
     // Matches the panel by class rather than by "the div immediately above the
     // label": the summary caption and its figure now share a flex wrapper, so a
     // bare closest("div") stops one level short of the panel.

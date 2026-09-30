@@ -24,7 +24,12 @@ jest.mock("@/lib/auth/withAuth", () => ({
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/audit/log", () => ({ logActivity: jest.fn(), actorFromCtx: jest.fn(() => ({})) }));
 jest.mock("@/lib/notifications/trigger", () => ({ notify: jest.fn() }));
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentScope: jest.fn().mockResolvedValue(null) }));
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getSuperAgentScope: jest.fn().mockResolvedValue(null),
+  getSuperAgentBook: jest.fn().mockResolvedValue(null),
+  // Not assigned to the employer and not covering its region.
+  agentCanSeeEmployer: jest.fn().mockResolvedValue(false),
+}));
 
 const interviewCreate = jest.fn();
 jest.mock("@/models/Interview", () => ({

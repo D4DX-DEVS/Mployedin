@@ -243,15 +243,33 @@ export default function AdminJobsPage() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  // Open the deep-linked job once the list it belongs to has loaded.
+  // Open the deep-linked job once the list has loaded. ⌘K and the workflow
+  // template dialog link to any job, not only one on the current page, so a
+  // miss fetches the job itself.
   useEffect(() => {
-    if (!deepLinkedJobId) return;
+    if (!deepLinkedJobId || loading) return;
     const match = jobs.find((job) => job._id === deepLinkedJobId);
     if (match) {
       setSelectedJob(match);
       setDeepLinkedJobId("");
+      return;
     }
-  }, [deepLinkedJobId, jobs, setDeepLinkedJobId]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/jobs/${encodeURIComponent(deepLinkedJobId)}`);
+        const data = res.ok ? await res.json() : null;
+        if (cancelled) return;
+        if (data?.job) setSelectedJob(data.job as Job);
+        else toast.error(t("jobNotFound"));
+      } catch {
+        if (!cancelled) toast.error(t("jobNotFound"));
+      } finally {
+        if (!cancelled) setDeepLinkedJobId("");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [deepLinkedJobId, jobs, loading, setDeepLinkedJobId, t]);
 
   const handleDeleteJob = async (jobId: string) => {
     const ok = await confirmDialog({ message: t("deleteConfirmation"), confirmLabel: t("delete") });
@@ -543,6 +561,23 @@ export default function AdminJobsPage() {
           onOrderChange={(order) => applySort(sortField, order)}
           compact
         />
+        {/* "No applications" and "Closing soon" arrive only from dashboard
+            links and have no inline control, so show them as chips or the
+            list looks unfiltered. */}
+        {activeFilterChips
+          .filter((chip) => chip.key === "applications" || chip.key === "expiring")
+          .map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => { chip.clear(); resetPage(); }}
+              aria-label={t("removeFilter", { label: chip.label })}
+              className="inline-flex h-9 max-w-full shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary max-sm:hidden"
+            >
+              <span className="truncate">{chip.label}</span>
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          ))}
       </InlineFilterBar>
 
       <JobsFilterSheet

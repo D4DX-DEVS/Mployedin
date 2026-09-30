@@ -56,7 +56,7 @@ export function TemplateJobsDialog({ template, onClose }: TemplateJobsDialogProp
               {data.jobs.map((job) => (
                 <li key={job._id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
                   <div className="min-w-0">
-                    <Link href={`/${locale}/admin/jobs/${job._id}`} className="block truncate text-sm font-medium text-foreground hover:underline">
+                    <Link href={`/${locale}/admin/jobs?job=${job._id}`} className="block truncate text-sm font-medium text-foreground hover:underline">
                       {job.title || t("untitledJob")}
                     </Link>
                     <p className="truncate text-xs text-muted-foreground">{job.companyName || "—"}</p>

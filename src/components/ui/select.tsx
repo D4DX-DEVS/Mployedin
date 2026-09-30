@@ -3,8 +3,13 @@ import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useLocaleDirection } from "@/lib/i18n/useLocaleDirection"
 
-const Select = SelectPrimitive.Root
+// Follows the page language unless told otherwise (see useLocaleDirection).
+function Select({ dir, ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const localeDir = useLocaleDirection()
+  return <SelectPrimitive.Root dir={dir ?? localeDir} {...props} />
+}
 const SelectGroup = SelectPrimitive.Group
 const SelectValue = SelectPrimitive.Value
 

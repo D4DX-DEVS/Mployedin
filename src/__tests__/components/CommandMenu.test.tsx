@@ -85,7 +85,7 @@ describe("CommandMenu", () => {
     const dialogScope = within(dialog);
 
     await waitFor(() => {
-      expect(dialogScope.getByText("Actions")).toBeInTheDocument();
+      expect(dialogScope.getByRole("group", { name: "Actions" })).toBeInTheDocument();
     });
     // The manual job form is otherwise reachable only by knowing ?mode=manual.
     expect(dialogScope.getByText("Write a job myself")).toBeInTheDocument();

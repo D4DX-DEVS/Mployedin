@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Wrench } from "lucide-react";
+import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
 
 export const metadata: Metadata = {
   title: "Maintenance",
@@ -18,7 +19,8 @@ export default async function MaintenancePage({
   const t = await getTranslations("maintenance");
 
   return (
-    <div
+    <main
+      id={MAIN_CONTENT_ID}
       className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center"
       dir={isAr ? "rtl" : "ltr"}
     >
@@ -45,6 +47,6 @@ export default async function MaintenancePage({
       <p className="mt-12 text-xs text-muted-foreground">
         &copy; {new Date().getFullYear()} MPLOYEDIN
       </p>
-    </div>
+    </main>
   );
 }

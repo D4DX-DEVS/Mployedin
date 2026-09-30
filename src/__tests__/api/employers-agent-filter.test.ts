@@ -117,3 +117,20 @@ describe("GET /api/employers agent filter", () => {
     expect(userFind.mock.calls[0][0]._id).toBe("u_self");
   });
 });
+
+describe("GET /api/employers status filter (admin)", () => {
+  it("status=all lists deactivated employers too — the admin directory's view", async () => {
+    await get("status=all");
+    expect(userFind.mock.calls[0][0]).not.toHaveProperty("isActive");
+  });
+
+  it("status=inactive lists only deactivated employers", async () => {
+    await get("status=inactive");
+    expect(userFind.mock.calls[0][0].isActive).toBe(false);
+  });
+
+  it("no status keeps the active-only default the employer pickers rely on", async () => {
+    await get("limit=500&fields=companyName");
+    expect(userFind.mock.calls[0][0].isActive).toBe(true);
+  });
+});

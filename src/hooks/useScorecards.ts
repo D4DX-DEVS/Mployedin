@@ -12,10 +12,21 @@ export interface Scorecard {
     status: string;
   } | string;
   jobSeekerId: {
-    userId: string;
+    userId: string | { name?: string; email?: string };
+    fullName?: string;
   };
   overallScore: number;
   recommendation: string;
+  scores?: {
+    technicalSkills: number;
+    communication: number;
+    cultureFit: number;
+    problemSolving: number;
+    motivation: number;
+  };
+  notes?: string;
+  strengths?: string;
+  concerns?: string;
   createdAt: string;
 }
 

@@ -6,7 +6,7 @@ import { FileText } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 /**
- * The four legal pages (lib/cms/legalPages) — edit only. No Add New: a new slug
+ * The legal pages (lib/cms/legalPages) — edit only. No Add New: a new slug
  * had no public route. No Delete: nothing could re-create a deleted page. The
  * slug is locked on the edit page. The API creates any page missing from the DB.
  */

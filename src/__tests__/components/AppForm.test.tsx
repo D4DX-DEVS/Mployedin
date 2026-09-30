@@ -6,10 +6,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import {
+  FormDatePicker,
   FormFileDrop,
   FormInput,
   FormMultiSelect,
   FormPhone,
+  FormSelect,
   FormSwitch,
 } from "@/components/shared/AppForm";
 
@@ -183,5 +185,34 @@ describe("AppForm accessibility", () => {
     expect(phone).toHaveAccessibleDescription("Include your mobile number");
     expect(phone).toHaveClass("ps-9", "pe-3");
     expect(container.querySelector(".lucide-phone")).toHaveClass("start-3");
+  });
+
+  // axe: aria-required is not allowed on role="group", so a screen reader never
+  // heard "required" for these selects. The state belongs on the combobox.
+  it("puts required and error state on the select itself, not its group", () => {
+    render(
+      <FormSelect
+        label="Industry"
+        required
+        error="Choose an industry"
+        options={[{ value: "tech", label: "Technology" }]}
+        value=""
+        onChange={() => {}}
+      />
+    );
+
+    const select = screen.getByRole("combobox", { name: "Industry" });
+    expect(select).toHaveAttribute("aria-required", "true");
+    expect(select).toHaveAttribute("aria-invalid", "true");
+    expect(select).toHaveAccessibleDescription("Choose an industry");
+    expect(screen.getByRole("group", { name: /Industry/ })).not.toHaveAttribute("aria-required");
+  });
+
+  it("says a date is required in the picker's name, since a button cannot carry aria-required", () => {
+    render(<FormDatePicker label="Start date" required error="Pick a start date" value="" onChange={() => {}} />);
+
+    const trigger = screen.getByRole("button", { name: "Start date, required" });
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
+    expect(trigger).toHaveAccessibleDescription("Pick a start date");
   });
 });

@@ -30,6 +30,7 @@ const enMessages: Record<string, string> = {
   cookies: "Cookies",
   terms: "Terms",
   gdpr: "GDPR",
+  accessibility: "Accessibility",
   support: "Support",
   homepage: "Homepage",
 };
@@ -102,6 +103,19 @@ describe("PublicFooter", () => {
     expect(screen.getByText("AI-powered matching")).toBeInTheDocument();
     expect(screen.queryByText("Jobs By Functional Area")).not.toBeInTheDocument();
     expect(screen.queryByText("Jobs By Industry")).not.toBeInTheDocument();
+  });
+
+  it("links the accessibility statement next to the other legal pages once it is published", () => {
+    render(<PublicFooter locale="ar" showAccessibilityLink />);
+
+    expect(screen.getByRole("link", { name: "Accessibility" })).toHaveAttribute("href", "/ar/accessibility");
+  });
+
+  it("leaves the accessibility link out while the statement is unpublished", () => {
+    render(<PublicFooter locale="en" />);
+
+    expect(screen.queryByRole("link", { name: "Accessibility" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Privacy" })).toBeInTheDocument();
   });
 
   it("uses the smaller embedded variant without the extra highlight content", () => {

@@ -1,6 +1,6 @@
 export default function CompanyDetailLoading() {
   return (
-    <main className="container mx-auto px-4 py-8 max-w-5xl animate-pulse">
+    <div className="container mx-auto px-4 py-8 max-w-5xl animate-pulse">
       {/* Company header */}
       <div className="flex items-start gap-5 mb-8">
         <div className="w-20 h-20 rounded-xl bg-muted shrink-0" />
@@ -34,6 +34,6 @@ export default function CompanyDetailLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

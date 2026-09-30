@@ -57,7 +57,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const book = await getSuperAgentBook(ctx.userId);
   const employerIds = book?.employerIds ?? [];
   const employers = employerIds.length
-    ? await Employer.find({ _id: { $in: employerIds } }).select("_id agentId").lean()
+    ? await Employer.find({ _id: { $in: employerIds } }).select("_id agentId regionCityId regionStateId").lean()
     : [];
 
   /*
@@ -106,21 +106,27 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     seekersByEmployer.set(String(row._id), row.seekers.map(String));
   }
 
-  /** Roll the ownership chain up from a set of agents to region-level counts. */
-  function summarise(regionAgentIds: string[]) {
+  /**
+   * Roll the ownership chain up from a set of agents to region-level counts,
+   * plus the employers registered in the region itself (with or without an
+   * agent — `regionEmployerKeys`).
+   */
+  function summarise(regionAgentIds: string[], regionEmployerKeys: string[]) {
     const seekers = new Set<string>();
     let employerCount = 0;
     let jobCount = 0;
     const counted = new Set<string>();
-    for (const agentKey of regionAgentIds) {
-      for (const employerKey of employersByAgent.get(agentKey) ?? []) {
-        // Two agents in the same region can share an employer; count it once.
-        if (counted.has(employerKey)) continue;
-        counted.add(employerKey);
-        employerCount += 1;
-        jobCount += jobsByEmployer.get(employerKey) ?? 0;
-        for (const seekerKey of seekersByEmployer.get(employerKey) ?? []) seekers.add(seekerKey);
-      }
+    const employerKeys = [
+      ...regionAgentIds.flatMap((agentKey) => [...(employersByAgent.get(agentKey) ?? [])]),
+      ...regionEmployerKeys,
+    ];
+    for (const employerKey of employerKeys) {
+      // Two agents in the same region can share an employer; count it once.
+      if (counted.has(employerKey)) continue;
+      counted.add(employerKey);
+      employerCount += 1;
+      jobCount += jobsByEmployer.get(employerKey) ?? 0;
+      for (const seekerKey of seekersByEmployer.get(employerKey) ?? []) seekers.add(seekerKey);
     }
     return { employerCount, jobCount, seekerCount: seekers.size };
   }
@@ -137,7 +143,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       name: c.name as string,
       type: "city" as const,
       agentCount: regionAgents.length,
-      ...summarise(regionAgents),
+      ...summarise(
+        regionAgents,
+        employers.filter((e) => String(e.regionCityId) === String(c._id)).map((e) => String(e._id)),
+      ),
     });
   }
 
@@ -151,7 +160,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       name: s.name as string,
       type: "state" as const,
       agentCount: regionAgents.length,
-      ...summarise(regionAgents),
+      ...summarise(
+        regionAgents,
+        employers.filter((e) => String(e.regionStateId) === String(s._id)).map((e) => String(e._id)),
+      ),
     });
   }
 

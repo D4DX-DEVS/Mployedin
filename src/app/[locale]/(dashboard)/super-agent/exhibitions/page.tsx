@@ -8,18 +8,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  CalendarDays, Clock, Inbox,
+  CalendarDays, Clock, Inbox, MapPin, Mail,
   ThumbsUp, ThumbsDown, Eye,
-  RotateCcw, MoreHorizontal,
+  RotateCcw,
 } from "lucide-react";
 import {
   ExhibitionFilterTrigger,
@@ -371,38 +372,43 @@ export default function SuperAgentExhibitionsPage() {
       <SuperAgentSection>
         {loading ? (
           <SuperAgentDataTableShell>
-            <div className="border-b border-border/50 bg-muted/30 px-3 py-2.5"><div className="h-4 w-48 animate-pulse rounded bg-muted" /></div>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className={`flex items-center gap-4 border-b border-border/40 px-4 py-4 last:border-0 ${i % 2 === 0 ? "bg-background" : "bg-muted/15"}`}>
-                <div className="h-4 w-36 animate-pulse rounded bg-muted/60" />
-                <div className="hidden h-4 w-28 animate-pulse rounded bg-muted/40 md:block" />
-                <div className="h-4 w-24 animate-pulse rounded bg-muted/50" />
-                <div className="h-5 w-16 animate-pulse rounded-full bg-muted/40" />
-                <div className="ml-auto h-8 w-20 animate-pulse rounded-lg bg-muted/30" />
-              </div>
-            ))}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>{t("tableHeaderEvent")}</TableHead>
+                  <TableHead>{t("tableHeaderStatus")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("tableHeaderAgent")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t("tableHeaderDates")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("tableHeaderBudget")}</TableHead>
+                  <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableBodySkeleton rows={5} cols={6} />
+              </TableBody>
+            </Table>
           </SuperAgentDataTableShell>
         ) : items.length === 0 ? (
-          <SuperAgentEmptyState icon={<Inbox className="h-8 w-8 text-muted-foreground" />} title={t("noExhibitionRequestsFound")} description={t("tryAdjustingFiltersExhibitions")} />
+          <EmptyState title={t("noExhibitionRequestsFound")} description={t("tryAdjustingFiltersExhibitions")} icon={Inbox} />
         ) : (
           <SuperAgentDataTableShell>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 bg-muted/25">
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderEvent")}</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderStatus")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderAgent")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">{t("tableHeaderDates")}</th>
-                    <th className="hidden px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">{t("tableHeaderBudget")}</th>
-                    <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderActions")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead>{t("tableHeaderEvent")}</TableHead>
+                    <TableHead>{t("tableHeaderStatus")}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t("tableHeaderAgent")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("tableHeaderDates")}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t("tableHeaderBudget")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {items.map((item, idx) => {
                     const days = dayCount(item.eventStartDate, item.eventEndDate);
                     return (
-                      <tr
+                      <TableRow
                         key={item._id}
                         onClick={(event) => {
                           // Below 640px the shared table enhancer turns each row
@@ -415,19 +421,25 @@ export default function SuperAgentExhibitionsPage() {
                           if (cardMode) return;
                           setDetailItem(item);
                         }}
-                        className={`transition-colors hover:bg-primary/[0.04] sm:cursor-pointer ${idx % 2 === 0 ? "bg-background" : "bg-muted/15"}`}
+                        className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 0 ? "bg-background" : "bg-muted/15"}`}
                       >
-                        <td className="px-3 py-2.5">
+                        <TableCell>
                           {/* The name is user-entered and often long. Capped at two
                               lines so one verbose title cannot set the height of
                               every row in the queue. */}
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }} className="line-clamp-2 text-start text-sm font-semibold leading-5 text-foreground hover:text-primary hover:underline">{item.eventName}</button>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {categoryLabels[item.eventCategory] ?? item.eventCategory}
-                            {item.eventLocation ? ` · ${item.eventLocation}` : ""}
+                          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                            <span className="truncate">{categoryLabels[item.eventCategory] ?? item.eventCategory}</span>
+                            {item.eventLocation ? (
+                              <span className="inline-flex min-w-0 items-center gap-1">
+                                <span aria-hidden="true">·</span>
+                                <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{item.eventLocation}</span>
+                              </span>
+                            ) : null}
                           </p>
-                        </td>
-                        <td className="px-3 py-2.5">
+                        </TableCell>
+                        <TableCell>
                           {/* `whitespace-nowrap`: in a narrow column "Under Review"
                               broke onto two lines and the reviewer's name onto two
                               more, which made the status the tallest cell in the row. */}
@@ -436,71 +448,58 @@ export default function SuperAgentExhibitionsPage() {
                             <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{priorityLabels[item.priority] ?? item.priority}</Badge>
                           </div>
                           {item.reviewedBy && <p className="mt-0.5 truncate text-[11px] leading-4 text-muted-foreground">{item.reviewedBy.name}</p>}
-                        </td>
-                        <td className="hidden px-3 py-2.5 md:table-cell">
-                          <p className="truncate text-sm font-medium leading-5">{item.agentId?.name}</p>
-                          <p className="truncate text-xs leading-4 text-muted-foreground">{item.agentId?.email}</p>
-                        </td>
-                        <td className="hidden whitespace-nowrap px-3 py-2.5 sm:table-cell">
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <UserAvatar name={item.agentId?.name} email={item.agentId?.email} className="h-8 w-8 shrink-0" colorful />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium leading-5">{item.agentId?.name}</p>
+                              <p className="flex items-center gap-1 truncate text-xs leading-4 text-muted-foreground">
+                                <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{item.agentId?.email}</span>
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden whitespace-nowrap sm:table-cell">
                           <p className="text-xs font-medium">{fmtDate(item.eventStartDate)} – {fmtDate(item.eventEndDate)}</p>
                           {days ? <p className="mt-0.5 text-[11px] text-muted-foreground">{t("tableDayCount", { count: days })}</p> : null}
-                        </td>
-                        <td className="hidden whitespace-nowrap px-3 py-2.5 lg:table-cell">
+                        </TableCell>
+                        <TableCell className="hidden whitespace-nowrap lg:table-cell">
                           <p className="text-sm font-medium">{item.budgetCurrency} {formatCount(item.estimatedBudget)}</p>
                           {item.approvedBudget ? (
                             <p className="mt-0.5 text-[11px] font-medium text-emerald-600">{t("tableBudgetApprovedShort")} {item.budgetCurrency} {formatCount(item.approvedBudget)}</p>
                           ) : null}
-                        </td>
-                        <td className="px-3 py-2.5 text-right">
+                        </TableCell>
+                        <TableCell className="text-right">
                           {/* One primary action plus an overflow menu, on a single
                               nowrap line. Approve/Revise/Reject as three side-by-side
                               buttons could not fit this column, so they wrapped into a
                               three-high stack that set the height of the whole row —
                               the single biggest cost in the queue. Revise and Reject
                               are the rarer choices, so they move behind the menu. */}
-                          <div className="flex flex-nowrap items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="iconDense"
-                              className="max-sm:min-h-11 rounded-lg text-muted-foreground hover:text-primary"
-                              onClick={() => setDetailItem(item)}
-                              title={t("viewDetails")}
-                              aria-label={t("viewDetails")}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="max-sm:min-h-11 whitespace-nowrap rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50"><Clock className="mr-1 h-3.5 w-3.5" /> {t("actionReview")}</Button>)}
-                            {item.status === "under_review" && (<>
-                              <Button size="sm" onClick={() => openReview(item, "approved")} className="max-sm:min-h-11 whitespace-nowrap rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> {t("actionApprove")}</Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="iconDense"
-                                    className="max-sm:min-h-11 rounded-lg text-muted-foreground hover:text-foreground"
-                                    aria-label={t("moreActions")}
-                                    title={t("moreActions")}
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-44">
-                                  <DropdownMenuItem onSelect={() => openReview(item, "revision_requested")} className="text-orange-700 focus:text-orange-700">
-                                    <RotateCcw className="me-2 h-3.5 w-3.5" /> {t("actionRevise")}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => openReview(item, "rejected")} className="text-destructive focus:text-destructive">
-                                    <ThumbsDown className="me-2 h-3.5 w-3.5" /> {t("actionReject")}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </>)}
+                          <div className="flex flex-nowrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            <RowActions
+                              name={item.eventName}
+                              quick={[
+                                { key: "view", label: t("viewDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailItem(item) },
+                                ...(item.status === "submitted" ? [{ key: "review", label: t("actionReview"), icon: Clock, iconClassName: "text-amber-600", onSelect: () => openReview(item, "under_review") }] : []),
+                                ...(item.status === "under_review" ? [{ key: "approve", label: t("actionApprove"), icon: ThumbsUp, iconClassName: "text-emerald-600", onSelect: () => openReview(item, "approved") }] : []),
+                              ]}
+                              menu={[
+                                ...(item.status === "under_review" ? [
+                                  { key: "revise", label: t("actionRevise"), icon: RotateCcw, iconClassName: "text-orange-600", onSelect: () => openReview(item, "revision_requested") },
+                                  { key: "reject", label: t("actionReject"), icon: ThumbsDown, destructive: true, onSelect: () => openReview(item, "rejected") },
+                                ] : []),
+                              ]}
+                            />
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </SuperAgentDataTableShell>
         )}

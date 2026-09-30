@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import type React from "react";
-import { Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
+import { Lexend, Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import Script from "next/script";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 import { CspNonceProvider } from "@/components/shared/CspNonceProvider";
+import { decodePreferencesCookie, htmlPreferenceProps, PREFERENCES_COOKIE } from "@/lib/a11y/preferences";
 import "@/app/globals.css";
+import "@/app/a11y-preferences.css";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -25,6 +27,13 @@ const notoArabic = Noto_Sans_Arabic({
 const notoMalayalam = Noto_Sans_Malayalam({
   subsets: ["malayalam"],
   variable: "--font-noto-malayalam",
+  display: "swap",
+  preload: false,
+});
+// The Accessibility panel's "Readable font"; fetched only once a visitor picks it.
+const lexend = Lexend({
+  subsets: ["latin"],
+  variable: "--font-lexend",
   display: "swap",
   preload: false,
 });
@@ -75,9 +84,12 @@ export default async function RootLayout({
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const locale = (await headers()).get("x-locale") ?? "en";
   const dir = locale === "ar" ? "rtl" : "ltr";
+  // Accessibility-panel choices, in the HTML itself so nothing loads at the
+  // default size or contrast and then jumps.
+  const a11yProps = htmlPreferenceProps(decodePreferencesCookie((await cookies()).get(PREFERENCES_COOKIE)?.value));
 
   return (
-    <html lang={locale} dir={dir} suppressHydrationWarning>
+    <html lang={locale} dir={dir} {...a11yProps} suppressHydrationWarning>
       <head>
         {/* Load the storage fallback before hydration through Next's script
             loader; a raw inline script here triggers a React client warning. */}
@@ -90,7 +102,7 @@ export default async function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${manrope.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${notoArabic.variable} ${notoMalayalam.variable} ${lexend.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
         {/* Publishes the nonce to runtime style injectors (react-style-singleton,

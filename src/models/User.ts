@@ -14,6 +14,14 @@ export interface IUser extends Document {
   locale: "en" | "ar";
   isActive: boolean;
   isEmailVerified: boolean;
+  /**
+   * The Terms of Service + Privacy Policy version this user last accepted
+   * (see lib/gdpr/termsVersion.ts). Absent = never accepted: accounts made
+   * before acceptance was recorded, or created by staff. The proxy sends a
+   * user whose version is not the current one to /accept-terms.
+   */
+  termsAcceptedVersion?: string;
+  termsAcceptedAt?: Date;
   emailVerificationToken?: string;
   emailVerificationOtp?: string;
   emailVerificationExpiry?: Date;
@@ -79,6 +87,8 @@ const UserSchema = new Schema<IUser>(
     locale: { type: String, enum: ["en", "ar"], default: "en" },
     isActive: { type: Boolean, default: true },
     isEmailVerified: { type: Boolean, default: false },
+    termsAcceptedVersion: { type: String, maxlength: 40 },
+    termsAcceptedAt: { type: Date },
     emailVerificationToken: { type: String, select: false },
     emailVerificationOtp: { type: String, select: false },
     emailVerificationExpiry: { type: Date, select: false },

@@ -108,9 +108,11 @@ export default function EmployerAssessmentsPage() {
         <div className="space-y-3">
           {assessments.map((assessment) => (
             <div key={assessment._id} className="bg-card border border-border rounded-xl overflow-hidden">
-              <div
-                className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
+              <button
+                type="button"
                 onClick={() => setExpandedId(expandedId === assessment._id ? null : assessment._id)}
+                aria-expanded={expandedId === assessment._id}
+                className="p-4 flex w-full items-center justify-between text-left cursor-pointer hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 <div className="flex items-center gap-4">
                   <div className={`p-2 rounded-lg ${assessment.isActive ? "bg-green-500/10" : "bg-muted"}`}>
@@ -143,7 +145,7 @@ export default function EmployerAssessmentsPage() {
                     <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   )}
                 </div>
-              </div>
+              </button>
 
               {expandedId === assessment._id && (
                 <div className="px-4 pb-4 border-t border-border pt-3">

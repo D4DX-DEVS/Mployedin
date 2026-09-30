@@ -21,6 +21,8 @@ jest.mock("@/lib/communications/email", () => ({
 }));
 jest.mock("@/lib/auth/emailVerification", () => ({ hashOtp: () => "otp" }));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn(), info: jest.fn() } }));
+// Covered by registration-consent.test.ts.
+jest.mock("@/lib/gdpr/consent", () => ({ recordRegistrationConsents: jest.fn().mockResolvedValue(undefined) }));
 
 const USER_ID = "64e000000000000000000001";
 jest.mock("@/models/User", () => ({
@@ -36,7 +38,7 @@ function post(body: Record<string, unknown>) {
   return new NextRequest("http://localhost:3888/api/auth/job-seeker-register", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name: "Sara", email: "sara@example.com", password: "Str0ng!Passw0rd#2026", ...body }),
+    body: JSON.stringify({ name: "Sara", email: "sara@example.com", password: "Str0ng!Passw0rd#2026", termsAccepted: true, ...body }),
   });
 }
 

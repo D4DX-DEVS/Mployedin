@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -33,6 +34,10 @@ interface SearchableSelectProps {
   placeholder?: string;
   /** Accessible name for the combobox trigger. Falls back to placeholder. */
   ariaLabel?: string;
+  /** Set on the combobox itself; a wrapping role="group" may not carry aria-required. */
+  ariaRequired?: boolean;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
   searchPlaceholder?: string;
   disabled?: boolean;
   className?: string;
@@ -66,14 +71,17 @@ export function SearchableSelect({
   onValueChange,
   searchValue,
   onSearchValueChange,
-  placeholder = "Select…",
+  placeholder: placeholderProp,
   ariaLabel,
-  searchPlaceholder = "Search…",
+  ariaRequired,
+  ariaInvalid,
+  ariaDescribedBy,
+  searchPlaceholder: searchPlaceholderProp,
   disabled = false,
   className,
-  emptyMessage = "No results found.",
+  emptyMessage: emptyMessageProp,
   loading = false,
-  loadingMessage = "Searching…",
+  loadingMessage: loadingMessageProp,
   id,
   container,
   modal: modalProp = false,
@@ -81,6 +89,13 @@ export function SearchableSelect({
   footerContent,
   searchable,
 }: SearchableSelectProps) {
+  // The defaults were English on every page that left them unset, the
+  // Arabic site included.
+  const tCommon = useTranslations("common");
+  const placeholder = placeholderProp ?? tCommon("selectEllipsis");
+  const searchPlaceholder = searchPlaceholderProp ?? tCommon("searchEllipsis");
+  const emptyMessage = emptyMessageProp ?? tCommon("noResultsFound");
+  const loadingMessage = loadingMessageProp ?? tCommon("searching");
   const [open, setOpen] = React.useState(false);
   const [internalSearchValue, setInternalSearchValue] = React.useState("");
   const selectedOption = options.find((o) => o.value === value);
@@ -122,6 +137,9 @@ export function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel ?? placeholder}
+          aria-required={ariaRequired || undefined}
+          aria-invalid={ariaInvalid || undefined}
+          aria-describedby={ariaDescribedBy}
           // Names (jobs, members, events) can outrun any fixed trigger width;
           // hovering reveals the full label the truncated text hides.
           title={selectedLabel ?? placeholder}

@@ -67,7 +67,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .limit(limit)
       .populate("interviewId", "scheduledAt status")
       .populate("applicationId", "status")
-      .populate("jobSeekerId", "userId")
+      .populate({ path: "jobSeekerId", select: "userId fullName", populate: { path: "userId", select: "name email" } })
       .lean(),
     Scorecard.countDocuments(query),
   ]);

@@ -227,7 +227,7 @@ export default function SuperAgentReportsPage() {
           <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("month")}</TableHead>
                   <TableHead className="text-right">{t("leads")}</TableHead>
                   <TableHead className="text-right">{t("placements")}</TableHead>

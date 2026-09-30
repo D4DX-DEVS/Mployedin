@@ -5,8 +5,14 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useLocaleDirection } from "@/lib/i18n/useLocaleDirection"
 
-const DropdownMenu = DropdownMenuPrimitive.Root
+// Follows the page language unless told otherwise (see useLocaleDirection);
+// submenus inherit it from here.
+function DropdownMenu({ dir, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  const localeDir = useLocaleDirection()
+  return <DropdownMenuPrimitive.Root dir={dir ?? localeDir} {...props} />
+}
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 const DropdownMenuGroup = DropdownMenuPrimitive.Group
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal

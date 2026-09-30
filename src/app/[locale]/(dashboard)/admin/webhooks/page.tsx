@@ -90,7 +90,7 @@ export default function AdminWebhooksPage() {
   // Filter state
   const [search, setSearch] = useState("");
   /* System Health and the "Failing webhooks" quick action both link here with
-     ?status=failed; in component state that filter would be ignored on arrival. */
+     ?status=failing; in component state that filter would be ignored on arrival. */
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [eventFilter, setEventFilter] = useState("all");
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "name", "lastTriggeredAt"] });

@@ -120,8 +120,11 @@ jest.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DropdownMenuItem: ({ children, onSelect, ...props }: React.HTMLAttributes<HTMLDivElement> & { onSelect?: () => void }) => (
-    <div {...props} role="menuitem" onClick={onSelect}>{children}</div>
+  DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenuRadioGroup: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenuRadioItem: ({ children }: { children: React.ReactNode }) => <div role="menuitemradio">{children}</div>,
+  DropdownMenuItem: ({ children, onSelect, onClick, ...props }: React.HTMLAttributes<HTMLDivElement> & { onSelect?: () => void }) => (
+    <div {...props} role="menuitem" onClick={(e) => { (onClick as ((e: unknown) => void) | undefined)?.(e); onSelect?.(); }}>{children}</div>
   ),
   DropdownMenuSeparator: () => null,
 }));
@@ -253,7 +256,7 @@ describe("InterviewsWorkspace", () => {
       expect(screen.queryByText("—")).not.toBeInTheDocument();
       // The primary action stays inline; everything else sits in the ⋯ menu (mocked inline).
       expect(screen.getByRole("button", { name: "Complete" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /More actions/ })).toBeInTheDocument();
       for (const label of ["Questions", "Prep Brief", "Reschedule", "Cancel"]) {
         expect(screen.getByText(label)).toBeInTheDocument();
       }

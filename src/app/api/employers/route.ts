@@ -15,7 +15,18 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import logger from "@/lib/logger";
 import { buildEmployerAdminCreatePayload } from "@/lib/employers/admin";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import {
+  getAgentEmployerIds,
+  getSuperAgentBook,
+  getSuperAgentOwnRegion,
+  hasRegionAssigned,
+} from "@/lib/auth/agentRestrictions";
+import {
+  employerCoverageFilter,
+  resolveEmployerRegion,
+  summariseEmployerRegions,
+  territoryHoldsCity,
+} from "@/lib/agents/territoryCoverage";
 import { resolveEmployerAgents, unassignedEmployerFilter } from "@/lib/agents/employerAssignment";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -28,11 +39,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
 
-  // Agents can only see employers assigned to them — resolve via Agent doc
+  // Agents see employers assigned to them plus every employer registered in
+  // their region (getAgentEmployerIds).
   if (ctx.role === "agent") {
-    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
-    const empIds = agentDoc.assignedEmployerIds ?? [];
+    const empIds = await getAgentEmployerIds(ctx.userId);
+    // Seeing is not owning: posting jobs and entering the account need the
+    // explicit assignment (jobs POST, tenant switch), so the page offers those
+    // actions only on these rows.
+    const assignedToMe = new Set(((agentDoc.assignedEmployerIds as unknown[]) ?? []).map(String));
     if (empIds.length === 0) {
       return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
@@ -81,35 +97,36 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         domainVerified: p.domainVerified ?? false,
         verificationLevel: p.verificationLevel,
         isAgentVerified: p.isAgentVerified ?? false,
+        assignedToMe: assignedToMe.has(String(p._id)),
       };
     });
 
     return NextResponse.json({ employers, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   }
 
-  // Super-agents can only see employers under their agents.
-  // "Their agents" is effectiveAgentIds — the explicit team plus agents who
-  // arrived through a region the admin assigned to this super-agent. Reading
-  // agentIds alone made this the one super-agent route with a narrower idea of
-  // the team than the rest, so a region-inherited agent's employers were
-  // missing here and present everywhere else.
+  // Super-agents see their book (getSuperAgentBook): employers under their
+  // agents, from either end of the agent link, plus every employer registered
+  // in their territory — with or without an agent. It is the same set their
+  // jobs, applications and territory pages scope to.
   if (ctx.role === "super_agent") {
-    const saScope = await getSuperAgentScope(ctx.userId);
-    if (!saScope) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
-    const agentDocIds = saScope.effectiveAgentIds;
-    if (agentDocIds.length === 0) {
+    const book = await getSuperAgentBook(ctx.userId);
+    if (!book) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
+    if (book.employerIds.length === 0) {
       return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
 
-    // Optional agentId filter: narrow to a specific agent's employers
-    const agentIdParam = searchParams.get("agentId") ?? "";
-    const scopedAgentIds = agentIdParam && agentDocIds.map(String).includes(agentIdParam)
-      ? [agentIdParam]
-      : agentDocIds;
-
     // See the note on the super-agent query above: archived conversions are
     // kept but must not appear in an employer list.
-    const empQuery: Record<string, unknown> = { agentId: { $in: scopedAgentIds }, roleArchivedAt: null };
+    const empQuery: Record<string, unknown> = { _id: { $in: book.employerIds }, roleArchivedAt: null };
+
+    // Optional agentId filter: narrow to one of the SA's agents' employers.
+    // An id outside the book narrows to nothing rather than widening.
+    const agentIdParam = searchParams.get("agentId") ?? "";
+    if (agentIdParam) {
+      empQuery.agentId = book.agentIds.map(String).includes(agentIdParam)
+        ? agentIdParam
+        : { $in: [] };
+    }
     if (search) {
       const safe = escapeRegex(search);
       empQuery.$or = [
@@ -154,12 +171,15 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ? await User.find({ _id: { $in: agentUserIds } }).select("name").lean()
       : [];
     const agentNameMap = new Map(agentUsers.map((u) => [String(u._id), u.name]));
+    // Entering the account (tenant switch) needs the employer's agent to be on
+    // the SA's own team; region-only rows are visible but not enterable.
+    const team = new Set(book.teamAgentIds.map(String));
 
     // Filter by user status if provided
     const employers = profiles
       .map((p) => {
         const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
-        const agentProfile = p.agentId as { userId?: unknown } | undefined;
+        const agentProfile = p.agentId as { _id?: unknown; userId?: unknown } | undefined;
         const agentUserId = agentProfile?.userId ? String(agentProfile.userId) : null;
         return {
           _id: p._id,
@@ -180,6 +200,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           verificationLevel: p.verificationLevel,
           isAgentVerified: p.isAgentVerified ?? false,
           assignedAgent: agentUserId ? { name: agentNameMap.get(agentUserId) ?? "Unknown" } : undefined,
+          canEnterAccount: Boolean(agentProfile?._id && team.has(String(agentProfile._id))),
           jobCount: 0,
           totalPaid: p.totalPaid ?? 0,
         };
@@ -243,9 +264,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     ownEmployerUserId = ownProfile.userId;
     query._id = ownEmployerUserId;
   }
+  // No status = active only (the pickers that list employers to post for).
+  // "all" really means all, as it already does for agents and super agents:
+  // the admin directory sent it and still lost every deactivated employer.
   if (status === "active") query.isActive = true;
   else if (status === "inactive") query.isActive = false;
-  else query.isActive = true; // default to active
+  else if (status !== "all") query.isActive = true;
 
   // Build employer profile filter for industry/location/verified/agentId
   const empFilter: Record<string, unknown> = {};
@@ -270,7 +294,18 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ? { $or: [{ agentId: agentDoc._id }, { _id: { $in: agentDoc.assignedEmployerIds ?? [] } }] }
       : { _id: null }];
   }
-  const hasEmployerFilter = Boolean(industry || location || verified || agentIdParam);
+  // coverage: "none" = no super-agent's territory holds the employer's region
+  // (or it has none), "covered" = at least one does.
+  const coverageParam = searchParams.get("coverage") ?? "";
+  if (coverageParam === "none" || coverageParam === "covered") {
+    empFilter.$and = [
+      ...((empFilter.$and as Record<string, unknown>[]) ?? []),
+      await employerCoverageFilter(coverageParam === "covered"),
+    ];
+  }
+  const hasEmployerFilter = Boolean(
+    industry || location || verified || agentIdParam || coverageParam === "none" || coverageParam === "covered",
+  );
 
   // Search spans both User (name, email) AND Employer (companyName, industry)
   // We need to find userIds from Employer matches and merge with User-level matches
@@ -367,15 +402,19 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Attach verificationDocs and domainVerified from Employer model
   const userIds = users.map((u) => u._id);
   const employerProfiles = await Employer.find({ userId: { $in: userIds } })
-    .select("userId companyName companyEmail phone address country taxId industry verificationDocs domainVerified verificationLevel isAgentVerified agentId")
+    .select("userId companyName companyEmail phone address country taxId industry verificationDocs domainVerified verificationLevel isAgentVerified agentId regionCityId regionStateId")
     .lean();
 
   const profileMap = new Map(
     employerProfiles.map((e) => [String(e.userId), e])
   );
 
-  // The agent running each account (either end of the link) and their super-agent.
-  const agentByEmployer = await resolveEmployerAgents(employerProfiles);
+  // The agent running each account (either end of the link) and their
+  // super-agent; and the region with every super-agent covering it.
+  const [agentByEmployer, regionByEmployer] = await Promise.all([
+    resolveEmployerAgents(employerProfiles),
+    ctx.role === "admin" ? summariseEmployerRegions(employerProfiles) : Promise.resolve(null),
+  ]);
 
   const orderedUsers = orderedProfileUserIds
     ? [...users].sort((a, b) => orderedProfileUserIds!.indexOf(String(a._id)) - orderedProfileUserIds!.indexOf(String(b._id)))
@@ -400,6 +439,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       verificationLevel: profile?.verificationLevel,
       isAgentVerified: profile?.isAgentVerified ?? false,
       assignedAgent: agentByEmployer.get(String(profile._id)) ?? null,
+      ...(regionByEmployer ? { region: regionByEmployer.get(String(profile._id)) ?? null } : {}),
     };
   });
 
@@ -433,7 +473,36 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const body = await validateBody(req, employerAdminCreateSchema);
-  const { name, email, password, companyName, industry, location, phone } = body;
+  const { name, email, password, companyName, industry, location, phone, cityId } = body;
+
+  // The employer's region (catalogue city) decides which super-agents and
+  // agents see it. A super-agent places the company inside their own
+  // territory — otherwise it would drop out of their list the moment it was
+  // created, since they have no agent link to it.
+  let region: Awaited<ReturnType<typeof resolveEmployerRegion>> = null;
+  if (ctx.role === "super_agent") {
+    const saRegion = await getSuperAgentOwnRegion(ctx.userId);
+    if (saRegion && hasRegionAssigned(saRegion)) {
+      if (!cityId || !(await territoryHoldsCity(saRegion, cityId))) {
+        return NextResponse.json(
+          {
+            error: "Pick a city inside your territory.",
+            details: [{ path: "cityId", message: "Pick a city inside your territory." }],
+          },
+          { status: 400 },
+        );
+      }
+    }
+  }
+  if (cityId) {
+    region = await resolveEmployerRegion({ cityId });
+    if (!region) {
+      return NextResponse.json(
+        { error: "Pick a city from the list.", details: [{ path: "cityId", message: "Pick a city from the list." }] },
+        { status: 400 },
+      );
+    }
+  }
 
   const existing = await User.findOne({ email });
   if (existing) return NextResponse.json({ error: "Email already in use" }, { status: 409 });
@@ -460,6 +529,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     userId: user._id,
     ...payload.employerUpdate,
     ...(agentId ? { agentId } : {}),
+    ...(region
+      ? { regionCityId: region.cityId, regionStateId: region.stateId, city: region.cityName, country: region.countryCode }
+      : {}),
     verificationLevel: "basic",
     isAgentVerified: !!(ctx.role === "agent" || ctx.role === "super_agent"),
     verifiedByAgentId: ctx.role === "agent" || ctx.role === "super_agent" ? ctx.userId : undefined,

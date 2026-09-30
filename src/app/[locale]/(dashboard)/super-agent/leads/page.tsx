@@ -7,16 +7,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowUpDown, ChevronDown, ChevronUp,
-  Gauge, Loader2, RotateCcw,
-  Sparkles, Target, X, MoreHorizontal,
+  Gauge, Loader2, X,
+  Sparkles, Eye, MessageSquare, Phone, Trophy, XCircle, Mail, MapPin, Calendar, User, Target,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { localDateString } from "@/lib/interviews/availabilitySlots";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -29,7 +22,13 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { InlinePicker, RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { toast } from "sonner";
@@ -104,6 +103,17 @@ const INITIAL_FILTERS: Filters = {
 };
 
 const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
+
+// Stage icon tiles for the hero strip, same language as the metric cards on
+// the neighbouring pages (the strip used to be label + number only).
+const STAGE_ICONS: Record<LeadStatus, { icon: typeof Sparkles; tile: string; text: string }> = {
+  new: { icon: Sparkles, tile: "bg-sky-500/10", text: "text-sky-600" },
+  contacted: { icon: Phone, tile: "bg-blue-500/10", text: "text-blue-600" },
+  interested: { icon: Eye, tile: "bg-amber-500/10", text: "text-amber-600" },
+  negotiating: { icon: MessageSquare, tile: "bg-violet-500/10", text: "text-violet-600" },
+  converted: { icon: Trophy, tile: "bg-emerald-500/10", text: "text-emerald-600" },
+  lost: { icon: XCircle, tile: "bg-rose-500/10", text: "text-rose-500" },
+};
 
 const SORT_OPTIONS = [
   { value: "createdAt", label: "sortOptionCreatedAt" },
@@ -354,8 +364,8 @@ export default function SuperAgentLeadsPage() {
     { header: t("columnStage"), key: "status" },
     { header: t("columnScore"), key: "score" },
     { header: t("columnQualification"), key: "qualificationLevel" },
-    { header: t("columnFollowUp"), key: "followUpAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("columnFollowUp"), key: "followUpAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -365,29 +375,8 @@ export default function SuperAgentLeadsPage() {
     title: t("pageTitle"),
   });
 
-  /* ---------------------------------------------------------------- */
-  /*  Sortable Header Cell                                            */
-  /* ---------------------------------------------------------------- */
-
-  function SortHeader({ field, children }: { field: string; children: React.ReactNode }) {
-    const active = filters.sortBy === field;
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(field)}
-        className="group inline-flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors"
-      >
-        {children}
-        {active ? (
-          filters.sortOrder === "asc"
-            ? <ChevronUp className="h-3.5 w-3.5 text-primary" />
-            : <ChevronDown className="h-3.5 w-3.5 text-primary" />
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-        )}
-      </button>
-    );
-  }
+  /* ── Column sort order for the header controls ── */
+  const sortOrder = filters.sortOrder === "asc" ? "asc" : "desc";
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                          */
@@ -408,24 +397,15 @@ export default function SuperAgentLeadsPage() {
 
       <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Error State ---- */}
-        {error && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p className="text-sm text-destructive">{error}</p>
-            <button
-              type="button"
-              onClick={() => fetchLeads()}
-              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
-            >
-              {t("retry")}
-            </button>
-          </div>
-        )}
+        {error && <ErrorState onRetry={() => fetchLeads()} />}
 
         {/* ---- Stage Strip ---- */}
         <div className="flex flex-col gap-4">
           {/* Phones: one scrollable chip row. Six stage cards owned a full screen. */}
           <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-6">
-            {STAGES.map((s) => (
+            {STAGES.map((s) => {
+              const StageIcon = STAGE_ICONS[s].icon;
+              return (
               <button
                 key={s}
                 type="button"
@@ -433,77 +413,28 @@ export default function SuperAgentLeadsPage() {
                 aria-pressed={filters.status === s}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-start transition-all sm:block sm:shrink sm:rounded-2xl sm:px-4 sm:py-3 ${filters.status === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-[0.18em]">{tStage(s)}</p>
+                <span className="flex items-center gap-1.5">
+                  <span className={`hidden h-7 w-7 items-center justify-center rounded-lg sm:inline-flex ${STAGE_ICONS[s].tile}`}>
+                    <StageIcon className={`h-3.5 w-3.5 ${STAGE_ICONS[s].text}`} aria-hidden="true" />
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-[0.18em]">{tStage(s)}</span>
+                  <StageIcon className={`h-3.5 w-3.5 sm:hidden ${STAGE_ICONS[s].text}`} aria-hidden="true" />
+                </span>
                 <p className="text-[13px] font-semibold tabular-nums tracking-tight text-foreground sm:mt-2 sm:text-2xl">{stageCounts[s]}</p>
               </button>
-            ))}
+              );
+            })}
           </div>
 
-        {/* ---- Merged Filters via TableToolbar ---- */}
-        <TableToolbar
-          search={filters.search}
-          onSearchChange={(v) => updateFilter("search", v)}
-          searchPlaceholder={t("searchPlaceholder")}
+        {/* ---- Filters: search + AI in plain sight, facets and sorts behind More ---- */}
+        <InlineFilterBar
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          hasActiveFilters={activeFilterCount > 0 || !!filters.status || !!aiSummary}
-          actions={
-            <>
-              {/* AI search shares the same wrapping icon row as the filter/export
-                  buttons (flex-1 so it fills the remaining space) instead of
-                  being boxed in a sub-container that forced it onto its own
-                  stacked lines. */}
-              <div className="relative min-w-[9rem] flex-1 sm:min-w-0 sm:flex-none">
-                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
-                <Input
-                  ref={aiInputRef}
-                  aria-label={t("aiSearchLabel")}
-                  placeholder={t("aiSearchPlaceholder")}
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-                  className="h-9 w-full rounded-xl border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 sm:w-56"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleAiSearch}
-                disabled={aiLoading || !aiQuery.trim()}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50"
-              >
-                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                <span className="sr-only sm:not-sr-only sm:inline">{t("aiButton")}</span>
-              </button>
-              {(activeFilterCount > 0 || filters.status || filters.search || aiSummary) && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:inline">{t("resetButton")}</span>
-                </button>
-              )}
-            </>
-          }
-          filterContent={
-            <div className="space-y-4">
-              {/* AI Summary Banner */}
-              {aiSummary && (
-                <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${aiDegraded ? "border-amber-500/20 bg-amber-50/40 text-amber-800" : "border-emerald-500/20 bg-emerald-50/40 text-emerald-800"}`}>
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="flex-1">
-                    <p>{aiSummary}</p>
-                    {aiDegraded && <p className="mt-1 text-xs opacity-70">{t("aiDegradedMessage")}</p>}
-                  </div>
-                  <button type="button" onClick={() => setAiSummary("")} className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 transition-opacity" aria-label={t("dismissAiSummary")}>
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          onClear={(activeFilterCount > 0 || filters.status || filters.search || aiSummary) ? resetFilters : undefined}
+          more={(
+            <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+              <div className="grid min-w-0 flex-[1_1_100%] grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{tc("country")}</label>
                   <SearchableSelect
@@ -594,7 +525,7 @@ export default function SuperAgentLeadsPage() {
               </div>
 
               {/* Quick Filter Chips */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-[1_1_100%] flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFiltersLabel")}</span>
                 {[
                   { label: t("quickFilterOverdueFollowUps"), action: () => { updateFilter("hasFollowUp", "overdue"); } },
@@ -617,7 +548,7 @@ export default function SuperAgentLeadsPage() {
 
               {/* Active filters strip */}
               {activeFilterCount > 0 && (
-                <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
+                <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2 border-t border-border/40 pt-3">
                   <span className="text-xs text-muted-foreground/70">{t("activeFiltersLabel")}</span>
                   {filters.country && <FilterChip label={t("filterLabelCountry", { value: filters.country })} onRemove={() => updateFilter("country", "")} />}
                   {filters.industry && <FilterChip label={t("filterLabelIndustry", { value: filters.industry })} onRemove={() => updateFilter("industry", "")} />}
@@ -631,67 +562,111 @@ export default function SuperAgentLeadsPage() {
                 </div>
               )}
             </div>
-          }
-          className="mb-4"
-        />
+          )}
+          moreActiveCount={activeFilterCount}
+          footer={aiSummary ? (
+            <div className={`mt-2 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${aiDegraded ? "border-amber-500/20 bg-amber-50/40 text-amber-800" : "border-emerald-500/20 bg-emerald-50/40 text-emerald-800"}`}>
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex-1">
+                <p>{aiSummary}</p>
+                {aiDegraded && <p className="mt-1 text-xs opacity-70">{t("aiDegradedMessage")}</p>}
+              </div>
+              <button type="button" onClick={() => setAiSummary("")} className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 transition-opacity" aria-label={t("dismissAiSummary")}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+        >
+          <InlineFilterSearch
+            value={filters.search}
+            onChange={(v) => updateFilter("search", v)}
+            placeholder={t("searchPlaceholder")}
+          />
+          {/* AI search shares the bar instead of a boxed sub-container that
+              forced it onto stacked lines. */}
+          <div className="relative min-w-0 flex-[2_1_14rem]">
+            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
+            <Input
+              ref={aiInputRef}
+              aria-label={t("aiSearchLabel")}
+              placeholder={t("aiSearchPlaceholder")}
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
+              className="h-11 w-full rounded-lg border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 sm:h-9"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleAiSearch}
+            disabled={aiLoading || !aiQuery.trim()}
+            aria-label={t("aiButton")}
+            className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50 sm:h-9"
+          >
+            {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            <span className="sr-only sm:not-sr-only sm:inline">{t("aiButton")}</span>
+          </button>
+        </InlineFilterBar>
 
         {/* ---- Data Table ---- */}
-          <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
-                  <TableHead><SortHeader field="companyName">{t("columnCompany")}</SortHeader></TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>
+                    <SortableTableHeader label={t("columnCompany")} active={filters.sortBy === "companyName"} order={sortOrder} onClick={() => toggleSort("companyName")} />
+                  </TableHead>
                   <TableHead>{t("columnContact")}</TableHead>
-                  <TableHead><SortHeader field="industry">{t("columnIndustry")}</SortHeader></TableHead>
+                  <TableHead>
+                    <SortableTableHeader label={t("columnIndustry")} active={filters.sortBy === "industry"} order={sortOrder} onClick={() => toggleSort("industry")} />
+                  </TableHead>
                   <TableHead>{t("columnAgent")}</TableHead>
-                  <TableHead><SortHeader field="followUpAt">{t("columnFollowUp")}</SortHeader></TableHead>
-                  <TableHead>{t("columnActions")}</TableHead>
+                  <TableHead>
+                    <SortableTableHeader label={t("columnFollowUp")} active={filters.sortBy === "followUpAt"} order={sortOrder} onClick={() => toggleSort("followUpAt")} />
+                  </TableHead>
+                  <TableHead className="text-right">{t("columnActions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                  <TableBodySkeleton rows={5} cols={6} />
                 ) : leads.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-16 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                          <Target className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <p className="text-base font-semibold text-foreground">{t("noLeadsFoundTitle")}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{t("noLeadsFoundMessage")}</p>
-                        </div>
-                      </div>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="py-12">
+                      <EmptyState title={t("noLeadsFoundTitle")} description={t("noLeadsFoundMessage")} icon={Target} />
                     </TableCell>
                   </TableRow>
                 ) : leads.map((lead) => {
                   const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
-                  const otherStages = STAGES.filter((s) => s !== lead.status);
                   return (
-                    <TableRow key={lead._id} className="bg-transparent">
+                    <TableRow key={lead._id} className="group">
                       <TableCell className="min-w-0">
-                        <span className="block truncate font-medium text-foreground">{lead.companyName}</span>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <StatusBadge status={lead.status} />
-                          {lead.score != null && (
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${QUAL_STYLES[lead.qualificationLevel ?? "cold"] ?? QUAL_STYLES.cold}`}>
-                              <Gauge className="h-3 w-3" />{lead.score}
-                            </span>
-                          )}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <UserAvatar name={lead.companyName} className="h-9 w-9 shrink-0" colorful />
+                          <div className="min-w-0 space-y-1">
+                            <p className="truncate font-medium text-foreground">{lead.companyName}</p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <StatusBadge status={lead.status} />
+                              {lead.score != null && (
+                                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${QUAL_STYLES[lead.qualificationLevel ?? "cold"] ?? QUAL_STYLES.cold}`}>
+                                  <Gauge className="h-3 w-3" />{lead.score}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-foreground/85">{lead.contactPerson}</div>
-                        {lead.contactEmail && <div className="text-xs text-muted-foreground/70">{lead.contactEmail}</div>}
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          <span>{lead.country ?? "—"}</span>
+                        {lead.contactEmail && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                            <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{lead.contactEmail}</span>
+                          </div>
+                        )}
+                        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{lead.country ?? "—"}</span>
                         </div>
                         {lead.autoRouted && (
                           <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[11px] font-semibold text-emerald-700">{t("badgeRouted")}</span>
@@ -701,49 +676,39 @@ export default function SuperAgentLeadsPage() {
                         <span className="block">{lead.industry ?? "—"}</span>
                         <span className="mt-1 block text-xs">{lead.source ?? "—"}{lead.exhibitionId ? " · Linked" : ""}</span>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{lead.agentId?.userId?.name ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <User className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          {lead.agentId?.userId?.name ?? "—"}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-xs">
                         {lead.followUpAt ? (
-                          <span className={isOverdue ? "font-medium text-red-600" : "text-muted-foreground"}>
-                            {formatDate(new Date(lead.followUpAt))}
+                          <span className={`inline-flex items-center gap-1 ${isOverdue ? "font-medium text-red-600" : "text-muted-foreground"}`}>
+                            <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            {formatDate(new Date(lead.followUpAt), { day: "2-digit", month: "short", year: "numeric" })}
                             {isOverdue && <span className="ml-1 text-[11px]">{t("labelOverdue")}</span>}
                           </span>
                         ) : (
                           <span className="text-muted-foreground/50">—</span>
                         )}
-                        <span className="mt-1 block text-[11px] text-muted-foreground">{formatDate(new Date(lead.createdAt))}</span>
+                        <span className="mt-1 block text-[11px] text-muted-foreground">{formatDate(new Date(lead.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</span>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              aria-label={t("columnActions")}
-                              disabled={updatingLeadId === lead._id}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted disabled:opacity-50"
-                            >
-                              {updatingLeadId === lead._id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <MoreHorizontal className="h-4 w-4" />
-                              )}
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                              {t("changeStage")}
-                            </div>
-                            {otherStages.map((stage) => (
-                              <DropdownMenuItem
-                                key={stage}
-                                onClick={() => handleChangeStage(lead._id, stage)}
-                                disabled={updatingLeadId === lead._id}
-                              >
-                                {tStage(stage)}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-right">
+                        {/* Stage changes are the row's status: an inline picker,
+                            not a "…" menu that buried them three clicks deep. */}
+                        <InlinePicker
+                          name={lead.companyName}
+                          picker={{
+                            label: t("changeStageFor", { company: lead.companyName }),
+                            value: lead.status,
+                            options: STAGES.map((s) => ({ value: s, label: tStage(s) })),
+                            onChange: (next) => { void handleChangeStage(lead._id, next as LeadStatus); },
+                            display: <StatusBadge status={lead.status} />,
+                            pending: updatingLeadId === lead._id,
+                            disabled: updatingLeadId === lead._id,
+                          }}
+                        />
                       </TableCell>
                     </TableRow>
                   );
@@ -753,10 +718,9 @@ export default function SuperAgentLeadsPage() {
           </div>
         </div>
 
-        <div className="mt-4">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </SuperAgentSection>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

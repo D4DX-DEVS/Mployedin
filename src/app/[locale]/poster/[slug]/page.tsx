@@ -5,6 +5,7 @@ import { pickMessages } from "@/lib/i18n/clientMessages";
 import { connectDB } from "@/lib/db/mongoose";
 import PosterGeneration from "@/models/PosterGeneration";
 import { PosterShareView } from "@/components/features/employer/poster/PosterShareView";
+import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
 import type { PosterStyleOverrides } from "@/lib/composer/types";
 
 interface Props {
@@ -51,9 +52,9 @@ export default async function PosterSharePage({ params }: Props) {
 
   if (!poster) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <main id={MAIN_CONTENT_ID} className="flex items-center justify-center min-h-screen">
         <p className="text-lg text-muted-foreground">Poster not found</p>
-      </div>
+      </main>
     );
   }
 
@@ -65,6 +66,7 @@ export default async function PosterSharePage({ params }: Props) {
 
   return (
     <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "poster")}>
+    <main id={MAIN_CONTENT_ID}>
     <PosterShareView
       backgroundUrl={selected?.backgroundUrl || ""}
       job={job ? JSON.parse(JSON.stringify(job)) : null}
@@ -77,6 +79,7 @@ export default async function PosterSharePage({ params }: Props) {
       jobId={job?._id?.toString() || ""}
       slug={slug}
     />
+    </main>
     </NextIntlClientProvider>
   );
 }

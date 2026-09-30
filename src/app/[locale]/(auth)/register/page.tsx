@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn, getSession } from "next-auth/react";
@@ -12,14 +12,14 @@ import { CONSENT_REQUIRED_CODE, rememberSignupConsent, signupConsentCredentials 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RequiredMark } from "@/components/ui/required-mark";
+import { FieldError } from "@/components/shared/FieldError";
 import { BriefcaseBusiness, Handshake, Loader2, UserRoundSearch } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 import { REFERRAL_CODE_RE, REFERRAL_COOKIE_NAME } from "@/lib/referrals/url";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
-
-/** Deliberately permissive — the server and the verification email decide. */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { EMAIL_PATTERN } from "@/lib/errors/email-pattern";
 
 type FieldName = "name" | "email" | "password" | "confirmPassword" | "terms";
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -27,22 +27,13 @@ type FieldErrors = Partial<Record<FieldName, string>>;
 /** Focus order when a submit fails — matches the visual order of the form. */
 const FIELD_ORDER: FieldName[] = ["name", "email", "password", "confirmPassword", "terms"];
 
-/** Inline message under one field. Renders nothing when the field is valid. */
-function FieldError({ id, message }: { id: string; message?: string }) {
-  if (!message) return null;
-  return (
-    <p id={id} role="alert" className="mt-1.5 text-sm font-medium text-destructive">
-      {message}
-    </p>
-  );
-}
-
 export default function RegisterPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
   const tf = useTranslations("formErrors");
+  const tc = useTranslations("common");
   const callback = safeCallbackPath(searchParams.get("callbackUrl"), locale);
 
   const [name, setName] = useState("");
@@ -56,7 +47,6 @@ export default function RegisterPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
-  const [roleSelected, setRoleSelected] = useState(false);
   const { ask: askSignupConsent, dialog: signupConsentDialog } = useSignupConsentPrompt(locale);
 
   // ?ref=MPL-… from an agent's job-seeker referral link. Validated before it is
@@ -64,6 +54,14 @@ export default function RegisterPage() {
   const refParam = (searchParams.get("ref") ?? "").trim().toUpperCase();
   const [referralCode, setReferralCode] = useState("");
   const [referralWrongAudience, setReferralWrongAudience] = useState(false);
+  // Only job-seeker links point here (referralPathFor), so the link already
+  // answered "Find a job or Hire talent?" — asking again sent referred seekers
+  // to a chooser whose other half is the employer signup.
+  const arrivedByReferral = REFERRAL_CODE_RE.test(refParam);
+  const [roleSelected, setRoleSelected] = useState(arrivedByReferral);
+  // An employer code on this page still gets the way back to "Hire talent".
+  const showRoleChange = !arrivedByReferral || referralWrongAudience;
+  const roleBadgeId = useId();
 
   useEffect(() => {
     if (!refParam || !REFERRAL_CODE_RE.test(refParam)) return;
@@ -265,7 +263,7 @@ export default function RegisterPage() {
             </span>
             <span className="min-w-0">
               <span className="block font-semibold text-foreground">{t("jobSeekerAccount")}</span>
-              <span className="mt-1 block text-sm text-muted-foreground">{t("jobSeekerAccountDescription")}</span>
+              <span className="mt-1 block text-sm text-foreground/75">{t("jobSeekerAccountDescription")}</span>
             </span>
           </button>
 
@@ -278,7 +276,7 @@ export default function RegisterPage() {
             </span>
             <span className="min-w-0">
               <span className="block font-semibold text-foreground">{t("employerAccount")}</span>
-              <span className="mt-1 block text-sm text-muted-foreground">{t("employerAccountDescription")}</span>
+              <span className="mt-1 block text-sm text-foreground/75">{t("employerAccountDescription")}</span>
             </span>
           </Link>
         </div>
@@ -296,23 +294,23 @@ export default function RegisterPage() {
   return (
     <div className="w-full flex flex-col gap-8">
       {signupConsentDialog}
-      <div className="lg:hidden flex flex-col gap-2">
-        <div className="inline-flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
-            <span className="font-bold text-base">M</span>
-          </div>
-          <span className="text-xl font-bold text-foreground tracking-tight">mployedin</span>
-        </div>
-      </div>
-
       <div className="space-y-1.5">
-        <button
-          type="button"
-          onClick={() => setRoleSelected(false)}
-          className="mb-2 inline-flex min-h-11 items-center rounded-xl bg-primary/10 px-3 text-sm font-medium text-primary"
-        >
-          {t("jobSeekerAccount")} · {t("changeAccountType")}
-        </button>
+        {showRoleChange ? (
+          <div className="mb-1 flex items-center gap-2 text-sm">
+            <span id={roleBadgeId} className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 font-medium text-primary">
+              <UserRoundSearch className="h-4 w-4" aria-hidden />
+              {t("jobSeekerAccount")}
+            </span>
+            <button
+              type="button"
+              onClick={() => setRoleSelected(false)}
+              aria-describedby={roleBadgeId}
+              className="inline-flex min-h-11 items-center rounded-md px-1 font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              {t("changeAccountType")}
+            </button>
+          </div>
+        ) : null}
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("createYourAccount")}</h1>
         <p className="text-base text-muted-foreground font-light">{t("registerSubtitle")}</p>
         {referralCode ? (
@@ -329,8 +327,9 @@ export default function RegisterPage() {
           bubbles are never translated and blocked the submit before any of
           the messages below could render. */}
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <p className="text-xs text-muted-foreground">{tc("requiredFieldsNote")}</p>
         <div className="field">
-          <Label htmlFor="name" className="text-sm font-medium">{t("fullName")}</Label>
+          <Label htmlFor="name" required className="text-sm font-medium">{t("fullName")}</Label>
           <Input
             id="name"
             type="text"
@@ -347,7 +346,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="field">
-          <Label htmlFor="email" className="text-sm font-medium">{t("emailAddressLabel")}</Label>
+          <Label htmlFor="email" required className="text-sm font-medium">{t("emailAddressLabel")}</Label>
           <Input
             id="email"
             type="email"
@@ -364,7 +363,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="field">
-          <Label htmlFor="password" className="text-sm font-medium">{t("password")}</Label>
+          <Label htmlFor="password" required className="text-sm font-medium">{t("password")}</Label>
           <Input
             id="password"
             type="password"
@@ -381,7 +380,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="field">
-          <Label htmlFor="confirmPassword" className="text-sm font-medium">{t("confirmPassword")}</Label>
+          <Label htmlFor="confirmPassword" required className="text-sm font-medium">{t("confirmPassword")}</Label>
           <Input
             id="confirmPassword"
             type="password"
@@ -416,7 +415,8 @@ export default function RegisterPage() {
             {" "}{t("and")}{" "}
             <Link href={`/${locale}/privacy`} className="text-primary hover:underline" target="_blank">
               {t("privacyPolicyLink")}
-            </Link>
+            </Link>{" "}
+            <RequiredMark />
           </label>
         </div>
         <FieldError id="terms-error" message={fieldErrors.terms} />

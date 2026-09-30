@@ -205,7 +205,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                       description={job.description?.slice(0, 120)}
                     />
                     {(employer?.domainVerified || employer?.isAgentVerified) && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full font-medium"><Check className="h-3 w-3" aria-hidden="true" />{t("verifiedBadge")}</span>
+                      <span className="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-800 px-2 py-1 rounded-full font-medium"><Check className="h-3 w-3" aria-hidden="true" />{t("verifiedBadge")}</span>
                     )}
                   </div>
                 </div>
@@ -242,8 +242,8 @@ export default async function JobDetailPage({ params }: PageProps) {
                   {daysLeft !== null && daysLeft <= 14 && (
                     <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
                       daysLeft <= 7
-                        ? "bg-orange-500/10 text-orange-600"
-                        : "bg-yellow-500/10 text-yellow-600"
+                        ? "bg-orange-500/10 text-orange-800"
+                        : "bg-yellow-500/10 text-yellow-800"
                     }`}>
                       {daysLeft === 1 ? t("closesInDay") : t("closesInDays", { count: daysLeft })}
                     </span>

@@ -113,10 +113,10 @@ export async function loadSuperAgentDashboard(saUserId: string, now: Date = new 
   const agentUserIds = agentDocs.map((a) => a.userId);
 
   // The employers list (/api/employers, super_agent branch) and the jobs list
-  // (/api/super-agent/jobs, getSuperAgentBook) each have their own scope; the
-  // cards reuse them rather than a third definition. ownershipMatch holds the
-  // stored ObjectIds, which the aggregate `$match` below needs (no casting).
-  const employerFilter: Record<string, unknown> = { agentId: { $in: agentDocIds }, roleArchivedAt: null };
+  // (/api/super-agent/jobs) both scope to getSuperAgentBook; the cards reuse
+  // it rather than a second definition. ownershipMatch holds the stored
+  // ObjectIds, which the aggregate `$match` below needs (no casting).
+  const employerFilter: Record<string, unknown> = { _id: { $in: book?.employerIds ?? [] }, roleArchivedAt: null };
   // deletedAt: null — the jobs list hides soft-deleted jobs, so the counts must too.
   const jobFilter: Record<string, unknown> = { deletedAt: null, ...(book?.ownershipMatch ?? { _id: { $in: [] } }) };
   // Same scope as /api/super-agent/leads: the team's leads plus the SA's own.

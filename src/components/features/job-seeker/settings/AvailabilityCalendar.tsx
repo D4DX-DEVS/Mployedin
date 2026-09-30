@@ -4,6 +4,8 @@ import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Clock, Globe, CheckCircle2 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { useTimezoneOptions } from "@/lib/i18n/useTimezoneOptions";
+import { useWeekdayLabels, WEEKDAY_CODES } from "@/lib/i18n/useWeekdayLabels";
 
 export interface DayAvailability {
   day: string;
@@ -23,7 +25,7 @@ interface AvailabilityCalendarProps {
   onTimezoneChange: (tz: string) => void;
 }
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS = WEEKDAY_CODES;
 
 const TIME_OPTIONS = Array.from({ length: 33 }, (_, i) => {
   const totalMinutes = 6 * 60 + i * 30; // 06:00 to 22:00
@@ -35,23 +37,11 @@ const TIME_OPTIONS = Array.from({ length: 33 }, (_, i) => {
 const DEFAULT_START = "09:00";
 const DEFAULT_END = "17:00";
 
-/** Common IANA timezones for Gulf/MENA region + major global zones */
-const TIMEZONE_OPTIONS = [
-  { value: "Asia/Dubai", label: "Dubai (GMT+4)" },
-  { value: "Asia/Riyadh", label: "Riyadh (GMT+3)" },
-  { value: "Asia/Qatar", label: "Qatar (GMT+3)" },
-  { value: "Asia/Kuwait", label: "Kuwait (GMT+3)" },
-  { value: "Asia/Bahrain", label: "Bahrain (GMT+3)" },
-  { value: "Asia/Muscat", label: "Muscat (GMT+4)" },
-  { value: "Africa/Cairo", label: "Cairo (GMT+2)" },
-  { value: "Asia/Karachi", label: "Karachi (GMT+5)" },
-  { value: "Asia/Kolkata", label: "India (GMT+5:30)" },
-  { value: "Europe/London", label: "London (GMT+0/+1)" },
-  { value: "Europe/Berlin", label: "Berlin (GMT+1/+2)" },
-  { value: "America/New_York", label: "New York (GMT-5/-4)" },
-  { value: "America/Los_Angeles", label: "Los Angeles (GMT-8/-7)" },
-  { value: "Asia/Singapore", label: "Singapore (GMT+8)" },
-  { value: "Australia/Sydney", label: "Sydney (GMT+10/+11)" },
+/** Common zones for the Gulf/MENA region plus major global ones. */
+const TIMEZONES = [
+  "Asia/Dubai", "Asia/Riyadh", "Asia/Qatar", "Asia/Kuwait", "Asia/Bahrain", "Asia/Muscat",
+  "Africa/Cairo", "Asia/Karachi", "Asia/Kolkata", "Europe/London", "Europe/Berlin",
+  "America/New_York", "America/Los_Angeles", "Asia/Singapore", "Australia/Sydney",
 ];
 
 export function AvailabilityCalendar({
@@ -63,7 +53,9 @@ export function AvailabilityCalendar({
   onTimezoneChange,
 }: AvailabilityCalendarProps) {
   const t = useTranslations("availabilityCalendar");
+  const days = useWeekdayLabels();
   const hoursMap = new Map(availableHours.map((h) => [h.day, h]));
+  const { options: timezoneOptions, value: selectedZone } = useTimezoneOptions(TIMEZONES, timezone);
 
   const toggleDay = useCallback(
     (day: string) => {
@@ -101,8 +93,9 @@ export function AvailabilityCalendar({
         </div>
         <SearchableSelect
           className="h-9 w-64 text-sm rounded-lg"
-          options={TIMEZONE_OPTIONS}
-          value={timezone}
+          ariaLabel={t("yourTimezone")}
+          options={timezoneOptions}
+          value={selectedZone}
           onValueChange={onTimezoneChange}
         />
         <p className="mt-1 text-xs text-muted-foreground">
@@ -120,14 +113,16 @@ export function AvailabilityCalendar({
               <button
                 key={day}
                 type="button"
+                aria-pressed={active}
+                aria-label={days[day].full}
                 onClick={() => toggleDay(day)}
-                className={`h-10 w-12 rounded-xl border text-xs font-semibold transition-colors ${
+                className={`h-10 min-w-12 rounded-xl border px-2 text-xs font-semibold transition-colors ${
                   active
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                 }`}
               >
-                {day}
+                {days[day].label}
               </button>
             );
           })}
@@ -144,11 +139,16 @@ export function AvailabilityCalendar({
           <div className="space-y-2">
             {DAYS.filter((d) => selectedDays.includes(d)).map((day) => {
               const hours = hoursMap.get(day);
+              const dayName = days[day].full;
               return (
                 <div key={day} className="flex items-center gap-3 py-1.5">
-                  <span className="w-10 text-xs font-semibold text-muted-foreground">{day}</span>
+                  {/* Arabic shows the full day name, so its column is wider. */}
+                  <span className="w-10 shrink-0 text-xs font-semibold text-muted-foreground rtl:w-16">
+                    {days[day].label}
+                  </span>
                   <SearchableSelect
                     className="h-8 w-24 text-xs rounded-lg"
+                    ariaLabel={t("startTimeFor", { day: dayName })}
                     options={TIME_OPTIONS}
                     value={hours?.startTime ?? DEFAULT_START}
                     onValueChange={(v) => updateHour(day, "startTime", v)}
@@ -156,6 +156,7 @@ export function AvailabilityCalendar({
                   <span className="text-xs text-muted-foreground">{t("to")}</span>
                   <SearchableSelect
                     className="h-8 w-24 text-xs rounded-lg"
+                    ariaLabel={t("endTimeFor", { day: dayName })}
                     options={TIME_OPTIONS}
                     value={hours?.endTime ?? DEFAULT_END}
                     onValueChange={(v) => updateHour(day, "endTime", v)}

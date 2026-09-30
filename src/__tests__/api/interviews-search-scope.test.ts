@@ -54,6 +54,10 @@ jest.mock("@/models/Agent", () => ({
   __esModule: true,
   Agent: { findOne: jest.fn(() => chain({ _id: mockAgentId, assignedEmployerIds: [mockAgentEmployerId] })) },
 }));
+// The employers the agent sees (assigned, or registered in their region).
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getAgentEmployerIds: jest.fn(async () => [mockAgentEmployerId]),
+}));
 
 const find = jest.fn((..._a: unknown[]) => chain([]));
 const countDocuments = jest.fn(async (..._a: unknown[]) => 0);

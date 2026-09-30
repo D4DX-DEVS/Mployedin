@@ -28,8 +28,19 @@ export const teamInviteSchema = z.object({
   companyRoles: z.array(z.enum(["admin", "hiring_manager", "accounting", "finance_viewer", "viewer"])).min(1).max(5).optional(),
   jobAccess: z.array(commonSchemas.objectId).max(50).optional(),
   permissionOverrides: companyFunctionOverrides,
+  /**
+   * `invite` emails a join link and the colleague sets their own password.
+   * `temp_password` creates their account now and hands the employer a
+   * password to pass on; the colleague can change it after signing in.
+   */
+  mode: z.enum(["invite", "temp_password"]).default("invite"),
+  /** The colleague's name. Required for `temp_password`, where no join page asks for it. */
+  name: z.string().trim().min(2).max(100).optional(),
 }).refine((data) => data.companyRole || (data.companyRoles && data.companyRoles.length > 0), {
   message: "Either companyRole or companyRoles must be provided",
+}).refine((data) => data.mode !== "temp_password" || Boolean(data.name), {
+  message: "Name is required",
+  path: ["name"],
 });
 
 export const teamUpdateSchema = z.object({

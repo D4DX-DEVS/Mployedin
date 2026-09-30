@@ -6,6 +6,7 @@ import Offer from "@/models/Offer";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
 import type mongoose from "mongoose";
+import { getAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 
 /**
  * What is waiting on an agent, as counts and as rows.
@@ -63,16 +64,15 @@ export interface AgentQueueItem {
 
 /** Resolves the agent's own id and the jobs in their portfolio. */
 export async function resolveAgentScope(userId: string): Promise<AgentScope | null> {
-  const agent = await Agent.findOne({ userId }).select("_id assignedEmployerIds").lean();
+  const agent = await Agent.findOne({ userId }).select("_id").lean();
   if (!agent) return null;
 
   const agentId = (agent as Record<string, unknown>)._id as mongoose.Types.ObjectId;
-  const assignedEmployerIds =
-    ((agent as Record<string, unknown>).assignedEmployerIds as mongoose.Types.ObjectId[] | undefined) ??
-    [];
+  // Every employer the agent sees — assigned, or registered in their region.
+  const assignedEmployerIds = await getAgentEmployerIds(userId);
 
-  // Same portfolio definition the dashboard has always used: a job is the
-  // agent's if they own it, or if it belongs to an employer assigned to them.
+  // Same portfolio definition as the agent's lists: a job is the agent's if
+  // they own it, or if it belongs to an employer they see.
   const jobFilter = {
     $or: [
       { agentId },

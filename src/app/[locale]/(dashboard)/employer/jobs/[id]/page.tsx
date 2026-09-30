@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AlertCircle, ArrowRight, Briefcase, CalendarRange, CheckCircle2, Clock, DollarSign, Eye, Gauge, Laptop, Tag, Users, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowRight, BookOpen, Briefcase, CalendarRange, CheckCircle2, ClipboardList, Clock, DollarSign, Eye, FileText, Gauge, Gift, GraduationCap, Laptop, ListChecks, Tag, Users, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useJobDetail } from "@/hooks/useJobs";
 import { useJobHiringSummary, type JobHiringSummary } from "@/hooks/useJobHiringSummary";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface AttentionItem {
   key: string;
@@ -101,9 +101,8 @@ export default function JobOverviewPage() {
 
   if (!job) return null;
 
-  const dateLocale = locale === "ar" ? "ar" : "en-US";
   const expires = job.expiresAt
-    ? new Date(job.expiresAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })
+    ? formatDate(new Date(job.expiresAt), { day: "2-digit", month: "short", year: "numeric" }, locale)
     : null;
   // "20,000–20,000 INR" is a single figure, not a range; the period is part of the number.
   const salaryMin = job.salary?.min || 0;
@@ -210,7 +209,9 @@ export default function JobOverviewPage() {
           under different counting rules and read as a contradiction. */}
       <div className="order-2 space-y-3 sm:space-y-4 lg:order-1 lg:col-start-1">
         <section aria-labelledby="job-description-heading" className="card-base panel-body">
-          <h2 id="job-description-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewDescription")}</h2>
+          <h2 id="job-description-heading" className="heading-section mb-3 flex items-center gap-2 font-semibold text-foreground">
+            <FileText className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewDescription")}
+          </h2>
           {job.description ? (
             <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">{job.description}</div>
           ) : (
@@ -220,7 +221,9 @@ export default function JobOverviewPage() {
 
         {job.responsibilities && job.responsibilities.length > 0 && (
           <section aria-labelledby="job-responsibilities-heading" className="card-base panel-body">
-            <h2 id="job-responsibilities-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewResponsibilities")}</h2>
+            <h2 id="job-responsibilities-heading" className="heading-section mb-3 flex items-center gap-2 font-semibold text-foreground">
+              <ClipboardList className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewResponsibilities")}
+            </h2>
             <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
               {job.responsibilities.map((r, i) => <li key={i}>{r}</li>)}
             </ul>
@@ -229,7 +232,9 @@ export default function JobOverviewPage() {
 
         {job.qualifications && job.qualifications.length > 0 && (
           <section aria-labelledby="job-qualifications-heading" className="card-base panel-body">
-            <h2 id="job-qualifications-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewQualifications")}</h2>
+            <h2 id="job-qualifications-heading" className="heading-section mb-3 flex items-center gap-2 font-semibold text-foreground">
+              <GraduationCap className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewQualifications")}
+            </h2>
             <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
               {job.qualifications.map((q, i) => <li key={i}>{q}</li>)}
             </ul>
@@ -241,7 +246,9 @@ export default function JobOverviewPage() {
             left them empty — the section, not a placeholder. */}
         {job.benefits && job.benefits.length > 0 && (
           <section aria-labelledby="job-benefits-heading" className="card-base panel-body">
-            <h2 id="job-benefits-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewBenefits")}</h2>
+            <h2 id="job-benefits-heading" className="heading-section mb-3 flex items-center gap-2 font-semibold text-foreground">
+              <Gift className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewBenefits")}
+            </h2>
             <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
               {job.benefits.map((b, i) => <li key={i}>{b}</li>)}
             </ul>
@@ -250,7 +257,9 @@ export default function JobOverviewPage() {
 
         {job.learningOutcomes && job.learningOutcomes.length > 0 && (
           <section aria-labelledby="job-learning-heading" className="card-base panel-body">
-            <h2 id="job-learning-heading" className="heading-section mb-3 font-semibold text-foreground">{t("overviewLearningOutcomes")}</h2>
+            <h2 id="job-learning-heading" className="heading-section mb-3 flex items-center gap-2 font-semibold text-foreground">
+              <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewLearningOutcomes")}
+            </h2>
             <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
               {job.learningOutcomes.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
@@ -259,7 +268,9 @@ export default function JobOverviewPage() {
 
         {hasRequirements && req && (
           <section aria-labelledby="job-requirements-heading" className="card-base panel-body">
-            <h2 id="job-requirements-heading" className="heading-section mb-4 font-semibold text-foreground">{t("overviewRequirements")}</h2>
+            <h2 id="job-requirements-heading" className="heading-section mb-4 flex items-center gap-2 font-semibold text-foreground">
+              <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewRequirements")}
+            </h2>
             {req.skills && req.skills.length > 0 && (
               <div className="mb-5">
                 <p className="mb-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("overviewSkills")}</p>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CalendarDays, CheckCircle2, Coins, Info, ReceiptText, Search, Settings2, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, Coins, Info, Mail, ReceiptText, Settings2 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -28,7 +28,12 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCurrency } from "@/lib/currency";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { InlinePicker } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 
@@ -57,6 +62,7 @@ export default function SuperAgentCommissionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showOverrideInfo, setShowOverrideInfo] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilterState] = useUrlFilter("status", "");
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,7 +70,6 @@ export default function SuperAgentCommissionsPage() {
   const [currencyFilter, setCurrencyFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   // Override rate display (read-only, set by admin)
@@ -116,6 +121,7 @@ export default function SuperAgentCommissionsPage() {
   useEffect(() => { fetchCommissions(); }, [fetchCommissions]);
 
   const updateStatus = async (id: string, status: string) => {
+    setUpdatingId(id);
     const res = await fetch(`/api/commissions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -126,8 +132,8 @@ export default function SuperAgentCommissionsPage() {
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       toast.error(data?.error ?? t("statusUpdateFailed"));
-      return;
     }
+    setUpdatingId(null);
     fetchCommissions();
   };
 
@@ -138,7 +144,7 @@ export default function SuperAgentCommissionsPage() {
     { header: t("tableHeaderAmount"), key: "amount" },
     { header: t("exportHeaderCurrency"), key: "currency" },
     { header: tc("status"), key: "status" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -179,92 +185,78 @@ export default function SuperAgentCommissionsPage() {
           pills and a read-only rate. */}
       <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Error State ---- */}
-        {error && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p className="text-sm text-destructive">{t("loadCommissionsError")}</p>
-            <button
-              type="button"
-              onClick={() => fetchCommissions()}
-              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
-            >
-              {tc("tryAgain")}
-            </button>
-          </div>
-        )}
+        {error && <ErrorState onRetry={() => fetchCommissions()} />}
 
-        {/* Search + Quick Filters + Advanced row */}
-        <TableToolbar
-          search={searchQuery}
-          onSearchChange={(v) => { setSearchQuery(v); resetPage(); }}
-          searchPlaceholder={t("searchPlaceholder")}
+        {/* Search + status pills in plain sight, type/currency/dates behind More */}
+        <InlineFilterBar
+          className="mb-3"
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          hasActiveFilters={!!(statusFilter || typeFilter || currencyFilter || dateFrom || dateTo)}
-          actions={
-            <div className="order-last flex w-full flex-wrap items-center gap-1.5 sm:order-none sm:w-auto">
-              {(["", "pending", "approved", "paid", "disputed", "clawed_back"] as const).map((s) => (
-                <Button
-                  key={s}
-                  onClick={() => { setStatusFilterState(s); resetPage(); }}
-                  aria-pressed={statusFilter === s}
-                  variant={statusFilter === s ? "default" : "outline"}
-                  size="sm"
-                  className={statusFilter === s ? "h-7 shrink-0 rounded-lg px-2 text-xs sm:h-9 sm:px-3 sm:text-sm" : "h-7 shrink-0 rounded-lg border-border/70 bg-card px-2 text-xs text-muted-foreground hover:bg-secondary/80 hover:text-foreground sm:h-9 sm:px-3 sm:text-sm"}
-                >
-                  {s === "" ? tc("all") : t(`status_${s}`)}
-                </Button>
-              ))}
+          onClear={(statusFilter || typeFilter || currencyFilter || dateFrom || dateTo) ? () => { setStatusFilterState(""); setTypeFilter(""); setCurrencyFilter(""); setDateFrom(""); setDateTo(""); resetPage(); } : undefined}
+          more={(
+            <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground">{t("filterTypeLabel")}</Label>
+                  <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
+                    <SelectTrigger className="h-11 w-full sm:w-36 rounded-xl border-border bg-card text-sm shadow-none">
+                      <SelectValue placeholder={t("filterTypeAllTypes")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("filterTypeAllTypes")}</SelectItem>
+                      <SelectItem value="placement">{t("filterTypePlacement")}</SelectItem>
+                      <SelectItem value="override">{t("filterTypeOverride")}</SelectItem>
+                      <SelectItem value="bonus">{t("filterTypeBonus")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground">{t("filterCurrencyLabel")}</Label>
+                  <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
+                    <SelectTrigger className="h-11 w-full sm:w-32 rounded-xl border-border bg-card text-sm shadow-none">
+                      <SelectValue placeholder={t("filterCurrencyAll")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("filterCurrencyAll")}</SelectItem>
+                      <SelectItem value="AED">AED</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="SAR">SAR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateFrom")}</Label>
+                  <DateTimePicker mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateTo")}</Label>
+                  <DateTimePicker mode="date" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} />
+                </div>
+              </div>
             </div>
-          }
-          filterContent={
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground">{t("filterTypeLabel")}</Label>
-                <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
-                  <SelectTrigger className="h-11 w-full sm:w-36 rounded-xl border-border bg-card text-sm shadow-none">
-                    <SelectValue placeholder={t("filterTypeAllTypes")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("filterTypeAllTypes")}</SelectItem>
-                    <SelectItem value="placement">{t("filterTypePlacement")}</SelectItem>
-                    <SelectItem value="override">{t("filterTypeOverride")}</SelectItem>
-                    <SelectItem value="bonus">{t("filterTypeBonus")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground">{t("filterCurrencyLabel")}</Label>
-                <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
-                  <SelectTrigger className="h-11 w-full sm:w-32 rounded-xl border-border bg-card text-sm shadow-none">
-                    <SelectValue placeholder={t("filterCurrencyAll")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("filterCurrencyAll")}</SelectItem>
-                    <SelectItem value="AED">AED</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="SAR">SAR</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateFrom")}</Label>
-                <DateTimePicker mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateTo")}</Label>
-                <DateTimePicker mode="date" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} />
-              </div>
-              {(typeFilter || currencyFilter || dateFrom || dateTo) && (
-                <Button variant="ghost" size="sm" onClick={() => { setTypeFilter(""); setCurrencyFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} className="h-11 rounded-xl text-xs text-muted-foreground hover:text-foreground">
-                  <X className="mr-1 h-3 w-3" /> {t("clearFilters")}
-                </Button>
-              )}
-            </div>
-          }
-          className="mb-3"
-        />
+          )}
+          moreActiveCount={[typeFilter, currencyFilter, dateFrom, dateTo].filter(Boolean).length}
+        >
+          <InlineFilterSearch
+            value={searchQuery}
+            onChange={(v) => { setSearchQuery(v); resetPage(); }}
+            placeholder={t("searchPlaceholder")}
+          />
+          {(["", "pending", "approved", "paid", "disputed", "clawed_back"] as const).map((s) => (
+            <Button
+              key={s}
+              onClick={() => { setStatusFilterState(s); resetPage(); }}
+              aria-pressed={statusFilter === s}
+              variant={statusFilter === s ? "default" : "outline"}
+              size="sm"
+              className={statusFilter === s ? "h-9 shrink-0 rounded-lg px-2 text-xs sm:px-3 sm:text-sm" : "h-9 shrink-0 rounded-lg border-border/70 bg-card px-2 text-xs text-muted-foreground hover:bg-secondary/80 hover:text-foreground sm:px-3 sm:text-sm"}
+            >
+              {s === "" ? tc("all") : t(`status_${s}`)}
+            </Button>
+          ))}
+        </InlineFilterBar>
 
         {/* Override rate as one compact line, not a bordered panel inside a
             titled section. It is read-only config, so it states the value and
@@ -290,71 +282,89 @@ export default function SuperAgentCommissionsPage() {
           )}
         </div>
 
-          <div className="mt-3 overflow-x-auto rounded-3xl border border-border/60">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableHeaderAgent")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("tableHeaderType")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("tableHeaderNotes")}</TableHead>
                   <TableHead className="text-right">{t("tableHeaderAmount")}</TableHead>
                   <TableHead>{tc("status")}</TableHead>
                   <TableHead className="hidden md:table-cell">{tc("date")}</TableHead>
-                  <TableHead>{tc("actions")}</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
-                        <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                  <TableBodySkeleton rows={5} cols={7} />
                 ) : commissions.length === 0 ? (
-                  <TableRow>
-                    {/* Compact: py-16 plus a 56px icon tile gave "No commissions
-                        found" about 200px of empty table to sit in. */}
-                    <TableCell colSpan={7} className="py-8 text-center">
-                      <div className="flex w-full flex-col items-center gap-1 text-center">
-                        <Coins className="mb-1 h-5 w-5 text-muted-foreground/60" />
-                        <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
-                        <p className="text-xs text-muted-foreground">{t("emptyStateMessage")}</p>
-                      </div>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="py-12">
+                      <EmptyState title={t("emptyStateTitle")} description={t("emptyStateMessage")} icon={Coins} />
                     </TableCell>
                   </TableRow>
-                ) : commissions.map((c) => (
-                    <TableRow key={c._id} className="bg-transparent">
-                    <TableCell>
-                        <div className="font-medium text-foreground">{c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">{c.agentId?.userId?.email ?? ""}</div>
-                    </TableCell>
+                ) : commissions.map((c) => {
+                  const agentName = c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—";
+                  return (
+                    <TableRow key={c._id} className="group">
+                      <TableCell>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <UserAvatar name={agentName} email={c.agentId?.userId?.email} className="h-9 w-9 shrink-0" colorful />
+                          <div className="min-w-0 space-y-1">
+                            <p className="truncate font-medium text-foreground">{agentName}</p>
+                            {c.agentId?.userId?.email && (
+                              <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{c.agentId.userId.email}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
                       <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
-                    <TableCell><StatusBadge status={c.status} /></TableCell>
-                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{formatDate(new Date(c.createdAt))}</TableCell>
-                    <TableCell>
-                      {c.status === "pending" && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-green-700" onClick={() => updateStatus(c._id, "approved")}>
-                          {t("actionApprove")}
-                        </Button>
-                      )}
-                      {/* Paying out is the admin's step (it needs the payment reference); a super agent only approves. */}
-                      {c.status === "approved" && <span className="text-xs text-muted-foreground">{t("awaitingPayout")}</span>}
-                      {c.status === "paid" && <span className="text-xs text-muted-foreground">{t("statusPaid")}</span>}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableCell><StatusBadge status={c.status} /></TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{formatDate(new Date(c.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                      <TableCell className="text-right">
+                        {/* Approve/dispute is the row's status: an inline picker,
+                            not a lone Approve button. Paying out stays admin-only. */}
+                        {c.status === "pending" ? (
+                          <InlinePicker
+                            name={agentName}
+                            picker={{
+                              label: tc("changeStatus"),
+                              value: c.status,
+                              options: [
+                                { value: "pending", label: t("status_pending") },
+                                { value: "approved", label: t("status_approved") },
+                                { value: "disputed", label: t("status_disputed") },
+                              ],
+                              onChange: (next) => { if (next !== "pending") void updateStatus(c._id, next); },
+                              display: <StatusBadge status={c.status} />,
+                              pending: updatingId === c._id,
+                              disabled: updatingId === c._id,
+                            }}
+                          />
+                        ) : (
+                          <>
+                            {/* Paying out is the admin's step (it needs the payment reference); a super agent only approves. */}
+                            {c.status === "approved" && <span className="text-xs text-muted-foreground">{t("awaitingPayout")}</span>}
+                            {c.status === "paid" && <span className="text-xs text-muted-foreground">{t("statusPaid")}</span>}
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
 
-        <div className="mt-4">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </SuperAgentSection>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

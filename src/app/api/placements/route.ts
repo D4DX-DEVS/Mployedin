@@ -22,7 +22,7 @@ import { notifySuperAgentPlacement } from "@/lib/notifications/trigger";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
-const PLACEMENT_SORT_FIELDS = ["createdAt", "startDate", "salary"] as const;
+const PLACEMENT_SORT_FIELDS = ["createdAt", "startDate", "placedAt", "salary"] as const;
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();

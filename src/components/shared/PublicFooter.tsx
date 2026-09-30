@@ -11,6 +11,8 @@ type FooterVariant = "full" | "embedded";
 interface PublicFooterProps {
   locale: string;
   variant?: FooterVariant;
+  /** Only once an admin has published the statement; until then it is a 404. */
+  showAccessibilityLink?: boolean;
 }
 
 type FooterLink = {
@@ -50,7 +52,7 @@ function InstagramIcon({ className }: SocialIconProps) {
   );
 }
 
-export default function PublicFooter({ locale, variant = "full" }: PublicFooterProps) {
+export default function PublicFooter({ locale, variant = "full", showAccessibilityLink = false }: PublicFooterProps) {
   const t = useTranslations("footer");
   const year = new Date().getFullYear();
   const isEmbedded = variant === "embedded";
@@ -89,6 +91,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
       { href: `/${locale}/terms`, label: t("terms") },
       { href: `/${locale}/cookies`, label: t("cookies") },
       { href: `/${locale}/gdpr`, label: t("gdpr") },
+      ...(showAccessibilityLink ? [{ href: `/${locale}/accessibility`, label: t("accessibility") }] : []),
       { href: `/${locale}/contact`, label: t("support") },
     ],
   };

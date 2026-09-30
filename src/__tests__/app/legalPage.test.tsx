@@ -48,6 +48,25 @@ describe("LegalPage", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "حماية البيانات" })).toBeInTheDocument();
   });
 
+  it("serves the Accessibility Statement the admin edits in the CMS, in Arabic too", async () => {
+    mockPathname = "/ar/accessibility";
+    mockPage({ title: "Accessibility Statement", titleAr: "بيان إمكانية الوصول", body: "<p>x</p>", bodyAr: "<h2>التزامنا</h2>", updatedAt: "2026-09-29T10:00:00.000Z" });
+    render(<LegalPage kind="accessibility" />);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "بيان إمكانية الوصول" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith("/api/public/pages/accessibility-statement");
+    expect(screen.getByRole("heading", { level: 2, name: "التزامنا" })).toBeInTheDocument();
+  });
+
+  it("says the statement is being prepared until the admin publishes it", async () => {
+    mockPathname = "/en/accessibility";
+    mockPage(null);
+    render(<LegalPage kind="accessibility" />);
+
+    expect(await screen.findByText("Our accessibility statement is being prepared.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Accessibility Statement" })).toBeInTheDocument();
+  });
+
   it("falls back to the default heading and shows no date when the page is not published", async () => {
     mockPage(null);
     render(<LegalPage kind="cookies" />);

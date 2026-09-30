@@ -27,7 +27,7 @@ import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatDate, formatListDate } from "@/lib/ui/intlFormat";
 
 /* ── Types ── */
 
@@ -486,7 +486,7 @@ export default function AgentDetailPage() {
           <div className="overflow-x-auto rounded-2xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableColumnCompany")}</TableHead>
                   <TableHead>{t("tableColumnContact")}</TableHead>
                   <TableHead className="!hidden sm:!table-cell">{tc("country")}</TableHead>
@@ -506,7 +506,7 @@ export default function AgentDetailPage() {
                     <TableCell className="text-sm !hidden sm:!table-cell">{l.source || "—"}</TableCell>
                     <TableCell><StatusBadge status={l.status} t={t} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(l.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      {formatListDate(l.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -528,7 +528,7 @@ export default function AgentDetailPage() {
           <div className="overflow-x-auto rounded-2xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableColumnCode")}</TableHead>
                   <TableHead>{t("tableColumnLabel")}</TableHead>
                   <TableHead className="text-center">{t("tableColumnUsed")}</TableHead>

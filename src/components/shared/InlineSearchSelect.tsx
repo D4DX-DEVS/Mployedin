@@ -31,7 +31,7 @@ export function InlineSearchSelect({
   value,
   onValueChange,
   options,
-  placeholder = "Select...",
+  placeholder,
   disabled = false,
   loading = false,
   className,

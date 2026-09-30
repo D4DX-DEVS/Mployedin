@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, setRequestLocale } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { pickMessages } from "@/lib/i18n/clientMessages";
 import { notFound } from "next/navigation";
 import { PWAInstallPrompt } from "@/components/shared/PWAInstallPrompt";
+import { SkipToContent } from "@/components/shared/SkipToContent";
 
 const locales = ["en", "ar"];
 
@@ -69,10 +70,13 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const messages = await getMessages();
+  const tA11y = await getTranslations("a11y");
   const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
     <div lang={locale} dir={dir} className={locale === "ar" ? "font-arabic" : ""}>
+      {/* First in tab order on every page; each group's <main> is the target. */}
+      <SkipToContent label={tA11y("skipToContent")} />
       {/* Groups bring their own provider and subset; see clientMessages.ts. */}
       <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "root")}>
         {children}

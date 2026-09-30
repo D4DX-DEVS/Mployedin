@@ -16,28 +16,24 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
-  // H3: object-level authz. Employers may only read their own account; agents only
-  // employers assigned to them. Admin/super_agent retain oversight read access.
+  // H3: object-level authz. Employers may only read their own account. Agents
+  // and super-agents read the employers their lists show — assigned, or
+  // registered in their region (agentCanSeeEmployer / getSuperAgentBook). No
+  // platform-wide PII read. `params.id` is the employer's USER id.
   if (ctx.role === "employer" && ctx.userId !== params?.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  if (ctx.role === "agent") {
-    const { Agent } = await import("@/models/Agent");
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
-    if (!agent?.assignedEmployerIds?.map(String).includes(params!.id)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
-  if (ctx.role === "super_agent") {
-    // S1: scope super_agent to employers whose assigned agent is within their book of
-    // business. No platform-wide PII read.
+  if (ctx.role === "agent" || ctx.role === "super_agent") {
     const { Employer } = await import("@/models/Employer");
-    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
-    const empProfile = await Employer.findOne({ userId: params?.id }).select("agentId").lean();
-    const scope = await getSuperAgentScope(ctx.userId);
-    const inScope = Boolean(
-      empProfile?.agentId && scope?.effectiveAgentIds.some((id) => String(id) === String(empProfile.agentId))
-    );
+    const { agentCanSeeEmployer, getSuperAgentBook } = await import("@/lib/auth/agentRestrictions");
+    const empProfile = await Employer.findOne({ userId: params?.id }).select("_id").lean();
+    let inScope = false;
+    if (empProfile && ctx.role === "agent") {
+      inScope = await agentCanSeeEmployer(ctx.userId, empProfile._id);
+    } else if (empProfile) {
+      const book = await getSuperAgentBook(ctx.userId);
+      inScope = Boolean(book?.employerIds.some((id) => String(id) === String(empProfile._id)));
+    }
     if (!inScope) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

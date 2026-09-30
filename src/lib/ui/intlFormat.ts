@@ -54,6 +54,11 @@ export function formatDate(
   return d.toLocaleDateString(resolveIntlLocale(locale), options);
 }
 
+/** Standard list-table date (audit S6): 2-digit day, short month, numeric year. */
+export function formatListDate(value: DateInput, locale?: string): string {
+  return formatDate(value, { day: "2-digit", month: "short", year: "numeric" }, locale);
+}
+
 /** Date and time together. */
 export function formatDateTime(
   value: DateInput,

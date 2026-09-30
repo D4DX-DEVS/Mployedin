@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 import { useLocale, useTranslations } from "next-intl";
-import { formErrorFromResponse } from "@/lib/errors/form-error";
+import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -49,7 +49,7 @@ interface JobSeeker {
   nationality?: string;
   currentLocation?: string;
   status?: string;
-  userId?: { name?: string; email?: string; isActive?: boolean };
+  userId?: { _id?: string; name?: string; email?: string; isActive?: boolean };
   headline?: string;
   summary?: string;
   skills?: string[];
@@ -407,10 +407,31 @@ export default function AdminJobSeekersPage() {
 
   // ── Handlers ────────────────────────────────────────────
   const handleEdit = async (values: Record<string, string>) => {
-    const res = await fetch(`/api/job-seekers/${editItem!._id}`, {
+    const item = editItem!;
+    const { name = "", email = "", ...profile } = values;
+    // Name and email belong to the account. The profile route refuses to write
+    // them (account-takeover fix W1-1), so they go through the admin user
+    // route, which also keeps the profile's display name in step.
+    const account: Record<string, string> = {};
+    if (name.trim() && name.trim() !== (item.fullName || item.userId?.name || "")) account.name = name.trim();
+    if (email.trim() && email.trim().toLowerCase() !== (item.email ?? item.userId?.email ?? "").toLowerCase()) {
+      account.email = email.trim().toLowerCase();
+    }
+    if (Object.keys(account).length > 0) {
+      if (!item.userId?._id) throw new FormError(tf("notFound"));
+      const accountRes = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: item.userId._id, ...account }),
+      });
+      if (!accountRes.ok) {
+        throw await formErrorFromResponse(accountRes, { t: tf, locale, fieldLabels: editFields, conflict: tf("emailInUse") });
+      }
+    }
+    const res = await fetch(`/api/job-seekers/${item._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: JSON.stringify(profile),
     });
     if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: editFields });
     setEditItem(null);

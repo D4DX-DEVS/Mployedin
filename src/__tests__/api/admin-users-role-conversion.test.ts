@@ -360,3 +360,37 @@ describe("PATCH /api/admin/users - editing name and email", () => {
     expect(userFindOneMock).not.toHaveBeenCalled();
   });
 });
+
+describe("PATCH /api/admin/users - renaming keeps the job-seeker profile name in step", () => {
+  let PATCH: (req: NextRequest, ctx?: unknown) => Promise<Response>;
+
+  beforeAll(async () => {
+    const route = await import("@/app/api/admin/users/route");
+    PATCH = route.PATCH as typeof PATCH;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    seekerUpdateOneMock.mockResolvedValue({ modifiedCount: 1 });
+    userFindOneMock.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }) });
+  });
+
+  it("a job seeker's new name is written to JobSeeker.fullName, which the lists display", async () => {
+    mockOldUser({ _id: TARGET_ID, role: "job_seeker", name: "Sam", email: "sam@example.com" });
+    mockUpdatedUser({ _id: TARGET_ID, role: "job_seeker", name: "Samantha", email: "sam@example.com" });
+
+    const res = await PATCH(patchRequest({ userId: TARGET_ID, name: "Samantha" }));
+
+    expect(res.status).toBe(200);
+    expect(seekerUpdateOneMock).toHaveBeenCalledWith({ userId: TARGET_ID }, { $set: { fullName: "Samantha" } });
+  });
+
+  it("renaming a non-seeker touches no JobSeeker profile", async () => {
+    mockOldUser({ _id: TARGET_ID, role: "agent", name: "Ava", email: "ava@example.com" });
+    mockUpdatedUser({ _id: TARGET_ID, role: "agent", name: "Ava B", email: "ava@example.com" });
+
+    await PATCH(patchRequest({ userId: TARGET_ID, name: "Ava B" }));
+
+    expect(seekerUpdateOneMock).not.toHaveBeenCalled();
+  });
+});

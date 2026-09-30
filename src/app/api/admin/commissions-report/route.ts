@@ -154,7 +154,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         _id: { agentId: "$agentId", status: "$status" },
         total: { $sum: "$amount" },
         count: { $sum: 1 },
-        avgRate: { $avg: "$rate" },
+        // Sum + count of rated rows, so the agent's average spans every status
+        // group (a per-group $avg only ever reported the first group's rate).
+        rateSum: { $sum: "$rate" },
+        rateCount: { $sum: { $cond: [{ $isNumber: "$rate" }, 1, 0] } },
       },
     },
   ]);
@@ -197,7 +200,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     agentId: string; agentName: string; agentEmail: string;
     superAgentId: string; superAgentName: string;
     total: number; pending: number; approved: number; paid: number;
-    count: number; avgRate: number;
+    count: number; avgRate: number; rateSum: number; rateCount: number;
   }>();
 
   for (const row of agentAgg) {
@@ -217,19 +220,26 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         agentEmail: (user as { name?: string; email?: string } | undefined)?.email ?? "",
         superAgentId: agentDoc.superAgentId ? String(agentDoc.superAgentId) : "",
         superAgentName: saUser?.name ?? "",
-        total: 0, pending: 0, approved: 0, paid: 0, count: 0, avgRate: row.avgRate ?? 0,
+        total: 0, pending: 0, approved: 0, paid: 0, count: 0, avgRate: 0, rateSum: 0, rateCount: 0,
       });
     }
 
     const entry = agentMap.get(agentDocId)!;
     entry.total += row.total;
     entry.count += row.count;
+    entry.rateSum += row.rateSum ?? 0;
+    entry.rateCount += row.rateCount ?? 0;
     if (row._id.status === "pending") entry.pending += row.total;
     if (row._id.status === "approved") entry.approved += row.total;
     if (row._id.status === "paid") entry.paid += row.total;
   }
 
-  const agentBreakdown = [...agentMap.values()].sort((a, b) => b.total - a.total);
+  const agentBreakdown = [...agentMap.values()]
+    .map(({ rateSum, rateCount, ...agent }) => ({
+      ...agent,
+      avgRate: rateCount > 0 ? Math.round((rateSum / rateCount) * 100) / 100 : 0,
+    }))
+    .sort((a, b) => b.total - a.total);
 
   return NextResponse.json({
     year,

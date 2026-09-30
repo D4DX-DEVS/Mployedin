@@ -33,7 +33,9 @@ import {
 import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, UserCog, Building2, MapPin, Mail, UserRoundCheck, UserRoundX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AssignAgentDialog } from "./_components/AssignAgentDialog";
+import { ChangeRegionDialog } from "./_components/ChangeRegionDialog";
 import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
+import type { EmployerRegionSummary } from "@/lib/agents/territoryCoverage";
 import { useConfirm } from "@/hooks/useConfirm";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { formatDate } from "@/lib/ui/intlFormat";
@@ -56,6 +58,8 @@ interface Employer {
   employerProfileId?: string;
   /** The agent running this account (null = none), with their super-agent. */
   assignedAgent?: EmployerAgentSummary | null;
+  /** The region (catalogue city) and every super-agent whose territory covers it. */
+  region?: EmployerRegionSummary | null;
 }
 
 export default function AdminEmployersPage() {
@@ -74,10 +78,14 @@ export default function AdminEmployersPage() {
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   // "none" surfaces employers waiting for an agent — e.g. super-agent link signups.
   const [agentFilter, setAgentFilter] = useUrlFilter("agent", "all", { allow: ["all", "none", "any"] });
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: ["all", "active", "inactive"] });
+  // "none" surfaces employers no super agent sees: no region, or one outside every territory.
+  const [coverageFilter, setCoverageFilter] = useUrlFilter("coverage", "all", { allow: ["all", "none", "covered"] });
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "companyName", { allow: ["companyName", "industry", "createdAt"] });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
   const order = sortOrder === "desc" ? "desc" : "asc";
   const [assignItem, setAssignItem] = useState<Employer | null>(null);
+  const [regionItem, setRegionItem] = useState<Employer | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Employer | null>(null);
@@ -143,7 +151,8 @@ export default function AdminEmployersPage() {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
     if (agentFilter !== "all") params.set("agentId", agentFilter);
-    params.set("status", "all");
+    if (coverageFilter !== "all") params.set("coverage", coverageFilter);
+    params.set("status", statusFilter);
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
     try {
@@ -162,7 +171,7 @@ export default function AdminEmployersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, agentFilter, sortBy, sortOrder, page, limit, t]);
+  }, [search, agentFilter, coverageFilter, statusFilter, sortBy, sortOrder, page, limit, t]);
 
   useEffect(() => { fetchEmployers(); }, [fetchEmployers]);
 
@@ -224,6 +233,28 @@ export default function AdminEmployersPage() {
         return;
       }
       toast.success(t("toastDeactivated"));
+    } catch {
+      toast.error(t("requestFailed"));
+      return;
+    }
+    fetchEmployers();
+  };
+
+  // Reactivation goes through the account route, which also resumes the jobs
+  // deactivation paused; the employer PATCH validates isActive but never applies it.
+  const handleActivate = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, isActive: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? t("requestFailed"));
+        return;
+      }
+      toast.success(t("toastActivated"));
     } catch {
       toast.error(t("requestFailed"));
       return;
@@ -321,12 +352,19 @@ export default function AdminEmployersPage() {
       pending: switchingEmployerId === workspaceId, disabled: emp.isActive === false,
     };
     const primary = !emp.assignedAgent && assign ? assign : !emp.domainVerified && verify ? verify : workspace;
-    const menu: RowAction[] = [verify, assign, can("employers", "update") ? {
+    const changeRegion: RowAction | null = can("employers", "update") ? {
+      key: "region", label: t("changeRegionTitle"), icon: MapPin,
+      iconClassName: emp.region?.superAgents.length ? undefined : "text-amber-600", onSelect: () => setRegionItem(emp),
+    } : null;
+    const menu: RowAction[] = [verify, assign, changeRegion, can("employers", "update") ? {
       key: "edit", label: t("editButtonTitle"), icon: Pencil, onSelect: () => setEditItem(emp),
     } : null, workspace].filter((action): action is RowAction => Boolean(action) && action !== primary);
+    if (emp.isActive === false && can("users", "update")) {
+      menu.push({ key: "activate", label: t("activateButtonTitle"), icon: UserRoundCheck, onSelect: () => handleActivate(emp._id) });
+    }
     if (can("employers", "delete")) {
       menu.push(
-        { key: "deactivate", label: t("deactivateButtonTitle"), icon: Ban, onSelect: () => handleDelete(emp._id), destructive: true },
+        ...(emp.isActive === false ? [] : [{ key: "deactivate", label: t("deactivateButtonTitle"), icon: Ban, onSelect: () => handleDelete(emp._id), destructive: true }]),
         { key: "delete", label: t("deleteButtonTitle"), icon: Trash2, onSelect: () => handlePermanentDelete(emp._id), destructive: true },
       );
     }
@@ -392,23 +430,54 @@ export default function AdminEmployersPage() {
         search={search}
         onSearchChange={(value) => { setSearch(value); resetPage(); }}
         searchPlaceholder={t("searchPlaceholder")}
-        filterLabel={t("agentFilterLabel")}
-        hasActiveFilters={agentFilter !== "all"}
+        hasActiveFilters={agentFilter !== "all" || statusFilter !== "all" || coverageFilter !== "all"}
         filterContent={(
-          <div className="grid gap-2 sm:max-w-xs">
-            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-agent-filter">
-              {t("agentFilterLabel")}
-            </label>
-            <Select value={agentFilter} onValueChange={(value) => { setAgentFilter(value); resetPage(); }}>
-              <SelectTrigger id="employer-agent-filter" className="h-10 rounded-xl bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("agentFilterAll")}</SelectItem>
-                <SelectItem value="none">{t("agentFilterNone")}</SelectItem>
-                <SelectItem value="any">{t("agentFilterAny")}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid gap-4 sm:max-w-xs">
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-status-filter">
+                {t("statusFilterLabel")}
+              </label>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); resetPage(); }}>
+                <SelectTrigger id="employer-status-filter" className="h-10 rounded-xl bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("statusFilterAll")}</SelectItem>
+                  <SelectItem value="active">{t("statusFilterActive")}</SelectItem>
+                  <SelectItem value="inactive">{t("statusFilterInactive")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-agent-filter">
+                {t("agentFilterLabel")}
+              </label>
+              <Select value={agentFilter} onValueChange={(value) => { setAgentFilter(value); resetPage(); }}>
+                <SelectTrigger id="employer-agent-filter" className="h-10 rounded-xl bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("agentFilterAll")}</SelectItem>
+                  <SelectItem value="none">{t("agentFilterNone")}</SelectItem>
+                  <SelectItem value="any">{t("agentFilterAny")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-coverage-filter">
+                {t("coverageFilterLabel")}
+              </label>
+              <Select value={coverageFilter} onValueChange={(value) => { setCoverageFilter(value); resetPage(); }}>
+                <SelectTrigger id="employer-coverage-filter" className="h-10 rounded-xl bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("coverageFilterAll")}</SelectItem>
+                  <SelectItem value="none">{t("coverageFilterNone")}</SelectItem>
+                  <SelectItem value="covered">{t("coverageFilterCovered")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
         onExportCsv={handleExportCsv}
@@ -485,10 +554,12 @@ export default function AdminEmployersPage() {
                 <TableCell>
                   <div className="space-y-1">
                     <p className="font-medium text-foreground">{emp.industry ?? "—"}</p>
-                    {emp.location && (
+                    {(emp.region || emp.location) && (
                       <p className="flex items-center gap-1 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{emp.location}</span>
+                        <span className="truncate">
+                          {emp.region ? `${emp.region.cityName}, ${emp.region.countryCode}` : emp.location}
+                        </span>
                       </p>
                     )}
                   </div>
@@ -512,6 +583,15 @@ export default function AdminEmployersPage() {
                       {t("noAgentBadge")}
                     </Badge>
                   )}
+                  {/* Who sees the account through its region — may be several. */}
+                  <p
+                    className={`mt-1.5 max-w-[14rem] truncate text-xs ${emp.region?.superAgents.length ? "text-muted-foreground" : "text-amber-700"}`}
+                    title={emp.region?.superAgents.map((s) => s.name).join(", ")}
+                  >
+                    {emp.region?.superAgents.length
+                      ? t("regionSuperAgents", { names: emp.region.superAgents.map((s) => s.name).join(", ") })
+                      : emp.region ? t("regionUncovered") : t("regionMissing")}
+                  </p>
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(new Date(emp.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                 {canManageRows && (
@@ -535,6 +615,15 @@ export default function AdminEmployersPage() {
           setEmployers((prev) => prev.map((e) => (e._id === userId ? { ...e, assignedAgent: agent } : e)));
           // Under a "No agent"/"Has agent" filter the row may no longer belong.
           if (agentFilter !== "all") fetchEmployers();
+        }}
+      />
+
+      <ChangeRegionDialog
+        employer={regionItem ? { userId: regionItem._id, companyName: regionItem.companyName || regionItem.name || "" } : null}
+        onClose={() => setRegionItem(null)}
+        onChanged={(userId, region) => {
+          setEmployers((prev) => prev.map((e) => (e._id === userId ? { ...e, region } : e)));
+          if (coverageFilter !== "all") fetchEmployers();
         }}
       />
 

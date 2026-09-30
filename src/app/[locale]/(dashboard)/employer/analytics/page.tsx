@@ -693,7 +693,7 @@ function PipelineTab({
           <div className="hidden overflow-x-auto sm:block" tabIndex={0}>
             <table className="w-full min-w-[860px] text-sm">
               <thead>
-                <tr className="border-b border-border/60 bg-background/60">
+                <tr className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">
                   <th className="px-4 py-3 text-left font-semibold text-foreground/85">{t("jobTitle")}</th>
                   <th className="px-4 py-3 text-center font-semibold text-foreground/85">{t("total")}</th>
                   {FUNNEL_STAGES.map((s) => (
@@ -711,7 +711,7 @@ function PipelineTab({
                   </tr>
                 )}
                 {pipeline.perJob.map((job) => (
-                  <tr key={job.jobId} className="border-b border-border/40 transition hover:bg-background/60">
+                  <tr key={job.jobId} className="border-b border-border/40 transition hover:bg-muted/30">
                     <td className="max-w-[240px] truncate px-4 py-3 font-medium text-foreground">
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
@@ -859,7 +859,7 @@ function PipelineTab({
           <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="border-b border-border/60 bg-background/60">
+                <tr className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">
                   <th className="px-4 py-3 text-left font-semibold text-foreground/85">{t("jobTitle")}</th>
                   <th className="px-4 py-3 text-right font-semibold text-foreground/85">{t("applications")}</th>
                   <th className="px-4 py-3 text-right font-semibold text-foreground/85">{t("percentOfTotal")}</th>
@@ -869,7 +869,7 @@ function PipelineTab({
                 {data.topJobs.map((job, idx) => {
                   const percentage = totalApplications > 0 ? ((job.count / totalApplications) * 100).toFixed(1) : "0";
                   return (
-                    <tr key={idx} className="border-b border-border/40 transition hover:bg-background/60">
+                    <tr key={idx} className="border-b border-border/40 transition hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium text-foreground">{job.title}</td>
                       <td className="px-4 py-3 text-right font-semibold text-foreground/85">{job.count}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{percentage}%</td>

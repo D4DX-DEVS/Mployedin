@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // From the Mongoose-free module, not the model: this is a client component,
 // and importing the model pulls the driver into the browser bundle.
 import {
@@ -47,8 +48,6 @@ interface CompanyFunctionChecklistProps {
   /** The employer's manual ticks on top of those roles. */
   overrides: Partial<Record<PermissionFlag, boolean>>;
   onChange: (overrides: Partial<Record<PermissionFlag, boolean>>) => void;
-  /** Open on first render, for the edit dialog where the ticks already matter. */
-  defaultOpen?: boolean;
 }
 
 /**
@@ -64,10 +63,8 @@ export function CompanyFunctionChecklist({
   roles,
   overrides,
   onChange,
-  defaultOpen = false,
 }: CompanyFunctionChecklistProps) {
   const t = useTranslations("employerTeam");
-  const [open, setOpen] = useState(defaultOpen);
 
   const roleDefaults = useMemo(() => computeEffectivePermissions(roles), [roles]);
   const effective = useMemo(
@@ -88,31 +85,38 @@ export function CompanyFunctionChecklist({
     onChange(updated);
   }
 
+  /* A dropdown, like the role and job pickers beside it, so opening it never
+     grows the dialog. `modal` for the same reason as FormMultiSelect: the
+     dialog's scroll lock only exempts its own content, so a non-modal list
+     portalled to <body> would ignore the mouse wheel. */
   return (
-    <div className="rounded-lg border border-border">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-start min-h-11"
-      >
-        <span className="space-y-0.5">
-          <span className="block text-sm font-medium text-foreground">{t("fineTune")}</span>
-          <span className="block text-xs text-muted-foreground">
-            {t("fineTuneCount", { count: grantedCount, total: COMPANY_FUNCTIONS.length })}
+    <Popover modal>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="group flex w-full items-center justify-between gap-3 rounded-lg border border-border px-3 py-3 text-start min-h-11 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50"
+        >
+          <span className="space-y-0.5">
+            <span className="block text-sm font-medium text-foreground">{t("fineTune")}</span>
+            <span className="block text-xs text-muted-foreground">
+              {t("fineTuneCount", { count: grantedCount, total: COMPANY_FUNCTIONS.length })}
+            </span>
           </span>
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-          aria-hidden
-        />
-      </button>
-
-      {open && (
-        <div className="border-t border-border px-3 py-3 space-y-1">
-          <p className="text-xs text-muted-foreground pb-1">{t("fineTuneHint")}</p>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+            aria-hidden
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg border-border bg-background p-0 shadow-black/10"
+      >
+        <p className="px-3 pt-2.5 pb-1 text-xs text-muted-foreground">{t("fineTuneHint")}</p>
+        {/* `relative`: each Radix Checkbox renders a hidden absolute input that
+            would otherwise escape this scroll box and stretch its ancestor. */}
+        <div className="relative max-h-64 overflow-y-auto overscroll-contain px-2 pb-2">
           {COMPANY_FUNCTIONS.map((flag) => {
             const checked = effective[flag] === true;
             const changed = overrides[flag] !== undefined;
@@ -138,7 +142,7 @@ export function CompanyFunctionChecklist({
             );
           })}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }

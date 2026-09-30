@@ -1,24 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { COOKIE_CONSENT_STORAGE_KEY, storeCookieChoice, type CookieChoice } from "@/lib/gdpr/cookieChoice";
+import { readCookieChoice, storeCookieChoice, type CookieChoice } from "@/lib/gdpr/cookieChoice";
+
+export interface CookieConsentLabels {
+  message: string;
+  policy: string;
+  accept: string;
+  decline: string;
+}
 
 interface CookieConsentProps {
   locale: string;
+  /**
+   * Translated on the server (CookieConsentMount): the banner shows in every
+   * route group, and most of them do not ship the `landing` namespace to the
+   * client.
+   */
+  labels: CookieConsentLabels;
 }
 
-export default function CookieConsent({ locale }: CookieConsentProps) {
+export default function CookieConsent({ locale, labels }: CookieConsentProps) {
   const [showBanner, setShowBanner] = useState(false);
-  const t = useTranslations("landing");
   const { status } = useSession();
 
   useEffect(() => {
-    const consent = localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);
-    if (!consent) {
+    // readCookieChoice survives blocked storage (it returns null, so the banner shows).
+    if (!readCookieChoice()) {
       const timer = setTimeout(() => setShowBanner(true), 1000);
       return () => clearTimeout(timer);
     }
@@ -65,21 +76,21 @@ export default function CookieConsent({ locale }: CookieConsentProps) {
       className="pointer-events-none fixed inset-x-0 bottom-0 z-50 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-4"
       role="region"
       aria-live="polite"
-      aria-label={t("cookiePolicy")}
+      aria-label={labels.policy}
     >
       <div className="pointer-events-auto mx-auto flex max-w-5xl items-center gap-2 rounded-xl border bg-background/95 p-2.5 shadow-lg backdrop-blur sm:gap-4 sm:px-4 sm:py-3">
         <p className="min-w-0 flex-1 text-xs leading-4 text-muted-foreground sm:text-sm sm:leading-5">
-          {t("cookieConsent")}{" "}
+          {labels.message}{" "}
           <Link href={`/${locale}/cookies`} className="font-medium underline underline-offset-2 hover:text-foreground">
-            {t("cookiePolicy")}
+            {labels.policy}
           </Link>
         </p>
         <div className="flex shrink-0 gap-1.5 sm:gap-2">
           <Button variant="outline" size="sm" className="min-h-11 px-2.5 sm:px-3" onClick={handleDecline}>
-            {t("cookieDecline")}
+            {labels.decline}
           </Button>
           <Button size="sm" className="min-h-11 px-2.5 sm:px-3" onClick={handleAccept}>
-            {t("cookieAccept")}
+            {labels.accept}
           </Button>
         </div>
       </div>

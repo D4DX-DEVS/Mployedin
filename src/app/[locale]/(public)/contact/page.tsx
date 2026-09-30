@@ -7,14 +7,22 @@ import { MapPin, Phone, Mail, Send, CheckCircle, AlertCircle } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import { FieldError } from "@/components/shared/FieldError";
+import { RequiredMark } from "@/components/ui/required-mark";
+import { EMAIL_PATTERN } from "@/lib/errors/email-pattern";
 
 const COMPANY_ADDRESS = "MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR";
 const SUPPORT_EMAIL = "support@mployedin.com";
+
+type ContactField = "name" | "email" | "message";
+/** In form order, so a failed submit focuses the first problem. */
+const REQUIRED_FIELDS: ContactField[] = ["name", "email", "message"];
 
 export default function ContactPage() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
   const t = useTranslations("landing");
+  const tc = useTranslations("common");
 
   const [form, setForm] = useState({
     name: "",
@@ -26,19 +34,38 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ContactField, string>>>({});
   // Render email only after mount to prevent Cloudflare Email Obfuscation
   // from rewriting it, which would trigger React hydration mismatch error #418
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[name as ContactField]) return prev;
+      const next = { ...prev };
+      delete next[name as ContactField];
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitting(true);
     setError("");
+    const nextErrors: Partial<Record<ContactField, string>> = {};
+    if (!form.name.trim()) nextErrors.name = t("contactNameRequired");
+    if (!form.email.trim()) nextErrors.email = t("contactEmailRequired");
+    else if (!EMAIL_PATTERN.test(form.email.trim())) nextErrors.email = t("contactEmailInvalid");
+    if (!form.message.trim()) nextErrors.message = t("contactMessageRequired");
+    setFieldErrors(nextErrors);
+    const firstInvalid = REQUIRED_FIELDS.find((field) => nextErrors[field]);
+    if (firstInvalid) {
+      document.getElementById(`contact-${firstInvalid}`)?.focus();
+      return;
+    }
+    setSubmitting(true);
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
@@ -72,7 +99,7 @@ export default function ContactPage() {
                   <MapPin className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("addressLabel")}</h3>
+                  <h2 className="font-semibold">{t("addressLabel")}</h2>
                   <p className="text-sm text-muted-foreground mt-1">{COMPANY_ADDRESS}</p>
                 </div>
               </div>
@@ -82,7 +109,7 @@ export default function ContactPage() {
                   <Phone className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("phoneLabel2")}</h3>
+                  <h2 className="font-semibold">{t("phoneLabel2")}</h2>
                   {/* Phone number hidden (no real number configured) */}
                 </div>
               </div>
@@ -92,7 +119,7 @@ export default function ContactPage() {
                   <Mail className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("emailLabel2")}</h3>
+                  <h2 className="font-semibold">{t("emailLabel2")}</h2>
                   <a
                     href={mounted ? `mailto:${SUPPORT_EMAIL}` : undefined}
                     className="text-sm text-muted-foreground mt-1 transition-colors [overflow-wrap:anywhere] hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -114,16 +141,19 @@ export default function ContactPage() {
               {success ? (
                 <div className="text-center py-10">
                   <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                  <h3 className="heading-subsection font-semibold">{t("messageSentHeading")}</h3>
+                  <h2 className="heading-subsection font-semibold">{t("messageSentHeading")}</h2>
                   <p className="text-muted-foreground mt-2">{t("messageSentBody")}</p>
                   <Button className="mt-6" onClick={() => setSuccess(false)}>
                     {t("sendAnotherMessage")}
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                // `noValidate`: handleSubmit explains each problem under its field
+                // instead of the browser's untranslated, short-lived bubble.
+                <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                  <p className="text-xs text-muted-foreground">{tc("requiredFieldsNote")}</p>
                   {error && (
-                    <div className="flex items-center gap-2 rounded-lg bg-destructive/10 text-destructive p-3 text-sm">
+                    <div role="alert" className="flex items-center gap-2 rounded-lg bg-destructive/10 text-destructive p-3 text-sm">
                       <AlertCircle className="h-4 w-4 shrink-0" />
                       {error}
                     </div>
@@ -132,15 +162,25 @@ export default function ContactPage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label htmlFor="contact-name" className="text-sm font-medium mb-1.5 block">
-                        {t("fullNameLabel")} <span className="text-destructive">*</span>
+                        {t("fullNameLabel")} <RequiredMark />
                       </label>
-                      <Input id="contact-name" name="name" value={form.name} onChange={handleChange} required placeholder={t("fullNamePlaceholder")} />
+                      <Input
+                        id="contact-name" name="name" value={form.name} onChange={handleChange} required placeholder={t("fullNamePlaceholder")}
+                        aria-invalid={fieldErrors.name ? true : undefined}
+                        aria-describedby={fieldErrors.name ? "contact-name-error" : undefined}
+                      />
+                      <FieldError id="contact-name-error" message={fieldErrors.name} />
                     </div>
                     <div>
                       <label htmlFor="contact-email" className="text-sm font-medium mb-1.5 block">
-                        {t("emailLabel2")} <span className="text-destructive">*</span>
+                        {t("emailLabel2")} <RequiredMark />
                       </label>
-                      <Input id="contact-email" type="email" name="email" value={form.email} onChange={handleChange} required placeholder="you@example.com" />
+                      <Input
+                        id="contact-email" type="email" name="email" value={form.email} onChange={handleChange} required placeholder="you@example.com"
+                        aria-invalid={fieldErrors.email ? true : undefined}
+                        aria-describedby={fieldErrors.email ? "contact-email-error" : undefined}
+                      />
+                      <FieldError id="contact-email-error" message={fieldErrors.email} />
                     </div>
                   </div>
 
@@ -161,7 +201,7 @@ export default function ContactPage() {
 
                   <div>
                     <label htmlFor="contact-message" className="text-sm font-medium mb-1.5 block">
-                      {t("messageField")} <span className="text-destructive">*</span>
+                      {t("messageField")} <RequiredMark />
                     </label>
                     <textarea
                       id="contact-message"
@@ -170,9 +210,12 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       rows={5}
+                      aria-invalid={fieldErrors.message ? true : undefined}
+                      aria-describedby={fieldErrors.message ? "contact-message-error" : undefined}
                       placeholder={t("messagePlaceholder")}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
                     />
+                    <FieldError id="contact-message-error" message={fieldErrors.message} />
                   </div>
 
                   <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>

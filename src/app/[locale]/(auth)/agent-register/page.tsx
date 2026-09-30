@@ -7,6 +7,8 @@ import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { User, MapPin, CheckCircle, ChevronRight, ChevronLeft, Loader2, Briefcase, Shield } from "lucide-react";
 import { FormInput, FormSelect } from "@/components/shared/AppForm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import { TermsAgreement } from "@/components/features/auth/TermsAgreement";
+import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
 
 interface Step1Data {
   fullName: string;
@@ -76,6 +78,8 @@ export default function AgentRegisterPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const tAuth = useTranslations("auth");
 
   const [step1, setStep1] = useState<Step1Data>({
     fullName: "", email: "", phone: "", password: "", confirmPassword: "",
@@ -122,6 +126,10 @@ export default function AgentRegisterPage() {
       setError(t("selectYourCountry"));
       return false;
     }
+    if (!agreedToTerms) {
+      setError(tAuth("mustAgreeToTerms"));
+      return false;
+    }
     setError("");
     return true;
   };
@@ -146,6 +154,8 @@ export default function AgentRegisterPage() {
           ...step1,
           ...step2,
           referralCode,
+          termsAccepted: agreedToTerms,
+          cookieConsent: readCookieChoice() ?? undefined,
         }),
       });
 
@@ -224,6 +234,7 @@ export default function AgentRegisterPage() {
               <FormSelect label={t("experienceLabel")} value={step2.experience} onChange={(v) => updateStep2("experience", v)} options={EXPERIENCE_OPTIONS} placeholder={t("selectExperiencePlaceholder")} />
               <FormSelect label={t("specializationLabel")} value={step2.specialization} onChange={(v) => updateStep2("specialization", v)} options={SPECIALIZATION_OPTIONS} placeholder={t("selectSpecializationPlaceholder")} />
               <FormInput label={t("languagesLabel")} value={step2.languages} onChange={(e) => updateStep2("languages", e.target.value)} placeholder="English, Arabic, Hindi" />
+              <TermsAgreement id="agent-terms" locale={locale} checked={agreedToTerms} onCheckedChange={setAgreedToTerms} />
             </div>
           )}
 

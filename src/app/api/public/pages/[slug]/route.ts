@@ -6,7 +6,7 @@ import logger from "@/lib/logger";
 import { isLegalPageSlug } from "@/lib/cms/legalPages";
 
 /**
- * Public legal page by slug — NO AUTH required. Only the four slugs in
+ * Public legal page by slug — NO AUTH required. Only the slugs in
  * lib/cms/legalPages are served; nothing else has a public route.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {

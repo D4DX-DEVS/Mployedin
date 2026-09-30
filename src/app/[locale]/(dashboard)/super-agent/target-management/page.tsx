@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -31,17 +30,20 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
   Building2, Users, DollarSign, SplitSquareVertical,
   TrendingUp, CalendarDays, RotateCcw, Download,
   Search, AlertCircle, CheckCircle2,
-  ClipboardList, TimerReset, Info, MapPin,
+  ClipboardList, TimerReset, Info, MapPin, Mail,
   Eye, SlidersHorizontal, CircleDollarSign,
   BarChart3,
 } from "lucide-react";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -165,9 +167,10 @@ function getProgressTextColor(progress: number): string {
 // Returns key if invalid; caller resolves with t()
 function formatShortDate(value?: string): string | null {
   if (!value) return "noUpdate";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "noUpdate";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
+  const formatted = formatDate(value, { month: "short", day: "numeric" });
+  // formatDate returns em dash for unparseable input — map back to key
+  if (formatted === "—") return "noUpdate";
+  return formatted;
 }
 
 // Returns key; caller resolves with t()
@@ -270,6 +273,7 @@ function DashboardMetricCard({
 export default function SuperAgentTargetProfilesPage() {
   const t = useTranslations("targets");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const currentYear = new Date().getFullYear();
 
@@ -347,6 +351,13 @@ export default function SuperAgentTargetProfilesPage() {
 
   // Distribute dialog
   const [showDistribute, setShowDistribute] = useState(false);
+  // Row Adjust lands the dialog on that agent (was ignored: the dialog always
+  // opened unfiltered no matter which row was clicked).
+  const [distributeAgentName, setDistributeAgentName] = useState("");
+  const openDistributeFor = useCallback((agentName?: string) => {
+    setDistributeAgentName(agentName ?? "");
+    setShowDistribute(true);
+  }, []);
   const [showTeamFilters, setShowTeamFilters] = useState(false);
 
   // Agent detail dialog
@@ -509,6 +520,10 @@ export default function SuperAgentTargetProfilesPage() {
   };
 
   const pct = (a: number, tgt: number) => tgt > 0 ? Math.round((a / tgt) * 100) : 0;
+  // The empty table had two branches on the same condition: the first caught
+  // every empty list, so the filtered-empty branch (with its Clear action)
+  // never rendered and a filtered-to-zero search dead-ended with no way back.
+  const teamFiltersActive = teamSearch.trim().length > 0 || teamRiskFilter !== "all" || teamCompletionFilter !== "all" || teamTerritoryFilter !== "all";
   const hasActiveDashboardFilters = yearFilter !== currentYear || teamSearch.trim().length > 0 || teamTerritoryFilter !== "all" || teamCompletionFilter !== "all" || teamRiskFilter !== "all";
 
   const handleResetDashboard = () => {
@@ -634,7 +649,7 @@ export default function SuperAgentTargetProfilesPage() {
               </Button>
             </>
           ) : null}
-          <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)} aria-label={t("distribute")}>
+          <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => openDistributeFor()} aria-label={t("distribute")}>
             <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">{t("distribute")}</span>
           </Button>
         </div>
@@ -753,7 +768,7 @@ export default function SuperAgentTargetProfilesPage() {
                 <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="hover:bg-transparent">
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
                         <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
                         <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
@@ -762,10 +777,13 @@ export default function SuperAgentTargetProfilesPage() {
                     </TableHeader>
                     <TableBody>
                       {analytics.agentRankings.slice(0, 5).map((agent) => (
-                        <TableRow key={agent._id}>
+                        <TableRow key={agent._id} className="group">
                           <TableCell className="text-center text-sm font-bold tabular-nums">#{agent.rank}</TableCell>
                           <TableCell>
-                            <p className="font-medium">{agent.assigneeName}</p>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <UserAvatar name={agent.assigneeName} className="h-8 w-8 shrink-0" colorful />
+                              <p className="truncate font-medium">{agent.assigneeName}</p>
+                            </div>
                           </TableCell>
                           <TableCell className="text-center"><PerformanceBadge pct={agent.overallProgress} /></TableCell>
                           <TableCell className="text-center">
@@ -866,7 +884,7 @@ export default function SuperAgentTargetProfilesPage() {
           <div className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
                   <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("territory")}</TableHead>
                   <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
@@ -887,30 +905,11 @@ export default function SuperAgentTargetProfilesPage() {
               </TableHeader>
               <TableBody>
                 {teamLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 10 }).map((_, j) => (
-                        <TableCell key={j}><div className="h-4 w-16 animate-pulse rounded bg-muted" /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : teamProfiles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="py-16 text-center">
-                      <TargetEmptyState
-                        title={t("noAgentTargets")}
-                        description={t("distributeEmptyHint")}
-                        action={
-                          <Button size="sm" onClick={() => setShowDistribute(true)} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                            <SplitSquareVertical className="h-4 w-4" /> {t("distribute")}
-                          </Button>
-                        }
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : teamProfiles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="py-16 text-center">
+                  <TableBodySkeleton rows={3} cols={10} />
+                ) : teamProfiles.length === 0 && teamFiltersActive ? (
+                  // Filtered empty — distinct from the true empty below, not dead code
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={10} className="py-12">
                       <TargetEmptyState
                         title={t("noAgentsMatchFilters")}
                         description={t("noMatchHint")}
@@ -932,16 +931,36 @@ export default function SuperAgentTargetProfilesPage() {
                       />
                     </TableCell>
                   </TableRow>
+                ) : teamProfiles.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={10} className="py-12">
+                      <TargetEmptyState
+                        title={t("noAgentTargets")}
+                        description={t("distributeEmptyHint")}
+                        action={
+                          <Button size="sm" onClick={() => openDistributeFor()} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                            <SplitSquareVertical className="h-4 w-4" /> {t("distribute")}
+                          </Button>
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   paginatedTeamProfiles.map((agent) => (
-                    <TableRow key={agent._id}>
+                    <TableRow key={agent._id} className="group">
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{agent.assigneeName}</p>
-                          <p className="text-xs text-muted-foreground">{agent.assigneeEmail}</p>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <Badge variant="info" className="px-2 py-0.5 text-[11px]">{t(getDistributionStatus(agent))}</Badge>
-                            <span className="text-[11px] text-muted-foreground">{resolveDeadlineAlert(agent)}</span>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <UserAvatar name={agent.assigneeName} email={agent.assigneeEmail} className="h-9 w-9 shrink-0" colorful />
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="truncate font-medium">{agent.assigneeName}</p>
+                            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                              <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                              <span className="truncate">{agent.assigneeEmail}</span>
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <Badge variant="info" className="px-2 py-0.5 text-[11px]">{t(getDistributionStatus(agent))}</Badge>
+                              <span className="text-[11px] text-muted-foreground">{resolveDeadlineAlert(agent)}</span>
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -975,44 +994,17 @@ export default function SuperAgentTargetProfilesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <p className="text-sm font-medium text-foreground">{formatShortDate(agent.lastActivityAt ?? agent.updatedAt ?? agent.createdAt) || t("noUpdate")}</p>
+                        <p className="text-sm font-medium text-foreground">{formatDate(new Date(agent.lastActivityAt ?? agent.updatedAt ?? agent.createdAt ?? Date.now()), { day: "2-digit", month: "short", year: "numeric" }, locale)}</p>
                         <p className="text-[11px] text-muted-foreground">{t(getNextAction(agent))}</p>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="iconDense"
-                                  className="rounded-lg"
-                                  aria-label={`Focus ${agent.assigneeName}`}
-                                  onClick={() => setDetailAgent(agent)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{t("viewAgentDetails")}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="iconDense"
-                                  className="rounded-lg"
-                                  aria-label={t("ariaAdjustTargetFor", { name: agent.assigneeName })}
-                                  onClick={() => setShowDistribute(true)}
-                                >
-                                  <SlidersHorizontal className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{t("adjustDistribution")}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
+                      <TableCell className="text-right">
+                        <RowActions
+                          name={agent.assigneeName}
+                          quick={[
+                            { key: "view", label: t("viewAgentDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailAgent(agent) },
+                            { key: "adjust", label: t("ariaAdjustTargetFor", { name: agent.assigneeName }), icon: SlidersHorizontal, iconOnly: true, onSelect: () => openDistributeFor(agent.assigneeName) },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -1258,6 +1250,7 @@ export default function SuperAgentTargetProfilesPage() {
         supervisorProfile={ownProfile}
         teamProfiles={teamProfiles}
         onSuccess={fetchTeam}
+        initialFilterName={distributeAgentName}
       />
 
       <AgentDetailDialog

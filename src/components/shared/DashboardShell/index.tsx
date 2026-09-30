@@ -28,7 +28,10 @@ const NotificationBell = dynamic(
   { ssr: false }
 );
 import PublicFooter from "@/components/shared/PublicFooter";
+import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
+import { AccessibilityPanel } from "@/components/shared/AccessibilityPanel";
+import { ReducedMotionPreference } from "@/components/shared/AccessibilityPanel/ReducedMotionPreference";
 import { WorkspaceBottomNav } from "@/components/shared/WorkspaceBottomNav";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
@@ -65,6 +68,8 @@ interface DashboardShellProps {
   topbarGreeting?: string;
   /** Present when an agent/super-agent/admin is viewing an employer's workspace */
   tenantViewData?: TenantViewData;
+  /** Whether the Accessibility panel links the statement (only once an admin publishes it). */
+  statementPublished?: boolean;
 }
 
 export function DashboardShell({
@@ -78,6 +83,7 @@ export function DashboardShell({
   companyLogo,
   topbarGreeting,
   tenantViewData,
+  statementPublished = false,
 }: DashboardShellProps) {
   const tNav = useTranslations("nav");
   const pathname = usePathname();
@@ -186,6 +192,7 @@ export function DashboardShell({
   useEffect(() => { setMounted(true); }, []);
 
   return (
+    <ReducedMotionPreference>
     <div className={`dashboard-shell bg-background ${usesModernWorkspaceShell ? "dashboard-shell-workspace" : ""} ${isAdminWorkspace ? "dashboard-shell-admin" : ""} ${roleClass} ${isJobSeeker ? "flex min-h-screen flex-col" : "flex h-screen overflow-hidden"}`}>
       {/* Sidebar (desktop + mobile overlay handled inside). The seeker has no
           rail: it navigates from header tabs like a job board. */}
@@ -311,7 +318,7 @@ export function DashboardShell({
         {/* Page content */}
           {isJobSeeker ? (
             <>
-              <main className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+              <main id={MAIN_CONTENT_ID} className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
                 <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
               </main>
               <JobSeekerBottomNav locale={locale} navGroups={navGroups} counts={navCounts} />
@@ -319,7 +326,7 @@ export function DashboardShell({
           ) : (
             // `relative` keeps absolute descendants (sr-only labels) inside this
             // scroller; without it they anchor to <body> and stretch the page.
-            <main className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
+            <main id={MAIN_CONTENT_ID} className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
               <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
             </main>
           )}
@@ -345,6 +352,10 @@ export function DashboardShell({
 
       {/* Floating AI Copilot — role-scoped read + action tools for every dashboard role */}
       <Copilot />
+
+      {/* No floating button over the workspace: the account menu opens it. */}
+      <AccessibilityPanel locale={locale} statementPublished={statementPublished} showLauncher={false} />
     </div>
+    </ReducedMotionPreference>
   );
 }

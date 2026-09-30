@@ -90,6 +90,9 @@ export async function ensureIndexes() {
     { key: { verificationLevel: 1 } },
     { key: { industry: 1 } },
     { key: { country: 1 } },
+    // Territory reads: which employers sit in a super-agent's / agent's region
+    { key: { regionCityId: 1 } },
+    { key: { regionStateId: 1 } },
     { key: { paymentStatus: 1 } },
     { key: { subscriptionType: 1 } },
   ]);

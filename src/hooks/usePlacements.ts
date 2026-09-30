@@ -29,6 +29,9 @@ export interface PlacementsFilters {
   limit: number;
   status?: string;
   visaStatus?: string;
+  /** Column-head sort, like admin (whitelisted server-side). */
+  sortBy?: string;
+  sortOrder?: string;
   /** Scope to one job (job workspace Hires tab). */
   jobId?: string;
   /** Scope to one application (candidate journey). */
@@ -49,6 +52,8 @@ async function fetchPlacements(filters: PlacementsFilters): Promise<{ placements
   params.set("limit", String(filters.limit));
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
   if (filters.visaStatus && filters.visaStatus !== "all") params.set("visaStatus", filters.visaStatus);
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
   if (filters.jobId) params.set("jobId", filters.jobId);
   if (filters.applicationId) params.set("applicationId", filters.applicationId);
 

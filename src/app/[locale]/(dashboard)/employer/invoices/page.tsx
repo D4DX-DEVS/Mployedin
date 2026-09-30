@@ -9,7 +9,6 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  RotateCcw,
   Inbox,
   Eye,
   FileText,
@@ -40,7 +39,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import type { ExportColumn } from "@/lib/export";
 import {
@@ -188,7 +191,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
   // One reading of the invoice, shared with the PDF generator, so the document
   // an employer downloads always says what the dialog said.
   const state = paymentState(invoice);
-  const facts = invoiceFacts(invoice, { formatDate: (d) => formatDate(d) });
+  const facts = invoiceFacts(invoice, { formatDate: (d) => formatDate(d, { day: "2-digit", month: "short", year: "numeric" }) });
   const billTo = resolveBillTo(invoice, billToFallback);
   const items = resolveLineItems(invoice);
   const totalRows = resolveTotalRows(invoice);
@@ -335,7 +338,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             <StatusBadge status={invoice.status} />
             {invoice.issuedAt && (
               <span className="text-xs text-muted-foreground">
-                {t("issuedOn", { date: formatDate(new Date(invoice.issuedAt)) })}
+                {t("issuedOn", { date: formatDate(new Date(invoice.issuedAt), { day: "2-digit", month: "short", year: "numeric" }) })}
               </span>
             )}
           </div>
@@ -365,7 +368,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               </span>
             )}
             {invoice.dueDate && !state.isPaid && (
-              <span className="text-muted-foreground">{t("dueOn", { date: formatDate(new Date(invoice.dueDate)) })}</span>
+              <span className="text-muted-foreground">{t("dueOn", { date: formatDate(new Date(invoice.dueDate), { day: "2-digit", month: "short", year: "numeric" }) })}</span>
             )}
             {state.hasBalance && state.totalAmount !== state.balanceDue && (
               <span className="text-muted-foreground">{t("ofTotal", { amount: fmt(state.totalAmount) })}</span>
@@ -754,7 +757,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{formatDate(new Date(p.date))}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(new Date(p.date), { day: "2-digit", month: "short", year: "numeric" })}</p>
                       <CheckCircle2 className="ml-auto mt-0.5 h-3.5 w-3.5 text-status-selected" />
                     </div>
                   </div>
@@ -780,7 +783,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-primary bg-background" />
                   <div>
                     <p className="font-medium">{t("invoiceCreated")}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(new Date(invoice.createdAt))}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(new Date(invoice.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</p>
                   </div>
                 </div>
                 {invoice.issuedAt && (
@@ -788,7 +791,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-blue-500 bg-background" />
                     <div>
                       <p className="font-medium">{t("issuedEvent")}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(new Date(invoice.issuedAt))}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(new Date(invoice.issuedAt), { day: "2-digit", month: "short", year: "numeric" })}</p>
                     </div>
                   </div>
                 )}
@@ -797,7 +800,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-emerald-500 bg-background" />
                     <div>
                       <p className="font-medium text-emerald-700">{t("paymentOf", { amount: fmt(p.amount) })}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(new Date(p.date))} · {p.method?.replace(/_/g, " ")}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(new Date(p.date), { day: "2-digit", month: "short", year: "numeric" })} · {p.method?.replace(/_/g, " ")}</p>
                     </div>
                   </div>
                 ))}
@@ -969,7 +972,7 @@ export default function EmployerInvoicesPage() {
     { header: t("paid"), key: "paidAmount", formatter: v => String(v ?? 0) },
     { header: t("balance"), key: "balanceDue", formatter: v => String(v ?? 0) },
     { header: t("status"), key: "status" },
-    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -992,32 +995,39 @@ export default function EmployerInvoicesPage() {
           </>
         }
       />
-      <TableToolbar
-        search={searchInput} onSearchChange={(v) => { setSearchInput(v); resetPage(); }} searchPlaceholder={t("searchPlaceholder")}
-        onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}
-        filterContent={
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <SearchableSelect id="emp-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={[{ value: "all", label: t("allStatuses") }, { value: "issued", label: t("issued") }, { value: "sent", label: t("sent") }, { value: "paid", label: t("paidStatus") }, { value: "partially_paid", label: t("partiallyPaid") }, { value: "overdue", label: t("overdueStatus") }]} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allStatuses")} />
-              <div className="flex items-center gap-2 xl:col-span-2">
-                <div className="flex-1">
-                  <DateTimePicker mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} placeholder={t("dateFromPlaceholder")} />
-                </div>
-                <span className="text-xs text-muted-foreground">to</span>
-                <div className="flex-1">
-                  <DateTimePicker mode="date" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} placeholder={t("dateToPlaceholder")} />
-                </div>
-              </div>
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        onClear={hasActiveFilters ? () => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); } : undefined}
+        more={(
+          <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+            <div className="min-w-0 flex-1 basis-40">
+              <DateTimePicker mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} placeholder={t("dateFromPlaceholder")} />
             </div>
-            <div className="flex justify-end">
-              <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> {t("clear")}
-              </Button>
+            <span className="text-xs text-muted-foreground">to</span>
+            <div className="min-w-0 flex-1 basis-40">
+              <DateTimePicker mode="date" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} placeholder={t("dateToPlaceholder")} />
             </div>
           </div>
-        }
-        hasActiveFilters={hasActiveFilters}
-      />
+        )}
+        moreActiveCount={[dateFrom, dateTo].filter(Boolean).length}
+      >
+        <InlineFilterSearch
+          value={searchInput}
+          onChange={(v) => { setSearchInput(v); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          id="emp-inv-status"
+          className={INLINE_FILTER_CONTROL}
+          options={[{ value: "all", label: t("allStatuses") }, { value: "issued", label: t("issued") }, { value: "sent", label: t("sent") }, { value: "paid", label: t("paidStatus") }, { value: "partially_paid", label: t("partiallyPaid") }, { value: "overdue", label: t("overdueStatus") }]}
+          value={statusFilter || "all"}
+          onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+          placeholder={t("allStatuses")}
+        />
+      </InlineFilterBar>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
@@ -1043,10 +1053,10 @@ export default function EmployerInvoicesPage() {
       </div>
 
       {/* Invoice Table */}
-      {errorMessage && <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
+      {errorMessage && <ErrorState onRetry={() => void fetchInvoices()} />}
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
-        <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
+        <div className="flex flex-col gap-2 border-b border-border/80 px-4 pt-4 sm:px-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("billingHistory")}</p>
           <h2 className="heading-subsection font-semibold text-foreground">{t("yourInvoices")}</h2>
         </div>
@@ -1079,14 +1089,14 @@ export default function EmployerInvoicesPage() {
                   <span className="text-status-shortlisted">{t("balance")}: {inv.currency} {formatCount((inv.balanceDue ?? 0))}</span>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">{t("dueDate")}: {inv.dueDate ? formatDate(new Date(inv.dueDate)) : "—"}</p>
+              <p className="text-xs text-muted-foreground">{t("dueDate")}: {inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</p>
             </button>
           ))}
         </div>
         <div className="hidden overflow-x-auto sm:block">
           <Table>
             <TableHeader>
-              <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("invoiceHash")}</TableHead>
                 <TableHead>{t("job")}</TableHead>
                 <TableHead>{t("categoryCol")}</TableHead>
@@ -1099,21 +1109,16 @@ export default function EmployerInvoicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="border-border/70 hover:bg-transparent">
-                  {Array.from({ length: 9 }).map((_, j) => <TableCell key={j}><div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" /></TableCell>)}
-                </TableRow>
-              )) : invoices.length === 0 ? (
-                <TableRow className="border-border/70 hover:bg-transparent">
-                  <TableCell colSpan={9} className="px-6 py-14 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-6 w-6" /></div>
-                      <div><p className="text-sm font-semibold">{t("noInvoices")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDesc")}</p></div>
-                    </div>
+              {loading ? (
+                <TableBodySkeleton rows={5} cols={9} />
+              ) : invoices.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={9} className="py-12">
+                    <EmptyState title={t("noInvoices")} description={t("noInvoicesDesc")} icon={Inbox} />
                   </TableCell>
                 </TableRow>
               ) : invoices.map((inv) => (
-                <TableRow key={inv._id} className="border-border/70 cursor-pointer hover:bg-secondary/30" onClick={() => setSelectedInvoice(inv)}>
+                <TableRow key={inv._id} className="group cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
                   <TableCell><p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p></TableCell>
                   <TableCell><p className="max-w-[160px] truncate text-sm">{inv.jobId?.title ?? "—"}</p></TableCell>
                   <TableCell><span className="text-[11px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
@@ -1121,26 +1126,31 @@ export default function EmployerInvoicesPage() {
                   <TableCell className="text-right text-sm text-status-selected">{inv.currency} {formatCount((inv.paidAmount ?? 0))}</TableCell>
                   <TableCell className="text-right text-sm text-status-shortlisted">{inv.currency} {formatCount((inv.balanceDue ?? 0))}</TableCell>
                   <TableCell><StatusBadge status={inv.status} /></TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate)) : "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(inv)} className="h-7 w-7 p-0" title={t("view")} aria-label={t("view")}><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button
-                        variant="ghost" size="sm" className="h-7 w-7 p-0" title={t("downloadPdf")} aria-label={t("downloadPdf")}
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`/api/invoices/${inv._id}/pdf`);
-                            if (!res.ok) throw new Error();
-                            const blob = await res.blob();
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement("a"); a.href = url; a.download = `${inv.invoiceNumber}.pdf`; a.click();
-                            URL.revokeObjectURL(url);
-                            toast.success(t("toastPdfDownloaded"));
-                          } catch { toast.error(t("toastPdfFailed")); }
-                        }}
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </Button>
+                  <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                      <RowActions
+                        name={inv.invoiceNumber}
+                        quick={[
+                          { key: "view", label: t("view"), icon: Eye, iconOnly: true, onSelect: () => setSelectedInvoice(inv) },
+                        ]}
+                        menu={[
+                          {
+                            key: "pdf", label: t("downloadPdf"), icon: Download,
+                            onSelect: async () => {
+                              try {
+                                const res = await fetch(`/api/invoices/${inv._id}/pdf`);
+                                if (!res.ok) throw new Error();
+                                const blob = await res.blob();
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a"); a.href = url; a.download = `${inv.invoiceNumber}.pdf`; a.click();
+                                URL.revokeObjectURL(url);
+                                toast.success(t("toastPdfDownloaded"));
+                              } catch { toast.error(t("toastPdfFailed")); }
+                            },
+                          },
+                        ]}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1148,10 +1158,9 @@ export default function EmployerInvoicesPage() {
             </TableBody>
           </Table>
         </div>
-        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </section>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       {/* Invoice Detail */}
       <EmployerInvoiceDetail

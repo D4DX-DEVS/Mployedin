@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -9,10 +10,11 @@ import { staticPageUpdateSchema } from "@/lib/validators/cms";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { isLegalPageSlug } from "@/lib/cms/legalPages";
+import { LEGAL_PAGES_CACHE_TAG } from "@/lib/cms/legalPageStatus";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-// Only the four legal pages are editable; an older page with any other slug
+// Only the legal pages are editable; an older page with any other slug
 // (e.g. "Audit Dynamic Page") has no public route and stays out of reach.
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -43,6 +45,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   Object.assign(item, update);
   await item.save();
+  // Layouts show a page's links only while it is Active; make them re-read.
+  if (update.isActive !== undefined) revalidateTag(LEGAL_PAGES_CACHE_TAG, { expire: 0 });
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -56,6 +60,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   return NextResponse.json({ item });
 }
 
-// No DELETE: the four legal pages are fixed and nothing could re-create one.
+// No DELETE: the legal pages are fixed and nothing could re-create one.
 export const GET = withAuth(getHandler, { resource: "cms", action: "read" });
 export const PATCH = withAuth(patchHandler, { resource: "cms", action: "update" });

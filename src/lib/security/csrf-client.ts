@@ -31,13 +31,27 @@ async function ensureCsrfToken(): Promise<string> {
 }
 
 /**
+ * The token belongs to our API only. Stamping it on a third-party request
+ * leaks it, and Google rejects the unknown header at preflight (403, no CORS
+ * headers) — that is what broke Firebase Google sign-in on the auth pages.
+ */
+function isSameOrigin(input: RequestInfo | URL): boolean {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  try {
+    return new URL(url, window.location.href).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fetch wrapper that automatically includes the CSRF token header
- * on state-mutating requests (POST, PATCH, PUT, DELETE).
+ * on same-origin state-mutating requests (POST, PATCH, PUT, DELETE).
  */
 export function csrfFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const method = (init?.method ?? "GET").toUpperCase();
 
-  if (MUTATING_METHODS.has(method)) {
+  if (MUTATING_METHODS.has(method) && isSameOrigin(input)) {
     return ensureCsrfToken().then((token) => {
       const headers = new Headers(init?.headers);
       if (!headers.has(CSRF_HEADER)) {
@@ -65,7 +79,7 @@ export function installCsrfFetch(): void {
   window.fetch = function csrfPatchedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const method = (init?.method ?? "GET").toUpperCase();
 
-    if (MUTATING_METHODS.has(method)) {
+    if (MUTATING_METHODS.has(method) && isSameOrigin(input)) {
       // ensureCsrfToken's own page GET goes through the non-mutating branch —
       // no recursion.
       return ensureCsrfToken().then((token) => {

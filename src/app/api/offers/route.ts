@@ -7,7 +7,6 @@ import { closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews"
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
-import Agent from "@/models/Agent";
 import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerCreateSchema } from "@/lib/validators/offers";
@@ -15,7 +14,7 @@ import { defaultOfferExpiry } from "@/lib/offers/expiry";
 import { CLOSED_APPLICATION_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
-import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
+import { agentCanSeeEmployer, getAgentEmployerIds, getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
@@ -71,12 +70,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const query: Record<string, any> = {};
 
   if (scope === "agent" || ctx.role === "agent") {
-    // Agent views offers for their assigned employers
-    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
-    if (!agentDoc || !agentDoc.assignedEmployerIds?.length) {
+    // Agent views offers for the employers they see (assigned or in region)
+    const visibleEmployerIds = await getAgentEmployerIds(ctx.userId);
+    if (visibleEmployerIds.length === 0) {
       return offersListResponse({ page, limit });
     }
-    query.employerId = { $in: agentDoc.assignedEmployerIds };
+    query.employerId = { $in: visibleEmployerIds };
   } else if (ctx.role === "job_seeker") {
     // Job seeker views received offers
     const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
@@ -248,9 +247,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       return NextResponse.json({ error: "Forbidden: application not owned by employer" }, { status: 403 });
     }
   } else {
-    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
-    const assigned = (agentDoc?.assignedEmployerIds ?? []).map((id: unknown) => String(id));
-    if (!assigned.includes(String(offerEmployerId))) {
+    if (!(await agentCanSeeEmployer(ctx.userId, offerEmployerId))) {
       return NextResponse.json({ error: "Forbidden: employer not in your assigned portfolio" }, { status: 403 });
     }
   }
