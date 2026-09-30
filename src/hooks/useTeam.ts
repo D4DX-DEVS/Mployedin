@@ -63,24 +63,44 @@ export function useTeam(params: { page: number; limit: number; search: string })
   });
 }
 
+export interface TeamInvitePayload {
+  email: string;
+  companyRoles: CompanyRole[];
+  jobAccess?: string[];
+  permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
+  /** `temp_password` creates the account now; `name` is required with it. */
+  mode?: "invite" | "temp_password";
+  name?: string;
+}
+
+export interface TeamInviteResult {
+  member: TeamMember;
+  /** Only for `temp_password`, and only in this one response. */
+  credentials?: { email: string; password: string };
+  emailSent?: boolean;
+}
+
+/** Carries the server's `code` (e.g. `email_in_use`) so the form can say why. */
+export class TeamInviteError extends Error {
+  constructor(message: string, readonly code?: string) {
+    super(message);
+    this.name = "TeamInviteError";
+  }
+}
+
 /** Invite a new team member */
 export function useInviteTeamMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (inviteData: {
-      email: string;
-      companyRoles: CompanyRole[];
-      jobAccess?: string[];
-      permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
-    }) => {
+    mutationFn: async (inviteData: TeamInvitePayload): Promise<TeamInviteResult> => {
       const res = await fetch("/api/employers/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(inviteData),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Failed to send invite");
+        const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        throw new TeamInviteError(data.error ?? "We couldn't send the invite", data.code);
       }
       return res.json();
     },

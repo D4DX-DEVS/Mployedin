@@ -143,8 +143,11 @@ jest.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenuContent: ({ children, ...props }: React.PropsWithChildren<any>) => (
     <div role="menu" {...props}>{children}</div>
   ),
-  DropdownMenuItem: ({ children, onClick, disabled, ...props }: React.PropsWithChildren<any>) => (
-    <button role="menuitem" onClick={onClick} disabled={disabled} {...props}>{children}</button>
+  DropdownMenuLabel: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  DropdownMenuRadioGroup: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  DropdownMenuRadioItem: ({ children }: React.PropsWithChildren) => <button role="menuitemradio">{children}</button>,
+  DropdownMenuItem: ({ children, onClick, onSelect, disabled, ...props }: React.PropsWithChildren<any>) => (
+    <button role="menuitem" onClick={(e: unknown) => { (onClick as ((e: unknown) => void) | undefined)?.(e); (onSelect as (() => void) | undefined)?.(); }} disabled={disabled} {...props}>{children}</button>
   ),
   DropdownMenuSeparator: () => <div role="separator" />,
 }));

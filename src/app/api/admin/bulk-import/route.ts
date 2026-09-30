@@ -7,6 +7,16 @@ import Employer from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { bulkImportSchema } from "@/lib/validators/bulk-import";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { validateImportRow, jobDraftFromRow, type RowIssue } from "@/lib/admin/bulkImport";
+
+/** A password nobody knows: imported people set their own with "Forgot password". */
+async function unusablePasswordHash(): Promise<string> {
+  const crypto = await import("crypto");
+  const bcrypt = await import("bcryptjs");
+  return bcrypt.hash(crypto.randomBytes(32).toString("base64url"), 12);
+}
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/admin/bulk-import — Bulk import records                  */
@@ -23,61 +33,87 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   let success = 0;
   let failed = 0;
-  const errors: { row: number; message: string }[] = [];
+  // `code` + `params` let the page say what went wrong in the admin's language;
+  // `message` stays for API callers.
+  const errors: { row: number; code: RowIssue["code"]; params?: Record<string, string>; message: string }[] = [];
+  const reject = (row: number, issue: RowIssue, message: string) => {
+    errors.push({ row, code: issue.code, ...(issue.params ? { params: issue.params } : {}), message });
+    failed++;
+  };
 
   for (let i = 0; i < rows.length; i++) {
     try {
       const row = rows[i];
+      const issues = validateImportRow(type, row);
+      if (issues.length > 0) {
+        reject(i + 1, issues[0], `Row rejected: ${issues[0].code}`);
+        continue;
+      }
 
       switch (type) {
         case "users": {
-          const exists = await User.findOne({ email: row.email?.toLowerCase() });
-          if (exists) {
-            errors.push({ row: i + 1, message: "Email already exists" });
-            failed++;
+          // Job seekers only (see BULK_IMPORT_TEMPLATES). The account needs a
+          // JobSeeker profile like any other seeker, or its pages 404.
+          const email = row.email.trim().toLowerCase();
+          if (await User.findOne({ email })) {
+            reject(i + 1, { code: "email_exists" }, "Email already exists");
             continue;
           }
-          await User.create({
-            name: row.fullName,
-            email: row.email?.toLowerCase(),
-            phone: row.phone,
-            role: row.role || "job_seeker",
-            country: row.country,
+          const user = await User.create({
+            name: row.fullName.trim(),
+            email,
+            passwordHash: await unusablePasswordHash(),
+            role: "job_seeker",
+            phone: row.phone?.trim() || undefined,
+            country: row.country?.trim() || undefined,
             isActive: true,
-            needsOnboarding: true,
           });
+          try {
+            const JobSeeker = (await import("@/models/JobSeeker")).default;
+            await JobSeeker.create({ userId: user._id, fullName: row.fullName.trim(), isOnboarded: false });
+          } catch (profileErr) {
+            await User.findByIdAndDelete(user._id);
+            throw profileErr;
+          }
           success++;
           break;
         }
         case "jobs": {
-          await Job.create({
-            title: row.title,
-            companyName: row.company,
-            location: row.location,
-            employmentType: row.type || "full_time",
-            salary: row.salary ? Number(row.salary) : undefined,
-            description: row.description,
+          // A job belongs to an employer; the company column names one, by
+          // company email or by exact company name.
+          const company = row.company.trim();
+          const filter = company.includes("@")
+            ? { companyEmail: company.toLowerCase() }
+            : { companyName: { $regex: `^${escapeRegex(company)}$`, $options: "i" } };
+          const matches = await Employer.find(filter).select("_id").limit(2).lean();
+          if (matches.length === 0) {
+            reject(i + 1, { code: "employer_not_found", params: { company } }, `No employer matches "${company}"`);
+            continue;
+          }
+          if (matches.length > 1) {
+            reject(i + 1, { code: "employer_ambiguous", params: { company } }, `More than one employer matches "${company}"`);
+            continue;
+          }
+          const draft = jobDraftFromRow(row);
+          const job = new Job({
+            ...draft,
+            description: sanitizeHtml(draft.description),
+            employerId: matches[0]._id,
             status: "draft",
-            createdBy: ctx.userId,
           });
+          await job.save();
           success++;
           break;
         }
         case "employers": {
           const companyEmail = (row.email ?? "").toString().trim().toLowerCase();
           const companyName = (row.companyName ?? "").toString().trim();
-          if (!companyEmail || !companyName) {
-            errors.push({ row: i + 1, message: "companyName and email are required" });
-            failed++;
-            continue;
-          }
           // De-dup by the Employer's required companyEmail (schema has unique on
           // userId; the email uniqueness is enforced at the User layer below via
           // duplicate-key 11000 handling in the catch).
           const existingEmployer = await Employer.findOne({ companyEmail }).lean();
           if (existingEmployer) {
-            errors.push({ row: i + 1, message: "Employer email already exists" });
-            failed++;
+            reject(i + 1, { code: "email_exists" }, "Employer email already exists");
             continue;
           }
 
@@ -125,13 +161,11 @@ async function handler(req: NextRequest, ctx: AuthContext) {
           break;
         }
         default:
-          errors.push({ row: i + 1, message: "Unknown import type" });
-          failed++;
+          reject(i + 1, { code: "failed" }, "Unknown import type");
       }
     } catch (err: unknown) {
       const isDupKey = (err as { code?: number })?.code === 11000;
-      errors.push({ row: i + 1, message: isDupKey ? "Duplicate record" : "Import failed" });
-      failed++;
+      reject(i + 1, { code: isDupKey ? "duplicate" : "failed" }, isDupKey ? "Duplicate record" : "Import failed");
     }
   }
 

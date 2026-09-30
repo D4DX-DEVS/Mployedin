@@ -80,9 +80,6 @@ export default function AdminResourcesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [search, setSearch] = useState("");
-  const [customCategories, setCustomCategories] = useState<Array<{value: string; label: string}>>([]);
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   // Build localized options
@@ -102,9 +99,8 @@ export default function AdminResourcesPage() {
     compliance_docs: t("categories.compliance_docs"),
     other: t("categories.other"),
   };
-  const defaultCategoryOptions = Object.entries(categoryLabels).map(([v, l]) => ({ value: v, label: l }));
-  const allCategoryOptions = [...defaultCategoryOptions, ...customCategories];
-  const filterCategoryOptions = [{ value: "all", label: t("categories.all") }, ...allCategoryOptions];
+  const categoryOptions = Object.entries(categoryLabels).map(([v, l]) => ({ value: v, label: l }));
+  const filterCategoryOptions = [{ value: "all", label: t("categories.all") }, ...categoryOptions];
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -476,18 +472,10 @@ export default function AdminResourcesPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="field">
                   <Label className="text-sm font-medium">{t("category")}</Label>
-                  {showNewCategory ? (
-                    <div className="flex gap-2">
-                      <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder={t("newCategoryPlaceholder")} className="h-10 flex-1" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const slug = newCategoryName.trim().toLowerCase().replace(/\s+/g, '_'); if (slug && !allCategoryOptions.find(c => c.value === slug)) { setCustomCategories(prev => [...prev, { value: slug, label: newCategoryName.trim() }]); setFormCategory(slug); } setNewCategoryName(''); setShowNewCategory(false); }}} />
-                      <Button aria-label={ta("addCategory")} type="button" size="sm" className="h-10 px-3" onClick={() => { const slug = newCategoryName.trim().toLowerCase().replace(/\s+/g, '_'); if (slug && !allCategoryOptions.find(c => c.value === slug)) { setCustomCategories(prev => [...prev, { value: slug, label: newCategoryName.trim() }]); setFormCategory(slug); } setNewCategoryName(''); setShowNewCategory(false); }}><Plus className="h-4 w-4" /></Button>
-                      <Button type="button" variant="ghost" size="sm" className="h-10 px-3" onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}>&#x2715;</Button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <div className="flex-1"><SearchableSelect options={allCategoryOptions} value={formCategory} onValueChange={setFormCategory} placeholder={t("selectCategory")} container={formDialogContainer} modal /></div>
-                      <Button type="button" variant="outline" size="sm" className="h-10 px-3 shrink-0" onClick={() => setShowNewCategory(true)} title={t("a11yAddNewCategory")}><Plus className="h-4 w-4" /></Button>
-                    </div>
-                  )}
+                  {/* A fixed list: Resource.category is an enum, and exhibition
+                      resource matching maps onto these values. The old "+"
+                      invented categories the API then rejected. */}
+                  <SearchableSelect options={categoryOptions} value={formCategory} onValueChange={setFormCategory} placeholder={t("selectCategory")} container={formDialogContainer} modal />
                 </div>
                 <div className="field">
                   <Label className="text-sm font-medium">{t("accessLevelLabel")}</Label>

@@ -4,19 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, FileText, Trash2, Copy, Users, BriefcaseBusiness, Search, Sparkles, ArrowRight, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Send, MapPin, CalendarDays, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Edit2, Eye, FileText, Trash2, Copy, Users, BriefcaseBusiness, Search, Sparkles, ArrowRight, SlidersHorizontal, PauseCircle, PlayCircle, Send, MapPin, CalendarDays, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { RowActions } from "@/components/shared/RowActions";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
@@ -28,7 +22,7 @@ import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, type Job } from
 import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
 import { toUserFacingError } from "@/lib/errors/user-facing";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
@@ -169,7 +163,7 @@ export default function EmployerJobsPage() {
     { header: t("exportSalaryMaxCol"), key: "salary", formatter: (_v, r) => String(r.salary?.max ?? "") },
     { header: t("exportCurrencyCol"), key: "salary", formatter: (_v, r) => String(r.salary?.currency ?? "USD") },
     { header: t("exportVacanciesCol"), key: "vacancies", formatter: (v) => String(v ?? 0) },
-    { header: t("exportCreatedCol"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString(locale === "ar" ? "ar" : "en-US") : "\u2014" },
+    { header: t("exportCreatedCol"), key: "createdAt", formatter: (v) => v ? formatDate(String(v), { day: "2-digit", month: "short", year: "numeric" }, locale) : "\u2014" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as ExportJobRecord[],
@@ -629,7 +623,7 @@ export default function EmployerJobsPage() {
       ) : (
         <section aria-label={t("jobListLabel")} className="grid gap-3 md:grid-cols-2">
           {jobs.map((job) => {
-            const posted = new Date(job.createdAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+            const posted = formatDate(job.createdAt, { day: "2-digit", month: "short", year: "numeric" }, locale);
             const isActivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "activate";
             const isPausing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "pause";
             const isDeleting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "delete";
@@ -726,70 +720,18 @@ export default function EmployerJobsPage() {
                     </Button>
                   )}
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title={t("moreActionsButton")}
-                        aria-label={t("moreActionsForJob", { title: job.title, status: statusLabel })}
-                        className="h-11 w-11 shrink-0 rounded-xl border border-border p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
-                      {can("jobs", "update") && (
-                        <DropdownMenuItem onClick={() => router.push(`${jobHref}/edit`)}>
-                          <Edit2 className="h-4 w-4" /> {t("editButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "update") && job.status === "draft" && (
-                        <DropdownMenuItem onClick={() => { void handlePublishJob(job); }} disabled={isPublishing}>
-                          <Send className="h-4 w-4" /> {isPublishing ? t("publishingButton") : t("publishButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "update") && job.status === "active" && (
-                        <DropdownMenuItem onClick={() => { void handlePauseJob(job); }} disabled={isPausing}>
-                          <PauseCircle className="h-4 w-4" /> {isPausing ? t("pausingButton") : t("pauseButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "update") && job.status === "paused" && (
-                        <DropdownMenuItem onClick={() => { void handleResumeJob(job); }} disabled={isActivating}>
-                          <PlayCircle className="h-4 w-4" /> {isActivating ? t("resumingButton") : t("resumeButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "create") && (
-                        <DropdownMenuItem onClick={() => { void handleCloneJob(job); }} disabled={cloningJobId === job._id}>
-                          <Copy className="h-4 w-4" /> {cloningJobId === job._id ? t("cloningButton") : t("cloneButton")}
-                        </DropdownMenuItem>
-                      )}
-                      {can("jobs", "update") && (job.status === "active" || job.status === "paused") && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => { void handleCloseJob(job); }}
-                            disabled={isClosing}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <XCircle className="h-4 w-4" /> {isClosing ? t("closingButton") : t("closeJobButton")}
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      {can("jobs", "delete") && job.status === "draft" && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => { void handleDeleteJob(job); }}
-                            disabled={isDeleting}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" /> {isDeleting ? t("deletingButton") : t("deleteButton")}
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <RowActions
+                    name={job.title}
+                    menu={[
+                      ...(can("jobs", "update") ? [{ key: "edit", label: t("editButton"), icon: Edit2, onSelect: () => router.push(`${jobHref}/edit`) }] : []),
+                      ...(can("jobs", "update") && job.status === "draft" ? [{ key: "publish", label: isPublishing ? t("publishingButton") : t("publishButton"), icon: Send, pending: isPublishing, disabled: isPublishing, onSelect: () => { void handlePublishJob(job); } }] : []),
+                      ...(can("jobs", "update") && job.status === "active" ? [{ key: "pause", label: isPausing ? t("pausingButton") : t("pauseButton"), icon: PauseCircle, pending: isPausing, disabled: isPausing, onSelect: () => { void handlePauseJob(job); } }] : []),
+                      ...(can("jobs", "update") && job.status === "paused" ? [{ key: "resume", label: isActivating ? t("resumingButton") : t("resumeButton"), icon: PlayCircle, pending: isActivating, disabled: isActivating, onSelect: () => { void handleResumeJob(job); } }] : []),
+                      ...(can("jobs", "create") ? [{ key: "clone", label: cloningJobId === job._id ? t("cloningButton") : t("cloneButton"), icon: Copy, pending: cloningJobId === job._id, disabled: cloningJobId === job._id, onSelect: () => { void handleCloneJob(job); } }] : []),
+                      ...(can("jobs", "update") && (job.status === "active" || job.status === "paused") ? [{ key: "close", label: isClosing ? t("closingButton") : t("closeJobButton"), icon: XCircle, destructive: true, pending: isClosing, disabled: isClosing, onSelect: () => { void handleCloseJob(job); } }] : []),
+                      ...(can("jobs", "delete") && job.status === "draft" ? [{ key: "delete", label: isDeleting ? t("deletingButton") : t("deleteButton"), icon: Trash2, destructive: true, pending: isDeleting, disabled: isDeleting, onSelect: () => { void handleDeleteJob(job); } }] : []),
+                    ]}
+                  />
                 </div>
               </article>
             );

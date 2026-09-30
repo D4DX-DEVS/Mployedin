@@ -50,6 +50,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatNumber } from "@/lib/formatNumber";
 import { formatDateTime as formatIntlDateTime } from "@/lib/ui/intlFormat";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
 
 interface AIQuestionsTarget {
   interviewId: string;
@@ -260,7 +266,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
     { header: tc("role"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? "Untitled role" },
     { header: tc("round"), key: "interviewRound", formatter: (v) => `R${v ?? 1}` },
     { header: tc("type"), key: "type", formatter: (v) => String(v ?? "in-person") },
-    { header: tc("scheduled"), key: "scheduledAt", formatter: (v) => v ? formatIntlDateTime(new Date(String(v))) : "—" },
+    { header: tc("scheduled"), key: "scheduledAt", formatter: (v) => v ? formatIntlDateTime(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—" },
     { header: tc("status"), key: "status", formatter: (v) => String(v ?? "—") },
     { header: tc("outcome"), key: "outcome", formatter: (v) => String(v ?? "—") },
   ];
@@ -278,9 +284,15 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
     // load of this page. Use the route locale, as the rest of the workspace does.
     const dateLocale = locale === "ar" ? "ar-SA" : "en-US";
     return {
-      date: date.toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" }),
+      date: date.toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "numeric" }),
       time: date.toLocaleTimeString(dateLocale, { hour: "numeric", minute: "2-digit" }),
     };
+  }
+
+  function sortByColumn(field: string) {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder(field === "scheduledAt" ? "asc" : "desc"); }
+    setPage(1);
   }
 
   function getInterviewSkills(interview: Interview): string[] {
@@ -814,24 +826,11 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
 
       {/* ── Error State ───────────────────────────────────────────────── */}
       {error ? (
-        <section className="workspace-panel-surface rounded-3xl border border-destructive/30 panel-body">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("interviewList")}</p>
-              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {t("unableToLoadDesc")}
-              </p>
-            </div>
-            <Button size="lg" className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
-              {tc("tryAgain")}
-            </Button>
-          </div>
-        </section>
+        <ErrorState onRetry={() => void refetch()} />
       ) : (
       /* ── Interview Table ──────────────────────────────────────────── */
-      <section className="workspace-panel-surface rounded-2xl panel-body">
-        <div className="flex items-center gap-2 border-b border-border pb-3">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <div className="flex items-center gap-2 border-b border-border px-4 pb-3 pt-4">
           <h2 className="heading-label font-semibold text-foreground">
             {formatNumber(deduplicatedInterviews.length, locale)} {tn("interviews")}
           </h2>
@@ -841,42 +840,30 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
         </div>
 
         {/* The table sits straight in the panel: a second bordered surface inside the card read as a page within a page. */}
-        <div className="mt-3 hidden overflow-x-auto sm:block">
+        <div className="hidden overflow-x-auto sm:block">
           <Table>
             {/* Six columns, no horizontal scroll on a laptop: Round + Type share
                 "Interview", Outcome rides under Status once it exists, and the AI
                 tools plus the secondary actions live in the row menu (⋯). */}
             <TableHeader>
-              <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{t("candidate")}</TableHead>
                 <TableHead className="min-w-[200px]">{t("role")}</TableHead>
                 <TableHead>{t("interviewCol")}</TableHead>
-                <TableHead>{t("scheduledCol")}</TableHead>
+                <TableHead>
+                  <SortableTableHeader label={t("scheduledCol")} active={sortBy === "scheduledAt"} order={sortOrder} onClick={() => sortByColumn("scheduledAt")} />
+                </TableHead>
                 <TableHead>{t("status")}</TableHead>
                 <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={6} />
               ) : deduplicatedInterviews.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="workspace-tone-sky flex h-14 w-14 items-center justify-center rounded-3xl">
-                        <Inbox className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{t("noInterviews")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
-                      </div>
-                    </div>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={6} className="py-12">
+                    <EmptyState title={t("noInterviews")} description={t("description")} icon={Inbox} />
                   </TableCell>
                 </TableRow>
               ) : deduplicatedInterviews.map((iv) => {
@@ -890,11 +877,14 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 const canUpdate = can("interviews", "update");
 
                 return (
-                  <TableRow key={iv._id} className="hover:bg-secondary/50">
+                  <TableRow key={iv._id} className="group">
                     <TableCell>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-foreground">{iv.jobSeekerId?.fullName ?? "Candidate"}</p>
-                        <p className="text-xs text-muted-foreground">{iv.jobSeekerId?.email ?? "No email available"}</p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <UserAvatar name={iv.jobSeekerId?.fullName} email={iv.jobSeekerId?.email} className="h-9 w-9" colorful />
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate font-semibold text-foreground">{iv.jobSeekerId?.fullName ?? "Candidate"}</p>
+                          <p className="truncate text-xs text-muted-foreground">{iv.jobSeekerId?.email ?? "No email available"}</p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -957,78 +947,24 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      {/* One primary action per state — and after a pass that is
-                          Make Offer, the common terminal step. Reschedule, Cancel,
-                          Next Round and the AI tools sit behind the row menu. */}
-                      <div className="flex items-center justify-end gap-1">
-                        {canUpdate && isScheduled && (
-                          <Button variant="ghost" size="sm"
-                            className="h-8 rounded-lg px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-status-selected-bg"
-                            onClick={() => setModal({ kind: "complete", interview: iv })}>
-                            <CheckCircle2 className="me-1 h-3 w-3" />
-                            {t("complete")}
-                          </Button>
-                        )}
-                        {canUpdate && isCompleted && !iv.outcome && (
-                          <Button variant="ghost" size="sm"
-                            className="h-8 rounded-lg px-2.5 text-[11px] font-semibold text-status-shortlisted hover:bg-status-shortlisted-bg"
-                            onClick={() => setModal({ kind: "complete", interview: iv })}>
-                            <AlertTriangle className="me-1 h-3 w-3" />
-                            {t("setOutcome")}
-                          </Button>
-                        )}
-                        {canUpdate && isPassed && (
-                          <Button variant="ghost" size="sm"
-                            className="h-8 rounded-lg px-2.5 text-[11px] font-semibold text-indigo-700 hover:bg-status-interview-bg"
-                            onClick={() => setModal({ kind: "offer", interview: iv })}>
-                            <FileText className="me-1 h-3 w-3" />
-                            {t("makeOffer")}
-                          </Button>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground" aria-label={t("rowActions")}>
-                              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onSelect={() => openAIQuestions(iv)}>
-                              <Sparkles className="h-4 w-4 text-status-applied" aria-hidden="true" />
-                              {t("questions")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => { void generatePrepBrief(iv._id); }} disabled={loadingPrepBriefId === iv._id}>
-                              {loadingPrepBriefId === iv._id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                              ) : (
-                                <BookOpen className="h-4 w-4 text-status-interview" aria-hidden="true" />
-                              )}
-                              {t("prepBrief")}
-                            </DropdownMenuItem>
-                            {canUpdate && isScheduled && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => setModal({ kind: "reschedule", interview: iv })}>
-                                  <CalendarClock className="h-4 w-4" aria-hidden="true" />
-                                  {t("reschedule")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => { void cancelInterview(iv); }}>
-                                  <Ban className="h-4 w-4" aria-hidden="true" />
-                                  {t("cancelAction")}
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {canUpdate && isPassed && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => setModal({ kind: "next-round", interview: iv })}>
-                                  <Forward className="h-4 w-4" aria-hidden="true" />
-                                  {t("nextRound")}
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      {/* One primary action per state in plain sight — after a pass
+                          that is Make Offer. AI tools, Reschedule, Next Round sit
+                          in the row menu with Cancel destructive last. */}
+                      <RowActions
+                        name={iv.jobSeekerId?.fullName ?? "Candidate"}
+                        quick={[
+                          ...(canUpdate && isScheduled ? [{ key: "complete", label: t("complete"), icon: CheckCircle2, iconClassName: "text-emerald-600", onSelect: () => setModal({ kind: "complete", interview: iv }) }] : []),
+                          ...(canUpdate && isCompleted && !iv.outcome ? [{ key: "outcome", label: t("setOutcome"), icon: AlertTriangle, iconClassName: "text-amber-600", onSelect: () => setModal({ kind: "complete", interview: iv }) }] : []),
+                          ...(canUpdate && isPassed ? [{ key: "offer", label: t("makeOffer"), icon: FileText, iconClassName: "text-indigo-600", onSelect: () => setModal({ kind: "offer", interview: iv }) }] : []),
+                        ]}
+                        menu={[
+                          { key: "questions", label: t("questions"), icon: Sparkles, iconClassName: "text-sky-500", onSelect: () => openAIQuestions(iv) },
+                          { key: "prep", label: t("prepBrief"), icon: BookOpen, iconClassName: "text-violet-500", pending: loadingPrepBriefId === iv._id, disabled: loadingPrepBriefId === iv._id, onSelect: () => { void generatePrepBrief(iv._id); } },
+                          ...(canUpdate && isScheduled ? [{ key: "reschedule", label: t("reschedule"), icon: CalendarClock, onSelect: () => setModal({ kind: "reschedule", interview: iv }) }] : []),
+                          ...(canUpdate && isPassed ? [{ key: "next", label: t("nextRound"), icon: Forward, onSelect: () => setModal({ kind: "next-round", interview: iv }) }] : []),
+                          ...(canUpdate && isScheduled ? [{ key: "cancel", label: t("cancelAction"), icon: Ban, destructive: true, onSelect: () => { void cancelInterview(iv); } }] : []),
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -1041,7 +977,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
             (Candidate/Role/Round/Type/Scheduled/Status/Outcome/AI/Actions) into
             its own bordered row, making each interview a very tall stacked card.
             This mirrors the candidate list's compact-row + detail-popup pattern. */}
-        <div className="mt-5 space-y-2.5 sm:hidden">
+        <div className="mt-3 space-y-2.5 px-4 pb-4 sm:hidden">
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />

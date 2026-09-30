@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ArrowRight, ShieldCheck, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { formatDate } from "@/lib/ui/intlFormat";
 import { useJobHires, type HireRow } from "@/hooks/useJobHires";
 
 interface HiresListProps {
@@ -22,15 +24,6 @@ function humanize(value: string): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function initials(name?: string): string {
-  return (name ?? "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("") || "•";
-}
-
 /**
  * Hires tab: one row per hired candidate on the job — placement, visa,
  * background check, onboarding. Employers cannot create placements
@@ -39,8 +32,7 @@ function initials(name?: string): string {
 export function HiresList({ jobId, locale }: HiresListProps) {
   const t = useTranslations("employerJobWorkspace");
   const { rows, isLoading, isError, refetch } = useJobHires(jobId);
-  const dateLocale = locale === "ar" ? "ar" : "en-US";
-  const fmt = (v?: string) => (v ? new Date(v).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" }) : null);
+  const fmt = (v?: string) => (v ? formatDate(new Date(v), { day: "2-digit", month: "short", year: "numeric" }, locale) : null);
   const label = (map: Record<string, string>, value?: string) => (value ? (map[value] ? t(map[value]) : humanize(value)) : "");
 
   if (isLoading) {
@@ -52,12 +44,7 @@ export function HiresList({ jobId, locale }: HiresListProps) {
   }
 
   if (isError) {
-    return (
-      <div className="card-base p-6 text-center">
-        <p className="mb-3 text-sm text-muted-foreground">{t("loadError")}</p>
-        <Button variant="outline" className="min-h-11 sm:min-h-10" onClick={() => { void refetch(); }}>{t("retry")}</Button>
-      </div>
-    );
+    return <ErrorState onRetry={() => { void refetch(); }} />;
   }
 
   if (rows.length === 0) {
@@ -87,10 +74,7 @@ export function HiresList({ jobId, locale }: HiresListProps) {
             <li key={row.applicationId} className="workspace-panel-surface card-pad grid gap-3 rounded-2xl sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
               {/* Candidate */}
               <div className="flex min-w-0 items-center gap-3">
-                <Avatar className="h-10 w-10 shrink-0">
-                  {row.avatar ? <AvatarImage src={row.avatar} alt="" /> : null}
-                  <AvatarFallback>{initials(row.candidateName)}</AvatarFallback>
-                </Avatar>
+                <UserAvatar name={name} src={row.avatar} className="h-10 w-10 shrink-0" colorful />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">{name}</p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">

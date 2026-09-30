@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   LogOut,
   KeyRound,
+  PersonStanding,
   Shield,
   Clock,
   Settings,
@@ -36,6 +37,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { openAccessibilityPanel } from "@/lib/a11y/usePreferences";
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -75,6 +77,11 @@ export function UserProfileDropdown({
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const t = useTranslations("profileDropdown");
+  const tA11y = useTranslations("a11y");
+  // The menu hands focus back to its button as it closes; opening the
+  // non-modal Accessibility panel from it, that would land outside the panel
+  // and close it again.
+  const openingPanelRef = useRef(false);
   const isAr = locale === "ar";
 
   useEffect(() => {
@@ -172,17 +179,22 @@ export function UserProfileDropdown({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            aria-label="Open user menu"
+            aria-label={t("openUserMenu")}
             className="flex h-11 w-11 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
           >
-            <UserAvatar name={userName} email={userEmail} src={profileImage} className="h-11 w-11" />
+            <UserAvatar name={userName} email={userEmail} src={profileImage} className="h-11 w-11" fallbackClassName="bg-transparent text-white" />
           </button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
           align="end"
-          className="w-72 bg-background z-50 shadow-xl border border-border/60 rounded-xl overflow-hidden p-1"
+          className="w-72 max-w-[calc(100vw-1rem)] bg-background z-50 shadow-xl border border-border/60 rounded-xl overflow-hidden p-1"
           sideOffset={8}
+          onCloseAutoFocus={(event) => {
+            if (!openingPanelRef.current) return;
+            openingPanelRef.current = false;
+            event.preventDefault();
+          }}
         >
           <DropdownMenuLabel className="font-normal">
             <div className="flex items-start gap-3 py-1 w-full text-left">
@@ -315,6 +327,17 @@ export function UserProfileDropdown({
               <span className="font-medium text-sm">{t("subscription")}</span>
             </DropdownMenuItem>
           )}
+
+          <DropdownMenuItem
+            className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+            onSelect={() => {
+              openingPanelRef.current = true;
+              openAccessibilityPanel();
+            }}
+          >
+            <PersonStanding className="h-4 w-4" />
+            <span className="font-medium text-sm">{tA11y("accessibility")}</span>
+          </DropdownMenuItem>
 
           <DropdownMenuItem
             className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"

@@ -65,6 +65,13 @@ jest.mock("@/models/Employer", () => ({
   },
 }));
 
+jest.mock("@/models/Application", () => ({
+  __esModule: true,
+  default: {
+    distinct: jest.fn().mockResolvedValue(["job_with_apps_001"]),
+  },
+}));
+
 jest.mock("@/models/SuperAgent", () => ({
   __esModule: true,
   default: {
@@ -153,5 +160,30 @@ describe("Admin Jobs API", () => {
     expect(query.$and).toHaveLength(2);
     expect(query.$and[0].$or).toContainEqual({ "location.city": { $regex: "Dubai", $options: "i" } });
     expect(query.$and[1].$or).toContainEqual({ employerId: { $in: ["emp_beta"] } });
+  });
+
+  it("GET /api/admin/jobs?applications=none lists only jobs nobody has applied to, as the dashboard counts them", async () => {
+    const { GET } = await import("@/app/api/admin/jobs/route");
+    const Application = require("@/models/Application").default;
+
+    const res = await GET(makeRequest("/api/admin/jobs?applications=none&status=active"), { params: Promise.resolve({}) });
+
+    expect(res.status).toBe(200);
+    expect(Application.distinct).toHaveBeenCalledWith("jobId", {});
+    const query = Job.find.mock.calls[0][0];
+    expect(query.status).toBe("active");
+    expect(query._id).toEqual({ $nin: ["job_with_apps_001"] });
+    // The count behind the pagination uses the same filter.
+    expect(Job.countDocuments.mock.calls[0][0]._id).toEqual({ $nin: ["job_with_apps_001"] });
+  });
+
+  it("GET /api/admin/jobs without applications=none does not restrict by applications", async () => {
+    const { GET } = await import("@/app/api/admin/jobs/route");
+    const Application = require("@/models/Application").default;
+
+    await GET(makeRequest("/api/admin/jobs?applications=all"), { params: Promise.resolve({}) });
+
+    expect(Application.distinct).not.toHaveBeenCalled();
+    expect(Job.find.mock.calls[0][0]._id).toBeUndefined();
   });
 });

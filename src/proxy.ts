@@ -181,13 +181,13 @@ export default auth(async function middleware(req: NextAuthRequest) {
   const intlResponse = intlMiddleware(plainReq);
 
   // Check auth session
-  const session = (req as unknown as { auth?: { user?: { id: string; email?: string; role: UserRole; locale: string; isEmailVerified?: boolean; isOnboarded?: boolean } } }).auth;
+  const session = (req as unknown as { auth?: { user?: { id: string; email?: string; role: UserRole; locale: string; isEmailVerified?: boolean; isOnboarded?: boolean; termsPending?: boolean } } }).auth;
   const isPublic = isPublicRoute(pathname);
 
   if (!session?.user && !isPublic) {
     // Only genuinely protected areas earn a login redirect. Unknown paths fall
     // through so Next renders its 404 instead of implying the page exists.
-    const protectedPrefixes = ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker", "/notifications", "/onboarding"];
+    const protectedPrefixes = ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker", "/notifications", "/onboarding", "/accept-terms"];
     const strippedPath = pathname.replace(/^\/(?:en|ar)/, "") || "/";
     const isProtected = protectedPrefixes.some((p) => strippedPath === p || strippedPath.startsWith(p + "/"));
     if (isProtected) {
@@ -245,6 +245,22 @@ export default auth(async function middleware(req: NextAuthRequest) {
       }
       return withSecurityHeaders(
         NextResponse.redirect(verifyUrl)
+      );
+    }
+    // Accounts that still owe a Terms/Privacy acceptance — made by staff, made
+    // before acceptance was recorded, or anyone after an admin starts a new
+    // version — accept on /accept-terms before any signed-in page. Admins are
+    // never pending (lib/gdpr/termsVersion.ts). APIs stay open: the gate is for
+    // the person, and /accept-terms itself needs them.
+    const termsGated =
+      inDashboard ||
+      stripped === "/notifications" || stripped.startsWith("/notifications/") ||
+      stripped === "/onboarding" || stripped.startsWith("/onboarding/");
+    if (termsGated && session.user.termsPending === true) {
+      const urlLocale = pathname.split("/")[1] || defaultLocale;
+      const { search } = req.nextUrl;
+      return withSecurityHeaders(
+        NextResponse.redirect(new URL(withCallback(`/${urlLocale}/accept-terms`, pathname + search), req.url))
       );
     }
     // Redirect non-onboarded job seekers trying to access the dashboard back to onboarding.

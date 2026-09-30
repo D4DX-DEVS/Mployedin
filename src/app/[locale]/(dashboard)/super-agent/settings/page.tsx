@@ -40,6 +40,8 @@ import { PhoneInput } from "@/components/shared/PhoneInput";
 import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 import { AssignedRegionFields } from "@/components/features/settings/AssignedRegionFields";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
+import { useTimezoneOptions } from "@/lib/i18n/useTimezoneOptions";
+import { useWeekdayLabels, WEEKDAY_CODES } from "@/lib/i18n/useWeekdayLabels";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -130,13 +132,13 @@ function getChLabels(t: ReturnType<typeof useTranslations>): Record<Channel, { l
 }
 
 const TIMEZONES = [
-  "Asia/Dubai", "Asia/Riyadh", "Asia/Kolkata", "Asia/Karachi", "Asia/Cairo",
+  "Asia/Dubai", "Asia/Riyadh", "Asia/Kolkata", "Asia/Karachi", "Africa/Cairo",
   "Europe/London", "Europe/Paris", "Europe/Berlin", "America/New_York",
   "America/Chicago", "America/Los_Angeles", "Asia/Singapore", "Asia/Tokyo",
   "Australia/Sydney", "Pacific/Auckland",
 ];
 
-const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS_OF_WEEK = WEEKDAY_CODES;
 
 // ─── Sub-Components ───────────────────────────────────────────────────────────
 
@@ -738,6 +740,7 @@ function NotificationsTab() {
   };
 
   const [prefs, setPrefs] = useState<NotifPrefs>(defaultPrefs);
+  const digestZones = useTimezoneOptions(TIMEZONES, prefs.timezone);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -849,13 +852,13 @@ function NotificationsTab() {
             </div>
             <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("timezone")}</Label>
-              <Select value={prefs.timezone} onValueChange={(v) => setPrefs((p) => ({ ...p, timezone: v }))}>
+              <Select value={digestZones.value} onValueChange={(v) => setPrefs((p) => ({ ...p, timezone: v }))}>
                 <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder={t("selectTimezone")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
+                  {digestZones.options.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -956,9 +959,11 @@ function NotificationsTab() {
 function AvailabilityTab() {
   const t = useTranslations("superAgentSettings");
   const [timezone, setTimezone] = useState("Asia/Dubai");
+  const zones = useTimezoneOptions(TIMEZONES, timezone);
   const [workingHoursStart, setWorkingHoursStart] = useState("09:00");
   const [workingHoursEnd, setWorkingHoursEnd] = useState("18:00");
   const [workingDays, setWorkingDays] = useState<string[]>(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+  const weekdays = useWeekdayLabels();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1020,13 +1025,13 @@ function AvailabilityTab() {
       <SectionCard>
         <SectionHeader icon={MapPin} title={t("timezone")} description={t("timezoneDesc")} />
         <div className="p-6">
-          <Select value={timezone} onValueChange={setTimezone}>
+          <Select value={zones.value} onValueChange={setTimezone}>
             <SelectTrigger className="h-11 w-full max-w-md text-sm">
               <SelectValue placeholder={t("selectTimezone")} />
             </SelectTrigger>
             <SelectContent>
-              {TIMEZONES.map((tz) => (
-                <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
+              {zones.options.map((tz) => (
+                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -1064,6 +1069,8 @@ function AvailabilityTab() {
                   <button
                     key={day}
                     type="button"
+                    aria-pressed={active}
+                    aria-label={weekdays[day].full}
                     onClick={() => toggleDay(day)}
                     className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       active
@@ -1071,7 +1078,7 @@ function AvailabilityTab() {
                         : "border-border/50 text-muted-foreground hover:border-border"
                     }`}
                   >
-                    {day}
+                    {weekdays[day].label}
                   </button>
                 );
               })}

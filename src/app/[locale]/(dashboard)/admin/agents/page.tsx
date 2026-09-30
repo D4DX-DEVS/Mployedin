@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
+import { TerritoryOverlapNotice } from "@/components/shared/TerritoryOverlapNotice";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
@@ -662,6 +663,7 @@ export default function AdminAgentsPage() {
                   alwaysOpen
                   {...regionPickerScope(addForm.superAgentId)}
                 />
+                <TerritoryOverlapNotice role="agent" cityIds={addCityIds} stateIds={addStateIds} />
               </div>
             ),
           },
@@ -755,6 +757,12 @@ export default function AdminAgentsPage() {
                   label={tr("assignedRegion")}
                   alwaysOpen
                   {...regionPickerScope(editForm.superAgentId)}
+                />
+                <TerritoryOverlapNotice
+                  role="agent"
+                  cityIds={editCityIds}
+                  stateIds={editStateIds}
+                  excludeUserId={editAgent?._id}
                 />
               </div>
             ),

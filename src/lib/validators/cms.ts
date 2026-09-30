@@ -105,7 +105,7 @@ export const faqCreateSchema = faqBase.extend({
 export const faqUpdateSchema = faqBase.partial();
 
 // ── Static Pages ────────────────────────────────────────────────────
-// Edit-only: the four legal pages are fixed (lib/cms/legalPages), so there is
+// Edit-only: the legal pages are fixed (lib/cms/legalPages), so there is
 // no create schema and no slug — an unknown `slug` key is stripped.
 export const staticPageUpdateSchema = z
   .object({

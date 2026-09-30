@@ -697,6 +697,7 @@ export default function JobSeekerSettingsPage() {
                     render={({ field }) => (
                       <SearchableSelect
                         className="h-8 w-32 text-sm rounded-lg"
+                        ariaLabel={t("interviews.buffer")}
                         options={[0, 15, 30, 60].map((m) => ({ value: String(m), label: m === 0 ? t("interviews.noBuffer") : t("interviews.minutes", { count: m }) }))}
                         value={String(field.value)}
                         onValueChange={(v) => field.onChange(Number(v))}

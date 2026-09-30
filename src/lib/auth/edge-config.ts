@@ -48,6 +48,9 @@ const edgeAuthConfig: NextAuthConfig = {
         ((session.user as unknown) as { locale: string }).locale = token.locale as string;
         ((session.user as unknown) as { isEmailVerified: boolean }).isEmailVerified = token.isEmailVerified as boolean;
         ((session.user as unknown) as { isOnboarded: boolean }).isOnboarded = (token.isOnboarded as boolean) ?? false;
+        // Set by the Node jwt callback (sign-in, 5-minute re-check, update());
+        // the proxy sends a pending user to /accept-terms.
+        ((session.user as unknown) as { termsPending: boolean }).termsPending = token.termsPending === true;
       }
       return session;
     },

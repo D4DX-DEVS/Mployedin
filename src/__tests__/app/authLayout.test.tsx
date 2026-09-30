@@ -18,6 +18,21 @@ jest.mock("next-auth/react", () => ({
 jest.mock("@/components/shared/CsrfProvider", () => ({
   CsrfProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="csrf-provider">{children}</div>,
 }));
+// An async server component; the banner has its own test (responsiveVisualSystem).
+jest.mock("@/components/shared/CookieConsentMount", () => ({ CookieConsentMount: () => null }));
+
+const statementPublished = jest.fn().mockResolvedValue(false);
+jest.mock("@/lib/cms/legalPageStatus", () => ({
+  isLegalPagePublished: (slug: string) => statementPublished(slug),
+}));
+
+jest.mock("@/components/shared/AccessibilityPanel", () => ({
+  AccessibilityPanel: ({ locale, statementPublished }: { locale: string; statementPublished: boolean }) => (
+    <button type="button" data-testid="a11y-panel">
+      {locale}:{statementPublished ? "statement" : "no-statement"}
+    </button>
+  ),
+}));
 
 jest.mock("next-intl", () => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -70,5 +85,19 @@ describe("AuthLayout", () => {
     expect(screen.getByText("Localized auth marketing heading")).toBeInTheDocument();
     expect(screen.getByText("Localized auth marketing description")).toBeInTheDocument();
     expect(screen.queryByText(/Elevate your hiring pipeline/i)).not.toBeInTheDocument();
+  });
+
+  it("always offers the accessibility panel, linking the statement only once it is published", async () => {
+    const renderLayout = async () =>
+      render(await AuthLayout({ children: <div>Login form</div>, params: Promise.resolve({ locale: "en" }) }));
+
+    const { unmount } = await renderLayout();
+    expect(screen.getByTestId("a11y-panel")).toHaveTextContent("en:no-statement");
+    unmount();
+
+    statementPublished.mockResolvedValueOnce(true);
+    await renderLayout();
+    expect(screen.getByTestId("a11y-panel")).toHaveTextContent("en:statement");
+    expect(statementPublished).toHaveBeenCalledWith("accessibility-statement");
   });
 });

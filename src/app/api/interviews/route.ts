@@ -66,19 +66,24 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     query.employerId = emp._id;
   } else if (ctx.role === "agent") {
     const { Agent } = await import("@/models/Agent");
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const { getAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!agent) return NextResponse.json({ interviews: [], total: 0, statusCounts: {}, ...(fetchCounts ? { counts: { upcoming: 0, past: 0 } } : {}) });
-    scopedEmployerIds = agent.assignedEmployerIds ?? [];
-    // Match interviews for assigned employers OR directly linked to this agent
+    scopedEmployerIds = await getAgentEmployerIds(ctx.userId);
+    // Match interviews for employers they see (assigned or in region) OR
+    // directly linked to this agent
     query.$or = [
       { employerId: { $in: scopedEmployerIds } },
       { agentId: agent._id },
     ];
   } else if (ctx.role === "super_agent") {
-    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
-    const scope = await getSuperAgentScope(ctx.userId);
-    const agentDocIds = scope?.effectiveAgentIds ?? [];
-    if (agentDocIds.length === 0) {
+    // The super-agent's book: their agents' interviews plus every interview at
+    // an employer in it (including ones registered in their territory).
+    const { getSuperAgentBook } = await import("@/lib/auth/agentRestrictions");
+    const book = await getSuperAgentBook(ctx.userId);
+    const allEmployerIds = book?.employerIds ?? [];
+    const allAgentIds = book?.agentIds ?? [];
+    if (allEmployerIds.length === 0 && allAgentIds.length === 0) {
       return NextResponse.json({
         interviews: [],
         total: 0,
@@ -88,11 +93,6 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
         ...(fetchCounts ? { counts: { upcoming: 0, past: 0 } } : {}),
       });
     }
-    const { Agent } = await import("@/models/Agent");
-    const agents = await Agent.find({ _id: { $in: agentDocIds } })
-      .select("_id assignedEmployerIds").lean();
-    const allEmployerIds = agents.flatMap((a) => a.assignedEmployerIds ?? []);
-    const allAgentIds = agents.map((a) => a._id);
     scopedEmployerIds = allEmployerIds;
     query.$or = [
       ...(allEmployerIds.length > 0 ? [{ employerId: { $in: allEmployerIds } }] : []),

@@ -17,9 +17,11 @@ import {
 } from "recharts";
 import {
   CircleDollarSign, Clock, Sparkles, BarChart3,
-  CalendarDays, RotateCcw, Users,
+  CalendarDays, RotateCcw, Users, Mail,
 } from "lucide-react";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import {
@@ -315,16 +317,19 @@ export default function SuperAgentCommissionsReportPage() {
             {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
           </div>
           {/* Search over nothing and an export that writes a header-only file
-              are dead controls — the toolbar appears once there is data. */}
+              are dead controls — the bar appears once there is data. */}
           {hasAgents && (
             <div className="max-sm:w-full">
-              <TableToolbar
-                search={searchQuery}
-                onSearchChange={setSearchQuery}
-                searchPlaceholder={t("searchAgentPlaceholder")}
+              <InlineFilterBar
                 onExportCsv={handleExportCsv}
                 onExportExcel={handleExportExcel}
-              />
+              >
+                <InlineFilterSearch
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder={t("searchAgentPlaceholder")}
+                />
+              </InlineFilterBar>
             </div>
           )}
         </div>
@@ -336,27 +341,21 @@ export default function SuperAgentCommissionsReportPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("tableColumnAgent")}</TableHead>
-                  <TableHead className="text-right">{t("tableColumnTotal")}</TableHead>
-                  <TableHead className="text-right">{t("tableColumnPending")}</TableHead>
-                  <TableHead className="text-right">{t("tableColumnApproved")}</TableHead>
-                  <TableHead className="text-right">{t("tableColumnPaid")}</TableHead>
-                  <TableHead className="text-right">{t("tableColumnCount")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((__, j) => (
-                        <TableCell key={j}><div className="h-4 w-full animate-pulse rounded bg-muted" /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : filteredAgents.length === 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>{t("tableColumnAgent")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnTotal")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnPending")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnApproved")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnPaid")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnCount")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableBodySkeleton rows={5} cols={6} />
+              ) : filteredAgents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                       {/* A search that matches nothing is not an empty year. */}
@@ -365,10 +364,18 @@ export default function SuperAgentCommissionsReportPage() {
                   </TableRow>
                 ) : (
                   filteredAgents.map((agent) => (
-                    <TableRow key={agent.agentId}>
+                    <TableRow key={agent.agentId} className="group">
                       <TableCell>
-                        <div className="font-medium">{agent.agentName}</div>
-                        <div className="text-xs text-muted-foreground">{agent.agentEmail}</div>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <UserAvatar name={agent.agentName} email={agent.agentEmail} className="h-9 w-9 shrink-0" colorful />
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="truncate font-medium">{agent.agentName}</p>
+                            <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                              <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                              <span className="truncate">{agent.agentEmail}</span>
+                            </p>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold tabular-nums">{fmt(agent.total, currency)}</TableCell>
                       <TableCell className="text-right tabular-nums text-amber-600">{fmt(agent.pending, currency)}</TableCell>

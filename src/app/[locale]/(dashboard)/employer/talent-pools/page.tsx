@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { toast } from "sonner";
@@ -10,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,6 +29,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { RowActions } from "@/components/shared/RowActions";
 import {
   Layers,
   Loader2,
@@ -40,7 +41,7 @@ import {
   Search,
   Pencil,
   UserPlus,
-  X,
+  ArrowLeft,
 } from "lucide-react";
 import {
   useTalentPools,
@@ -285,23 +286,20 @@ function PoolCard({
 
   return (
     <div className="group relative flex h-full flex-col gap-2 rounded-2xl border border-border bg-card transition hover:border-sky-300 hover:shadow-md card-pad">
-      <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onRename(); }}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          title={t("edit")}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600"
-          title={t("delete")}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+      {/* Always visible: the hover-only pair was unreachable on touch and
+          keyboards. Rename stays in plain sight, Delete sits last in "…". */}
+      <div className="absolute right-3 top-3" onClick={(e) => e.stopPropagation()}>
+        <RowActions
+          name={pool.name}
+          quick={[
+            { key: "rename", label: t("edit"), icon: Pencil, iconOnly: true, onSelect: onRename },
+          ]}
+          menu={[
+            // Icon-only like the pen: a labelled button is ~110px wide and the
+            // pool name ran underneath it. Label survives as tooltip + name.
+            { key: "delete", label: t("delete"), icon: Trash2, iconOnly: true, destructive: true, onSelect: onDelete },
+          ]}
+        />
       </div>
 
       <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
@@ -309,7 +307,7 @@ function PoolCard({
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color.bg} ring-4 ${color.ring}`}>
             <Layers className={`h-5 w-5 ${color.text}`} />
           </div>
-          <div className="min-w-0 pr-10">
+          <div className="min-w-0 pr-24">
             <h3 className="heading-subsection font-semibold text-foreground line-clamp-1">{pool.name}</h3>
             {pool.description ? (
               <p className="line-clamp-1 text-sm text-muted-foreground">{pool.description}</p>
@@ -475,8 +473,9 @@ function RenamePoolDialog({ pool, onClose }: { pool: TalentPool | null; onClose:
   );
 }
 
-function AddCandidateSection({ pool, onDone }: { pool: TalentPool; onDone: () => void }) {
+function AddCandidateStep({ pool, onBack }: { pool: TalentPool; onBack: () => void }) {
   const t = useTranslations("talentPool");
+  const tCommon = useTranslations("common");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -546,94 +545,128 @@ function AddCandidateSection({ pool, onDone }: { pool: TalentPool; onDone: () =>
     }
   }
 
+  // Step 2 of the pool dialog: owns the header, body and footer so the picker
+  // gets the whole dialog instead of stacking above the pool list. Search and
+  // pagination stay pinned; only the candidate rows scroll.
   return (
-    <div className="mb-4 rounded-2xl border border-border bg-muted/20 card-pad">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-sm font-semibold text-foreground">{t("addCandidate")}</p>
-        <button type="button" onClick={onDone} className="rounded-lg p-1 text-muted-foreground hover:bg-muted">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          autoFocus
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("searchCandidatesPlaceholder")}
-          className="pl-9"
-        />
-      </div>
-
-      {selected.size > 0 && (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 chip-pad">
-          <span className="text-xs font-medium text-foreground">{t("selectedCount", { count: selected.size })}</span>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={bulkSubmitting}>
-              {t("clearSelection")}
-            </Button>
-            <Button size="sm" onClick={handleBulkAdd} disabled={bulkSubmitting}>
-              {bulkSubmitting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-              {t("saveSelectedToPool", { count: selected.size })}
-            </Button>
+    <>
+      <DialogHeader className="border-b border-border px-6 py-5">
+        <div className="flex min-w-0 items-center gap-2 pe-8">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            aria-label={tCommon("back")}
+            title={tCommon("back")}
+            className="-ms-2 h-9 w-9 shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+          </Button>
+          <div className="min-w-0 space-y-1 text-start">
+            <DialogTitle>{t("addCandidate")}</DialogTitle>
+            <DialogDescription className="truncate">{pool.name}</DialogDescription>
           </div>
         </div>
-      )}
+      </DialogHeader>
 
-      {results.length > 0 && (
-        <label className="mt-3 flex items-center gap-2 px-1 text-xs text-muted-foreground">
-          <input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} className="h-3.5 w-3.5 rounded border-border" />
-          {t("selectAllOnPage")}
-        </label>
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 px-6 py-4">
+        <div className="relative shrink-0">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("searchCandidatesPlaceholder")}
+            className="pl-9"
+          />
+        </div>
 
-      <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
-        {isFetching ? (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
-        ) : results.length === 0 ? (
-          <p className="py-4 text-center text-xs text-muted-foreground">{t("noSearchResults")}</p>
-        ) : (
-          results.map((c) => (
-            <div key={c._id} className="flex items-center gap-3 rounded-xl border border-border bg-background chip-pad">
-              <input
-                type="checkbox"
-                checked={selected.has(c._id)}
-                onChange={() => toggle(c._id)}
-                className="h-3.5 w-3.5 shrink-0 rounded border-border"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{c.fullName || c.userId?.name || c.userId?.email}</p>
-                {c.currentLocation ? <p className="truncate text-xs text-muted-foreground">{c.currentLocation}</p> : null}
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => handleAdd(c._id)}
-                disabled={addCandidate.isPending}
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                {t("addCandidate")}
-              </Button>
+        {results.length > 0 && (
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 px-1 text-xs text-muted-foreground">
+            <Checkbox
+              checked={allOnPageSelected}
+              onCheckedChange={toggleAllOnPage}
+              aria-label={t("selectAllOnPage")}
+            />
+            {t("selectAllOnPage")}
+          </label>
+        )}
+
+        {/* `relative`: Radix Checkbox's hidden absolute input otherwise escapes
+            this scroll box and stretches the dialog. */}
+        <div className="relative min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+          {isFetching ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
-          ))
+          ) : results.length === 0 ? (
+            <p className="py-4 text-center text-xs text-muted-foreground">{t("noSearchResults")}</p>
+          ) : (
+            results.map((c) => {
+              const label = c.fullName || c.userId?.name || c.userId?.email;
+              return (
+                <div key={c._id} className="flex items-center gap-3 rounded-xl border border-border bg-background chip-pad">
+                  <Checkbox
+                    checked={selected.has(c._id)}
+                    onCheckedChange={() => toggle(c._id)}
+                    aria-label={label}
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{label}</p>
+                    {c.currentLocation ? <p className="truncate text-xs text-muted-foreground">{c.currentLocation}</p> : null}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => handleAdd(c._id)}
+                    disabled={addCandidate.isPending || bulkSubmitting}
+                    aria-label={`${t("addCandidate")}: ${label}`}
+                  >
+                    <Plus className="h-3.5 w-3.5 sm:mr-1" />
+                    <span className="hidden sm:inline">{t("addCandidate")}</span>
+                  </Button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {total > 0 && (
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => { setLimit(l); setPage(1); }}
+            className="shrink-0 flex-wrap gap-y-2 border-t border-border/50 pt-3 text-[11px]"
+          />
         )}
       </div>
 
-      {total > 0 && (
-        <PaginationControls
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          limit={limit}
-          onPageChange={setPage}
-          onLimitChange={(l) => { setLimit(l); setPage(1); }}
-          className="mt-3 border-t border-border/50 pt-3 text-[11px]"
-        />
-      )}
-    </div>
+      <DialogFooter className="flex-col border-t border-border px-6 py-4 sm:flex-row sm:items-center">
+        {selected.size > 0 ? (
+          <div className="flex items-center justify-between gap-2 sm:justify-start">
+            <span className="text-xs font-medium text-foreground">{t("selectedCount", { count: selected.size })}</span>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={bulkSubmitting}>
+              {t("clearSelection")}
+            </Button>
+          </div>
+        ) : null}
+        <div className="flex gap-2 sm:ms-auto">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={onBack} disabled={bulkSubmitting}>
+            {tCommon("back")}
+          </Button>
+          <Button className="flex-1 sm:flex-none" onClick={handleBulkAdd} disabled={selected.size === 0 || bulkSubmitting}>
+            {bulkSubmitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <UserPlus className="mr-1.5 h-4 w-4" />}
+            {selected.size > 0 ? t("saveSelectedToPool", { count: selected.size }) : t("saveToPool")}
+          </Button>
+        </div>
+      </DialogFooter>
+    </>
   );
 }
 
@@ -682,163 +715,155 @@ function PoolDetailDialog({
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex max-h-[88vh] flex-col">
-              <DialogHeader className="border-b border-border px-6 py-5">
-                <div className="flex items-start justify-between gap-3">
-                  <DialogTitle className="flex items-center gap-2">
-                    <Layers className="h-5 w-5" /> {pool.name}
-                  </DialogTitle>
-                  <button
-                    type="button"
-                    onClick={() => onRename(pool)}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    title={t("edit")}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                </div>
-                {pool.description ? (
-                  <DialogDescription>{pool.description}</DialogDescription>
-                ) : (
-                  <DialogDescription className="sr-only">{pool.name}</DialogDescription>
-                )}
-                {pool.tags?.length ? (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {pool.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-[11px]">
-                        <Tag className="mr-1 h-2.5 w-2.5" />
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-              </DialogHeader>
+            // min-w-0: DialogContent is a grid, so this item's min-width:auto
+            // took the min-content of every `truncate` line inside — one long
+            // candidate address widened the column past the dialog and clipped
+            // the right edge (search, rows, pagination, Delete Pool).
+            <div className="flex min-w-0 max-h-[88vh] flex-col">
+              {showAddCandidate ? (
+                <AddCandidateStep pool={pool} onBack={() => setShowAddCandidate(false)} />
+              ) : (
+                <>
+                  <DialogHeader className="border-b border-border px-6 py-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <DialogTitle className="flex items-center gap-2">
+                        <Layers className="h-5 w-5" /> {pool.name}
+                      </DialogTitle>
+                      <button
+                        type="button"
+                        onClick={() => onRename(pool)}
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title={t("edit")}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {pool.description ? (
+                      <DialogDescription>{pool.description}</DialogDescription>
+                    ) : (
+                      <DialogDescription className="sr-only">{pool.name}</DialogDescription>
+                    )}
+                    {pool.tags?.length ? (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {pool.tags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-[11px]">
+                            <Tag className="mr-1 h-2.5 w-2.5" />
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </DialogHeader>
 
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t("candidateCount", { count: pool.candidates?.length ?? 0 })}
-                  </p>
-                  {!showAddCandidate && (
-                    <Button size="sm" variant="outline" onClick={() => setShowAddCandidate(true)}>
-                      <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                      {t("addCandidate")}
-                    </Button>
-                  )}
-                </div>
-
-                {showAddCandidate && (
-                  <AddCandidateSection pool={pool} onDone={() => setShowAddCandidate(false)} />
-                )}
-
-                {pool.candidates?.length ? (
-                  <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={candidateSearch}
-                      onChange={(e) => setCandidateSearch(e.target.value)}
-                      placeholder={t("searchInPoolPlaceholder")}
-                      className="pl-9"
-                    />
-                  </div>
-                ) : null}
-
-                {pool.candidates?.length ? (
-                  visibleCandidates.length ? (
-                    <ul className="space-y-2">
-                      {visibleCandidates.map((candidate) => {
-                        const ref = refOf(candidate);
-                        const name = candidateLabel(ref);
-                        return (
-                          <li
-                            key={candidate._id}
-                            className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background card-pad"
-                          >
-                            <div className="flex min-w-0 gap-3">
-                              <CandidateAvatar ref={ref} />
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-                                {ref?.headline ? (
-                                  <p className="truncate text-xs text-muted-foreground">{ref.headline}</p>
-                                ) : null}
-                                {ref?.skills?.length ? (
-                                  <div className="mt-1.5 flex flex-wrap gap-1">
-                                    {ref.skills.slice(0, 5).map((skill) => (
-                                      <span
-                                        key={skill}
-                                        className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                                      >
-                                        {skill}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : null}
-                                <div className="mt-1.5 flex items-center gap-2">
-                                  <Badge variant="outline" className={`text-[11px] ${SOURCE_BADGE_CLASS[candidate.source]}`}>
-                                    {t(`sources.${candidate.source}`)}
-                                  </Badge>
-                                  <span className="text-[11px] text-muted-foreground">
-                                    <RelativeDate date={candidate.addedAt} prefix={t("addedPrefix")} />
-                                  </span>
-                                </div>
-                                {candidate.notes ? (
-                                  <p className="mt-1 text-xs italic text-muted-foreground">{candidate.notes}</p>
-                                ) : null}
-                              </div>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
-                              {ref?._id ? (
-                                <Button asChild size="dense" variant="ghost" className="px-2">
-                                  <Link href={`/${locale}/employer/candidates/${ref._id}`} title={t("viewProfile")}>
-                                    <ExternalLink className="h-4 w-4" />
-                                    <span className="sr-only">{t("viewProfile")}</span>
-                                  </Link>
-                                </Button>
-                              ) : null}
-                              <Button
-                                size="dense"
-                                variant="ghost"
-                                className="px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                onClick={() => handleRemove(candidate)}
-                                disabled={removeCandidate.isPending}
-                                title={t("removeCandidate")}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">{t("removeCandidate")}</span>
-                              </Button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="py-8 text-center text-sm text-muted-foreground">{t("noSearchResults")}</p>
-                  )
-                ) : (
-                  <div className="flex flex-col items-center py-10 text-center">
-                    <Users className="h-9 w-9 text-muted-foreground/40" />
-                    <p className="mt-3 text-sm font-medium text-foreground">{t("noCandidatesTitle")}</p>
-                    <p className="mt-1 max-w-xs text-xs text-muted-foreground">{t("noCandidates")}</p>
-                    {!showAddCandidate && (
-                      <Button size="sm" className="mt-4" onClick={() => setShowAddCandidate(true)}>
+                  <div className="flex-1 overflow-y-auto px-6 py-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t("candidateCount", { count: pool.candidates?.length ?? 0 })}
+                      </p>
+                      <Button size="sm" variant="outline" onClick={() => setShowAddCandidate(true)}>
                         <UserPlus className="mr-1.5 h-3.5 w-3.5" />
                         {t("addCandidate")}
                       </Button>
+                    </div>
+
+                    {pool.candidates?.length ? (
+                      <div className="relative mb-3">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={candidateSearch}
+                          onChange={(e) => setCandidateSearch(e.target.value)}
+                          placeholder={t("searchInPoolPlaceholder")}
+                          className="pl-9"
+                        />
+                      </div>
+                    ) : null}
+
+                    {pool.candidates?.length ? (
+                      visibleCandidates.length ? (
+                        <ul className="space-y-2">
+                          {visibleCandidates.map((candidate) => {
+                            const ref = refOf(candidate);
+                            const name = candidateLabel(ref);
+                            return (
+                              <li
+                                key={candidate._id}
+                                className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background card-pad"
+                              >
+                                <div className="flex min-w-0 gap-3">
+                                  <CandidateAvatar ref={ref} />
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+                                    {ref?.headline ? (
+                                      <p className="truncate text-xs text-muted-foreground">{ref.headline}</p>
+                                    ) : null}
+                                    {ref?.skills?.length ? (
+                                      <div className="mt-1.5 flex flex-wrap gap-1">
+                                        {ref.skills.slice(0, 5).map((skill) => (
+                                          <span
+                                            key={skill}
+                                            className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                                          >
+                                            {skill}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    <div className="mt-1.5 flex items-center gap-2">
+                                      <Badge variant="outline" className={`text-[11px] ${SOURCE_BADGE_CLASS[candidate.source]}`}>
+                                        {t(`sources.${candidate.source}`)}
+                                      </Badge>
+                                      <span className="text-[11px] text-muted-foreground">
+                                        <RelativeDate date={candidate.addedAt} prefix={t("addedPrefix")} />
+                                      </span>
+                                    </div>
+                                    {candidate.notes ? (
+                                      <p className="mt-1 text-xs italic text-muted-foreground">{candidate.notes}</p>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
+                                  <RowActions
+                                    name={name}
+                                    quick={ref?._id ? [
+                                      { key: "view", label: t("viewProfile"), icon: ExternalLink, iconOnly: true, href: `/${locale}/employer/candidates/${ref._id}` },
+                                    ] : []}
+                                    menu={[
+                                      { key: "remove", label: t("removeCandidate"), icon: Trash2, destructive: true, pending: removeCandidate.isPending, disabled: removeCandidate.isPending, onSelect: () => handleRemove(candidate) },
+                                    ]}
+                                  />
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="py-8 text-center text-sm text-muted-foreground">{t("noSearchResults")}</p>
+                      )
+                    ) : (
+                      <div className="flex flex-col items-center py-10 text-center">
+                        <Users className="h-9 w-9 text-muted-foreground/40" />
+                        <p className="mt-3 text-sm font-medium text-foreground">{t("noCandidatesTitle")}</p>
+                        <p className="mt-1 max-w-xs text-xs text-muted-foreground">{t("noCandidates")}</p>
+                        <Button size="sm" className="mt-4" onClick={() => setShowAddCandidate(true)}>
+                          <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                          {t("addCandidate")}
+                        </Button>
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              <DialogFooter className="border-t border-border px-6 py-4">
-                <Button
-                  variant="outline"
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                  onClick={() => onDelete(pool)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t("delete")}
-                </Button>
-              </DialogFooter>
+                  <DialogFooter className="border-t border-border px-6 py-4">
+                    <Button
+                      variant="outline"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => onDelete(pool)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {t("delete")}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
             </div>
           )}
         </DialogContent>

@@ -11,8 +11,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowUpDown, Building2, ChevronDown, ChevronUp, DollarSign,
-  Link2, LogIn, RotateCcw, ShieldCheck, UserPlus, Users,
+  Building2, DollarSign,
+  Link2, LogIn, Mail, ShieldCheck, UserPlus, Users,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -27,7 +27,13 @@ import {
 import { formatCurrency } from "@/lib/currency";
 import { ReferralLinkDialog } from "@/components/features/super-agent/ReferralLinkDialog";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 
 interface Employer {
@@ -39,6 +45,8 @@ interface Employer {
   location?: string;
   isActive: boolean;
   assignedAgent?: { name: string };
+  /** Its agent is on my team, so I can enter the account (tenant switch). */
+  canEnterAccount?: boolean;
   jobCount?: number;
   totalPaid?: number;
   isAgentVerified?: boolean;
@@ -142,6 +150,17 @@ export default function SuperAgentEmployersPage() {
     }
   };
 
+  // Cities in this super agent's territory. An employer onboarded into one of
+  // them is in their book — without it the new company had no link to them
+  // and vanished from this list the moment it was created.
+  const [territoryCities, setTerritoryCities] = useState<Array<{ _id: string; name: string; stateName: string }>>([]);
+  useEffect(() => {
+    fetch("/api/super-agent/territory/cities")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setTerritoryCities(data?.cities ?? []))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetch("/api/super-agent/settings")
       .then((r) => r.ok ? r.json() : null)
@@ -158,7 +177,18 @@ export default function SuperAgentEmployersPage() {
     { name: "companyName", label: t("companyNameLabel"), type: "text", required: true },
     { name: "industry", label: t("industryLabel"), type: "text" },
     { name: "phone", label: tc("phone"), type: "phone" },
-  ], [t, tc, tf]);
+    ...(territoryCities.length > 0
+      ? [{
+          name: "cityId",
+          label: t("cityLabel"),
+          type: "select" as const,
+          required: true,
+          placeholder: t("cityPlaceholder"),
+          hint: t("cityHint"),
+          options: territoryCities.map((c) => ({ value: c._id, label: c.stateName ? `${c.name}, ${c.stateName}` : c.name })),
+        }]
+      : []),
+  ], [t, tc, tf, territoryCities]);
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
@@ -244,26 +274,8 @@ export default function SuperAgentEmployersPage() {
     loadEmployers();
   };
 
-  /* ── Sortable Header Cell ── */
-  function SortHeader({ field, children }: { field: string; children: React.ReactNode }) {
-    const active = filters.sortBy === field;
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(field)}
-        className="group inline-flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors"
-      >
-        {children}
-        {active ? (
-          filters.sortOrder === "asc"
-            ? <ChevronUp className="h-3.5 w-3.5 text-primary" />
-            : <ChevronDown className="h-3.5 w-3.5 text-primary" />
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-        )}
-      </button>
-    );
-  }
+  /* ── Column sort order for the header controls ── */
+  const sortOrder = filters.sortOrder === "asc" ? "asc" : "desc";
 
   return (
     <div className="page-container">
@@ -306,81 +318,18 @@ export default function SuperAgentEmployersPage() {
           title + sentence only narrated the toolbar below it. */}
       <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Error State ---- */}
-        {error && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p className="text-sm text-destructive">{t("loadEmployersError")}</p>
-            <button
-              type="button"
-              onClick={() => loadEmployers()}
-              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
-            >
-              {tc("tryAgain")}
-            </button>
-          </div>
-        )}
+        {error && <ErrorState onRetry={() => loadEmployers()} />}
 
-        {/* ── Search + Advanced Toggle via TableToolbar ── */}
-        <TableToolbar
-          search={filters.search}
-          onSearchChange={(v) => { setFilter("search", v); resetPage(); }}
-          searchPlaceholder={t("searchPlaceholder")}
+        {/* ── Search + everyday filters in plain sight, the rest behind More ── */}
+        <InlineFilterBar
+          className="mb-4"
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          hasActiveFilters={activeFilterCount > 0}
-          actions={
-            (activeFilterCount > 0 || filters.search) ? (
-              <button
-                type="button"
-                onClick={() => { resetFilters(); resetPage(); }}
-                className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                {t("resetButton")}
-              </button>
-            ) : undefined
-          }
-          filterContent={
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                {/* Industry */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{t("industryLabel")}</label>
-                  <SearchableSelect
-                    options={[{ value: "", label: t("allIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
-                    value={filters.industry}
-                    onValueChange={(v) => { setFilter("industry", v); resetPage(); }}
-                    placeholder={t("allIndustries")}
-                    searchPlaceholder={t("searchIndustry")}
-                    className="h-11 rounded-xl border-border bg-card"
-                  />
-                </div>
-
-                {/* Location */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{t("locationLabel")}</label>
-                  <SearchableSelect
-                    options={[{ value: "", label: t("allLocations") }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
-                    value={filters.location}
-                    onValueChange={(v) => { setFilter("location", v); resetPage(); }}
-                    placeholder={t("allLocations")}
-                    searchPlaceholder={t("searchLocation")}
-                    className="h-11 rounded-xl border-border bg-card"
-                  />
-                </div>
-
-                {/* Status */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{tc("status")}</label>
-                  <SearchableSelect
-                    options={statusOptions}
-                    value={filters.status}
-                    onValueChange={(v) => { setFilter("status", v); resetPage(); }}
-                    placeholder={tc("all")}
-                    className="h-11 rounded-xl border-border bg-card"
-                  />
-                </div>
-
+          onClear={(activeFilterCount > 0 || filters.search) ? () => { resetFilters(); resetPage(); } : undefined}
+          more={(
+            <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+              <div className="grid min-w-0 flex-[1_1_100%] gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {/* Verification */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("verificationLabel")}</label>
@@ -422,7 +371,7 @@ export default function SuperAgentEmployersPage() {
               </div>
 
               {/* Quick Filter Chips */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-[1_1_100%] flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilters")}:</span>
                 {[
                   { label: t("activeOnly"), action: () => { setFilter("status", "active"); resetPage(); } },
@@ -442,16 +391,49 @@ export default function SuperAgentEmployersPage() {
                 ))}
               </div>
             </div>
-          }
-          className="mb-4"
-        />
+          )}
+          moreActiveCount={[filters.verified].filter(Boolean).length}
+        >
+          <InlineFilterSearch
+            value={filters.search}
+            onChange={(v) => { setFilter("search", v); resetPage(); }}
+            placeholder={t("searchPlaceholder")}
+          />
+          <SearchableSelect
+            options={[{ value: "", label: t("allIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
+            value={filters.industry}
+            onValueChange={(v) => { setFilter("industry", v); resetPage(); }}
+            placeholder={t("allIndustries")}
+            searchPlaceholder={t("searchIndustry")}
+            className={INLINE_FILTER_CONTROL}
+          />
+          <SearchableSelect
+            options={[{ value: "", label: t("allLocations") }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
+            value={filters.location}
+            onValueChange={(v) => { setFilter("location", v); resetPage(); }}
+            placeholder={t("allLocations")}
+            searchPlaceholder={t("searchLocation")}
+            className={INLINE_FILTER_CONTROL}
+          />
+          <SearchableSelect
+            options={statusOptions}
+            value={filters.status}
+            onValueChange={(v) => { setFilter("status", v); resetPage(); }}
+            placeholder={tc("all")}
+            className={INLINE_FILTER_CONTROL}
+          />
+        </InlineFilterBar>
 
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead className="min-w-[180px]"><SortHeader field="name">{t("companyHeader")}</SortHeader></TableHead>
-                <TableHead className="min-w-[180px]"><SortHeader field="email">{t("contactHeader")}</SortHeader></TableHead>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="min-w-[180px]">
+                  <SortableTableHeader label={t("companyHeader")} active={filters.sortBy === "name"} order={sortOrder} onClick={() => toggleSort("name")} />
+                </TableHead>
+                <TableHead className="min-w-[180px]">
+                  <SortableTableHeader label={t("contactHeader")} active={filters.sortBy === "email"} order={sortOrder} onClick={() => toggleSort("email")} />
+                </TableHead>
                 <TableHead>{t("industryHeader")}</TableHead>
                 <TableHead>{t("agentHeader")}</TableHead>
                 <TableHead className="w-[80px] text-right">{tc("actions")}</TableHead>
@@ -459,40 +441,34 @@ export default function SuperAgentEmployersPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={5} />
               ) : employers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                        <Building2 className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{t("noEmployersFound")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("noEmployersHint")}</p>
-                      </div>
-                    </div>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={5} className="py-12">
+                    <EmptyState title={t("noEmployersFound")} description={t("noEmployersHint")} icon={Building2} />
                   </TableCell>
                 </TableRow>
               ) : employers.map((em) => (
-                <TableRow key={em._id} className="bg-transparent">
+                <TableRow key={em._id} className="group">
                   <TableCell>
-                    <span className="block font-medium text-foreground">{em.companyName ?? em.name}</span>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {em.isAgentVerified && (
-                        <span className="text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
-                      )}
-                      <StatusBadge status={em.isActive ? "active" : "inactive"} />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar name={em.companyName ?? em.name} className="h-9 w-9 shrink-0" colorful />
+                      <div className="min-w-0 space-y-1">
+                        <p className="truncate font-medium text-foreground">{em.companyName ?? em.name}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {em.isAgentVerified && (
+                            <span className="text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
+                          )}
+                          <StatusBadge status={em.isActive ? "active" : "inactive"} />
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    <span className="max-sm:w-full max-sm:text-start max-sm:block break-all min-w-0">{em.email}</span>
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                      <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="break-all">{em.email}</span>
+                    </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     <span className="block">{em.industry ?? "—"}</span>
@@ -500,30 +476,29 @@ export default function SuperAgentEmployersPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? t("unassigned")}</TableCell>
                   <TableCell className="text-right">
-                    <button
-                      onClick={() => handleSwitchToEmployerView(em._id)}
-                      disabled={switchingEmployerId === em._id || !em.isActive}
-                      className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 chip-pad"
-                      title={t("switchButtonTitle")}
-                      aria-label={t("switchButtonAriaLabel", { company: em.companyName ?? em.name })}
-                    >
-                      {switchingEmployerId === em._id ? (
-                        <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" /></>
-                      ) : (
-                        <LogIn className="h-3.5 w-3.5" />
-                      )}
-                    </button>
+                    <RowActions
+                      name={em.companyName ?? em.name}
+                      quick={em.canEnterAccount ? [
+                        {
+                          key: "switch",
+                          label: t("switchButtonAriaLabel", { company: em.companyName ?? em.name }),
+                          icon: LogIn,
+                          iconOnly: true,
+                          pending: switchingEmployerId === em._id,
+                          disabled: switchingEmployerId === em._id || !em.isActive,
+                          onSelect: () => { void handleSwitchToEmployerView(em._id); },
+                        },
+                      ] : []}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-
-        <div className="mt-4">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </SuperAgentSection>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       <CrudModal
         open={onboardOpen}

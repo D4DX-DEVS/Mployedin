@@ -2108,13 +2108,22 @@ input::placeholder {
    actual control the same box height, including hand-authored toolbars that
    opt into `data-table-toolbar`, so pages cannot drift through h-8/h-9/h-11
    overrides. Keep the 44px touch target on phones and the compact 40px desktop
-   rhythm used by the rest of the workspace. */
+   rhythm used by the rest of the workspace.
+   Checkboxes, radios and switches are excluded: a Radix checkbox is a
+   `<button>`, so without the :not() it was stretched to a 20x36 bar (the
+   "Select all on this page" box in the candidates list head). */
 .dashboard-shell-workspace [data-table-toolbar] {
   --toolbar-control-height: 2.25rem;
 }
 
 .dashboard-shell-workspace [data-table-toolbar]
-  :is(input, select, button, [role="combobox"], [data-slot="select-trigger"]) {
+  :is(input, select, button, [role="combobox"], [data-slot="select-trigger"]):not(
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [type="checkbox"],
+    [type="radio"]
+  ) {
   height: var(--toolbar-control-height) !important;
   min-height: var(--toolbar-control-height) !important;
 }
@@ -4302,7 +4311,9 @@ table.workspace-list-table tbody tr:focus-visible {
 @layer components {
   .dashboard-main :is(
     [data-dashboard-page-header="component"][data-dashboard-page-header="component"],
-    .page-header-root
+    .page-header-root,
+    [data-workspace-header],
+    .workspace-header
   ) {
     border: 0 !important;
     border-radius: 0 !important;
@@ -4315,11 +4326,21 @@ table.workspace-list-table tbody tr:focus-visible {
   @media (min-width: 640px) {
     .dashboard-main :is(
       [data-dashboard-page-header="component"][data-dashboard-page-header="component"],
-      .page-header-root
+      .page-header-root,
+      [data-workspace-header],
+      .workspace-header
     ) {
       padding-inline: 0 !important;
       padding-block: 1rem !important;
     }
+  }
+
+  /* WorkspaceHeader title ran 24px via a triple-attribute rule; flat rails use 20px like admin. */
+  .dashboard-main [data-workspace-header][data-workspace-header][data-workspace-header] :is(h1, h2) {
+    font-size: 1.25rem !important;
+    line-height: 1.25 !important;
+    font-weight: 700;
+    letter-spacing: -0.025em;
   }
 
   /* Shared reference header: one quiet identity badge, a readable title, and
@@ -4367,4 +4388,13 @@ table.workspace-list-table tbody tr:focus-visible {
       height: 2.25rem;
     }
   }
+}
+
+/* Radix Switch and Checkbox put a hidden form input after the control and
+   pull it back over it with translateX(-100%), which assumes left-to-right.
+   In Arabic "after" is to the left, so the input was pushed a further control
+   width off the screen whenever the control sat at the edge, and the whole
+   page scrolled sideways (job-seeker settings at 375px). */
+:is(button[role="switch"], button[role="checkbox"]) + input[aria-hidden="true"]:dir(rtl) {
+  transform: translateX(100%) !important;
 }

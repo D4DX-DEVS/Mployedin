@@ -29,6 +29,7 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 import { AssignedRegionFields, type SupervisingSuperAgent } from "@/components/features/settings/AssignedRegionFields";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
+import { useTimezoneOptions } from "@/lib/i18n/useTimezoneOptions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 
@@ -86,7 +87,7 @@ const CH_LABELS: Record<Channel, { Icon: typeof Bell }> = {
 };
 
 const TIMEZONES = [
-  "Asia/Dubai", "Asia/Riyadh", "Asia/Kolkata", "Asia/Karachi", "Asia/Cairo",
+  "Asia/Dubai", "Asia/Riyadh", "Asia/Kolkata", "Asia/Karachi", "Africa/Cairo",
   "Europe/London", "Europe/Paris", "Europe/Berlin", "America/New_York",
   "America/Chicago", "America/Los_Angeles", "Asia/Singapore", "Asia/Tokyo",
   "Australia/Sydney", "Pacific/Auckland",
@@ -682,6 +683,7 @@ function NotificationsTab() {
   };
 
   const [prefs, setPrefs] = useState<NotifPrefs>(defaultPrefs);
+  const digestZones = useTimezoneOptions(TIMEZONES, prefs.timezone);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -794,15 +796,15 @@ function NotificationsTab() {
             <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("notifications.timezone")}</Label>
               <Select
-                value={prefs.timezone}
+                value={digestZones.value}
                 onValueChange={(value) => setPrefs((p) => ({ ...p, timezone: value }))}
               >
                 <SelectTrigger className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIMEZONES.map((tz) => (
-                    <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
+                  {digestZones.options.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -903,6 +905,7 @@ function NotificationsTab() {
 function AvailabilityTab() {
   const t = useTranslations("agentSettings");
   const [timezone, setTimezone] = useState("Asia/Dubai");
+  const zones = useTimezoneOptions(TIMEZONES, timezone);
   const [workingHoursStart, setWorkingHoursStart] = useState("09:00");
   const [workingHoursEnd, setWorkingHoursEnd] = useState("18:00");
   const [workingDays, setWorkingDays] = useState<string[]>(["Mon", "Tue", "Wed", "Thu", "Fri"]);
@@ -967,13 +970,13 @@ function AvailabilityTab() {
       <SectionCard>
         <SectionHeader icon={MapPin} title={t("availability.timezoneTitle")} description={t("availability.timezoneDescription")} />
         <div className="p-6">
-          <Select value={timezone} onValueChange={setTimezone}>
+          <Select value={zones.value} onValueChange={setTimezone}>
             <SelectTrigger className="h-11 max-w-md">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {TIMEZONES.map((tz) => (
-                <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
+              {zones.options.map((tz) => (
+                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>

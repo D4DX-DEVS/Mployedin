@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
+import { TerritoryOverlapNotice } from "@/components/shared/TerritoryOverlapNotice";
 import { PasswordInput } from "@/components/shared/PasswordInput";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
@@ -655,13 +656,16 @@ export default function AdminSuperAgentsPage() {
           {
             label: tc("stepRegion"),
             content: (
-              <CascadingLocationPicker
-                selectedCityIds={addCityIds}
-                selectedStateIds={addStateIds}
-                onChange={(cities, states) => { setAddCityIds(cities); setAddStateIds(states); }}
-                label={t("assignedRegionLabel")}
-                alwaysOpen
-              />
+              <div className="space-y-3">
+                <CascadingLocationPicker
+                  selectedCityIds={addCityIds}
+                  selectedStateIds={addStateIds}
+                  onChange={(cities, states) => { setAddCityIds(cities); setAddStateIds(states); }}
+                  label={t("assignedRegionLabel")}
+                  alwaysOpen
+                />
+                <TerritoryOverlapNotice role="super_agent" cityIds={addCityIds} stateIds={addStateIds} />
+              </div>
             ),
           },
         ]}
@@ -736,13 +740,21 @@ export default function AdminSuperAgentsPage() {
           {
             label: tc("stepRegion"),
             content: (
-              <CascadingLocationPicker
-                selectedCityIds={editCityIds}
-                selectedStateIds={editStateIds}
-                onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
-                label={t("assignedRegionLabel")}
-                alwaysOpen
-              />
+              <div className="space-y-3">
+                <CascadingLocationPicker
+                  selectedCityIds={editCityIds}
+                  selectedStateIds={editStateIds}
+                  onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
+                  label={t("assignedRegionLabel")}
+                  alwaysOpen
+                />
+                <TerritoryOverlapNotice
+                  role="super_agent"
+                  cityIds={editCityIds}
+                  stateIds={editStateIds}
+                  excludeUserId={editSA?._id}
+                />
+              </div>
             ),
           },
         ]}

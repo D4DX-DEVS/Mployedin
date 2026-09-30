@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +37,8 @@ interface ImpersonateResult {
   /** Where to go to actually work inside that account */
   redirectTo?: string;
   error?: string;
+  /** Session found on load rather than started from this page */
+  restored?: boolean;
 }
 
 export default function AdminUserImpersonatePage() {
@@ -46,6 +49,7 @@ export default function AdminUserImpersonatePage() {
   const [loading, setLoading] = useState(false);
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [impersonateResult, setImpersonateResult] = useState<ImpersonateResult | null>(null);
+  const roleLabel = (role: string) => (t.has(`roles.${role}`) ? t(`roles.${role}`) : role);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -69,6 +73,25 @@ export default function AdminUserImpersonatePage() {
     const t = setTimeout(loadUsers, 300);
     return () => clearTimeout(t);
   }, [loadUsers]);
+
+  // A session outlives this page (the admin works inside the employer workspace,
+  // then comes back), so restore its banner and exit button from the server.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/impersonate")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.active || !data.target) return;
+        setImpersonateResult((current) => current ?? {
+          success: true,
+          target: data.target,
+          companyName: data.companyName,
+          restored: true,
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const impersonate = async (userId: string) => {
     setImpersonating(userId);
@@ -107,10 +130,12 @@ export default function AdminUserImpersonatePage() {
         <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-amber-800">
-              {t("sessionStartedFor", { name: impersonateResult.target.name })}
+              {impersonateResult.restored
+                ? t("sessionActiveFor", { name: impersonateResult.target.name })
+                : t("sessionStartedFor", { name: impersonateResult.target.name })}
             </p>
             <p className="mt-0.5 text-xs text-amber-600">
-              {t("roleAndEmail", { role: impersonateResult.target.role, email: impersonateResult.target.email })}
+              {t("roleAndEmail", { role: roleLabel(impersonateResult.target.role), email: impersonateResult.target.email })}
             </p>
           </div>
           <Button
@@ -196,7 +221,7 @@ export default function AdminUserImpersonatePage() {
                   <TableRow key={user._id} className="border-border/70">
                     <TableCell className="font-medium text-foreground">{user.name}</TableCell>
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                    <TableCell><StatusBadge status={user.role} /></TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs font-medium">{roleLabel(user.role)}</Badge></TableCell>
                     <TableCell><StatusBadge status={user.isActive ? "active" : "inactive"} /></TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(new Date(user.createdAt))}</TableCell>
                     <TableCell>
@@ -213,6 +238,8 @@ export default function AdminUserImpersonatePage() {
                           className="h-7 gap-1 px-2.5 text-xs text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100"
                           variant="ghost"
                           title={t("viewAsUserTitle")}
+                          // Has visible text: skip the phone rule that prints the title as a label.
+                          data-table-action=""
                         >
                           {impersonating === user._id
                             ? <Loader2 className="h-3 w-3 animate-spin" />

@@ -47,6 +47,14 @@ export interface IEmployer extends Document {
   address?: string;
   city?: string;
   country?: string;
+  /**
+   * The catalogue city the employer registered in, and its state. This, not the
+   * free-text `city`/`country` address, decides which super-agents and agents
+   * see the company: every one whose territory holds this city or its state.
+   * Set at signup; only an admin moves it (an address edit does not).
+   */
+  regionCityId?: mongoose.Types.ObjectId | null;
+  regionStateId?: mongoose.Types.ObjectId | null;
   website?: string;
   industry?: string;
   companySize?: string;
@@ -165,6 +173,8 @@ const EmployerSchema = new Schema<IEmployer>(
     // silently, so every company registered since launch has no city.
     city: String,
     country: String,
+    regionCityId: { type: Schema.Types.ObjectId, ref: "City", default: null },
+    regionStateId: { type: Schema.Types.ObjectId, ref: "State", default: null },
     website: String,
     industry: String,
     companySize: String,

@@ -121,7 +121,7 @@ describe("Employer admin API", () => {
       companyName: "Acme",
       industry: "IT",
       location: "Dubai",
-      phone: "971500000000",
+      phone: "+971500000000",
     });
 
     const res = await (POST as any)(req, { params: Promise.resolve({}) });
@@ -147,7 +147,7 @@ describe("Employer admin API", () => {
       companyName: "Acme",
       industry: "IT",
       location: "Dubai",
-      phone: "971500000000",
+      phone: "+971500000000",
     });
 
     const res = await (POST as any)(req, { params: Promise.resolve({}) });

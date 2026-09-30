@@ -68,6 +68,13 @@ jest.mock("@/lib/agents/assignedRegion", () => ({
   resolveAssignedRegions: (...args: unknown[]) => resolveAssignedRegionsMock(...args),
 }));
 
+// The employers the agent sees (assigned or registered in their region) come
+// from the shared scope helper, which pulls in next/server — mocked here.
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  __esModule: true,
+  getAgentEmployerIds: jest.fn(async () => ["employer-1", "employer-2"]),
+}));
+
 jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: {

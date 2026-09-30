@@ -158,7 +158,18 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                 <div
                   key={poster._id}
                   onClick={() => reuseHref && router.push(reuseHref)}
-                  className={`group relative rounded-xl border overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow ${reuseHref ? "cursor-pointer" : ""}`}
+                  onKeyDown={(e) => {
+                    if (!reuseHref) return;
+                    if (e.target !== e.currentTarget && (e.target as Element).closest("a,button")) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(reuseHref);
+                    }
+                  }}
+                  role={reuseHref ? "button" : undefined}
+                  tabIndex={reuseHref ? 0 : undefined}
+                  aria-label={reuseHref ? t("reusePosterLabel", { job: poster.jobId?.title || t("untitledJob") }) : undefined}
+                  className={`group relative rounded-xl border overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${reuseHref ? "cursor-pointer" : ""}`}
                 >
                   {/* Composed poster thumbnail (background + branding/text overlay) */}
                   <div className="aspect-square relative" style={{ containerType: "size" }} aria-hidden="true">
@@ -182,8 +193,10 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                         <Image className="w-8 h-8 text-muted-foreground" />
                       </div>
                     )}
-                    {/* Hover actions */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    {/* Hover actions — also shown on touch (no hover there) and
+                        when keyboard focus lands on them, or the overlay's
+                        Delete would be unreachable outside a mouse. */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 focus-within:opacity-100 max-sm:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       {poster.shareSlug && (
                         <a
                           href={buildPosterShareUrl(poster.shareSlug)}

@@ -15,8 +15,8 @@ import {
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { SuperAgentPageIntro } from "@/components/features/super-agent/WorkspacePage";
-import { TableToolbar } from "@/components/shared/TableToolbar";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { formatFileSize } from "@/lib/ui/fileSize";
@@ -37,7 +37,6 @@ const CATEGORY_KEYS = [
 
 export default function ResourceDownloadsPage() {
   const t = useTranslations("resources");
-  const tc = useTranslations("common");
   const CATEGORY_OPTIONS = [
     { value: "all", label: t("categories.all") },
     ...CATEGORY_KEYS.map((k) => ({ value: k, label: t(`categories.${k}`) })),
@@ -98,30 +97,23 @@ export default function ResourceDownloadsPage() {
       {/* This was the last page in the role still calling DashboardPageHeader
           directly, and the only one that hid its search and filters in the
           header's `footer` slot. Both now match every other listing: the shared
-          super-agent hero, then a TableToolbar for the controls. */}
+          super-agent hero, then an InlineFilterBar for the controls. */}
       <SuperAgentPageIntro
         title={t("downloadsTitle")}
         description={t("downloadsSubtitle")}
       />
 
-      <TableToolbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder={t("searchPlaceholder")}
-        hasActiveFilters={categoryFilter !== "all"}
-        actions={
-          <>
-            {/* Explicit widths: with none, SearchableSelect fills its flex line
-                and the two selects stack under the search box instead of
-                sitting beside it. */}
-            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-auto sm:min-w-[170px]" />
-            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-auto sm:min-w-[150px]" />
-            {categoryFilter !== "all" && (
-              <button onClick={() => setCategoryFilter("all")} className="text-xs text-muted-foreground underline">{t("clear")}</button>
-            )}
-          </>
-        }
-      />
+      <InlineFilterBar
+        className="mb-4"
+        onClear={categoryFilter !== "all" || search || sortBy !== "newest" ? () => { setCategoryFilter("all"); setSearch(""); setSortBy("newest"); } : undefined}
+      >
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        {/* Explicit widths: with none, SearchableSelect fills its flex line
+            and the two selects stack under the search box instead of
+            sitting beside it. */}
+        <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-auto sm:min-w-[170px]" />
+        <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:h-9 sm:w-auto sm:min-w-[150px]" />
+      </InlineFilterBar>
 
       {/* Resource Grid */}
       {loading ? (
@@ -188,7 +180,7 @@ export default function ResourceDownloadsPage() {
                     ))}
                   </div>
 
-                  <p className="text-xs text-muted-foreground">{formatDate(new Date(item.createdAt))}</p>
+                  <p className="text-xs text-muted-foreground">{formatListDate(item.createdAt)}</p>
                 </div>
               </article>
             );

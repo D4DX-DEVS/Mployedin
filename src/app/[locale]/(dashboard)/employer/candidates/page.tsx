@@ -55,6 +55,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Star,
+  Tags,
   Target,
   Trophy,
   Users,
@@ -286,9 +287,6 @@ function CandidateMatchCard({
   // availability chip takes its share of the row, and "Malappuram, India • 0+
   // yrs" lost the years — the more decision-relevant half. Reversed, the city
   // is what gives way. Desktop has room for both, so the order only matters here.
-  const primaryMeta = [candidate.totalExperienceYears != null ? t("yrsExperience", { years: candidate.totalExperienceYears }) : null, candidate.currentLocation]
-    .filter(Boolean)
-    .join(" • ");
 
   const visibleSkills = selectedJobData && matchedSkills.length > 0 ? matchedSkills.slice(0, 3) : topSkills;
   const overflowSkillCount = selectedJobData && matchedSkills.length > 0
@@ -362,12 +360,32 @@ function CandidateMatchCard({
           {/* The role owns its line. Sharing it with the availability chip left
               the role 90px of the 183px text column at 390px, so "MERN Stack
               Developer" and every longer title rendered ellipsised. */}
-          <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
+          <p className="flex min-w-0 items-center gap-1.5 truncate text-sm text-muted-foreground">
+            <Briefcase className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{currentRole ?? t("roleNotSpecified")}</span>
+          </p>
           {/* Availability rides the meta line instead of owning a row: same
               per-card height, and when the column is tight it is the location
               that gives way rather than the role. */}
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            <p className="min-w-0 truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
+            {candidate.totalExperienceYears != null ? (
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground/90">
+                <Clock3 className="h-3 w-3" aria-hidden="true" />
+                {t("yrsExperience", { years: candidate.totalExperienceYears })}
+              </span>
+            ) : null}
+            {candidate.totalExperienceYears != null && candidate.currentLocation ? (
+              <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground/90">•</span>
+            ) : null}
+            {candidate.currentLocation ? (
+              <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground/90">
+                <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{candidate.currentLocation}</span>
+              </span>
+            ) : null}
+            {candidate.totalExperienceYears == null && !candidate.currentLocation ? (
+              <p className="min-w-0 truncate text-xs text-muted-foreground/90">{t("locationExpNotSpecified")}</p>
+            ) : null}
             {/* Pill chrome only from sm. On a phone the border + padding cost
                 ~24px the row needs, so here it reads as a plain coloured
                 suffix — same information, no extra line. */}
@@ -388,6 +406,7 @@ function CandidateMatchCard({
           {/* Wraps below sm: nowrap left each chip 14-34px, so skills rendered
               as "T…", "G…" and carried no information. */}
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground sm:flex-nowrap">
+            <Tags className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
             {/* The trailing "+N more" / skill-gap chips keep shrink-0 individually.
                 A blanket [&>*]:shrink-0 here outranked the skills span's own
                 `shrink` (arbitrary-variant specificity), so long skill names
@@ -1861,18 +1880,29 @@ export default function EmployerCandidatesPage() {
           <div className="flex min-w-0 items-center gap-2">
             <CandidateDataNotice variant="candidateList" compact />
             {!loading && filteredCandidates.length > 0 ? (
-              <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-                <Checkbox
-                  checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
-                  onCheckedChange={toggleSelectAllVisible}
-                  aria-label={tp("selectAllOnPage")}
-                />
-                {reviewCount > 0 ? (
-                  <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
-                ) : (
-                  <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
-                )}
-              </label>
+              <div className="flex items-center gap-2.5 text-sm">
+                {/* Same size as the row checkboxes. The toolbar's control-height
+                    rule skips [role="checkbox"] (globals.css), so h-5 holds. */}
+                <span className="flex h-8 w-5 items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    className="h-5 w-5 tap-target-box"
+                    checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                    onCheckedChange={toggleSelectAllVisible}
+                    aria-label={tp("selectAllOnPage")}
+                  />
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleSelectAllVisible}
+                  className="rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  {reviewCount > 0 ? (
+                    <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
+                  ) : (
+                    <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
+                  )}
+                </button>
+              </div>
             ) : null}
           </div>
         }

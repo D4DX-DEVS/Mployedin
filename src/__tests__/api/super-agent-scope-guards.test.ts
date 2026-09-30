@@ -31,6 +31,10 @@ const FOREIGN_AGENT = "agent_someone_elses";
 
 /** Scope resolved by the canonical helper. Empty by default — the leak case. */
 let scopeAgentIds: string[] = [];
+/** Employers in the SA's book — including ones registered in the territory with no agent. */
+let bookEmployerIds: string[] = [];
+const TERRITORY_EMPLOYER = "employer_in_territory_no_agent";
+const OWNED_AGENT_EMPLOYER = "employer_of_owned_agent";
 
 jest.mock("@/lib/auth/agentRestrictions", () => ({
   getSuperAgentScope: jest.fn(async () => ({
@@ -41,6 +45,13 @@ jest.mock("@/lib/auth/agentRestrictions", () => ({
     assignedCityIds: [],
     assignedStateIds: [],
   })),
+  getSuperAgentBook: jest.fn(async () => ({
+    agentIds: scopeAgentIds,
+    employerIds: bookEmployerIds,
+    saProfileId: "sa_profile_1",
+    ownershipMatch: { employerId: { $in: bookEmployerIds } },
+  })),
+  getAgentEmployerIds: jest.fn(async () => [OWNED_AGENT_EMPLOYER]),
 }));
 
 jest.mock("@/lib/search/relatedEntitySearch", () => ({
@@ -126,6 +137,7 @@ jest.mock("@/models/Agent", () => ({
   __esModule: true,
   default: {
     find: jest.fn(() => chain([])),
+    findById: jest.fn(() => chain({ userId: "agent_user_1" })),
   },
 }));
 
@@ -177,6 +189,7 @@ beforeEach(() => {
   seen.jobSeekers = [];
   seen.applications = [];
   scopeAgentIds = [];
+  bookEmployerIds = [];
 });
 
 describe("GET /api/super-agent/interviews", () => {
@@ -186,17 +199,23 @@ describe("GET /api/super-agent/interviews", () => {
 
     expect(isScoped(seen.interviews)).toBe(true);
     for (const filter of seen.interviews) {
-      expect((filter as { agentId?: { $in: string[] } }).agentId).toEqual({ $in: [] });
+      const branches = scopeBranches(filter);
+      expect(branches).toEqual([{ agentId: { $in: [] } }, { employerId: { $in: [] } }]);
     }
   });
 
-  it("constrains to the resolved team when the scope has agents", async () => {
+  it("constrains to the resolved team and book when the scope has agents", async () => {
     scopeAgentIds = [OWNED_AGENT];
+    bookEmployerIds = [TERRITORY_EMPLOYER];
     const { GET } = (await import("@/app/api/super-agent/interviews/route")) as unknown as { GET: MockedRoute };
     await GET(request("http://t/api/super-agent/interviews"));
 
+    expect(seen.interviews.length).toBeGreaterThan(0);
     for (const filter of seen.interviews) {
-      expect((filter as { agentId?: { $in: string[] } }).agentId).toEqual({ $in: [OWNED_AGENT] });
+      expect(scopeBranches(filter)).toEqual([
+        { agentId: { $in: [OWNED_AGENT] } },
+        { employerId: { $in: [TERRITORY_EMPLOYER] } },
+      ]);
     }
   });
 });
@@ -235,18 +254,45 @@ describe("GET /api/super-agent/applications", () => {
 
     // An id outside the scope must not become the filter. Either the handler
     // refuses it outright or it survives only alongside the scope clause.
+    expect(seen.applications.length).toBeGreaterThan(0);
     for (const filter of seen.applications) {
       expect((filter as { agentId?: string }).agentId).not.toBe(FOREIGN_AGENT);
+      expect((filter as { _id?: unknown })._id).toEqual({ $in: [] });
     }
   });
 
-  it("accepts ?agent for an agent inside the scope", async () => {
+  it("accepts ?agent for an agent inside the scope, narrowing within it", async () => {
     scopeAgentIds = [OWNED_AGENT];
+    bookEmployerIds = [OWNED_AGENT_EMPLOYER];
     const { GET } = (await import("@/app/api/super-agent/applications/route")) as unknown as { GET: MockedRoute };
     await GET(request(`http://t/api/super-agent/applications?agent=${OWNED_AGENT}`));
 
-    expect(
-      seen.applications.some((filter) => (filter as { agentId?: string }).agentId === OWNED_AGENT)
-    ).toBe(true);
+    expect(seen.applications.length).toBeGreaterThan(0);
+    for (const filter of seen.applications) {
+      const clauses = (filter as { $and?: Array<{ $or?: unknown[] }> }).$and ?? [];
+      // Scope clause first, the agent narrowing second — never the agent alone.
+      expect(clauses).toHaveLength(2);
+      expect(clauses[1].$or).toEqual([{ agentId: OWNED_AGENT }, { employerId: { $in: [OWNED_AGENT_EMPLOYER] } }]);
+    }
+  });
+
+  it("lists applicants of an employer registered in the territory before any agent is assigned", async () => {
+    bookEmployerIds = [TERRITORY_EMPLOYER];
+    const { GET } = (await import("@/app/api/super-agent/applications/route")) as unknown as { GET: MockedRoute };
+    await GET(request("http://t/api/super-agent/applications"));
+
+    expect(seen.applications.length).toBeGreaterThan(0);
+    for (const filter of seen.applications) {
+      expect(scopeBranches(filter)).toEqual([{ employerId: { $in: [TERRITORY_EMPLOYER] } }]);
+    }
+  });
+
+  it("returns nothing rather than everything when the book is empty", async () => {
+    const { GET } = (await import("@/app/api/super-agent/applications/route")) as unknown as { GET: MockedRoute };
+    await GET(request("http://t/api/super-agent/applications"));
+
+    for (const filter of seen.applications) {
+      expect((filter as { _id?: unknown })._id).toEqual({ $in: [] });
+    }
   });
 });

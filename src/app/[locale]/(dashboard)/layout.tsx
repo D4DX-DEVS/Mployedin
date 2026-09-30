@@ -6,8 +6,10 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { getNavGroups } from "@/lib/nav/menuConfig";
 import type { ICompanyUserPermissions } from "@/models/CompanyUser";
 import { DashboardShell } from "@/components/shared/DashboardShell";
+import { isLegalPagePublished } from "@/lib/cms/legalPageStatus";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
+import { CookieConsentMount } from "@/components/shared/CookieConsentMount";
 import type { UserRole } from "@/models/User";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
 import {
@@ -76,9 +78,10 @@ export default async function DashboardLayout({
   const navGroups = getNavGroups(effectiveRole, locale, companyPermissions);
 
   // Run maintenance check and shell data fetch in parallel
-  const [isMaintenanceMode, { lastLogin, companyLogo }] = await Promise.all([
+  const [isMaintenanceMode, { lastLogin, companyLogo }, statementPublished] = await Promise.all([
     role !== "admin" ? getDashboardMaintenanceMode() : Promise.resolve(false),
     getCachedDashboardShellData(session.user.id as string, role),
+    isLegalPagePublished("accessibility-statement"),
   ]);
 
   if (isMaintenanceMode) {
@@ -109,9 +112,12 @@ export default async function DashboardLayout({
               companyLogo={companyLogo}
               topbarGreeting={topbarGreeting}
               tenantViewData={tenantViewData}
+              statementPublished={statementPublished}
             >
               {children}
             </DashboardShell>
+            {/* Signed-in answers go straight to the user's consent log. */}
+            <CookieConsentMount locale={locale} />
           </DashboardProviders>
         </CsrfProvider>
       </SessionWrapper>

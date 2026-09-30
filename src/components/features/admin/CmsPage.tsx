@@ -226,7 +226,12 @@ export default function CmsPage({
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Are you sure you want to delete this item?");
+    const ok = await confirmDialog({
+      title: t("deleteConfirmTitle"),
+      message: t("deleteConfirmMessage"),
+      confirmLabel: t("delete"),
+      variant: "destructive",
+    });
     if (!ok) return;
     const r = await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
     if (!r.ok) {

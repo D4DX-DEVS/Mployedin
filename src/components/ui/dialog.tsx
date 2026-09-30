@@ -35,6 +35,27 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 const EDITABLE_FIELD =
   'input:not([type="hidden"]), textarea, select, [contenteditable=""], [contenteditable="true"], [role="combobox"]'
 
+/** What had focus as a dialog opens. Read during render, because a field with
+    `autoFocus` takes focus at commit and Radix then skips onOpenAutoFocus. A
+    menu item leaves with its menu, so the menu's trigger stands in for it. */
+function currentOpener(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || active === document.body) return null;
+  const triggerId = active.closest('[role="menu"]')?.getAttribute("aria-labelledby");
+  return (triggerId && document.getElementById(triggerId)) || active;
+}
+
+/** Mounts with the dialog content, so it runs once per opening. Exported for
+    panels built on the primitive directly (the non-modal Accessibility panel). */
+function RememberOpener({ into }: { into: React.MutableRefObject<HTMLElement | null> }) {
+  const [opener] = React.useState(currentOpener);
+  React.useLayoutEffect(() => {
+    into.current = opener;
+  }, [into, opener]);
+  return null;
+}
+
 const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
@@ -45,7 +66,7 @@ const DialogContent = React.forwardRef<
     /** Whether a click (or focus move) outside closes the dialog. Left unset, a dialog holding an editable field stays open and a read-only one closes. */
     closeOnOutsideClick?: boolean
   }
->(({ className, children, hideClose, overlayClassName, mobileSheet = true, closeOnOutsideClick, onInteractOutside, ...props }, ref) => {
+>(({ className, children, hideClose, overlayClassName, mobileSheet = true, closeOnOutsideClick, onInteractOutside, onCloseAutoFocus, ...props }, ref) => {
   const tCommon = useTranslations("common");
   /* A stray click on the backdrop used to close every dialog, so a half-filled
      create/edit form vanished with everything typed into it (admin Add
@@ -71,6 +92,21 @@ const DialogContent = React.forwardRef<
         : !closeOnOutsideClick;
     if (keepOpen) event.preventDefault();
   };
+  /* Radix hands focus back on close only to a <DialogTrigger>, and nearly
+     every dialog here is opened from state (a button's onClick), so closing one
+     left keyboard focus on <body> and keyboard and screen-reader users lost
+     their place. Remember what had focus when the dialog opened and go back to
+     it, unless the caller handles onCloseAutoFocus itself or it is gone.
+     <RememberOpener> fills the ref each time the content mounts. */
+  const returnFocusRef = React.useRef<HTMLElement | null>(null);
+  const handleCloseAutoFocus: typeof onCloseAutoFocus = (event) => {
+    onCloseAutoFocus?.(event);
+    const opener = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (event.defaultPrevented || !opener?.isConnected) return;
+    event.preventDefault();
+    opener.focus({ preventScroll: true });
+  };
   /* A dialog that asks for its own width has to get it.
      `cn()` is tailwind-merge, which only drops a conflicting utility when the
      variant prefix matches — so the default `sm:max-w-lg` used to survive
@@ -88,6 +124,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={setContentRef}
       onInteractOutside={handleInteractOutside}
+      onCloseAutoFocus={handleCloseAutoFocus}
       className={cn(
         "fixed z-[10000] grid gap-3 overflow-y-auto overscroll-contain border border-border bg-background p-4 shadow-2xl shadow-black/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:gap-4 sm:p-6",
         /* Only when the caller named no width of its own. */
@@ -103,6 +140,7 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
+      <RememberOpener into={returnFocusRef} />
       {children}
       {!hideClose && (
         <DialogPrimitive.Close className="absolute end-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background shadow-sm ring-offset-background transition-all duration-150 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring/50 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:h-8 sm:w-8">
@@ -182,4 +220,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  RememberOpener,
 }

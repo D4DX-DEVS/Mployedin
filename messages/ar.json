@@ -155,7 +155,24 @@
     "hiringQuestion": "توظف؟",
     "registerAsEmployer": "سجل كصاحب عمل",
     "referralNotice": "أنت تنضم عبر إحالة من شريك",
-    "referralNoticeWrongAudience": "هذا الرابط مخصص لأصحاب العمل. لا يزال بإمكانك إنشاء حساب باحث عن عمل."
+    "referralNoticeWrongAudience": "هذا الرابط مخصص لأصحاب العمل. لا يزال بإمكانك إنشاء حساب باحث عن عمل.",
+    "acceptTerms": {
+      "title": "وافق على شروطنا للمتابعة",
+      "titleUpdated": "قمنا بتحديث شروطنا",
+      "titleDone": "كل شيء جاهز",
+      "description": "قبل المتابعة، يُرجى قراءة شروط الخدمة وسياسة الخصوصية الخاصة بـ Mployedin والموافقة عليها.",
+      "descriptionUpdated": "تغيّرت شروط الخدمة وسياسة الخصوصية بتاريخ {date}. يُرجى مراجعتها والموافقة عليها لمواصلة استخدام Mployedin.",
+      "descriptionDone": "لقد وافقت بالفعل على شروط الخدمة وسياسة الخصوصية الحالية.",
+      "acceptButton": "الموافقة والمتابعة",
+      "continueButton": "متابعة",
+      "notNow": "لا تريد الموافقة الآن؟",
+      "signOut": "تسجيل الخروج",
+      "saveError": "تعذّر تسجيل موافقتك. يُرجى المحاولة مرة أخرى.",
+      "sessionNotUpdated": "تم حفظ موافقتك، لكن لم يتم تحديث جلستك. سجّل الخروج ثم سجّل الدخول مرة أخرى للمتابعة.",
+      "signedOutTitle": "انتهت جلستك",
+      "signedOutDescription": "سجّل الدخول مرة أخرى للمتابعة.",
+      "signInAgain": "تسجيل الدخول مرة أخرى"
+    }
   },
   "authLayout": {
     "aiPowered": "مدعوم بالذكاء الاصطناعي",
@@ -346,7 +363,11 @@
         "description": "شارة اعتماد حكومية (وزارة الصحة / المنطقة الحرة)",
         "badge": "أعلى مستوى"
       }
-    }
+    },
+    "citySearchPlaceholder": "ابحث عن مدينتك…",
+    "cityTypeToSearch": "اكتب حرفين على الأقل للبحث.",
+    "cityNoMatch": "لا توجد مدينة بهذا الاسم في هذه الدولة.",
+    "citySearching": "جارٍ البحث…"
   },
   "common": {
     "stepProgress": "الخطوة {current} من {total}",
@@ -480,7 +501,10 @@
     "generatePassword": "إنشاء كلمة مرور",
     "showDetails": "إظهار التفاصيل",
     "hideDetails": "إخفاء التفاصيل",
-    "sortDateAdded": "تاريخ الإضافة"
+    "sortDateAdded": "تاريخ الإضافة",
+    "requiredFieldsNote": "الحقول المميزة بعلامة * مطلوبة.",
+    "selectEllipsis": "اختر…",
+    "searching": "جارٍ البحث…"
   },
   "table": {
     "search": "بحث...",
@@ -2987,6 +3011,10 @@
     "cookiesAgreement": "بالاستمرار في استخدام موقعنا، فإنك توافق على استخدام ملفات تعريف الارتباط كما هو موضح في هذه السياسة.",
     "gdprIntro": "تشرح هذه الصفحة كيفية امتثالنا للائحة العامة لحماية البيانات (GDPR) وحقوق بياناتك عند استخدام mployedin.com.",
     "gdprAgreement": "نحن ملتزمون بحماية حقوق بياناتك بما يتوافق تمامًا مع اللائحة العامة لحماية البيانات وقوانين حماية البيانات في المملكة المتحدة.",
+    "accessibilityHeading": "بيان إمكانية الوصول",
+    "accessibilityIntro": "يوضح هذا البيان مدى سهولة استخدام MPLOYEDIN للجميع، والجوانب التي نعرف أنها تحتاج إلى تحسين، وكيف تبلغنا عن أي عائق.",
+    "accessibilityPreparing": "يجري إعداد بيان إمكانية الوصول.",
+    "accessibilityAgreement": "إذا واجهت صعوبة في استخدام أي جزء من MPLOYEDIN، راسلنا على support@mployedin.com واذكر الصفحة والمشكلة.",
     "legalLastUpdated": "آخر تحديث: {date}",
     "faqCategory": {
       "general": "عام",
@@ -2995,7 +3023,11 @@
       "agent": "الوكلاء",
       "billing": "الفوترة والخطط",
       "privacy": "الخصوصية والبيانات"
-    }
+    },
+    "contactNameRequired": "أدخل اسمك الكامل.",
+    "contactEmailRequired": "أدخل عنوان بريدك الإلكتروني.",
+    "contactEmailInvalid": "أدخل عنوان بريد إلكتروني صالحًا، مثل name@example.com.",
+    "contactMessageRequired": "أدخل رسالتك."
   },
   "locationData": {
     "title": "بيانات الموقع",
@@ -4071,6 +4103,7 @@
     "cookies": "الكوكيز",
     "terms": "الشروط",
     "gdpr": "حماية البيانات",
+    "accessibility": "إمكانية الوصول",
     "support": "الدعم",
     "homepage": "الصفحة الرئيسية"
   },
@@ -4111,7 +4144,8 @@
     "agent": "وكيل",
     "employer": "صاحب عمل",
     "jobSeeker": "باحث عن عمل",
-    "profile": "ملفي الشخصي"
+    "profile": "ملفي الشخصي",
+    "openUserMenu": "فتح قائمة المستخدم"
   },
   "maintenance": {
     "title": "الموقع تحت الصيانة",
@@ -4654,7 +4688,8 @@
     "pickDateTime": "اختر التاريخ والوقت",
     "pickDate": "اختر تاريخاً",
     "pickTime": "اختر وقتاً",
-    "firstInterviewStartsAt": "(موعد بدء المقابلة الأولى)"
+    "firstInterviewStartsAt": "(موعد بدء المقابلة الأولى)",
+    "requiredLabel": "{label}، مطلوب"
   },
   "messagesPage": {
     "defaultTitle": "الرسائل",
@@ -4765,6 +4800,7 @@
     "pageOf": "صفحة {page} من {pages}",
     "perPage": "لكل صفحة",
     "viewPosterLabel": "عرض ملصق {job}",
+    "reusePosterLabel": "إعادة استخدام الملصق لـ {job}",
     "posterCount": "{count, plural, =0 {لا توجد ملصقات بعد} one {ملصق واحد} two {ملصقان} few {# ملصقات} many {# ملصقًا} other {# ملصق}}"
   },
   "employerMessages": {
@@ -6784,7 +6820,18 @@
       "rolesLabel": "الأدوار",
       "rolesDescription": "اختر دوراً واحداً أو أكثر لهذا العضو.",
       "rolesPlaceholder": "اختر الأدوار...",
-      "jobAccessDescription": "اختر الوظائف المحددة التي يمكن لهذا العضو الوصول إليها. اتركها فارغة للسماح بكل الوظائف."
+      "jobAccessDescription": "اختر الوظائف المحددة التي يمكن لهذا العضو الوصول إليها. اتركها فارغة للسماح بكل الوظائف.",
+      "modeTempPasswordHint": "سننشئ حسابه الآن ونعطيك كلمة مرور لمشاركتها معه. يمكنه تغييرها بعد تسجيل الدخول.",
+      "tempPasswordToggle": "تعيين كلمة مرور مؤقتة بدلاً من ذلك",
+      "nameLabel": "الاسم الكامل",
+      "namePlaceholder": "الاسم الكامل للعضو",
+      "createAccount": "إنشاء الحساب",
+      "creating": "جارٍ الإنشاء...",
+      "inviteSent": "تم إرسال الدعوة إلى {email}",
+      "errors": {
+        "emailInUse": "هذا البريد الإلكتروني مستخدم بالفعل.",
+        "alreadyMember": "هذا الشخص عضو في فريقك بالفعل أو لديه دعوة معلّقة."
+      }
     },
     "jobAccessModal": {
       "title": "تعديل صلاحية الوظائف",
@@ -6810,6 +6857,23 @@
       "canViewAnalytics": "التقارير والتحليلات",
       "canManageCompanySettings": "إعدادات الشركة",
       "canManageTeam": "إدارة الفريق"
+    },
+    "credentials": {
+      "title": "تم إنشاء الحساب",
+      "intro": "شارك بيانات تسجيل الدخول هذه مع {name}.",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور المؤقتة",
+      "signIn": "تسجيل الدخول",
+      "copy": "نسخ",
+      "copied": "تم النسخ",
+      "copyLabel": "نسخ {label}",
+      "copyAll": "نسخ الكل",
+      "copyFailed": "تعذّر النسخ. يرجى تحديد النص ونسخه يدويًا.",
+      "onceWarning": "تظهر كلمة المرور هذه مرة واحدة فقط.",
+      "emailSent": "أرسلنا إلى {email} رسالة بأن حسابه جاهز، دون تضمين كلمة المرور.",
+      "emailFailed": "تعذّر إرسال البريد إليه، لذا أخبره بمكان تسجيل الدخول.",
+      "changeLater": "سيؤكد بريده الإلكتروني برمز عند أول تسجيل دخول، ويمكنه تعيين كلمة مرور خاصة به في أي وقت.",
+      "done": "تم"
     }
   },
   "employerActivity": {
@@ -6990,6 +7054,7 @@
     "accepted": "مقبول",
     "declined": "مرفوض",
     "expired": "منتهي الصلاحية",
+    "expiring": "ينتهي قريبًا",
     "withdrawn": "مسحوب",
     "noOffers": "لا توجد عروض بعد",
     "noOffersDesc": "ستظهر العروض هنا بمجرد إرسالها للمرشحين",
@@ -7131,7 +7196,8 @@
     "recordVerdict": "تسجيل النتيجة",
     "verdictSaved": "تم تسجيل النتيجة.",
     "noScreeners": "لا يوجد زميل لديه صلاحية الفرز بعد.",
-    "assignedToYou": "مُسند إليك"
+    "assignedToYou": "مُسند إليك",
+    "removeReference": "إزالة المرجع"
   },
   "employerPlacements": {
     "backToPlacements": "العودة إلى التعيينات",
@@ -7339,6 +7405,7 @@
     "charactersCount": "{count} / 5000 حرف",
     "subjectLabel": "الموضوع:",
     "previewLabel": "معاينة:",
+    "preview": "معاينة",
     "defaultTemplate": "قالب افتراضي"
   },
   "employerMatchingWeights": {
@@ -8002,7 +8069,11 @@
     "overallRating": "التقييم العام",
     "date": "التاريخ",
     "evaluatedBy": "تم التقييم بواسطة",
+    "evaluated": "تم التقييم",
     "notes": "ملاحظات",
+    "strengths": "نقاط القوة",
+    "concerns": "نقاط القلق",
+    "recommendation": "التوصية",
     "scorecardList": "بطاقات التقييم"
   },
   "employerPaymentSetup": {
@@ -9049,7 +9120,14 @@
     "roleChangedTitle": "تم تغيير نوع حسابك",
     "roleChangedBody": "قام أحد المشرفين بتغيير حسابك من {fromRole} إلى {toRole}.",
     "agentEmployerAssignedTitle": "تم تعيين صاحب عمل لك",
-    "agentEmployerAssignedBody": "عيّن المسؤول {companyName} لك."
+    "agentEmployerAssignedBody": "عيّن المسؤول {companyName} لك.",
+    "regionEmployerRegisteredTitle": "صاحب عمل جديد في منطقتك",
+    "regionEmployerRegisteredBody": "سجّل {companyName} في {cityName}.",
+    "adminEmployerOutsideTerritoryTitle": "صاحب عمل خارج كل المناطق",
+    "adminEmployerOutsideTerritoryBody": "سجّل {companyName} في {region}، ولا يغطيها أي وكيل رئيسي.",
+    "adminEmployerNoRegionBody": "سجّل {companyName} دون مدينة معروفة، لذلك لا يغطيه أي وكيل رئيسي.",
+    "adminEmployerAddressChangedTitle": "غيّر صاحب عمل عنوانه",
+    "adminEmployerAddressChangedBody": "غيّر {companyName} عنوانه من {from} إلى {to}. لم تُنقل منطقته."
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -10593,7 +10671,8 @@
     "more": "المزيد",
     "less": "أقل",
     "filterChipNoApplications": "بدون طلبات",
-    "filterChipExpiringSoon": "تُغلق خلال 7 أيام"
+    "filterChipExpiringSoon": "تُغلق خلال 7 أيام",
+    "jobNotFound": "تعذّر العثور على هذه الوظيفة. ربما تم حذفها."
   },
   "adminSettings": {
     "pageTitle": "الإعدادات",
@@ -10850,7 +10929,7 @@
     "lastUpdatedColumnLabel": "آخر تحديث",
     "emptyDateValue": "—",
     "pageTitle": "الصفحات الثابتة",
-    "pageDescription": "تعديل صفحات سياسة الخصوصية والشروط والأحكام وسياسة ملفات تعريف الارتباط وحماية البيانات",
+    "pageDescription": "تعديل صفحات سياسة الخصوصية والشروط والأحكام وسياسة ملفات تعريف الارتباط وحماية البيانات وبيان إمكانية الوصول",
     "searchFilterPlaceholder": "ابحث عن معرّف فريد أو عنوان…",
     "visibilityFilterLabel": "الرؤية",
     "allStatusesFilterOption": "جميع الحالات",
@@ -11147,7 +11226,15 @@
     "toastImpersonationSessionStarted": "بدأت جلسة المحاكاة",
     "toastFailedStartImpersonation": "تعذّر بدء جلسة المحاكاة. يرجى المحاولة مرة أخرى.",
     "toastImpersonationSessionEnded": "انتهت جلسة المحاكاة",
-    "toastFailedExitImpersonation": "تعذّر الخروج من جلسة المحاكاة. يرجى المحاولة مرة أخرى."
+    "toastFailedExitImpersonation": "تعذّر الخروج من جلسة المحاكاة. يرجى المحاولة مرة أخرى.",
+    "sessionActiveFor": "جلسة انتحال الهوية نشطة لـ {name}",
+    "roles": {
+      "admin": "مشرف",
+      "super_agent": "مشرف إقليمي",
+      "agent": "وكيل",
+      "employer": "صاحب عمل",
+      "job_seeker": "باحث عن عمل"
+    }
   },
   "adminReferralLinks": {
     "pageTitle": "روابط الإحالة",
@@ -11531,7 +11618,25 @@
     "errorNoValidRows": "لا توجد صفوف صحيحة للاستيراد",
     "successImportComplete": "اكتمل الاستيراد: تم استيراد {count} سجل",
     "errorImportFailed": "تعذر الاستيراد",
-    "errorImportRequest": "تعذر طلب الاستيراد"
+    "errorImportRequest": "تعذر طلب الاستيراد",
+    "jobSeekers": "الباحثون عن عمل",
+    "hint": {
+      "users": "يصبح كل صف حساب باحث عن عمل. يعيّن كل شخص كلمة المرور من خلال \"نسيت كلمة المرور\" في صفحة تسجيل الدخول.",
+      "jobs": "تُحفظ الوظائف كمسودات. عمود \"company\" هو اسم شركة صاحب عمل موجود أو بريدها الإلكتروني. عمود \"type\" هو full_time أو part_time أو contract أو internship أو freelance أو walk_in.",
+      "employers": "يصبح كل صف حساب صاحب عمل وملف شركة. يعيّن جهة الاتصال كلمة المرور من خلال \"نسيت كلمة المرور\" في صفحة تسجيل الدخول."
+    },
+    "rowErrors": {
+      "missing_fields": "حقول ناقصة: {fields}",
+      "invalid_email": "عنوان البريد الإلكتروني غير صالح.",
+      "role_not_allowed": "يمكن استيراد الباحثين عن عمل فقط هنا، وليس \"{role}\". أضف أصحاب العمل عبر استيراد أصحاب العمل والموظفين من صفحة المستخدمين.",
+      "invalid_type": "\"{value}\" ليس نوع وظيفة. استخدم full_time أو part_time أو contract أو internship أو freelance أو walk_in.",
+      "invalid_salary": "يجب أن يكون الراتب أرقامًا، وألا يتجاوز الحد الأدنى الحد الأقصى.",
+      "email_exists": "يوجد حساب بهذا البريد الإلكتروني بالفعل.",
+      "employer_not_found": "لا يوجد صاحب عمل يطابق \"{company}\". استخدم اسم الشركة أو بريدها كما هو محفوظ تمامًا.",
+      "employer_ambiguous": "يوجد أكثر من صاحب عمل باسم \"{company}\". استخدم البريد الإلكتروني للشركة بدلًا من ذلك.",
+      "duplicate": "هذا السجل موجود بالفعل.",
+      "failed": "تعذّر استيراد هذا الصف. يُرجى المحاولة مرة أخرى."
+    }
   },
   "adminCommissionsReport": {
     "adminWorkspace": "مساحة العمل الإدارية",
@@ -11681,6 +11786,45 @@
       "saveFailed": "تعذّر تغيير الوكيل. يرجى المحاولة مرة أخرى.",
       "savedAssigned": "أصبح {company} الآن مع {agent}. {count, plural, =0 {لا توجد وظائف مفتوحة لنقلها.} one {نُقلت وظيفة مفتوحة واحدة.} two {نُقلت وظيفتان مفتوحتان.} few {نُقلت # وظائف مفتوحة.} many {نُقلت # وظيفة مفتوحة.} other {نُقلت # وظيفة مفتوحة.}}",
       "savedRemoved": "لم يعد لدى {company} وكيل."
+    },
+    "statusFilterLabel": "حالة الحساب",
+    "statusFilterAll": "جميع الحالات",
+    "statusFilterActive": "نشط",
+    "statusFilterInactive": "معطّل",
+    "activateButtonTitle": "إعادة التفعيل",
+    "toastActivated": "تمت إعادة تفعيل صاحب العمل. عادت وظائفه المتوقفة إلى النشر.",
+    "coverageFilterLabel": "الوكيل الرئيسي",
+    "coverageFilterAll": "كل أصحاب العمل",
+    "coverageFilterNone": "لا يوجد وكيل رئيسي في المنطقة",
+    "coverageFilterCovered": "يغطيه وكيل رئيسي",
+    "changeRegionTitle": "تغيير المنطقة",
+    "regionSuperAgents": "المنطقة: {names}",
+    "regionUncovered": "لا يغطي أي وكيل رئيسي هذه المنطقة",
+    "regionMissing": "لم تُحدد منطقة",
+    "changeRegion": {
+      "title": "تغيير المنطقة",
+      "description": "سيرى كل من تغطي منطقته المنطقة الجديدة {company} مع وظائفها والمتقدمين إليها.",
+      "currentLabel": "المنطقة الحالية",
+      "cityLine": "{city}، {state} ({country})",
+      "seenBy": "يراها: {names}",
+      "noSuperAgent": "لا يغطي أي وكيل رئيسي هذه المنطقة.",
+      "noRegion": "لم تُحدد منطقة — لا يرى أي وكيل رئيسي صاحب العمل هذا.",
+      "countryLabel": "الدولة",
+      "countryPlaceholder": "اختر دولة",
+      "countrySearchPlaceholder": "ابحث عن دولة…",
+      "cityLabel": "المدينة الجديدة",
+      "cityPlaceholder": "اختر مدينة",
+      "citySearchPlaceholder": "ابحث عن مدينة…",
+      "cityTypeToSearch": "اكتب حرفين على الأقل للبحث.",
+      "cityNoMatch": "لا توجد مدينة بهذا الاسم في هذه الدولة.",
+      "citySearching": "جارٍ البحث…",
+      "historyNote": "تنتقل الوظائف والمتقدمون مع صاحب العمل. تبقى الفواتير والعمولات الصادرة كما هي.",
+      "cancel": "إلغاء",
+      "save": "نقل صاحب العمل",
+      "saving": "جارٍ النقل…",
+      "saveFailed": "تعذّر تغيير المنطقة. حاول مرة أخرى.",
+      "savedCovered": "نُقل {company} إلى {city}. يراه الآن: {names}.",
+      "savedUncovered": "نُقل {company} إلى {city}. لا يغطيه أي وكيل رئيسي بعد."
     }
   },
   "adminGdpr": {
@@ -11750,7 +11894,29 @@
     "failedLoadConsentLogs": "تعذر تحميل سجلات الموافقة",
     "statusUpdatedSuccess": "تم تحديث حالة الطلب",
     "failedUpdateStatus": "تعذر تحديث الحالة",
-    "errorUpdatingRequest": "خطأ في تحديث الطلب"
+    "errorUpdatingRequest": "خطأ في تحديث الطلب",
+    "allConsentTypesLabel": "جميع أنواع الموافقة",
+    "consentSourceColumnHeader": "المصدر",
+    "consentSourceRegistration": "نموذج التسجيل",
+    "consentSourceRegistrationGoogle": "التسجيل عبر Google",
+    "consentSourceRegistrationEmailCode": "التسجيل برمز البريد الإلكتروني",
+    "consentSourceRegistrationLinkedIn": "التسجيل عبر LinkedIn",
+    "consentSourceRegistrationApple": "التسجيل عبر Apple",
+    "consentSourceFirstSignIn": "أول تسجيل دخول",
+    "consentSourceTermsUpdate": "وافق على الشروط المحدّثة",
+    "consentSourceCookieBanner": "شريط ملفات تعريف الارتباط",
+    "consentSourcePrivacySettings": "صفحة البيانات والخصوصية",
+    "consentSourceProfile": "إعدادات الملف الشخصي",
+    "consentPolicyVersion": "إصدار {date}",
+    "termsVersionTitle": "شروط الخدمة وسياسة الخصوصية",
+    "termsVersionSummary": "الإصدار الحالي: {date} · وافق عليه {accepted} من أصل {total} مستخدم",
+    "termsVersionHelp": "يُطلب من المستخدمين الذين لم يوافقوا على الإصدار الحالي الموافقة قبل الوصول إلى لوحة التحكم. لا يُطلب ذلك من المسؤولين.",
+    "termsNewVersionButton": "اطلب من الجميع الموافقة مجددًا",
+    "termsNewVersionConfirmTitle": "هل تريد أن تطلب من الجميع الموافقة مجددًا؟",
+    "termsNewVersionConfirmMessage": "استخدم هذا بعد تغيير جوهري في شروط الخدمة أو سياسة الخصوصية. سيُطلب من كل المستخدمين باستثناء المسؤولين الموافقة على الإصدار الجديد عند فتح المنصة في المرة القادمة. لا يمكن التراجع عن ذلك.",
+    "termsNewVersionConfirmButton": "بدء إصدار جديد",
+    "termsNewVersionSuccess": "تم بدء إصدار جديد. سيُطلب من المستخدمين الموافقة عليه.",
+    "termsNewVersionError": "تعذّر بدء إصدار جديد. يُرجى المحاولة مرة أخرى."
   },
   "adminInterviews": {
     "recruitmentControl": "التحكم في التوظيف",
@@ -11842,8 +12008,8 @@
     "status_rescheduled": "أعيدت جدولتها",
     "status_completed": "مكتملة",
     "status_cancelled": "ملغاة",
-    "status_no_show": "لم يحضر"
-    ,"changeStatusFor": "تغيير حالة المقابلة لـ {candidate}"
+    "status_no_show": "لم يحضر",
+    "changeStatusFor": "تغيير حالة المقابلة لـ {candidate}"
   },
   "adminInvoices": {
     "title": "الفواتير",
@@ -13682,6 +13848,7 @@
   "superAgentLeads": {
     "columnActions": "الإجراءات",
     "changeStage": "تغيير المرحلة",
+    "changeStageFor": "تغيير مرحلة {company}",
     "stageUpdated": "تم تحديث المرحلة إلى {stage}.",
     "stageUpdateError": "تعذّر تحديث المرحلة. يرجى المحاولة مرة أخرى.",
     "viewAgent": "فتح الوكيل المسؤول عن هذا العميل",
@@ -13905,7 +14072,10 @@
     "switchError": "تعذر التبديل إلى عرض الموظف",
     "networkError": "خطأ في الشبكة — يرجى المحاولة مرة أخرى",
     "onboardError": "تعذّر إضافة صاحب العمل. يرجى المحاولة مرة أخرى.",
-    "loadEmployersError": "تعذّر تحميل أصحاب العمل. يرجى المحاولة مرة أخرى."
+    "loadEmployersError": "تعذّر تحميل أصحاب العمل. يرجى المحاولة مرة أخرى.",
+    "cityLabel": "المدينة",
+    "cityPlaceholder": "اختر مدينة ضمن منطقتك",
+    "cityHint": "توضع الشركة في هذه المدينة، فتراها أنت والوكلاء الذين يغطونها."
   },
   "superAgentPlacements": {
     "pageTitle": "التوظيفات",
@@ -15012,7 +15182,8 @@
     "modalOnboardEmployerTitle": "استقطاب صاحب عمل جديد",
     "deleteEmployerConfirm": "هل تريد بالتأكيد حذف صاحب العمل هذا؟",
     "switchEmployerViewError": "تعذر التبديل إلى عرض صاحب العمل",
-    "switchEmployerNetworkError": "خطأ في الشبكة — حاول مرة أخرى"
+    "switchEmployerNetworkError": "خطأ في الشبكة — حاول مرة أخرى",
+    "cardRegionOnly": "ضمن منطقتك. اطلب من المسؤول إسنادها إليك لنشر الوظائف."
   },
   "agentPlacements": {
     "pageTitle": "التوظيفات",
@@ -16423,7 +16594,9 @@
     "addTitle": "إضافة {title}",
     "editTitle": "تعديل {title}",
     "deleteFailed": "لم نتمكن من حذف هذا العنصر. يرجى المحاولة مرة أخرى.",
-    "searchFallback": "ابحث في {title}…"
+    "searchFallback": "ابحث في {title}…",
+    "deleteConfirmTitle": "حذف هذا العنصر؟",
+    "deleteConfirmMessage": "ستتم إزالته من الموقع. لا يمكن التراجع عن ذلك."
   },
   "exhibitionHeroFilters": {
     "hideFilters": "إخفاء المرشحات",
@@ -16844,7 +17017,9 @@
     "availableDays": "الأيام المتاحة",
     "workingHours": "ساعات العمل",
     "to": "إلى",
-    "availabilityActive": "توفرك نشط — يمكن لأصحاب العمل حجز المقابلات في الفترات الزمنية المتاحة لديك تلقائياً."
+    "availabilityActive": "توفرك نشط — يمكن لأصحاب العمل حجز المقابلات في الفترات الزمنية المتاحة لديك تلقائياً.",
+    "startTimeFor": "وقت البدء يوم {day}",
+    "endTimeFor": "وقت الانتهاء يوم {day}"
   },
   "changeEmailCard": {
     "account": "الحساب",
@@ -17246,7 +17421,73 @@
     "deselectAll": "إلغاء تحديد الكل",
     "selectRow": "تحديد الصف",
     "clearSelection": "مسح التحديد",
-    "removeLineItem": "إزالة البند"
+    "removeLineItem": "إزالة البند",
+    "skipToContent": "انتقل إلى المحتوى الرئيسي",
+    "accessibility": "إمكانية الوصول",
+    "openPanel": "خيارات إمكانية الوصول",
+    "panelTitle": "إمكانية الوصول",
+    "panelDescription": "عدّل مظهر Mployedin وطريقة عمله بما يناسبك.",
+    "closePanel": "إغلاق خيارات إمكانية الوصول",
+    "tabDisplay": "العرض",
+    "tabNavigation": "التنقل",
+    "tabContent": "المحتوى",
+    "tabHelp": "المساعدة",
+    "textSize": "حجم النص",
+    "textSizeHint": "صغّر النص في الموقع أو كبّره.",
+    "textSizeValue": "{percent}٪",
+    "textSmaller": "تصغير النص",
+    "textDefault": "حجم النص الافتراضي",
+    "textLarger": "تكبير النص",
+    "highContrast": "تباين عالٍ",
+    "highContrastHint": "نص وحدود أغمق لقراءة أسهل.",
+    "reduceMotion": "تقليل الحركة",
+    "reduceMotionHint": "إيقاف الرسوم المتحركة والانتقالات.",
+    "readingSupport": "دعم القراءة",
+    "readableFont": "خط سهل القراءة",
+    "readableFontHint": "تغيير النص اللاتيني إلى خط Lexend الأعرض والأوضح.",
+    "wideSpacing": "تباعد الأسطر",
+    "wideSpacingHint": "زيادة المسافة بين أسطر النص.",
+    "highlightLinks": "إبراز الروابط",
+    "highlightLinksHint": "وضع خط تحت كل رابط ليسهل تمييزه.",
+    "resetAll": "إعادة ضبط كل الإعدادات",
+    "strongFocus": "إطار تركيز أوضح",
+    "strongFocusHint": "إطار أسمك وأوضح حول العنصر الذي تقف عليه.",
+    "skipToMainHint": "أغلق هذه اللوحة وانتقل مباشرةً إلى محتوى الصفحة متجاوزًا القوائم.",
+    "keyboardHeading": "اختصارات لوحة المفاتيح",
+    "keyTab": "Tab",
+    "keyTabHint": "الانتقال إلى الرابط أو عنصر التحكم التالي",
+    "keyShiftTab": "Shift + Tab",
+    "keyShiftTabHint": "الرجوع إلى العنصر السابق",
+    "keyEnter": "Enter / Space",
+    "keyEnterHint": "فتح رابط أو الضغط على زر",
+    "keyEsc": "Esc",
+    "keyEscHint": "إغلاق قائمة أو نافذة أو هذه اللوحة",
+    "keyArrows": "مفاتيح الأسهم",
+    "keyArrowsHint": "التنقل داخل القوائم وعلامات التبويب",
+    "contentHeading": "مدمج في Mployedin",
+    "contentScreenReader": "دعم قارئ الشاشة",
+    "contentScreenReaderHint": "العناوين والمعالم والأزرار المسمّاة تتيح لقارئ الشاشة التنقل داخل كل صفحة.",
+    "contentForms": "نماذج سهلة الاستخدام",
+    "contentFormsHint": "لكل حقل تسمية، والحقول المطلوبة مميزة، والأخطاء موضحة أسفل الحقل.",
+    "contentImages": "أوصاف الصور",
+    "contentImagesHint": "للصور ذات المعنى وصف نصي، ويتم تجاوز الصور الزخرفية.",
+    "contentKeyboard": "الوصول بلوحة المفاتيح",
+    "contentKeyboardHint": "تعمل الصفحات دون فأرة، مع إطار واضح حول العنصر المحدد.",
+    "helpZoom": "التكبير والتصغير",
+    "helpZoomHint": "اضغط Ctrl مع + أو - (⌘ على Mac) لتغيير حجم الصفحة بالكامل.",
+    "helpScreenReader": "قارئات الشاشة",
+    "helpScreenReaderHint": "استخدم قارئ الشاشة في جهازك، مثل NVDA أو JAWS على Windows، أو VoiceOver على Mac وiPhone، أو TalkBack على Android.",
+    "helpSaved": "إعداداتك",
+    "helpSavedHint": "تُحفظ في هذا المتصفح فقط، وتُطبّق على كل الصفحات بما فيها لوحة التحكم.",
+    "helpContact": "هل واجهت صعوبة؟",
+    "helpContactHint": "أخبرنا بما أعاقك وسنعمل على حله.",
+    "helpContactLink": "تواصل مع الدعم",
+    "statementLink": "بيان إمكانية الوصول",
+    "statementHint": "التزامنا الكامل بإمكانية الوصول (WCAG 2.2 AA).",
+    "launcherHint": "خيارات إمكانية الوصول. اسحب هذا الزر لنقله.",
+    "buttonPosition": "موضع الزر",
+    "buttonPositionHint": "اسحب زر إمكانية الوصول الدائري للأعلى أو للأسفل أو إلى الجانب الآخر. تعيده إعادة الضبط إلى مكانه.",
+    "resetPosition": "إعادة الموضع"
   },
   "jobCard": {
     "company": "الشركة",
@@ -17531,7 +17772,8 @@
     "passwordRuleLowercase": "حرف صغير (a-z)",
     "passwordRuleNumber": "رقم",
     "passwordRuleSymbol": "رمز مثل ! @ #",
-    "confirmPasswordRequired": "يرجى تأكيد كلمة المرور الخاصة بك."
+    "confirmPasswordRequired": "يرجى تأكيد كلمة المرور الخاصة بك.",
+    "twoFactorCodeRequired": "أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة."
   },
   "employerNewJob": {
     "title": "نشر وظيفة",
@@ -18044,5 +18286,33 @@
     "statusCompleted": "مكتمل",
     "statusRejected": "مرفوض",
     "statusCancelled": "ملغى"
+  },
+  "territoryOverlap": {
+    "superAgentTitle": "{count, plural, one {وكيل رئيسي آخر يغطي جزءاً من هذه المنطقة} two {وكيلان رئيسيان آخران يغطيان جزءاً من هذه المنطقة} few {# وكلاء رئيسيين آخرين يغطون جزءاً من هذه المنطقة} many {# وكيلاً رئيسياً آخر يغطون جزءاً من هذه المنطقة} other {# وكيل رئيسي آخر يغطون جزءاً من هذه المنطقة}}",
+    "agentTitle": "{count, plural, one {وكيل آخر يغطي جزءاً من هذه المنطقة} two {وكيلان آخران يغطيان جزءاً من هذه المنطقة} few {# وكلاء آخرين يغطون جزءاً من هذه المنطقة} many {# وكيلاً آخر يغطون جزءاً من هذه المنطقة} other {# وكيل آخر يغطون جزءاً من هذه المنطقة}}",
+    "viaCity": "مدينة ضمن هذه المنطقة",
+    "viaState": "الولاية كاملة",
+    "body": "يمكنك الحفظ مع ذلك. كل من يغطي منطقة يرى أصحاب العمل المسجلين فيها."
+  },
+  "timezones": {
+    "dubai": "دبي",
+    "riyadh": "الرياض",
+    "qatar": "قطر",
+    "kuwait": "الكويت",
+    "bahrain": "البحرين",
+    "muscat": "مسقط",
+    "cairo": "القاهرة",
+    "karachi": "كراتشي",
+    "india": "الهند",
+    "london": "لندن",
+    "berlin": "برلين",
+    "newYork": "نيويورك",
+    "losAngeles": "لوس أنجلوس",
+    "singapore": "سنغافورة",
+    "sydney": "سيدني",
+    "paris": "باريس",
+    "chicago": "شيكاغو",
+    "tokyo": "طوكيو",
+    "auckland": "أوكلاند"
   }
 }

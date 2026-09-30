@@ -11,14 +11,11 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import { RequiredMark } from "@/components/ui/required-mark";
 
 function joinIds(...ids: Array<string | undefined>) {
   const value = ids.filter(Boolean).join(" ");
   return value || undefined;
-}
-
-function RequiredMark() {
-  return <span aria-hidden="true" className="text-destructive">*</span>;
 }
 
 function FieldFeedback({ hint, error, hintId, errorId }: { hint?: string; error?: string; hintId: string; errorId: string }) {
@@ -127,9 +124,6 @@ export function FormSelect({ label, error, hint, placeholder, options, value, on
       className="space-y-1"
       role="group"
       aria-labelledby={label ? labelId : undefined}
-      aria-describedby={error ? errorId : hint ? hintId : undefined}
-      aria-invalid={error ? true : undefined}
-      aria-required={required || undefined}
     >
       {label && (
         <label id={labelId} htmlFor={controlId} className="block text-xs font-medium text-muted-foreground">
@@ -139,6 +133,9 @@ export function FormSelect({ label, error, hint, placeholder, options, value, on
       <SearchableSelect
         id={controlId}
         ariaLabel={label ?? placeholder}
+        ariaRequired={required}
+        ariaInvalid={Boolean(error)}
+        ariaDescribedBy={error ? errorId : hint ? hintId : undefined}
         options={options}
         value={value}
         onValueChange={onChange}
@@ -491,9 +488,6 @@ export function FormDatePicker({ label, error, hint, value, onChange, min, requi
       className="space-y-1"
       role="group"
       aria-labelledby={label ? labelId : undefined}
-      aria-describedby={error ? errorId : hint ? hintId : undefined}
-      aria-invalid={error ? true : undefined}
-      aria-required={required || undefined}
     >
       {label && (
         <span id={labelId} className="block text-xs font-medium text-muted-foreground">
@@ -508,6 +502,8 @@ export function FormDatePicker({ label, error, hint, value, onChange, min, requi
         onChange={onChange}
         minDate={min ? new Date(min) : undefined}
         required={required}
+        ariaInvalid={Boolean(error)}
+        ariaDescribedBy={error ? errorId : hint ? hintId : undefined}
       />
       <FieldFeedback hint={hint} error={error} hintId={hintId} errorId={errorId} />
     </div>

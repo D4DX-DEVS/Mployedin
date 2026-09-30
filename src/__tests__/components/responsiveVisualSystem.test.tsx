@@ -63,7 +63,12 @@ describe("responsive visual system", () => {
 
   it("reserves document clearance while the compact cookie banner is visible", () => {
     jest.useFakeTimers();
-    render(<CookieConsent locale="en" />);
+    render(
+      <CookieConsent
+        locale="en"
+        labels={{ message: "We use cookies.", policy: "Cookie policy", accept: "Accept", decline: "Decline" }}
+      />,
+    );
 
     act(() => {
       jest.advanceTimersByTime(1000);

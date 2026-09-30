@@ -245,7 +245,7 @@ export default function AdminSystemHealthPage() {
                   </div>
                   {health.integrations.failing > 0 && (
                     <Link
-                      href={`/${locale}/admin/webhooks?status=failed`}
+                      href={`/${locale}/admin/webhooks?status=failing`}
                       className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline sm:min-h-0"
                     >
                       {t("openFailingWebhooks")} <ArrowRight className="h-3.5 w-3.5" />

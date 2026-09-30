@@ -77,9 +77,13 @@ jest.mock("@/models/ConsentLog", () => ({
   },
 }));
 
+const userFind = jest.fn((..._args: unknown[]) => chain([{ _id: "64d000000000000000000003", email: "sara@example.com" }]));
 jest.mock("@/models/User", () => ({
   __esModule: true,
-  default: { countDocuments: jest.fn().mockResolvedValue(42) },
+  default: {
+    countDocuments: jest.fn().mockResolvedValue(42),
+    find: (...a: unknown[]) => userFind(...a),
+  },
 }));
 
 const patchReq = (id: string, body: unknown) =>
@@ -130,10 +134,31 @@ describe("Admin GDPR register", () => {
     expect(payload.total).toBe(1);
     expect(payload.items[0]).toEqual(expect.objectContaining({
       userName: "Sara Ahmed",
+      userEmail: "sara@example.com",
       consentType: "marketing",
       granted: true,
       timestamp: consentDoc.createdAt.toISOString(),
+      source: null,
+      policyVersion: null,
     }));
+  });
+
+  it("GET /api/admin/gdpr/consent filters by consent type and ignores an unknown one", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?type=terms_and_privacy"), { params: Promise.resolve({}) });
+    expect(consentFind).toHaveBeenLastCalledWith(expect.objectContaining({ consentType: "terms_and_privacy" }));
+
+    await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?type=%24ne"), { params: Promise.resolve({}) });
+    expect(consentFind.mock.calls.at(-1)?.[0]).not.toHaveProperty("consentType");
+  });
+
+  it("GET /api/admin/gdpr/consent finds a user's rows by e-mail", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?search=sara%40example"), { params: Promise.resolve({}) });
+
+    expect(userFind).toHaveBeenCalledWith({ email: { $regex: "sara@example", $options: "i" } });
+    const filter = consentFind.mock.calls.at(-1)?.[0] as { $or: unknown[] };
+    expect(filter.$or).toContainEqual({ userId: { $in: ["64d000000000000000000003"] } });
   });
 
   it("PATCH /api/admin/gdpr/[id] moves a pending request to in_progress and records the handler", async () => {

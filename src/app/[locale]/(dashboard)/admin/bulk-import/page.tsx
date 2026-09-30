@@ -13,12 +13,16 @@ import {
   Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle,
   Download, ArrowRight, RotateCcw, Users, Briefcase, Building2, Loader2,
 } from "lucide-react";
+import {
+  BULK_IMPORT_TEMPLATES, parseImportRows,
+  type BulkImportType, type RowIssue,
+} from "@/lib/admin/bulkImport";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ImportType = "users" | "jobs" | "employers";
+type ImportType = BulkImportType;
 
 interface ParsedRow {
   rowNumber: number;
@@ -30,18 +34,14 @@ interface ParsedRow {
 interface ImportResult {
   success: number;
   failed: number;
-  errors: { row: number; message: string }[];
+  errors: { row: number; code?: RowIssue["code"]; params?: Record<string, string>; message: string }[];
 }
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const TEMPLATES: Record<ImportType, string[]> = {
-  users: ["fullName", "email", "phone", "role", "country"],
-  jobs: ["title", "company", "location", "type", "salary", "description"],
-  employers: ["companyName", "industry", "email", "phone", "country", "website"],
-};
+const TEMPLATES = BULK_IMPORT_TEMPLATES;
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -58,51 +58,26 @@ export default function AdminBulkImportPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const IMPORT_TYPES = [
-    { value: "users" as const, label: t("users"), icon: <Users className="h-4 w-4" /> },
-    { value: "jobs" as const, label: t("jobs"), icon: <Briefcase className="h-4 w-4" /> },
-    { value: "employers" as const, label: t("employers"), icon: <Building2 className="h-4 w-4" /> },
+    { value: "users" as const, label: t("jobSeekers"), icon: <Users className="h-4 w-4 shrink-0" /> },
+    { value: "jobs" as const, label: t("jobs"), icon: <Briefcase className="h-4 w-4 shrink-0" /> },
+    { value: "employers" as const, label: t("employers"), icon: <Building2 className="h-4 w-4 shrink-0" /> },
   ];
 
+  /** A row problem in the admin's language; an unknown server code keeps the server's text. */
+  const issueText = useCallback((issue: { code?: string; params?: Record<string, string>; message?: string }) => {
+    const key = `rowErrors.${issue.code}`;
+    return issue.code && t.has(key) ? t(key, issue.params ?? {}) : (issue.message ?? t("rowErrors.failed"));
+  }, [t]);
+
   /* ---- Parse CSV ---- */
-  const parseCSV = useCallback((text: string): ParsedRow[] => {
-    const lines = text.split("\n").filter((l) => l.trim());
-    if (lines.length < 2) return [];
-
-    const headers = lines[0].split(",").map((h) => h.trim().replace(/"/g, ""));
-    const expectedHeaders = TEMPLATES[importType];
-    const rows: ParsedRow[] = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
-      const data: Record<string, string> = {};
-      const errors: string[] = [];
-
-      headers.forEach((h, idx) => {
-        data[h] = values[idx] ?? "";
-      });
-
-      /* Validate required fields */
-      for (const field of expectedHeaders.slice(0, 3)) {
-        if (!data[field]?.trim()) {
-          errors.push(`Missing required field: ${field}`);
-        }
-      }
-
-      /* Email validation */
-      if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-        errors.push("Invalid email format");
-      }
-
-      rows.push({
-        rowNumber: i,
-        data,
-        errors,
-        status: errors.length > 0 ? "error" : "valid",
-      });
-    }
-
-    return rows;
-  }, [importType]);
+  // Quoted cells may hold commas; the server runs the same row checks again.
+  const parseCSV = useCallback((text: string): ParsedRow[] =>
+    parseImportRows(importType, text).map((row) => ({
+      rowNumber: row.rowNumber,
+      data: row.data,
+      errors: row.issues.map((issue) => issueText(issue)),
+      status: row.issues.length > 0 ? "error" : "valid",
+    })), [importType, issueText]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -212,7 +187,7 @@ export default function AdminBulkImportPage() {
             {/* Type selection */}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">{t("labelImportType")}</label>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 {IMPORT_TYPES.map((typeOption) => (
                   <button
                     key={typeOption.value}
@@ -234,7 +209,7 @@ export default function AdminBulkImportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">{t("labelDownloadTemplate")}</p>
-                  <p className="text-xs text-muted-foreground">{t("descDownloadTemplate", { type: importType })}</p>
+                  <p className="text-xs text-muted-foreground">{t("descDownloadTemplate", { type: IMPORT_TYPES.find((o) => o.value === importType)?.label ?? importType })}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={downloadTemplate}>
                   <Download className="mr-1 h-3.5 w-3.5" /> {t("labelTemplate")}
@@ -243,6 +218,7 @@ export default function AdminBulkImportPage() {
               <p className="mt-2 text-xs text-muted-foreground">
                 {t("labelExpectedColumns")}: <code className="rounded bg-muted px-1 py-0.5">{TEMPLATES[importType].join(", ")}</code>
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">{t(`hint.${importType}`)}</p>
             </div>
 
             {/* File upload */}
@@ -355,7 +331,7 @@ export default function AdminBulkImportPage() {
               <div className="mt-4 w-full max-w-md text-left">
                 <p className="mb-2 text-sm font-medium text-foreground">{t("labelErrorsHeading")}:</p>
                 {result.errors.slice(0, 10).map((e, i) => (
-                  <p key={i} className="text-xs text-red-600">{t("labelErrorItem", { row: e.row, message: e.message })}</p>
+                  <p key={i} className="text-xs text-red-600">{t("labelErrorItem", { row: e.row, message: issueText(e) })}</p>
                 ))}
               </div>
             )}

@@ -32,6 +32,8 @@ interface Employer {
   location?: string;
   isActive: boolean;
   isAgentVerified?: boolean;
+  /** Assigned to me (not only in my region) — posting jobs and entering the account need it. */
+  assignedToMe?: boolean;
 }
 
 const getEmployerFields = (t: ReturnType<typeof useTranslations>): CrudField[] => [
@@ -401,12 +403,19 @@ export default function AgentEmployersPage() {
 
               <TooltipProvider delayDuration={200}>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Link
-                    href={`/${locale}/agent/jobs/new?employer=${em._id}`}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
-                  >
-                    <BriefcaseBusiness className="h-3.5 w-3.5" /> {t("cardPostJobButton")}
-                  </Link>
+                  {em.assignedToMe ? (
+                    <Link
+                      href={`/${locale}/agent/jobs/new?employer=${em._id}`}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+                    >
+                      <BriefcaseBusiness className="h-3.5 w-3.5" /> {t("cardPostJobButton")}
+                    </Link>
+                  ) : (
+                    <p className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">{t("cardRegionOnly")}</span>
+                    </p>
+                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Link
@@ -419,24 +428,26 @@ export default function AgentEmployersPage() {
                     </TooltipTrigger>
                     <TooltipContent>{t("cardViewJobsTooltip")}</TooltipContent>
                   </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => handleSwitchToEmployerView(em._id)}
-                        disabled={switchingEmployerId === em._id || !em.isActive}
-                        className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50 chip-pad"
-                        aria-label={t("cardSwitchWorkspaceAriaLabel", { company: em.companyName ?? em.name })}
-                      >
-                        {switchingEmployerId === em._id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <LogIn className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("cardSwitchWorkspaceTooltip")}</TooltipContent>
-                  </Tooltip>
-                  {can("employers", "update") && (
+                  {em.assignedToMe && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => handleSwitchToEmployerView(em._id)}
+                          disabled={switchingEmployerId === em._id || !em.isActive}
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50 chip-pad"
+                          aria-label={t("cardSwitchWorkspaceAriaLabel", { company: em.companyName ?? em.name })}
+                        >
+                          {switchingEmployerId === em._id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <LogIn className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("cardSwitchWorkspaceTooltip")}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {em.assignedToMe && can("employers", "update") && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button

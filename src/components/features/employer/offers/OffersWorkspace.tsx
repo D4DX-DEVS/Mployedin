@@ -8,6 +8,7 @@ import { DollarSign, Eye, X, FileDown, ChevronDown, UserCheck, Clock3, CircleChe
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,7 +16,11 @@ import {
 } from "@/components/ui/table";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { useOffers, useWithdrawOffer } from "@/hooks/useOffers";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { Offer, OfferStatus } from "@/hooks/useOffers";
@@ -68,10 +73,10 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: OFFER_STATUSES });
   const [urlJobFilter, setUrlJobFilter] = useUrlFilter("jobId", "all");
   const jobFilter = jobId ?? urlJobFilter;
-  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [detailOffer, setDetailOffer] = useState<Offer | null>(null);
   const [expandedOfferId, setExpandedOfferId] = useState<string | null>(null);
   const [jobOptions, setJobOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allJobs") }]);
+  const { confirm: confirmWithdraw, ConfirmDialogNode: ConfirmWithdrawNode } = useConfirm();
 
   const { data, isLoading: loading, error, refetch } = useOffers({ page, limit, status: statusFilter, jobId: jobFilter !== "all" ? jobFilter : undefined });
   const withdrawMutation = useWithdrawOffer();
@@ -113,10 +118,22 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
   async function handleWithdraw(offerId: string) {
     try {
       await withdrawMutation.mutateAsync(offerId);
-      setWithdrawingId(null);
     } catch (err) {
       console.error("Error withdrawing offer:", err);
     }
+  }
+
+  // Withdraw leaves the inline buttons: destructive actions live last in the
+  // row "…" menu behind the shared confirm dialog (same as interviews cancel).
+  async function askWithdraw(offer: Offer) {
+    const ok = await confirmWithdraw({
+      title: t("withdrawConfirm"),
+      message: `${t("withdrawConfirmDesc")} ${candidateName(offer)}?`,
+      confirmLabel: t("withdrawOffer"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    await handleWithdraw(offer._id);
   }
 
   const isExpiring = (offer: Offer) => {
@@ -132,10 +149,10 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
     { header: t("candidate"), key: "jobSeekerId", formatter: (_v, r) => { const o = r as unknown as Offer; return candidateName(o); } },
     { header: t("role"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title || t("untitledRole") },
     { header: t("salary"), key: "salary", formatter: (_v, r) => { const o = r as Record<string, any>; return `${o.salary?.currency} ${formatCount(o.salary?.amount)}`; } },
-    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
+    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : t("notSet") },
     { header: t("status"), key: "status", formatter: (v) => String(v ?? "—") },
-    { header: t("expires"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
-    { header: t("createdAt"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "—" },
+    { header: t("expires"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : t("notSet") },
+    { header: t("createdAt"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: offers as unknown as Record<string, unknown>[],
@@ -147,8 +164,8 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
   function formatDate(value?: string): string {
     if (!value) return t("notSet");
     return formatIntlDate(new Date(value), {
+      day: "2-digit",
       month: "short",
-      day: "numeric",
       year: "numeric",
     });
   }
@@ -166,6 +183,7 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
 
   return (
     <div className={containerClass}>
+      {ConfirmWithdrawNode}
       {/* Pattern A (compact workspace): title + context line; filters and
           export sit in the list toolbar directly above the list. */}
       {!embedded && (
@@ -181,9 +199,9 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
         />
       )}
 
+      {embedded ? (
       <div className="workspace-toolbar">
-        {embedded ? (
-          // Render stats as filter chips in embedded mode
+          {/* Render stats as filter chips in embedded mode */}
           <>
             <button
               type="button"
@@ -246,36 +264,34 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
               </span>
             </button>
           </>
-        ) : (
-          <>
+      </div>
+      ) : (
+          <InlineFilterBar
+            className="workspace-panel-surface rounded-2xl border-b-0"
+            onExportCsv={offers.length > 0 ? handleExportCsv : undefined}
+            onExportExcel={offers.length > 0 ? handleExportExcel : undefined}
+            onExportPdf={offers.length > 0 ? handleExportPdf : undefined}
+            onClear={statusFilter !== "all" || jobFilter !== "all" ? () => { setStatusFilter("all"); setUrlJobFilter("all"); } : undefined}
+          >
             <SearchableSelect
-              className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+              className={INLINE_FILTER_CONTROL}
               options={jobOptions}
               value={jobFilter}
               onValueChange={setUrlJobFilter}
               placeholder={t("allJobs")}
             />
             <SearchableSelect
-              className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+              className={INLINE_FILTER_CONTROL}
               options={STATUS_OPTIONS}
               value={statusFilter}
               onValueChange={setStatusFilter}
               placeholder={t("allStatuses")}
             />
-            {offers.length > 0 && (
-              <TableToolbar
-                className="ms-auto"
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-              />
-            )}
-          </>
-        )}
-      </div>
+          </InlineFilterBar>
+      )}
 
-      <section className="workspace-panel-surface rounded-2xl panel-body">
-        <div className="flex items-center gap-1.5 border-b border-border pb-3">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <div className="flex items-center gap-1.5 border-b border-border px-4 pb-3 pt-4">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             {t("offerList")}
           </p>
@@ -285,23 +301,22 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
         </div>
 
         {error ? (
-          <div className="flex flex-col gap-4 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {t("loadError")}
-              </p>
-            </div>
-            <Button size="lg" className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
-              {tc("tryAgain")}
-            </Button>
-          </div>
+          <ErrorState onRetry={() => void refetch()} />
         ) : loading ? (
-          <div className="space-y-3 pt-5">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/60" />
-            ))}
-          </div>
+          <>
+            <ul className="space-y-1.5 px-4 pt-3 sm:hidden">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="h-16 animate-pulse rounded-xl border border-border/60 bg-background/70" />
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto sm:block">
+              <Table>
+                <TableBody>
+                  <TableBodySkeleton rows={4} cols={7} />
+                </TableBody>
+              </Table>
+            </div>
+          </>
         ) : offers.length === 0 ? (
           <div className="flex flex-col items-center py-8 text-center sm:py-14">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
@@ -358,28 +373,17 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
                         <dt className="text-muted-foreground">{t("createdAt")}</dt>
                         <dd className="text-end text-foreground">{formatDate(offer.createdAt)}</dd>
                       </dl>
-                      <div className="mt-2 flex gap-2">
-                        <Button size="dense" variant="outline" className="flex-1 rounded-lg text-[11px] font-semibold"
-                          onClick={() => setDetailOffer(offer)}>
-                          <Eye className="me-1 h-3.5 w-3.5" />
-                          {tc("view")}
-                        </Button>
-                        {offer.status === "pending" && !isExpired(offer) ? (
-                          <Button size="dense" variant="outline"
-                            className="flex-1 rounded-lg text-[11px] font-semibold text-status-rejected"
-                            onClick={() => setWithdrawingId(offer._id)}>
-                            <X className="me-1 h-3.5 w-3.5" />
-                            {t("withdraw")}
-                          </Button>
-                        ) : null}
-                        {offer.status === "accepted" ? (
-                          <Button size="dense" variant="outline" className="flex-1 rounded-lg text-[11px] font-semibold" asChild>
-                            <Link href={`/${locale}/employer/placements`}>
-                              <UserCheck className="me-1 h-3.5 w-3.5" />
-                              {t("viewPlacements")}
-                            </Link>
-                          </Button>
-                        ) : null}
+                      <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                        <RowActions
+                          name={candidateName(offer)}
+                          quick={[
+                            { key: "view", label: tc("view"), icon: Eye, iconOnly: true, onSelect: () => setDetailOffer(offer) },
+                          ]}
+                          menu={[
+                            ...(offer.status === "accepted" ? [{ key: "placements", label: t("viewPlacements"), icon: UserCheck, href: `/${locale}/employer/placements` }] : []),
+                            ...(offer.status === "pending" && !isExpired(offer) ? [{ key: "withdraw", label: t("withdraw"), icon: X, destructive: true, pending: withdrawMutation.isPending, onSelect: () => { void askWithdraw(offer); } }] : []),
+                          ]}
+                        />
                       </div>
                       {offer.status === "accepted" ? (
                         // Employers can read and update placements but never
@@ -396,10 +400,10 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
             })}
           </ul>
 
-          <div className="mt-5 hidden overflow-x-auto rounded-3xl border border-border/60 sm:block">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="min-w-[220px]">{t("candidate")}</TableHead>
                   <TableHead className="min-w-[180px]">{t("role")}</TableHead>
                   <TableHead>{t("salary")}</TableHead>
@@ -411,13 +415,16 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
               </TableHeader>
               <TableBody>
                 {offers.map((offer) => (
-                  <TableRow key={offer._id} className={isExpiring(offer) ? "bg-amber-500/10" : "bg-transparent"}>
+                  <TableRow key={offer._id} className={`group ${isExpiring(offer) ? "bg-amber-500/10" : ""}`}>
                     <TableCell>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-foreground">
-                          {candidateName(offer)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{t("createdAt")} {formatDate(offer.createdAt)}</p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <UserAvatar name={offer.jobSeekerId?.userId?.name ?? offer.jobSeekerId?.fullName} className="h-9 w-9" colorful />
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate font-semibold text-foreground">
+                            {candidateName(offer)}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">{t("createdAt")} {formatDate(offer.createdAt)}</p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -446,35 +453,21 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
                       <div className="text-sm text-muted-foreground">
                         {formatDate(offer.expiresAt)}
                         {isExpiring(offer) ? (
-                          <span className="mt-1 block text-xs font-semibold text-status-shortlisted">{t("expired")}</span>
+                          <span className="mt-1 block text-xs font-semibold text-status-shortlisted">{t("expiring")}</span>
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs font-semibold"
-                          onClick={() => setDetailOffer(offer)}>
-                          <Eye className="me-1 h-3.5 w-3.5" />
-                          {tc("view")}
-                        </Button>
-                        {offer.status === "accepted" ? (
-                          <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs font-semibold" asChild
-                            title={t("acceptedNextStepBody")}>
-                            <Link href={`/${locale}/employer/placements`}>
-                              <UserCheck className="me-1 h-3.5 w-3.5" />
-                              {t("viewPlacements")}
-                            </Link>
-                          </Button>
-                        ) : null}
-                        {offer.status === "pending" && !isExpired(offer) ? (
-                          <Button size="dense" variant="ghost"
-                            className="rounded-xl px-3 text-xs font-semibold text-status-rejected hover:bg-status-rejected-bg hover:text-status-rejected"
-                            onClick={() => setWithdrawingId(offer._id)}>
-                            <X className="me-1 h-3.5 w-3.5" />
-                            {t("withdraw")}
-                          </Button>
-                        ) : null}
-                      </div>
+                    <TableCell className="text-right">
+                      <RowActions
+                        name={candidateName(offer)}
+                        quick={[
+                          { key: "view", label: tc("view"), icon: Eye, onSelect: () => setDetailOffer(offer) },
+                        ]}
+                        menu={[
+                          ...(offer.status === "accepted" ? [{ key: "placements", label: t("viewPlacements"), icon: UserCheck, iconClassName: "text-muted-foreground", href: `/${locale}/employer/placements` }] : []),
+                          ...(offer.status === "pending" && !isExpired(offer) ? [{ key: "withdraw", label: t("withdraw"), icon: X, destructive: true, pending: withdrawMutation.isPending, onSelect: () => { void askWithdraw(offer); } }] : []),
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -494,26 +487,6 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
-      )}
-
-      {withdrawingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
-            <div className="border-b border-border/60 px-6 py-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerAction")}</p>
-              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("withdrawConfirm")}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {t("withdrawConfirmDesc")}
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 px-6 py-5">
-              <Button variant="ghost" className="rounded-xl" onClick={() => setWithdrawingId(null)}>{tc("cancel")}</Button>
-              <Button variant="destructive" className="rounded-xl" disabled={withdrawMutation.isPending} onClick={() => handleWithdraw(withdrawingId)}>
-                {withdrawMutation.isPending ? t("withdrawing") : t("withdrawOffer")}
-              </Button>
-            </div>
-          </div>
-        </div>
       )}
 
       {detailOffer && (

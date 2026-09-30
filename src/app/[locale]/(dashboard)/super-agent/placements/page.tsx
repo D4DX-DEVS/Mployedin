@@ -8,8 +8,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowUpDown, CalendarClock, ChevronDown, ChevronUp, DollarSign,
-  RotateCcw, ShieldCheck, Trophy, Users2,
+  CalendarClock, DollarSign,
+  ShieldCheck, Trophy, Users2,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -21,7 +21,12 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -217,6 +222,10 @@ export default function SuperAgentPlacementsPage() {
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
     if (filters.agentId) params.set("agentId", filters.agentId);
     if (filters.employerId) params.set("employerId", filters.employerId);
+    // Sort was collected by the column heads and the sort selects but never
+    // sent — every ordering silently fell back to newest-first.
+    if (filters.sortBy) params.set("sortBy", filters.sortBy);
+    if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
 
     try {
       const res = await fetch(`/api/placements?${params}`);
@@ -276,8 +285,8 @@ export default function SuperAgentPlacementsPage() {
     { header: t("exportSalary"), key: "salary", formatter: (_v, row) => formatPlacementSalary(row as unknown as Placement) },
     { header: t("exportCurrency"), key: "currency" },
     { header: t("exportCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? tc("yes") : tc("no") },
-    { header: t("exportStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
-    { header: t("exportPlacedAt"), key: "placedAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("exportStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
+    { header: t("exportPlacedAt"), key: "placedAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -298,30 +307,6 @@ export default function SuperAgentPlacementsPage() {
   ];
 
   /* ---------------------------------------------------------------- */
-  /*  Sortable Header Cell                                            */
-  /* ---------------------------------------------------------------- */
-
-  function SortHeader({ field, children }: { field: string; children: React.ReactNode }) {
-    const active = filters.sortBy === field;
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(field)}
-        className="group inline-flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors"
-      >
-        {children}
-        {active ? (
-          filters.sortOrder === "asc"
-            ? <ChevronUp className="h-3.5 w-3.5 text-primary" />
-            : <ChevronDown className="h-3.5 w-3.5 text-primary" />
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-        )}
-      </button>
-    );
-  }
-
-  /* ---------------------------------------------------------------- */
   /*  Render                                                          */
   /* ---------------------------------------------------------------- */
 
@@ -339,18 +324,7 @@ export default function SuperAgentPlacementsPage() {
           controls sitting right below it. */}
       <SuperAgentSection>
         {/* ---- Error State ---- */}
-        {error && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p className="text-sm text-destructive">{t("loadPlacementsError")}</p>
-            <button
-              type="button"
-              onClick={() => fetchPlacements()}
-              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
-            >
-              {tc("tryAgain")}
-            </button>
-          </div>
-        )}
+        {error && <ErrorState onRetry={() => fetchPlacements()} />}
 
         {/* ---- Visa Status Filter Pills ---- */}
         {/* Filter toggles, not statistics: one scrolling row of pills like every
@@ -377,55 +351,24 @@ export default function SuperAgentPlacementsPage() {
           })}
         </div>
 
-        {/* ---- Merged Filters via TableToolbar ---- */}
-        <TableToolbar
-          search={search}
-          onSearchChange={(v) => { setSearchState(v); resetPage(); }}
-          searchPlaceholder={t("searchPlaceholder")}
+        {/* ---- Filters: search + commission in plain sight, the rest behind More ---- */}
+        <InlineFilterBar
+          className="mb-4"
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          hasActiveFilters={activeFilterCount > 0 || !!filters.visaStatus || !!filters.commissionPaid || !!search}
-          actions={
-            <div className="flex items-center gap-2">
-              {/* Commission Toggle */}
-              {[
-                { value: "", label: tc("all") },
-                { value: "true", label: t("commissionPaid") },
-                { value: "false", label: t("unpaid") },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => updateFilter("commissionPaid", filters.commissionPaid === opt.value ? "" : opt.value)}
-                  aria-pressed={filters.commissionPaid === opt.value}
-                  className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-all ${
-                    filters.commissionPaid === opt.value
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border/70 bg-card text-muted-foreground hover:border-border hover:bg-secondary/80"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-              {(activeFilterCount > 0 || filters.visaStatus || search || filters.commissionPaid) && (
-                <button type="button" onClick={resetFilters} className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all">
-                  <RotateCcw className="h-3.5 w-3.5" /> {t("reset")}
-                </button>
-              )}
-            </div>
-          }
-          filterContent={
-            <div className="space-y-4">
+          onClear={(activeFilterCount > 0 || filters.visaStatus || search || filters.commissionPaid) ? resetFilters : undefined}
+          more={(
+            <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
               {/* Salary Summary */}
               {Object.keys(salaryByCurrency).length > 0 && (
-                <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800">
+                <div className="flex min-w-0 flex-[1_1_100%] items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800">
                   <DollarSign className="h-4 w-4 shrink-0" />
-                  <span>{t("totalSalaryValue")} <strong>{totalSalary}</strong></span>
+                  <span className="truncate">{t("totalSalaryValue")} <strong>{totalSalary}</strong></span>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid min-w-0 flex-[1_1_100%] grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterCurrency")}</label>
                   <SearchableSelect options={getCurrencyOptions(t)} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
@@ -470,7 +413,7 @@ export default function SuperAgentPlacementsPage() {
               </div>
 
               {/* Quick Filter Chips */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-[1_1_100%] flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilterLabel")}:</span>
                 {[
                   { label: t("quickFilterVisaPending"), action: () => updateFilter("visaStatus", "pending") },
@@ -486,53 +429,76 @@ export default function SuperAgentPlacementsPage() {
                 ))}
               </div>
             </div>
-          }
-          className="mb-4"
-        />
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+          )}
+          moreActiveCount={[filters.currency, filters.salaryMin, filters.salaryMax, filters.agentId, filters.employerId, filters.dateFrom, filters.dateTo].filter(Boolean).length}
+        >
+          <InlineFilterSearch
+            value={search}
+            onChange={(v) => { setSearchState(v); resetPage(); }}
+            placeholder={t("searchPlaceholder")}
+          />
+          {/* Commission Toggle */}
+          {[
+            { value: "", label: tc("all") },
+            { value: "true", label: t("commissionPaid") },
+            { value: "false", label: t("unpaid") },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => updateFilter("commissionPaid", filters.commissionPaid === opt.value ? "" : opt.value)}
+              aria-pressed={filters.commissionPaid === opt.value}
+              className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-all ${
+                filters.commissionPaid === opt.value
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border/70 bg-card text-muted-foreground hover:border-border hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </InlineFilterBar>
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead className="min-w-[180px]"><SortHeader field="candidateName">{t("columnCandidate")}</SortHeader></TableHead>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="min-w-[180px]">{t("columnCandidate")}</TableHead>
                 <TableHead>{t("columnJob")}</TableHead>
-                <TableHead><SortHeader field="salary">{t("columnSalary")}</SortHeader></TableHead>
-                <TableHead><SortHeader field="startDate">{t("columnStartDate")}</SortHeader></TableHead>
+                <TableHead>
+                  <SortableTableHeader label={t("columnSalary")} active={filters.sortBy === "salary"} order={filters.sortOrder as "asc" | "desc"} onClick={() => toggleSort("salary")} />
+                </TableHead>
+                <TableHead>
+                  <SortableTableHeader label={t("columnStartDate")} active={filters.sortBy === "startDate"} order={filters.sortOrder as "asc" | "desc"} onClick={() => toggleSort("startDate")} />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 4 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={4} />
               ) : placements.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                        <Trophy className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {filters.search || filters.visaStatus || activeFilterCount > 0
-                            ? t("emptyStateFiltered")
-                            : t("emptyStateDefault")}
-                        </p>
-                      </div>
-                    </div>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="py-12">
+                    <EmptyState
+                      title={t("emptyStateTitle")}
+                      description={
+                        filters.search || filters.visaStatus || activeFilterCount > 0
+                          ? t("emptyStateFiltered")
+                          : t("emptyStateDefault")
+                      }
+                      icon={Trophy}
+                    />
                   </TableCell>
                 </TableRow>
               ) : placements.map((p) => (
-                <TableRow key={p._id} className="bg-transparent">
+                <TableRow key={p._id} className="group">
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-foreground">{getCandidateName(p)}</p>
-                      {p.candidateEmail && <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>}
-                      <StatusBadge status={getVisaStatus(p)} />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar name={getCandidateName(p)} email={p.candidateEmail} className="h-9 w-9" colorful />
+                      <div className="min-w-0 space-y-1">
+                        <p className="truncate font-medium text-foreground">{getCandidateName(p)}</p>
+                        {p.candidateEmail && <p className="truncate text-xs text-muted-foreground">{p.candidateEmail}</p>}
+                        <StatusBadge status={getVisaStatus(p)} />
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-foreground/85">
@@ -550,19 +516,17 @@ export default function SuperAgentPlacementsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    <span className="block">{p.startDate ? formatDate(new Date(p.startDate)) : "—"}</span>
-                    <span className="mt-1 block text-xs">{p.placedAt ? formatDate(new Date(p.placedAt)) : "—"}</span>
+                    <span className="block">{p.startDate ? formatDate(new Date(p.startDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</span>
+                    <span className="mt-1 block text-xs">{p.placedAt ? formatDate(new Date(p.placedAt), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</span>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-
-        <div className="mt-4">
-          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-        </div>
       </SuperAgentSection>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

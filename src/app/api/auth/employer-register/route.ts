@@ -20,6 +20,8 @@ import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { normalizeWebsiteUrl } from "@/lib/validators/website";
 import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
+import { TERMS_REQUIRED_MESSAGE } from "@/lib/validators/misc";
+import { findRegionCoverage, resolveEmployerRegion } from "@/lib/agents/territoryCoverage";
 
 export const runtime = "nodejs";
 
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest) {
     const website = websiteResult.value;
     const country = get("country");
     const city = get("city");
+    const cityId = get("cityId");
 
     // Step 2 — verification
     const verificationLevel = get("verificationLevel") || "basic";
@@ -108,6 +111,10 @@ export async function POST(req: NextRequest) {
     if (!companyName || !contactEmail || !password || !contactName) {
       return NextResponse.json({ message: "Required fields missing." }, { status: 400 });
     }
+    // The form checks the box too; a direct API call skipped it.
+    if (get("termsAccepted") !== "true") {
+      return NextResponse.json({ message: TERMS_REQUIRED_MESSAGE }, { status: 400 });
+    }
     const passwordResult = strongPasswordSchema.safeParse(password);
     if (!passwordResult.success) {
       return NextResponse.json(
@@ -116,13 +123,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // The catalogue city decides which super-agents and agents see this
+    // company. A typed city (older clients, direct API calls) still registers,
+    // and resolves only when the name is unambiguous within the country.
+    const region = await resolveEmployerRegion({ cityId, cityName: city, countryCode: country });
+    if (cityId && !region) {
+      return NextResponse.json({ message: "Pick your city from the list." }, { status: 400 });
+    }
+
     // Check duplicate
     const existing = await User.findOne({ email: contactEmail });
     if (existing) {
+      // A colleague an employer added with a temporary password stays
+      // unverified until their first sign-in, but is not an abandoned sign-up:
+      // deleting them would leave that company's seat pointing at nothing.
+      const holdsTeamSeat =
+        !existing.isEmailVerified &&
+        Boolean(await CompanyUser.exists({ userId: existing._id, status: { $ne: "deactivated" } }));
+
       // Allow re-registration if the existing user never verified their email
       // and was created over 24 hours ago (stale unverified attempt)
       const isStaleUnverified =
         !existing.isEmailVerified &&
+        !holdsTeamSeat &&
         existing.createdAt &&
         Date.now() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000;
 
@@ -140,7 +163,7 @@ export async function POST(req: NextRequest) {
         await User.deleteOne({ _id: existing._id });
       } else {
         return NextResponse.json(
-          { message: existing.isEmailVerified
+          { message: existing.isEmailVerified || holdsTeamSeat
               ? "This email is already registered. Please sign in instead."
               : "This email has a pending verification. Please check your inbox or try again after 24 hours."
           },
@@ -262,8 +285,10 @@ export async function POST(req: NextRequest) {
       industry,
       companySize: size,
       website,
-      country,
-      city,
+      country: region?.countryCode || country,
+      city: region?.cityName ?? city,
+      regionCityId: region?.cityId ?? null,
+      regionStateId: region?.stateId ?? null,
       designation: contactTitle,
       verificationLevel: verificationLevel === "standard" ? "company" : verificationLevel,
       verificationDocs: [tradeLicenseUrl, mohCertUrl].filter(Boolean),
@@ -290,6 +315,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Link employer to referring agent
+    let referralSaUserId: string | null = null;
     if (referrerAgentId) {
       await Agent.findByIdAndUpdate(referrerAgentId, {
         $addToSet: { assignedEmployerIds: employer._id },
@@ -299,6 +325,7 @@ export async function POST(req: NextRequest) {
       // Notify super agent about new employer in their network
       const { getSuperAgentUserId, notifySuperAgentEmployerRegistered } = await import("@/lib/notifications/trigger");
       const saUserId = await getSuperAgentUserId(referrerAgentId);
+      referralSaUserId = saUserId;
       if (saUserId) {
         const agentDoc = await Agent.findById(referrerAgentId).select("userId").lean();
         const agentUser = agentDoc?.userId
@@ -317,6 +344,34 @@ export async function POST(req: NextRequest) {
       const { notifyAdminsEmployerRegistered } = await import("@/lib/notifications/trigger");
       notifyAdminsEmployerRegistered(companyName || "A company", String(employer._id)).catch((err) =>
         logger.error({ err, employerId: String(employer._id) }, "Failed to notify admins of employer registration"),
+      );
+    }
+
+    // Every super-agent and agent whose territory covers the region sees the
+    // company from now on, so each is told. When nobody covers it, admins are.
+    {
+      const { notifyRegionEmployerRegistered, notifyAdminsEmployerOutsideTerritory } =
+        await import("@/lib/notifications/trigger");
+      const name = companyName || "A company";
+      const employerId = String(employer._id);
+      (async () => {
+        if (!region) {
+          await notifyAdminsEmployerOutsideTerritory(name, employerId, null);
+          return;
+        }
+        const coverage = await findRegionCoverage(region);
+        await Promise.all([
+          ...coverage.superAgents
+            .filter((m) => m.userId !== referralSaUserId)
+            .map((m) => notifyRegionEmployerRegistered(m.userId, "super_agent", name, region.cityName, employerId)),
+          ...coverage.agents
+            .map((m) => notifyRegionEmployerRegistered(m.userId, "agent", name, region.cityName, employerId)),
+        ]);
+        if (coverage.superAgents.length === 0) {
+          await notifyAdminsEmployerOutsideTerritory(name, employerId, `${region.cityName}, ${region.countryCode}`);
+        }
+      })().catch((err) =>
+        logger.error({ err, employerId }, "Failed to notify the employer's region of its registration"),
       );
     }
 

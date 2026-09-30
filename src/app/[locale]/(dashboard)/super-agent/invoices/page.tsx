@@ -11,13 +11,14 @@ import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  RotateCcw, ArrowRight,
+  ArrowRight,
   BarChart3, FileText, RefreshCw,
   DollarSign, CheckCircle2, Clock, Percent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { InvoiceTable } from "@/components/shared/InvoiceTable";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
@@ -128,7 +129,7 @@ export default function SuperAgentInvoicesPage() {
       return sc ? `${sc.rate}% = ${sc.amount}` : "—";
     }},
     { header: tc("status"), key: "status" },
-    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -181,40 +182,62 @@ export default function SuperAgentInvoicesPage() {
           <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold max-sm:min-h-11">
             <FileText className="h-3.5 w-3.5" /> {t("createInvoice")}
           </Button>
-          <div className="inline-flex rounded-lg border border-border/70 bg-card max-sm:w-full">
-            <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 flex-1 max-sm:flex max-sm:items-center max-sm:justify-center ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("viewInvoices")}
+          {/* h-10 matches the Create Invoice button; flex-1 only on phones so a longer label never wraps on desktop. */}
+          <div className="inline-flex h-10 rounded-lg border border-border/70 bg-card max-sm:h-11 max-sm:w-full">
+            <button type="button" onClick={() => setActiveView("table")} aria-pressed={activeView === "table"} className={`inline-flex h-full items-center justify-center gap-1 whitespace-nowrap rounded-l-lg px-3 text-xs font-medium transition-colors max-sm:flex-1 ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <FileText className="h-3.5 w-3.5" /> {t("viewInvoices")}
             </button>
-            <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 flex-1 max-sm:flex max-sm:items-center max-sm:justify-center ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("viewAnalytics")}
+            <button type="button" onClick={() => setActiveView("analytics")} aria-pressed={activeView === "analytics"} className={`inline-flex h-full items-center justify-center gap-1 whitespace-nowrap rounded-r-lg px-3 text-xs font-medium transition-colors max-sm:flex-1 ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <BarChart3 className="h-3.5 w-3.5" /> {t("viewAnalytics")}
             </button>
           </div>
         </div>
       </SuperAgentPageIntro>
 
-      {/* ── Filters ── */}
-      <TableToolbar
-        search={search} onSearchChange={(v) => { setSearchState(v); resetPage(); }} searchPlaceholder={t("searchPlaceholder")}
-        filterContent={
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SearchableSelect id="sa-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={statusOptions} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allStatuses")} />
-              <SearchableSelect id="sa-inv-cat" className="h-11 w-full rounded-xl border-border bg-card" options={categoryOptions} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allCategories")} />
-              <div className="flex items-center gap-2 xl:col-span-2">
+      {/* ── Filters (export was built but never passed to the old toolbar) ── */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        onClear={hasActiveFilters || search ? () => { setStatusFilter(""); setCategoryFilter(""); setDateFrom(""); setDateTo(""); setSearchState(""); resetPage(); } : undefined}
+        more={(
+          <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-[1_1_100%] items-center gap-2">
+              <div className="min-w-0 flex-1">
                 <DateTimePicker mode="date" value={dateFrom} onChange={v => { setDateFrom(v); resetPage(); }} />
-                <span className="text-xs text-muted-foreground">{t("dateSeparator")}</span>
+              </div>
+              <span className="shrink-0 text-xs text-muted-foreground">{t("dateSeparator")}</span>
+              <div className="min-w-0 flex-1">
                 <DateTimePicker mode="date" value={dateTo} onChange={v => { setDateTo(v); resetPage(); }} />
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setCategoryFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> {tc("cancel")}
-              </Button>
-            </div>
           </div>
-        }
-        hasActiveFilters={hasActiveFilters}
-      />
+        )}
+        moreActiveCount={[dateFrom, dateTo].filter(Boolean).length}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearchState(v); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          id="sa-inv-status"
+          className={INLINE_FILTER_CONTROL}
+          options={statusOptions}
+          value={statusFilter || "all"}
+          onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+          placeholder={t("allStatuses")}
+        />
+        <SearchableSelect
+          id="sa-inv-cat"
+          className={INLINE_FILTER_CONTROL}
+          options={categoryOptions}
+          value={categoryFilter || "all"}
+          onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
+          placeholder={t("allCategories")}
+        />
+      </InlineFilterBar>
 
       {/* Analytics View */}
       {activeView === "analytics" && (
@@ -251,7 +274,7 @@ export default function SuperAgentInvoicesPage() {
       {/* Table View */}
       {activeView === "table" && (
         <>
-          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
+          {errorMessage && <ErrorState onRetry={() => fetchInvoices()} />}
 
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
             <InvoiceTable
@@ -260,10 +283,8 @@ export default function SuperAgentInvoicesPage() {
               role="super_agent"
               onSelect={setSelectedInvoiceId}
             />
-            <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-              <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-            </div>
           </section>
+          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
         </>
       )}
 

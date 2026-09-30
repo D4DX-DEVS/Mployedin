@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { TermsAgreement } from "./TermsAgreement";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 /**
@@ -62,24 +61,7 @@ function SignupConsentDialog({ locale, open, onConfirm, onCancel }: {
           <DialogTitle>{t("signupConsentTitle")}</DialogTitle>
           <DialogDescription>{t("signupConsentDescription")}</DialogDescription>
         </DialogHeader>
-        <div className="flex min-h-11 items-start gap-3 rounded-xl p-1">
-          <Checkbox
-            id="signup-consent-terms"
-            checked={agreed}
-            onCheckedChange={(v) => setAgreed(v === true)}
-            className="mt-0.5"
-          />
-          <label htmlFor="signup-consent-terms" className="text-sm leading-5 text-muted-foreground">
-            {t("agreeToTerms")}{" "}
-            <Link href={`/${locale}/terms`} className="text-primary hover:underline" target="_blank">
-              {t("termsOfService")}
-            </Link>{" "}
-            {t("and")}{" "}
-            <Link href={`/${locale}/privacy`} className="text-primary hover:underline" target="_blank">
-              {t("privacyPolicyLink")}
-            </Link>
-          </label>
-        </div>
+        <TermsAgreement id="signup-consent-terms" locale={locale} checked={agreed} onCheckedChange={setAgreed} />
         <DialogFooter>
           <Button
             variant="outline"

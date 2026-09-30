@@ -385,6 +385,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
+  // Job-seeker lists show JobSeeker.fullName first; the seeker's own profile
+  // edit keeps it in step with User.name, so an admin rename does too.
+  if (name && (updated as { role?: string }).role === "job_seeker") {
+    const JobSeeker = (await import("@/models/JobSeeker")).default;
+    await JobSeeker.updateOne({ userId }, { $set: { fullName: name } });
+  }
+
   // `after` on its own made the audit trail unreadable: a row said
   // `role: "employer"` with no way to tell what the role had been, or whether
   // the field changed at all. Snapshot the same keys from the pre-update doc.

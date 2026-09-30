@@ -1,6 +1,6 @@
 export default function CompaniesLoading() {
   return (
-    <main className="container mx-auto px-4 py-8 max-w-7xl animate-pulse">
+    <div className="container mx-auto px-4 py-8 max-w-7xl animate-pulse">
       {/* Header */}
       <div className="mb-8">
         <div className="h-8 w-44 rounded-lg bg-muted mb-2" />
@@ -37,6 +37,6 @@ export default function CompaniesLoading() {
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

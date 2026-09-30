@@ -155,7 +155,24 @@
     "hiringQuestion": "Hiring?",
     "registerAsEmployer": "Register as an employer",
     "referralNotice": "You're joining through a partner referral",
-    "referralNoticeWrongAudience": "This link is for employers. You can still create a job-seeker account."
+    "referralNoticeWrongAudience": "This link is for employers. You can still create a job-seeker account.",
+    "acceptTerms": {
+      "title": "Accept our Terms to continue",
+      "titleUpdated": "We've updated our Terms",
+      "titleDone": "You're all set",
+      "description": "Before you continue, please read and accept the Mployedin Terms of Service and Privacy Policy.",
+      "descriptionUpdated": "Our Terms of Service and Privacy Policy changed on {date}. Please review them and accept to keep using Mployedin.",
+      "descriptionDone": "You've already accepted the current Terms of Service and Privacy Policy.",
+      "acceptButton": "Accept and continue",
+      "continueButton": "Continue",
+      "notNow": "Don't want to accept now?",
+      "signOut": "Sign out",
+      "saveError": "We couldn't record your acceptance. Please try again.",
+      "sessionNotUpdated": "Your acceptance is saved, but your session didn't refresh. Sign out and sign in again to continue.",
+      "signedOutTitle": "Your session has ended",
+      "signedOutDescription": "Sign in again to continue.",
+      "signInAgain": "Sign in again"
+    }
   },
   "authLayout": {
     "aiPowered": "AI-powered",
@@ -346,7 +363,11 @@
         "description": "Government-approved status badge (MoH / Free Zone)",
         "badge": "Top tier"
       }
-    }
+    },
+    "citySearchPlaceholder": "Search your city…",
+    "cityTypeToSearch": "Type at least 2 letters to search.",
+    "cityNoMatch": "No city with that name in this country.",
+    "citySearching": "Searching…"
   },
   "common": {
     "stepProgress": "Step {current} of {total}",
@@ -480,7 +501,10 @@
     "generatePassword": "Generate password",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
-    "sortDateAdded": "Date added"
+    "sortDateAdded": "Date added",
+    "requiredFieldsNote": "Fields marked * are required.",
+    "selectEllipsis": "Select…",
+    "searching": "Searching…"
   },
   "table": {
     "search": "Search...",
@@ -2987,6 +3011,10 @@
     "cookiesAgreement": "By continuing to use our website, you consent to the use of cookies as described in this policy.",
     "gdprIntro": "This page explains how we comply with the General Data Protection Regulation (GDPR) and your data rights when using mployedin.com.",
     "gdprAgreement": "We are committed to protecting your data rights in full compliance with GDPR and UK data protection laws.",
+    "accessibilityHeading": "Accessibility Statement",
+    "accessibilityIntro": "This statement explains how accessible MPLOYEDIN is, where we know it still falls short, and how to tell us about a barrier.",
+    "accessibilityPreparing": "Our accessibility statement is being prepared.",
+    "accessibilityAgreement": "If anything on MPLOYEDIN is hard to use, email support@mployedin.com and tell us the page and the problem.",
     "legalLastUpdated": "Last updated: {date}",
     "faqCategory": {
       "general": "General",
@@ -2995,7 +3023,11 @@
       "agent": "Agents",
       "billing": "Billing & plans",
       "privacy": "Privacy & data"
-    }
+    },
+    "contactNameRequired": "Enter your full name.",
+    "contactEmailRequired": "Enter your email address.",
+    "contactEmailInvalid": "Enter a valid email address, like name@example.com.",
+    "contactMessageRequired": "Enter your message."
   },
   "locationData": {
     "title": "Location Data",
@@ -4071,6 +4103,7 @@
     "cookies": "Cookies",
     "terms": "Terms",
     "gdpr": "GDPR",
+    "accessibility": "Accessibility",
     "support": "Support",
     "homepage": "Homepage"
   },
@@ -4111,7 +4144,8 @@
     "agent": "Agent",
     "employer": "Employer",
     "jobSeeker": "Job Seeker",
-    "profile": "My profile"
+    "profile": "My profile",
+    "openUserMenu": "Open user menu"
   },
   "maintenance": {
     "title": "Under Maintenance",
@@ -4654,7 +4688,8 @@
     "pickDateTime": "Pick date & time",
     "pickDate": "Pick a date",
     "pickTime": "Pick a time",
-    "firstInterviewStartsAt": "(first interview starts at)"
+    "firstInterviewStartsAt": "(first interview starts at)",
+    "requiredLabel": "{label}, required"
   },
   "messagesPage": {
     "defaultTitle": "Messages",
@@ -4765,6 +4800,7 @@
     "pageOf": "Page {page} of {pages}",
     "perPage": "Per page",
     "viewPosterLabel": "View poster for {job}",
+    "reusePosterLabel": "Reuse poster for {job}",
     "posterCount": "{count, plural, =0 {No posters yet} one {# poster} other {# posters}}"
   },
   "employerMessages": {
@@ -6784,7 +6820,18 @@
       "rolesLabel": "Roles",
       "rolesDescription": "Select one or more roles for this member.",
       "rolesPlaceholder": "Select roles...",
-      "jobAccessDescription": "Select specific jobs this member can access. Leave empty for access to all jobs."
+      "jobAccessDescription": "Select specific jobs this member can access. Leave empty for access to all jobs.",
+      "modeTempPasswordHint": "We'll create their account now and give you a password to share with them. They can change it after signing in.",
+      "tempPasswordToggle": "Set a temporary password instead",
+      "nameLabel": "Full name",
+      "namePlaceholder": "Their full name",
+      "createAccount": "Create account",
+      "creating": "Creating...",
+      "inviteSent": "Invitation sent to {email}",
+      "errors": {
+        "emailInUse": "This email is already in use.",
+        "alreadyMember": "This person is already on your team or has a pending invite."
+      }
     },
     "jobAccessModal": {
       "title": "Edit Job Access",
@@ -6810,6 +6857,23 @@
       "canViewAnalytics": "Reports and analytics",
       "canManageCompanySettings": "Company settings",
       "canManageTeam": "Manage team"
+    },
+    "credentials": {
+      "title": "Account created",
+      "intro": "Share these sign-in details with {name}.",
+      "email": "Email",
+      "password": "Temporary password",
+      "signIn": "Sign in",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyLabel": "Copy {label}",
+      "copyAll": "Copy all",
+      "copyFailed": "We couldn't copy that. Please select and copy it manually.",
+      "onceWarning": "This password is shown only once.",
+      "emailSent": "We emailed {email} that their account is ready. The password was not included.",
+      "emailFailed": "We couldn't email them, so let them know where to sign in.",
+      "changeLater": "They'll confirm their email with a code on first sign-in and can set their own password any time.",
+      "done": "Done"
     }
   },
   "employerActivity": {
@@ -6990,6 +7054,7 @@
     "accepted": "Accepted",
     "declined": "Declined",
     "expired": "Expired",
+    "expiring": "Expiring soon",
     "withdrawn": "Withdrawn",
     "noOffers": "No offers yet",
     "noOffersDesc": "Offers will appear here once you send them to candidates",
@@ -7131,7 +7196,8 @@
     "recordVerdict": "Record verdict",
     "verdictSaved": "Verdict recorded.",
     "noScreeners": "No colleague has screening access yet.",
-    "assignedToYou": "Assigned to you"
+    "assignedToYou": "Assigned to you",
+    "removeReference": "Remove reference"
   },
   "employerPlacements": {
     "backToPlacements": "Back to Placements",
@@ -7339,6 +7405,7 @@
     "charactersCount": "{count} / 5000 characters",
     "subjectLabel": "Subject:",
     "previewLabel": "Preview:",
+    "preview": "Preview",
     "defaultTemplate": "Default Template"
   },
   "employerMatchingWeights": {
@@ -8002,7 +8069,11 @@
     "overallRating": "Overall Rating",
     "date": "Date",
     "evaluatedBy": "Evaluated By",
+    "evaluated": "Evaluated",
     "notes": "Notes",
+    "strengths": "Strengths",
+    "concerns": "Concerns",
+    "recommendation": "Recommendation",
     "scorecardList": "Scorecards"
   },
   "employerPaymentSetup": {
@@ -9049,7 +9120,14 @@
     "roleChangedTitle": "Your account type changed",
     "roleChangedBody": "An administrator changed your account from {fromRole} to {toRole}.",
     "agentEmployerAssignedTitle": "Employer assigned to you",
-    "agentEmployerAssignedBody": "An admin assigned {companyName} to you."
+    "agentEmployerAssignedBody": "An admin assigned {companyName} to you.",
+    "regionEmployerRegisteredTitle": "New employer in your region",
+    "regionEmployerRegisteredBody": "{companyName} registered in {cityName}.",
+    "adminEmployerOutsideTerritoryTitle": "Employer outside every territory",
+    "adminEmployerOutsideTerritoryBody": "{companyName} registered in {region}, which no super agent covers.",
+    "adminEmployerNoRegionBody": "{companyName} registered without a recognised city, so no super agent covers it.",
+    "adminEmployerAddressChangedTitle": "Employer changed its address",
+    "adminEmployerAddressChangedBody": "{companyName} changed its address from {from} to {to}. Its region was not moved."
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -10593,7 +10671,8 @@
     "more": "More",
     "less": "Less",
     "filterChipNoApplications": "No applications",
-    "filterChipExpiringSoon": "Closing within 7 days"
+    "filterChipExpiringSoon": "Closing within 7 days",
+    "jobNotFound": "We couldn't find that job. It may have been deleted."
   },
   "adminSettings": {
     "pageTitle": "Settings",
@@ -10850,7 +10929,7 @@
     "lastUpdatedColumnLabel": "Last Updated",
     "emptyDateValue": "—",
     "pageTitle": "Static Pages",
-    "pageDescription": "Edit the Privacy Policy, Terms & Conditions, Cookie Policy and GDPR pages",
+    "pageDescription": "Edit the Privacy Policy, Terms & Conditions, Cookie Policy, GDPR and Accessibility Statement pages",
     "searchFilterPlaceholder": "Search slug, title…",
     "visibilityFilterLabel": "Visibility",
     "allStatusesFilterOption": "All statuses",
@@ -11147,7 +11226,15 @@
     "toastImpersonationSessionStarted": "Impersonation session started",
     "toastFailedStartImpersonation": "We couldn't start the impersonation session. Please try again.",
     "toastImpersonationSessionEnded": "Impersonation session ended",
-    "toastFailedExitImpersonation": "We couldn't exit the impersonation session. Please try again."
+    "toastFailedExitImpersonation": "We couldn't exit the impersonation session. Please try again.",
+    "sessionActiveFor": "Impersonation session active for {name}",
+    "roles": {
+      "admin": "Admin",
+      "super_agent": "Super Agent",
+      "agent": "Agent",
+      "employer": "Employer",
+      "job_seeker": "Job Seeker"
+    }
   },
   "adminReferralLinks": {
     "pageTitle": "Referral Links",
@@ -11531,7 +11618,25 @@
     "errorNoValidRows": "No valid rows to import",
     "successImportComplete": "Import complete: {count} records imported",
     "errorImportFailed": "Import failed",
-    "errorImportRequest": "Import request failed"
+    "errorImportRequest": "Import request failed",
+    "jobSeekers": "Job seekers",
+    "hint": {
+      "users": "Each row becomes a job seeker account. People set their password with \"Forgot password\" on the sign-in page.",
+      "jobs": "Jobs are saved as drafts. \"company\" is an existing employer's company name or company email. \"type\" is full_time, part_time, contract, internship, freelance or walk_in.",
+      "employers": "Each row becomes an employer account and company profile. The contact sets a password with \"Forgot password\" on the sign-in page."
+    },
+    "rowErrors": {
+      "missing_fields": "Missing: {fields}",
+      "invalid_email": "The email address isn't valid.",
+      "role_not_allowed": "Only job seekers can be imported here, not \"{role}\". Add employers with the Employers import and staff from Users.",
+      "invalid_type": "\"{value}\" isn't a job type. Use full_time, part_time, contract, internship, freelance or walk_in.",
+      "invalid_salary": "Salary must be numbers, with the minimum no higher than the maximum.",
+      "email_exists": "An account with this email already exists.",
+      "employer_not_found": "No employer matches \"{company}\". Use the company name or company email exactly as saved.",
+      "employer_ambiguous": "More than one employer is named \"{company}\". Use the company email instead.",
+      "duplicate": "This record already exists.",
+      "failed": "We couldn't import this row. Please try again."
+    }
   },
   "adminCommissionsReport": {
     "adminWorkspace": "Admin workspace",
@@ -11681,6 +11786,45 @@
       "saveFailed": "We couldn't change the agent. Please try again.",
       "savedAssigned": "{company} is now with {agent}. {count, plural, =0 {No open jobs to move.} one {# open job moved.} other {# open jobs moved.}}",
       "savedRemoved": "{company} no longer has an agent."
+    },
+    "statusFilterLabel": "Account status",
+    "statusFilterAll": "All statuses",
+    "statusFilterActive": "Active",
+    "statusFilterInactive": "Deactivated",
+    "activateButtonTitle": "Reactivate",
+    "toastActivated": "Employer reactivated. Their paused jobs are live again.",
+    "coverageFilterLabel": "Super agent",
+    "coverageFilterAll": "All employers",
+    "coverageFilterNone": "No super agent in region",
+    "coverageFilterCovered": "Covered by a super agent",
+    "changeRegionTitle": "Change region",
+    "regionSuperAgents": "Region: {names}",
+    "regionUncovered": "No super agent covers this region",
+    "regionMissing": "No region set",
+    "changeRegion": {
+      "title": "Change region",
+      "description": "Everyone whose territory covers the new region will see {company}, with its jobs and applicants.",
+      "currentLabel": "Current region",
+      "cityLine": "{city}, {state} ({country})",
+      "seenBy": "Seen by: {names}",
+      "noSuperAgent": "No super agent covers this region.",
+      "noRegion": "No region set — no super agent sees this employer.",
+      "countryLabel": "Country",
+      "countryPlaceholder": "Select a country",
+      "countrySearchPlaceholder": "Search countries…",
+      "cityLabel": "New city",
+      "cityPlaceholder": "Select a city",
+      "citySearchPlaceholder": "Search cities…",
+      "cityTypeToSearch": "Type at least 2 letters to search.",
+      "cityNoMatch": "No city with that name in this country.",
+      "citySearching": "Searching…",
+      "historyNote": "Jobs and applicants move with the employer. Invoices and commissions already issued stay as they are.",
+      "cancel": "Cancel",
+      "save": "Move employer",
+      "saving": "Moving…",
+      "saveFailed": "We couldn't change the region. Try again.",
+      "savedCovered": "{company} moved to {city}. Now seen by {names}.",
+      "savedUncovered": "{company} moved to {city}. No super agent covers it yet."
     }
   },
   "adminGdpr": {
@@ -11750,7 +11894,29 @@
     "failedLoadConsentLogs": "We couldn't load consent logs",
     "statusUpdatedSuccess": "Request status updated",
     "failedUpdateStatus": "We couldn't update status",
-    "errorUpdatingRequest": "Error updating request"
+    "errorUpdatingRequest": "Error updating request",
+    "allConsentTypesLabel": "All consent types",
+    "consentSourceColumnHeader": "Source",
+    "consentSourceRegistration": "Sign-up form",
+    "consentSourceRegistrationGoogle": "Sign-up with Google",
+    "consentSourceRegistrationEmailCode": "Sign-up with e-mail code",
+    "consentSourceRegistrationLinkedIn": "Sign-up with LinkedIn",
+    "consentSourceRegistrationApple": "Sign-up with Apple",
+    "consentSourceFirstSignIn": "First sign-in",
+    "consentSourceTermsUpdate": "Accepted updated terms",
+    "consentSourceCookieBanner": "Cookie banner",
+    "consentSourcePrivacySettings": "Data & Privacy page",
+    "consentSourceProfile": "Profile settings",
+    "consentPolicyVersion": "Version of {date}",
+    "termsVersionTitle": "Terms of Service & Privacy Policy",
+    "termsVersionSummary": "Current version: {date} · {accepted} of {total} users have accepted it",
+    "termsVersionHelp": "Users who haven't accepted the current version are asked before they reach their dashboard. Admins are never asked.",
+    "termsNewVersionButton": "Ask everyone to accept again",
+    "termsNewVersionConfirmTitle": "Ask everyone to accept again?",
+    "termsNewVersionConfirmMessage": "Do this after a material change to the Terms of Service or Privacy Policy. Every user except admins will be asked to accept the new version the next time they open the platform. This can't be undone.",
+    "termsNewVersionConfirmButton": "Start new version",
+    "termsNewVersionSuccess": "New version started. Users will be asked to accept it.",
+    "termsNewVersionError": "We couldn't start a new version. Please try again."
   },
   "adminInterviews": {
     "recruitmentControl": "Recruitment Control",
@@ -11842,8 +12008,8 @@
     "status_rescheduled": "Rescheduled",
     "status_completed": "Completed",
     "status_cancelled": "Cancelled",
-    "status_no_show": "No show"
-    ,"changeStatusFor": "Change interview status for {candidate}"
+    "status_no_show": "No show",
+    "changeStatusFor": "Change interview status for {candidate}"
   },
   "adminInvoices": {
     "title": "Invoices",
@@ -13682,6 +13848,7 @@
   "superAgentLeads": {
     "columnActions": "Actions",
     "changeStage": "Change stage",
+    "changeStageFor": "Change stage for {company}",
     "stageUpdated": "Stage updated to {stage}.",
     "stageUpdateError": "We couldn't update the stage. Please try again.",
     "viewAgent": "Open the agent handling this lead",
@@ -13905,7 +14072,10 @@
     "switchError": "We couldn't switch to employer view",
     "networkError": "Network error — please try again",
     "onboardError": "We couldn't onboard this employer. Please try again.",
-    "loadEmployersError": "We couldn't load employers. Please try again."
+    "loadEmployersError": "We couldn't load employers. Please try again.",
+    "cityLabel": "City",
+    "cityPlaceholder": "Select a city in your territory",
+    "cityHint": "The company is placed in this city, so you and the agents covering it see it."
   },
   "superAgentPlacements": {
     "pageTitle": "Placements",
@@ -15012,7 +15182,8 @@
     "modalOnboardEmployerTitle": "Onboard New Employer",
     "deleteEmployerConfirm": "Delete this employer?",
     "switchEmployerViewError": "We couldn't switch to employer view",
-    "switchEmployerNetworkError": "Network error — please try again"
+    "switchEmployerNetworkError": "Network error — please try again",
+    "cardRegionOnly": "In your region. Ask your admin to assign it to you to post jobs."
   },
   "agentPlacements": {
     "pageTitle": "Placements",
@@ -16423,7 +16594,9 @@
     "addTitle": "Add {title}",
     "editTitle": "Edit {title}",
     "deleteFailed": "We couldn't delete that item. Please try again.",
-    "searchFallback": "Search {title}…"
+    "searchFallback": "Search {title}…",
+    "deleteConfirmTitle": "Delete this item?",
+    "deleteConfirmMessage": "It will be removed from the site. This can't be undone."
   },
   "exhibitionHeroFilters": {
     "hideFilters": "Hide Filters",
@@ -16844,7 +17017,9 @@
     "availableDays": "Available Days",
     "workingHours": "Working Hours",
     "to": "to",
-    "availabilityActive": "Your availability is active — employers can book interviews on your available slots automatically."
+    "availabilityActive": "Your availability is active — employers can book interviews on your available slots automatically.",
+    "startTimeFor": "{day} start time",
+    "endTimeFor": "{day} end time"
   },
   "changeEmailCard": {
     "account": "Account",
@@ -17246,7 +17421,73 @@
     "deselectAll": "Deselect all",
     "selectRow": "Select row",
     "clearSelection": "Clear selection",
-    "removeLineItem": "Remove line item"
+    "removeLineItem": "Remove line item",
+    "skipToContent": "Skip to main content",
+    "accessibility": "Accessibility",
+    "openPanel": "Accessibility options",
+    "panelTitle": "Accessibility",
+    "panelDescription": "Adjust how Mployedin looks and works for you.",
+    "closePanel": "Close accessibility options",
+    "tabDisplay": "Display",
+    "tabNavigation": "Navigation",
+    "tabContent": "Content",
+    "tabHelp": "Help",
+    "textSize": "Text size",
+    "textSizeHint": "Make text across the site smaller or larger.",
+    "textSizeValue": "{percent}%",
+    "textSmaller": "Smaller text",
+    "textDefault": "Default text size",
+    "textLarger": "Larger text",
+    "highContrast": "High contrast",
+    "highContrastHint": "Darker text and borders for easier reading.",
+    "reduceMotion": "Reduce motion",
+    "reduceMotionHint": "Turn off animations and transitions.",
+    "readingSupport": "Reading support",
+    "readableFont": "Readable font",
+    "readableFontHint": "Switch Latin text to Lexend, a wider, clearer typeface.",
+    "wideSpacing": "Line spacing",
+    "wideSpacingHint": "Add more space between lines of text.",
+    "highlightLinks": "Highlight links",
+    "highlightLinksHint": "Underline every link so it stands out.",
+    "resetAll": "Reset all settings",
+    "strongFocus": "Stronger focus outline",
+    "strongFocusHint": "A thicker, high-visibility outline around the item you're on.",
+    "skipToMainHint": "Close this panel and jump past the menus to the page content.",
+    "keyboardHeading": "Keyboard shortcuts",
+    "keyTab": "Tab",
+    "keyTabHint": "Move to the next link or control",
+    "keyShiftTab": "Shift + Tab",
+    "keyShiftTabHint": "Move back",
+    "keyEnter": "Enter / Space",
+    "keyEnterHint": "Follow a link or press a button",
+    "keyEsc": "Esc",
+    "keyEscHint": "Close a menu, dialog or this panel",
+    "keyArrows": "Arrow keys",
+    "keyArrowsHint": "Move within menus, tabs and lists",
+    "contentHeading": "Built into Mployedin",
+    "contentScreenReader": "Screen reader support",
+    "contentScreenReaderHint": "Headings, landmarks and named buttons let a screen reader move around each page.",
+    "contentForms": "Accessible forms",
+    "contentFormsHint": "Fields have labels, required ones are marked, and errors are explained under the field.",
+    "contentImages": "Image descriptions",
+    "contentImagesHint": "Images that carry meaning have a text description; decorative ones are skipped.",
+    "contentKeyboard": "Keyboard access",
+    "contentKeyboardHint": "Pages work without a mouse, with a visible outline on the item in focus.",
+    "helpZoom": "Zoom in or out",
+    "helpZoomHint": "Press Ctrl and + or - (⌘ on a Mac) to resize the whole page.",
+    "helpScreenReader": "Screen readers",
+    "helpScreenReaderHint": "Use your device's screen reader, such as NVDA or JAWS on Windows, VoiceOver on Mac and iPhone, or TalkBack on Android.",
+    "helpSaved": "Your settings",
+    "helpSavedHint": "Saved in this browser only, and used on every page, including your dashboard.",
+    "helpContact": "Something hard to use?",
+    "helpContactHint": "Tell us what got in the way and we'll look into it.",
+    "helpContactLink": "Contact support",
+    "statementLink": "Accessibility Statement",
+    "statementHint": "Our full accessibility commitment (WCAG 2.2 AA).",
+    "launcherHint": "Accessibility options. Drag to move this button.",
+    "buttonPosition": "Button position",
+    "buttonPositionHint": "Drag the round Accessibility button up, down or to the other side. Reset puts it back.",
+    "resetPosition": "Reset position"
   },
   "jobCard": {
     "company": "Company",
@@ -17531,7 +17772,8 @@
     "passwordRuleLowercase": "a lowercase letter",
     "passwordRuleNumber": "a number",
     "passwordRuleSymbol": "a symbol such as ! @ #",
-    "confirmPasswordRequired": "Please confirm your password."
+    "confirmPasswordRequired": "Please confirm your password.",
+    "twoFactorCodeRequired": "Enter the 6-digit code from your authenticator app."
   },
   "employerNewJob": {
     "title": "Post a job",
@@ -18044,5 +18286,33 @@
     "statusCompleted": "Completed",
     "statusRejected": "Rejected",
     "statusCancelled": "Cancelled"
+  },
+  "territoryOverlap": {
+    "superAgentTitle": "{count, plural, one {# other super agent already covers part of this region} other {# other super agents already cover part of this region}}",
+    "agentTitle": "{count, plural, one {# other agent already covers part of this region} other {# other agents already cover part of this region}}",
+    "viaCity": "a city in this region",
+    "viaState": "the whole state",
+    "body": "You can still save. Everyone who covers a region sees the employers registered in it."
+  },
+  "timezones": {
+    "dubai": "Dubai",
+    "riyadh": "Riyadh",
+    "qatar": "Qatar",
+    "kuwait": "Kuwait",
+    "bahrain": "Bahrain",
+    "muscat": "Muscat",
+    "cairo": "Cairo",
+    "karachi": "Karachi",
+    "india": "India",
+    "london": "London",
+    "berlin": "Berlin",
+    "newYork": "New York",
+    "losAngeles": "Los Angeles",
+    "singapore": "Singapore",
+    "sydney": "Sydney",
+    "paris": "Paris",
+    "chicago": "Chicago",
+    "tokyo": "Tokyo",
+    "auckland": "Auckland"
   }
 }

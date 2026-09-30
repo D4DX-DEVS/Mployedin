@@ -16,12 +16,18 @@ jest.mock("@/components/shared/SessionWrapper", () => ({
 jest.mock("@/components/shared/CsrfProvider", () => ({
   CsrfProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+// An async server component; the banner has its own test (responsiveVisualSystem).
+jest.mock("@/components/shared/CookieConsentMount", () => ({ CookieConsentMount: () => null }));
+
+jest.mock("@/lib/cms/legalPageStatus", () => ({
+  isLegalPagePublished: jest.fn().mockResolvedValue(true),
+}));
 
 jest.mock("@/components/shared/PublicFooter", () => ({
   __esModule: true,
-  default: ({ locale, variant }: { locale: string; variant: string }) => (
+  default: ({ locale, variant, showAccessibilityLink }: { locale: string; variant: string; showAccessibilityLink?: boolean }) => (
     <footer data-testid="public-footer">
-      {locale}:{variant}
+      {locale}:{variant}:{showAccessibilityLink ? "a11y" : "no-a11y"}
     </footer>
   ),
 }));
@@ -40,6 +46,6 @@ describe("OnboardingLayout", () => {
     expect(scope).not.toBeNull();
     expect(scope).toHaveClass("theme-light", "bg-background", "text-foreground");
     expect(screen.getByText("Onboarding content")).toBeInTheDocument();
-    expect(screen.getByTestId("public-footer")).toHaveTextContent("en:embedded");
+    expect(screen.getByTestId("public-footer")).toHaveTextContent("en:embedded:a11y");
   });
 });

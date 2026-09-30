@@ -61,7 +61,13 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
@@ -314,6 +320,13 @@ export default function SuperAgentJobsPage() {
     resetPage();
   };
 
+  /* ── Column-head sort (same state the sort selects write) ── */
+  const toggleSort = (field: SortBy) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder("desc"); }
+    resetPage();
+  };
+
   /* ── AI Search submit ── */
   const handleAiSearch = (query?: string) => {
     const q = query ?? aiQuery;
@@ -444,7 +457,7 @@ export default function SuperAgentJobsPage() {
     { header: "Work Mode", key: "workMode" },
     { header: "Status", key: "status" },
     { header: "Category", key: "category" },
-    { header: "Date", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: "Date", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -467,18 +480,7 @@ export default function SuperAgentJobsPage() {
           No section heading: the page title is directly above it. */}
       <SuperAgentSection>
         {/* ---- Error State ---- */}
-        {error && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p className="text-sm text-destructive">{t("loadJobsError")}</p>
-            <button
-              type="button"
-              onClick={() => loadJobs()}
-              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
-            >
-              {tc("tryAgain")}
-            </button>
-          </div>
-        )}
+        {error && <ErrorState onRetry={() => loadJobs()} />}
 
         {/* ── AI Search Row: one input with the submit inside it ── */}
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end">
@@ -551,56 +553,16 @@ export default function SuperAgentJobsPage() {
           </div>
         )}
 
-        {/* ── Merged Filters via TableToolbar ── */}
-        <TableToolbar
-          search={searchQuery}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder={t("searchPlaceholder")}
+        {/* ── Filters: search + status pills in plain sight, the rest behind More ── */}
+        <InlineFilterBar
+          className="mb-4"
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          hasActiveFilters={hasFilters}
-          actions={
-            <div className="flex flex-wrap items-center gap-2 min-h-9">
-              {/* Status quick-filter pills */}
-              {([
-                { key: "all" as const, labelKey: "statusFilterAll", count: counts.total, icon: Briefcase },
-                { key: "active" as const, labelKey: "statusFilterActive", count: counts.active, icon: CheckCircle2 },
-                { key: "draft" as const, labelKey: "statusFilterDraft", count: counts.draft, icon: FileText },
-                { key: "paused" as const, labelKey: "statusFilterPaused", count: counts.paused, icon: Pause },
-                { key: "closed" as const, labelKey: "statusFilterClosed", count: counts.closed, icon: X },
-                { key: "expired" as const, labelKey: "statusFilterExpired", count: counts.expired, icon: Clock },
-              ] as const).map(({ key, labelKey, count, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => { setJobStatusState(key); resetPage(); }}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-9 ${
-                    jobStatus === key
-                      ? "bg-primary text-primary-foreground"
-                      : "border border-border/60 bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                  }`}
-                >
-                  <span><Icon className="h-3 w-3" /></span>
-                  {t(labelKey)}
-                  <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${
-                    jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
-                  }`}>{count}</span>
-                </button>
-              ))}
-              {hasFilters && (
-                <Button variant="ghost" size="dense" onClick={clearFilters} className="text-xs text-muted-foreground">
-                  <X className="h-3.5 w-3.5 mr-1" /> {t("clearAllFilters")}
-                  {activeFilterCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[11px]">{activeFilterCount}</Badge>
-                  )}
-                </Button>
-              )}
-            </div>
-          }
-          filterContent={
-            <div className="space-y-4">
-              {/* Row 1: Status / Employment Type / Work Mode / Sort */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          onClear={hasFilters ? clearFilters : undefined}
+          more={(
+            <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+              <div className="grid min-w-0 flex-[1_1_100%] grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label htmlFor={statusId} className="text-xs font-medium text-muted-foreground mb-1 block">{tc("status")}</label>
                   <Select value={jobStatus} onValueChange={(v) => { setJobStatusState(v as JobStatus); resetPage(); }}>
@@ -669,7 +631,7 @@ export default function SuperAgentJobsPage() {
               </div>
 
               {/* Row 2: Advanced fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid min-w-0 flex-[1_1_100%] grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label htmlFor={countryId} className="text-xs font-medium text-muted-foreground mb-1 block">{tc("country")}</label>
                   <div className="relative">
@@ -713,7 +675,7 @@ export default function SuperAgentJobsPage() {
               </div>
 
               {/* Row 3: Salary / Experience / Dates */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid min-w-0 flex-[1_1_100%] grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label htmlFor={salaryMinId} className="text-xs font-medium text-muted-foreground mb-1 block">{t("salaryMinLabel")}</label>
                   <div className="relative">
@@ -745,7 +707,7 @@ export default function SuperAgentJobsPage() {
               </div>
 
               {/* Date range + Apply */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-3">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                   <label htmlFor={dateFromId} className="text-xs text-muted-foreground whitespace-nowrap">{t("dateFromLabel")}</label>
@@ -762,7 +724,7 @@ export default function SuperAgentJobsPage() {
 
               {/* Active filter badges */}
               {hasFilters && (
-                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
+                <div className="flex min-w-0 flex-[1_1_100%] flex-wrap gap-1.5 pt-2 border-t border-border/40">
                   {jobStatus !== "all" && (
                     <Badge variant="secondary" className="gap-1 text-xs">
                       {t("filterBadgeStatusLabel")}: {jobStatus.replace("_", " ")}
@@ -826,14 +788,46 @@ export default function SuperAgentJobsPage() {
                 </div>
               )}
             </div>
-          }
-          className="mb-4"
-        />
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+          )}
+          moreActiveCount={activeFilterCount}
+        >
+          <InlineFilterSearch
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder={t("searchPlaceholder")}
+          />
+          {/* Status quick-filter pills */}
+          {([
+            { key: "all" as const, labelKey: "statusFilterAll", count: counts.total, icon: Briefcase },
+            { key: "active" as const, labelKey: "statusFilterActive", count: counts.active, icon: CheckCircle2 },
+            { key: "draft" as const, labelKey: "statusFilterDraft", count: counts.draft, icon: FileText },
+            { key: "paused" as const, labelKey: "statusFilterPaused", count: counts.paused, icon: Pause },
+            { key: "closed" as const, labelKey: "statusFilterClosed", count: counts.closed, icon: X },
+            { key: "expired" as const, labelKey: "statusFilterExpired", count: counts.expired, icon: Clock },
+          ] as const).map(({ key, labelKey, count, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => { setJobStatusState(key); resetPage(); }}
+              aria-pressed={jobStatus === key}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-9 ${
+                jobStatus === key
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-border/60 bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              }`}
+            >
+              <span><Icon className="h-3 w-3" /></span>
+              {t(labelKey)}
+              <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${
+                jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+              }`}>{count}</span>
+            </button>
+          ))}
+        </InlineFilterBar>
+        <div className="overflow-x-auto">
           {loading ? (
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   {tableHeaders.map((h, i) => (
                     <TableHead
                       key={i}
@@ -845,64 +839,58 @@ export default function SuperAgentJobsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {tableHeaders.map((_, j) => (
-                      <TableCell key={j}>
-                        <div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                <TableBodySkeleton rows={5} cols={5} />
               </TableBody>
             </Table>
           ) : jobs.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                <Briefcase className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-base font-semibold text-foreground">{t("noJobsFound")}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {aiActive
-                    ? t("noJobsMatchedAiSearch")
-                    : t("noJobsMatchFilters")}
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              title={t("noJobsFound")}
+              description={aiActive ? t("noJobsMatchedAiSearch") : t("noJobsMatchFilters")}
+              icon={Briefcase}
+            />
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-background/60 hover:bg-background/60">
-                  <TableHead>{t("jobTitleHeader")}</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>
+                    <SortableTableHeader label={t("jobTitleHeader")} active={sortBy === "title"} order={sortOrder} onClick={() => toggleSort("title")} />
+                  </TableHead>
                   <TableHead>{t("employerHeader")}</TableHead>
                   <TableHead>{t("typeHeader")}</TableHead>
-                  <TableHead>{t("salaryHeader")}</TableHead>
+                  <TableHead>
+                    <SortableTableHeader label={t("salaryHeader")} active={sortBy === "salary"} order={sortOrder} onClick={() => toggleSort("salary")} />
+                  </TableHead>
                   <TableHead className="text-right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {jobs.map((job) => (
-                  <TableRow key={job._id} className="bg-transparent">
+                  <TableRow key={job._id} className="group">
                     <TableCell>
-                      <div>
-                        <p className="font-medium text-foreground">{job.title}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <StatusBadge status={job.status ?? "draft"} />
-                          <span className="text-[11px] text-muted-foreground">{formatDate(new Date(job.createdAt))}</span>
-                        </div>
-                        {job.tags && job.tags.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {job.tags.slice(0, 3).map((tag) => (
-                              <span key={tag} className="inline-block rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                                {tag}
-                              </span>
-                            ))}
-                            {job.tags.length > 3 && (
-                              <span className="text-[11px] text-muted-foreground">+{job.tags.length - 3}</span>
-                            )}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <UserAvatar name={job.employerId?.companyName ?? job.employerId?.name ?? job.title} className="h-9 w-9 shrink-0" colorful />
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate font-medium text-foreground">{job.title}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <StatusBadge status={job.status ?? "draft"} />
+                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                              {formatDate(new Date(job.createdAt), { day: "2-digit", month: "short", year: "numeric" })}
+                            </span>
                           </div>
-                        )}
+                          {job.tags && job.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {job.tags.slice(0, 3).map((tag) => (
+                                <span key={tag} className="inline-block rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                                  {tag}
+                                </span>
+                              ))}
+                              {job.tags.length > 3 && (
+                                <span className="text-[11px] text-muted-foreground">+{job.tags.length - 3}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
@@ -930,20 +918,18 @@ export default function SuperAgentJobsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {formatSalary(job.salary)}
+                      <span className="inline-flex items-center gap-1">
+                        <DollarSign className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        {formatSalary(job.salary)}
+                      </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end">
-                        <Button
-                          variant="ghost"
-                          size="dense"
-                          className="w-8 p-0"
-                          title={t("viewJobDetailsButton")}
-                          onClick={() => openDetail(job._id)}
-                        >
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </div>
+                    <TableCell className="text-right">
+                      <RowActions
+                        name={job.title}
+                        quick={[
+                          { key: "view", label: t("viewJobDetailsButton"), icon: Eye, iconOnly: true, onSelect: () => openDetail(job._id) },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -951,22 +937,19 @@ export default function SuperAgentJobsPage() {
             </Table>
           )}
         </div>
-
-        {/* Pagination */}
-        {!loading && jobs.length > 0 && (
-          <div className="border-t border-border/60 px-4 py-3 sm:px-5">
-            <PaginationControls
-              page={page}
-              totalPages={totalPages}
-              total={total}
-              limit={limit}
-              onPageChange={setPage}
-              onLimitChange={setLimit}
-            />
-          </div>
-        )}
       </SuperAgentSection>
 
+      {/* Pagination */}
+      {!loading && jobs.length > 0 && (
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={setLimit}
+        />
+      )}
       {/* ── Job Detail Dialog ── */}
       <Dialog open={detailOpen} onOpenChange={(open) => {
         setDetailOpen(open);

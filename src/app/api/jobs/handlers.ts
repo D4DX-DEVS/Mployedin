@@ -18,7 +18,7 @@ import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 import { checkAdvert } from "@/lib/compliance/inclusiveWording";
 import { escapeRegex } from "@/lib/security/sanitize";
-import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
+import { getAgentEmployerIds, getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { getMemberJobRestriction } from "@/lib/permissions/team";
 import { isPublishGated, PUBLISH_GATE_SELECT, PUBLISH_GATE_ERROR, type PublishGateFields } from "@/lib/employers/publishGate";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -81,10 +81,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // on the platform to any signed-in user.
   let ownershipScoped = false;
 
-  // Agent-scoped: only their own jobs + jobs from assigned employers
+  // Agent-scoped: their own jobs + jobs from employers they see (assigned, or
+  // registered in their region — getAgentEmployerIds)
   if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId })
-      .select("_id assignedEmployerIds")
+      .select("_id")
       .lean();
     // No profile = no scope. Without this the query stayed { deletedAt: null }:
     // every job on the platform, drafts included, with commission rates.
@@ -92,8 +93,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     }
     const conditions: Record<string, unknown>[] = [{ agentId: agentDoc._id }];
-    if (!invoiceableOnly && agentDoc.assignedEmployerIds?.length) {
-      conditions.push({ employerId: { $in: agentDoc.assignedEmployerIds } });
+    const visibleEmployerIds = invoiceableOnly ? [] : await getAgentEmployerIds(ctx.userId);
+    if (visibleEmployerIds.length > 0) {
+      conditions.push({ employerId: { $in: visibleEmployerIds } });
     }
     query.$or = conditions;
     ownershipScoped = true;

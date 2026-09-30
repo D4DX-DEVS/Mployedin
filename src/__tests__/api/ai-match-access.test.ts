@@ -30,7 +30,11 @@ jest.mock("@/lib/ai/gemini", () => ({
   generateText: jest.fn().mockResolvedValue('{"strengths":[],"gaps":[],"summary":""}'),
   GEMINI_MODELS: { flash: "flash" },
 }));
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentScope: jest.fn().mockResolvedValue(null) }));
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getSuperAgentScope: jest.fn().mockResolvedValue(null),
+  getSuperAgentBook: jest.fn().mockResolvedValue(null),
+  agentCanSeeEmployer: jest.fn().mockResolvedValue(false),
+}));
 jest.mock("@/lib/auth/withAuth", () => ({
   withAuth: (handler: (req: NextRequest, ctx: unknown) => Promise<Response>) =>
     async (req: NextRequest) => {

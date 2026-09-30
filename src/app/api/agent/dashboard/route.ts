@@ -9,6 +9,7 @@ import Placement from "@/models/Placement";
 import Interview from "@/models/Interview";
 import Commission from "@/models/Commission";
 import Offer from "@/models/Offer";
+import { getAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/agent/dashboard — Consolidated agent dashboard data       */
@@ -27,11 +28,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   const agentId = (agent as Record<string, unknown>)._id;
-  const assignedEmployerIds = (agent as Record<string, unknown>).assignedEmployerIds as
-    | unknown[]
-    | undefined;
+  // Employers the agent sees: assigned, or registered in their region.
+  const assignedEmployerIds = await getAgentEmployerIds(ctx.userId);
 
-  // Portfolio scope: jobs owned directly or via assigned employers — matches
+  // Portfolio scope: jobs owned directly or via those employers — matches
   // the agent dashboard page so headline numbers are consistent.
   const jobFilter = {
     $or: [

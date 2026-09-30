@@ -146,10 +146,11 @@ describe("loadSuperAgentDashboard", () => {
   it("counts each card with its destination list's own filter", async () => {
     const data = await loadSuperAgentDashboard("sa_user", NOW);
 
-    // Employers: the employers list's query — agentId on the employer, archived conversions out.
+    // Employers: the employers list's query — the SA's book (agent links plus
+    // employers registered in the territory), archived conversions out.
     expect(data.kpis.employers).toBe(25);
     expect(data.funnel.employers).toBe(25);
-    expect(employerCount).toHaveBeenCalledWith({ agentId: { $in: [A1, A2] }, roleArchivedAt: null });
+    expect(employerCount).toHaveBeenCalledWith({ _id: { $in: ["e1"] }, roleArchivedAt: null });
     expect(data.kpis.newEmployersThisMonth).toBe(2);
 
     // Jobs: the jobs list's getSuperAgentBook scope, active = status "active".

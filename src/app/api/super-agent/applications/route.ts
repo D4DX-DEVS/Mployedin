@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { getAgentEmployerIds, getSuperAgentBook } from "@/lib/auth/agentRestrictions";
 import Application from "@/models/Application";
 import Agent from "@/models/Agent";
 import Job from "@/models/Job";
@@ -21,34 +21,26 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const status = url.searchParams.get("status") ?? "";
   const agentFilter = url.searchParams.get("agent") ?? "";
 
-  // Admin sees all agents/applications; super_agent is scoped to their team
+  // Admin sees all agents/applications; super_agent is scoped to their book —
+  // the same employer set as their employers, jobs and territory pages
+  // (getSuperAgentBook), so a company registered in the territory shows its
+  // applicants here even before an agent is assigned to it.
   let agentIds: string[] = [];
   let agents: Record<string, unknown>[] = [];
+  let bookEmployerIds: unknown[] = [];
 
   if (ctx.role === "admin") {
-    agents = await Agent.find({}).populate("userId", "name").select("userId assignedEmployerIds").lean() as Record<string, unknown>[];
+    agents = await Agent.find({}).populate("userId", "name").select("userId").lean() as Record<string, unknown>[];
     agentIds = agents.map((a) => String((a as { _id: unknown })._id));
   } else {
-    const scope = await getSuperAgentScope(ctx.userId);
-    agentIds = (scope?.effectiveAgentIds ?? []).map(String);
+    const book = await getSuperAgentBook(ctx.userId);
+    agentIds = (book?.agentIds ?? []).map(String);
+    bookEmployerIds = book?.employerIds ?? [];
     agents = await Agent.find({ _id: { $in: agentIds } })
       .populate("userId", "name")
-      .select("userId assignedEmployerIds")
+      .select("userId")
       .lean() as Record<string, unknown>[];
   }
-
-  const employerIds = agents.flatMap(
-    (a: Record<string, unknown>) => (a.assignedEmployerIds as unknown[]) ?? []
-  );
-  const teamJobs = await Job.find({
-    $or: [
-      { agentId: { $in: agentIds } },
-      ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
-    ],
-  })
-    .select("_id")
-    .lean();
-  const teamJobIds = teamJobs.map((j: Record<string, unknown>) => j._id);
 
   const filter: Record<string, unknown> = {};
 
@@ -58,12 +50,16 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   // candidate names and emails attached. The team scope now always applies to
   // a non-admin caller, and ?agent= narrows within it.
   if (ctx.role !== "admin") {
+    // Jobs a team agent posted belong to the team even at an employer outside
+    // the book; Application.agentId is rarely stamped, so match on the job too.
+    const teamJobIds = agentIds.length > 0
+      ? (await Job.find({ agentId: { $in: agentIds } }).select("_id").lean()).map((j) => j._id)
+      : [];
     const scopeOr: Record<string, unknown>[] = [];
     if (agentIds.length > 0) scopeOr.push({ agentId: { $in: agentIds } });
+    if (bookEmployerIds.length > 0) scopeOr.push({ employerId: { $in: bookEmployerIds } });
     if (teamJobIds.length > 0) scopeOr.push({ jobId: { $in: teamJobIds } });
-    if (scopeOr.length === 1) {
-      Object.assign(filter, scopeOr[0]);
-    } else if (scopeOr.length > 1) {
+    if (scopeOr.length > 0) {
       filter.$and = [{ $or: scopeOr }];
     } else {
       filter._id = { $in: [] };
@@ -72,9 +68,15 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   if (agentFilter && agentFilter !== "all") {
     // An out-of-scope id yields no rows rather than someone else's, because
-    // the scope clause above is still in the filter.
+    // the scope clause above is still in the filter. Narrows to what that
+    // agent sees: their own applications plus their employers' applicants.
     if (ctx.role === "admin" || agentIds.includes(agentFilter)) {
-      filter.agentId = agentFilter;
+      const agentDoc = await Agent.findById(agentFilter).select("userId").lean();
+      const agentEmployerIds = agentDoc?.userId ? await getAgentEmployerIds(String(agentDoc.userId)) : [];
+      filter.$and = [
+        ...((filter.$and as Record<string, unknown>[]) ?? []),
+        { $or: [{ agentId: agentFilter }, { employerId: { $in: agentEmployerIds } }] },
+      ];
     } else {
       filter._id = { $in: [] };
     }

@@ -9,13 +9,19 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users, Briefcase, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
+import { Users, Briefcase, Inbox, CircleCheckBig, ClipboardList, ChevronDown, Eye } from "lucide-react";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
@@ -42,6 +48,14 @@ export default function EmployerPlacementsPage() {
   const [expandedPlacementId, setExpandedPlacementId] = useState<string | null>(null);
   const [filter, setFilter] = useUrlFilter("status", "all", { allow: PLACEMENT_STATUSES });
   const [visaFilter, setVisaFilter] = useUrlFilter("visa", "all", { allow: VISA_STATUSES });
+  const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "startDate", "salary"] as unknown as string[] });
+  const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] as unknown as string[] });
+  const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
+  const sortByColumn = (field: string) => {
+    if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder("desc"); }
+    setPage(1);
+  };
 
   const STATUS_OPTIONS = [
     { value: "all", label: t("filterAll") },
@@ -58,7 +72,7 @@ export default function EmployerPlacementsPage() {
     { value: "stamped", label: t("visaStamped") },
   ];
 
-  const { data, isLoading: loading, error, refetch } = usePlacements({ page, limit, status: filter, visaStatus: visaFilter });
+  const { data, isLoading: loading, error, refetch } = usePlacements({ page, limit, status: filter, visaStatus: visaFilter, sortBy, sortOrder });
   const placements = data?.placements ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -76,11 +90,11 @@ export default function EmployerPlacementsPage() {
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("candidate"), key: "candidateName", formatter: (v) => String(v ?? t("candidateFallback")) },
     { header: t("position"), key: "jobTitle", formatter: (v) => String(v ?? t("untitledRole")) },
-    { header: t("type"), key: "type", formatter: (v) => String(v ?? "\u2014") },
+    { header: t("type"), key: "type", formatter: (v) => String(v ?? "—") },
     { header: t("salary"), key: "salary", formatter: (_v, r) => { const p = r as Record<string, any>; if (!p.salary) return t("notDisclosed"); return `${p.salary.currency} ${formatCount(p.salary.amount)}`; } },
-    { header: t("status"), key: "status", formatter: (v) => String(v ?? "\u2014") },
-    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
-    { header: t("created"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "\u2014" },
+    { header: t("status"), key: "status", formatter: (v) => String(v ?? "—") },
+    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : t("notSet") },
+    { header: t("created"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
@@ -92,8 +106,8 @@ export default function EmployerPlacementsPage() {
   function formatDate(value?: string): string {
     if (!value) return t("notSet");
     return formatIntlDate(new Date(value), {
+      day: "2-digit",
       month: "short",
-      day: "numeric",
       year: "numeric",
     });
   }
@@ -109,7 +123,7 @@ export default function EmployerPlacementsPage() {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
      
-  }, [filter, visaFilter]);
+  }, [filter, visaFilter, sortBy, sortOrderParam]);
 
   return (
     <div className="page-container">
@@ -126,47 +140,33 @@ export default function EmployerPlacementsPage() {
       />
 
       {error ? (
-        <section className="workspace-panel-surface rounded-3xl border border-red-500/20 panel-body">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("placementList")}</p>
-              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("unableToLoad")}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {t("loadError")}
-              </p>
-            </div>
-            <Button size="lg" className="rounded-xl px-4 text-sm font-semibold" onClick={() => void refetch()}>
-              {t("retry")}
-            </Button>
-          </div>
-        </section>
+        <ErrorState onRetry={() => void refetch()} />
       ) : (
       <>
-      <div className="workspace-toolbar">
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
         <SearchableSelect
-          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          className={INLINE_FILTER_CONTROL}
           options={STATUS_OPTIONS}
           value={filter}
           onValueChange={setFilter}
           placeholder={t("filterAll")}
         />
         <SearchableSelect
-          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
+          className={INLINE_FILTER_CONTROL}
           options={VISA_OPTIONS}
           value={visaFilter}
           onValueChange={setVisaFilter}
           placeholder={t("visaAll")}
         />
-        <TableToolbar
-          className="ms-auto"
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-        />
-      </div>
+      </InlineFilterBar>
 
-      <section className="workspace-panel-surface rounded-2xl panel-body">
-        <div className="flex items-center gap-1.5 border-b border-border pb-3">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <div className="flex items-center gap-1.5 border-b border-border px-4 pb-3 pt-4">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("placementList")}</p>
           {/* Privacy info at the point candidate data is shown, compacted to
               an icon + popover to keep the list above the fold. */}
@@ -178,7 +178,7 @@ export default function EmployerPlacementsPage() {
         {/* The empty state lived only in the desktop table, so a phone with no
             placements got a blank panel and no next step. */}
         {placements.length === 0 ? (
-          <div className="mt-3 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 px-4 py-10 text-center sm:hidden">
+          <div className="mx-4 mt-3 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 px-4 py-10 text-center sm:hidden">
             <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <Inbox className="h-5 w-5" />
             </div>
@@ -189,7 +189,7 @@ export default function EmployerPlacementsPage() {
           </div>
         ) : null}
 
-        <ul className="mt-3 space-y-1.5 sm:hidden">
+        <ul className="mt-3 space-y-1.5 px-4 sm:hidden">
           {placements.map((placement) => {
             const isOpen = expandedPlacementId === placement._id;
             return (
@@ -244,47 +244,40 @@ export default function EmployerPlacementsPage() {
           })}
         </ul>
 
-        <div className="mt-5 hidden overflow-x-auto rounded-3xl border border-border/60 sm:block">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-background/60 hover:bg-background/60">
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[220px]">{t("candidate")}</TableHead>
                 <TableHead className="min-w-[220px]">{t("position")}</TableHead>
-                <TableHead>{t("startDate")}</TableHead>
-                <TableHead>{t("salary")}</TableHead>
+                <TableHead>
+                  <SortableTableHeader label={t("startDate")} active={sortBy === "startDate"} order={sortOrder} onClick={() => sortByColumn("startDate")} />
+                </TableHead>
+                <TableHead>
+                  <SortableTableHeader label={t("salary")} active={sortBy === "salary"} order={sortOrder} onClick={() => sortByColumn("salary")} />
+                </TableHead>
                 <TableHead>{t("status")}</TableHead>
                 <TableHead className="text-right">{t("onboardingColumn")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={6} />
               ) : placements.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
-                        <Inbox className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{t("noPlacementsTitle")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("noPlacementsDesc")}</p>
-                      </div>
-                    </div>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={6} className="py-12">
+                    <EmptyState title={t("noPlacementsTitle")} description={t("noPlacementsDesc")} icon={Inbox} />
                   </TableCell>
                 </TableRow>
               ) : placements.map((placement) => (
-                <TableRow key={placement._id} className="bg-transparent">
+                <TableRow key={placement._id} className="group">
                   <TableCell>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-foreground">{placement.candidateName ?? t("candidateFallback")}</p>
-                      <p className="text-xs text-muted-foreground">{placement.candidateEmail ?? t("noEmail")}</p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar name={placement.candidateName} email={placement.candidateEmail} className="h-9 w-9" colorful />
+                      <div className="min-w-0 space-y-1">
+                        <p className="truncate font-semibold text-foreground">{placement.candidateName ?? t("candidateFallback")}</p>
+                        <p className="truncate text-xs text-muted-foreground">{placement.candidateEmail ?? t("noEmail")}</p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -301,19 +294,15 @@ export default function EmployerPlacementsPage() {
                   <TableCell className="font-medium text-foreground">{formatSalary(placement)}</TableCell>
                   <TableCell><StatusBadge status={placement.status} /></TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button asChild variant="outline" size="sm" className="rounded-xl">
-                        <Link href={`/${locale}/employer/placements/${placement._id}`}>
-                          {t("viewDetails")}
-                        </Link>
-                      </Button>
-                      <Button asChild variant="outline" size="sm" className="rounded-xl">
-                        <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
-                          <ClipboardList className="mr-2 h-4 w-4" />
-                          {t("onboardingColumn")}
-                        </Link>
-                      </Button>
-                    </div>
+                    <RowActions
+                      name={placement.candidateName ?? t("candidateFallback")}
+                      quick={[
+                        { key: "view", label: t("viewDetails"), icon: Eye, href: `/${locale}/employer/placements/${placement._id}` },
+                      ]}
+                      menu={[
+                        { key: "onboarding", label: t("onboardingColumn"), icon: ClipboardList, href: `/${locale}/employer/placements/${placement._id}/onboarding` },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

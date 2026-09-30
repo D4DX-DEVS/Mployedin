@@ -83,6 +83,8 @@ jest.mock("next-intl", () => ({
         template,
       );
     },
+  // The shared Tabs read the page language for their direction.
+  useLocale: () => "en",
 }));
 
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn() }) }));

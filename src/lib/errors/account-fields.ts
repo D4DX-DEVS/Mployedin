@@ -1,8 +1,9 @@
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
+import { EMAIL_PATTERN } from "./email-pattern";
 
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export { EMAIL_PATTERN };
 
 interface AccountFields {
   name: string;

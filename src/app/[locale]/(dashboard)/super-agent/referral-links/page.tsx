@@ -4,10 +4,9 @@ import { useQueryFlag } from "@/hooks/useQueryFlag";
 import { useState, useCallback, Fragment, useEffect, useId } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { endOfDay, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
 import { useConfirm } from "@/hooks/useConfirm";
 import {
@@ -25,14 +24,9 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
-  Building2,
-  UserRound,
   Calendar,
   Check,
-  ChevronDown,
-  ChevronUp,
   Copy,
-  Hash,
   Link2,
   Loader2,
   Plus,
@@ -42,6 +36,8 @@ import {
   User,
   Users,
   X,
+  Mail,
+  MapPin,
 } from "lucide-react";
 
 import {
@@ -61,7 +57,13 @@ import {
 } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { RowExpandToggle } from "@/components/shared/RowExpandToggle";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
@@ -187,7 +189,9 @@ export default function SuperAgentReferralLinksPage() {
     await createMutation.mutateAsync({
       label: newLabel || undefined,
       maxUses: newMaxUses ? parseInt(newMaxUses) : undefined,
-      expiresAt: newExpiresAt || undefined,
+      // The picked day is the last day the link works. Sent bare, "2026-09-30"
+      // parsed as UTC midnight: today was refused and every link died a day early.
+      expiresAt: newExpiresAt ? endOfDay(parseISO(newExpiresAt)).toISOString() : undefined,
       audience: newAudience,
     });
     setCreateOpen(false);
@@ -218,8 +222,8 @@ export default function SuperAgentReferralLinksPage() {
     { header: t("exportColumnActive"), key: "isActive", formatter: (v) => v ? t("yesText") : t("noText") },
     { header: t("tableHeadUsed"), key: "usedCount" },
     { header: t("exportColumnMaxUses"), key: "maxUses" },
-    { header: t("exportColumnCreated"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
-    { header: t("tableHeadExpires"), key: "expiresAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("exportColumnCreated"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
+    { header: t("tableHeadExpires"), key: "expiresAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -322,7 +326,7 @@ export default function SuperAgentReferralLinksPage() {
             </div>
             <div>
               <label htmlFor={newExpiryId} className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("expiryDateLabel")}</label>
-              <DateTimePicker id={newExpiryId} mode="date" value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
+              <DateTimePicker id={newExpiryId} mode="date" minDate={new Date()} value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
             </div>
             <div className="sm:col-span-3 flex justify-end">
               <button
@@ -338,59 +342,16 @@ export default function SuperAgentReferralLinksPage() {
         </SuperAgentSection>
       )}
 
-      {/* One row: the natural-language box rides the toolbar's own left slot
-          beside the plain search, Filters and Export. It used to sit in a
-          second card stacked above the toolbar, which nested a panel inside a
-          panel and left the whole right half of the row empty. */}
+      {/* Filters: plain search + AI in plain sight, facets and sorts behind More */}
       <div className="mt-4 space-y-3">
-          <TableToolbar
-            left={
-              /* `left` is wrapped in `mt-3` by the toolbar, which is right when
-                 a title sits above it and wrong here — cancel it so the field
-                 lines up with the controls opposite. */
-              <div className="relative -mt-3 w-full xl:w-[32rem]">
-                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
-                <Input
-                  aria-label={t("aiSearchPlaceholder")}
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-                  placeholder={t("aiSearchPlaceholder")}
-                  className="h-12 rounded-xl border-border bg-secondary/65 pl-9 pr-14 text-sm text-foreground shadow-none placeholder:text-muted-foreground sm:h-9 sm:pr-28"
-                />
-                {/* Icon-only on a phone, like the Filter and Export buttons
-                    beside it: the shell's touch-target rules squeezed the
-                    labelled pill into a 28px square with no readable text. */}
-                <button
-                  onClick={handleAiSearch}
-                  disabled={aiLoading || !aiQuery.trim()}
-                  aria-label={t("aiSearchButton")}
-                  className="absolute end-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-purple-600 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50 sm:h-7 sm:w-auto sm:px-3"
-                >
-                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-3 sm:w-3" /> : <Sparkles className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
-                  <span className="hidden sm:inline">{t("aiSearchButton")}</span>
-                </button>
-              </div>
-            }
-            search={search}
-            onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-            searchPlaceholder={t("tableSearchPlaceholder")}
+          <InlineFilterBar
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
-            hasActiveFilters={hasActiveFilters}
-            actions={
-              hasActiveFilters ? (
-                <button
-                  onClick={handleClearFilters}
-                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-3 w-3" /> {t("clearAllFilters")}
-                </button>
-              ) : undefined
-            }
-            filterContent={
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            onClear={hasActiveFilters ? handleClearFilters : undefined}
+            more={(
+              <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
+                <div className="grid min-w-0 flex-[1_1_100%] gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label htmlFor={statusFilterId} className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
                   <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as ReferralLinkStatus | ""); pagination.resetPage(); }}>
@@ -467,25 +428,54 @@ export default function SuperAgentReferralLinksPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                </div>
               </div>
-            }
-            className="mb-4"
-          />
-
-          {aiSummary && (
-            <div className="-mt-1 flex items-start gap-2 rounded-xl bg-purple-50 px-4 py-2.5">
-              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
-              <p className="text-xs text-purple-700">{aiSummary}</p>
+            )}
+            moreActiveCount={[statusFilter, creatorRoleFilter, audienceFilter, dateFrom, dateTo, sortBy, sortOrder].filter(Boolean).length}
+            footer={aiSummary ? (
+              <div className="mt-2 flex items-start gap-2 rounded-xl bg-purple-50 px-4 py-2.5">
+                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
+                <p className="text-xs text-purple-700">{aiSummary}</p>
+              </div>
+            ) : null}
+          >
+            <InlineFilterSearch
+              value={search}
+              onChange={(v) => { setSearch(v); pagination.resetPage(); }}
+              placeholder={t("tableSearchPlaceholder")}
+            />
+            {/* Natural-language box beside the plain search (was a second card
+                stacked above the toolbar with the right half of the row empty). */}
+            <div className="relative min-w-0 flex-[2_1_14rem]">
+              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
+              <Input
+                aria-label={t("aiSearchPlaceholder")}
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
+                placeholder={t("aiSearchPlaceholder")}
+                className="h-11 w-full rounded-lg border-border bg-secondary/65 pl-9 pr-14 text-sm shadow-none sm:h-9 sm:pr-28"
+              />
+              <button
+                onClick={handleAiSearch}
+                disabled={aiLoading || !aiQuery.trim()}
+                aria-label={t("aiSearchButton")}
+                className="absolute end-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-purple-600 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50 sm:h-7 sm:w-auto sm:px-3"
+              >
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-3 sm:w-3" /> : <Sparkles className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
+                <span className="hidden sm:inline">{t("aiSearchButton")}</span>
+              </button>
             </div>
-          )}
+          </InlineFilterBar>
       </div>
 
       {/* Links table */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
       {isLoading ? (
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeadCode")}</TableHead>
                 <TableHead>{t("tableHeadCreator")}</TableHead>
                 <TableHead>{t("tableHeadRole")}</TableHead>
@@ -497,48 +487,19 @@ export default function SuperAgentReferralLinksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 8 }).map((_, j) => (
-                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                  ))}
-                </TableRow>
-              ))}
+              <TableBodySkeleton rows={5} cols={8} />
             </TableBody>
           </Table>
         </div>
       ) : isError ? (
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <div>
-              <p className="text-sm text-destructive">{t("loadLinksError")}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
-            >
-              {tc("tryAgain")}
-            </button>
-          </div>
-        </div>
+        <ErrorState onRetry={() => refetch()} />
       ) : links.length === 0 ? (
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-              <Link2 className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
-            </div>
-          </div>
-        </div>
+        <EmptyState title={t("emptyStateTitle")} description={t("emptyStateDescription")} icon={Link2} />
       ) : (
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeadCode")}</TableHead>
                 <TableHead>{t("tableHeadCreator")}</TableHead>
                 <TableHead>{t("tableHeadRole")}</TableHead>
@@ -555,9 +516,14 @@ export default function SuperAgentReferralLinksPage() {
                 const isExpanded = expandedId === link._id;
                 return (
                   <Fragment key={link._id}>
-                    <TableRow className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : link._id)}>
+                    <TableRow className="group cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : link._id)}>
                       <TableCell className="font-mono text-sm font-medium">{link.code}</TableCell>
-                      <TableCell className="text-sm">{creatorName(link)}</TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <UserAvatar name={creatorName(link)} className="h-8 w-8 shrink-0" colorful />
+                          <span className="truncate">{creatorName(link)}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                           {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
@@ -566,7 +532,12 @@ export default function SuperAgentReferralLinksPage() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{link.label || "—"}</TableCell>
                       <TableCell className="text-sm">{link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          {formatDate(link.expiresAt, { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           status === "active" ? "bg-emerald-100 text-emerald-700" :
@@ -584,42 +555,41 @@ export default function SuperAgentReferralLinksPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex flex-wrap items-center justify-end gap-1.5">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleCopy(link); }}
-                            className="inline-flex max-sm:min-h-11 h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
-                            title={t("copyButtonTooltip")}
-                            data-table-action=""
-                          >
-                            {copyMap[link.code] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                            {copyMap[link.code] ? t("copiedButtonText") : t("copyButtonText")}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleToggleActive(link);
-                            }}
-                            disabled={updateMutation.isPending}
-                            className={`inline-flex max-sm:min-h-11 h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"}`}
-                            title={link.isActive ? t("toggleDisableTooltip") : t("toggleEnableTooltip")}
-                            data-table-action=""
-                          >
-                            {link.isActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
-                            {link.isActive ? t("disableButton") : t("enableButton")}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : link._id); }}
-                            className="inline-flex max-sm:min-h-11 h-7 items-center rounded-md border border-border px-1.5 text-muted-foreground hover:text-foreground"
-                            title={t("expandButtonTooltip")}
-                            aria-label={isExpanded ? t("collapseRegistrationsAriaLabel") : t("expandRegistrationsAriaLabel")}
-                          >
-                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                          </button>
+                        {/* stopPropagation: the row toggles the registrations
+                            drawer, so every action here must not bubble — the
+                            toggle gets the same guard or it double-fires. */}
+                        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          <RowActions
+                            name={link.code}
+                            quick={[
+                              {
+                                key: "copy",
+                                label: copyMap[link.code] ? t("copiedButtonText") : t("copyButtonText"),
+                                icon: copyMap[link.code] ? Check : Copy,
+                                onSelect: () => handleCopy(link),
+                              },
+                            ]}
+                            menu={[
+                              {
+                                key: "toggle",
+                                label: link.isActive ? t("disableButton") : t("enableButton"),
+                                icon: link.isActive ? PowerOff : Power,
+                                destructive: link.isActive,
+                                pending: updateMutation.isPending,
+                                disabled: updateMutation.isPending,
+                                onSelect: () => { void handleToggleActive(link); },
+                              },
+                            ]}
+                          />
+                          <RowExpandToggle
+                            expanded={isExpanded}
+                            onToggle={() => setExpandedId(isExpanded ? null : link._id)}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow key={`${link._id}-detail`}>
+                      <TableRow key={`${link._id}-detail`} className="hover:bg-transparent">
                         <TableCell colSpan={8} className="bg-secondary/30 px-6 py-4">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                             {t("registrationsLabel", { count: link.registrations.length })}
@@ -630,16 +600,22 @@ export default function SuperAgentReferralLinksPage() {
                             <div className="space-y-2">
                               {link.registrations.map((reg, i) => (
                                 <div key={i} className="flex items-center gap-3 rounded-xl bg-background/60 px-4 py-3">
-                                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-                                    {reg.kind === "job_seeker" ? <UserRound className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                                  <UserAvatar name={registrationDisplayName(reg)} className="h-8 w-8 shrink-0" colorful />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium text-foreground">{registrationDisplayName(reg)}</p>
+                                    <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                      <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                      <span className="truncate">{reg.email}</span>
+                                    </p>
                                   </div>
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium text-foreground">{registrationDisplayName(reg)}</p>
-                                    <p className="text-xs text-muted-foreground">{reg.email}</p>
-                                  </div>
-                                  <div className="text-right text-xs text-muted-foreground">
-                                    {reg.country && <p>{reg.city ? `${reg.city}, ` : ""}{reg.country}</p>}
-                                    <p>{formatDate(reg.registeredAt)}</p>
+                                  <div className="shrink-0 text-right text-xs text-muted-foreground">
+                                    {reg.country && (
+                                      <p className="flex items-center justify-end gap-1">
+                                        <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                        {reg.city ? `${reg.city}, ` : ""}{reg.country}
+                                      </p>
+                                    )}
+                                    <p>{formatDate(reg.registeredAt, { day: "2-digit", month: "short", year: "numeric" })}</p>
                                   </div>
                                 </div>
                               ))}
@@ -655,6 +631,7 @@ export default function SuperAgentReferralLinksPage() {
           </Table>
         </div>
       )}
+      </section>
 
       <PaginationControls
         page={pagination.page}

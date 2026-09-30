@@ -226,7 +226,10 @@ export default function AdminInvoicesPage() {
   // Analytics is scoped to one currency at a time (nothing converts between
   // them), so label these with the currency the figures are actually in — not
   // the platform default, which had no relationship to the numbers.
-  const fmt = (v: number) => `${analyticsData?.currency ?? displayCurrency} ${formatCount(v)}`;
+  // Compact ("AED 247.2K"), as on the other admin report headers: full figures
+  // ran into each other in the four-across strip on phones.
+  const fmt = (v: number) =>
+    `${analyticsData?.currency ?? displayCurrency} ${formatCount(v, { notation: "compact", maximumFractionDigits: 1 })}`;
 
   const invoiceMetrics = analyticsData?.kpi ? [
     { label: t("totalInvoicedLabel"), value: fmt(analyticsData.kpi.totalRevenue), icon: ReceiptText, iconSurfaceClassName: "bg-indigo-50", iconClassName: "text-indigo-600" },
@@ -512,7 +515,7 @@ export default function AdminInvoicesPage() {
                                     }
                                   });
                                 }
-                                if (can("subscriptions", "update")) {
+                                if (can("invoices", "update")) {
                                   if (inv.status === "draft") {
                                     items.push({ key: "issue", label: t("issue"), icon: CheckCircle2, onSelect: () => updateStatus(inv._id, "issued") });
                                   }

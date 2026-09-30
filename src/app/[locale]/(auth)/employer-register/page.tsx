@@ -8,6 +8,7 @@ import { Building2, FileCheck, UserCircle, CheckCircle, ChevronRight, ChevronLef
 import { Button } from "@/components/ui/button";
 import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import { CityPicker } from "@/components/shared/CityPicker";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { normalizeWebsiteUrl } from "@/lib/validators/website";
 import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
@@ -21,6 +22,8 @@ interface Step1Data {
   website: string;
   country: string;
   city: string;
+  /** Catalogue city id — decides which super-agents and agents see the company. */
+  cityId: string;
 }
 
 interface Step2Data {
@@ -182,6 +185,7 @@ export default function EmployerRegisterPage() {
   const locale = params?.locale ?? "en";
   const t = useTranslations("employerRegister");
   const tErrors = useTranslations("formErrors");
+  const tc = useTranslations("common");
   const referralCode = searchParams.get("ref") ?? "";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -190,7 +194,7 @@ export default function EmployerRegisterPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [step1, setStep1] = useState<Step1Data>({
-    companyName: "", industry: "", size: "", website: "", country: "AE", city: "",
+    companyName: "", industry: "", size: "", website: "", country: "AE", city: "", cityId: "",
   });
   const [step2, setStep2] = useState<Step2Data>({
     verificationLevel: "basic", tradeLicenseFile: null, mohCertFile: null,
@@ -249,7 +253,7 @@ export default function EmployerRegisterPage() {
     if (!step1.industry) errors.industry = t("validation.industryRequired");
     if (!step1.size) errors.size = t("validation.sizeRequired");
     if (!step1.country) errors.country = t("validation.countryRequired");
-    if (!step1.city.trim()) errors.city = t("validation.cityRequired");
+    if (!step1.cityId) errors.city = t("validation.cityRequired");
     // Website is optional, but the server still rejects a malformed one. Catch
     // it here so the message appears beside the field the employer can edit,
     // instead of as a banner on step 3 pointing at a step they have left.
@@ -469,6 +473,8 @@ export default function EmployerRegisterPage() {
 
       {/* Form Content */}
       <div className="space-y-3 sm:space-y-4">
+        {/* Explains the * that FormInput/FormSelect put on required fields. */}
+        <p className="text-xs text-muted-foreground">{tc("requiredFieldsNote")}</p>
         {/* Step 1: Company Details */}
         {step === 1 && (
           <div className="space-y-4">
@@ -520,16 +526,27 @@ export default function EmployerRegisterPage() {
                   placeholder={t("countryPlaceholder")}
                   onChange={(v) => {
                     clearFieldError("country");
-                    setStep1(p => ({ ...p, country: v }));
+                    // A city belongs to one country: changing it clears the pick.
+                    setStep1(p => (p.country === v ? p : { ...p, country: v, city: "", cityId: "" }));
                   }} />
               </div>
               <div data-registration-field="city">
-                <FormInput label={t("city")} required value={step1.city} placeholder={t("cityPlaceholder")}
-                  error={fieldErrors.city}
-                  onChange={(e) => {
+                <CityPicker
+                  countryCode={step1.country}
+                  value={step1.cityId ? { id: step1.cityId, name: step1.city } : null}
+                  onChange={(picked) => {
                     clearFieldError("city");
-                    setStep1(p => ({ ...p, city: e.target.value }));
-                  }} />
+                    setStep1(p => ({ ...p, city: picked?.name ?? "", cityId: picked?.id ?? "" }));
+                  }}
+                  label={t("city")}
+                  required
+                  placeholder={t("cityPlaceholder")}
+                  searchPlaceholder={t("citySearchPlaceholder")}
+                  typeToSearchMessage={t("cityTypeToSearch")}
+                  emptyMessage={t("cityNoMatch")}
+                  loadingMessage={t("citySearching")}
+                  error={fieldErrors.city}
+                />
               </div>
             </div>
           </div>

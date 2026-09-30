@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import BlogPost from "@/models/BlogPost";
+import { isLegalPagePublished } from "@/lib/cms/legalPageStatus";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
 const LOCALES = ["en", "ar"] as const;
@@ -78,18 +79,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ["/gdpr", "yearly", 0.3],
     ["/cookies", "yearly", 0.3],
   ];
-  const staticEntries: MetadataRoute.Sitemap = staticPaths.flatMap(([path, freq, priority]) =>
-    LOCALES.map((locale) => ({
-      url: `${BASE_URL}/${locale}${path === "/" ? "" : path}`,
-      lastModified: new Date(),
-      changeFrequency: freq,
-      priority,
-    }))
-  );
+  // A 404 until an admin publishes it, so listed only from then on.
+  const statementPath: SitemapEntry = ["/accessibility", "yearly", 0.3];
+  const toEntries = (paths: SitemapEntry[]): MetadataRoute.Sitemap =>
+    paths.flatMap(([path, freq, priority]) =>
+      LOCALES.map((locale) => ({
+        url: `${BASE_URL}/${locale}${path === "/" ? "" : path}`,
+        lastModified: new Date(),
+        changeFrequency: freq,
+        priority,
+      }))
+    );
+  const staticEntries = toEntries(staticPaths);
 
   try {
-    const dynamicEntries = await withBudget(loadDynamicEntries(), DB_BUDGET_MS);
-    return [...staticEntries, ...dynamicEntries];
+    const [dynamicEntries, statementPublished] = await withBudget(
+      Promise.all([loadDynamicEntries(), isLegalPagePublished("accessibility-statement")]),
+      DB_BUDGET_MS,
+    );
+    return [...staticEntries, ...(statementPublished ? toEntries([statementPath]) : []), ...dynamicEntries];
   } catch {
     // Database slow or unavailable: the static routes still ship, and the
     // hourly revalidation adds jobs and posts back once the database answers.

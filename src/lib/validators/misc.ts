@@ -184,6 +184,14 @@ export const chatHistoryCreateSchema = z.object({
  * tightening to the seeker complexity rules would break the existing agent
  * signup form, which doesn't enforce them client-side.
  */
+/**
+ * Every self-service sign-up must carry the Terms/Privacy tick. The forms
+ * check it too, but a direct API call skipped them and made an account with no
+ * acceptance on record.
+ */
+export const TERMS_REQUIRED_MESSAGE = "Please accept the Terms of Service and Privacy Policy to create an account.";
+const termsAcceptedField = z.literal(true, { error: TERMS_REQUIRED_MESSAGE });
+
 export const agentRegisterSchema = z.object({
   fullName: z.string().min(1).max(200).trim(),
   email: z.string().email().max(254).trim().toLowerCase(),
@@ -195,6 +203,9 @@ export const agentRegisterSchema = z.object({
   specialization: z.string().max(100).optional(),
   languages: z.string().max(300).optional(),
   referralCode: z.string().max(50).optional(),
+  termsAccepted: termsAcceptedField,
+  /** The visitor's cookie-banner choice, if they made one before signing up. */
+  cookieConsent: z.enum(["accepted", "declined"]).optional(),
 });
 
 /** POST /api/auth/job-seeker-register */
@@ -204,8 +215,8 @@ export const jobSeekerRegisterSchema = z.object({
   password: strongPasswordSchema,
   /** Shape is enforced by attachJobSeekerReferral; a bad code never blocks signup. */
   referralCode: z.string().trim().max(32).optional(),
-  /** The Terms/Privacy checkbox; recorded in the consent log when true. */
-  termsAccepted: z.boolean().optional(),
+  /** The Terms/Privacy checkbox; recorded in the consent log. */
+  termsAccepted: termsAcceptedField,
   /** The visitor's cookie-banner choice, if they made one before signing up. */
   cookieConsent: z.enum(["accepted", "declined"]).optional(),
 });

@@ -1,0 +1,80 @@
+/* Visitor display preferences from the Accessibility panel.
+   lib/a11y/preferences.ts sets these data-a11y-* attributes on <html>; with none
+   set, nothing here applies. Imported after globals.css so equal-specificity
+   rules win, and the html[…] prefix outranks the design-system classes.
+   `.theme-light` re-declares the colour tokens (onboarding), so high
+   contrast repeats its tokens there too. */
+
+/* ── Text size: every rem-based size scales from the root ─────────────── */
+html[data-a11y-text="90"] { font-size: 90%; }
+html[data-a11y-text="115"] { font-size: 115%; }
+html[data-a11y-text="130"] { font-size: 130%; }
+html[data-a11y-text="150"] { font-size: 150%; }
+
+/* ── High contrast: near-black text, darker lines and a deeper blue ───── */
+html[data-a11y-contrast="high"],
+html[data-a11y-contrast="high"] .theme-light {
+  --foreground: 0 0% 0%;
+  --card-foreground: 0 0% 0%;
+  --popover-foreground: 0 0% 0%;
+  --secondary-foreground: 0 0% 0%;
+  --accent-foreground: 0 0% 0%;
+  --muted-foreground: 0 0% 18%;
+  --brand-text: 0 0% 0%;
+  --brand-muted: 0 0% 18%;
+  --primary: 224 100% 30%;
+  --brand-blue: 224 100% 30%;
+  --border: 0 0% 35%;
+  --input: 0 0% 35%;
+  --ring: 0 0% 0%;
+  --focus-ring: 0 0% 0%;
+}
+html[data-a11y-contrast="high"] ::placeholder {
+  color: hsl(0 0% 30%);
+  opacity: 1;
+}
+
+/* ── Reduce motion: the same as the OS setting in globals.css ─────────── */
+html[data-a11y-motion="reduce"] *,
+html[data-a11y-motion="reduce"] *::before,
+html[data-a11y-motion="reduce"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+}
+html[data-a11y-motion="reduce"] .skeleton-shimmer,
+html[data-a11y-motion="reduce"] .animate-pulse {
+  animation: none;
+  background: hsl(var(--muted));
+  background-image: none;
+}
+
+/* ── Readable font: Lexend for Latin text; Arabic keeps Noto Sans Arabic ─ */
+html[data-a11y-font="readable"] body {
+  --font-manrope: var(--font-lexend);
+}
+
+/* ── Wider line spacing (WCAG 1.4.12 asks for at least 1.5) ───────────────
+   Running text only: headings and dense table cells keep their set leading. */
+html[data-a11y-spacing="wide"] :where(p, li, dd, dt, blockquote, figcaption) {
+  line-height: 1.8 !important;
+  word-spacing: 0.08em;
+}
+
+/* ── Highlight links: always underlined, thick enough to spot ─────────── */
+html[data-a11y-links="highlight"] a[href] {
+  text-decoration-line: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 3px !important;
+}
+
+/* ── Stronger focus: thicker outline with a light halo, on any colour ───
+   Controls only, like the base rule in globals.css: not a <main> that
+   "Skip to main content" focused, nor a dialog container. */
+html[data-a11y-focus="strong"] :where(a[href], button, input, select, textarea, summary, [role="button"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="menuitem"], [role="option"], [role="combobox"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 3px solid hsl(var(--focus-ring)) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 6px hsl(48 100% 62%) !important;
+}

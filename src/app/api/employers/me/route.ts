@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validators";
 import { employerUpdateSchema } from "@/lib/validators/employers";
 import { encryptIfPlain } from "@/lib/security/encryption";
 import { meetsProfileRequirements } from "@/lib/employers/publishGate";
+import logger from "@/lib/logger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -78,6 +79,25 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Use updateOne to avoid full Mongoose validation on PII-encrypted fields
   await Employer.updateOne({ _id: employer._id }, { $set: updateData });
+
+  // The address is not the region: which super-agents and agents see this
+  // company stays put until an admin moves it. Tell admins so they can.
+  const place = (address?: string, country?: string) =>
+    [address, country].map((v) => (v ?? "").trim()).filter(Boolean).join(", ");
+  const fromPlace = place(employer.address, employer.country);
+  const toPlace = place(
+    (updateData.address as string | undefined) ?? employer.address,
+    (updateData.country as string | undefined) ?? employer.country,
+  );
+  if (toPlace && fromPlace !== toPlace) {
+    const { notifyAdminsEmployerAddressChanged } = await import("@/lib/notifications/trigger");
+    notifyAdminsEmployerAddressChanged(
+      (updateData.companyName as string | undefined) ?? employer.companyName ?? "A company",
+      String(employer._id),
+      fromPlace || "—",
+      toPlace,
+    ).catch((err) => logger.error({ err, employerId: String(employer._id) }, "Failed to notify admins of an employer address change"));
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

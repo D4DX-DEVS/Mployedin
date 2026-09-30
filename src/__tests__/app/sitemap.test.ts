@@ -15,6 +15,10 @@ jest.mock("@/lib/db/mongoose", () => ({
 }));
 jest.mock("@/models/Job", () => ({ __esModule: true, default: { find: (...args: unknown[]) => jobFindMock(...args) } }));
 jest.mock("@/models/BlogPost", () => ({ __esModule: true, default: { find: (...args: unknown[]) => postFindMock(...args) } }));
+const statementPublishedMock = jest.fn();
+jest.mock("@/lib/cms/legalPageStatus", () => ({
+  isLegalPagePublished: (...args: unknown[]) => statementPublishedMock(...args),
+}));
 
 function chain<T>(rows: T[]) {
   const q = {
@@ -44,6 +48,7 @@ describe("sitemap", () => {
 
   it("lists static routes, active jobs and published posts for both locales when the database answers", async () => {
     connectDBMock.mockResolvedValue({});
+    statementPublishedMock.mockResolvedValue(true);
     jobFindMock.mockReturnValue(chain([{ _id: "job1", updatedAt: new Date("2026-09-01") }]));
     postFindMock.mockReturnValue(chain([{ slug: "hello", publishedAt: new Date("2026-08-01") }]));
 
@@ -57,8 +62,21 @@ describe("sitemap", () => {
       expect.stringMatching(/\/ar\/jobs\/job1$/),
       expect.stringMatching(/\/en\/blog\/hello$/),
       expect.stringMatching(/\/ar\/blog\/hello$/),
+      expect.stringMatching(/\/ar\/accessibility$/),
     ]));
     expect(jobFindMock).toHaveBeenCalledWith({ status: "active" });
+  });
+
+  it("leaves the accessibility statement out until an admin publishes it (it is a 404 until then)", async () => {
+    connectDBMock.mockResolvedValue({});
+    jobFindMock.mockReturnValue(chain([]));
+    postFindMock.mockReturnValue(chain([]));
+    statementPublishedMock.mockResolvedValue(false);
+
+    const urls = (await sitemap()).map((e) => e.url);
+
+    expect(urls.some((u) => u.endsWith("/accessibility"))).toBe(false);
+    expect(urls).toEqual(expect.arrayContaining([expect.stringMatching(/\/en\/privacy$/)]));
   });
 
   it("falls back to the static routes when the database does not answer inside the budget", async () => {

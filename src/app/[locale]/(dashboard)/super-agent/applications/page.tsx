@@ -15,10 +15,15 @@ import {
   SuperAgentPageIntro, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
-  RotateCcw, FileText, TrendingUp,
-  CheckCircle2, Star,
+  FileText, TrendingUp,
+  CheckCircle2, Star, BriefcaseBusiness, Mail, Calendar,
 } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -65,6 +70,7 @@ export default function SuperAgentApplicationsPage() {
   const t = useTranslations("superAgentApplications");
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [agentOptions, setAgentOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allAgentsPlaceholder") }]);
   const [stats, setStats] = useState({ total: 0, shortlisted: 0, hired: 0, conversionRate: 0 });
   const pagination = usePagination();
@@ -76,6 +82,7 @@ export default function SuperAgentApplicationsPage() {
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
     try {
       const params = pagination.paginationParams();
       if (filters.search) params.set("search", filters.search);
@@ -94,9 +101,12 @@ export default function SuperAgentApplicationsPage() {
             ...data.agents.map((a: { _id: string; name: string }) => ({ value: a._id, label: a.name })),
           ]);
         }
+      } else {
+        setLoadFailed(true);
       }
     } catch {
       toast.error(t("loadError"));
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -126,48 +136,38 @@ export default function SuperAgentApplicationsPage() {
 
       {/* No section heading: it repeated the page title directly under the header. */}
       <SuperAgentSection>
-        {/* Search and both selects share one row from `sm` up. Split over two
-            rows, the search sat alone on a full-width line above its own
-            filters and read as two unrelated control groups. */}
-        <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-3">
-          <input
-            type="text"
-            aria-label={t("searchPlaceholder")}
-            placeholder={t("searchPlaceholder")}
+        <InlineFilterBar
+          className="mb-4"
+          onClear={(filters.search || filters.status !== "all" || filters.agent !== "all") ? () => { resetFilters(); pagination.resetPage(); } : undefined}
+        >
+          <InlineFilterSearch
             value={filters.search}
-            onChange={(e) => setFilter("search", e.target.value)}
-            className="h-11 w-full min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-auto sm:min-w-[220px]"
+            onChange={(v) => setFilter("search", v)}
+            placeholder={t("searchPlaceholder")}
           />
           <SearchableSelect
             options={getStatusOptions(t)}
             value={filters.status}
             onValueChange={(v) => { setFilter("status", v); pagination.resetPage(); }}
             placeholder={t("statusPlaceholder")}
-            className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:w-[180px]"
+            className={INLINE_FILTER_CONTROL}
           />
           <SearchableSelect
             options={agentOptions}
             value={filters.agent}
             onValueChange={(v) => { setFilter("agent", v); pagination.resetPage(); }}
             placeholder={t("allAgentsPlaceholder")}
-            className="h-11 w-full shrink-0 rounded-xl border-border bg-card sm:w-[180px]"
+            className={INLINE_FILTER_CONTROL}
           />
-          {(filters.search || filters.status !== "all" || filters.agent !== "all") && (
-            <button
-              type="button"
-              onClick={() => { resetFilters(); pagination.resetPage(); }}
-              className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-border/70 bg-card px-3 text-sm text-muted-foreground transition-all hover:bg-secondary/80"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              {t("resetButton")}
-            </button>
-          )}
-        </div>
+        </InlineFilterBar>
 
-        <div className="overflow-x-auto rounded-3xl border border-border/60">
+        {loadFailed && !loading ? (
+          <ErrorState onRetry={() => fetchApplications()} />
+        ) : (
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-background/60 hover:bg-background/60">
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{t("tableHeaders.candidate")}</TableHead>
                 <TableHead className="min-w-[180px]">{t("tableHeaders.job")}</TableHead>
                 <TableHead>{t("tableHeaders.matchScore")}</TableHead>
@@ -177,37 +177,36 @@ export default function SuperAgentApplicationsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={5} />
               ) : applications.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                        <FileText className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{t("emptyState.title")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("emptyState.subtitle")}</p>
-                      </div>
-                    </div>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={5} className="py-12">
+                    <EmptyState title={t("emptyState.title")} description={t("emptyState.subtitle")} icon={FileText} />
                   </TableCell>
                 </TableRow>
               ) : applications.map((a) => (
-                <TableRow key={a._id} className="bg-transparent">
+                <TableRow key={a._id} className="group">
                   <TableCell>
-                    <p className="font-medium text-foreground">{a.candidateName}</p>
-                    {a.candidateEmail && <p className="text-xs text-muted-foreground">{a.candidateEmail}</p>}
-                    <StatusBadge status={a.status} />
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar name={a.candidateName} email={a.candidateEmail} className="h-9 w-9 shrink-0" colorful />
+                      <div className="min-w-0 space-y-1">
+                        <p className="truncate font-medium text-foreground">{a.candidateName}</p>
+                        {a.candidateEmail && (
+                          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                            <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{a.candidateEmail}</span>
+                          </p>
+                        )}
+                        <StatusBadge status={a.status} />
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="grid w-full min-w-0 gap-0.5">
-                      <p className="text-sm font-medium text-foreground truncate">{a.jobTitle}</p>
+                      <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground">
+                        <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <span className="truncate">{a.jobTitle}</span>
+                      </p>
                       {a.companyName && <p className="text-xs text-muted-foreground truncate">{a.companyName}</p>}
                       {a.agentName && <p className="text-xs text-muted-foreground truncate">{a.agentName}</p>}
                     </div>
@@ -228,23 +227,27 @@ export default function SuperAgentApplicationsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-xs capitalize text-muted-foreground">{(a.source ?? "direct").replace(/_/g, " ")}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(a.appliedAt))}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      {formatDate(new Date(a.appliedAt), { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
+        )}
 
-        <div className="mt-4">
-          <PaginationControls
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            limit={pagination.limit}
-            total={pagination.total}
-            onPageChange={pagination.setPage}
-            onLimitChange={pagination.setLimit}
-          />
-        </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          limit={pagination.limit}
+          total={pagination.total}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
       </SuperAgentSection>
     </div>
   );

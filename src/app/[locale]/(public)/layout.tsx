@@ -3,7 +3,10 @@ import { getMessages } from "next-intl/server";
 import { pickMessages } from "@/lib/i18n/clientMessages";
 import PublicHeader from "@/components/shared/PublicHeader";
 import PublicFooter from "@/components/shared/PublicFooter";
-import CookieConsent from "@/components/shared/CookieConsent";
+import { AccessibilityPanel } from "@/components/shared/AccessibilityPanel";
+import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
+import { isLegalPagePublished } from "@/lib/cms/legalPageStatus";
+import { CookieConsentMount } from "@/components/shared/CookieConsentMount";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
@@ -60,6 +63,7 @@ export default async function PublicLayout({
 }) {
   const { locale } = await params;
   const messages = await getMessages();
+  const statementPublished = await isLegalPagePublished("accessibility-statement");
 
   return (
     <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "public")}>
@@ -81,10 +85,13 @@ export default async function PublicLayout({
         <CsrfProvider>
         <DashboardProviders>
           <div className="flex min-h-screen flex-col [&_a]:cursor-pointer [&_button]:cursor-pointer">
+            {/* First after the skip link in the tab order; the panel is fixed, so it takes no space. */}
+            <AccessibilityPanel locale={locale} statementPublished={statementPublished} />
             <PublicHeader locale={locale} />
-            <main className="flex-1">{children}</main>
-            <PublicFooter locale={locale} />
-            <CookieConsent locale={locale} />
+            {/* scroll-mt: the skip link must not land the page under the sticky header. */}
+            <main id={MAIN_CONTENT_ID} className="flex-1 scroll-mt-16">{children}</main>
+            <PublicFooter locale={locale} showAccessibilityLink={statementPublished} />
+            <CookieConsentMount locale={locale} />
           </div>
         </DashboardProviders>
         </CsrfProvider>

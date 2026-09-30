@@ -2,8 +2,17 @@
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { cn } from "@/lib/utils"
+import { useLocaleDirection } from "@/lib/i18n/useLocaleDirection"
 
-const Tabs = TabsPrimitive.Root
+// Follows the page language unless told otherwise (see useLocaleDirection).
+const Tabs = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root>
+>(({ dir, ...props }, ref) => {
+  const localeDir = useLocaleDirection()
+  return <TabsPrimitive.Root ref={ref} dir={dir ?? localeDir} {...props} />
+})
+Tabs.displayName = TabsPrimitive.Root.displayName
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,

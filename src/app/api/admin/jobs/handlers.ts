@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
+import Application from "@/models/Application";
 import SuperAgent from "@/models/SuperAgent";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
@@ -117,6 +118,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       return NextResponse.json({ jobs: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
     query.agentId = { $in: effective.map((id) => new Types.ObjectId(id)) };
+  }
+
+  // "applications=none" — jobs nobody has applied to. The dashboard's "jobs
+  // with no applications" alert links here; it counts Application documents,
+  // so this does too (not the applicantIds cache on the job).
+  if (searchParams.get("applications") === "none") {
+    const jobIdsWithApplications = await Application.distinct("jobId", {});
+    query._id = { $nin: jobIdsWithApplications };
   }
 
   // Search: every word must match the job (title/desc/tags/city) or its

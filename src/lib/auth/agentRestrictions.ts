@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import mongoose from "mongoose";
 
 export interface RegionInfo {
@@ -135,22 +136,40 @@ export async function getSuperAgentScope(saUserId: string): Promise<SuperAgentSc
 }
 
 /**
- * Resolve the employer _ids a super-agent may see: employers whose assigned
- * agent is within the SA's effective scope (team + region). Returns [] when the
- * SA has no scope — callers MUST treat [] as "see nothing" (default-deny), never
- * as "no filter". This is the single source of truth for scoping super_agent
- * reads on generic resource routes (applications, etc.).
+ * Query fragment matching employers registered inside a territory. An
+ * employer's region is the catalogue city picked at signup (`regionCityId`,
+ * with its `regionStateId`), so a territory covers it by holding that city or
+ * the whole state. Territories may overlap: every super-agent and agent whose
+ * territory covers the region sees the employer. `null` for an empty territory.
+ */
+export function employerRegionMatch(region: RegionInfo): Record<string, unknown> | null {
+  const or: Record<string, unknown>[] = [];
+  if (region.assignedCityIds.length > 0) or.push({ regionCityId: { $in: region.assignedCityIds } });
+  if (region.assignedStateIds.length > 0) or.push({ regionStateId: { $in: region.assignedStateIds } });
+  return or.length > 0 ? { $or: or } : null;
+}
+
+/** Live (not role-archived) employers registered inside `region`. */
+async function findRegionEmployerIds(region: RegionInfo): Promise<mongoose.Types.ObjectId[]> {
+  const match = employerRegionMatch(region);
+  if (!match) return [];
+  const { Employer } = await import("@/models/Employer");
+  const rows = await Employer.find({ ...match, roleArchivedAt: null }).select("_id").lean();
+  return rows.map((e) => e._id as mongoose.Types.ObjectId);
+}
+
+/**
+ * Resolve the employer _ids a super-agent may see — `getSuperAgentBook`'s
+ * employer set (agent links from both ends, plus every employer registered in
+ * the territory). Returns [] when the SA has no scope — callers MUST treat []
+ * as "see nothing" (default-deny), never as "no filter". This is the single
+ * source of truth for scoping super_agent reads on generic resource routes.
  */
 export async function getSuperAgentEmployerIds(
   saUserId: string
 ): Promise<mongoose.Types.ObjectId[]> {
-  const scope = await getSuperAgentScope(saUserId);
-  if (!scope || scope.effectiveAgentIds.length === 0) return [];
-  const { Employer } = await import("@/models/Employer");
-  const employers = await Employer.find({ agentId: { $in: scope.effectiveAgentIds } })
-    .select("_id")
-    .lean();
-  return employers.map((e) => e._id as mongoose.Types.ObjectId);
+  const book = await getSuperAgentBook(saUserId);
+  return book?.employerIds ?? [];
 }
 
 /**
@@ -167,9 +186,15 @@ export async function getSuperAgentEmployerIds(
  * that carry both an `employerId` and an `agentId` (Job, Application,
  * Placement): a job the agent posted belongs to the territory even when the
  * employer's own pointer has drifted.
+ *
+ * Employers registered in the territory (`employerRegionMatch`) are in the
+ * book too, with or without an agent. The territory is the SA's own region plus
+ * every in-scope agent's, so an SA always sees what their agents see.
  */
 export interface SuperAgentBook {
   agentIds: mongoose.Types.ObjectId[];
+  /** The SA's own team (`SuperAgent.agentIds`) — the agents whose regions extend the territory. */
+  teamAgentIds: mongoose.Types.ObjectId[];
   employerIds: mongoose.Types.ObjectId[];
   saProfileId: mongoose.Types.ObjectId;
   /** `{ $or: [...] }`, or a match-nothing filter when the territory is empty. */
@@ -181,51 +206,121 @@ export async function getSuperAgentBook(saUserId: string): Promise<SuperAgentBoo
   if (!scope) return null;
 
   const agentIds = scope.effectiveAgentIds;
-  if (agentIds.length === 0) {
-    return {
-      agentIds: [],
-      employerIds: [],
-      saProfileId: scope.saProfileId,
-      ownershipMatch: { employerId: { $in: [] } },
-    };
+  const { Employer } = await import("@/models/Employer");
+  let agentDocs: Array<{
+    _id: mongoose.Types.ObjectId;
+    assignedEmployerIds?: mongoose.Types.ObjectId[];
+    assignedCityIds?: mongoose.Types.ObjectId[];
+    assignedStateIds?: mongoose.Types.ObjectId[];
+    roleArchivedAt?: Date | null;
+  }> = [];
+  let ownedEmployers: Array<{ _id: unknown }> = [];
+  if (agentIds.length > 0) {
+    [agentDocs, ownedEmployers] = await Promise.all([
+      Agent.find({ _id: { $in: agentIds } })
+        .select("_id assignedEmployerIds assignedCityIds assignedStateIds roleArchivedAt")
+        .lean(),
+      Employer.find({ agentId: { $in: agentIds } }).select("_id").lean(),
+    ]);
   }
 
-  const { Employer } = await import("@/models/Employer");
-  const [agentDocs, ownedEmployers] = await Promise.all([
-    Agent.find({ _id: { $in: agentIds } }).select("assignedEmployerIds").lean(),
-    Employer.find({ agentId: { $in: agentIds } }).select("_id").lean(),
-  ]);
+  // Only the SA's own team (live agents in `agentIds`) extends the territory.
+  // A region-overlap agent from outside the team brings its assigned
+  // employers, not its whole region. territoryCoverage reads the territory the
+  // same way, so the admin's "who covers this employer" matches the book.
+  const team = new Set(scope.teamAgentIds.map(String));
+  const territoryAgents = agentDocs.filter((a) => team.has(String(a._id)) && !a.roleArchivedAt);
+  const territory: RegionInfo = {
+    assignedCityIds: deduplicateIds([
+      ...scope.assignedCityIds,
+      ...territoryAgents.flatMap((a) => a.assignedCityIds ?? []),
+    ]),
+    assignedStateIds: deduplicateIds([
+      ...scope.assignedStateIds,
+      ...territoryAgents.flatMap((a) => a.assignedStateIds ?? []),
+    ]),
+  };
+  const regionEmployerIds = await findRegionEmployerIds(territory);
 
   const employerIds = deduplicateIds([
-    ...agentDocs.flatMap((a) => (a.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? []),
+    ...agentDocs.flatMap((a) => a.assignedEmployerIds ?? []),
     ...ownedEmployers.map((e) => e._id as mongoose.Types.ObjectId),
+    ...regionEmployerIds,
   ]);
+
+  const ownershipOr: Record<string, unknown>[] = [
+    ...(agentIds.length > 0 ? [{ agentId: { $in: agentIds } }] : []),
+    ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
+  ];
 
   return {
     agentIds,
+    teamAgentIds: scope.teamAgentIds,
     employerIds,
     saProfileId: scope.saProfileId,
-    ownershipMatch: {
-      $or: [
-        { agentId: { $in: agentIds } },
-        ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
-      ],
-    },
+    ownershipMatch: ownershipOr.length > 0 ? { $or: ownershipOr } : { employerId: { $in: [] } },
   };
 }
 
 /**
- * Employer _ids assigned to an agent. Returns [] when the agent has no
- * assignments — callers MUST treat [] as "see nothing" (default-deny).
+ * Employer _ids an agent may see: employers assigned to them (from either end
+ * of the link — `Agent.assignedEmployerIds` or `Employer.agentId`) plus every
+ * employer registered inside the agent's own region. Returns [] when there are
+ * none — callers MUST treat [] as "see nothing" (default-deny).
+ *
+ * Seeing is not owning: posting jobs on the employer's behalf, entering its
+ * account (tenant view) and commission credit still need the explicit
+ * assignment, which only an admin sets.
  */
 export async function getAgentEmployerIds(
   agentUserId: string
 ): Promise<mongoose.Types.ObjectId[]> {
   await connectDB();
   const agent = await Agent.findOne({ userId: agentUserId })
-    .select("assignedEmployerIds")
+    .select("_id assignedEmployerIds assignedCityIds assignedStateIds")
     .lean();
-  return (agent?.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? [];
+  if (!agent) return [];
+  const { Employer } = await import("@/models/Employer");
+  const [ownedEmployers, regionEmployerIds] = await Promise.all([
+    Employer.find({ agentId: agent._id }).select("_id").lean(),
+    findRegionEmployerIds({
+      assignedCityIds: (agent.assignedCityIds as mongoose.Types.ObjectId[]) ?? [],
+      assignedStateIds: (agent.assignedStateIds as mongoose.Types.ObjectId[]) ?? [],
+    }),
+  ]);
+  return deduplicateIds([
+    ...((agent.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? []),
+    ...ownedEmployers.map((e) => e._id as mongoose.Types.ObjectId),
+    ...regionEmployerIds,
+  ]);
+}
+
+/**
+ * Per-record check: is `employerId` among `getAgentEmployerIds(agentUserId)`?
+ * Answered with one `exists` on that employer instead of loading the whole
+ * set, which for a state-wide region can be every employer in the state.
+ */
+export async function agentCanSeeEmployer(
+  agentUserId: string,
+  employerId: unknown
+): Promise<boolean> {
+  if (!employerId || !isValidObjectId(String(employerId))) return false;
+  await connectDB();
+  const agent = await Agent.findOne({ userId: agentUserId })
+    .select("_id assignedEmployerIds assignedCityIds assignedStateIds")
+    .lean();
+  if (!agent) return false;
+  const assigned = (agent.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? [];
+  if (assigned.some((id) => String(id) === String(employerId))) return true;
+
+  const region = employerRegionMatch({
+    assignedCityIds: (agent.assignedCityIds as mongoose.Types.ObjectId[]) ?? [],
+    assignedStateIds: (agent.assignedStateIds as mongoose.Types.ObjectId[]) ?? [],
+  });
+  const reach: Record<string, unknown>[] = [{ agentId: agent._id }];
+  if (region) reach.push({ ...region, roleArchivedAt: null });
+  const { Employer } = await import("@/models/Employer");
+  return Boolean(await Employer.exists({ _id: String(employerId), $or: reach }));
 }
 
 /**
@@ -323,7 +418,7 @@ export async function isRegionSubset(
  * Can this actor manage (assign/change/renew) a subscription for the target
  * user? Admin: always. Agent: only employers assigned to them (via
  * Employer.agentId or Agent.assignedEmployerIds). Super-agent: only employers
- * whose agent is within their effective scope (team + region).
+ * in their book (`getSuperAgentEmployerIds`, which includes the territory).
  * ponytail: job_seeker targets are admin-only — no region model for seekers yet.
  */
 export async function canManageSubscriptionTarget(
@@ -353,12 +448,9 @@ export async function canManageSubscriptionTarget(
     return assigned || isEmployersAgent;
   }
 
-  const scope = await getSuperAgentScope(ctx.userId);
-  if (!scope || scope.effectiveAgentIds.length === 0) return false;
-  return (
-    !!employer.agentId &&
-    scope.effectiveAgentIds.map(String).includes(String(employer.agentId))
-  );
+  // Same set as the bulk-assign route and every other SA employer read.
+  const employerIds = await getSuperAgentEmployerIds(ctx.userId);
+  return employerIds.some((id) => String(id) === String(employer._id));
 }
 
 /**

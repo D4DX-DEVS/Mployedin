@@ -14,6 +14,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -43,10 +44,21 @@ interface ConsentLog {
   _id: string;
   userId: string;
   userName: string;
+  userEmail?: string | null;
   consentType: string;
   granted: boolean;
   timestamp: string;
   ipAddress?: string;
+  source?: string | null;
+  /** The Terms/Privacy version a terms_and_privacy row accepted. */
+  policyVersion?: string | null;
+}
+
+interface TermsSummary {
+  version: string;
+  isBaseline: boolean;
+  acceptedUsers: number;
+  totalUsers: number;
 }
 
 interface GdprStats {
@@ -65,6 +77,9 @@ interface GdprStats {
 
 /** Mirrors GDPR_REQUEST_STATUSES; the model file cannot be imported client-side. */
 const GDPR_STATUS_VALUES = ["pending", "in_progress", "completed", "rejected"] as const;
+
+/** Mirrors CONSENT_TYPES in lib/gdpr/consent.ts (a server module). */
+const CONSENT_TYPE_VALUES = ["terms_and_privacy", "cookies", "marketing"] as const;
 
 // No "Retention policies" tab: it rendered six hardcoded rows claiming
 // auto-delete for applications, CVs and messages that no job performs, with a
@@ -87,6 +102,9 @@ export default function AdminGdprPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [consentTypeFilter, setConsentTypeFilter] = useUrlFilter("consentType", "all", { allow: CONSENT_TYPE_VALUES });
+  const [termsSummary, setTermsSummary] = useState<TermsSummary | null>(null);
+  const [startingTermsVersion, setStartingTermsVersion] = useState(false);
   // In the URL so the dashboard's "pending GDPR requests" row lands filtered.
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: GDPR_STATUS_VALUES });
   const pagination = usePagination();
@@ -149,6 +167,7 @@ export default function AdminGdprPage() {
     try {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
+      if (consentTypeFilter !== "all") params.set("type", consentTypeFilter);
       params.set("sortOrder", sortOrder);
       const res = await fetch(`/api/admin/gdpr/consent?${params}`);
       if (res.ok) {
@@ -159,13 +178,55 @@ export default function AdminGdprPage() {
     } catch {
       toast.error(t("failedLoadConsentLogs"));
     }
-  }, [search, sortOrder, pagination.page, pagination.limit, t]);
+  }, [search, consentTypeFilter, sortOrder, pagination.page, pagination.limit, t]);
+
+  /* ---- Terms version (consent tab) ---- */
+  const fetchTermsSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/gdpr/terms");
+      if (res.ok) setTermsSummary(await res.json());
+    } catch {
+      // The card simply stays hidden; the log below still loads.
+    }
+  }, []);
 
   useEffect(() => {
     if (activeTab === "requests") fetchRequests();
     else if (activeTab === "consent") fetchConsentLogs();
     else setLoading(false);
   }, [activeTab, fetchRequests, fetchConsentLogs]);
+
+  useEffect(() => {
+    if (activeTab === "consent") fetchTermsSummary();
+  }, [activeTab, fetchTermsSummary]);
+
+  const handleStartTermsVersion = async () => {
+    const confirmed = await confirm({
+      title: t("termsNewVersionConfirmTitle"),
+      message: t("termsNewVersionConfirmMessage"),
+      confirmLabel: t("termsNewVersionConfirmButton"),
+      variant: "destructive",
+    });
+    if (!confirmed) return;
+    setStartingTermsVersion(true);
+    try {
+      const res = await fetch("/api/admin/gdpr/terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
+      if (res.ok) {
+        setTermsSummary(await res.json());
+        toast.success(t("termsNewVersionSuccess"));
+      } else {
+        toast.error(t("termsNewVersionError"));
+      }
+    } catch {
+      toast.error(t("termsNewVersionError"));
+    } finally {
+      setStartingTermsVersion(false);
+    }
+  };
 
   /* ---- Actions ---- */
   const handleUpdateStatus = async (id: string, status: string, subject: string, requestType?: string) => {
@@ -215,6 +276,26 @@ export default function AdminGdprPage() {
     terms_and_privacy: t("consentTypeTermsAndPrivacy"),
     cookies: t("consentTypeCookies"),
     marketing: t("consentTypeMarketing"),
+  };
+
+  const CONSENT_TYPE_OPTIONS = [
+    { value: "all", label: t("allConsentTypesLabel") },
+    ...CONSENT_TYPE_VALUES.map((value) => ({ value, label: CONSENT_TYPE_LABELS[value] })),
+  ];
+
+  // Where a row was recorded. Static for the same reason as the type labels;
+  // an unknown source shows as stored.
+  const CONSENT_SOURCE_LABELS: Record<string, string> = {
+    registration: t("consentSourceRegistration"),
+    "registration:google": t("consentSourceRegistrationGoogle"),
+    "registration:email_code": t("consentSourceRegistrationEmailCode"),
+    "registration:linkedin": t("consentSourceRegistrationLinkedIn"),
+    "registration:apple": t("consentSourceRegistrationApple"),
+    first_sign_in: t("consentSourceFirstSignIn"),
+    terms_update: t("consentSourceTermsUpdate"),
+    cookie_banner: t("consentSourceCookieBanner"),
+    privacy_settings: t("consentSourcePrivacySettings"),
+    profile: t("consentSourceProfile"),
   };
 
   const TABS = [
@@ -280,10 +361,35 @@ export default function AdminGdprPage() {
         ))}
       </div>
 
+      {/* Terms version: who still owes an acceptance, and starting a new one */}
+      {activeTab === "consent" && termsSummary && (
+        <section className="workspace-panel-surface flex flex-col gap-3 rounded-2xl panel-body sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold text-foreground">{t("termsVersionTitle")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("termsVersionSummary", {
+                date: formatDate(new Date(termsSummary.version)),
+                accepted: termsSummary.acceptedUsers,
+                total: termsSummary.totalUsers,
+              })}
+            </p>
+            <p className="text-xs text-muted-foreground">{t("termsVersionHelp")}</p>
+          </div>
+          <Button
+            variant="outline"
+            className="min-h-11 shrink-0"
+            onClick={handleStartTermsVersion}
+            disabled={startingTermsVersion}
+          >
+            {t("termsNewVersionButton")}
+          </Button>
+        </section>
+      )}
+
       {/* Filters */}
       <InlineFilterBar
         className="workspace-panel-surface rounded-2xl border-b-0"
-        onClear={search.trim() || typeFilter !== "all" || statusFilter !== "all" ? () => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); pagination.resetPage(); } : undefined}
+        onClear={search.trim() || typeFilter !== "all" || statusFilter !== "all" || consentTypeFilter !== "all" ? () => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); setConsentTypeFilter("all"); pagination.resetPage(); } : undefined}
         clearLabel={t("resetButton")}
       >
         <InlineFilterSearch
@@ -297,6 +403,15 @@ export default function AdminGdprPage() {
             value={statusFilter}
             onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
             placeholder={t("statusLabel")}
+            className={INLINE_FILTER_CONTROL}
+          />
+        )}
+        {activeTab === "consent" && (
+          <SearchableSelect
+            options={CONSENT_TYPE_OPTIONS}
+            value={consentTypeFilter}
+            onValueChange={(v) => { setConsentTypeFilter(v); pagination.resetPage(); }}
+            placeholder={t("consentTypeColumnHeader")}
             className={INLINE_FILTER_CONTROL}
           />
         )}
@@ -443,6 +558,7 @@ export default function AdminGdprPage() {
                       <TableHead>{t("consentUserColumnHeader")}</TableHead>
                       <TableHead>{t("consentTypeColumnHeader")}</TableHead>
                       <TableHead>{t("grantedColumnHeader")}</TableHead>
+                      <TableHead>{t("consentSourceColumnHeader")}</TableHead>
                       <TableHead>
                         <SortableTableHeader label={t("timestampColumnHeader")} active={sortBy === "createdAt"} order={sortOrder} onClick={() => sortByColumn("createdAt")} />
                       </TableHead>
@@ -452,14 +568,29 @@ export default function AdminGdprPage() {
                   <TableBody>
                     {consentLogs.map((c) => (
                       <TableRow key={c._id}>
-                        <TableCell className="font-medium">{c.userName}</TableCell>
-                        <TableCell>{CONSENT_TYPE_LABELS[c.consentType] ?? c.consentType.replace(/_/g, " ")}</TableCell>
+                        <TableCell>
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground">{c.userName}</p>
+                            {c.userEmail ? <p className="text-xs text-muted-foreground">{c.userEmail}</p> : null}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p>{CONSENT_TYPE_LABELS[c.consentType] ?? c.consentType.replace(/_/g, " ")}</p>
+                          {c.policyVersion ? (
+                            <p className="text-xs text-muted-foreground">
+                              {t("consentPolicyVersion", { date: formatDate(new Date(c.policyVersion)) })}
+                            </p>
+                          ) : null}
+                        </TableCell>
                         <TableCell>
                           {c.granted ? (
                             <span className="inline-flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> {t("consentYesLabel")}</span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-sm text-red-600"><XCircle className="h-3.5 w-3.5" /> {t("consentNoLabel")}</span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {c.source ? (CONSENT_SOURCE_LABELS[c.source] ?? c.source) : "—"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{formatDateTime(new Date(c.timestamp))}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{c.ipAddress ?? "—"}</TableCell>

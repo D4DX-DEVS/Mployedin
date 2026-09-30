@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 import { withAuth } from "@/lib/auth/withAuth";
 import type { AuthContext } from "@/lib/auth/withAuth";
 import { withSubscription } from "@/lib/subscription/withSubscription";
@@ -15,8 +16,18 @@ import { notify } from "@/lib/notifications/trigger";
 import { sendEmail } from "@/lib/communications/email";
 import { getTeamActorRole } from "@/lib/permissions/team";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { generateShareablePassword } from "@/lib/security/tempPassword";
 import logger from "@/lib/logger";
 import { escapeHtml, sanitizeEmailSubject } from "@/lib/security/html-escape";
+
+/**
+ * Deliberately says nothing about whose account it is — an owner elsewhere, a
+ * job seeker, an agent. The employer only needs to know to use another address.
+ */
+const emailInUse = () =>
+  NextResponse.json({ error: "This email is already in use.", code: "email_in_use" }, { status: 409 });
+
+const isDuplicateKey = (err: unknown) => (err as { code?: number } | null)?.code === 11000;
 
 /**
  * GET /api/employers/team — list team members for the employer's company
@@ -133,7 +144,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     companyRoles?: CompanyRole[];
     jobAccess?: string[];
     permissionOverrides?: Partial<Record<PermissionFlag, boolean>>;
+    mode?: "invite" | "temp_password";
+    name?: string;
   };
+  const mode = rawBody.mode ?? "invite";
 
   // Resolve roles array (support both single and multi)
   const resolvedRoles: CompanyRole[] = rawBody.companyRoles && rawBody.companyRoles.length > 0
@@ -208,27 +222,43 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   // Check if already a member
   const existing = await CompanyUser.findOne({ companyId: employer._id, email });
-  if (existing) {
-    if (existing.status === "deactivated") {
-      // Reactivate
-      existing.status = "pending";
-      existing.companyRole = primaryRole;
-      existing.companyRoles = resolvedRoles;
-      // Roles can differ from last time, and permissions now decide what this
-      // person can reach, so they are recomputed rather than carried over.
-      existing.permissionOverrides = permissionOverrides;
-      existing.permissions = computeEffectivePermissions(resolvedRoles, permissionOverrides);
-      existing.inviteToken = randomBytes(32).toString("hex");
-      existing.inviteExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
-      existing.invitedBy = ctx.userId as unknown as typeof existing.invitedBy;
-      existing.invitedAt = new Date();
-      await existing.save();
+  if (existing && existing.status !== "deactivated") {
+    return NextResponse.json({ error: "User is already a team member", code: "already_member" }, { status: 409 });
+  }
 
-      await sendInviteComms(existing.inviteToken);
+  // An address that already has an account belongs to someone: another
+  // company's owner, a job seeker, an agent. Inviting it used to answer "sent"
+  // for an invitation they could never use — accepting needs an employer
+  // account, and an owner's own company shadows any membership. The one
+  // exception is a deactivated member of THIS company whose account came from
+  // joining it; an invite link brings them back. A temporary password never
+  // overwrites an account that already exists.
+  const existingUser = await User.findOne({ email }).select("_id").lean();
+  const isReturningMember = Boolean(
+    existing && existingUser && existing.userId && String(existing.userId) === String(existingUser._id),
+  );
+  if (existingUser && !(isReturningMember && mode === "invite")) {
+    return emailInUse();
+  }
 
-      return NextResponse.json({ member: existing, reactivated: true }, { status: 200 });
-    }
-    return NextResponse.json({ error: "User is already a team member" }, { status: 409 });
+  if (existing && mode === "invite") {
+    // Reactivate a deactivated member (anything else returned above)
+    existing.status = "pending";
+    existing.companyRole = primaryRole;
+    existing.companyRoles = resolvedRoles;
+    // Roles can differ from last time, and permissions now decide what this
+    // person can reach, so they are recomputed rather than carried over.
+    existing.permissionOverrides = permissionOverrides;
+    existing.permissions = computeEffectivePermissions(resolvedRoles, permissionOverrides);
+    existing.inviteToken = randomBytes(32).toString("hex");
+    existing.inviteExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    existing.invitedBy = ctx.userId as unknown as typeof existing.invitedBy;
+    existing.invitedAt = new Date();
+    await existing.save();
+
+    await sendInviteComms(existing.inviteToken);
+
+    return NextResponse.json({ member: existing, reactivated: true }, { status: 200 });
   }
 
   // Check for max team size (prevent abuse)
@@ -240,18 +270,131 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return NextResponse.json({ error: "Team size limit reached (50)" }, { status: 400 });
   }
 
-  const inviteToken = randomBytes(32).toString("hex");
   // Always computed, never taken from the request. The stored object is the
   // roles unioned, then the employer's manual ticks applied on top, so a caller
   // cannot hand us a permission set the role system never agreed to.
   const finalPermissions = computeEffectivePermissions(resolvedRoles, permissionOverrides);
 
-  // Check if the invited email matches an existing user
-  const existingUser = await User.findOne({ email }).select("_id").lean();
+  if (mode === "temp_password") {
+    /**
+     * The colleague's account is created now, with a password the employer
+     * passes on in person — for a colleague sitting next to them, or one who
+     * would rather not wait for an email.
+     *
+     * The plaintext is returned in this response once and stored only as a
+     * bcrypt hash. It is never emailed: the heads-up below says an account
+     * exists and where to sign in, so address and password never travel
+     * together. `tempPasswordIssuedAt` drives the dashboard notice offering to
+     * set their own, and any password change or reset clears it.
+     */
+    const tempPassword = generateShareablePassword();
+    let user: { _id: unknown };
+    try {
+      user = await User.create({
+        name: rawBody.name,
+        email,
+        passwordHash: await bcrypt.hash(tempPassword, 12),
+        role: "employer",
+        isActive: true,
+        // The employer typed this address; nothing has proved the colleague
+        // owns it. The verify page mails them a code on their first sign-in.
+        isEmailVerified: false,
+        tempPasswordIssuedAt: new Date(),
+      });
+    } catch (err) {
+      // Another request created this address between our lookup and now.
+      if (isDuplicateKey(err)) return emailInUse();
+      throw err;
+    }
+
+    const now = new Date();
+    let member;
+    try {
+      if (existing) {
+        // A deactivated row that never had an account: reuse it, since the
+        // company/email pair is unique.
+        existing.userId = user._id as typeof existing.userId;
+        existing.status = "active";
+        existing.companyRole = primaryRole;
+        existing.companyRoles = resolvedRoles;
+        existing.jobAccess = (jobAccess ?? []) as unknown as typeof existing.jobAccess;
+        existing.permissionOverrides = permissionOverrides;
+        existing.permissions = finalPermissions;
+        existing.invitedBy = ctx.userId as unknown as typeof existing.invitedBy;
+        existing.invitedAt = now;
+        existing.acceptedAt = now;
+        existing.inviteToken = undefined;
+        existing.inviteExpiresAt = undefined;
+        await existing.save();
+        member = existing;
+      } else {
+        member = await CompanyUser.create({
+          companyId: employer._id,
+          userId: user._id,
+          email,
+          companyRole: primaryRole,
+          companyRoles: resolvedRoles,
+          jobAccess: jobAccess ?? [],
+          permissions: finalPermissions,
+          permissionOverrides,
+          invitedBy: ctx.userId,
+          invitedAt: now,
+          acceptedAt: now,
+          status: "active",
+        });
+      }
+    } catch (err) {
+      // An account with no membership signs in to nothing, and would block
+      // this address from being added again. Take it back.
+      await User.deleteOne({ _id: user._id }).catch((cleanupErr: unknown) =>
+        logger.error({ err: cleanupErr }, "[team.temp_password] Could not remove orphaned account"),
+      );
+      throw err;
+    }
+
+    let emailSent = true;
+    try {
+      const loginUrl = escapeHtml(`${baseUrl}/${locale}/login`);
+      const safeCompanyName = escapeHtml(employer.companyName);
+      await sendEmail({
+        to: email,
+        subject: sanitizeEmailSubject(`You've been added to ${employer.companyName} on MPLOYEDIN`),
+        html: `
+          <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+            <h2>Your MPLOYEDIN account is ready</h2>
+            <p>A colleague added you to <strong>${safeCompanyName}</strong> on MPLOYEDIN.</p>
+            <p>Sign in with this email address and the temporary password they give you. We'll send a short code to this address the first time you sign in, and you can set your own password once you're in.</p>
+            <a href="${loginUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Sign in</a> <!-- nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- loginUrl is HTML attribute-escaped above -->
+            <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">If you weren't expecting this, you can ignore this email.</p>
+          </div>
+        `,
+      });
+    } catch (err) {
+      // The account exists either way; the employer is told so they can pass
+      // the sign-in address on themselves.
+      emailSent = false;
+      logger.error({ err }, "[team.temp_password] Heads-up email failed");
+    }
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "team.add_with_temp_password",
+      resource: "employers",
+      resourceId: String(employer._id),
+      changes: { after: { email, companyRole: primaryRole, companyRoles: resolvedRoles } },
+      req,
+    });
+
+    return NextResponse.json(
+      { member, credentials: { email, password: tempPassword }, emailSent },
+      { status: 201, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const inviteToken = randomBytes(32).toString("hex");
 
   const member = await CompanyUser.create({
     companyId: employer._id,
-    userId: existingUser?._id ?? undefined,
     email,
     companyRole: primaryRole,
     companyRoles: resolvedRoles,

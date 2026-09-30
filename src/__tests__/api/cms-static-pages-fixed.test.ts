@@ -22,6 +22,12 @@ jest.mock("@/lib/audit/log", () => ({
   actorFromCtx: jest.fn().mockReturnValue({}),
 }));
 
+const revalidateTag = jest.fn();
+jest.mock("next/cache", () => ({
+  revalidateTag: (...args: unknown[]) => revalidateTag(...args),
+  unstable_cache: <T,>(fn: T) => fn,
+}));
+
 jest.mock("@/lib/security/rateLimit", () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ allowed: true }),
 }));
@@ -54,7 +60,7 @@ function req(url: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
   return new NextRequest(`http://localhost:3000${url}`, init);
 }
 
-describe("admin static pages — fixed four legal pages", () => {
+describe("admin static pages — fixed legal pages", () => {
   const StaticPage = require("@/models/StaticPage").default;
 
   beforeEach(() => {
@@ -63,13 +69,13 @@ describe("admin static pages — fixed four legal pages", () => {
     (listQuery.lean as jest.Mock).mockResolvedValue([]);
   });
 
-  it("lists only the four legal slugs, so test pages like 'Audit Dynamic Page' drop out", async () => {
+  it("lists only the legal slugs, so test pages like 'Audit Dynamic Page' drop out", async () => {
     const { GET } = await import("@/app/api/admin/cms/static-pages/route");
     const res = await GET(req("/api/admin/cms/static-pages"), { params: Promise.resolve({}) });
 
     expect(res.status).toBe(200);
     const filter = StaticPage.find.mock.calls[0][0];
-    expect(filter.slug).toEqual({ $in: ["privacy-policy", "terms-and-conditions", "cookie-policy", "gdpr"] });
+    expect(filter.slug).toEqual({ $in: ["privacy-policy", "terms-and-conditions", "cookie-policy", "gdpr", "accessibility-statement"] });
   });
 
   it("creates a missing legal page as an inactive draft instead of leaving it uneditable", async () => {
@@ -77,12 +83,26 @@ describe("admin static pages — fixed four legal pages", () => {
     await GET(req("/api/admin/cms/static-pages"), { params: Promise.resolve({}) });
 
     const ops = StaticPage.bulkWrite.mock.calls[0][0];
-    expect(ops).toHaveLength(4);
+    expect(ops).toHaveLength(5);
     const privacy = ops.find((op: { updateOne: { filter: { slug: string } } }) => op.updateOne.filter.slug === "privacy-policy");
     expect(privacy.updateOne.upsert).toBe(true);
     // $setOnInsert only — an existing page's content is never touched.
     expect(Object.keys(privacy.updateOne.update)).toEqual(["$setOnInsert"]);
     expect(privacy.updateOne.update.$setOnInsert).toMatchObject({ title: "Privacy Policy", isActive: false });
+  });
+
+  it("starts a missing Accessibility Statement from an unpublished draft the admin can edit", async () => {
+    const { GET } = await import("@/app/api/admin/cms/static-pages/route");
+    await GET(req("/api/admin/cms/static-pages"), { params: Promise.resolve({}) });
+
+    const ops = StaticPage.bulkWrite.mock.calls[0][0];
+    const draft = ops.find((op: { updateOne: { filter: { slug: string } } }) => op.updateOne.filter.slug === "accessibility-statement");
+    expect(draft.updateOne.update.$setOnInsert).toMatchObject({ title: "Accessibility Statement", isActive: false });
+    expect(draft.updateOne.update.$setOnInsert.body).toMatch(/\(WCAG\) 2\.2/);
+    expect(draft.updateOne.update.$setOnInsert.bodyAr).toMatch(/\(WCAG\) 2\.2/);
+    // The pages that already existed keep their empty seed.
+    const gdpr = ops.find((op: { updateOne: { filter: { slug: string } } }) => op.updateOne.filter.slug === "gdpr");
+    expect(gdpr.updateOne.update.$setOnInsert.body).toBe("");
   });
 
   it("never bumps an existing page's updatedAt — the public 'Last updated' date reads it", async () => {
@@ -104,14 +124,14 @@ describe("admin static pages — fixed four legal pages", () => {
     expect(res.status).toBe(200);
   });
 
-  it("offers no create or delete — only the four pages exist", async () => {
+  it("offers no create or delete — only the fixed pages exist", async () => {
     const listRoute = await import("@/app/api/admin/cms/static-pages/route");
     const itemRoute = await import("@/app/api/admin/cms/static-pages/[id]/route");
     expect("POST" in listRoute).toBe(false);
     expect("DELETE" in itemRoute).toBe(false);
   });
 
-  it("treats a page outside the four (e.g. the old 'Audit Dynamic Page') as not found", async () => {
+  it("treats a page outside the registry (e.g. the old 'Audit Dynamic Page') as not found", async () => {
     const orphan = { _id: ID, slug: "audit-dynamic-page", title: "Audit Dynamic Page", save: jest.fn() };
     StaticPage.findById.mockReturnValue({ lean: jest.fn().mockResolvedValue(orphan), then: undefined });
     const { GET, PATCH } = await import("@/app/api/admin/cms/static-pages/[id]/route");
@@ -147,6 +167,25 @@ describe("admin static pages — fixed four legal pages", () => {
     expect(res.status).toBe(200);
     expect(pageDoc.slug).toBe("privacy-policy");
     expect(pageDoc.title).toBe("Privacy notice");
+    expect(revalidateTag).not.toHaveBeenCalled();
+  });
+
+  // The footer link, side tab and sitemap entry read the Active flag through a
+  // cache; publishing or unpublishing has to show on the next page load.
+  it("clears the cached published state when Active is switched", async () => {
+    StaticPage.findById.mockResolvedValue(pageDoc);
+    const { PATCH } = await import("@/app/api/admin/cms/static-pages/[id]/route");
+    const res = await PATCH(
+      req(`/api/admin/cms/static-pages/${ID}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true }),
+      }),
+      { params: Promise.resolve({ id: ID }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(revalidateTag).toHaveBeenCalledWith("legal-pages", { expire: 0 });
   });
 });
 
@@ -155,7 +194,7 @@ describe("public static page API", () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it("404s a slug that is not one of the four legal pages without touching the DB", async () => {
+  it("404s a slug that is not one of the legal pages without touching the DB", async () => {
     const { GET } = await import("@/app/api/public/pages/[slug]/route");
     const res = await GET(req("/api/public/pages/audit-dynamic-page"), {
       params: Promise.resolve({ slug: "audit-dynamic-page" }),

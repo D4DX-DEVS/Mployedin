@@ -61,6 +61,12 @@ export interface ISystemSettings extends Document {
   /** When false (default), subscription enforcement is bypassed and all users get full access.
    *  Flip to true once payment integration is live to enforce plan limits / feature gates. */
   subscriptionEnforcementEnabled: boolean;
+  /**
+   * The Terms of Service + Privacy Policy version every user must have
+   * accepted. Unset = TERMS_BASELINE_VERSION. An admin bumps it from the GDPR
+   * page after a material change; see lib/gdpr/termsVersion.ts.
+   */
+  legalTermsVersion?: string;
   smtp?: ISmtpConfig;
   commissionOverrides?: ICommissionOverride[];
   updatedAt: Date;
@@ -73,6 +79,7 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     maintenanceMode: { type: Boolean, default: false },
     defaultCurrency: { type: String, default: "AED" },
     subscriptionEnforcementEnabled: { type: Boolean, default: false },
+    legalTermsVersion: { type: String, maxlength: 40 },
     smtp: {
       smtpEmail: { type: String },
       smtpAppPassword: { type: String, select: false },

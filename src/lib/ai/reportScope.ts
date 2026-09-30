@@ -85,19 +85,15 @@ export async function resolveReportScope(ctx: {
 
   if (ctx.role === "agent") {
     const { default: Agent } = await import("@/models/Agent");
-    const { Employer } = await import("@/models/Employer");
+    const { getAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
     const agent = await Agent.findOne({ userId: ctx.userId })
-      .select("_id assignedEmployerIds")
+      .select("_id")
       .lean();
     if (!agent) return DENY;
     const agentId = agent._id as mongoose.Types.ObjectId;
-    // An employer reaches an agent two ways: listed on the agent's book, or
-    // pointing back at the agent. Counting only one of them under-reports.
-    const owned = await Employer.find({ agentId }).select("_id").lean();
-    const employerIds = dedupe([
-      ...((agent.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? []),
-      ...owned.map((e) => e._id as mongoose.Types.ObjectId),
-    ]);
+    // The same set the agent's lists show: listed on the agent's book, pointing
+    // back at the agent, or registered in the agent's region.
+    const employerIds = dedupe(await getAgentEmployerIds(ctx.userId));
     return {
       employerIds,
       agentIds: [agentId],

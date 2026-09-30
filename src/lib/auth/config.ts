@@ -27,6 +27,7 @@ import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { isSessionRevoked, revokeSession } from "@/lib/auth/sessionRevocation";
 import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
+import { getCurrentTermsVersion, isTermsAcceptancePending, termsPendingFor } from "@/lib/gdpr/termsVersion";
 import { CONSENT_REQUIRED_CODE, SIGNUP_CONSENT_COOKIE, parseSignupConsent } from "@/lib/auth/signupConsent";
 
 const credentialsSchema = z.object({
@@ -298,6 +299,11 @@ export const authConfig: NextAuthConfig = {
           isEmailVerified: user.isEmailVerified ?? false,
           isOnboarded: jobSeeker?.isOnboarded ?? false,
           rememberMe: parsed.data.rememberMe === "true",
+          // Custom (restricted) staff permissions must be in force from the first
+          // request — without them the token fell back to role_default until the
+          // 5-minute DB re-check.
+          permissionMode: user.permissionMode,
+          customPermissions: user.customPermissions,
         };
         } catch (err) {
           // Propagate typed 2FA signals to the client (surfaced as result.code).
@@ -482,6 +488,8 @@ export const authConfig: NextAuthConfig = {
             locale: dbUser.locale,
             isEmailVerified,
             isOnboarded: fbJobSeeker?.isOnboarded ?? false,
+            permissionMode: dbUser.permissionMode,
+            customPermissions: dbUser.customPermissions,
           };
         } catch (err) {
           // A typed CredentialsSignin carries the reason code the login page maps;
@@ -899,6 +907,15 @@ export const authConfig: NextAuthConfig = {
             token.isOnboarded = js?.isOnboarded ?? false;
           }
         }
+        // /accept-terms after recording the acceptance: re-read, never trust the payload.
+        if (data.termsAccepted !== undefined && typeof token.id === "string") {
+          try {
+            token.termsPending = await isTermsAcceptancePending(token.id, token.role as string | undefined);
+          } catch (err) {
+            // Keep the old value; /accept-terms tells the user to sign in again.
+            logger.error({ err }, "[auth] could not refresh the accepted terms version");
+          }
+        }
         return token;
       }
       if (user) {
@@ -945,13 +962,14 @@ export const authConfig: NextAuthConfig = {
         if (passwordChangedAfterToken || dueForPeriodicCheck) {
           await connectDB();
           const dbUser = await User.findById(token.id)
-            .select("passwordChangedAt isActive role permissionMode customPermissions")
+            .select("passwordChangedAt isActive role permissionMode customPermissions termsAcceptedVersion")
             .lean() as {
               passwordChangedAt?: Date;
               isActive?: boolean;
               role?: UserRole;
               permissionMode?: string;
               customPermissions?: Record<string, string[]>;
+              termsAcceptedVersion?: string;
             } | null;
 
           if (!dbUser?.isActive) return null;
@@ -963,6 +981,8 @@ export const authConfig: NextAuthConfig = {
           token.role = dbUser.role ?? token.role;
           token.permissionMode = dbUser.permissionMode ?? "role_default";
           token.customPermissions = dbUser.customPermissions ?? undefined;
+          // An admin who starts a new Terms version reaches live sessions here.
+          token.termsPending = termsPendingFor(dbUser.role, dbUser.termsAcceptedVersion, await getCurrentTermsVersion());
 
           if (dbUser.passwordChangedAt) {
             const changedAt = Math.floor(
@@ -1196,6 +1216,18 @@ export const authConfig: NextAuthConfig = {
         }
       }
 
+      // Sign-in (every provider): does this user still owe a Terms acceptance?
+      // Staff-created accounts and older ones do until they accept on
+      // /accept-terms. Fails open — a lookup error must not block sign-in.
+      if (user && typeof token.id === "string" && !token.pending2fa) {
+        try {
+          token.termsPending = await isTermsAcceptancePending(token.id, token.role as string | undefined);
+        } catch (err) {
+          logger.error({ err }, "[auth] could not check the accepted terms version");
+          token.termsPending = false;
+        }
+      }
+
       // Resolve the company workspace for employers — only when not already cached.
       // Covers both an owner and a colleague who is an active member of somebody
       // else's company. See src/lib/auth/companyContext.ts.
@@ -1239,6 +1271,7 @@ export const authConfig: NextAuthConfig = {
         (session.user as unknown as { customPermissions?: Record<string, string[]> }).customPermissions = token.customPermissions as Record<string, string[]> | undefined;
         (session.user as unknown as { isOnboarded: boolean }).isOnboarded = (token.isOnboarded as boolean) ?? false;
         (session.user as unknown as { isEmailVerified: boolean }).isEmailVerified = (token.isEmailVerified as boolean) ?? false;
+        (session.user as unknown as { termsPending: boolean }).termsPending = token.termsPending === true;
         (session.user as unknown as { provider?: string }).provider = (token.provider as string) ?? undefined;
         if (token.companyUserRole) {
           (session.user as unknown as { companyUserRole: CompanyRole }).companyUserRole = token.companyUserRole as CompanyRole;

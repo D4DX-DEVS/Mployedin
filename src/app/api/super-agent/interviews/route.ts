@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { getSuperAgentBook } from "@/lib/auth/agentRestrictions";
 import Interview from "@/models/Interview";
 import { relatedEntitySearchOr } from "@/lib/search/relatedEntitySearch";
 
@@ -27,10 +27,17 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   // else, so a super-agent with no roster and no region overlap (or no
   // SuperAgent document at all) queried Interview.find({}) — every interview
   // on the platform, plus the same leak in the three status counts below.
+  // Scope = the SA's book: interviews run by their agents, or at an employer in
+  // it (Interview.agentId is only stamped when the employer had an agent, so an
+  // agent-only match missed every territory employer).
   if (ctx.role !== "admin") {
-    const scope = await getSuperAgentScope(ctx.userId);
-    const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
-    filter.agentId = { $in: agentIds };
+    const book = await getSuperAgentBook(ctx.userId);
+    filter.$and = [{
+      $or: [
+        { agentId: { $in: book?.agentIds ?? [] } },
+        { employerId: { $in: book?.employerIds ?? [] } },
+      ],
+    }];
   }
   if (status && status !== "all") filter.status = status;
   if (type && type !== "all") filter.type = type;

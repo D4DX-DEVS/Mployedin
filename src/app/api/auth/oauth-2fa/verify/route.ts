@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { encode } from "next-auth/jwt";
+import { getCurrentTermsVersion, termsPendingFor } from "@/lib/gdpr/termsVersion";
 import { connectDB } from "@/lib/db/mongoose";
 import { User } from "@/models/User";
 import { decrypt } from "@/lib/security/encryption";
@@ -52,7 +53,7 @@ function sessionCookieName(): string {
 /** Build the identity fields that the jwt callback normally sets on full sign-in. */
 async function buildIdentityToken(userId: string, provider: string) {
   const dbUser = await User.findById(userId).select(
-    "_id role locale email isEmailVerified permissionMode customPermissions avatar name isOnboarded isActive"
+    "_id role locale email isEmailVerified permissionMode customPermissions avatar name isOnboarded isActive termsAcceptedVersion"
   ).lean();
   if (!dbUser) throw new Error("User not found");
   if (!dbUser.isActive) throw new Error("Account deactivated");
@@ -73,6 +74,11 @@ async function buildIdentityToken(userId: string, provider: string) {
     provider,
     isEmailVerified: dbUser.isEmailVerified ?? true,
     isOnboarded: false, // job_seekers populate this in jwt callback; initialised neutral here
+    termsPending: termsPendingFor(
+      dbUser.role as string,
+      (dbUser as { termsAcceptedVersion?: string }).termsAcceptedVersion,
+      await getCurrentTermsVersion(),
+    ),
     permissionMode: (dbUser.permissionMode as string) ?? "role_default",
     customPermissions: (dbUser.customPermissions as Record<string, string[]> | undefined) ?? undefined,
     name: dbUser.name,

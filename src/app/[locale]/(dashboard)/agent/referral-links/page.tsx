@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { endOfDay, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -102,7 +103,9 @@ export default function AgentReferralLinksPage() {
     await createMutation.mutateAsync({
       label: newLabel || undefined,
       maxUses: newMaxUses ? parseInt(newMaxUses) : undefined,
-      expiresAt: newExpiresAt || undefined,
+      // The picked day is the last day the link works. Sent bare, "2026-09-30"
+      // parsed as UTC midnight: today was refused and every link died a day early.
+      expiresAt: newExpiresAt ? endOfDay(parseISO(newExpiresAt)).toISOString() : undefined,
       audience: newAudience,
     });
     setCreateOpen(false);
@@ -207,7 +210,7 @@ export default function AgentReferralLinksPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("formExpiryDateLabel")}</label>
-              <DateTimePicker mode="date" value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
+              <DateTimePicker mode="date" minDate={new Date()} value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
             </div>
           </div>
           <div className="mt-4 flex justify-end">

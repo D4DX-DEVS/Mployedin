@@ -12,6 +12,7 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
+import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/auth/agent-register — Agent self-registration            */
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   const {
     fullName, email, phone, password,
     country, city, specialization, languages,
-    referralCode,
+    referralCode, cookieConsent,
   } = parsed;
 
   /* Check for existing user */
@@ -100,6 +101,16 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+
+  // After the rollback above, so a failed signup leaves no consent row.
+  // termsAccepted is required by the schema. Never throws.
+  await recordRegistrationConsents({
+    userId: String(user._id),
+    userName: fullName.trim(),
+    termsAccepted: true,
+    cookieChoice: cookieConsent ?? null,
+    ipAddress: ip,
+  });
 
   /* Log activity */
   await logActivity({

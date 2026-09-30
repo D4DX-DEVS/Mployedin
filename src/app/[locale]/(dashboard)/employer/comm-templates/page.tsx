@@ -4,12 +4,17 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Eye, FileText } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { RowActions } from "@/components/shared/RowActions";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
@@ -49,6 +54,7 @@ export default function CommTemplatesPage() {
     body: "",
   });
   const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState<CommTemplate | null>(null);
 
   const { data: templates = [], isLoading: loading } = useCommTemplates(filterType);
   const createMutation = useCreateCommTemplate();
@@ -223,9 +229,7 @@ export default function CommTemplatesPage() {
           ))}
         </div>
       ) : filteredTemplates.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          {t("noTemplates")}
-        </div>
+        <EmptyState title={t("noTemplates")} icon={FileText} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((template) => (
@@ -256,17 +260,49 @@ export default function CommTemplatesPage() {
                 </div>
               )}
 
-              <button
-                onClick={() => handleDeleteTemplate(template._id, template.name)}
-                className="w-full mt-2 px-3 py-2 rounded border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-              >
-                <Trash2 className="w-4 h-4" />
-                {tc("delete")}
-              </button>
+              <div className="flex justify-end pt-1">
+                <RowActions
+                  name={template.name}
+                  quick={[
+                    { key: "preview", label: t("preview"), icon: Eye, onSelect: () => setPreview(template) },
+                  ]}
+                  menu={[
+                    { key: "delete", label: tc("delete"), icon: Trash2, destructive: true, pending: deleteMutation.isPending, onSelect: () => handleDeleteTemplate(template._id, template.name) },
+                  ]}
+                />
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Template preview — the cards clamp the body, so without this the
+          full text was unreadable and Delete was the only action. */}
+      <Dialog open={!!preview} onOpenChange={(open) => { if (!open) setPreview(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="truncate">{preview?.name}</DialogTitle>
+            {preview && (
+              <DialogDescription>
+                <Badge className={`w-fit ${TYPE_COLORS[preview.type]}`}>
+                  {t(TYPE_LABELS_KEY[preview.type])}
+                </Badge>
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {preview && (
+            <div className="space-y-3">
+              <div className="text-sm">
+                <p className="text-xs text-muted-foreground uppercase">{t("subjectLabel")}</p>
+                <p className="mt-1 font-medium text-foreground">{preview.subject}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/30 p-3">
+                <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{preview.body}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
     </FeatureGate>
   );

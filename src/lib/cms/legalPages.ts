@@ -1,5 +1,5 @@
 /**
- * The four legal pages the public site has a route for. Static Pages in the
+ * The legal pages the public site has a route for. Static Pages in the
  * admin CMS edits exactly these: a page with any other slug had no URL, so
  * "Add New" only ever produced orphans (e.g. "Audit Dynamic Page").
  *
@@ -11,6 +11,7 @@ export const LEGAL_PAGES = [
   { slug: "terms-and-conditions", path: "/terms", title: "Terms & Conditions", titleAr: "الشروط والأحكام" },
   { slug: "cookie-policy", path: "/cookies", title: "Cookie Policy", titleAr: "سياسة ملفات تعريف الارتباط" },
   { slug: "gdpr", path: "/gdpr", title: "GDPR & Data Protection", titleAr: "حماية البيانات (GDPR)" },
+  { slug: "accessibility-statement", path: "/accessibility", title: "Accessibility Statement", titleAr: "بيان إمكانية الوصول" },
 ] as const;
 
 export type LegalPage = (typeof LEGAL_PAGES)[number];

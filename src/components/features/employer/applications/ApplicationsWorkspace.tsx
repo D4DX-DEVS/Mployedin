@@ -106,6 +106,7 @@ import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
+import { RowActions } from "@/components/shared/RowActions";
 import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom, type PipelineStage } from "@/lib/hiring/pipeline";
 import {
   DEFAULT_WORKFLOW_STAGE_DEFS,
@@ -2187,7 +2188,7 @@ function TableView({
           const shownSkillsCount = matchingSkills.length + otherSkills.length;
           const extraSkillsCount = (app.jobSeekerId?.skills?.length ?? 0) - shownSkillsCount;
           const isNew = app.status === "applied" && !app.viewedByEmployerAt;
-          const appliedDate = new Date(app.appliedAt).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { day: "numeric", month: "short", year: "numeric" });
+          const appliedDate = formatDate(new Date(app.appliedAt), { day: "2-digit", month: "short", year: "numeric" }, locale);
           const scorecard = scorecardMap?.[app._id];
           const matchScore = app.aiMatchScore;
           const matchColor = matchScore != null ? (matchScore >= 80 ? "text-status-selected" : matchScore >= 70 ? "text-status-applied" : matchScore >= 50 ? "text-status-shortlisted" : "text-rose-500") : "text-muted-foreground";
@@ -2296,10 +2297,21 @@ function TableView({
                     </p>
                   )}
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <p className="min-w-0 truncate text-xs text-muted-foreground">
-                      {location}
-                      {experienceYears != null ? (location ? ` • ${t("yearsExp", { count: experienceYears })} exp` : `${t("yearsExp", { count: experienceYears })} exp`) : ""}
-                    </p>
+                    {location ? (
+                      <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{location}</span>
+                      </span>
+                    ) : null}
+                    {location && experienceYears != null ? (
+                      <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground">•</span>
+                    ) : null}
+                    {experienceYears != null ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        {t("yearsExp", { count: experienceYears })}
+                      </span>
+                    ) : null}
                     {app.isAgentReferred ? <ReferredBadge size="xs" /> : null}
                   </div>
                 </div>
@@ -2321,7 +2333,10 @@ function TableView({
               {/* Role — the job this candidate applied to (their own headline goes below) */}
               {!compact && (
                 <div className="hidden min-w-0 lg:block">
-                  <p className="truncate text-sm font-medium text-foreground">{app.jobId?.title || t("roleNotSpecified")}</p>
+                  <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium text-foreground">
+                    <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="truncate">{app.jobId?.title || t("roleNotSpecified")}</span>
+                  </p>
                   {currentRole ? <p className="truncate text-xs text-muted-foreground">{currentRole}</p> : null}
                 </div>
               )}
@@ -2363,38 +2378,29 @@ function TableView({
               )}
 
               {/* Applied On */}
-              {!compact && <div className="hidden text-xs text-muted-foreground lg:block">{appliedDate}</div>}
+              {!compact && (
+                <div className="hidden text-xs text-muted-foreground lg:block">
+                  <span className="inline-flex items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    {appliedDate}
+                  </span>
+                </div>
+              )}
 
-              {/* Actions */}
-              <div className="hidden items-center justify-end gap-1.5 lg:flex">
-                {onOpenDetails ? (
-                  <Button
-                    variant="ghost"
-                    size="dense"
-                    className="h-10 w-10 rounded-lg p-0 text-muted-foreground hover:text-foreground"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onOpenDetails?.(app, event.currentTarget);
-                    }}
-                    aria-label={t("detailedView")}
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                  </Button>
-                ) : null}
-                {resumeViewHref(app) && onViewCv ? (
-                  <Button
-                    variant="ghost"
-                    size="dense"
-                    className="h-10 w-10 rounded-lg p-0 text-muted-foreground hover:text-foreground"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onViewCv(app);
-                    }}
-                    aria-label={t("viewCvFor", { name: candidateName })}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                ) : null}
+              {/* Actions — related row icons (score breakdown + CV) as standard
+                  RowActions: icon-only quick buttons with data-table-action,
+                  reachable at every width (were ghost icon-buttons hidden
+                  below lg with no table-action hook). The wrapper stops the
+                  click reaching the row, which would open the details drawer
+                  underneath the CV viewer. */}
+              <div className="flex items-center justify-end gap-1.5" onClick={(event) => event.stopPropagation()}>
+                <RowActions
+                  name={candidateName}
+                  quick={[
+                    ...(onOpenDetails ? [{ key: "details", label: t("detailedView"), icon: BarChart3, iconOnly: true as const, onSelect: () => onOpenDetails?.(app, document.activeElement as HTMLElement) }] : []),
+                    ...(resumeViewHref(app) && onViewCv ? [{ key: "cv", label: t("viewCvFor", { name: candidateName }), icon: FileText, iconOnly: true as const, onSelect: () => onViewCv(app) }] : []),
+                  ]}
+                />
               </div>
             </article>
           );

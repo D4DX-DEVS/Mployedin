@@ -78,6 +78,8 @@ export const employerAdminCreateSchema = z.object({
   location: z.string().max(200).optional(),
   // Note: empty string is valid (optional form field left blank)
   phone: commonSchemas.phone.optional().or(z.literal("")),
+  /** Catalogue city the company sits in — sets its region (who sees it). */
+  cityId: z.string().regex(/^[a-f0-9]{24}$/i, "Pick a city from the list.").optional().or(z.literal("").transform(() => undefined)),
 });
 
 /** For admin updating employer user accounts */
