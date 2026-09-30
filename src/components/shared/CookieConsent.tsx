@@ -70,7 +70,9 @@ export default function CookieConsent({ locale, labels }: CookieConsentProps) {
     measure();
     window.addEventListener("resize", measure);
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    if (bannerRef.current) ro?.observe(bannerRef.current);
+    // border-box: lifting the banner swaps its bottom padding, which a
+    // content-box observer never reports (the tablet offset came out 8px high).
+    if (bannerRef.current) ro?.observe(bannerRef.current, { box: "border-box" });
 
     return () => {
       window.removeEventListener("resize", measure);
