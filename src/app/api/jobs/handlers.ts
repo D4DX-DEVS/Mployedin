@@ -500,6 +500,8 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     benefits: benefits ?? [],
     employerId,
     agentId,
+    // The human who wrote it — in tenant view the acting agent, not the employer.
+    postedBy: ctx.tenantView?.actorId ?? ctx.userId,
     status: resolvedStatus,
     expiresAt: expiresAt ? new Date(expiresAt) : undefined,
     vacancies,

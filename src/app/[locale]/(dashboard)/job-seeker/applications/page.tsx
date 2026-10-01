@@ -90,6 +90,9 @@ const STATUS_TABS = [
   "offer",
   "hired",
   "rejected",
+  // Counted under All, so without its own tab a withdrawn row left "All 1"
+  // beside a row of zeros.
+  "withdrawn",
 ] as const;
 
 type StatusTab = (typeof STATUS_TABS)[number];
@@ -313,6 +316,18 @@ export default function ApplicationsPage() {
         >
           {loading ? (
             <ListSkeleton count={5} layout="list" itemClassName="h-20" className="space-y-2.5" />
+          ) : applications.length === 0 && hasActiveFilters ? (
+            // A search or date range with no hits is not "you never applied".
+            <EmptyState
+              icon={FileText}
+              title={t("emptyFilteredTitle")}
+              description={t("emptyFiltered")}
+              action={
+                <Button size="sm" variant="outline" onClick={clearFilters}>
+                  {t("clearFilters")}
+                </Button>
+              }
+            />
           ) : applications.length === 0 ? (
             <EmptyState
               icon={FileText}

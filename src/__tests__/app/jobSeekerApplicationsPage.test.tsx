@@ -290,6 +290,61 @@ describe("ApplicationsPage", () => {
     expect(screen.queryByText(/applications? · \d+ active/i)).not.toBeInTheDocument();
   });
 
+  // QA 2026-10-01: a withdrawn application counted under All but had no tab of
+  // its own, so a search could read "All 1" beside a row of zeros.
+  it("gives withdrawn applications their own tab with a count", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        applications: [],
+        statusCounts: { all: 1, applied: 0, shortlisted: 0, interview_scheduled: 0, selected: 0, offer: 0, hired: 0, rejected: 0, withdrawn: 1 },
+        pagination: { total: 1 },
+      }),
+    });
+
+    render(<ApplicationsPage />);
+
+    const tab = await screen.findByRole("tab", { name: /^withdrawn/i });
+    await waitFor(() => expect(within(tab).getByText("1")).toBeInTheDocument());
+
+    await user.click(tab);
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&status=withdrawn&fetchCounts=true");
+    });
+  });
+
+  // QA 2026-10-01: a search with no hits told a seeker holding 31 applications
+  // "You have not applied to any roles yet".
+  it("says a search found nothing, not that the seeker never applied, and offers to clear it", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ applications: [], statusCounts: { all: 0 }, pagination: { total: 0 } }),
+    });
+
+    render(<ApplicationsPage />);
+
+    // Unfiltered and empty: the seeker really has nothing yet.
+    expect(await screen.findByText(/you have not applied to any roles yet/i)).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText(/search by job title or company/i), "devops");
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&search=devops&fetchCounts=true");
+    });
+
+    expect(await screen.findByText("No matching applications")).toBeInTheDocument();
+    expect(screen.queryByText(/you have not applied to any roles yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /browse jobs/i })).not.toBeInTheDocument();
+
+    fetchMock.mockClear();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
+    });
+    expect(screen.getByPlaceholderText(/search by job title or company/i)).toHaveValue("");
+  });
+
   it("keeps the context line when counts are present but a background refetch failed", async () => {
     countsQueryMock.mockReturnValue({
       data: { pendingOffers: 1, interviewsAwaitingResponse: 2, upcomingInterviews: 0, totalApplications: 27, activeApplications: 8 },

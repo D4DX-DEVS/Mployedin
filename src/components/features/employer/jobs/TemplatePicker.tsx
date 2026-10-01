@@ -19,6 +19,9 @@ import { useJobTemplateLibrary, useUseJobTemplate, type JobTemplateDetail } from
 
 interface TemplatePickerProps {
   locale: string;
+  /** "agent": one assigned employer's templates; the draft opens in the agent's editor. */
+  basePath?: "employer" | "agent";
+  employerId?: string;
 }
 
 const LINK_BUTTON =
@@ -29,14 +32,16 @@ const LINK_BUTTON =
  * the editor. The library page keeps edit / duplicate / delete; this page only
  * chooses, so a repeat poster is two taps from the form.
  */
-export function TemplatePicker({ locale }: TemplatePickerProps) {
+export function TemplatePicker({ locale, basePath = "employer", employerId }: TemplatePickerProps) {
   const t = useTranslations("employerNewJob");
   const router = useRouter();
+  const jobsHref = `/${locale}/${basePath}/jobs`;
+  const forAgent = basePath === "agent";
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const query = useDebounce(search.trim(), 300);
-  const { data, isLoading, isError, refetch } = useJobTemplateLibrary({ search: query || undefined, page, limit });
+  const { data, isLoading, isError, refetch } = useJobTemplateLibrary({ search: query || undefined, page, limit, employerId: forAgent ? employerId : undefined });
   const useTemplate = useUseJobTemplate();
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -48,7 +53,7 @@ export function TemplatePicker({ locale }: TemplatePickerProps) {
     setBusyId(template._id);
     try {
       const result = await useTemplate.mutateAsync(template._id);
-      router.push(`/${locale}/employer/jobs/${result.job._id}/edit`);
+      router.push(`${jobsHref}/${result.job._id}/edit`);
     } catch {
       toast.error(t("toastUseError"));
       setBusyId(null);
@@ -70,13 +75,21 @@ export function TemplatePicker({ locale }: TemplatePickerProps) {
     );
   } else if (templates.length === 0) {
     // Templates are only made from an existing job, so the empty state points
-    // at the jobs list instead of dead-ending.
-    body = (
+    // at the jobs list instead of dead-ending. An agent cannot save templates
+    // for an employer, so it points back to the other ways to start.
+    body = forAgent ? (
+      <EmptyState
+        icon={LayoutTemplate}
+        title={t("noTemplates")}
+        description={t("noTemplatesForEmployer")}
+        action={<Link href={`${jobsHref}/new?employer=${employerId ?? ""}`} className={LINK_BUTTON}>{t("otherWays")}</Link>}
+      />
+    ) : (
       <EmptyState
         icon={LayoutTemplate}
         title={t("noTemplates")}
         description={t("noTemplatesHint")}
-        action={<Link href={`/${locale}/employer/jobs`} className={LINK_BUTTON}>{t("goToJobs")}</Link>}
+        action={<Link href={jobsHref} className={LINK_BUTTON}>{t("goToJobs")}</Link>}
       />
     );
   } else {
@@ -125,10 +138,13 @@ export function TemplatePicker({ locale }: TemplatePickerProps) {
         actions={
           // Icon-only below `sm`, like the AI creator's form link: the label
           // beside a two-line title clipped the context line on a 390px phone.
-          <Link href={`/${locale}/employer/job-templates`} className={LINK_BUTTON} aria-label={t("manageTemplates")}>
-            <Settings2 className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">{t("manageTemplates")}</span>
-          </Link>
+          // The template library is the employer's own page.
+          forAgent ? undefined : (
+            <Link href={`/${locale}/employer/job-templates`} className={LINK_BUTTON} aria-label={t("manageTemplates")}>
+              <Settings2 className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">{t("manageTemplates")}</span>
+            </Link>
+          )
         }
       />
 

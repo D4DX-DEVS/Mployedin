@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
-  ArrowLeft, DollarSign, Users, Eye, Tag, Clock,
+  ArrowLeft, Building2, DollarSign, Loader2, Users, Eye, Tag, Clock, UserSearch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,21 +13,42 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { useJobDetail } from "@/hooks/useJobs";
 import Link from "next/link";
 import { formatCount } from "@/lib/ui/intlFormat";
-
-const STATUS_COLORS: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  draft: "bg-amber-100 text-amber-700 border-amber-200",
-  paused: "bg-sky-100 text-sky-700 border-sky-200",
-  closed: "bg-muted text-muted-foreground",
-  expired: "bg-red-100 text-red-700 border-red-200",
-};
+import { JOB_STATUS_BADGE_CLASS, jobStatusLabelKey } from "@/components/features/employer/jobs/jobStatus";
 
 export default function AgentJobDetailPage() {
   const router = useRouter();
   const { locale, id } = useParams<{ locale: string; id: string }>();
   const { data: job, isLoading: loading } = useJobDetail(id);
   const t = useTranslations("agentJobDetail");
-  const tc = useTranslations("common");
+  const tJobs = useTranslations("employerJobs");
+  const [openingEmployerView, setOpeningEmployerView] = useState(false);
+
+  // The employer's own job page (applications, interviews, offers, hires,
+  // posting, setup) in "view as employer" mode: the tenant view an agent
+  // already uses from their employers list, landing on this job.
+  async function openEmployerView() {
+    const employerId = job?.employerId?._id;
+    if (!employerId) return;
+    setOpeningEmployerView(true);
+    try {
+      const res = await fetch("/api/tenant/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employerId }),
+      });
+      if (!res.ok) {
+        toast.error(t("openEmployerViewError"));
+        setOpeningEmployerView(false);
+        return;
+      }
+      // A full navigation: the client router can still hold the redirect it
+      // was given for /employer before the tenant-view cookie existed.
+      window.location.assign(`/${locale}/employer/jobs/${id}`);
+    } catch {
+      toast.error(t("openEmployerViewError"));
+      setOpeningEmployerView(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -57,18 +80,34 @@ export default function AgentJobDetailPage() {
       ? `${job.location.city ?? ""}${job.location.city && job.location.country ? ", " : ""}${job.location.country ?? ""}${job.location.isRemote ? ` (${t("remote")})` : ""}`
       : null;
 
-  const posted = new Date(job.createdAt).toLocaleDateString("en-US", {
+  const posted = new Date(job.createdAt).toLocaleDateString(locale, {
     month: "long", day: "numeric", year: "numeric",
   });
   const expires = job.expiresAt
-    ? new Date(job.expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    ? new Date(job.expiresAt).toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" })
     : null;
+  const salaryMin = job.salary?.min ?? 0;
+  const salaryMax = job.salary?.max ?? 0;
+  // Short form for big figures (1.2M, not 1,200,000) so a range fits its card on a phone.
+  const money = (n: number) =>
+    formatCount(n, n >= 100_000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined, locale);
+  const salaryValue = salaryMin && salaryMax
+    ? `${money(salaryMin)}–${money(salaryMax)}`
+    : salaryMin
+      ? `${money(salaryMin)}+`
+      : job.salary?.isNegotiable ? t("negotiable") : t("notDisclosed");
 
   return (
     <div className="page-container">
-      {/* One header, the shape every other agent page uses: identity and the
-          four figures on one slim panel, with Back and the status beside the
-          title instead of on a row of their own above a second card. */}
+      {/* Desktop only: one back link above the header, as on the employer's
+          job page. Phones use the sidebar / system back. */}
+      <Link
+        href={`/${locale}/agent/jobs`}
+        className="hidden items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground sm:inline-flex"
+      >
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden /> {t("backToJobs")}
+      </Link>
+
       <WorkspaceHeader
         title={job.title}
         context={[
@@ -81,29 +120,41 @@ export default function AgentJobDetailPage() {
         ].filter(Boolean).join(" · ")}
         actions={
           <>
-            <Button variant="ghost" className="min-h-11 gap-2 text-muted-foreground hover:text-foreground" onClick={() => router.push(`/${locale}/agent/jobs`)}>
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("backToJobs")}</span>
-            </Button>
-            <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-1 text-xs font-semibold`}>
-              {job.status.replace("_", " ")}
-            </Badge>
+            {/* Status rides with the actions, styled and worded as on the employer's page. */}
+            <span className={`${JOB_STATUS_BADGE_CLASS[job.status] ?? ""} inline-flex items-center self-center rounded-full border px-2.5 py-1 text-[11px] font-semibold`}>
+              {tJobs(jobStatusLabelKey(job.status))}
+            </span>
             <Link href={`/${locale}/agent/candidates?jobId=${id}`}>
               <Button variant="outline" aria-label={t("viewCandidates")} className="min-h-11 gap-2 rounded-xl">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("viewCandidates")}</span>
               </Button>
             </Link>
+            <Link href={`/${locale}/agent/jobs/${id}/matches`}>
+              <Button variant={job.viewerCanManage ? "outline" : "default"} aria-label={t("findCandidates")} className="min-h-11 gap-2 rounded-xl">
+                <UserSearch className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("findCandidates")}</span>
+              </Button>
+            </Link>
+            {job.viewerCanManage ? (
+              <Button
+                onClick={() => { void openEmployerView(); }}
+                disabled={openingEmployerView}
+                aria-label={t("openEmployerView")}
+                className="min-h-11 gap-2 rounded-xl"
+              >
+                {openingEmployerView ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}
+                <span className="hidden sm:inline">{openingEmployerView ? t("openingEmployerView") : t("openEmployerView")}</span>
+              </Button>
+            ) : null}
           </>
         }
         metrics={[
           { label: t("vacancies"), value: job.vacancies ?? 1, icon: Users, tone: "primary" },
           { label: t("views"), value: job.views ?? 0, icon: Eye, tone: "info" },
           {
-            label: job.salary?.isNegotiable ? `${job.salary?.currency ?? "USD"} (${t("negotiable")})` : (job.salary?.currency ?? "USD"),
-            value: job.salary?.min && job.salary?.max
-              ? `${formatCount(job.salary.min)}–${formatCount(job.salary.max)}`
-              : "—",
+            label: t("salaryIn", { currency: job.salary?.currency ?? "USD" }),
+            value: salaryValue,
             icon: DollarSign,
             tone: "success",
           },

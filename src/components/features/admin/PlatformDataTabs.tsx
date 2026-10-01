@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 
 /**
- * One control across the eight platform lookup tables.
+ * One control across the platform lookup tables.
  *
- * Marital statuses, major subjects, job skills, industries, genders, countries,
- * states and cities were eight separate sidebar entries — eight of the admin
- * workspace's fifty-two leaves — for tables that are edited a few times a year.
+ * Job categories, marital statuses, major subjects, job skills, industries,
+ * genders, countries, states and cities. The last eight were separate sidebar
+ * entries — eight of the admin workspace's fifty-two leaves — for tables that
+ * are edited a few times a year.
  * They now appear as one navigation entry with these tabs, so the group costs
  * one line in the menu instead of eight, and moving between two of them is one
  * click instead of a trip back through the sidebar.
@@ -17,6 +18,7 @@ import { useLocale, useTranslations } from "next-intl";
  * The routes are unchanged: every existing link and bookmark still resolves.
  */
 const TABS = [
+  { key: "jobCategories", href: "/admin/job-attributes/job-categories" },
   { key: "industries", href: "/admin/job-attributes/industries" },
   { key: "jobSkills", href: "/admin/job-attributes/job-skills" },
   { key: "majorSubjects", href: "/admin/job-attributes/major-subjects" },

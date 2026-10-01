@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import WorkflowTemplate from "@/models/WorkflowTemplate";
 import Job from "@/models/Job";
+import { listActiveJobCategories } from "@/lib/jobs/jobCategoryStore";
 import { validateBody } from "@/lib/validators";
 import { workflowTemplateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -25,16 +26,19 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();
-  const [templates, categories] = await Promise.all([
+  // Categories a rule can name: the admin-managed list plus any older value
+  // still on a job, so a category added today is pickable before a job uses it.
+  const [templates, categories, managed] = await Promise.all([
     WorkflowTemplate.find({ scope: "system" }).sort({ isDefault: -1, isActive: -1, name: 1 }).lean(),
     Job.distinct("category", { deletedAt: null }),
+    listActiveJobCategories(),
   ]);
   const usage = await workflowTemplateUsage(templates.map((t) => t._id));
   return NextResponse.json({
     templates: templates.map((t) => serializeWorkflowTemplate(t, usage.get(String(t._id)) ?? 0)),
-    categoryOptions: (categories as unknown[])
+    categoryOptions: [...new Set([...managed.map((c) => c.name), ...(categories as unknown[])
       .filter((c): c is string => typeof c === "string" && c.trim().length > 0)
-      .map((c) => c.trim())
+      .map((c) => c.trim())])]
       .sort((a, b) => a.localeCompare(b)),
   });
 }

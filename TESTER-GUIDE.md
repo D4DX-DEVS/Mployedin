@@ -89,7 +89,7 @@ Employer **verification** is separate: it controls the verified badge and trust 
 ## 7. Job Seeker
 
 - Complete profile: personal info, experience, skills, portfolio, documents/CV upload.
-- Search jobs, filter, save searches, save/bookmark jobs.
+- Search jobs, filter.
 - Apply to a job; the application appears under *Applications* with correct status; status updates when employer moves it.
 - Interviews and offers appear when the employer sends them; accept and decline an offer (try both).
 - Messages: chat with the employer — both sides must see the conversation.

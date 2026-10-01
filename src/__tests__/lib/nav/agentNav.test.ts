@@ -25,6 +25,8 @@ const AGENT_ROOT = path.join(process.cwd(), "src", "app", "[locale]", "(dashboar
  */
 const REACHED_ELSEWHERE: Record<string, string> = {
   "/agent/jobs/new": "Create menu + ⌘K action + jobs list header",
+  "/agent/jobs/ai-create": "Post a job start screen (/agent/jobs/new) — Describe it with AI",
+  "/agent/jobs/ai-extract": "Post a job start screen (/agent/jobs/new) — Upload a document",
   "/agent/leads/new": "Redirects to the one New Lead dialog (/agent/leads?new=1)",
   "/agent/messages": "Topbar messages indicator, shown at every width once the rail has no Messages row",
   "/agent/chat": "Channels tab on the messages page (AgentSectionTabs)",

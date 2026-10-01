@@ -46,6 +46,8 @@ jest.mock("@/models/Job", () => ({
 }));
 jest.mock("@/models/Employer", () => ({ __esModule: true, Employer: { findOne: jest.fn(), findById: jest.fn() } }));
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: jest.fn() } }));
+const mockAgentPostingFor = jest.fn();
+jest.mock("@/lib/jobs/agentPosting", () => ({ agentPostingFor: (...a: unknown[]) => mockAgentPostingFor(...a) }));
 
 const PRIVATE = ["applicantIds", "agentId", "workflow", "workflowMode", "matchingWeights"];
 
@@ -81,6 +83,26 @@ describe("GET /api/jobs/[id] — employer-only fields", () => {
 
     expect(job.applicantIds).toEqual([APPLICANT_A, APPLICANT_B]);
     expect(job.workflowMode).toBe("auto");
+  });
+
+  it("tells an agent whether the job's employer is theirs to open in employer view", async () => {
+    const { getScopedEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    (getScopedEmployerIds as jest.Mock).mockResolvedValue([OWNER_EMPLOYER]);
+    const { getHandler } = await import("@/app/api/jobs/[id]/handlers");
+    const req = new NextRequest(`http://localhost:3000/api/jobs/${JOB_ID}`);
+
+    mockAgentPostingFor.mockResolvedValueOnce("agent-1");
+    const assigned = await (await getHandler(req, { userId: "a1", role: "agent", locale: "en" }, { id: JOB_ID })).json();
+    expect(assigned.job.viewerCanManage).toBe(true);
+    expect(mockAgentPostingFor).toHaveBeenCalledWith("a1", OWNER_EMPLOYER);
+
+    // Seen through the agent's area, not assigned: tenant view would refuse it.
+    mockAgentPostingFor.mockResolvedValueOnce(null);
+    const areaOnly = await (await getHandler(req, { userId: "a1", role: "agent", locale: "en" }, { id: JOB_ID })).json();
+    expect(areaOnly.job.viewerCanManage).toBe(false);
+
+    const employer = await (await getHandler(req, { userId: "u2", role: "employer", locale: "en" }, { id: JOB_ID })).json();
+    expect(employer.job).not.toHaveProperty("viewerCanManage");
   });
 
   it("keeps them for an admin (unrestricted scope)", async () => {

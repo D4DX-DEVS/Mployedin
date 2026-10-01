@@ -10,6 +10,7 @@ import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import type { UserRole } from "@/models/User";
 import { ExtractionDraft, type ExtractedJobPayload } from "@/models/ExtractionDraft";
+import { agentPostingFor } from "@/lib/jobs/agentPosting";
 import mammoth from "mammoth";
 import logger from "@/lib/logger";
 
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
   }
 
   const role = (session.user as unknown as { role: UserRole }).role;
-  if (role !== "employer" && role !== "admin") {
+  if (role !== "employer" && role !== "admin" && role !== "agent") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -103,6 +104,18 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    // An agent extracts for one of their assigned employers (picked on the
+    // start screen). Checked before the paid AI call, and the draft is filed
+    // under that employer so the agent and the employer can both resume it.
+    let agentEmployerId: string | null = null;
+    if (role === "agent") {
+      const requested = formData.get("employerId");
+      if (!(await agentPostingFor(session.user.id!, requested))) {
+        return NextResponse.json({ error: "EMPLOYER_NOT_ASSIGNED" }, { status: 403 });
+      }
+      agentEmployerId = String(requested);
     }
 
     if (file.size > MAX_FILE_SIZE) {
@@ -205,7 +218,9 @@ export async function POST(req: NextRequest) {
 
     // Get employer info to attach company name
     await connectDB();
-    const employer = await Employer.findOne({ userId: session.user.id }).select("_id companyName").lean();
+    const employer = agentEmployerId
+      ? await Employer.findById(agentEmployerId).select("_id companyName").lean()
+      : await Employer.findOne({ userId: session.user.id }).select("_id companyName").lean();
     const companyName =
       extracted.companyName ?? (employer as { companyName?: string })?.companyName ?? "";
 

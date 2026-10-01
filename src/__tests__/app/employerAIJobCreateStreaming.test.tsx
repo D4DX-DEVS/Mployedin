@@ -19,14 +19,17 @@ import EmployerAIJobCreatePage from "@/app/[locale]/(dashboard)/employer/jobs/ai
 const pushMock = jest.fn();
 const useVoiceInputMock = jest.fn();
 
+let mockPathname = "/en/employer/jobs/ai-create";
+let mockSearch = "";
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
   useParams: () => ({ locale: "en" }),
-  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => mockPathname,
+  useSearchParams: () => new URLSearchParams(mockSearch),
 }));
 
 jest.mock("sonner", () => ({
-  toast: { error: jest.fn(), success: jest.fn() },
+  toast: { error: jest.fn(), success: jest.fn(), warning: jest.fn() },
 }));
 
 jest.mock("@/components/ui/button", () => ({
@@ -186,7 +189,8 @@ describe("EmployerAIJobCreatePage streaming reply", () => {
       ["Preferred start date", "text", false, undefined, 3],
     ]);
     for (const q of prefill.screeningQuestions) expect(q.id).toMatch(/^sq_ai_\d+_[a-z0-9]+$/);
-    expect(pushMock).toHaveBeenCalled();
+    expect(prefill.employerId).toBeUndefined();
+    expect(pushMock).toHaveBeenLastCalledWith("/en/employer/jobs/new?mode=manual&prefill=ai");
   });
 
   it("does not restore a reply that never arrived", async () => {
@@ -214,5 +218,85 @@ describe("EmployerAIJobCreatePage streaming reply", () => {
       ]);
     });
     expect(screen.queryByText(ERROR_COPY)).toBeNull();
+  });
+
+  describe("once the AI has drafted the job, save it as a draft or post it", () => {
+    const jobCalls = () => fetchMock.mock.calls.filter(([url]) => url === "/api/jobs");
+    const toastError = () => (jest.requireMock("sonner") as { toast: { error: jest.Mock } }).toast.error;
+
+    function respondToJobs(response: unknown) {
+      const chatAndDrafts = fetchMock.getMockImplementation()!;
+      fetchMock.mockImplementation((url: string, init?: unknown) =>
+        url === "/api/jobs" ? Promise.resolve(response) : chatAndDrafts(url, init),
+      );
+    }
+
+    it("saves an agent's job as a draft for the picked employer and opens it", async () => {
+      mockPathname = "/en/agent/jobs/ai-create";
+      mockSearch = "employer=64a000000000000000000003";
+      try {
+        respondToJobs({ ok: true, status: 201, json: async () => ({ job: { _id: "job-9" } }) });
+        chatResponses.push(Promise.resolve(streamedResponse([`Draft.<JOB_DATA>${JSON.stringify({ title: "Staff Nurse" })}</JOB_DATA>`])));
+        render(<EmployerAIJobCreatePage />);
+        await ask("staff nurse for a clinic");
+
+        fireEvent.click(await screen.findByRole("button", { name: "Save as draft" }));
+
+        await waitFor(() => expect(pushMock).toHaveBeenLastCalledWith("/en/agent/jobs/job-9"));
+        const body = JSON.parse(jobCalls()[0][1].body);
+        expect(body).toMatchObject({ title: "Staff Nurse", status: "draft", employerId: "64a000000000000000000003" });
+      } finally {
+        mockPathname = "/en/employer/jobs/ai-create";
+        mockSearch = "";
+      }
+    });
+
+    it("posts an employer's job live and opens its page", async () => {
+      respondToJobs({ ok: true, status: 201, json: async () => ({ job: { _id: "job-7" } }) });
+      chatResponses.push(Promise.resolve(streamedResponse([`Draft.<JOB_DATA>${JSON.stringify({ title: "Driver" })}</JOB_DATA>`])));
+      render(<EmployerAIJobCreatePage />);
+      await ask("driver");
+
+      fireEvent.click(await screen.findByRole("button", { name: "Post job" }));
+
+      await waitFor(() => expect(pushMock).toHaveBeenLastCalledWith("/en/employer/jobs/job-7"));
+      const body = JSON.parse(jobCalls()[0][1].body);
+      expect(body).toMatchObject({ title: "Driver", status: "active" });
+      expect(body.employerId).toBeUndefined();
+    });
+
+    it("sends a job the AI left incomplete to the full form instead of failing silently", async () => {
+      respondToJobs({ ok: false, status: 400, json: async () => ({ error: "Validation failed", details: [{ path: "description", message: "Too short" }] }) });
+      chatResponses.push(Promise.resolve(streamedResponse([`Draft.<JOB_DATA>${JSON.stringify({ title: "Driver" })}</JOB_DATA>`])));
+      render(<EmployerAIJobCreatePage />);
+      await ask("driver");
+      pushMock.mockClear();
+
+      fireEvent.click(await screen.findByRole("button", { name: "Post job" }));
+
+      await waitFor(() => expect(toastError()).toHaveBeenCalledWith(
+        "Some details a live job needs are missing. Review it in the full form to finish them.",
+        expect.objectContaining({ action: expect.objectContaining({ label: expect.stringMatching(/Review in Full Form/) }) }),
+      ));
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it("for an agent, hands the draft to the agent's form for the employer picked on the start screen", async () => {
+    mockPathname = "/en/agent/jobs/ai-create";
+    mockSearch = "employer=64a000000000000000000003";
+    try {
+      chatResponses.push(Promise.resolve(streamedResponse([`Draft.<JOB_DATA>${JSON.stringify({ title: "Staff Nurse" })}</JOB_DATA>`])));
+      render(<EmployerAIJobCreatePage />);
+      await ask("staff nurse for a clinic");
+      fireEvent.click(await screen.findByRole("button", { name: /Review in Full Form/ }));
+
+      const prefill = JSON.parse(window.sessionStorage.getItem("job-ai-prefill") ?? "{}");
+      expect(prefill).toMatchObject({ title: "Staff Nurse", employerId: "64a000000000000000000003" });
+      expect(pushMock).toHaveBeenLastCalledWith("/en/agent/jobs/new?mode=manual&prefill=ai&employer=64a000000000000000000003");
+    } finally {
+      mockPathname = "/en/employer/jobs/ai-create";
+      mockSearch = "";
+    }
   });
 });

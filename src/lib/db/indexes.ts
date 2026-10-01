@@ -240,15 +240,6 @@ export async function ensureIndexes() {
     { key: { userId: 1, type: 1, createdAt: -1 } },
   ]);
 
-  // ── SavedSearches ───────────────────────────────────────────────────────────
-  await safeCreateIndexes(db, "savedsearches", [
-    { key: { userId: 1 } },
-    { key: { userId: 1, createdAt: -1 } },
-    // Hot path: saved-search-alerts cron selects due alerts (emailAlert + frequency,
-    // then lastNotifiedAt range/null). Equality prefix keeps the scan tight at scale.
-    { key: { emailAlert: 1, frequency: 1, lastNotifiedAt: 1 } },
-  ]);
-
   // ── AuditLogs ──────────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "auditlogs", [
     { key: { actorId: 1 } },
@@ -633,6 +624,19 @@ export async function ensureIndexes() {
   await safeCreateIndexes(db, "industries", [
     { key: { isActive: 1, sortOrder: 1 } },
     { key: { slug: 1 }, unique: true },
+  ]);
+
+  // Admin-managed job categories. The unique slug is what keeps two first
+  // reads racing to seed the list from inserting a category twice.
+  await safeCreateIndexes(db, "jobcategories", [
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { slug: 1 }, unique: true },
+  ]);
+
+  // Invitations to apply. The unique pair is the one-invite-per-candidate-per-
+  // job guard (lib/jobs/jobInvites.ts also builds it before the first claim).
+  await safeCreateIndexes(db, "jobinvites", [
+    { key: { jobId: 1, jobSeekerId: 1 }, unique: true },
   ]);
 
   await safeCreateIndexes(db, "interviewquestions", [

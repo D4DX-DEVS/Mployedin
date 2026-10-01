@@ -33,6 +33,16 @@ export const videoCreateSchema = z.object({
 export const videoUpdateSchema = videoCreateSchema.partial();
 
 // ── Blogs ───────────────────────────────────────────────────────────
+// The admin Tags box is a text input ("recruitment, ips"), and the edit dialog
+// stringifies a saved array back to "a,b"; a bare z.array() rejected both.
+const tagList = z.preprocess(
+  (v) =>
+    typeof v === "string"
+      ? [...new Set(v.split(",").map((s) => s.trim()).filter(Boolean))]
+      : v,
+  z.array(z.string().trim().max(50)).max(20).optional(),
+);
+
 export const blogCreateSchema = z.object({
   title: z.string().min(1).max(300).trim(),
   body: z.string().min(1).max(50000).trim(),
@@ -43,7 +53,7 @@ export const blogCreateSchema = z.object({
   bodyAr: z.string().max(50000).trim().optional().or(z.literal("")),
   coverImage: urlOrPath().optional().or(z.literal("")),
   author: z.string().max(100).trim().optional().or(z.literal("")),
-  tags: z.array(z.string().max(50).trim()).max(20).optional(),
+  tags: tagList,
   status: z.enum(["draft", "published"]).optional(),
 });
 

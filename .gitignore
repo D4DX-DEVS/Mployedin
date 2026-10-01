@@ -173,3 +173,6 @@ PLAN.md
 /firebase-audit.js
 /test-*.js
 /test_*.js
+
+# Undo journals written by scripts/fix-location-data.mjs --apply
+/backups/

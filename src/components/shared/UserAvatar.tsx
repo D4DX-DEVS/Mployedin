@@ -52,7 +52,11 @@ export function UserAvatar({
 }: UserAvatarProps) {
   return (
     <Avatar className={className}>
-      {src ? <AvatarImage src={src} alt={alt ?? name ?? email ?? "User"} className="object-cover" /> : null}
+      {/* bg-white: a transparent PNG (often a logo uploaded as a photo) otherwise
+          shows whatever sits behind the avatar — the header trigger's blue
+          gradient turned a blue logo into a solid blob. Opaque photos are
+          unaffected. */}
+      {src ? <AvatarImage src={src} alt={alt ?? name ?? email ?? "User"} className="bg-white object-cover" /> : null}
       <AvatarFallback className={cn("bg-primary/10 text-primary text-xs font-semibold", colorful && avatarTone(name || email), fallbackClassName)}>
         {userInitials(name, email)}
       </AvatarFallback>

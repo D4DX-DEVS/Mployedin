@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
 import { isLinkedInProfileUrl } from "@/lib/security/linkedin-url";
+import { cvDesignSchema } from "@/lib/jobSeeker/cvDesign";
 
 /**
  * PATCH /api/job-seeker/profile — self-update by job seeker.
@@ -19,6 +20,7 @@ export const jobSeekerProfileUpdateSchema = z
     currentLocation: z.string().max(200).trim().optional(),
     profileVisibility: z.enum(["visible", "hidden"]).optional(),
     sectionVisibility: z.record(z.string(), z.boolean()).optional(),
+    cvDesign: cvDesignSchema.optional(),
     skills: z
       .array(z.string().max(100).trim())
       .max(50)

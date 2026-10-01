@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { WordingWarning } from "@/components/features/employer/job-form/WordingWarning";
 import { useJobDetail, useUpdateJob } from "@/hooks/useJobs";
+import { useJobCategoryOptions } from "@/hooks/useJobCategories";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import type { CountryOption } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
@@ -32,12 +33,6 @@ import { KNOCKOUT_NUMBER_TYPES, KNOCKOUT_OPTION_TYPES } from "@/lib/matching/kno
 const KNOCKOUT_TYPES = new Set<string>([...KNOCKOUT_OPTION_TYPES, ...KNOCKOUT_NUMBER_TYPES]);
 
 // ─── Constants ───────────────────────────────────────────────────
-const JOB_CATEGORIES = [
-  "Technology", "Healthcare", "Finance", "Construction", "Hospitality",
-  "Education", "Manufacturing", "Logistics", "Oil & Gas", "Retail",
-  "Human Resources", "Sales & Marketing", "Legal", "Engineering", "Other",
-];
-
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$", EUR: "€", GBP: "£", INR: "₹", PKR: "₨",
   AED: "د.إ", SAR: "﷼", QAR: "﷼", KWD: "KD", BHD: "BD",
@@ -321,6 +316,8 @@ export function SharedJobEditPage({
   const countryRef = useRef<HTMLDivElement>(null);
 
   // Load job via React Query
+  // The admin-managed list; a value the list no longer holds stays selectable.
+  const categoryOptions = useJobCategoryOptions(form.category);
   const { data: jobData, isLoading: jobLoading, isError: jobError } = useJobDetail(id);
   const updateJob = useUpdateJob();
 
@@ -687,7 +684,7 @@ export function SharedJobEditPage({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label={t("category")}>
                 <SearchableSelect
-                  options={JOB_CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) }))}
+                  options={categoryOptions}
                   value={form.category}
                   onValueChange={(v) => setField("category", v)}
                   placeholder={t("placeholderCategory")}

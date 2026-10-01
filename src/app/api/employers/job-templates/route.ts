@@ -7,24 +7,32 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { jobTemplateCreateSchema } from "@/lib/validators/job-templates";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { agentPostingFor } from "@/lib/jobs/agentPosting";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-// GET /api/employers/job-templates — list all templates for the authenticated employer
+// GET /api/employers/job-templates — list all templates for the authenticated employer.
+// An agent lists the templates of one assigned employer: ?employerId=.
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
-  if (ctx.role !== "employer") {
+  const params = new URL(req.url).searchParams;
+  let employer: { _id: unknown } | null;
+  if (ctx.role === "agent") {
+    const employerId = params.get("employerId");
+    if (!(await agentPostingFor(ctx.userId, employerId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    employer = { _id: employerId };
+  } else if (ctx.role === "employer") {
+    await connectDB();
+    employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+  } else {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  await connectDB();
-
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  const params = new URL(req.url).searchParams;
   const search = params.get("search") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(params.get("limit")) || 10));

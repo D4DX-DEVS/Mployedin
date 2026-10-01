@@ -18,6 +18,10 @@ export interface CategoryMeta {
   model: () => Promise<Model<AttributeDoc>>;
   label: string;
   labelAr: string;
+  /** Fills an empty table with its starting set before the admin list reads it. */
+  seed?: () => Promise<void>;
+  /** Carries a rename onto records that store the name as text. */
+  onRename?: (oldName: string, newName: string) => Promise<Record<string, number>>;
 }
 
 /**
@@ -25,6 +29,14 @@ export interface CategoryMeta {
  * Each entry resolves the model only when accessed.
  */
 const CATEGORIES: Record<string, CategoryMeta> = {
+  "job-categories": {
+    model: async () => (await import("@/models/JobCategory")).JobCategory as unknown as Model<AttributeDoc>,
+    label: "Job Category",
+    labelAr: "فئة الوظيفة",
+    seed: async () => (await import("@/lib/jobs/jobCategoryStore")).ensureJobCategoriesSeeded(),
+    onRename: async (oldName, newName) =>
+      (await import("@/lib/jobs/jobCategoryStore")).renameJobCategoryEverywhere(oldName, newName),
+  },
   "marital-statuses": {
     model: async () => (await import("@/models/MaritalStatus")).MaritalStatus as Model<AttributeDoc>,
     label: "Marital Status",

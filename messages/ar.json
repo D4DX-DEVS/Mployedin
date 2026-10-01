@@ -13,7 +13,6 @@
     "interviews": "المقابلات",
     "offers": "العروض",
     "calendar": "التقويم",
-    "savedSearches": "عمليات البحث المحفوظة",
     "documents": "المستندات",
     "referralProgram": "برنامج الإحالة",
     "subscription": "الاشتراك",
@@ -624,38 +623,6 @@
       "pendingResultsFor": "نتائج عن \"{query}\"",
       "employerRoles": "وظائف صاحب العمل"
     },
-    "saveSearch": {
-      "button": "حفظ البحث",
-      "title": "احفظ هذا البحث",
-      "description": "سنراسلك عبر البريد عند ظهور وظائف جديدة تطابق هذه المعايير.",
-      "noKeyword": "كل الوظائف",
-      "nameLabel": "اسم التنبيه",
-      "namePlaceholder": "مثال: وظائف React الأولى",
-      "experienceLabel": "مستوى الخبرة",
-      "frequencyLabel": "أرسل لي بريدًا",
-      "experience": {
-        "any": "أي مستوى خبرة",
-        "entry": "مبتدئ (0–2 سنوات)",
-        "mid": "متوسط (3–5 سنوات)",
-        "senior": "خبير (6+ سنوات)"
-      },
-      "frequency": {
-        "daily": "يوميًا",
-        "weekly": "أسبوعيًا",
-        "never": "لا ترسل لي بريدًا"
-      },
-      "workType": {
-        "remote": "عن بُعد",
-        "onsite": "في الموقع"
-      },
-      "save": "حفظ البحث",
-      "cancel": "إلغاء",
-      "created": "تم حفظ البحث — سننبهك بالوظائف الجديدة.",
-      "duplicate": "لقد حفظت هذا البحث بالفعل.",
-      "failed": "تعذر حفظ البحث. حاول مجددًا.",
-      "required": "أضف اسمًا وكلمة بحث أولاً.",
-      "viewSaved": "عرض"
-    },
     "actions": {
       "refinePreferences": "تحسين التفضيلات",
       "editPreferences": "تعديل التفضيلات",
@@ -1078,6 +1045,9 @@
     "emptyTitle": "لا توجد طلبات في هذا العرض",
     "emptyAll": "لم تتقدم لأي وظائف بعد. ابدأ التصفح وابنِ زخماً من لوحة التحكم.",
     "emptyStatus": "لا يوجد حالياً ما يحمل حالة {status}. غيّر العرض أو استكشف فرصاً جديدة.",
+    "emptyFilteredTitle": "لا توجد طلبات مطابقة",
+    "emptyFiltered": "لا يطابق أي من طلباتك هذا البحث أو النطاق الزمني. جرّب اسم وظيفة أو شركة آخر، أو امسح الفلاتر.",
+    "clearFilters": "مسح الفلاتر",
     "browseJobs": "تصفح الوظائف",
     "remote": "عن بُعد",
     "locationFlexible": "الموقع مرن",
@@ -1424,47 +1394,6 @@
       "boostButton": "تعزيز ملفي",
       "failed": "تعذر تعزيز الملف",
       "network": "خطأ في الشبكة"
-    },
-    "savedSearches": {
-      "searchPlaceholder": "ابحث في عمليات البحث المحفوظة...",
-      "title": "عمليات البحث المحفوظة",
-      "description": "احفظ عمليات البحث وتلقَّ تنبيهات بريدية عند ظهور مطابقات جديدة",
-      "newAlert": "تنبيه بحث جديد",
-      "activeAlerts": "التنبيهات النشطة",
-      "createTitle": "إنشاء تنبيه بحث",
-      "namePlaceholder": "اسم التنبيه *",
-      "queryPlaceholder": "كلمات البحث *",
-      "locationPlaceholder": "الموقع (اختياري)",
-      "experienceAny": "أي مستوى خبرة",
-      "experienceEntry": "مبتدئ (0–2 سنوات)",
-      "experienceMid": "متوسط (3–5 سنوات)",
-      "experienceSenior": "خبير (6+ سنوات)",
-      "instant": "فوري",
-      "daily": "تنبيهات يومية",
-      "weekly": "تنبيهات أسبوعية",
-      "never": "بدون تنبيهات",
-      "create": "إنشاء",
-      "cancel": "إلغاء",
-      "reset": "مسح",
-      "empty": "لا توجد عمليات بحث محفوظة",
-      "emptyDescription": "أنشئ تنبيه بحث ليصلك إشعار بالوظائف الجديدة المطابقة",
-      "emailAlertsOn": "تنبيهات البريد مفعّلة",
-      "disableAlert": "تعطيل التنبيه",
-      "enableAlert": "تفعيل التنبيه",
-      "loadFailed": "تعذر تحميل عمليات البحث المحفوظة",
-      "retry": "إعادة المحاولة",
-      "required": "الاسم وكلمات البحث مطلوبان",
-      "created": "تم إنشاء البحث المحفوظ",
-      "duplicate": "لقد حفظت هذا البحث بالفعل.",
-      "createFailed": "تعذر إنشاء البحث المحفوظ",
-      "deleted": "تم حذف البحث",
-      "deleteFailed": "تعذر الحذف",
-      "alertEnabled": "تم تفعيل التنبيه",
-      "alertDisabled": "تم تعطيل التنبيه",
-      "updateFailed": "تعذر التحديث",
-      "selectFrequency": "اختر التكرار",
-      "deleteSearch": "حذف البحث المحفوظ",
-      "deleteConfirm": "هل تريد حذف “{name}”؟ ستتوقف تنبيهات البريد الخاصة به أيضًا."
     },
     "referral": {
       "title": "برنامج الإحالة",
@@ -2139,7 +2068,9 @@
       "generic": "تعذر إكمال هذا الإجراء",
       "saveProfile": "تعذر حفظ الملف",
       "saveFailed": "تعذر الحفظ",
-      "pdfFailed": "تعذر إنشاء ملف PDF. حاول مرة أخرى."
+      "pdfFailed": "تعذر إنشاء ملف PDF. حاول مرة أخرى.",
+      "linkedinInvalid": "أدخل عنوان ملفك الشخصي على LinkedIn، مثل https://www.linkedin.com/in/your-name",
+      "linkInvalid": "«{label}» ليس عنوان ويب. أدخل رابطًا مثل https://example.com"
     },
     "defaults": {
       "link": "رابط"
@@ -2736,7 +2667,18 @@
       "langUrdu": "الأردية",
       "enterToSend": "اضغط Enter للإرسال، Shift+Enter لسطر جديد، أو اضغط على المايكروفون لإملاء ملخص أطول.",
       "tapSendWhenReady": "اضغط إرسال عندما تكون جاهزًا.",
-      "eyebrow": "إنشاء وظيفة بالذكاء الاصطناعي"
+      "eyebrow": "إنشاء وظيفة بالذكاء الاصطناعي",
+      "chooseNextStep": "لم يُحفظ شيء بعد. انشرها الآن، أو احتفظ بها كمسودة، أو راجع كل الحقول في النموذج الكامل أولاً.",
+      "saveAsDraft": "حفظ كمسودة",
+      "savingDraft": "جارٍ الحفظ…",
+      "postJob": "نشر الوظيفة",
+      "postingJob": "جارٍ النشر…",
+      "draftSaved": "حُفظت كمسودة. يمكنك تعديلها ونشرها من صفحة الوظيفة.",
+      "jobPosted": "نُشرت الوظيفة. أصبحت متاحة للباحثين عن عمل الآن.",
+      "postHeld": "حُفظت كمسودة: يجب إكمال ملف الشركة قبل نشر هذه الوظيفة.",
+      "postNeedsReview": "تنقص بعض التفاصيل اللازمة لنشر الوظيفة. راجعها في النموذج الكامل لإكمالها.",
+      "draftSaveFailed": "تعذّر حفظ المسودة. يرجى المحاولة مرة أخرى.",
+      "postFailed": "تعذّر نشر الوظيفة. يرجى المحاولة مرة أخرى."
     },
     "quickPrompts": {
       "superAgent": {
@@ -4143,7 +4085,6 @@
     "interviews": "المقابلات",
     "offers": "العروض",
     "calendar": "التقويم",
-    "savedSearches": "عمليات البحث المحفوظة",
     "documents": "المستندات",
     "cvBuilder": "منشئ السيرة الذاتية",
     "companies": "الشركات",
@@ -6370,7 +6311,14 @@
       "eyebrow": "تصفح الأدوار",
       "title": "الفلاتر",
       "description": "ابحث بالعنوان أو حدد القائمة حسب الحالة التي تريد العمل عليها.",
-      "searchPlaceholder": "ابحث عن الوظائف بالعنوان أو الموقع..."
+      "searchPlaceholder": "ابحث عن الوظائف بالعنوان أو الموقع...",
+      "searchOrAsk": "ابحث أو صف الوظيفة",
+      "more": "مزيد من الفلاتر",
+      "allStatuses": "كل الحالات",
+      "allWorkModes": "كل أنماط العمل",
+      "locationPlaceholder": "الموقع",
+      "skillsPlaceholder": "المهارات، مفصولة بفواصل",
+      "clear": "مسح الفلاتر"
     },
     "results": {
       "eyebrow": "النتائج الحالية",
@@ -6379,7 +6327,9 @@
     },
     "empty": {
       "title": "لم يتم العثور على وظائف",
-      "description": "جرّب تعديل الفلاتر أو إنشاء دور جديد."
+      "description": "جرّب تعديل الفلاتر أو إنشاء دور جديد.",
+      "noneTitle": "لا توجد وظائف بعد",
+      "noneDescription": "تظهر هنا الوظائف التي تنشرها والوظائف التي ينشرها أصحاب العمل لديك."
     },
     "table": {
       "title": "عنوان الوظيفة",
@@ -6402,6 +6352,18 @@
       "viewCandidatesFor": "عرض المرشحين لوظيفة {title}",
       "viewJob": "عرض الوظيفة",
       "viewJobFor": "عرض {title}"
+    },
+    "context": "{jobs, plural, zero {لا توجد وظائف} one {وظيفة واحدة} two {وظيفتان} few {# وظائف} many {# وظيفة} other {# وظيفة}} · {employers, plural, zero {لا يوجد أصحاب عمل} one {صاحب عمل واحد} two {صاحبا عمل} few {# أصحاب عمل} many {# صاحب عمل} other {# صاحب عمل}}",
+    "workModes": {
+      "onsite": "في الموقع",
+      "hybrid": "هجين",
+      "remote": "عن بُعد"
+    },
+    "sortLabels": {
+      "newest": "الأحدث أولاً",
+      "oldest": "الأقدم أولاً",
+      "applicationsDesc": "الأكثر متقدمين",
+      "applicationsAsc": "الأقل متقدمين"
     }
   },
   "agentJobNew": {
@@ -8025,7 +7987,8 @@
     "postHeldTitle": "تم الحفظ كمسودة ولم يُنشر",
     "postHeldDescription": "أضف اسم شركتك وبريدها الإلكتروني ومجال عملها قبل أن تظهر هذه الوظيفة على لوحة الوظائف العامة.",
     "completeCompanyProfile": "استكمال ملف الشركة",
-    "publishBlockedProfile": "أضف اسم شركتك وبريدها الإلكتروني ومجال عملها قبل نشر هذه الوظيفة."
+    "publishBlockedProfile": "أضف اسم شركتك وبريدها الإلكتروني ومجال عملها قبل نشر هذه الوظيفة.",
+    "noAssignedEmployers": "لا يوجد أصحاب عمل مسندون إليك بعد. اطلب من الوكيل الرئيسي إسناد صاحب عمل قبل نشر وظيفة."
   },
   "employerCommon": {
     "workspace": "مساحة عمل صاحب العمل",
@@ -10393,7 +10356,9 @@
     "majorSubjectsTitle": "التخصصات الرئيسية",
     "majorSubjectsDescription": "إدارة خيارات التخصصات الأكاديمية",
     "maritalStatusesTitle": "الحالة الاجتماعية",
-    "maritalStatusesDescription": "إدارة خيارات الحالة الاجتماعية"
+    "maritalStatusesDescription": "إدارة خيارات الحالة الاجتماعية",
+    "jobCategoriesTitle": "فئات الوظائف",
+    "jobCategoriesDescription": "الفئات التي تعرضها جميع نماذج الوظائف. إعادة تسمية فئة تحدّث أيضًا الوظائف وقواعد سير العمل التي تستخدمها؛ أوقف أي فئة لإخفائها من الوظائف الجديدة."
   },
   "adminLocationData": {
     "filter": "تصفية",
@@ -11122,7 +11087,8 @@
     "genders": "الجنس",
     "countries": "الدول",
     "states": "المناطق",
-    "cities": "المدن"
+    "cities": "المدن",
+    "jobCategories": "فئات الوظائف"
   },
   "adminReportTabs": {
     "tabsLabel": "التقارير",
@@ -15254,7 +15220,11 @@
     "deleteEmployerConfirm": "هل تريد بالتأكيد حذف صاحب العمل هذا؟",
     "switchEmployerViewError": "تعذر التبديل إلى عرض صاحب العمل",
     "switchEmployerNetworkError": "خطأ في الشبكة — حاول مرة أخرى",
-    "cardRegionOnly": "ضمن منطقتك. اطلب من المسؤول إسنادها إليك لنشر الوظائف."
+    "cardRegionOnly": "ضمن منطقتك. اطلب من المسؤول إسنادها إليك لنشر الوظائف.",
+    "viewToggleLabel": "طريقة عرض قائمة أصحاب العمل",
+    "viewCards": "بطاقات",
+    "viewTable": "جدول",
+    "inYourRegion": "ضمن منطقتك"
   },
   "agentPlacements": {
     "pageTitle": "التوظيفات",
@@ -15650,7 +15620,13 @@
     "years": "سنوات",
     "education": "التعليم",
     "languages": "اللغات",
-    "tags": "الوسوم"
+    "tags": "الوسوم",
+    "findCandidates": "ابحث عن مرشحين مطابقين",
+    "openEmployerView": "فتح صفحة الوظيفة لدى صاحب العمل",
+    "openingEmployerView": "جارٍ الفتح…",
+    "openEmployerViewError": "تعذّر فتح صفحة الوظيفة لدى صاحب العمل. يرجى المحاولة مرة أخرى.",
+    "notDisclosed": "غير معلن",
+    "salaryIn": "الراتب ({currency})"
   },
   "agentChat": {
     "agentWorkspaceBadge": "مساحة العمل للوكلاء",
@@ -17875,7 +17851,10 @@
     "clearSearch": "مسح البحث",
     "loadError": "تعذر تحميل القوالب. تحقق من اتصالك وحاول مرة أخرى.",
     "retry": "إعادة المحاولة",
-    "toastUseError": "تعذر بدء وظيفة من هذا القالب. يرجى المحاولة مرة أخرى."
+    "toastUseError": "تعذر بدء وظيفة من هذا القالب. يرجى المحاولة مرة أخرى.",
+    "chooseEmployerFirst": "اختر صاحب العمل الذي تُنشر له هذه الوظيفة، ثم اختر طريقة البدء.",
+    "noTemplatesForEmployer": "لم يحفظ صاحب العمل هذا أي قوالب وظائف بعد. ابدأ بالذكاء الاصطناعي أو النموذج أو مستند بدلاً من ذلك.",
+    "otherWays": "اختر طريقة أخرى"
   },
   "jobSeekerJourney": {
     "title": "طلباتي",
@@ -18425,5 +18404,71 @@
     "clearFilter": "مسح عامل التصفية",
     "loadErrorTitle": "التحقق من الخلفية",
     "unknownCandidate": "مرشح"
+  },
+  "agentJobMatches": {
+    "title": "المرشحون المطابقون",
+    "backToJob": "العودة إلى الوظيفة",
+    "refreshing": "جارٍ التحديث…",
+    "howTitle": "كيف تعمل هذه القائمة",
+    "howBody": "المرشحون في قاعدة البيانات الذين يسمحون لأصحاب العمل بالعثور عليهم، مرتبون حسب مدى ملاءمتهم لهذه الوظيفة. النسبة هي نفس درجة الملاءمة التي يراها صاحب العمل عند تقديم المرشح.",
+    "poolStats": "تم فحص {pool} مرشح · عرض أفضل {shown} · {applied} تقدموا بالفعل.",
+    "viewApplicants": "عرض المتقدمين",
+    "inviteNeedsActive": "هذه الوظيفة غير منشورة، لذا لا يمكن دعوة المرشحين بعد. انشرها لإرسال الدعوات.",
+    "errorTitle": "تعذر تحميل المرشحين المطابقين",
+    "errorDescription": "تحقق من اتصالك وحاول مرة أخرى.",
+    "retry": "حاول مرة أخرى",
+    "emptyTitle": "لا يوجد مرشحون مطابقون بعد",
+    "emptyDescription": "لا يوجد في قاعدة البيانات من يسمح لأصحاب العمل بالعثور عليه ويناسب هذه الوظيفة بعد. إضافة المهارات المطلوبة للوظيفة توسّع نطاق المطابقة.",
+    "listLabel": "المرشحون المطابقون، الأفضل أولاً",
+    "cardLabel": "#{rank} {name}",
+    "scoreLabel": "الملاءمة للوظيفة",
+    "breakdownLabel": "مكونات الدرجة",
+    "parts": {
+      "skills": "المهارات",
+      "role": "الدور",
+      "experience": "الخبرة",
+      "education": "التعليم",
+      "industry": "القطاع"
+    },
+    "yearsExperience": "{count, plural, zero {بدون خبرة} one {سنة واحدة خبرة} two {سنتان خبرة} few {# سنوات خبرة} many {# سنة خبرة} other {# سنة خبرة}}",
+    "experienceNotStated": "الخبرة غير محددة",
+    "latestRole": "{title} لدى {company}",
+    "hasSkills": "لديه",
+    "missingSkills": "ينقصه",
+    "preference": {
+      "country": "يفضل وظائف في دول أخرى",
+      "workMode": "يفضل ترتيب عمل مختلفًا",
+      "salary": "يتوقع راتبًا أعلى مما تعرضه هذه الوظيفة"
+    },
+    "unmet": "لا يستوفي متطلب {list} للوظيفة",
+    "requirement": {
+      "experience": "الخبرة",
+      "education": "التعليم",
+      "skills": "المهارات المطلوبة",
+      "languages": "اللغة",
+      "location": "الموقع",
+      "workMode": "ترتيب العمل",
+      "salary": "الراتب",
+      "screening": "سؤال الفرز",
+      "other": "أخرى"
+    },
+    "invite": "ادعُ للتقديم",
+    "inviteAria": "ادعُ {name} للتقديم",
+    "invited": "تمت الدعوة",
+    "inviteTitle": "دعوة {name} للتقديم",
+    "inviteDescription": "سيصله إشعار داخل التطبيق وبريد إلكتروني برابط إلى “{job}”. ويبقى قرار التقديم له.",
+    "messageLabel": "رسالة (اختياري)",
+    "messagePlaceholder": "أضف ملاحظة قصيرة عن سبب ملاءمة هذا الدور له…",
+    "cancel": "إلغاء",
+    "sendInvite": "إرسال الدعوة",
+    "sending": "جارٍ الإرسال…",
+    "inviteSent": "تم إرسال الدعوة إلى {name}",
+    "inviteError": "تعذر إرسال الدعوة",
+    "inviteConflict": "هذا المرشح تقدم بالفعل أو تمت دعوته لهذه الوظيفة.",
+    "inviteUnavailable": "لا يمكن دعوة هذا المرشح الآن — قد تكون الوظيفة غير منشورة، أو لم يعد يسمح لأصحاب العمل بالعثور عليه.",
+    "inviteForbidden": "يمكنك دعوة المرشحين فقط لأصحاب العمل المسندين إليك.",
+    "inviteRetry": "تحقق من اتصالك وحاول مرة أخرى.",
+    "forbiddenTitle": "صاحب العمل لهذه الوظيفة غير مسند إليك",
+    "forbiddenDescription": "يمكنك البحث عن المرشحين ودعوتهم فقط لأصحاب العمل المسندين إليك. اسأل الوكيل الرئيسي إن كان عليك متابعة هذا الحساب."
   }
 }

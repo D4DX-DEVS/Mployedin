@@ -9,6 +9,8 @@
  * ";" into a single "role" longer than the validator allows.
  */
 
+import { cleanTagList } from "./tagList";
+
 export const MAX_PREFERRED_ROLE_LENGTH = 100;
 const MAX_PREFERRED_ROLES = 20;
 
@@ -38,19 +40,7 @@ const strings = (value: unknown): string[] =>
 
 /** One tag per role: split imported "A; B • C" lines, drop bullets, clip to the limit. */
 function cleanRoles(value: unknown): string[] {
-  const seen = new Set<string>();
-  const roles: string[] = [];
-  for (const entry of strings(value)) {
-    const parts = entry.length > MAX_PREFERRED_ROLE_LENGTH ? entry.split(/[;\n•]/) : [entry];
-    for (const part of parts) {
-      const role = part.replace(/^[\s•\-–]+/, "").trim().slice(0, MAX_PREFERRED_ROLE_LENGTH).trim();
-      const key = role.toLowerCase();
-      if (!role || seen.has(key)) continue;
-      seen.add(key);
-      roles.push(role);
-    }
-  }
-  return roles.slice(0, MAX_PREFERRED_ROLES);
+  return cleanTagList(value, { maxLength: MAX_PREFERRED_ROLE_LENGTH, maxCount: MAX_PREFERRED_ROLES });
 }
 
 export function preferencesFromProfile(profile: StoredPreferences | null | undefined): PreferencesData {

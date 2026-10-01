@@ -40,7 +40,8 @@ const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffec
  * avatar menu already opens both, so the same two destinations had two
  * different entry points a few pixels apart. Profile and Settings now belong to
  * the avatar menu alone, and the two destinations that had no other home were
- * promoted to tabs — which empties "More" and removes it.
+ * promoted to tabs — which empties "More" and removes it. Job Alerts (saved
+ * searches) was later removed outright; profile-based job emails replace it.
  */
 const PRIMARY_PATHS = [
   "/job-seeker",
@@ -48,7 +49,6 @@ const PRIMARY_PATHS = [
   "/job-seeker/applications",
   "/job-seeker/messages",
   "/job-seeker/companies",
-  "/job-seeker/saved-searches",
 ] as const;
 
 /**
@@ -73,8 +73,8 @@ const MOBILE_PATHS = [
  * navigation system listing every route the product has. The entries that left
  * are not gone: the application lifecycle (interviews, offers, onboarding)
  * hangs off Applications, everything that makes up the seeker's profile hangs
- * off Profile, Profile and Settings hang off the header avatar, and the last
- * two — Job Alerts and Companies — are tabs. Every seeker route now has exactly
+ * off Profile, Profile and Settings hang off the header avatar, and Companies
+ * is a tab. Every seeker route now has exactly
  * one entry point, so the trigger renders only if this list regains an entry.
  */
 const MORE_PATHS = [] as const;
@@ -87,7 +87,6 @@ const MORE_PATHS = [] as const;
  */
 const MOBILE_MORE_PATHS = [
   "/job-seeker/messages",
-  "/job-seeker/saved-searches",
   "/job-seeker/companies",
 ] as const;
 

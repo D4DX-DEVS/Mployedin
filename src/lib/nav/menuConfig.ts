@@ -366,8 +366,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             titleAr: "البيانات الرئيسية",
             href: p("/admin/job-attributes/industries"),
             icon: "SlidersHorizontal",
-            description: "Industries, skills, subjects and locations",
-            descriptionAr: "القطاعات والمهارات والتخصصات والمواقع",
+            description: "Job categories, industries, skills, subjects and locations",
+            descriptionAr: "فئات الوظائف والقطاعات والمهارات والتخصصات والمواقع",
           },
           {
             // Five reporting destinations, one sidebar row.
@@ -1336,17 +1336,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "Briefcase",
             description: "Search and browse matching jobs",
             descriptionAr: "ابحث وتصفح الوظائف المطابقة",
-          },
-          {
-            // Named for what it holds, not for the alerts it can send: the
-            // profile-wide job alert is driven by Preferences, and calling this
-            // "Job Alerts" sent seekers here to switch that one off.
-            title: "Saved Searches",
-            titleAr: "عمليات البحث المحفوظة",
-            href: p("/job-seeker/saved-searches"),
-            icon: "Bell",
-            description: "Email me when a saved search gets new matches",
-            descriptionAr: "راسلني عند ظهور نتائج جديدة لعملية بحث محفوظة",
           },
           {
             title: "Companies",

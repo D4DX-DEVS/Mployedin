@@ -85,13 +85,6 @@ export const interviewRemindersCron = makeScheduledCron({
   path: "/api/cron/interview-reminders",
 });
 
-export const savedSearchAlertsCron = makeScheduledCron({
-  id: "scheduled-saved-search-alerts",
-  name: "Saved Search Alerts (hourly)",
-  cron: "0 * * * *",
-  path: "/api/cron/saved-search-alerts",
-});
-
 // ── Daily ──────────────────────────────────────────────────────────────────────
 export const subscriptionUsageResetCron = makeScheduledCron({
   id: "scheduled-subscription-usage-reset",
@@ -193,7 +186,6 @@ export const subscriptionReminderCron = makeScheduledCron({
 /** All scheduled cron functions, for registration in the Inngest serve route. */
 export const scheduledCronFunctions = [
   interviewRemindersCron,
-  savedSearchAlertsCron,
   subscriptionUsageResetCron,
   offerExpiryCron,
   jobExpiryCron,

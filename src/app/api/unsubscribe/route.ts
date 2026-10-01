@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { connectDB } from "@/lib/db/mongoose";
 import NotificationPreference from "@/models/NotificationPreference";
-import SavedSearch from "@/models/SavedSearch";
 import logger from "@/lib/logger";
 import { unsubscribeSecret } from "@/lib/communications/unsubscribeLink";
 
@@ -12,9 +11,15 @@ const JWT_SECRET = unsubscribeSecret();
 interface UnsubscribePayload {
   userId: string;
   category?: string;
-  /** When present, disables email alerts for just this saved search. */
+  /**
+   * Set only by the removed saved-search alert emails (links live 90 days).
+   * Those alerts no longer exist, and without this the token would carry no
+   * category and fall through to "unsubscribe from all".
+   */
   savedSearchId?: string;
 }
+
+const SAVED_SEARCH_GONE = "Saved search alerts have been retired — you won't receive any more of these emails.";
 
 /**
  * GET /api/unsubscribe?token=...
@@ -53,28 +58,15 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  await connectDB();
-
   if (payload.savedSearchId) {
-    // Granular: turn off alerts for a single saved search (scoped to the owner).
-    const updated = await SavedSearch.findOneAndUpdate(
-      { _id: payload.savedSearchId, userId: payload.userId },
-      { $set: { emailAlert: false } },
-      { returnDocument: "after" },
-    ).lean();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
-    const name = (updated as { name?: string } | null)?.name;
     return new NextResponse(
-      buildUnsubscribePage(
-        true,
-        name
-          ? `Email alerts turned off for your saved search "${name}".`
-          : "Email alerts turned off for this saved search.",
-        `${baseUrl}/en/job-seeker/jobs`,
-      ),
+      buildUnsubscribePage(true, SAVED_SEARCH_GONE, `${baseUrl}/en/job-seeker/settings/notifications`),
       { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } },
     );
   }
+
+  await connectDB();
 
   if (payload.category) {
     // Unsubscribe from specific category
@@ -125,15 +117,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
   }
 
-  await connectDB();
+  if (payload.savedSearchId) return NextResponse.json({ success: true });
 
-  if (payload.savedSearchId) {
-    await SavedSearch.updateOne(
-      { _id: payload.savedSearchId, userId: payload.userId },
-      { $set: { emailAlert: false } },
-    );
-    return NextResponse.json({ success: true });
-  }
+  await connectDB();
 
   await NotificationPreference.updateOne(
     { userId: payload.userId },

@@ -11,7 +11,7 @@
  *  - Employer/JobSeeker/Agent/SuperAgent profiles ref User via `userId`.
  *  - Application/Interview/Offer/Placement ref the PROFILE _id
  *    (jobSeekerId → JobSeeker, employerId → Employer, agentId → Agent).
- *  - SavedSearch.userId / Notification.userId ref User._id.
+ *  - Notification.userId refs User._id.
  *  - Commission ref agentId/superAgentId/placementId (not employer/jobseeker).
  *
  * These run best-effort and non-transactionally (the app connects to a single
@@ -19,7 +19,7 @@
  * not available). Each step is isolated so one failure does not abort the rest.
  */
 
-import mongoose, { type Types } from "mongoose";
+import { type Types } from "mongoose";
 import logger from "@/lib/logger";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
@@ -155,12 +155,7 @@ export async function cascadeDeleteJobSeeker(
     await track(summary, "applications", Application.deleteMany({ jobSeekerId: jsId }));
   }
 
-  // These reference User._id directly.
-  // SavedSearch is registered lazily (not a dedicated model file); only act if loaded.
-  const SavedSearch = mongoose.models.SavedSearch;
-  if (SavedSearch) {
-    await track(summary, "savedSearches", SavedSearch.deleteMany({ userId: jobSeekerUserId }));
-  }
+  // References User._id directly.
   await track(summary, "notifications", Notification.deleteMany({ userId: jobSeekerUserId }));
 
   return summary;

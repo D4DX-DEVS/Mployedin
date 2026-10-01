@@ -34,7 +34,7 @@ import type { CVPDFLabels } from "./cv-pdf-document";
 import {
   PROFICIENCY_OPTIONS, EMPTY_EXPERIENCE, EMPTY_EDUCATION,
   EMPTY_LANGUAGE, EMPTY_PROJECT, EMPTY_LINK,
-  DEFAULT_FORMATTING, toMonthInput, resolveTheme,
+  DEFAULT_FORMATTING, toMonthInput, resolveTheme, restoreCvDesign,
 } from "./types";
 import { TemplateRenderer } from "./templates";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
@@ -45,10 +45,24 @@ import { SortableList, SortableItem } from "./sortable";
 import { htmlToPlainText, plainTextToHtml } from "./rich-text";
 import { MonthYearPicker } from "./month-picker";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import {
+  cleanSocialLinks, toProfileLinkUrl, type ProfileLink,
+} from "@/lib/jobSeeker/socialLinks";
+import { cleanSkills } from "@/lib/jobSeeker/tagList";
 
 /* Reorder an array to match a new ordering of index-string ids. */
 function reorderByIds<T>(arr: T[], ids: string[]): T[] {
   return ids.map((id) => arr[Number(id)]).filter((v): v is T => v !== undefined);
+}
+
+/* ── Sort profile links into the builder's LinkedIn / Portfolio / other fields ── */
+function splitProfileLinks(links: ProfileLink[]) {
+  const labelled = (l: ProfileLink, names: string[]) => names.includes(l.label.toLowerCase());
+  return {
+    linkedin: links.find((l) => labelled(l, ["linkedin"]))?.url,
+    portfolio: links.find((l) => labelled(l, ["portfolio", "website"]))?.url,
+    additional: links.filter((l) => !labelled(l, ["linkedin", "portfolio", "website"])),
+  };
 }
 
 /* ── Filter out hidden sections for preview/PDF ── */
@@ -133,6 +147,9 @@ export default function CVBuilderPage() {
       const res = await fetch("/api/job-seeker/profile");
       if (res.ok && res.status !== 204) {
         const profile = await res.json();
+        // Older CV imports stored a link's text as its address ("LinkedIn");
+        // sent back on save, one of those failed the whole save.
+        const links = splitProfileLinks(cleanSocialLinks(profile.socialLinks));
         setForm((prev) => ({
           ...prev,
           phone: profile.phone ?? prev.phone,
@@ -140,29 +157,11 @@ export default function CVBuilderPage() {
           currentLocation: profile.currentLocation ?? prev.currentLocation,
           headline: profile.summary ?? prev.headline,
           photo: profile.avatar ?? prev.photo,
-          linkedin: (() => {
-            const linked = profile.socialLinks?.find((l: Record<string, unknown>) =>
-              ((l.label as string) ?? "").toLowerCase() === "linkedin"
-            );
-            return (linked?.url as string) ?? prev.linkedin;
-          })(),
-          portfolio: (() => {
-            const port = profile.socialLinks?.find((l: Record<string, unknown>) =>
-              ["portfolio", "website"].includes(((l.label as string) ?? "").toLowerCase())
-            );
-            return (port?.url as string) ?? prev.portfolio;
-          })(),
-          additionalLinks: profile.socialLinks?.length
-            ? profile.socialLinks
-                .filter((l: Record<string, unknown>) =>
-                  !["linkedin", "portfolio", "website"].includes(((l.label as string) ?? "").toLowerCase())
-                )
-                .map((l: Record<string, unknown>) => ({
-                  label: (l.label as string) ?? "",
-                  url: (l.url as string) ?? "",
-                }))
-            : prev.additionalLinks,
-          skills: profile.skills?.length ? profile.skills : prev.skills,
+          linkedin: links.linkedin ?? prev.linkedin,
+          portfolio: links.portfolio ?? prev.portfolio,
+          additionalLinks: links.additional.length ? links.additional : prev.additionalLinks,
+          // Imported profiles joined whole skill lists into one over-long entry.
+          skills: profile.skills?.length ? cleanSkills(profile.skills) : prev.skills,
           experience: profile.experience?.length
             ? profile.experience.map((e: Record<string, unknown>) => ({
                 jobTitle: (e.jobTitle as string) ?? "",
@@ -201,6 +200,10 @@ export default function CVBuilderPage() {
             : prev.projects,
         }));
 
+        const design = restoreCvDesign(profile.cvDesign);
+        setSelectedTemplate(design.templateId);
+        setFormatting(design.formatting);
+        setHiddenSections(design.hiddenSections);
       }
     } catch {
       // Non-blocking
@@ -240,6 +243,14 @@ export default function CVBuilderPage() {
 
       const data = await res.json();
       const ext = data.extracted;
+      // The reader can return a link's visible text ("LinkedIn") instead of its address.
+      const links = splitProfileLinks(cleanSocialLinks([
+        ...(ext.linkedin ? [{ label: "LinkedIn", url: ext.linkedin }] : []),
+        ...(ext.portfolio ? [{ label: "Portfolio", url: ext.portfolio }] : []),
+        ...(Array.isArray(ext.socialLinks)
+          ? (ext.socialLinks as { label?: string; url?: string }[]).map((l) => ({ ...l, label: l.label || t("defaults.link") }))
+          : []),
+      ]));
 
       setForm((prev) => ({
         ...prev,
@@ -249,23 +260,9 @@ export default function CVBuilderPage() {
         nationality: ext.nationality || prev.nationality,
         currentLocation: ext.currentLocation || prev.currentLocation,
         headline: ext.headline || prev.headline,
-        linkedin: ext.linkedin
-          || ext.socialLinks?.find((l: { label?: string }) => (l.label ?? "").toLowerCase() === "linkedin")?.url
-          || prev.linkedin,
-        portfolio: ext.portfolio
-          || ext.socialLinks?.find((l: { label?: string }) => ["portfolio", "website"].includes((l.label ?? "").toLowerCase()))?.url
-          || prev.portfolio,
-        additionalLinks: (() => {
-          const links: SocialLink[] = [];
-          if (ext.socialLinks?.length) {
-            for (const l of ext.socialLinks as { label?: string; url?: string }[]) {
-              if (l.url && !["linkedin", "portfolio", "website"].includes((l.label ?? "").toLowerCase())) {
-                links.push({ label: l.label ?? t("defaults.link"), url: l.url });
-              }
-            }
-          }
-          return links.length ? links : prev.additionalLinks;
-        })(),
+        linkedin: links.linkedin || prev.linkedin,
+        portfolio: links.portfolio || prev.portfolio,
+        additionalLinks: links.additional.length ? links.additional : prev.additionalLinks,
         skills: ext.skills?.length
           ? ext.skills.map((s: { name?: string } | string) => typeof s === "string" ? s : s.name ?? "").filter(Boolean)
           : prev.skills,
@@ -389,6 +386,24 @@ export default function CVBuilderPage() {
 
   /* ── Save to Profile ── */
   async function handleSaveToProfile() {
+    // One link the profile can't take used to fail the whole save with no
+    // hint; name the link instead, and save bare domains with https://.
+    const socialLinks: ProfileLink[] = [];
+    for (const link of [
+      ...(form.linkedin.trim() ? [{ label: "LinkedIn", url: form.linkedin }] : []),
+      ...(form.portfolio.trim() ? [{ label: "Portfolio", url: form.portfolio }] : []),
+      ...form.additionalLinks.filter((l) => l.url.trim()),
+    ]) {
+      const url = toProfileLinkUrl(link.label, link.url);
+      if (!url) {
+        toast.error(link.label.trim().toLowerCase() === "linkedin"
+          ? t("errors.linkedinInvalid")
+          : t("errors.linkInvalid", { label: link.label.trim() || t("defaults.link") }));
+        return;
+      }
+      socialLinks.push({ label: link.label, url });
+    }
+
     setSaving(true);
     setError("");
     try {
@@ -414,11 +429,12 @@ export default function CVBuilderPage() {
           title: p.title, description: htmlToPlainText(p.description), techStack: p.techStack,
           projectUrl: p.projectUrl || undefined, repoUrl: p.repoUrl || undefined,
         })),
-        socialLinks: [
-          ...(form.linkedin.trim() ? [{ label: "LinkedIn", url: form.linkedin.trim() }] : []),
-          ...(form.portfolio.trim() ? [{ label: "Portfolio", url: form.portfolio.trim() }] : []),
-          ...form.additionalLinks.filter((l) => l.url.trim()),
-        ],
+        socialLinks,
+        cvDesign: {
+          templateId: selectedTemplate,
+          formatting,
+          hiddenSections: [...hiddenSections],
+        },
       };
       const res = await csrfFetch("/api/job-seeker/profile", {
         method: "PATCH",

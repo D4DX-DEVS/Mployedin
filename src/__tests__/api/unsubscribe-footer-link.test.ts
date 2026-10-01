@@ -19,10 +19,6 @@ jest.mock("@/models/NotificationPreference", () => ({
   __esModule: true,
   default: { updateOne: (...args: unknown[]) => updateOne(...args) },
 }));
-jest.mock("@/models/SavedSearch", () => ({
-  __esModule: true,
-  default: { findOneAndUpdate: jest.fn(), updateOne: jest.fn() },
-}));
 
 describe("digest footer → /api/unsubscribe", () => {
   const ORIGINAL = process.env.NEXTAUTH_SECRET;
@@ -66,4 +62,31 @@ describe("digest footer → /api/unsubscribe", () => {
       expect.anything(),
     );
   });
+
+  /**
+   * Saved-search alerts were removed, but their emails carried 90-day links
+   * with a savedSearchId and no category. Falling through would read as
+   * "unsubscribe from everything" — interview invites included.
+   */
+  it.each(["GET", "POST"] as const)(
+    "%s with a retired saved-search link changes no preferences",
+    async (method) => {
+      updateOne.mockClear();
+      const jwt = (await import("jsonwebtoken")).default;
+      const { unsubscribeSecret } = await import("@/lib/communications/unsubscribeLink");
+      const route = await import("@/app/api/unsubscribe/route");
+      const token = jwt.sign(
+        { userId: "seeker-77", savedSearchId: "65f000000000000000000001" },
+        unsubscribeSecret()!,
+        { algorithm: "HS256" },
+      );
+
+      const res = await route[method](
+        new NextRequest(`http://localhost/api/unsubscribe?token=${token}`, { method }),
+      );
+
+      expect(res.status).toBe(200);
+      expect(updateOne).not.toHaveBeenCalled();
+    },
+  );
 });

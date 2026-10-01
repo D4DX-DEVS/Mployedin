@@ -67,15 +67,27 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ];
     }
 
-    const [profiles, total] = await Promise.all([
-      Employer.find(empQuery)
-        .populate("userId", "name email isActive createdAt")
-        .sort({ companyName: 1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+    // Employers assigned to this agent first — the ones they can act on — then
+    // those visible through the region, A–Z within each. Sorted in the query,
+    // not on the page, because the list is paginated here.
+    const [pageRows, total] = await Promise.all([
+      Employer.aggregate<{ _id: unknown }>([
+        { $match: empQuery },
+        { $addFields: { assignedFirst: { $cond: [{ $in: ["$_id", agentDoc.assignedEmployerIds ?? []] }, 0, 1] } } },
+        { $sort: { assignedFirst: 1, companyName: 1, _id: 1 } },
+        { $skip: Math.max(0, skip || 0) },
+        { $limit: Math.max(1, limit || 10) },
+        { $project: { _id: 1 } },
+      ]),
       Employer.countDocuments(empQuery),
     ]);
+    const position = new Map(pageRows.map((row, i) => [String(row._id), i]));
+    const profiles = pageRows.length === 0
+      ? []
+      : (await Employer.find({ _id: { $in: pageRows.map((row) => row._id) } })
+          .populate("userId", "name email isActive createdAt")
+          .lean())
+          .sort((a, b) => (position.get(String(a._id)) ?? 0) - (position.get(String(b._id)) ?? 0));
 
     const employers = profiles.map((p) => {
       const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;

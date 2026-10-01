@@ -136,10 +136,10 @@ export async function loadSuperAgentDashboard(saUserId: string, now: Date = new 
   ] = await Promise.all([
     User.countDocuments({ _id: { $in: agentUserIds }, isActive: true }),
     Agent.countDocuments({ _id: { $in: agentDocIds }, createdAt: { $gte: monthStart } }),
-    agentDocIds.length ? Employer.countDocuments(employerFilter) : Promise.resolve(0),
-    agentDocIds.length
-      ? Employer.countDocuments({ ...employerFilter, createdAt: { $gte: monthStart } })
-      : Promise.resolve(0),
+    // Not gated on having agents: a super-agent with a territory and no team
+    // still has the territory's employers in the book.
+    Employer.countDocuments(employerFilter),
+    Employer.countDocuments({ ...employerFilter, createdAt: { $gte: monthStart } }),
     Job.countDocuments(jobFilter),
     Job.countDocuments({ ...jobFilter, status: "active" }),
     Job.countDocuments({ ...jobFilter, createdAt: { $gte: monthStart } }),

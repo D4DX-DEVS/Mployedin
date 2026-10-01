@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSchema";
@@ -28,6 +27,8 @@ import { JobQualityScore } from "./JobQualityScore";
 import { InclusiveWordingPanel } from "./InclusiveWordingPanel";
 import { MatchPreviewPanel } from "./MatchPreviewPanel";
 import { StickyActionBar } from "./StickyActionBar";
+import { OnBehalfEmployerPicker } from "./OnBehalfEmployerPicker";
+import { JobFormBasePathProvider } from "./jobFormContext";
 
 interface Suggestions {
   titles: string[];
@@ -70,21 +71,16 @@ interface JobFormWizardProps {
   locale: string;
   useAiPrefill?: boolean;
   /** Dashboard segment this wizard is mounted under. Drives post-save redirects
-   *  and, for "admin", the on-behalf-of employer picker the API requires. */
-  basePath?: "employer" | "admin";
+   *  and, for "admin" and "agent", the on-behalf-of employer picker the API
+   *  requires. */
+  basePath?: "employer" | "admin" | "agent";
+  /** Employer profile id to start with — an agent arriving from an employer's
+   *  "Post job" button has already chosen. */
+  initialEmployerId?: string;
   /** The wizard owns the only heading on employer/jobs/new, but admin/jobs/new
    *  renders its own PageHeader above it — two h1s on one page. Callers that
    *  already have an h1 pass 2. */
   headingLevel?: 1 | 2;
-}
-
-interface EmployerOption {
-  /** User id — NOT the Employer profile id the jobs API expects. */
-  _id: string;
-  /** Employer profile id; this is what POST /api/jobs stores as job.employerId. */
-  employerProfileId?: string;
-  companyName?: string;
-  name?: string;
 }
 
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
@@ -117,6 +113,8 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
   return {
     ...base,
     ...incoming,
+    // A draft saved before an employer was picked must not blank the one chosen now.
+    employerId: incoming.employerId || base.employerId,
     location: {
       ...base.location,
       ...incoming.location,
@@ -140,10 +138,11 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
   };
 }
 
-export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employer", headingLevel = 1 }: JobFormWizardProps) {
+export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employer", headingLevel = 1, initialEmployerId }: JobFormWizardProps) {
   const router = useRouter();
-  const isAdmin = basePath === "admin";
-  const [employerOptions, setEmployerOptions] = useState<EmployerOption[]>([]);
+  // Admins and agents post for an employer, so they must pick one — POST
+  // /api/jobs rejects an on-behalf job that carries no employerId.
+  const onBehalfMode = basePath === "admin" || basePath === "agent" ? basePath : null;
   const t = useTranslations("employerJobForm");
   const tAts = useTranslations("employerAts");
   const [currentStep, setCurrentStep] = useState(1);
@@ -160,31 +159,24 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   const [templateLoadError, setTemplateLoadError] = useState("");
   const templateTriggerRef = useRef<HTMLButtonElement | null>(null);
 
+  // The employer picked before the form opened (agent start screen, `?employer=`)
+  // is part of the blank form, so an AI prefill or a restored draft that does
+  // not name one keeps it instead of resetting it away.
+  const baseValues = useMemo(
+    () => (initialEmployerId ? { ...DEFAULT_JOB_FORM_VALUES, employerId: initialEmployerId } : DEFAULT_JOB_FORM_VALUES),
+    [initialEmployerId],
+  );
+
   const methods = useForm<JobFormValues>({
     resolver: zodResolver(jobFormSchema) as Resolver<JobFormValues>,
     mode: "onChange",
-    defaultValues: DEFAULT_JOB_FORM_VALUES,
+    defaultValues: baseValues,
   });
 
   const { watch, trigger, handleSubmit, reset, formState } = methods;
   const formValues = watch();
 
   const { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft } = useJobFormDraft(locale);
-
-  // Admins post on behalf of an employer, so they must pick one — POST /api/jobs
-  // rejects an admin-authored job that carries no employerId.
-  useEffect(() => {
-    if (!isAdmin) return;
-    let cancelled = false;
-    fetch("/api/employers?limit=500&fields=companyName")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled || !d) return;
-        setEmployerOptions((d.employers ?? d.data ?? []) as EmployerOption[]);
-      })
-      .catch(() => { /* picker stays empty; submit is blocked with a message */ });
-    return () => { cancelled = true; };
-  }, [isAdmin]);
 
   // A draft found in local storage, waiting for the employer to accept it.
   const [pendingDraft, setPendingDraft] = useState<StoredDraft | null>(null);
@@ -223,7 +215,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
             aiExtractionDraftRef.current = null;
           }
           const { extractionDraftId: _omit, extractionDraftIndex: _omit2, ...formValues } = parsed;
-          reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, formValues));
+          reset(mergeJobFormValues(baseValues, formValues));
           sessionStorage.removeItem(AI_PREFILL_STORAGE_KEY);
           aiPrefillApplied.current = true;
           return;
@@ -238,11 +230,11 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     // and could publish its stale contents without noticing.
     const saved = loadDraft();
     if (saved) setPendingDraft(saved);
-  }, [loadDraft, useAiPrefill]);
+  }, [loadDraft, useAiPrefill, baseValues]);
 
   function restorePendingDraft() {
     if (!pendingDraft) return;
-    reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, pendingDraft.values));
+    reset(mergeJobFormValues(baseValues, pendingDraft.values));
     setPendingDraft(null);
   }
 
@@ -346,7 +338,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   // ─── Draft Save ───────────────────────────────────────────────────────────────
 
   async function handleSaveDraft() {
-    if (isAdmin && !methods.getValues().employerId) {
+    if (onBehalfMode && !methods.getValues().employerId) {
       setSubmitError(t("employerRequired"));
       return;
     }
@@ -371,7 +363,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   // ─── Submit ───────────────────────────────────────────────────────────────────
 
   const onSubmit = handleSubmit(async (values) => {
-    if (isAdmin && !values.employerId) {
+    if (onBehalfMode && !values.employerId) {
       setSubmitError(t("employerRequired"));
       return;
     }
@@ -440,13 +432,19 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         } else {
           toast.success(t("postSuccess"), {
             description: t("postSuccessDescription"),
-            action: {
-              label: t("createPoster"),
-              onClick: () => {
-                // Navigate with poster query param to auto-open dialog
-                router.push(`/${locale}/${basePath}/jobs/${jobId}?poster=1`);
-              },
-            },
+            // The poster maker opens from the employer's and admin's job page;
+            // the agent job page has none, so the action would do nothing there.
+            ...(basePath !== "agent"
+              ? {
+                  action: {
+                    label: t("createPoster"),
+                    onClick: () => {
+                      // Navigate with poster query param to auto-open dialog
+                      router.push(`/${locale}/${basePath}/jobs/${jobId}?poster=1`);
+                    },
+                  },
+                }
+              : {}),
             duration: 8000,
           });
         }
@@ -480,14 +478,24 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
 
   // ─── Templates ───────────────────────────────────────────────────────────────
 
+  // Templates belong to an employer: the employer's own, or for an agent the
+  // picked employer's — reloaded when the agent picks a different one.
+  const templateOwner = basePath === "agent" ? formValues.employerId ?? "" : "own";
+  const [templatesFor, setTemplatesFor] = useState("");
+
   async function loadTemplates() {
     setLoadingTemplates(true);
     setTemplateLoadError("");
     try {
-      const res = await fetch("/api/employers/job-templates");
+      const res = await fetch(
+        basePath === "agent"
+          ? `/api/employers/job-templates?employerId=${encodeURIComponent(templateOwner)}`
+          : "/api/employers/job-templates",
+      );
       if (res.ok) {
         const data = (await res.json()) as { templates: JobTemplateData[] };
         setTemplates(data.templates);
+        setTemplatesFor(templateOwner);
       } else {
         setTemplateLoadError(t("templateLoadError"));
       }
@@ -579,7 +587,8 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
               <span className="hidden rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground md:inline-flex">
                 {t("autoSaves")}
               </span>
-              {!isAdmin && (
+              {/* Job templates belong to the employer's account; an agent sees the picked employer's. */}
+              {(basePath === "employer" || (basePath === "agent" && templateOwner)) && (
                 <Button
                   ref={templateTriggerRef}
                   type="button"
@@ -588,7 +597,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
                   className="gap-2 bg-background/90"
                   onClick={() => {
                     setShowTemplateModal(true);
-                    if (templates.length === 0) loadTemplates();
+                    if (templates.length === 0 || templatesFor !== templateOwner) loadTemplates();
                   }}
                 >
                   <Copy className="w-4 h-4" />
@@ -619,25 +628,12 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           </div>
         )}
 
-        {isAdmin && (
-          <div className="mt-3 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad">
-            <label htmlFor="job-form-employer" className="mb-1.5 block text-xs font-medium text-muted-foreground sm:text-sm">
-              {t("employerLabel")} <span className="text-destructive">*</span>
-            </label>
-            <SearchableSelect
-              id="job-form-employer"
-              options={employerOptions
-                .filter((e) => e.employerProfileId)
-                .map((e) => ({
-                  value: e.employerProfileId as string,
-                  label: e.companyName ?? e.name ?? (e.employerProfileId as string),
-                }))}
-              value={formValues.employerId ?? ""}
-              onValueChange={(v) => methods.setValue("employerId", v, { shouldDirty: true })}
-              placeholder={t("employerPlaceholder")}
-              className="w-full"
-            />
-          </div>
+        {onBehalfMode && (
+          <OnBehalfEmployerPicker
+            mode={onBehalfMode}
+            value={formValues.employerId ?? ""}
+            onChange={(v) => methods.setValue("employerId", v, { shouldDirty: true })}
+          />
         )}
 
         <div className="mt-3 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad">
@@ -789,6 +785,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         </DialogContent>
       </Dialog>
 
+      <JobFormBasePathProvider value={basePath}>
       <FormProvider {...methods}>
         <form onSubmit={onSubmit} noValidate>
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18.5rem]">
@@ -828,6 +825,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           </div>
         </form>
       </FormProvider>
+      </JobFormBasePathProvider>
 
     </div>
     </div>

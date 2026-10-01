@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Building2, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -31,6 +31,7 @@ export function TenantViewBanner({
   locale,
 }: TenantViewBannerProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [exiting, setExiting] = useState(false);
 
   async function handleExit() {
@@ -44,9 +45,11 @@ export function TenantViewBanner({
     } catch {
       // Best-effort — redirect regardless
     }
-    // Navigate back to the actor's own dashboard
+    // Navigate back to the actor's own dashboard — or, for an agent who opened
+    // a job in employer view from their job page, back to that job.
     const basePath = ROLE_PATHS[actorRole] ?? "/";
-    router.push(`/${locale}${basePath}`);
+    const jobId = actorRole === "agent" ? /^\/[^/]+\/employer\/jobs\/([a-f0-9]{24})(?:\/|$)/i.exec(pathname ?? "")?.[1] : undefined;
+    router.push(jobId ? `/${locale}/agent/jobs/${jobId}` : `/${locale}${basePath}`);
     router.refresh();
   }
 

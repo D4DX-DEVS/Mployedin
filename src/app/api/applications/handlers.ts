@@ -316,13 +316,19 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (search) {
     const escapedSearch = escapeRegex(search);
+    // A seeker searches their own applications by job title or company. The
+    // candidate fields staff search on are the seeker's own profile, so any
+    // term from it ("React") would match every application they hold.
+    const searchCandidates = ctx.role !== "job_seeker";
     const [matchingUsers, matchingJobs, matchingEmployers] = await Promise.all([
-      User.find({
-        $or: [
-          { name: { $regex: escapedSearch, $options: "i" } },
-          { email: { $regex: escapedSearch, $options: "i" } },
-        ],
-      }).select("_id").lean(),
+      searchCandidates
+        ? User.find({
+            $or: [
+              { name: { $regex: escapedSearch, $options: "i" } },
+              { email: { $regex: escapedSearch, $options: "i" } },
+            ],
+          }).select("_id").lean()
+        : Promise.resolve([]),
       jobId
         ? Promise.resolve([])
         : Job.find({ title: { $regex: escapedSearch, $options: "i" } }).select("_id").lean(),
@@ -348,7 +354,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       seekerClauses.unshift({ userId: { $in: matchingUsers.map((user) => user._id) } });
     }
 
-    const matchingSeekers = await JobSeeker.find({ $or: seekerClauses }).select("_id").lean();
+    const matchingSeekers = searchCandidates
+      ? await JobSeeker.find({ $or: seekerClauses }).select("_id").lean()
+      : [];
     const searchClauses: Array<Record<string, unknown>> = [];
 
     if (matchingSeekers.length > 0) {
@@ -364,7 +372,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
 
     if (searchClauses.length === 0) {
-      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
+      // Nothing can match, so the seeker's status tabs all read 0 instead of
+      // dropping their counts.
+      const seekerCounts = fetchCounts && ctx.role === "job_seeker"
+        ? { statusCounts: Object.fromEntries(["all", ...ALL_APPLICATION_STATUSES].map((s) => [s, 0])) }
+        : {};
+      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}), ...seekerCounts });
     }
 
     query.$and = [...(query.$and ?? []), { $or: searchClauses }];

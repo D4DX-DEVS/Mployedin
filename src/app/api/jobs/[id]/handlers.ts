@@ -16,6 +16,7 @@ import { stripPrivateJobFields } from "@/lib/jobs/visibility";
 import { mergeScreeningKnockouts, splitScreeningQuestions, type KnockoutRule } from "@/lib/matching/knockouts";
 import { queueApplicantRescore } from "@/lib/inngest/rescoreJobApplicants";
 import { memberMayAccessJob } from "@/lib/permissions/team";
+import { agentPostingFor } from "@/lib/jobs/agentPosting";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
@@ -58,6 +59,12 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // which already scopes writes this way.
   if (job.status !== "active" && !isOwnerSide) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  // An agent's job page offers "Open employer's job page" (tenant view), which
+  // only an employer assigned to the agent allows — area visibility is not enough.
+  if (ctx.role === "agent") {
+    (job as Record<string, unknown>).viewerCanManage = Boolean(await agentPostingFor(ctx.userId, ownerId));
   }
 
   if (!isOwnerSide) {

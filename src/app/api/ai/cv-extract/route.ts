@@ -16,6 +16,7 @@ import mammoth from "mammoth";
 import { createHash } from "crypto";
 import logger from "@/lib/logger";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
+import { cleanSocialLinks } from "@/lib/jobSeeker/socialLinks";
 import { extractResumeText } from "@/lib/ats/analyzeCv";
 import { saveReadCv } from "@/lib/cv/cvDocuments";
 import CvDocument from "@/models/CvDocument";
@@ -204,18 +205,14 @@ export async function POST(req: NextRequest) {
         }))
       : [];
 
-    const mappedSocialLinks: { label: string; url: string }[] = [];
-    // Map legacy linkedin/portfolio fields if present
-    if (extracted.linkedin) mappedSocialLinks.push({ label: "LinkedIn", url: extracted.linkedin });
-    if (extracted.portfolio) mappedSocialLinks.push({ label: "Portfolio", url: extracted.portfolio });
-    // Map new socialLinks array
-    if (extracted.socialLinks?.length) {
-      for (const link of extracted.socialLinks as { label?: string; url?: string }[]) {
-        if (link.url && !mappedSocialLinks.some((s) => s.url === link.url)) {
-          mappedSocialLinks.push({ label: link.label ?? "Link", url: link.url });
-        }
-      }
-    }
+    // The reader returns a link's visible text when the PDF hides its address
+    // ("LinkedIn"); stored as-is, that one entry failed every later profile save.
+    const mappedSocialLinks = cleanSocialLinks([
+      // Legacy linkedin/portfolio fields, then the socialLinks array
+      ...(extracted.linkedin ? [{ label: "LinkedIn", url: extracted.linkedin }] : []),
+      ...(extracted.portfolio ? [{ label: "Portfolio", url: extracted.portfolio }] : []),
+      ...(Array.isArray(extracted.socialLinks) ? extracted.socialLinks : []),
+    ]);
 
     const updateData = {
       ...(extracted.fullName && { fullName: extracted.fullName }),
