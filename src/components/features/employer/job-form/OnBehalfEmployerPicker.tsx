@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { disambiguateEmployerLabels, type EmployerOptionLabel } from "@/lib/employers/optionLabels";
 
 /** Who is posting on an employer's behalf. Employers post as themselves. */
 export type OnBehalfMode = "admin" | "agent";
@@ -21,14 +22,12 @@ interface EmployerRow {
   employerProfileId?: string;
   companyName?: string;
   name?: string;
+  email?: string;
   /** Agent rows only: the agent holds the assignment, not just area visibility. */
   assignedToMe?: boolean;
 }
 
-interface EmployerOption {
-  value: string;
-  label: string;
-}
+type EmployerOption = EmployerOptionLabel;
 
 /**
  * The rows each role may post for, as select options.
@@ -39,16 +38,17 @@ interface EmployerOption {
  */
 export function employerOptionsFor(mode: OnBehalfMode, rows: readonly EmployerRow[]): EmployerOption[] {
   if (mode === "agent") {
-    return rows
+    return disambiguateEmployerLabels(rows
       .filter((row) => row.assignedToMe === true)
-      .map((row) => ({ value: row._id, label: row.companyName || row.name || row._id }));
+      .map((row) => ({ value: row._id, label: row.companyName || row.name || row._id, hint: row.email })));
   }
-  return rows
+  return disambiguateEmployerLabels(rows
     .filter((row) => row.employerProfileId)
     .map((row) => ({
       value: row.employerProfileId as string,
       label: row.companyName || row.name || (row.employerProfileId as string),
-    }));
+      hint: row.email,
+    })));
 }
 
 /**

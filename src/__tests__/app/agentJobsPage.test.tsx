@@ -55,8 +55,14 @@ jest.mock("@/components/shared/PaginationControls", () => ({
 }));
 
 jest.mock("@/components/ui/searchable-select", () => ({
-  SearchableSelect: ({ id, value, placeholder }: { id?: string; value: string; placeholder?: string }) => (
-    <select id={id} value={value} onChange={() => {}} aria-label={placeholder}>
+  SearchableSelect: ({ id, value, placeholder, options }: { id?: string; value: string; placeholder?: string; options?: { label: string }[] }) => (
+    <select
+      id={id}
+      value={value}
+      onChange={() => {}}
+      aria-label={placeholder}
+      data-option-labels={(options ?? []).map((o) => o.label).join("|")}
+    >
       <option value={value}>{value}</option>
     </select>
   ),
@@ -166,6 +172,31 @@ describe("AgentJobsPage", () => {
       const params = jobsCalls().at(-1)!;
       expect(params.has("employerId")).toBe(false);
       expect(params.has("status")).toBe(false);
+    });
+  });
+
+  it("tells same-named employer accounts apart in the employer filter", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.startsWith("/api/employers")) {
+        return {
+          ok: true,
+          json: async () => ({
+            employers: [
+              { _id: "e1", companyName: "Beta Industries", email: "bob-1@test.com" },
+              { _id: "e2", companyName: "Beta Industries", email: "bob-2@test.com" },
+              { _id: "e3", companyName: "Fazil", email: "fazil@test.com" },
+            ],
+          }),
+        };
+      }
+      return { ok: jobsResponse.ok, json: async () => jobsResponse.body ?? {} };
+    });
+    const { container } = render(<AgentJobsPage />);
+
+    await waitFor(() => {
+      expect(container.querySelector("#agent-jobs-employer-filter")?.getAttribute("data-option-labels")).toBe(
+        "All Employers|Beta Industries · bob-1@test.com|Beta Industries · bob-2@test.com|Fazil"
+      );
     });
   });
 

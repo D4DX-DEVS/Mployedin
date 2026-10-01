@@ -77,4 +77,17 @@ describe("employerOptionsFor (job form employer picker)", () => {
     ];
     expect(employerOptionsFor("admin", rows)).toEqual([{ value: "emp1", label: "Acme" }]);
   });
+
+  it("tells same-named employer accounts apart by email", () => {
+    const rows = [
+      { _id: "emp1", companyName: "Beta Industries", email: "bob-1@test.com", assignedToMe: true },
+      { _id: "emp2", companyName: "Beta Industries", email: "bob-2@test.com", assignedToMe: true },
+      { _id: "emp3", companyName: "Fazil", email: "fazil@test.com", assignedToMe: true },
+    ];
+    expect(employerOptionsFor("agent", rows)).toEqual([
+      { value: "emp1", label: "Beta Industries · bob-1@test.com" },
+      { value: "emp2", label: "Beta Industries · bob-2@test.com" },
+      { value: "emp3", label: "Fazil" },
+    ]);
+  });
 });
