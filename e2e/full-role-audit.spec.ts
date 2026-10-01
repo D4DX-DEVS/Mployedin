@@ -99,7 +99,7 @@ const ROLES: RoleDef[] = [
       "/job-seeker/interviews", "/job-seeker/jobs", "/job-seeker/messages", "/job-seeker/offers",
       "/job-seeker/portfolio", "/job-seeker/preferences", "/job-seeker/profile",
       "/job-seeker/profile/personal-details", "/job-seeker/profile-boost", "/job-seeker/profile-views",
-      "/job-seeker/referral", "/job-seeker/saved-searches", "/job-seeker/search", "/job-seeker/settings",
+      "/job-seeker/referral", "/job-seeker/search", "/job-seeker/settings",
       "/job-seeker/settings/notifications", "/job-seeker/skills", "/job-seeker/subscription",
     ],
   },

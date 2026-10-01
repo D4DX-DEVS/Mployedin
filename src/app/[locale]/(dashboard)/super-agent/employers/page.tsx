@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -294,22 +295,18 @@ export default function SuperAgentEmployersPage() {
         ]}
         compactMetrics
       >
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={() => setOnboardOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <UserPlus className="h-4 w-4" />
-            {t("onboardButton")}
-          </button>
-          <button
-            onClick={() => setReferralDialogOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
-          >
-            <Link2 className="h-3.5 w-3.5" />
-            {t("referralButton")}
-          </button>
-        </div>
+        {/* Direct children of the header's action row, which centres them on
+            the Portfolio card. A `mt-3` wrapper here pushed both buttons 12px
+            below it, and the referral button ran smaller text and icon than
+            its neighbour. */}
+        <Button onClick={() => setOnboardOpen(true)} className="gap-2">
+          <UserPlus className="h-4 w-4" />
+          {t("onboardButton")}
+        </Button>
+        <Button variant="outline" onClick={() => setReferralDialogOpen(true)} className="gap-2">
+          <Link2 className="h-4 w-4" />
+          {t("referralButton")}
+        </Button>
       </SuperAgentPageIntro>
 
       {/* Heading kept for screen readers only, the same convention agents,

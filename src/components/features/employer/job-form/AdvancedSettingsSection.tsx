@@ -14,6 +14,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { JobTemplatePickers } from "./JobTemplatePickers";
 import type { MatchingWeightTemplateItem } from "@/hooks/useMatchingWeightTemplates";
 import type { JobFormValues } from "./jobFormSchema";
+import { useJobFormBasePath } from "./jobFormContext";
 
 interface AssignedAgent {
   _id: string;
@@ -37,12 +38,16 @@ export function AdvancedSettingsSection() {
   const [agents, setAgents] = useState<AssignedAgent[]>([]);
   const [selectedMatchingWeightTemplateId, setSelectedMatchingWeightTemplateId] = useState<string | null>(null);
 
+  // An agent posting is credited with the job by the server; the employer's
+  // "assign an agent" list is not theirs to read (403), so do not ask.
+  const basePath = useJobFormBasePath();
   useEffect(() => {
+    if (basePath === "agent") return;
     fetch("/api/employers/agents")
       .then((r) => r.ok ? r.json() : { agents: [] })
       .then((data: { agents?: AssignedAgent[] }) => setAgents(data.agents ?? []))
       .catch(() => {});
-  }, []);
+  }, [basePath]);
 
   const [tagInput, setTagInput] = useState("");
 

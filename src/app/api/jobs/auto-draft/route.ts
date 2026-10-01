@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import type { UserRole } from "@/types/user";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
+import Agent from "@/models/Agent";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 export const runtime = "nodejs";
@@ -25,12 +27,26 @@ async function autoDraftHandler(req: NextRequest, ctx: { userId: string; role: U
     const userId = ctx.userId;
     await connectDB();
 
-    const employer = await Employer.findOne({ userId }).select("_id").lean();
+    const body = await req.json();
+
+    // An agent drafts for one of their assigned employers (the wizard's picker),
+    // the same rule POST /api/jobs applies; everyone else drafts as themselves.
+    let employer: { _id: unknown } | null = null;
+    let agentId: unknown;
+    if (ctx.role === "agent") {
+      const agent = await Agent.findOne({ userId }).select("_id assignedEmployerIds").lean();
+      const requested = typeof body?.employerId === "string" ? body.employerId : "";
+      const assigned = ((agent?.assignedEmployerIds as unknown[] | undefined) ?? []).map(String);
+      if (agent && isValidObjectId(requested) && assigned.includes(requested)) {
+        employer = { _id: requested };
+        agentId = agent._id;
+      }
+    } else {
+      employer = await Employer.findOne({ userId }).select("_id").lean();
+    }
     if (!employer) {
       return new NextResponse(null, { status: 403 });
     }
-
-    const body = await req.json();
 
     // Only save if there's at least a title
     if (!body.title || typeof body.title !== "string" || body.title.trim().length < 3) {
@@ -38,11 +54,17 @@ async function autoDraftHandler(req: NextRequest, ctx: { userId: string; role: U
     }
 
     // Check for existing recent draft with same title for this employer
+    // Only the author's own draft is refreshed. An employer and their agent can
+    // both be drafting the same title; matching on employer + title alone let
+    // one person's leave-the-page save overwrite (and re-credit) the other's.
+    // An agent matches drafts they wrote; an employer matches their own and
+    // drafts with no recorded author (saved through POST /api/jobs).
     const existingDraft = await Job.findOne({
       employerId: employer._id,
       status: "draft",
       title: body.title.trim(),
       deletedAt: null,
+      ...(ctx.role === "agent" ? { postedBy: userId } : { postedBy: { $in: [userId, null] } }),
     }).select("_id").lean();
 
     const sanitizedDescription = body.description
@@ -84,6 +106,7 @@ async function autoDraftHandler(req: NextRequest, ctx: { userId: string; role: U
       vacancies: Number(body.vacancies) || undefined,
       status: "draft",
       employerId: employer._id,
+      ...(agentId ? { agentId } : {}),
       postedBy: userId,
     };
 

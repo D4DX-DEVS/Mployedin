@@ -75,6 +75,29 @@ describe("TemplatePicker", () => {
     expect(mockLibrary).toHaveBeenLastCalledWith({ search: undefined, page: 1, limit: 10 });
   });
 
+  it("for an agent, lists the picked employer's templates and opens the agent's editor", async () => {
+    mockLibrary.mockReturnValue(library([template]));
+    mockMutateAsync.mockResolvedValue({ job: { _id: "job9" } });
+    render(<TemplatePicker locale="en" basePath="agent" employerId="64a000000000000000000003" />);
+
+    expect(mockLibrary).toHaveBeenLastCalledWith({ search: undefined, page: 1, limit: 10, employerId: "64a000000000000000000003" });
+    // The template library is the employer's own page.
+    expect(screen.queryByRole("link", { name: "Manage templates" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Use: Senior Accountant" }));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/en/agent/jobs/job9/edit"));
+  });
+
+  it("sends an agent whose employer has no templates back to the other ways to start", () => {
+    mockLibrary.mockReturnValue(library([]));
+    render(<TemplatePicker locale="en" basePath="agent" employerId="64a000000000000000000003" />);
+
+    expect(screen.getByRole("link", { name: "Choose another way" })).toHaveAttribute(
+      "href",
+      "/en/agent/jobs/new?employer=64a000000000000000000003",
+    );
+  });
+
   it("shows the error state with a retry instead of a blank panel", () => {
     const refetch = jest.fn();
     mockLibrary.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch });

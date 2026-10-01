@@ -70,9 +70,6 @@ jest.mock("@/components/features/job-seeker/feed/JobFeedSidebar", () => ({
 jest.mock("@/components/features/job-seeker/feed/EasyApplyFlowDialog", () => ({
   EasyApplyFlowDialog: () => null,
 }));
-jest.mock("@/components/features/job-seeker/feed/SaveSearchDialog", () => ({
-  SaveSearchDialog: () => null,
-}));
 
 const searchCalls: string[] = [];
 

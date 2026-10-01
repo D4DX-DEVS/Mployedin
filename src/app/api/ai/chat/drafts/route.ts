@@ -54,7 +54,9 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const role = (session.user as unknown as { role: UserRole }).role;
-  if (role !== "employer" && role !== "admin") {
+  // Agents use the same AI job creator for their assigned employers; a draft
+  // is the caller's own conversation (keyed by userId), never the employer's.
+  if (role !== "employer" && role !== "admin" && role !== "agent") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -118,7 +120,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const role = (session.user as unknown as { role: UserRole }).role;
-  if (role !== "employer" && role !== "admin") {
+  // Agents use the same AI job creator for their assigned employers; a draft
+  // is the caller's own conversation (keyed by userId), never the employer's.
+  if (role !== "employer" && role !== "admin" && role !== "agent") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

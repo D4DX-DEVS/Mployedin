@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validators";
 import { patchExtractionDraftSchema } from "@/lib/validators/extractionDraft";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { agentPostingFor } from "@/lib/jobs/agentPosting";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -30,6 +31,13 @@ async function assertOwnsDraft(ctx: AuthCtx, draftId: string) {
   }
 
   if (ctx.role === "admin") return { ok: true as const, draft };
+
+  // An agent resumes a draft filed under one of their assigned employers.
+  if (ctx.role === "agent") {
+    return (await agentPostingFor(ctx.userId, draft.employerId))
+      ? { ok: true as const, draft }
+      : { ok: false as const, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
 
   const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
   if (!employer?._id || String(draft.employerId) !== String(employer._id)) {

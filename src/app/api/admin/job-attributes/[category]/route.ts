@@ -23,6 +23,7 @@ async function handler(req: NextRequest, ctx: AuthCtx, params?: Record<string, s
   }
 
   await connectDB();
+  await meta.seed?.();
   const Model = await meta.model();
 
   const { searchParams } = new URL(req.url);

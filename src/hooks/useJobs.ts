@@ -47,7 +47,9 @@ export interface Job {
   duration?: string;
   workflowMode?: string;
   updatedAt?: string;
-  employerId?: { companyName?: string; logo?: string; industry?: string };
+  employerId?: { _id?: string; companyName?: string; logo?: string; industry?: string };
+  /** Agents only: the job's employer is assigned to them, so they can open it in employer view. */
+  viewerCanManage?: boolean;
   applicantIds?: string[];
   applicationCount?: number;
   createdAt: string;
@@ -226,6 +228,8 @@ export interface JobTemplateLibraryFilters {
   search?: string;
   page: number;
   limit: number;
+  /** An agent lists one assigned employer's templates. */
+  employerId?: string;
 }
 
 /** Fetch job templates for the Template Library page, paginated with optional name search */
@@ -235,6 +239,7 @@ export function useJobTemplateLibrary(filters: JobTemplateLibraryFilters) {
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(filters.page), limit: String(filters.limit) });
       if (filters.search) params.set("search", filters.search);
+      if (filters.employerId) params.set("employerId", filters.employerId);
       const res = await fetch(`/api/employers/job-templates?${params}`);
       if (!res.ok) throw new Error("Failed to fetch job templates");
       const data = await res.json();

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { toUserFacingError } from "@/lib/errors/user-facing";
+import { cleanSkills } from "@/lib/jobSeeker/tagList";
 
 /* ── Interfaces ── */
 
@@ -245,7 +246,8 @@ export default function JobSeekerSkillsPage() {
         if (!data) return;
 
         if (Array.isArray(data.skills) && data.skills.length > 0) {
-          setMySkills(data.skills);
+          // Imported profiles joined whole skill lists into one entry too long to save back.
+          setMySkills(cleanSkills(data.skills));
         }
         if (data.skillsCoachProgress?.lastTargetRole) {
           setTargetRole(data.skillsCoachProgress.lastTargetRole);

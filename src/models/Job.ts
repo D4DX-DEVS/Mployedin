@@ -150,6 +150,8 @@ export interface IJob extends Document {
   _id: mongoose.Types.ObjectId;
   employerId: mongoose.Types.ObjectId;
   agentId?: mongoose.Types.ObjectId;
+  /** The user who wrote the job (an employer, or the agent posting for them). Drafts are refreshed only by their author. */
+  postedBy?: mongoose.Types.ObjectId;
   title: string;
   titleAr?: string;
   description: string;
@@ -209,6 +211,7 @@ const JobSchema = new Schema<IJob>(
   {
     employerId: { type: Schema.Types.ObjectId, ref: "Employer", required: true },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
+    postedBy: { type: Schema.Types.ObjectId, ref: "User" },
     title: { type: String, required: true, trim: true },
     titleAr: { type: String, trim: true },
     description: { type: String, required: true },

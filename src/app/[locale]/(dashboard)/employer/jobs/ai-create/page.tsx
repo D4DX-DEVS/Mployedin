@@ -1,10 +1,10 @@
 "use client";
 
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import Link from "next/link";
-import { Bot, FileText, Globe, Loader2, Mic, RotateCcw, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
+import { Bot, FileText, Globe, Loader2, Mic, Rocket, RotateCcw, Save, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { useJobPostingTarget } from "@/components/features/jobs/jobPostingTarget";
 
 function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
@@ -302,8 +303,10 @@ function renderMarkdown(text: string) {
 
 export default function EmployerAIJobCreatePage() {
   const router = useRouter();
-  const { locale } = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
+  // Employer page, also served to agents at /agent/jobs/ai-create?employer=.
+  const target = useJobPostingTarget();
+  const forEmployer = target.employerId ? { employerId: target.employerId } : {};
   const t = useTranslations("ai");
   const currentLocale = useLocale();
   const isRtl = currentLocale === "ar";
@@ -317,6 +320,8 @@ export default function EmployerAIJobCreatePage() {
   const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
   const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>([]);
   const [creatingBulk, setCreatingBulk] = useState(false);
+  // Which of "Save as draft" / "Post job" is running for the single drafted job.
+  const [savingAs, setSavingAs] = useState<"draft" | "active" | null>(null);
   const [bulkProgress, setBulkProgress] = useState<{ created: number; total: number; errors: string[] } | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
   const [showLangPicker, setShowLangPicker] = useState(false);
@@ -575,16 +580,58 @@ export default function EmployerAIJobCreatePage() {
   const reviewInForm = () => {
     if (!extractedJob) return;
     try {
-      sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(buildPrefill(extractedJob)));
+      sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify({ ...buildPrefill(extractedJob), ...forEmployer }));
       sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
       // Mark the server-side thread as inactive so the dashboard card stops
       // surfacing it once the draft has been carried into the job form.
       if (threadId) {
         fetch(`/api/ai/chat/drafts/${threadId}`, { method: "DELETE" }).catch(() => {});
       }
-      router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
+      router.push(target.withEmployer(`${target.jobsHref}/new?mode=manual&prefill=ai`));
     } catch {
       toast.error(t("jobCreator.failedOpenForm"));
+    }
+  };
+
+  // Once the AI has drafted the job, the user decides right here: keep it as a
+  // draft or post it — the full form stays one tap away for a closer review.
+  const saveExtractedJob = async (status: "draft" | "active") => {
+    if (!extractedJob || savingAs) return;
+    setSavingAs(status);
+    try {
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...buildPrefill(extractedJob), ...forEmployer, status }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        job?: { _id: string };
+        heldForProfile?: boolean;
+        details?: unknown[];
+      };
+      if (!res.ok || !data.job) {
+        if (status === "active" && res.status === 400) {
+          // The AI left out something a live job needs; the form shows what.
+          toast.error(t("jobCreator.postNeedsReview"), {
+            action: { label: t("jobCreator.reviewInForm"), onClick: reviewInForm },
+            duration: 10000,
+          });
+        } else {
+          toast.error(status === "draft" ? t("jobCreator.draftSaveFailed") : t("jobCreator.postFailed"));
+        }
+        return;
+      }
+      sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
+      if (threadId) {
+        fetch(`/api/ai/chat/drafts/${threadId}`, { method: "DELETE" }).catch(() => {});
+      }
+      if (data.heldForProfile) toast.warning(t("jobCreator.postHeld"));
+      else toast.success(status === "draft" ? t("jobCreator.draftSaved") : t("jobCreator.jobPosted"));
+      router.push(`${target.jobsHref}/${data.job._id}`);
+    } catch {
+      toast.error(status === "draft" ? t("jobCreator.draftSaveFailed") : t("jobCreator.postFailed"));
+    } finally {
+      setSavingAs(null);
     }
   };
 
@@ -601,7 +648,7 @@ export default function EmployerAIJobCreatePage() {
         const res = await fetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...sanitized, status: "draft" }),
+          body: JSON.stringify({ ...sanitized, ...forEmployer, status: "draft" }),
         });
         if (res.ok) {
           created++;
@@ -621,7 +668,7 @@ export default function EmployerAIJobCreatePage() {
       setExtractedBulkJobs([]);
       setBulkProgress(null);
       setTimeout(() => {
-        router.push(`/${locale}/employer/jobs`);
+        router.push(target.jobsHref);
       }, 1500);
     } else {
       toast.error(t("bulkPartial", { created, total: extractedBulkJobs.length, failed: errors.length }));
@@ -654,6 +701,7 @@ export default function EmployerAIJobCreatePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (target.employerId) formData.append("employerId", target.employerId);
 
       const res = await fetch("/api/ai/job-extract", { method: "POST", body: formData });
       if (!res.ok) {
@@ -705,7 +753,7 @@ export default function EmployerAIJobCreatePage() {
         context={t("jobCreator.description")}
         actions={
           <Link
-            href={`/${locale}/employer/jobs/new?mode=manual`}
+            href={target.withEmployer(`${target.jobsHref}/new?mode=manual`)}
             aria-label={t("jobCreator.manualJobForm")}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
           >
@@ -1037,9 +1085,28 @@ export default function EmployerAIJobCreatePage() {
                   </div>
                 ) : null}
                 <p className="rounded-lg bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
-                  {t("jobCreator.nothingSavedYet")}
+                  {t("jobCreator.chooseNextStep")}
                 </p>
-                <Button onClick={reviewInForm} className="w-full gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => saveExtractedJob("draft")}
+                    disabled={savingAs !== null}
+                    className="min-h-11 gap-2 text-xs sm:min-h-9"
+                  >
+                    {savingAs === "draft" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
+                    {savingAs === "draft" ? t("jobCreator.savingDraft") : t("jobCreator.saveAsDraft")}
+                  </Button>
+                  <Button
+                    onClick={() => saveExtractedJob("active")}
+                    disabled={savingAs !== null}
+                    className="min-h-11 gap-2 text-xs sm:min-h-9"
+                  >
+                    {savingAs === "active" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Rocket className="h-4 w-4" aria-hidden />}
+                    {savingAs === "active" ? t("jobCreator.postingJob") : t("jobCreator.postJob")}
+                  </Button>
+                </div>
+                <Button variant="outline" onClick={reviewInForm} disabled={savingAs !== null} className="w-full gap-2 text-xs">
                   <WandSparkles className="h-4 w-4" /> {t("jobCreator.reviewInForm")}
                 </Button>
               </div>

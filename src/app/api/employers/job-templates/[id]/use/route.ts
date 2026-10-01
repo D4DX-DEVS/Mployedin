@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { Employer } from "@/models/Employer";
 import { JobTemplate } from "@/models/JobTemplate";
 import Job from "@/models/Job";
+import { agentPostingFor } from "@/lib/jobs/agentPosting";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 
@@ -16,25 +18,41 @@ async function useHandler(
   ctx: AuthCtx,
   params?: Record<string, string>
 ) {
-  if (ctx.role !== "employer") {
+  if (ctx.role !== "employer" && ctx.role !== "agent") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!isValidObjectId(params?.id)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   await connectDB();
-
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-  if (!employer) {
-    return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
-  }
 
   const template = await JobTemplate.findById(params?.id).lean();
   if (!template) {
     return NextResponse.json({ error: "Template not found" }, { status: 404 });
   }
 
-  // Ownership check
-  if (String(template.employerId) !== String(employer._id)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // An agent uses a template of an employer assigned to them, and the draft
+  // is credited to the agent the way POST /api/jobs credits an agent's post.
+  let employerId: unknown;
+  let agentFields: { agentId?: unknown; postedBy?: string } = {};
+  if (ctx.role === "agent") {
+    const agentId = await agentPostingFor(ctx.userId, template.employerId);
+    if (!agentId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    employerId = template.employerId;
+    agentFields = { agentId, postedBy: ctx.userId };
+  } else {
+    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!employer) {
+      return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
+    }
+    // Ownership check
+    if (String(template.employerId) !== String(employer._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    employerId = employer._id;
   }
 
   // Create a draft job from template fields. Drafts may be incomplete — a
@@ -42,7 +60,8 @@ async function useHandler(
   // editor, so validation waits until the job leaves draft (same rule as the
   // POST /api/jobs and PATCH handlers). Job.create() validated and answered 500.
   const job = new Job({
-    employerId: employer._id,
+    employerId,
+    ...agentFields,
     title: template.title ?? "Untitled Job",
     description: template.description ?? "",
     category: template.category,

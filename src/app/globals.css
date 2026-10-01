@@ -4155,6 +4155,14 @@ table.workspace-list-table tbody tr:focus-visible {
       height: 2.25rem !important;
       border-radius: 0.625rem !important;
     }
+    /* Employer's tile tint as the super-agent default. Without it the box above
+       was sized but empty, so the glyph floated beside the figure with nothing
+       anchoring it. Not !important: a page's own `iconSurfaceClassName` /
+       `iconClassName` utilities still win (exhibitions sets per-card tones). */
+    .dashboard-role-super-agent .dashboard-main [data-header-metric-icon] {
+      color: hsl(var(--primary));
+      background: hsl(var(--primary) / 0.1);
+    }
     /* Unguarded from 640 up, unlike the phone rule above: the `compact` strip's
        `order` utilities are `sm:order-none`, so there is nothing left to fight
        here, and most admin list headers do pass `compact`. Guarding this the
@@ -4418,3 +4426,5 @@ table.workspace-list-table tbody tr:focus-visible {
     }
   }
 }
+
+/* rebuild nudge 2026-10-01 sa-metric-tile */

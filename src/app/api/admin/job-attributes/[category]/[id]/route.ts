@@ -50,8 +50,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }
   }
 
+  const previousName = item.name;
   Object.assign(item, update);
   await item.save();
+
+  // Jobs keep a category as its name, so a rename has to reach them too.
+  const renamed = typeof update.name === "string" && update.name.trim() !== previousName;
+  const cascade = renamed && meta.onRename ? await meta.onRename(previousName, String(update.name)) : undefined;
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -59,10 +64,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     resource: "job_attributes",
     resourceId: id,
     changes: { after: update },
+    ...(cascade ? { meta: { renamedFrom: previousName, cascade } } : {}),
     req,
   });
 
-  return NextResponse.json({ item });
+  return NextResponse.json({ item, ...(cascade ? { cascade } : {}) });
 }
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {

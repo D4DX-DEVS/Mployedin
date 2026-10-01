@@ -660,9 +660,6 @@ const userSelf = {
   name: 'User (Self-Service)',
   description: 'Current user settings and preferences',
   item: [
-    req('List Saved Searches', 'GET', '/api/user/saved-searches', null, 'List saved search queries'),
-    req('Create Saved Search', 'POST', '/api/user/saved-searches', { name: 'React Jobs Dubai', filters: { skills: ['React', 'TypeScript'], location: 'Dubai', workMode: 'remote', salaryMin: 15000 }, alertFrequency: 'daily' }, 'Save a search with optional email alerts'),
-    req('Delete Saved Search', 'DELETE', '/api/user/saved-searches/{{searchId}}', null, 'Delete a saved search'),
     req('Referral Info', 'GET', '/api/user/referral', null, 'Get referral code, stats, and earnings'),
     req('Profile Completion', 'GET', '/api/user/profile-completion', null, 'Get profile completion percentage and missing fields'),
     req('Get Notification Preferences', 'GET', '/api/user/notification-preferences', null, 'Get notification channel preferences'),

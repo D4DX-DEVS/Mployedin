@@ -89,6 +89,7 @@ export const MEMBER_ALWAYS_ALLOWED: readonly string[] = [
   "/api/dashboard",
   "/api/countries",
   "/api/taxonomy",
+  "/api/job-categories",
   "/api/filters",
   "/api/health",
   "/api/employers/me",

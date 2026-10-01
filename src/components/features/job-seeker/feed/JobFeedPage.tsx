@@ -9,20 +9,18 @@ import {
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Sparkles, Search, X, ChevronLeft, ChevronRight, ArrowUp, BookmarkPlus, SlidersHorizontal } from "lucide-react";
+import { Sparkles, Search, X, ChevronLeft, ChevronRight, ArrowUp, SlidersHorizontal } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import Link from "next/link";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import { JobFeedCard, type FeedJob } from "./JobFeedCard";
 import { JobFeedSidebar, type FeedFilters } from "./JobFeedSidebar";
 import { EasyApplyFlowDialog } from "./EasyApplyFlowDialog";
-import { SaveSearchDialog } from "./SaveSearchDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -222,7 +220,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
   // /job-seeker/search route hand off.
   const [searchQuery, setSearchQuery] = useUrlFilter("search", "", { debounceMs: 400 });
   const [searchPage, setSearchPage] = useState(1);
-  const [saveSearchOpen, setSaveSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const debouncedSearch = useDebounce(searchQuery, 400);
   // Submitting must not wait out the debounce. Holding the submitted text
@@ -240,12 +237,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
   }, [searchQuery]);
 
   const isSearchMode = effectiveSearch.trim().length > 0 || employerIdFilter.length > 0;
-  // Only one experience/work-type selection maps cleanly onto a saved search's
-  // single-value filters; otherwise leave it for the user to pick in the dialog.
-  const prefillExperience = filters.experienceLevels.length === 1 ? filters.experienceLevels[0] : "";
-  const prefillWorkType = filters.workTypes.length === 1 ? filters.workTypes[0] : "";
-  // A saved search needs a text query; hide the action in employer-only browse.
-  const canSaveSearch = effectiveSearch.trim().length > 0;
 
   // Hydrate already-applied job IDs so the "Applied" state shows on first load,
   // including for jobs surfaced through search (not just the recommended feed).
@@ -507,18 +498,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       <span className="text-xs text-muted-foreground">
                         {t("pagination.pageOf", { page: searchPage, pages: searchData.pages })}
                       </span>
-                    )}
-                    {canSaveSearch && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSaveSearchOpen(true)}
-                        className="gap-1.5 rounded-full"
-                      >
-                        <BookmarkPlus className="h-4 w-4" />
-                        {t("saveSearch.button")}
-                      </Button>
                     )}
                   </div>
                 </div>
@@ -818,15 +797,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
           onApplied={handleApplied}
         />
       )}
-
-      <SaveSearchDialog
-        open={saveSearchOpen}
-        onOpenChange={setSaveSearchOpen}
-        query={effectiveSearch}
-        experienceLevel={prefillExperience}
-        workType={prefillWorkType}
-        locale={locale}
-      />
     </div>
   );
 }

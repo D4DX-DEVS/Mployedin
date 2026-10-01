@@ -12,24 +12,9 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { getLocalizedCountryName } from "@/lib/i18n/locations";
 import { cn } from "@/lib/utils";
-import { JOB_CATEGORIES, COUNTRIES, EMPLOYMENT_TYPES, WORK_MODES, type JobFormValues } from "./jobFormSchema";
-
-const CATEGORY_TRANSLATION_KEYS: Record<(typeof JOB_CATEGORIES)[number], string> = {
-  Technology: "technology",
-  Healthcare: "healthcare",
-  Finance: "finance",
-  Construction: "construction",
-  Hospitality: "hospitality",
-  Education: "education",
-  Manufacturing: "manufacturing",
-  Logistics: "logistics",
-  "Oil & Gas": "oilGas",
-  Retail: "retail",
-  Marketing: "marketing",
-  Legal: "legal",
-  "Human Resources": "humanResources",
-  Other: "other",
-};
+import { useJobCategoryOptions } from "@/hooks/useJobCategories";
+import { useJobFormBasePath } from "./jobFormContext";
+import { COUNTRIES, EMPLOYMENT_TYPES, WORK_MODES, type JobFormValues } from "./jobFormSchema";
 
 interface Suggestions {
   titles: string[];
@@ -55,6 +40,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   const title = watch("title");
   const workMode = watch("workMode");
   const category = watch("category");
+  const categoryOptions = useJobCategoryOptions(category);
+  const basePath = useJobFormBasePath();
   const remoteScope = watch("location.remoteScope");
   const remoteCountries = watch("location.remoteCountries") ?? [];
 
@@ -86,9 +73,11 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
       } catch { /* optional field — fail silently */ }
       finally { if (!cancelled) setLoadingAgents(false); }
     }
+    // An agent posting is credited with the job by the server.
+    if (basePath === "agent") return;
     fetchAgents();
     return () => { cancelled = true; };
-  }, []);
+  }, [basePath]);
 
   // Debounced fetch on title change
   useEffect(() => {
@@ -274,10 +263,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">{t("category")}</Label>
           <SearchableSelect
-            options={JOB_CATEGORIES.map((categoryValue) => ({
-              value: categoryValue,
-              label: t(`categories.${CATEGORY_TRANSLATION_KEYS[categoryValue]}`),
-            }))}
+            options={categoryOptions}
             value={category ?? ""}
             onValueChange={(v) => setValue("category", v, { shouldValidate: true })}
             placeholder={t("categoryPlaceholder")}

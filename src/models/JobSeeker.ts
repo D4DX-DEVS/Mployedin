@@ -1,5 +1,10 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
+import {
+  CV_TEMPLATE_IDS, CV_FONTS, CV_FONT_SIZES, CV_SPACINGS, CV_PAGE_FORMATS,
+  CV_DATE_FORMATS, CV_LINE_HEIGHTS, CV_MARGINS, CV_SECTION_KEYS, CV_THEME_COLOR_PATTERN,
+  type CvDesign,
+} from "@/lib/jobSeeker/cvDesign";
 
 export interface IWorkExperience {
   jobTitle: string;
@@ -193,6 +198,8 @@ export interface IJobSeeker extends Document {
   // Profile Visibility
   profileVisibility: "visible" | "hidden"; // employers can/can't find you
   sectionVisibility?: Record<string, boolean>; // per-section visibility toggles
+  // CV builder look, saved by "Add to Profile" so the builder reopens as left.
+  cvDesign?: CvDesign;
   // Job-seeker settings page. Discoverability is deliberately NOT here — it is
   // `profileVisibility` above, so there is one answer, not two.
   settings?: IJobSeekerSettings;
@@ -373,6 +380,31 @@ const JobSeekerReferralSchema = new Schema<IJobSeekerReferral>(
   { _id: false }
 );
 
+const CvDesignSchema = new Schema(
+  {
+    templateId: { type: String, enum: CV_TEMPLATE_IDS, required: true },
+    formatting: {
+      type: new Schema(
+        {
+          font: { type: String, enum: CV_FONTS, required: true },
+          fontSize: { type: String, enum: CV_FONT_SIZES, required: true },
+          spacing: { type: String, enum: CV_SPACINGS, required: true },
+          themeColor: { type: String, match: CV_THEME_COLOR_PATTERN, required: true },
+          pageFormat: { type: String, enum: CV_PAGE_FORMATS, required: true },
+          dateFormat: { type: String, enum: CV_DATE_FORMATS, required: true },
+          lineHeight: { type: String, enum: CV_LINE_HEIGHTS, required: true },
+          margin: { type: String, enum: CV_MARGINS, required: true },
+          sectionOrder: { type: [{ type: String, enum: CV_SECTION_KEYS }], default: undefined },
+        },
+        { _id: false }
+      ),
+      required: true,
+    },
+    hiddenSections: { type: [{ type: String, enum: CV_SECTION_KEYS }], default: [] },
+  },
+  { _id: false }
+);
+
 /** Settings page payload. `_id: false` — it is a single embedded document, not
  *  a collection member. `strict` still applies inside, so unknown keys sent by a
  *  future client are dropped rather than stored unvalidated. */
@@ -480,6 +512,13 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       type: Map,
       of: Boolean,
       default: {},
+    },
+    // Without this path strict mode dropped the builder's template and
+    // formatting, so every refresh reopened the CV in Classic. Shape follows
+    // `cvDesignSchema` in lib/jobSeeker/cvDesign.ts.
+    cvDesign: {
+      type: CvDesignSchema,
+      default: undefined,
     },
     // Job-seeker settings page (/api/job-seekers/settings). Without this path
     // strict mode silently discarded `$set: { settings }`, so every switch on

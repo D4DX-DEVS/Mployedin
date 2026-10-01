@@ -1,5 +1,10 @@
 /* ── CV Builder Shared Types ── */
 
+import {
+  CV_FONTS, CV_FONT_SIZES, CV_SPACINGS, CV_PAGE_FORMATS, CV_DATE_FORMATS,
+  CV_LINE_HEIGHTS, CV_MARGINS, CV_SECTION_KEYS, cvDesignSchema, cvFormattingSchema,
+} from "@/lib/jobSeeker/cvDesign";
+
 export interface WorkExperience {
   jobTitle: string;
   company: string;
@@ -57,18 +62,16 @@ export interface CVForm {
 
 /* ── Formatting Options ── */
 
-export type FontFamily = "inter" | "georgia" | "merriweather" | "roboto" | "playfair";
-export type FontSize = "small" | "medium" | "large";
-export type SectionSpacing = "compact" | "medium" | "spacious";
-export type PageFormat = "a4" | "letter";
-export type DateFormat = "short" | "long" | "numeric";
-export type LineHeight = "tight" | "normal" | "relaxed";
-export type PageMargin = "narrow" | "normal" | "wide";
+export type FontFamily = (typeof CV_FONTS)[number];
+export type FontSize = (typeof CV_FONT_SIZES)[number];
+export type SectionSpacing = (typeof CV_SPACINGS)[number];
+export type PageFormat = (typeof CV_PAGE_FORMATS)[number];
+export type DateFormat = (typeof CV_DATE_FORMATS)[number];
+export type LineHeight = (typeof CV_LINE_HEIGHTS)[number];
+export type PageMargin = (typeof CV_MARGINS)[number];
 
 /** Reorderable resume body sections (header, contact & summary stay fixed at the top). */
-export type SectionKey =
-  | "experience" | "education" | "skills"
-  | "projects" | "languages" | "certifications";
+export type SectionKey = (typeof CV_SECTION_KEYS)[number];
 
 export interface ThemeColor {
   id: string;
@@ -176,6 +179,48 @@ export const DEFAULT_FORMATTING: FormattingOptions = {
   margin: "normal",
   sectionOrder: DEFAULT_SECTION_ORDER,
 };
+
+/** The look the builder opens with. */
+export interface CVBuilderDesign {
+  templateId: string;
+  formatting: FormattingOptions;
+  hiddenSections: Set<string>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSectionKey(value: unknown): value is SectionKey {
+  return (CV_SECTION_KEYS as readonly unknown[]).includes(value);
+}
+
+/**
+ * Rebuild the builder's look from the profile's saved `cvDesign`. Each value is
+ * checked on its own, so a retired template or option falls back to its
+ * default without discarding the rest of what the seeker chose.
+ */
+export function restoreCvDesign(stored: unknown): CVBuilderDesign {
+  const saved = isRecord(stored) ? stored : {};
+  const savedFormatting = isRecord(saved.formatting) ? saved.formatting : {};
+
+  const formatting: FormattingOptions = { ...DEFAULT_FORMATTING };
+  for (const key of Object.keys(cvFormattingSchema.shape) as (keyof FormattingOptions)[]) {
+    const parsed = cvFormattingSchema.shape[key].safeParse(savedFormatting[key]);
+    if (parsed.success && parsed.data !== undefined) {
+      (formatting as unknown as Record<string, unknown>)[key] = parsed.data;
+    }
+  }
+
+  const template = cvDesignSchema.shape.templateId.safeParse(saved.templateId);
+  const hidden = Array.isArray(saved.hiddenSections) ? saved.hiddenSections.filter(isSectionKey) : [];
+
+  return {
+    templateId: template.success ? template.data : "classic",
+    formatting,
+    hiddenSections: new Set(hidden),
+  };
+}
 
 export const EMPTY_EXPERIENCE: WorkExperience = {
   jobTitle: "", company: "", country: "", startDate: "", endDate: "", isCurrent: false, description: "",

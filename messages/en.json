@@ -13,7 +13,6 @@
     "interviews": "Interviews",
     "offers": "Offers",
     "calendar": "Calendar",
-    "savedSearches": "Saved searches",
     "documents": "Documents",
     "referralProgram": "Referral program",
     "subscription": "Subscription",
@@ -624,38 +623,6 @@
       "pendingResultsFor": "Results for \"{query}\"",
       "employerRoles": "Employer roles"
     },
-    "saveSearch": {
-      "button": "Save search",
-      "title": "Save this search",
-      "description": "We'll email you when new jobs match these criteria.",
-      "noKeyword": "All jobs",
-      "nameLabel": "Alert name",
-      "namePlaceholder": "e.g. Senior React roles",
-      "experienceLabel": "Experience level",
-      "frequencyLabel": "Email me",
-      "experience": {
-        "any": "Any experience",
-        "entry": "Entry level (0–2 yrs)",
-        "mid": "Mid level (3–5 yrs)",
-        "senior": "Senior level (6+ yrs)"
-      },
-      "frequency": {
-        "daily": "Daily",
-        "weekly": "Weekly",
-        "never": "Don't email me"
-      },
-      "workType": {
-        "remote": "Remote",
-        "onsite": "On-site"
-      },
-      "save": "Save search",
-      "cancel": "Cancel",
-      "created": "Search saved — we'll alert you about new matches.",
-      "duplicate": "You've already saved this search.",
-      "failed": "Couldn't save the search. Please try again.",
-      "required": "Add a name and a search keyword first.",
-      "viewSaved": "View"
-    },
     "actions": {
       "refinePreferences": "Refine preferences",
       "editPreferences": "Edit preferences",
@@ -1078,6 +1045,9 @@
     "emptyTitle": "No applications in this view",
     "emptyAll": "You have not applied to any roles yet. Start browsing and build momentum from your dashboard.",
     "emptyStatus": "Nothing is currently marked as {status}. Switch views or explore new opportunities.",
+    "emptyFilteredTitle": "No matching applications",
+    "emptyFiltered": "None of your applications match this search or date range. Try another job title or company, or clear the filters.",
+    "clearFilters": "Clear filters",
     "browseJobs": "Browse Jobs",
     "remote": "Remote",
     "locationFlexible": "Location flexible",
@@ -1424,47 +1394,6 @@
       "boostButton": "Boost My Profile",
       "failed": "We couldn't boost",
       "network": "Network error"
-    },
-    "savedSearches": {
-      "searchPlaceholder": "Search saved searches...",
-      "title": "Saved Searches",
-      "description": "Save your job searches and get email alerts when new matches appear",
-      "newAlert": "New Search Alert",
-      "activeAlerts": "Active Alerts",
-      "createTitle": "Create Search Alert",
-      "namePlaceholder": "Alert name *",
-      "queryPlaceholder": "Search keywords *",
-      "locationPlaceholder": "Location (optional)",
-      "experienceAny": "Any experience",
-      "experienceEntry": "Entry level (0–2 yrs)",
-      "experienceMid": "Mid level (3–5 yrs)",
-      "experienceSenior": "Senior level (6+ yrs)",
-      "instant": "Instant",
-      "daily": "Daily alerts",
-      "weekly": "Weekly alerts",
-      "never": "No alerts",
-      "create": "Create",
-      "cancel": "Cancel",
-      "reset": "Clear",
-      "empty": "No saved searches",
-      "emptyDescription": "Create a search alert to get notified about new job matches",
-      "emailAlertsOn": "Email alerts on",
-      "disableAlert": "Disable alert",
-      "enableAlert": "Enable alert",
-      "loadFailed": "We couldn't load saved searches",
-      "retry": "Retry",
-      "required": "Name and search query are required",
-      "created": "Saved search created",
-      "duplicate": "You've already saved this search.",
-      "createFailed": "We couldn't create saved search",
-      "deleted": "Search deleted",
-      "deleteFailed": "We couldn't delete",
-      "alertEnabled": "Alert enabled",
-      "alertDisabled": "Alert disabled",
-      "updateFailed": "We couldn't update",
-      "selectFrequency": "Select frequency",
-      "deleteSearch": "Delete saved search",
-      "deleteConfirm": "Delete “{name}”? Its email alerts stop too."
     },
     "referral": {
       "title": "Referral Program",
@@ -2139,7 +2068,9 @@
       "generic": "We couldn't complete this action",
       "saveProfile": "We couldn't save profile",
       "saveFailed": "We couldn't save",
-      "pdfFailed": "We couldn't generate PDF. Please try again."
+      "pdfFailed": "We couldn't generate PDF. Please try again.",
+      "linkedinInvalid": "Enter your LinkedIn profile address, like https://www.linkedin.com/in/your-name",
+      "linkInvalid": "\"{label}\" isn't a web address. Enter a link like https://example.com"
     },
     "defaults": {
       "link": "Link"
@@ -2736,7 +2667,18 @@
       "langUrdu": "Urdu",
       "enterToSend": "Press Enter to send, use Shift+Enter for a new line, or tap the mic to dictate a longer brief.",
       "tapSendWhenReady": "Tap send when you're ready.",
-      "eyebrow": "AI job creation"
+      "eyebrow": "AI job creation",
+      "chooseNextStep": "Nothing is saved yet. Post it now, keep it as a draft, or review every field in the full form first.",
+      "saveAsDraft": "Save as draft",
+      "savingDraft": "Saving…",
+      "postJob": "Post job",
+      "postingJob": "Posting…",
+      "draftSaved": "Saved as a draft. You can edit and publish it from the job page.",
+      "jobPosted": "Job posted. It's live for job seekers now.",
+      "postHeld": "Saved as a draft: the company profile must be completed before this job can go live.",
+      "postNeedsReview": "Some details a live job needs are missing. Review it in the full form to finish them.",
+      "draftSaveFailed": "We couldn't save the draft. Please try again.",
+      "postFailed": "We couldn't post the job. Please try again."
     },
     "quickPrompts": {
       "superAgent": {
@@ -4143,7 +4085,6 @@
     "interviews": "Interviews",
     "offers": "Offers",
     "calendar": "Calendar",
-    "savedSearches": "Saved Searches",
     "documents": "Documents",
     "cvBuilder": "CV Builder",
     "companies": "Companies",
@@ -6370,7 +6311,14 @@
       "eyebrow": "Browse roles",
       "title": "Filters",
       "description": "Search by title or narrow the queue to the status you want to work through.",
-      "searchPlaceholder": "Search jobs by title, location..."
+      "searchPlaceholder": "Search jobs by title, location...",
+      "searchOrAsk": "Search or describe a role",
+      "more": "More filters",
+      "allStatuses": "All statuses",
+      "allWorkModes": "All work modes",
+      "locationPlaceholder": "Location",
+      "skillsPlaceholder": "Skills, comma separated",
+      "clear": "Clear filters"
     },
     "results": {
       "eyebrow": "Current results",
@@ -6379,7 +6327,9 @@
     },
     "empty": {
       "title": "No jobs found",
-      "description": "Try adjusting the filters or create a new role."
+      "description": "Try adjusting the filters or create a new role.",
+      "noneTitle": "No jobs yet",
+      "noneDescription": "Jobs you post, and jobs your employers post, appear here."
     },
     "table": {
       "title": "Job Title",
@@ -6402,6 +6352,18 @@
       "viewCandidatesFor": "View candidates for {title}",
       "viewJob": "View Job",
       "viewJobFor": "View {title}"
+    },
+    "context": "{jobs, plural, one {# job} other {# jobs}} across {employers, plural, one {# employer} other {# employers}}",
+    "workModes": {
+      "onsite": "On-site",
+      "hybrid": "Hybrid",
+      "remote": "Remote"
+    },
+    "sortLabels": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "applicationsDesc": "Most applicants",
+      "applicationsAsc": "Fewest applicants"
     }
   },
   "agentJobNew": {
@@ -8025,7 +7987,8 @@
     "postHeldTitle": "Saved as a draft, not published",
     "postHeldDescription": "Add your company name, email and industry before this job can go on the public board.",
     "completeCompanyProfile": "Complete company profile",
-    "publishBlockedProfile": "Add your company name, email and industry before publishing this job."
+    "publishBlockedProfile": "Add your company name, email and industry before publishing this job.",
+    "noAssignedEmployers": "No employers are assigned to you yet. Ask your super agent to assign one before posting a job."
   },
   "employerCommon": {
     "workspace": "Employer workspace",
@@ -10393,7 +10356,9 @@
     "majorSubjectsTitle": "Major Subjects",
     "majorSubjectsDescription": "Manage academic major and specialization options",
     "maritalStatusesTitle": "Marital Status",
-    "maritalStatusesDescription": "Manage marital status options"
+    "maritalStatusesDescription": "Manage marital status options",
+    "jobCategoriesTitle": "Job categories",
+    "jobCategoriesDescription": "The categories every job form offers. Renaming one also updates the jobs and workflow rules that use it; switch one off to hide it from new jobs."
   },
   "adminLocationData": {
     "filter": "Filter",
@@ -11122,7 +11087,8 @@
     "genders": "Genders",
     "countries": "Countries",
     "states": "States",
-    "cities": "Cities"
+    "cities": "Cities",
+    "jobCategories": "Job categories"
   },
   "adminReportTabs": {
     "tabsLabel": "Reports",
@@ -15254,7 +15220,11 @@
     "deleteEmployerConfirm": "Delete this employer?",
     "switchEmployerViewError": "We couldn't switch to employer view",
     "switchEmployerNetworkError": "Network error — please try again",
-    "cardRegionOnly": "In your region. Ask your admin to assign it to you to post jobs."
+    "cardRegionOnly": "In your region. Ask your admin to assign it to you to post jobs.",
+    "viewToggleLabel": "Employer list layout",
+    "viewCards": "Cards",
+    "viewTable": "Table",
+    "inYourRegion": "In your region"
   },
   "agentPlacements": {
     "pageTitle": "Placements",
@@ -15650,7 +15620,13 @@
     "years": "years",
     "education": "Education",
     "languages": "Languages",
-    "tags": "Tags"
+    "tags": "Tags",
+    "findCandidates": "Find matching candidates",
+    "openEmployerView": "Open employer's job page",
+    "openingEmployerView": "Opening…",
+    "openEmployerViewError": "We couldn't open the employer's job page. Please try again.",
+    "notDisclosed": "Not disclosed",
+    "salaryIn": "Salary ({currency})"
   },
   "agentChat": {
     "agentWorkspaceBadge": "Agent workspace",
@@ -17875,7 +17851,10 @@
     "clearSearch": "Clear search",
     "loadError": "We couldn’t load your templates. Check your connection and try again.",
     "retry": "Retry",
-    "toastUseError": "We couldn’t start a job from that template. Please try again."
+    "toastUseError": "We couldn’t start a job from that template. Please try again.",
+    "chooseEmployerFirst": "Choose the employer this job is for, then pick how to start.",
+    "noTemplatesForEmployer": "This employer hasn't saved any job templates yet. Start with AI, the form or a document instead.",
+    "otherWays": "Choose another way"
   },
   "jobSeekerJourney": {
     "title": "My Applications",
@@ -18425,5 +18404,71 @@
     "clearFilter": "Clear filter",
     "loadErrorTitle": "Background checks",
     "unknownCandidate": "Candidate"
+  },
+  "agentJobMatches": {
+    "title": "Matching candidates",
+    "backToJob": "Back to job",
+    "refreshing": "Refreshing…",
+    "howTitle": "How this list works",
+    "howBody": "Candidates in the database who allow employers to find them, ranked by how well they fit this job. The percentage is the same job-fit score the employer sees once a candidate applies.",
+    "poolStats": "{pool} candidates checked · best {shown} listed · {applied} already applied.",
+    "viewApplicants": "View applicants",
+    "inviteNeedsActive": "This job is not published, so candidates cannot be invited yet. Publish it to send invites.",
+    "errorTitle": "We couldn't load matching candidates",
+    "errorDescription": "Check your connection and try again.",
+    "retry": "Try again",
+    "emptyTitle": "No matching candidates yet",
+    "emptyDescription": "No one in the database who allows employers to find them fits this job yet. Listing the job's required skills widens the match.",
+    "listLabel": "Matching candidates, best first",
+    "cardLabel": "#{rank} {name}",
+    "scoreLabel": "Job fit",
+    "breakdownLabel": "What the score is made of",
+    "parts": {
+      "skills": "Skills",
+      "role": "Role",
+      "experience": "Experience",
+      "education": "Education",
+      "industry": "Industry"
+    },
+    "yearsExperience": "{count, plural, one {# year} other {# years}} experience",
+    "experienceNotStated": "Experience not stated",
+    "latestRole": "{title} at {company}",
+    "hasSkills": "Has",
+    "missingSkills": "Missing",
+    "preference": {
+      "country": "Prefers jobs in other countries",
+      "workMode": "Prefers a different work arrangement",
+      "salary": "Expects more pay than this job offers"
+    },
+    "unmet": "Doesn't meet the job's {list} requirement",
+    "requirement": {
+      "experience": "experience",
+      "education": "education",
+      "skills": "required skills",
+      "languages": "language",
+      "location": "location",
+      "workMode": "work arrangement",
+      "salary": "salary",
+      "screening": "screening question",
+      "other": "other"
+    },
+    "invite": "Invite to apply",
+    "inviteAria": "Invite {name} to apply",
+    "invited": "Invited",
+    "inviteTitle": "Invite {name} to apply",
+    "inviteDescription": "They get an in-app notification and an email with a link to “{job}”. Applying stays their decision.",
+    "messageLabel": "Message (optional)",
+    "messagePlaceholder": "Add a short note about why this role fits them…",
+    "cancel": "Cancel",
+    "sendInvite": "Send invite",
+    "sending": "Sending…",
+    "inviteSent": "Invite sent to {name}",
+    "inviteError": "We couldn't send the invite",
+    "inviteConflict": "This candidate has already applied or been invited to this job.",
+    "inviteUnavailable": "This candidate can't be invited right now — the job may be unpublished, or they no longer allow employers to find them.",
+    "inviteForbidden": "You can invite candidates only for employers assigned to you.",
+    "inviteRetry": "Check your connection and try again.",
+    "forbiddenTitle": "This job's employer isn't assigned to you",
+    "forbiddenDescription": "You can find and invite candidates only for employers assigned to you. Ask your super agent if you should be working this account."
   }
 }

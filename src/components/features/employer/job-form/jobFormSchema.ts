@@ -1,24 +1,15 @@
 import { z } from "zod";
 import { knockoutRuleOf } from "@/lib/matching/knockouts";
+import { DEFAULT_JOB_CATEGORY_NAMES } from "@/lib/jobs/jobCategories";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const JOB_CATEGORIES = [
-  "Technology",
-  "Healthcare",
-  "Finance",
-  "Construction",
-  "Hospitality",
-  "Education",
-  "Manufacturing",
-  "Logistics",
-  "Oil & Gas",
-  "Retail",
-  "Marketing",
-  "Legal",
-  "Human Resources",
-  "Other",
-] as const;
+/**
+ * The starting set of job categories. The forms read the admin-managed list
+ * (useJobCategoryOptions); this is only what that list is seeded with, kept
+ * here for callers that need names without a request (workflow match rules).
+ */
+export const JOB_CATEGORIES: readonly string[] = DEFAULT_JOB_CATEGORY_NAMES;
 
 export const CURRENCIES = [
   { code: "USD", symbol: "$", label: "USD — US Dollar" },

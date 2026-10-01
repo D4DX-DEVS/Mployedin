@@ -166,6 +166,25 @@ describe("loadSuperAgentDashboard", () => {
     expect(leadCount).toHaveBeenCalledWith({ ...leadScope, followUpAt: { $lt: NOW }, status: { $nin: ["converted", "lost"] } });
   });
 
+  it("counts territory employers for a super-agent with no team yet", async () => {
+    // A state-wide SA with no agents still has a book: every employer
+    // registered in the territory. The card must match the employers list.
+    const restrictions = jest.requireMock("@/lib/auth/agentRestrictions") as Record<string, jest.Mock>;
+    restrictions.getSuperAgentScope.mockResolvedValueOnce({
+      saProfileId: "sa4", teamAgentIds: [], regionAgentIds: [], effectiveAgentIds: [],
+      assignedCityIds: [], assignedStateIds: ["s_sharjah"],
+    });
+    restrictions.getSuperAgentBook.mockResolvedValueOnce({
+      agentIds: [], employerIds: ["e1"], saProfileId: "sa4", ownershipMatch: { employerId: { $in: ["e1"] } },
+    });
+
+    const data = await loadSuperAgentDashboard("sa_user", NOW);
+
+    expect(data.kpis.employers).toBe(25);
+    expect(data.funnel.employers).toBe(25);
+    expect(data.kpis.newEmployersThisMonth).toBe(2);
+  });
+
   it("derives the queue counts", async () => {
     const data = await loadSuperAgentDashboard("sa_user", NOW);
     expect(data.queue.pendingExhibitions).toBe(15);

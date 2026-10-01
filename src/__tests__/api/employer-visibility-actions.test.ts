@@ -106,6 +106,7 @@ describe("GET /api/employers — who may act on each row", () => {
   it("agent: only assigned rows are actionable; region rows are visible", async () => {
     agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED] }));
     getAgentEmployerIds.mockResolvedValue([EMP_ASSIGNED, EMP_REGION]);
+    employerAggregate.mockResolvedValue([{ _id: EMP_ASSIGNED }, { _id: EMP_REGION }]);
     employerFind.mockReturnValue(chain([profile(EMP_ASSIGNED), profile(EMP_REGION)]));
 
     const res = await LIST(req("http://t/api/employers", { userId: "agent-user", role: "agent" }));
@@ -115,6 +116,31 @@ describe("GET /api/employers — who may act on each row", () => {
       [EMP_ASSIGNED, true],
       [EMP_REGION, false],
     ]);
+  });
+
+  it("agent: assigned employers come first, then region ones, across pages", async () => {
+    // Alphabetically the assigned one would be last ("Co e1" vs "Co e2" is
+    // irrelevant here — the database decides the order, the route keeps it).
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED] }));
+    getAgentEmployerIds.mockResolvedValue([EMP_REGION, EMP_ASSIGNED]);
+    employerAggregate.mockResolvedValue([{ _id: EMP_ASSIGNED }, { _id: EMP_REGION }]);
+    // find() returns the page in its own order; the route must restore the sorted one.
+    employerFind.mockReturnValue(chain([profile(EMP_REGION), profile(EMP_ASSIGNED)]));
+
+    const res = await LIST(req("http://t/api/employers?page=2&limit=5", { userId: "agent-user", role: "agent" }));
+    const body = await res.json();
+
+    expect(body.employers.map((e: { _id: string }) => e._id)).toEqual([EMP_ASSIGNED, EMP_REGION]);
+    const [pipeline] = employerAggregate.mock.calls[0] as [Record<string, unknown>[]];
+    expect(pipeline).toEqual([
+      { $match: { _id: { $in: [EMP_REGION, EMP_ASSIGNED] }, roleArchivedAt: null } },
+      { $addFields: { assignedFirst: { $cond: [{ $in: ["$_id", [EMP_ASSIGNED]] }, 0, 1] } } },
+      { $sort: { assignedFirst: 1, companyName: 1, _id: 1 } },
+      { $skip: 5 },
+      { $limit: 5 },
+      { $project: { _id: 1 } },
+    ]);
+    expect(body.pagination).toEqual({ page: 2, limit: 5, total: 2, pages: 1 });
   });
 
   it("super-agent: only rows whose agent is on the SA's team can be entered", async () => {

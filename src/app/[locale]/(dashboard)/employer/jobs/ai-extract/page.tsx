@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { JobFormValues } from "@/components/features/employer/job-form/jobFormSchema";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { WordingWarning } from "@/components/features/employer/job-form/WordingWarning";
+import { useJobPostingTarget } from "@/components/features/jobs/jobPostingTarget";
 
 interface ExtractedJob {
   title: string;
@@ -122,9 +123,11 @@ function buildPrefill(job: ExtractedJob): Partial<JobFormValues> {
 export default function AIJobExtractPage() {
   const t = useTranslations("employerAiExtract");
   const router = useRouter();
-  const { locale } = useParams<{ locale: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchParams = useSearchParams();
+  // Employer page, also served to agents at /agent/jobs/ai-extract?employer=.
+  const target = useJobPostingTarget();
+  const forEmployer = target.employerId ? { employerId: target.employerId } : {};
 
   // ── Hydration sources (ordered by priority) ─────────────────────────────
   // 1. ?draft=<id> query — coming from the dashboard "Continue extraction"
@@ -296,6 +299,7 @@ export default function AIJobExtractPage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (target.employerId) formData.append("employerId", target.employerId);
 
       const res = await fetch("/api/ai/job-extract", {
         method: "POST",
@@ -338,10 +342,11 @@ export default function AIJobExtractPage() {
       // can forward them to POST /api/jobs and the draft entry gets stamped.
       const prefill = {
         ...buildPrefill(job),
+        ...forEmployer,
         ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
       };
       sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(prefill));
-      router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
+      router.push(target.withEmployer(`${target.jobsHref}/new?mode=manual&prefill=ai`));
     } catch {
       toast.error(t("toastFormFailed"));
     }
@@ -354,6 +359,7 @@ export default function AIJobExtractPage() {
     try {
       const payload = {
         ...buildPrefill(job),
+        ...forEmployer,
         status: "active",
         // Write-back hooks: tell /api/jobs which extraction draft entry to
         // stamp as "posted" + record the new jobId.
@@ -398,6 +404,7 @@ export default function AIJobExtractPage() {
         const job = extractedJobs[index];
         const payload = {
           ...buildPrefill(job),
+          ...forEmployer,
           status: "active",
           ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
         };
@@ -814,7 +821,7 @@ export default function AIJobExtractPage() {
           {allPosted && (
             <div className="flex justify-center pt-4">
               <Button
-                onClick={() => router.push(`/${locale}/employer/jobs`)}
+                onClick={() => router.push(target.jobsHref)}
                 className="gap-2"
               >
                 {t("viewAllJobs")}
