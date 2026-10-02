@@ -14,6 +14,7 @@ import { escapeRegex } from "@/lib/security/sanitize";
  * Query params:
  *   - level=countries → all active countries
  *   - level=states&countryId=xxx → states for a country
+ *   - level=states&country=IN → the same, by ISO code (the seeker area picker)
  *   - level=cities&stateId=xxx → cities for a state
  *   - search=xxx → search cities by name (returns up to 50)
  *   - search=xxx&country=AE → the same, limited to one country (ISO code)
@@ -116,10 +117,17 @@ export async function GET(req: NextRequest) {
       }
 
       case "states": {
-        if (!countryId) {
+        const code = searchParams.get("country")?.trim().toUpperCase();
+        let statesOf = countryId;
+        if (!statesOf && code) {
+          const country = await Country.findOne({ code }).select("_id").lean();
+          if (!country) return NextResponse.json({ states: [] });
+          statesOf = String(country._id);
+        }
+        if (!statesOf) {
           return NextResponse.json({ error: "countryId required" }, { status: 400 });
         }
-        const states = await State.find({ countryId, isActive: true })
+        const states = await State.find({ countryId: statesOf, isActive: true })
           .sort({ sortOrder: 1, name: 1 })
           .select("_id name nameAr slug countryId")
           .lean();

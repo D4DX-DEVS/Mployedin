@@ -271,6 +271,35 @@ export async function getSuperAgentTerritory(
   return territoryFrom(scope, teamDocs);
 }
 
+/**
+ * The area whose job seekers an agent may view: their own cities/states plus
+ * their super agent's whole territory. The owner treats a super agent's region
+ * as the district (2026-10-02) — an agent in one town sees the seekers of every
+ * town their super agent covers. Job seekers only: employer visibility stays on
+ * the agent's own region (`getAgentEmployerIds`).
+ */
+export async function getAgentSeekerArea(agent: {
+  assignedCityIds?: mongoose.Types.ObjectId[];
+  assignedStateIds?: mongoose.Types.ObjectId[];
+  superAgentId?: unknown;
+}): Promise<RegionInfo> {
+  const own: RegionInfo = {
+    assignedCityIds: agent.assignedCityIds ?? [],
+    assignedStateIds: agent.assignedStateIds ?? [],
+  };
+  if (!agent.superAgentId) return own;
+  const sa = await SuperAgent.findById(agent.superAgentId)
+    .select("userId roleArchivedAt")
+    .lean<{ userId?: unknown; roleArchivedAt?: Date | null } | null>();
+  if (!sa?.userId || sa.roleArchivedAt) return own;
+  const district = await getSuperAgentTerritory(String(sa.userId));
+  if (!district) return own;
+  return {
+    assignedCityIds: deduplicateIds([...own.assignedCityIds, ...district.assignedCityIds]),
+    assignedStateIds: deduplicateIds([...own.assignedStateIds, ...district.assignedStateIds]),
+  };
+}
+
 export async function getSuperAgentBook(saUserId: string): Promise<SuperAgentBook | null> {
   const scope = await getSuperAgentScope(saUserId);
   if (!scope) return null;

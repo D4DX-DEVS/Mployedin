@@ -15,11 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 import { PhoneInput } from "@/components/shared/PhoneInput";
-import { SeekerAreaField, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
+import { SeekerAreaField, hasSeekerArea, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
 import { FALLBACK_PHONE_COUNTRIES } from "@/lib/phone/countries";
 import {
   areaFromCv,
-  findCatalogueCity,
+  findCatalogueArea,
   pickCurrentExperience,
   pickHighestEducation,
   splitCvPhone,
@@ -414,14 +414,22 @@ export default function JobSeekerOnboardingPage() {
     resumeFile: null,
     marketingConsent: false,
   });
-  // Where the seeker lives, picked from the city list so agents who cover the
-  // area can find them (client report 2026-09-30, #5). Until a country is
+  // Where the seeker lives, picked from the city list — or just the region when
+  // the city isn't listed — so agents who cover the area can find them (client
+  // report 2026-09-30, #5). Required (owner, 2026-10-02). Until a country is
   // chosen, the phone number's country is the starting guess.
-  const [area, setArea] = useState<SeekerAreaValue>({ countryCode: "", city: null });
+  const [area, setArea] = useState<SeekerAreaValue>({ countryCode: "", city: null, region: null });
   const areaValue: SeekerAreaValue = {
     countryCode: area.countryCode || (FALLBACK_PHONE_COUNTRIES.find((c) => c.dialCode === step0.countryCode)?.code ?? ""),
     city: area.city,
+    region: area.region,
   };
+  // The latest area, for pre-fills that finish after an await.
+  const areaRef = useRef(area);
+  areaRef.current = area;
+  // Set when the area was filled in for the seeker, so the form says so; any
+  // change of their own clears it.
+  const [areaPrefilled, setAreaPrefilled] = useState(false);
   // The other way round too: while the number box is empty, the phone code
   // follows the chosen country, so an Indian living in India is not left on
   // the +971 default. A code the seeker picked, a saved number, or a number
@@ -429,8 +437,25 @@ export default function JobSeekerOnboardingPage() {
   const [phoneCodePicked, setPhoneCodePicked] = useState(false);
   const changeArea = (next: SeekerAreaValue) => {
     setArea(next);
+    setAreaPrefilled(false);
     const dialCode = FALLBACK_PHONE_COUNTRIES.find((c) => c.code === next.countryCode)?.dialCode;
     if (dialCode && !phoneCodePicked && !step0.phone) setStep0((p) => ({ ...p, countryCode: dialCode }));
+  };
+
+  /**
+   * Fill the area in from a location line — a CV, a LinkedIn import, or the
+   * location already stored — unless the seeker has chosen one: the town when
+   * the city list has it, else its region. The seeker can still change it.
+   */
+  const prefillAreaFrom = async (location: string | null | undefined, phone?: { country?: string; dialCode?: string }) => {
+    const found = areaFromCv({ location, phoneCountry: phone?.country, dialCode: phone?.dialCode });
+    if (!found || hasSeekerArea(areaRef.current)) return;
+    setArea((prev) => (prev.countryCode ? prev : { countryCode: found.countryCode, city: null, region: null }));
+    const match = await findCatalogueArea(found.countryCode, found.places);
+    const now = areaRef.current;
+    if (!match || hasSeekerArea(now) || (now.countryCode && now.countryCode !== found.countryCode)) return;
+    setArea({ countryCode: found.countryCode, ...match });
+    setAreaPrefilled(true);
   };
 
   // Guard: redirect already-onboarded users away from this page
@@ -472,9 +497,17 @@ export default function JobSeekerOnboardingPage() {
             marketingConsent: p.marketingConsent ?? prev.marketingConsent,
           }));
           if (p.area) {
-            setArea({ countryCode: p.area.countryCode, city: { id: p.area.cityId, name: p.area.cityName } });
+            setArea({
+              countryCode: p.area.countryCode,
+              city: p.area.cityId ? { id: p.area.cityId, name: p.area.cityName } : null,
+              region: !p.area.cityId && p.area.stateId ? { id: p.area.stateId, name: p.area.stateName } : null,
+            });
             const areaDialCode = FALLBACK_PHONE_COUNTRIES.find((c) => c.code === p.area.countryCode)?.dialCode;
             if (areaDialCode && !storedPhone) setStep0((prev) => ({ ...prev, countryCode: areaDialCode }));
+          } else if (p.currentLocation) {
+            // A location stored before the area was asked (social sign-in, an
+            // earlier visit): start the area from it.
+            void prefillAreaFrom(p.currentLocation, { dialCode: storedPhone?.countryCode });
           }
 
           if (isLinkedIn) {
@@ -652,6 +685,8 @@ export default function JobSeekerOnboardingPage() {
       } else if (imported.location) {
         setStep1((p) => ({ ...p, currentCity: imported.location || p.currentCity }));
       }
+      // No phone evidence here: this callback holds the first render's +971.
+      if (imported.location) void prefillAreaFrom(imported.location);
 
       // Pre-fill Step 2 (Education)
       const firstEdu = imported.education?.[0];
@@ -818,13 +853,9 @@ export default function JobSeekerOnboardingPage() {
       }
 
       // Where the seeker lives, unless they already chose: the CV's country,
-      // and its city when the catalogue has exactly that name (Kochi → Cochin).
-      const cvArea = areaFromCv({ location: extracted.currentLocation, phoneCountry: cvPhone?.country, dialCode: cvPhone?.dialCode });
-      if (cvArea) {
-        setArea((prev) => (prev.countryCode ? prev : { countryCode: cvArea.countryCode, city: null }));
-        const city = cvArea.cityName ? await findCatalogueCity(cvArea.countryCode, cvArea.cityName) : null;
-        if (city) setArea((prev) => (prev.countryCode === cvArea.countryCode && !prev.city ? { ...prev, city } : prev));
-      }
+      // and its city when the catalogue has exactly that name (Kochi → Cochin),
+      // else the region the CV names. Awaited, so the step skip below sees it.
+      await prefillAreaFrom(extracted.currentLocation, { country: cvPhone?.country, dialCode: cvPhone?.dialCode });
 
       // Pre-fill Step 3 (Headline)
       if (extracted.headline) {
@@ -928,7 +959,7 @@ export default function JobSeekerOnboardingPage() {
    */
   const stepSatisfied = useCallback((n: number): boolean => {
     switch (n) {
-      case 0: return !!step0.name.trim() && !!step0.phone.trim() && !!step0.workStatus;
+      case 0: return !!step0.name.trim() && !!step0.phone.trim() && !!step0.workStatus && hasSeekerArea(area);
       case 1: return step0.workStatus === "fresher" || (step1.isCurrentlyEmployed !== null && !!step1.experienceYears);
       case 2: {
         // Qualification is always required
@@ -948,7 +979,7 @@ export default function JobSeekerOnboardingPage() {
       case 3: return !!step3.headline.trim() && step3.discoverable !== null;
       default: return true;
     }
-  }, [step0, step1, step2, step3, courseConfirmed, specConfirmed]);
+  }, [step0, step1, step2, step3, courseConfirmed, specConfirmed, area]);
 
   const canAdvance = useCallback((): boolean => stepSatisfied(step), [stepSatisfied, step]);
 
@@ -979,8 +1010,8 @@ export default function JobSeekerOnboardingPage() {
         phone: `${step0.countryCode}${step0.phone}`,
         workStatus: step0.workStatus,
         marketingConsent: step0.marketingConsent,
-        // The server sets the location line from the picked city too.
-        ...(area.city ? { cityId: area.city.id } : {}),
+        // The server sets the location line from the picked city (or region) too.
+        ...(area.city ? { cityId: area.city.id } : area.region ? { stateId: area.region.id } : {}),
       };
     }
     if (n === 1) {
@@ -998,6 +1029,7 @@ export default function JobSeekerOnboardingPage() {
           // experience[].country, which put a city in a country field and left
           // the seeker with no location at all. A city picked on step 0 wins
           // over the line a CV or LinkedIn import filled in.
+        // A region-only pick keeps the town the seeker gave, which the list lacks.
         currentLocation: area.city ? undefined : step1.currentCity || undefined,
       };
       if (step1.companyName && step1.jobTitle) {
@@ -1037,7 +1069,7 @@ export default function JobSeekerOnboardingPage() {
       };
     }
     return null;
-  }, [step0, step1, step2, area.city]);
+  }, [step0, step1, step2, area]);
 
   const handleNext = async () => {
     setSaveError("");
@@ -1094,6 +1126,13 @@ export default function JobSeekerOnboardingPage() {
   const handleFinish = async () => {
     if (!step3.headline.trim()) {
       setSaveError(t("enterHeadline"));
+      return;
+    }
+    // Asked on the first step; a seeker who started before it was required
+    // goes back there to add it.
+    if (!hasSeekerArea(area)) {
+      setStep(0);
+      setSaveError(tc("seekerArea.required"));
       return;
     }
     setSaving(true);
@@ -1335,10 +1374,12 @@ export default function JobSeekerOnboardingPage() {
                   {step0.phone.length >= 7 && <p className="text-xs text-gray-500">{t("recruitersWillContact")}</p>}
                 </div>
 
-                {/* Area — the city agents near the seeker match on */}
+                {/* Area — the city (or region) agents near the seeker match on */}
                 <div className="space-y-1.5" data-onboarding-field="area">
-                  <p className="text-sm font-medium text-gray-800">{tc("seekerArea.title")}</p>
-                  <SeekerAreaField value={areaValue} onChange={changeArea} />
+                  <p className="text-sm font-medium text-gray-800">{tc("seekerArea.title")} <span className="text-red-500">*</span></p>
+                  <SeekerAreaField value={areaValue} onChange={changeArea} required />
+                  {!hasSeekerArea(area) && <p className="text-xs text-red-500">{tc("seekerArea.required")}</p>}
+                  {areaPrefilled && hasSeekerArea(area) && <p className="text-xs text-gray-500">{tc("seekerArea.prefilled")}</p>}
                 </div>
 
                 {/* Work status */}

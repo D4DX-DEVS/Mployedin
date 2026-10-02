@@ -30,7 +30,10 @@ describe("onboarding education step for a school-level qualification", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ profile: null }) });
+    // The area is required on the first step; this seeker saved theirs earlier.
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({
+      profile: { area: { cityId: "c1", cityName: "Dubai", stateId: "s1", stateName: "Dubai", countryCode: "AE" } },
+    }) });
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 

@@ -12,6 +12,7 @@ import { findPhoneNumbersInText, type CountryCode } from "libphonenumber-js/min"
 import { FALLBACK_PHONE_COUNTRIES } from "@/lib/phone/countries";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 import type { PickedCity } from "@/components/shared/CityPicker";
+import type { PickedRegion } from "@/components/features/job-seeker/SeekerAreaField";
 
 /** The form's experience-years list stops here. */
 const MAX_FORM_YEARS = 30;
@@ -175,7 +176,7 @@ export function areaFromCv({ location, phoneCountry, dialCode }: {
   /** The phone number's own country, when it could be told. */
   phoneCountry?: string;
   dialCode?: string;
-}): { countryCode: string; cityName: string } | null {
+}): { countryCode: string; cityName: string; places: string[] } | null {
   const text = (location ?? "").trim();
   const segments = text.split(",").map((part) => part.trim()).filter(Boolean);
   const endsInTwoLetters = /^[A-Za-z]{2}$/.test(segments[segments.length - 1] ?? "");
@@ -185,9 +186,13 @@ export function areaFromCv({ location, phoneCountry, dialCode }: {
     : FALLBACK_PHONE_COUNTRIES.find((c) => c.dialCode === dialCode)?.code;
   const countryCode = (endsInTwoLetters ? fromPhone || fromText : fromText || fromPhone) || null;
   if (!countryCode) return null;
-  const first = text.replace(/\([^)]*\)/g, " ").split(",")[0]?.trim() ?? "";
+  const parts = text.replace(/\([^)]*\)/g, " ").split(",").map((part) => part.trim());
+  const first = parts[0] ?? "";
   const cityName = first && !countryCodeOf(first) ? first : "";
-  return { countryCode, cityName };
+  // Every named place, town first, for the city-then-region lookup: not the
+  // country, not a two-letter state code.
+  const places = parts.filter((part) => part && !countryCodeOf(part) && !/^[A-Za-z]{2}$/.test(part));
+  return { countryCode, cityName, places };
 }
 
 /**
@@ -220,6 +225,43 @@ export function cityNameCandidates(name: string): string[] {
 
 type Fetcher = (url: string, init?: { signal?: AbortSignal }) => Promise<Response>;
 
+/**
+ * A place name for comparing, without the kind of place some catalogue names
+ * still carry ("Abu Dhabi Municipality", "Sharjah Emirate", "Ajman City"), so
+ * a CV's "Abu Dhabi" finds them. Anything else must still match exactly.
+ */
+export function placeKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+(emirate|municipality|city|state|province|governorate|district)$/, "");
+}
+
+/**
+ * Does a catalogue name mean what the seeker wrote? Exactly, or once the
+ * catalogue's kind-of-place word is dropped. The written name is never cut, so
+ * "Kansas City" stays a city and never becomes the state of Kansas.
+ */
+export function sameCatalogueName(catalogue: string, written: string): boolean {
+  const wanted = written.trim().toLowerCase();
+  return catalogue.trim().toLowerCase() === wanted || placeKey(catalogue) === wanted;
+}
+
+/** One search of the catalogue, by the area picker's rules; null on any failure. */
+async function exactCity(fetchFn: Fetcher, countryCode: string, name: string, signal: AbortSignal): Promise<PickedCity | null> {
+  for (const candidate of cityNameCandidates(name)) {
+    if (signal.aborted) return null;
+    try {
+      const params = new URLSearchParams({ search: candidate, country: countryCode });
+      const res = await fetchFn(`/api/filters/locations?${params}`, { signal });
+      if (!res.ok) continue;
+      const { results } = (await res.json()) as { results?: Array<{ _id: string; name: string }> };
+      const exact = (results ?? []).filter((city) => sameCatalogueName(city.name, candidate));
+      if (exact.length === 1) return { id: String(exact[0]._id), name: exact[0].name };
+    } catch {
+      // Offline, aborted or timed out: leave the city to the seeker.
+    }
+  }
+  return null;
+}
+
 /** The import waits for the city lookup; this long at most, then the seeker picks. */
 const CITY_LOOKUP_TIMEOUT_MS = 4000;
 
@@ -238,18 +280,48 @@ export async function findCatalogueCity(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    for (const candidate of cityNameCandidates(cityName)) {
-      if (controller.signal.aborted) break;
-      try {
-        const params = new URLSearchParams({ search: candidate, country: countryCode });
-        const res = await fetchFn(`/api/filters/locations?${params}`, { signal: controller.signal });
-        if (!res.ok) continue;
-        const { results } = (await res.json()) as { results?: Array<{ _id: string; name: string }> };
-        const exact = (results ?? []).filter((city) => city.name.trim().toLowerCase() === candidate.toLowerCase());
-        if (exact.length === 1) return { id: String(exact[0]._id), name: exact[0].name };
-      } catch {
-        // Offline, aborted or timed out: leave the city to the seeker.
+    return await exactCity(fetchFn, countryCode, cityName, controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** What a location line pre-fills in the area picker: a city, else its region. */
+export type FoundArea = { city: PickedCity; region: null } | { city: null; region: PickedRegion };
+
+/**
+ * The seeker's area as a location line names it ("Tirur, Kerala, India"), for
+ * the onboarding pre-fill the seeker can still change (owner, 2026-10-02).
+ * Each place is tried as a catalogue city, town first; when none is listed,
+ * a place that is exactly a region's name ("Kerala") gives the region. Same
+ * rules as `findCatalogueCity`: exact names only, never hangs, never throws.
+ */
+export async function findCatalogueArea(
+  countryCode: string,
+  places: string[],
+  fetchFn: Fetcher = (url, init) => fetch(url, init),
+  timeoutMs: number = CITY_LOOKUP_TIMEOUT_MS,
+): Promise<FoundArea | null> {
+  if (!countryCode || places.length === 0) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    for (const place of places) {
+      const city = await exactCity(fetchFn, countryCode, place, controller.signal);
+      if (city) return { city, region: null };
+    }
+    if (controller.signal.aborted) return null;
+    try {
+      const params = new URLSearchParams({ level: "states", country: countryCode });
+      const res = await fetchFn(`/api/filters/locations?${params}`, { signal: controller.signal });
+      if (!res.ok) return null;
+      const { states } = (await res.json()) as { states?: Array<{ _id: string; name: string }> };
+      for (const place of places) {
+        const match = (states ?? []).find((state) => sameCatalogueName(state.name, place));
+        if (match) return { city: null, region: { id: String(match._id), name: match.name } };
       }
+    } catch {
+      // Offline, aborted or timed out: leave the area to the seeker.
     }
     return null;
   } finally {

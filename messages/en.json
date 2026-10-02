@@ -521,10 +521,19 @@
       "notSet": "Add your area so agents near you can help you find work.",
       "add": "Add area",
       "change": "Change",
-      "dialogDescription": "Pick the city you live in.",
+      "dialogDescription": "Pick the city you live in. If it isn't listed, pick your region.",
       "saved": "Area saved",
       "saveError": "Couldn't save your area. Please try again.",
-      "pickCity": "Pick your city from the list."
+      "pickCity": "Pick your city from the list.",
+      "region": "Region",
+      "regionPlaceholder": "Choose your region",
+      "regionSearch": "Search regions",
+      "regionNoMatch": "No region matches",
+      "cityNotListed": "My city isn't listed",
+      "pickCityInstead": "Pick a city instead",
+      "regionHint": "Agents who cover your whole region can see your profile and help you find work. A hidden profile stays hidden.",
+      "required": "Pick your city, or your region if your city isn't listed.",
+      "prefilled": "We filled this in from your details. Change it if it isn't right."
     }
   },
   "table": {

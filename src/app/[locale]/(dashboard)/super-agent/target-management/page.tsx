@@ -44,6 +44,8 @@ import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { ExportColumn } from "@/lib/export";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -468,56 +470,55 @@ export default function SuperAgentTargetProfilesPage() {
   const pendingApprovalsCount = teamOverview.pendingApprovals;
   const deadlineAlerts = teamOverview.deadlineAlerts;
 
-  const handleExport = () => {
-    const csvRows = [
-      [
-        t("csvHeaderAgent"),
-        t("csvHeaderEmail"),
-        t("csvHeaderTerritory"),
-        t("csvHeaderCurrency"),
-        t("csvHeaderEmployerTarget"),
-        t("csvHeaderEmployerAchieved"),
-        t("csvHeaderEmployeeTarget"),
-        t("csvHeaderEmployeeAchieved"),
-        t("csvHeaderFinanceTarget"),
-        t("csvHeaderFinanceAchieved"),
-        t("csvHeaderOverallPercent"),
-        t("csvHeaderStage"),
-        t("csvHeaderRisk"),
-        t("csvHeaderNextAction"),
-        t("csvHeaderLastUpdate"),
-      ].join(","),
-      ...teamProfiles.map((r) => {
-        const territory = getTerritory(r);
-        const territoryDisplay = territory === "unassigned" ? t("unassigned") : territory;
-        const lastUpdate = formatShortDate(r.lastActivityAt ?? r.updatedAt);
-        const lastUpdateDisplay = lastUpdate ? lastUpdate : t("noUpdate");
-        const nextActionKey = getNextAction(r);
-        const nextActionDisplay = t(nextActionKey);
-        return [
-          `"${r.assigneeName}"`,
-          `"${r.assigneeEmail}"`,
-          `"${territoryDisplay}"`,
-          r.currency ?? "AED",
-          r.employerTarget,
-          r.employerAchieved,
-          r.employeeTarget,
-          r.employeeAchieved,
-          r.financeTarget,
-          r.financeAchieved,
-          r.overallProgress,
-          t(getCompletionStage(r.overallProgress)),
-          t(r.riskScore),
-          `"${nextActionDisplay}"`,
-          `"${lastUpdateDisplay}"`,
-        ].join(",");
-      }),
-    ];
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `team-targets-${yearFilter}.csv`; a.click();
-    URL.revokeObjectURL(url); toast.success(t("csvExported"));
-  };
+  // Team-table export via the shared hook (same as leads/commissions): the
+  // old hand-built join() never quoted commas in names and left missing dates
+  // as the literal "noUpdate" key instead of its translation.
+  const teamExportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: t("csvHeaderAgent"), key: "assigneeName" },
+    { header: t("csvHeaderEmail"), key: "assigneeEmail" },
+    {
+      header: t("csvHeaderTerritory"), key: "territory",
+      formatter: (_v, row) => {
+        const terr = (row.territory as string) ?? (row.region as string) ?? "unassigned";
+        return terr === "unassigned" ? t("unassigned") : terr;
+      },
+    },
+    { header: t("csvHeaderCurrency"), key: "currency" },
+    { header: t("csvHeaderEmployerTarget"), key: "employerTarget" },
+    { header: t("csvHeaderEmployerAchieved"), key: "employerAchieved" },
+    { header: t("csvHeaderEmployeeTarget"), key: "employeeTarget" },
+    { header: t("csvHeaderEmployeeAchieved"), key: "employeeAchieved" },
+    { header: t("csvHeaderFinanceTarget"), key: "financeTarget" },
+    { header: t("csvHeaderFinanceAchieved"), key: "financeAchieved" },
+    { header: t("csvHeaderOverallPercent"), key: "overallProgress" },
+    {
+      header: t("csvHeaderStage"), key: "overallProgress",
+      formatter: (v) => t(getCompletionStage(Number(v ?? 0))),
+    },
+    {
+      header: t("csvHeaderRisk"), key: "riskScore",
+      formatter: (v) => t(String(v ?? "low")),
+    },
+    {
+      header: t("csvHeaderNextAction"), key: "assigneeId",
+      formatter: (_v, row) => t(getNextAction(row as unknown as EnrichedProfile)),
+    },
+    {
+      header: t("csvHeaderLastUpdate"), key: "lastActivityAt",
+      formatter: (_v, row) => {
+        const r = row as unknown as EnrichedProfile;
+        const short = formatShortDate(r.lastActivityAt ?? r.updatedAt);
+        return short === "noUpdate" || short == null ? t("noUpdate") : short;
+      },
+    },
+  ];
+
+  const { handleExportCsv: handleExportTeamCsv } = useTableExport({
+    data: teamProfiles as unknown as Record<string, unknown>[],
+    columns: teamExportColumns,
+    filename: `team-targets-${yearFilter}`,
+    title: t("title"),
+  });
 
   const pct = (a: number, tgt: number) => tgt > 0 ? Math.round((a / tgt) * 100) : 0;
   // The empty table had two branches on the same condition: the first caught
@@ -644,7 +645,7 @@ export default function SuperAgentTargetProfilesPage() {
                 placeholder={t("risk")}
                 className="h-10 w-32 rounded-xl"
               />
-              <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExport} aria-label={t("export")} disabled={teamProfiles.length === 0}>
+              <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExportTeamCsv} aria-label={t("export")} disabled={teamProfiles.length === 0}>
                 <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("export")}</span>
               </Button>
             </>

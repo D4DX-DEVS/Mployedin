@@ -81,10 +81,13 @@ describe("onboarding CV import", () => {
   let cvRead = false;
   /** What cv-extract answers; a re-upload of the same file skips the AI read. */
   let extractReply: Record<string, unknown>;
+  /** The profile before the CV is read (null: a new seeker). */
+  let profileBeforeCv: Record<string, unknown> | null;
 
   beforeEach(() => {
     cvRead = false;
     extractReply = { success: true, extracted };
+    profileBeforeCv = null;
     document.cookie = "csrf-token=test-token";
     fetchMock = jest.fn((url: string, init?: RequestInit) => {
       if (url === "/api/ai/cv-extract") {
@@ -94,7 +97,8 @@ describe("onboarding CV import", () => {
       if (url === "/api/job-seekers/profile" && init?.method === "PATCH") {
         return json({ success: true, entryIds: { experience: JOB_NOW, education: MBA } });
       }
-      if (url === "/api/job-seekers/profile") return json({ profile: cvRead ? storedProfile : null });
+      if (url === "/api/job-seekers/profile") return json({ profile: cvRead ? storedProfile : profileBeforeCv });
+      if (url.startsWith("/api/filters/locations?level=states")) return json({ states: [{ _id: "state-kerala", name: "Kerala" }] });
       if (url.startsWith("/api/filters/locations")) {
         return json({ results: url.includes("search=Cochin") && url.includes("country=IN") ? [{ _id: "city-cochin", name: "Cochin" }] : [] });
       }
@@ -140,8 +144,10 @@ describe("onboarding CV import", () => {
   });
 
   it("fills the form from the saved reading when the same CV is uploaded again", async () => {
-    // The stored reading keeps no phone; the seeker has typed theirs.
+    // The stored reading keeps no phone; the seeker has typed theirs, and
+    // picked their area on the first visit.
     extractReply = { success: true, duplicate: true, extracted: { ...extracted, phone: undefined } };
+    profileBeforeCv = { area: { cityId: "city-cochin", cityName: "Cochin", stateId: "state-kerala", stateName: "Kerala", countryCode: "IN" } };
     const saved = await importCv("501234567");
     expect(screen.queryByText(/could not extract/i)).toBeNull();
     expect(saved.totalExperienceYears).toBe(6);
@@ -164,5 +170,57 @@ describe("onboarding CV import", () => {
     // The CV's "Kochi, Kerala" names no country; the +91 phone decides it.
     const searches = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/filters/locations"));
     expect(searches).toEqual(["/api/filters/locations?search=Kochi&country=IN", "/api/filters/locations?search=Cochin&country=IN"]);
+  });
+});
+
+describe("onboarding CV import — the area", () => {
+  const cvWith = (currentLocation: string) => ({ ...extracted, currentLocation });
+  let fetchMock: jest.Mock;
+  let cvRead = false;
+  let reading: Record<string, unknown>;
+
+  beforeEach(() => {
+    window.scrollTo = jest.fn();
+    cvRead = false;
+    fetchMock = jest.fn((url: string, init?: RequestInit) => {
+      if (url === "/api/ai/cv-extract") {
+        cvRead = true;
+        return json({ success: true, extracted: reading });
+      }
+      if (url === "/api/job-seekers/profile" && init?.method === "PATCH") return json({ success: true });
+      if (url === "/api/job-seekers/profile") return json({ profile: cvRead ? storedProfile : null });
+      if (url.startsWith("/api/filters/locations?level=states")) return json({ states: [{ _id: "state-kerala", name: "Kerala" }] });
+      if (url.startsWith("/api/filters/locations")) return json({ results: [] });
+      return json({});
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  const saves = () => fetchMock.mock.calls
+    .filter(([url, init]) => url === "/api/job-seekers/profile" && init?.method === "PATCH")
+    .map(([, init]) => JSON.parse(String(init.body)) as Record<string, unknown>);
+
+  async function upload() {
+    await act(async () => { render(<JobSeekerOnboardingPage />); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /i'm experienced/i })); });
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await act(async () => { fireEvent.change(input, { target: { files: [new File(["%PDF"], "cv.pdf", { type: "application/pdf" })] } }); });
+  }
+
+  it("fills just the region when the CV's town isn't in the list", async () => {
+    reading = cvWith("Kottakkal, Kerala");
+    await upload();
+    await waitFor(() => expect(saves().length).toBeGreaterThan(0));
+    // The region is saved, and the town the list lacks stays on the location line.
+    expect(saves()[0]).toMatchObject({ stateId: "state-kerala", currentLocation: "Kottakkal, Kerala" });
+    expect(saves()[0]).not.toHaveProperty("cityId");
+  });
+
+  it("stops on the first step for the area when the CV names no place the list knows", async () => {
+    reading = cvWith("Atlantis");
+    await upload();
+    await waitFor(() => expect(screen.getByText(/resume parsed/i)).toBeInTheDocument());
+    expect(saves()).toEqual([]);
+    expect(screen.getByText("Pick your city, or your region if your city isn't listed.")).toBeInTheDocument();
   });
 });

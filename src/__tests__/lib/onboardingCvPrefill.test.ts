@@ -8,7 +8,10 @@
 import {
   areaFromCv,
   cityNameCandidates,
+  findCatalogueArea,
   findCatalogueCity,
+  placeKey,
+  sameCatalogueName,
   pickCurrentExperience,
   pickHighestEducation,
   splitCvPhone,
@@ -162,20 +165,20 @@ describe("pickHighestEducation", () => {
 
 describe("areaFromCv", () => {
   it("takes the country from the location line when it names one", () => {
-    expect(areaFromCv({ location: "Kochi, Kerala, India" })).toEqual({ countryCode: "IN", cityName: "Kochi" });
+    expect(areaFromCv({ location: "Kochi, Kerala, India" })).toEqual({ countryCode: "IN", cityName: "Kochi", places: ["Kochi", "Kerala"] });
   });
 
   it("falls back to the phone's country when the location names none", () => {
-    expect(areaFromCv({ location: "Kochi, Kerala", dialCode: "+91" })).toEqual({ countryCode: "IN", cityName: "Kochi" });
+    expect(areaFromCv({ location: "Kochi, Kerala", dialCode: "+91" })).toEqual({ countryCode: "IN", cityName: "Kochi", places: ["Kochi", "Kerala"] });
   });
 
   it("has no city when the location is only a country", () => {
-    expect(areaFromCv({ location: "United Arab Emirates" })).toEqual({ countryCode: "AE", cityName: "" });
+    expect(areaFromCv({ location: "United Arab Emirates" })).toEqual({ countryCode: "AE", cityName: "", places: [] });
   });
 
   it("prefers the phone country over a two-letter state that looks like a country", () => {
     // "MA" is Massachusetts here, not Morocco.
-    expect(areaFromCv({ location: "Boston, MA", phoneCountry: "US" })).toEqual({ countryCode: "US", cityName: "Boston" });
+    expect(areaFromCv({ location: "Boston, MA", phoneCountry: "US" })).toEqual({ countryCode: "US", cityName: "Boston", places: ["Boston"] });
   });
 
   it("returns null when neither says where the seeker lives", () => {
@@ -216,5 +219,73 @@ describe("findCatalogueCity", () => {
   it("never throws when the search fails", async () => {
     const fetchFn = jest.fn(() => Promise.reject(new Error("offline")));
     await expect(findCatalogueCity("IN", "Kochi", fetchFn)).resolves.toBeNull();
+  });
+});
+
+describe("findCatalogueArea", () => {
+  const cities = (results: Array<{ _id: string; name: string }>) =>
+    Promise.resolve({ ok: true, json: async () => ({ results }) } as Response);
+  const states = (list: Array<{ _id: string; name: string }>) =>
+    Promise.resolve({ ok: true, json: async () => ({ states: list }) } as Response);
+
+  it("picks the town when the list has it", async () => {
+    const fetchFn = jest.fn((url: string) => (url.includes("search=Tirur") ? cities([{ _id: "c1", name: "Tirur" }]) : cities([])));
+    await expect(findCatalogueArea("IN", ["Tirur", "Kerala"], fetchFn)).resolves.toEqual({ city: { id: "c1", name: "Tirur" }, region: null });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("tries the next place as a city before falling back to the region", async () => {
+    const fetchFn = jest.fn((url: string) => (url.includes("search=Malappuram") ? cities([{ _id: "c2", name: "Malappuram" }]) : cities([])));
+    await expect(findCatalogueArea("IN", ["Kottakkal", "Malappuram", "Kerala"], fetchFn)).resolves.toEqual({ city: { id: "c2", name: "Malappuram" }, region: null });
+  });
+
+  it("gives the region when no town is listed", async () => {
+    const fetchFn = jest.fn((url: string) =>
+      url.includes("level=states") ? states([{ _id: "s1", name: "Kerala" }, { _id: "s2", name: "Tamil Nadu" }]) : cities([]));
+    await expect(findCatalogueArea("IN", ["Kottakkal", "kerala"], fetchFn)).resolves.toEqual({ city: null, region: { id: "s1", name: "Kerala" } });
+    expect(fetchFn.mock.calls.at(-1)?.[0]).toBe("/api/filters/locations?level=states&country=IN");
+  });
+
+  it("leaves the area to the seeker when nothing is listed, slow or failing", async () => {
+    const none = jest.fn((url: string) => (url.includes("level=states") ? states([{ _id: "s1", name: "Kerala" }]) : cities([])));
+    await expect(findCatalogueArea("IN", ["Atlantis"], none)).resolves.toBeNull();
+    await expect(findCatalogueArea("IN", [], none)).resolves.toBeNull();
+    const hang = jest.fn((_url: string, init?: { signal?: AbortSignal }) =>
+      new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted")))));
+    await expect(findCatalogueArea("IN", ["Tirur"], hang, 20)).resolves.toBeNull();
+    await expect(findCatalogueArea("IN", ["Tirur"], jest.fn(() => Promise.reject(new Error("offline"))))).resolves.toBeNull();
+  });
+});
+
+describe("placeKey", () => {
+  it("drops the kind of place the older catalogue names carry", () => {
+    expect(placeKey("Abu Dhabi Municipality")).toBe(placeKey("Abu Dhabi"));
+    expect(placeKey("Sharjah Emirate")).toBe(placeKey("sharjah"));
+    expect(placeKey("Ajman City")).toBe(placeKey("Ajman"));
+  });
+
+  it("keeps every other word, so Kochi never becomes Kochi Port", () => {
+    expect(placeKey("Kochi Port")).not.toBe(placeKey("Kochi"));
+  });
+
+  it("never cuts what the seeker wrote: Kansas City is not the state of Kansas", async () => {
+    expect(sameCatalogueName("Kansas", "Kansas City")).toBe(false);
+    expect(sameCatalogueName("Kuwait City", "Kuwait City")).toBe(true);
+    expect(sameCatalogueName("Abu Dhabi Municipality", "abu dhabi")).toBe(true);
+    const fetchFn = jest.fn((url: string) =>
+      Promise.resolve({
+        ok: true,
+        json: async () => (url.includes("level=states") ? { states: [{ _id: "ks", name: "Kansas" }] } : { results: [] }),
+      } as Response));
+    await expect(findCatalogueArea("US", ["Kansas City"], fetchFn)).resolves.toBeNull();
+  });
+
+  it("finds a region by its older name", async () => {
+    const fetchFn = jest.fn((url: string) =>
+      Promise.resolve({
+        ok: true,
+        json: async () => (url.includes("level=states") ? { states: [{ _id: "s9", name: "Sharjah Emirate" }] } : { results: [] }),
+      } as Response));
+    await expect(findCatalogueArea("AE", ["Al Nahda", "Sharjah"], fetchFn)).resolves.toEqual({ city: null, region: { id: "s9", name: "Sharjah Emirate" } });
   });
 });

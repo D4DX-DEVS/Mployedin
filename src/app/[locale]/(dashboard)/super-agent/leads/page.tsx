@@ -24,7 +24,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
-import { InlinePicker, RowActions } from "@/components/shared/RowActions";
+import { InlinePicker } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";

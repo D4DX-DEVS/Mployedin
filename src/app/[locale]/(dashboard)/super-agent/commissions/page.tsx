@@ -287,10 +287,10 @@ export default function SuperAgentCommissionsPage() {
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableHeaderAgent")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead className="text-right">{t("tableHeaderAmount")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("tableHeaderType")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("tableHeaderNotes")}</TableHead>
-                  <TableHead className="text-right">{t("tableHeaderAmount")}</TableHead>
-                  <TableHead>{tc("status")}</TableHead>
                   <TableHead className="hidden md:table-cell">{tc("date")}</TableHead>
                   <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
@@ -322,10 +322,10 @@ export default function SuperAgentCommissionsPage() {
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell><StatusBadge status={c.status} /></TableCell>
+                      <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
                       <TableCell className="hidden md:table-cell capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
-                      <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
-                      <TableCell><StatusBadge status={c.status} /></TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{formatDate(new Date(c.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                       <TableCell className="text-right">
                         {/* Approve/dispute is the row's status: an inline picker,

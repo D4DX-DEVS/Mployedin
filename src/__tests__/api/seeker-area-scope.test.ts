@@ -38,12 +38,21 @@ jest.mock("@/models/SuperAgent", () => ({
 }));
 
 let territory: { assignedCityIds: string[]; assignedStateIds: string[] } | null;
+// The agent's super agent's territory — the "district" the agent's seeker area widens to.
+let saDistrict: { assignedCityIds: string[]; assignedStateIds: string[] } | null;
 jest.mock("@/lib/auth/agentRestrictions", () => {
   const actual = jest.requireActual("@/lib/auth/agentRestrictions");
   return {
     ...actual,
     getSuperAgentScope: async () => ({ effectiveAgentIds: [] }),
     getSuperAgentTerritory: async () => territory,
+    getAgentSeekerArea: async (a: { assignedCityIds?: string[]; assignedStateIds?: string[]; superAgentId?: unknown }) => {
+      const district = a.superAgentId ? saDistrict : null;
+      return {
+        assignedCityIds: [...(a.assignedCityIds ?? []), ...(district?.assignedCityIds ?? [])],
+        assignedStateIds: [...(a.assignedStateIds ?? []), ...(district?.assignedStateIds ?? [])],
+      };
+    },
   };
 });
 
@@ -84,6 +93,7 @@ beforeEach(() => {
   ctxRole = "agent";
   agentDoc = { _id: AGENT_DOC, assignedJobSeekerIds: [], assignedCityIds: [CITY], assignedStateIds: [] };
   territory = { assignedCityIds: [], assignedStateIds: [STATE] };
+  saDistrict = { assignedCityIds: [OTHER_CITY], assignedStateIds: [] };
 });
 
 describe("seekerRegionMatch / seekerInRegion", () => {
@@ -125,6 +135,23 @@ describe("GET /api/job-seekers — agent", () => {
     const body = await list("view=area");
     expect(lastAnd()).toContainEqual({ _id: { $in: [] } });
     expect(body.areaAssigned).toBe(false);
+  });
+
+  it("widens the area to the agent's super agent's whole region", async () => {
+    agentDoc = { ...agentDoc, superAgentId: SA_DOC };
+    await list();
+    const scope = lastAnd().find((c) => (c as { $or?: unknown[] }).$or) as { $or: unknown[] };
+    expect(scope.$or).toContainEqual({
+      $or: [{ regionCityId: { $in: [CITY, OTHER_CITY] } }],
+      profileVisibility: { $ne: "hidden" },
+    });
+  });
+
+  it("'In my area' works for an agent whose only region is their super agent's", async () => {
+    agentDoc = { _id: AGENT_DOC, assignedJobSeekerIds: [], assignedCityIds: [], assignedStateIds: [], superAgentId: SA_DOC };
+    const body = await list("view=area");
+    expect(lastAnd()).toContainEqual(areaClause("regionCityId", OTHER_CITY));
+    expect(body.areaAssigned).toBe(true);
   });
 
   it("marks each row as the agent's own or only in their area", async () => {
@@ -169,6 +196,14 @@ describe("canStaffAccessSeeker — area seekers are view-only", () => {
   it("a profile converted to another role is out of reach through the area", async () => {
     expect(await canStaffAccessSeeker(areaSeeker({ roleArchivedAt: new Date() }), { userId: "u1", role: "agent" }, "view")).toBe(false);
     expect(await canStaffAccessSeeker(areaSeeker({ regionStateId: STATE, roleArchivedAt: new Date() }), { userId: "u1", role: "super_agent" }, "view")).toBe(false);
+  });
+
+  it("agent may view, not manage, a seeker anywhere in their super agent's region", async () => {
+    agentDoc = { ...agentDoc, superAgentId: SA_DOC };
+    const seeker = areaSeeker({ regionCityId: OTHER_CITY });
+    expect(await canStaffAccessSeeker(seeker, { userId: "u1", role: "agent" }, "view")).toBe(true);
+    expect(await canStaffAccessSeeker(seeker, { userId: "u1", role: "agent" }, "manage")).toBe(false);
+    expect(await canStaffAccessSeeker({ ...seeker, profileVisibility: "hidden" }, { userId: "u1", role: "agent" }, "view")).toBe(false);
   });
 
   it("a seeker outside the area stays out", async () => {

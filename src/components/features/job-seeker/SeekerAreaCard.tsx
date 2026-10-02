@@ -6,19 +6,34 @@ import { Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SeekerAreaField, areaCountryName, type SeekerAreaValue } from "./SeekerAreaField";
+import { SeekerAreaField, areaCountryName, hasSeekerArea, type SeekerAreaValue } from "./SeekerAreaField";
 
 /**
  * The job seeker's area on their profile page (client report 2026-09-30, #5):
- * one line saying where they are, and a dialog to pick or change the city.
- * Agents whose territory covers it can then see the profile, unless it is
- * hidden.
+ * one line saying where they are, and a dialog to pick or change the city —
+ * or just the region when the city isn't listed. Agents whose territory covers
+ * it can then see the profile, unless it is hidden.
  */
 
 interface SavedArea {
-  cityId: string;
-  cityName: string;
+  /** null when the seeker picked only the region. */
+  cityId: string | null;
+  cityName: string | null;
+  stateId?: string;
+  stateName?: string;
   countryCode: string;
+}
+
+const EMPTY: SeekerAreaValue = { countryCode: "", city: null, region: null };
+
+function toDraft(area: SavedArea | null): SeekerAreaValue {
+  if (!area) return EMPTY;
+  if (area.cityId) return { countryCode: area.countryCode, city: { id: area.cityId, name: area.cityName ?? "" }, region: null };
+  return {
+    countryCode: area.countryCode,
+    city: null,
+    region: area.stateId ? { id: area.stateId, name: area.stateName ?? "" } : null,
+  };
 }
 
 interface SeekerAreaCardProps {
@@ -32,7 +47,7 @@ export function SeekerAreaCard({ onSaved }: SeekerAreaCardProps) {
   // undefined while loading; null when the seeker has not picked an area.
   const [area, setArea] = useState<SavedArea | null | undefined>(undefined);
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<SeekerAreaValue>({ countryCode: "", city: null });
+  const [draft, setDraft] = useState<SeekerAreaValue>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
@@ -47,14 +62,14 @@ export function SeekerAreaCard({ onSaved }: SeekerAreaCardProps) {
   }, []);
 
   const openDialog = () => {
-    setDraft(area ? { countryCode: area.countryCode, city: { id: area.cityId, name: area.cityName } } : { countryCode: "", city: null });
+    setDraft(toDraft(area ?? null));
     setError("");
     setOpen(true);
   };
 
   const save = async () => {
-    if (!draft.city) {
-      setError(t("seekerArea.pickCity"));
+    if (!hasSeekerArea(draft)) {
+      setError(t("seekerArea.required"));
       return;
     }
     setSaving(true);
@@ -62,7 +77,7 @@ export function SeekerAreaCard({ onSaved }: SeekerAreaCardProps) {
       const res = await fetch("/api/job-seekers/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cityId: draft.city.id }),
+        body: JSON.stringify(draft.city ? { cityId: draft.city.id } : { stateId: draft.region?.id }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as { area?: SavedArea | null };
@@ -77,7 +92,7 @@ export function SeekerAreaCard({ onSaved }: SeekerAreaCardProps) {
     }
   };
 
-  const place = area ? `${area.cityName}, ${areaCountryName(area.countryCode, locale)}` : "";
+  const place = area ? `${area.cityName ?? area.stateName ?? ""}, ${areaCountryName(area.countryCode, locale)}` : "";
 
   return (
     <>
