@@ -9,6 +9,27 @@ export interface ISmtpConfig {
   smtpSecure?: boolean;
 }
 
+export interface ISesSettings {
+  region?: string;
+  accessKeyId?: string;
+  /** Encrypted at rest (pre-save), decrypted by the post-find hooks, never selected by default. */
+  secretAccessKey?: string;
+  fromEmail?: string;
+  fromName?: string;
+  configurationSet?: string;
+}
+
+export interface IEmailProviderSettings {
+  /**
+   * Which system-wide transport sendEmail() uses. Employer overrides still win.
+   * Unset until an admin saves a choice, and treated as SMTP; deliberately no
+   * schema default, because setDefaultsOnInsert would write it on every settings
+   * upsert and make the env SES fallback unreachable.
+   */
+  provider?: "smtp" | "ses";
+  ses?: ISesSettings;
+}
+
 export interface ICommissionOverride {
   countryCode: string;
   /** Fallback rate applied to both roles when agentRate/superAgentRate are not specified */
@@ -68,6 +89,7 @@ export interface ISystemSettings extends Document {
    */
   legalTermsVersion?: string;
   smtp?: ISmtpConfig;
+  email?: IEmailProviderSettings;
   commissionOverrides?: ICommissionOverride[];
   updatedAt: Date;
 }
@@ -86,6 +108,17 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       smtpHost: { type: String, default: "smtp.gmail.com" },
       smtpPort: { type: Number, default: 587 },
       smtpSecure: { type: Boolean, default: false },
+    },
+    email: {
+      provider: { type: String, enum: ["smtp", "ses"] },
+      ses: {
+        region: { type: String, maxlength: 32 },
+        accessKeyId: { type: String, maxlength: 128 },
+        secretAccessKey: { type: String, select: false, maxlength: 500 },
+        fromEmail: { type: String, maxlength: 254 },
+        fromName: { type: String, maxlength: 100 },
+        configurationSet: { type: String, maxlength: 64 },
+      },
     },
     invoiceIssuer: {
       legalName: { type: String, maxlength: 200 },
@@ -120,22 +153,29 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
   { timestamps: true }
 );
 
-// Encrypt SMTP app password before saving
+// Encrypt secrets before saving
 SystemSettingsSchema.pre("save", function () {
   if (this.smtp?.smtpAppPassword) {
     this.smtp.smtpAppPassword = encryptIfPlain(this.smtp.smtpAppPassword);
   }
+  if (this.email?.ses?.secretAccessKey) {
+    this.email.ses.secretAccessKey = encryptIfPlain(this.email.ses.secretAccessKey);
+  }
 });
 
-// Decrypt SMTP app password after reading
-function decryptSmtp(doc: ISystemSettings | null) {
-  if (!doc?.smtp?.smtpAppPassword) return doc;
-  try { doc.smtp.smtpAppPassword = decrypt(doc.smtp.smtpAppPassword); } catch { /* already plain or corrupted */ }
+// Decrypt secrets after reading (no-op for fields that were not selected)
+function decryptSecrets(doc: ISystemSettings | null) {
+  if (doc?.smtp?.smtpAppPassword) {
+    try { doc.smtp.smtpAppPassword = decrypt(doc.smtp.smtpAppPassword); } catch { /* already plain or corrupted */ }
+  }
+  if (doc?.email?.ses?.secretAccessKey) {
+    try { doc.email.ses.secretAccessKey = decrypt(doc.email.ses.secretAccessKey); } catch { /* already plain or corrupted */ }
+  }
   return doc;
 }
 
-SystemSettingsSchema.post("findOne", function (doc) { decryptSmtp(doc); });
-SystemSettingsSchema.post("findOneAndUpdate", function (doc) { decryptSmtp(doc); });
+SystemSettingsSchema.post("findOne", function (doc) { decryptSecrets(doc); });
+SystemSettingsSchema.post("findOneAndUpdate", function (doc) { decryptSecrets(doc); });
 
 export const SystemSettings =
   mongoose.models.SystemSettings ||

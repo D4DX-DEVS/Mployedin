@@ -419,7 +419,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           </div>
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("agentColumn")}</TableHead>
                 <TableHead className="text-center">{t("requestsColumn")}</TableHead>
                 <TableHead className="text-center">{t("approvalColumn")}</TableHead>

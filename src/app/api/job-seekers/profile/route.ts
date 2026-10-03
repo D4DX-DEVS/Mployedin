@@ -7,10 +7,11 @@ import { logActivity } from "@/lib/audit/log";
 import ConsentLog from "@/models/ConsentLog";
 import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
+import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import { recomputeCompleteness } from "@/lib/jobSeeker/persistCompleteness";
-import { resolveEmployerRegion, type EmployerRegion } from "@/lib/agents/territoryCoverage";
+import { resolveSeekerArea, type SeekerAreaRegion } from "@/lib/agents/territoryCoverage";
 import { mergeEducationEntry, mergeExperienceEntry } from "@/lib/jobSeeker/wizardEntries";
 
 export const runtime = "nodejs";
@@ -87,19 +88,41 @@ const profileUpdateSchema = z.object({
   preferredCountries: z.array(z.string().max(10)).max(15).optional(),
   sectionVisibility: z.record(z.string(), z.boolean()).optional(),
   profileVisibility: z.enum(["visible", "hidden"]).optional(),
-  // The seeker's area: a catalogue city picked from the list. null clears it.
+  // The seeker's area: a catalogue city picked from the list, or just the
+  // region (state) when their city isn't listed. null clears it.
   cityId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(),
-}).strict();
+  stateId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(),
+}).strict().refine((body) => !(body.cityId && body.stateId), {
+  message: "Pick a city or a region, not both.",
+  path: ["stateId"],
+});
 
-interface SeekerArea { cityId: string; cityName: string; countryCode: string }
-
-/** The area a seeker picked, named for the picker: city, and its country. */
-function toArea(region: EmployerRegion | null): SeekerArea | null {
-  return region ? { cityId: String(region.cityId), cityName: region.cityName, countryCode: region.countryCode } : null;
+interface SeekerArea {
+  cityId: string | null;
+  cityName: string | null;
+  stateId: string;
+  stateName: string;
+  countryCode: string;
 }
 
-async function describeArea(cityId: unknown): Promise<SeekerArea | null> {
-  return cityId ? toArea(await resolveEmployerRegion({ cityId: String(cityId) })) : null;
+/** The area a seeker picked, named for the picker: city (or none), region, country. */
+function toArea(region: SeekerAreaRegion | null): SeekerArea | null {
+  return region
+    ? {
+        cityId: region.cityId ? String(region.cityId) : null,
+        cityName: region.cityName,
+        stateId: String(region.stateId),
+        stateName: region.stateName,
+        countryCode: region.countryCode,
+      }
+    : null;
+}
+
+async function describeArea(cityId: unknown, stateId: unknown): Promise<SeekerArea | null> {
+  // A city since taken off the list still leaves the region it was in.
+  const viaCity = cityId ? await resolveSeekerArea({ cityId: String(cityId) }) : null;
+  if (viaCity) return toArea(viaCity);
+  return stateId ? toArea(await resolveSeekerArea({ stateId: String(stateId) })) : null;
 }
 
 // ── GET — return own profile ──────────────────────────────────────────────────
@@ -117,7 +140,10 @@ async function GET(_req: NextRequest, ctx: { userId: string; role: string }) {
   // number we already had.
   const [account, area] = await Promise.all([
     User.findById(ctx.userId).select("phone").lean<{ phone?: string } | null>(),
-    describeArea((profile as { regionCityId?: unknown }).regionCityId),
+    describeArea(
+      (profile as { regionCityId?: unknown }).regionCityId,
+      (profile as { regionStateId?: unknown }).regionStateId,
+    ),
   ]);
   return NextResponse.json({ profile: { ...profile, phone: account?.phone ?? null, area } });
 }
@@ -133,17 +159,17 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   const {
     name, phone, onboardingComplete,
     education: eduInput, experience: expInput,
-    department, roleCategory, jobRole, cityId,
+    department, roleCategory, jobRole, cityId, stateId,
     ...seekerData
   } = parsedData;
 
   await connectDB();
 
-  // The area must be a real catalogue city — checked before anything is
-  // written, so a bad pick saves nothing.
-  const area = cityId ? await resolveEmployerRegion({ cityId }) : null;
-  if (cityId && !area) {
-    return NextResponse.json({ error: "Pick your city from the list." }, { status: 400 });
+  // The area must be a real catalogue city or region — checked before
+  // anything is written, so a bad pick saves nothing.
+  const area = cityId ? await resolveSeekerArea({ cityId }) : stateId ? await resolveSeekerArea({ stateId }) : null;
+  if ((cityId || stateId) && !area) {
+    return NextResponse.json({ error: cityId ? "Pick your city from the list." : "Pick your region from the list." }, { status: 400 });
   }
 
   // Consent history for the GDPR register: remember the previous marketing
@@ -160,6 +186,8 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   if (name) userUpdate.name = name;
   if (phone) userUpdate.phone = phone;
   if (Object.keys(userUpdate).length > 0) {
+    // A new number invalidates the WhatsApp id learned for the old one.
+    if (userUpdate.phone) await forgetWaIdOnPhoneChange(ctx.userId, userUpdate.phone);
     await User.findByIdAndUpdate(ctx.userId, userUpdate);
   }
 
@@ -174,16 +202,18 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     jsUpdate.isOnboarded = true;
   }
 
-  // Area: the picked city and its state (what agents' territories match on).
-  // The free-text location line follows the pick unless this save sets it.
+  // Area: the picked city and its state, or the region alone (what agents'
+  // territories match on). The free-text location line follows the pick
+  // unless this save sets it.
   if (area) {
     jsUpdate.regionCityId = area.cityId;
     jsUpdate.regionStateId = area.stateId;
     if (seekerData.currentLocation === undefined) {
+      const place = area.cityName ?? area.stateName;
       const country = area.countryCode ? new Intl.DisplayNames(["en"], { type: "region" }).of(area.countryCode) : "";
-      jsUpdate.currentLocation = country ? `${area.cityName}, ${country}` : area.cityName;
+      jsUpdate.currentLocation = country ? `${place}, ${country}` : place;
     }
-  } else if (cityId === null) {
+  } else if (cityId === null || stateId === null) {
     jsUpdate.regionCityId = null;
     jsUpdate.regionStateId = null;
   }
@@ -304,7 +334,7 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   return NextResponse.json({
     success: true,
     isOnboarded: updated.isOnboarded,
-    ...(cityId !== undefined ? { area: toArea(area) } : {}),
+    ...(cityId !== undefined || stateId !== undefined ? { area: toArea(area) } : {}),
     ...(Object.keys(entryIds).length ? { entryIds } : {}),
   });
 }

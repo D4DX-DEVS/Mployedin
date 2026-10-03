@@ -276,6 +276,8 @@ function CronJobsTab({
     reEngagement: { label: t("reEngagementEmailsLabel"), schedule: t("reEngagementSchedule"), desc: t("reEngagementDesc") },
     profileCompletion: { label: t("profileCompletionLabel"), schedule: t("profileCompletionSchedule"), desc: t("profileCompletionDesc") },
     weeklyDigest: { label: t("weeklyDigestLabel"), schedule: t("weeklyDigestSchedule"), desc: t("weeklyDigestDesc") },
+    emailSequenceSender: { label: t("emailSequenceSenderLabel"), schedule: t("emailSequenceSenderSchedule"), desc: t("emailSequenceSenderDesc") },
+    whatsappScheduler: { label: t("whatsappSchedulerLabel"), schedule: t("whatsappSchedulerSchedule"), desc: t("whatsappSchedulerDesc") },
   };
 
   return (

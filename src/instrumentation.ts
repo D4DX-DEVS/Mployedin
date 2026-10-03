@@ -6,11 +6,13 @@
 export async function register() {
   // Only validate in the Node.js runtime (skip Edge, where some secrets are absent).
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { validateEnv } = await import("@/lib/env");
+    const { validateEnv, collectEnvWarnings } = await import("@/lib/env");
     const { default: logger } = await import("@/lib/logger");
 
     // Validate critical environment variables at boot
     validateEnv();
+    // Gaps that do not stop the server (EMAIL_PROVIDER=ses with a SES_* value missing).
+    for (const warning of collectEnvWarnings()) logger.warn(warning);
 
     // Warn if optional rate-limiting configuration is missing
     if (!process.env.UPSTASH_REDIS_REST_URL) {
@@ -26,6 +28,9 @@ export async function register() {
       }
       if (!process.env.ERROR_ALERT_WEBHOOK_URL) {
         logger.warn("ERROR_ALERT_WEBHOOK_URL not configured — errors are logged but nobody is alerted");
+      }
+      if (process.env.WHATSAPP_ACCESS_TOKEN && !process.env.WHATSAPP_BUSINESS_ACCOUNT_ID) {
+        logger.warn("WHATSAPP_BUSINESS_ACCOUNT_ID not configured — WhatsApp template sync is disabled");
       }
     }
   }

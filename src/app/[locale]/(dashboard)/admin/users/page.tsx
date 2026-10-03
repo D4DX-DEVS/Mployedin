@@ -41,7 +41,7 @@ import { assignmentHref } from "@/lib/admin/assignmentLinks";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 
 interface User {
   _id: string;
@@ -138,8 +138,8 @@ export default function AdminUsersPage() {
     { header: t("roleTableHeader"), key: "role" },
     { header: t("statusTableHeader"), key: "isActive", formatter: (v) => v ? t("active") : t("inactive") },
     { header: t("localeTableHeader"), key: "locale" },
-    { header: t("exportHeaderLastLogin"), key: "lastLogin", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
-    { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderLastLogin"), key: "lastLogin", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
+    { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: users as unknown as Record<string, unknown>[],
@@ -754,12 +754,9 @@ export default function AdminUsersPage() {
                 </TableCell>
               </TableRow>
             ) : users.map((user) => {
-              /* formatDate's bare default is numeric (9/17/2026); the medium
-                 form this table has always shown stays readable, and passing the
-                 active locale is what the hardcoded "en-US" call blocked. */
-              const dateOpts = { month: "short", day: "numeric", year: "numeric" } as const;
-              const joined = formatDate(new Date(user.createdAt), dateOpts, locale);
-              const lastLogin = user.lastLogin ? formatDate(new Date(user.lastLogin), dateOpts, locale) : null;
+              // The standard list date (02 Oct 2026), in the viewer's locale.
+              const joined = formatListDate(new Date(user.createdAt), locale);
+              const lastLogin = user.lastLogin ? formatListDate(new Date(user.lastLogin), locale) : null;
 
               return (
                 <TableRow key={user._id} className={`${selected.includes(user._id) ? "bg-primary/5" : ""} group`}>

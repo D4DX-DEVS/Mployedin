@@ -12,6 +12,7 @@ import { generateInvoicePdf } from "@/lib/invoices/generatePdf";
 import { getInvoiceIssuer } from "@/lib/invoices/issuer";
 import { resolveBillToFallback } from "@/lib/invoices/billToFallback";
 import { sendEmail } from "@/lib/communications/email";
+import { escapeHtml } from "@/lib/security/html-escape";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
@@ -77,9 +78,11 @@ async function handler(
     { issuer, billToFallback },
   );
 
+  // Typed values (company name, invoice number, currency) are escaped where they enter the HTML below.
   const companyName = billing?.companyName ?? employer?.companyName ?? "Customer";
   const invNumber = invoice.invoiceNumber ?? "Invoice";
   const currency = invoice.currency ?? "AED";
+  const safe = { companyName: escapeHtml(companyName), invNumber: escapeHtml(invNumber), currency: escapeHtml(currency) };
   const total = (invoice.totalAmount ?? invoice.amount ?? 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
   });
@@ -97,17 +100,17 @@ async function handler(
     subject: `Invoice ${invNumber} from Mployedin`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2980b9;">Invoice ${invNumber}</h2>
-        <p>Dear ${companyName},</p>
-        <p>Please find attached your invoice <strong>${invNumber}</strong> for <strong>${currency} ${total}</strong>.</p>
+        <h2 style="color: #2980b9;">Invoice ${safe.invNumber}</h2>
+        <p>Dear ${safe.companyName},</p>
+        <p>Please find attached your invoice <strong>${safe.invNumber}</strong> for <strong>${safe.currency} ${total}</strong>.</p>
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
           <tr>
             <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Invoice Number</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee;">${invNumber}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${safe.invNumber}</td>
           </tr>
           <tr>
             <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Amount</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee;">${currency} ${total}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${safe.currency} ${total}</td>
           </tr>
           <tr>
             <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Due Date</td>

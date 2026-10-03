@@ -36,7 +36,7 @@ import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailV
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
 import { UninvoicedPlacementsQueue } from "@/components/features/invoices/UninvoicedPlacementsQueue";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -263,8 +263,8 @@ export default function AdminInvoicesPage() {
     { header: t("exportHeaderCompanyRevenue"), key: "platformRevenue" as keyof Invoice, formatter: v => String(v ?? 0) },
     { header: t("exportHeaderCurrency"), key: "currency" },
     { header: t("exportHeaderStatus"), key: "status" },
-    { header: t("exportHeaderDueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
-    { header: t("exportHeaderIssued"), key: "issuedAt", formatter: v => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderDueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatListDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderIssued"), key: "issuedAt", formatter: v => v ? formatListDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -433,7 +433,7 @@ export default function AdminInvoicesPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
+                  <TableRow className="border-border/80 bg-muted/30 hover:bg-muted/30">
                     <TableHead className="md:min-w-[120px]">
                       <SortableTableHeader label={t("tableHeaderInvoiceNumber")} active={sortBy === "invoiceNumber"} order={sortOrder} onClick={() => sortByColumn("invoiceNumber")} />
                     </TableHead>
@@ -487,7 +487,7 @@ export default function AdminInvoicesPage() {
                           ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell><StatusBadge status={inv.status} /></TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatListDate(new Date(inv.dueDate), locale) : "—"}</TableCell>
                         <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                           <RowActions
                             name={inv.invoiceNumber}

@@ -3,7 +3,9 @@ import { auth } from "@/lib/auth/config";
 import { connectDB } from "@/lib/db/mongoose";
 import McpClient from "@/models/McpClient";
 import { getAppBaseUrl, getMcpResourceUrl } from "@/lib/mcp/baseUrl";
-import { isValidPkceChallenge } from "@/lib/mcp/oauth";
+import { isAllowedMcpRedirectUri, isValidPkceChallenge } from "@/lib/mcp/oauth";
+import { getClientIp } from "@/lib/security/clientIp";
+import { MCP_RATE_LIMITS, mcpRateLimited } from "@/lib/mcp/rateLimit";
 
 const DEFAULT_LOCALE = "en";
 
@@ -24,6 +26,9 @@ function authorizeError(redirectUri: string, error: string, description: string,
  * is only minted after the user approves there.
  */
 export async function GET(req: NextRequest) {
+  const limited = await mcpRateLimited([[getClientIp(req.headers), MCP_RATE_LIMITS.authorizePerIp]]);
+  if (limited) return limited;
+
   const sp = req.nextUrl.searchParams;
   const clientId = sp.get("client_id") ?? "";
   const redirectUri = sp.get("redirect_uri") ?? "";
@@ -40,7 +45,9 @@ export async function GET(req: NextRequest) {
 
   await connectDB();
   const client = await McpClient.findOne({ clientId }).lean();
-  if (!client || !client.redirectUris.includes(redirectUri)) {
+  // isAllowedMcpRedirectUri again here: clients registered before the redirect
+  // host allow-list existed may still hold a redirect it would now refuse.
+  if (!client || !client.redirectUris.includes(redirectUri) || !isAllowedMcpRedirectUri(redirectUri)) {
     // Do NOT redirect on an unrecognized client/redirect_uri — that would turn
     // this endpoint into an open redirector.
     return NextResponse.json({ error: "invalid_request", error_description: "Unknown client_id or redirect_uri" }, { status: 400 });

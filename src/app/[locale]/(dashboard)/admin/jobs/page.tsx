@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { JobsFilterSheet } from "./_components/JobsFilterSheet";
 import { toUserFacingError } from "@/lib/errors/user-facing";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
 
 /* ------------------------------------------------------------------ */
@@ -328,7 +328,7 @@ export default function AdminJobsPage() {
     { header: t("location"), key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
     { header: t("categoryLabel"), key: "category", formatter: (v) => String(v ?? "—") },
     { header: t("applicantsCountLabel"), key: "applicantsCount", formatter: (v) => String(v ?? 0) },
-    { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
@@ -632,7 +632,7 @@ export default function AdminJobsPage() {
       ) : (
         <div className="space-y-3.5">
           {jobs.map((job) => {
-            const posted = formatDate(new Date(job.createdAt), { month: "short", day: "numeric", year: "numeric" }, locale);
+            const posted = formatListDate(new Date(job.createdAt), locale);
             const salaryLabel = formatSalary(job, t);
             const jobSummary = getJobSummary(job);
             const isExpanded = expandedJobs.has(job._id);
@@ -789,7 +789,7 @@ export default function AdminJobsPage() {
                     {selectedJob.employmentType && <Fact icon={Clock} label={t("type")} value={selectedJob.employmentType.replace(/_/g, " ")} />}
                     {selectedJob.workMode && <Fact icon={Globe} label={t("workMode")} value={selectedJob.workMode.replace(/_/g, " ")} />}
                     {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label={t("vacancies")} value={String(selectedJob.vacancies)} />}
-                    <Fact icon={Calendar} label={t("postedLabel")} value={formatDate(new Date(selectedJob.createdAt))} />
+                    <Fact icon={Calendar} label={t("postedLabel")} value={formatListDate(new Date(selectedJob.createdAt), locale)} />
                     <Fact icon={UserCheck} label={t("source")} value={getSourceLabel(selectedJob, t)} />
                   </div>
 

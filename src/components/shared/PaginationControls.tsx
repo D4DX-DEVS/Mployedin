@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/formatNumber";
 import { useParams } from "next/navigation";
+import type { ReactNode } from "react";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -46,6 +47,10 @@ interface PaginationControlsProps {
    *  filters rows client-side (e.g. interviews dedupe rounds), otherwise the
    *  footer claims a range wider than what the user can see. */
   shown?: number;
+  /** Replaces "Rows per page" where a page is not rows (a board's columns). */
+  sizeLabel?: string;
+  /** Replaces "Showing X–Y of Z" where that range would not be true. */
+  summary?: ReactNode;
 }
 
 export function PaginationControls({
@@ -57,6 +62,8 @@ export function PaginationControls({
   onLimitChange,
   className = "",
   shown,
+  sizeLabel,
+  summary,
 }: PaginationControlsProps) {
   const t = useTranslations("employerCommon");
   const { locale } = useParams<{ locale: string }>();
@@ -81,12 +88,12 @@ export function PaginationControls({
     >
       {/* Left: rows per page — label is desktop-only so phones keep one row */}
       <div className="flex items-center gap-2 text-muted-foreground leading-none">
-        <span className="hidden h-11 whitespace-nowrap sm:flex sm:items-center">{t("rowsPerPage")}</span>
+        <span className="hidden h-11 whitespace-nowrap sm:flex sm:items-center">{sizeLabel ?? t("rowsPerPage")}</span>
         <Select
           value={String(limit)}
           onValueChange={(v) => onLimitChange(Number(v))}
         >
-          <SelectTrigger className="h-11 w-[66px] sm:w-[74px]" aria-label={t("rowsPerPage")}>
+          <SelectTrigger className="h-11 w-[66px] sm:w-[74px]" aria-label={sizeLabel ?? t("rowsPerPage")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -101,11 +108,15 @@ export function PaginationControls({
 
       {/* Center: showing X-Y of Z — phones drop the words, keeping "1–10 / 26" */}
       <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        <span className="hidden sm:inline">{t("showing")} </span>
-        {formatNumber(from, locale)}–{formatNumber(to, locale)}
-        <span className="hidden sm:inline"> {t("of")} </span>
-        <span className="sm:hidden"> / </span>
-        {formatNumber(total, locale)}
+        {summary ?? (
+          <>
+            <span className="hidden sm:inline">{t("showing")} </span>
+            {formatNumber(from, locale)}–{formatNumber(to, locale)}
+            <span className="hidden sm:inline"> {t("of")} </span>
+            <span className="sm:hidden"> / </span>
+            {formatNumber(total, locale)}
+          </>
+        )}
       </span>
 
       {/* Right: navigation buttons */}

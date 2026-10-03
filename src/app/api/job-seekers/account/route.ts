@@ -17,6 +17,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
+import { eraseWhatsAppData } from "@/lib/gdpr/erasure";
 
 // ── GET — data export ─────────────────────────────────────────────────────────
 
@@ -75,6 +76,10 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
   const now = new Date();
 
   try {
+    // WhatsApp log rows and state, with the admin erasure's own helper. First: they are found by the phone
+    // nulled below. The number's STOP (suppression list) is kept while it is in force: it must outlive the account.
+    await eraseWhatsAppData(ctx.userId);
+
     // Pseudonymise the User record
     await User.findByIdAndUpdate(ctx.userId, {
       name: "Deleted User",

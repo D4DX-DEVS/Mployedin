@@ -1,6 +1,6 @@
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import { getSuperAgentScope, getSuperAgentTerritory, seekerInRegion } from "@/lib/auth/agentRestrictions";
+import { getAgentSeekerArea, getSuperAgentScope, getSuperAgentTerritory, seekerInRegion } from "@/lib/auth/agentRestrictions";
 import type mongoose from "mongoose";
 
 /** The fields of a JobSeeker document that decide which staff member owns it. */
@@ -33,7 +33,8 @@ const within = (id: unknown, ids: unknown[]): boolean => ids.some((x) => same(x,
  * (a referral never writes agentId), though the list showed them.
  *  - admin: everyone
  *  - agent: assigned (agentId or assignedJobSeekerIds) or referred by them;
- *    to view, also anyone visible whose area is in the agent's region
+ *    to view, also anyone visible whose area is in the agent's region or their
+ *    super agent's (getAgentSeekerArea)
  *  - super_agent: owned or referred by an agent in scope, or referred by them;
  *    to view, also anyone visible whose area is in their territory
  *  - anyone else: no one (self-service lives at /api/job-seeker/profile)
@@ -47,12 +48,13 @@ export async function canStaffAccessSeeker(
 
   if (ctx.role === "agent") {
     const agent = await Agent.findOne({ userId: ctx.userId })
-      .select("_id assignedJobSeekerIds assignedCityIds assignedStateIds")
+      .select("_id assignedJobSeekerIds assignedCityIds assignedStateIds superAgentId")
       .lean<{
         _id: unknown;
         assignedJobSeekerIds?: unknown[];
         assignedCityIds?: mongoose.Types.ObjectId[];
         assignedStateIds?: mongoose.Types.ObjectId[];
+        superAgentId?: unknown;
       } | null>();
     if (!agent) return false;
     const owns =
@@ -60,10 +62,7 @@ export async function canStaffAccessSeeker(
       same(seeker.referral?.agentId, agent._id) ||
       within(seeker._id, agent.assignedJobSeekerIds ?? []);
     if (owns || access !== "view" || seeker.roleArchivedAt) return owns;
-    return seekerInRegion(seeker, {
-      assignedCityIds: agent.assignedCityIds ?? [],
-      assignedStateIds: agent.assignedStateIds ?? [],
-    });
+    return seekerInRegion(seeker, await getAgentSeekerArea(agent));
   }
 
   if (ctx.role === "super_agent") {

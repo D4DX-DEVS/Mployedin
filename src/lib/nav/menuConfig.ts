@@ -421,6 +421,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "أتمتة البريد الإلكتروني والمراقبة",
               },
               {
+                title: "WhatsApp",
+                titleAr: "واتساب",
+                href: p("/admin/settings/whatsapp"),
+                icon: "MessageSquare",
+                description: "Official WhatsApp: automations, schedules, templates, logs",
+                descriptionAr: "واتساب الرسمي: الأتمتة والجداول والقوالب والسجلات",
+              },
+              {
                 title: "Webhooks",
                 titleAr: "الويب هوك",
                 href: p("/admin/webhooks"),

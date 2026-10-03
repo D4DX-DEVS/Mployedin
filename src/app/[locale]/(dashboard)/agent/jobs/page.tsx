@@ -32,6 +32,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useTableExport } from "@/hooks/useTableExport";
 import { useAiFilterSearch } from "@/hooks/useAiFilterSearch";
 import type { ExportColumn } from "@/lib/export";
+import { disambiguateEmployerLabels } from "@/lib/employers/optionLabels";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 
 interface JobItem {
@@ -128,11 +129,12 @@ export default function AgentJobsPage() {
     fetch("/api/employers?limit=200")
       .then((r) => (r.ok ? r.json() : { employers: [] }))
       .then((data) => {
-        const list = (data.employers ?? []) as { _id: string; companyName?: string; employer?: { companyName?: string } }[];
-        setEmployers(list.map((e) => ({
+        const list = (data.employers ?? []) as { _id: string; companyName?: string; email?: string; employer?: { companyName?: string } }[];
+        setEmployers(disambiguateEmployerLabels(list.map((e) => ({
           value: String(e._id),
           label: e.companyName ?? e.employer?.companyName ?? common("unknown"),
-        })));
+          hint: e.email,
+        }))));
       })
       .catch(() => { /* the employer filter is optional */ });
   }, [common]);

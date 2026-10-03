@@ -19,10 +19,10 @@ import {
   Package, Activity,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useConfirm } from "@/hooks/useConfirm";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
+import { formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
 import { formatFileSize } from "@/lib/ui/fileSize";
 
 /* ------------------------------------------------------------------ */
@@ -73,6 +73,7 @@ export default function AdminResourcesPage() {
   const t = useTranslations("resources");
   const tc = useTranslations("common");
   const ta = useTranslations("a11y");
+  const locale = useLocale();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const [items, setItems] = useState<Resource[]>([]);
@@ -390,7 +391,7 @@ export default function AdminResourcesPage() {
                   ))}</div>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground pt-2 border-t">{t("uploadedBy")} {detailItem.uploadedBy?.name} &middot; {formatDate(new Date(detailItem.createdAt))}</p>
+              <p className="text-xs text-muted-foreground pt-2 border-t">{t("uploadedBy")} {detailItem.uploadedBy?.name} &middot; {formatListDate(new Date(detailItem.createdAt), locale)}</p>
             </div>
             <DialogFooter><Button variant="ghost" onClick={() => setDetailItem(null)}>{tc("close")}</Button></DialogFooter>
           </>)}

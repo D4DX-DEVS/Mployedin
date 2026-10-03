@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import {
   ArrowRight,
   Clock,
@@ -20,10 +21,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/useConfirm";
-import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
+import { formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
 const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "system"] as const;
@@ -58,8 +60,18 @@ interface BroadcastTemplate {
   createdAt: string;
 }
 
+/** An approved WhatsApp template from GET /api/admin/whatsapp/templates. */
+interface WaTemplate {
+  _id: string;
+  name: string;
+  language: string;
+  bodyParamCount: number;
+  bodyText: string;
+}
+
 export default function AdminCommunicationsPage() {
   const tr = useTranslations("adminCommunications");
+  const locale = useLocale();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [tab, setTab] = useState<"broadcast" | "templates" | "history">("broadcast");
   const [form, setForm] = useState<BroadcastForm>({
@@ -82,6 +94,46 @@ export default function AdminCommunicationsPage() {
   const [templateForm, setTemplateForm] = useState({ name: "", type: "system", subject: "", body: "" });
   const [templateSaving, setTemplateSaving] = useState(false);
   const [templateError, setTemplateError] = useState("");
+  // null = not loaded yet (or the load failed, see waLoadFailed); [] = loaded, none approved.
+  const [waTemplates, setWaTemplates] = useState<WaTemplate[] | null>(null);
+  const [waLoadFailed, setWaLoadFailed] = useState(false);
+  const [waTemplateId, setWaTemplateId] = useState<string>("");
+  const [waParams, setWaParams] = useState<string[]>([]);
+  const waSelected = form.channels.includes("whatsapp");
+  const waTemplate = waTemplates?.find((t) => t._id === waTemplateId) ?? null;
+  // A blank parameter makes Meta reject the message for every recipient.
+  const waParamsBlank = waSelected && waTemplate !== null && waParams.some((p) => p.trim() === "");
+  const waUsesMessage = waSelected && waParams.some((p) => /\{\{\s*message\s*\}\}/.test(p));
+
+  // The approved-template list is only needed once WhatsApp is picked, and is kept for the rest of the visit.
+  // A failure parks in waLoadFailed (no refetch loop); Retry clears it, which runs this effect again.
+  useEffect(() => {
+    if (!waSelected || waTemplates !== null || waLoadFailed) return;
+    let cancelled = false;
+    fetch("/api/admin/whatsapp/templates?status=APPROVED")
+      .then(async (r) => (r.ok ? ((await r.json()) as { templates?: WaTemplate[] }).templates ?? [] : Promise.reject(new Error("load"))))
+      .then((list) => {
+        if (!cancelled) setWaTemplates(list);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWaLoadFailed(true);
+        toast.error(tr("whatsappTemplatesLoadError"));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [waSelected, waTemplates, waLoadFailed, tr]);
+
+  const retryWaTemplates = () => setWaLoadFailed(false);
+
+  const pickWaTemplate = (id: string) => {
+    setWaTemplateId(id);
+    const t = waTemplates?.find((x) => x._id === id);
+    const count = t?.bodyParamCount ?? 0;
+    // Pre-fill the first two body parameters with the usual greeting and message tokens.
+    setWaParams(Array.from({ length: count }, (_, i) => (i === 0 ? "{{firstName}}" : i === 1 ? "{{message}}" : "")));
+  };
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -158,6 +210,15 @@ export default function AdminCommunicationsPage() {
     const targetAll = form.targetRoles.includes("all");
     const targetRoles = targetAll ? undefined : form.targetRoles;
 
+    if (waSelected && !waTemplate) {
+      toast.error(tr("whatsappTemplateRequired"));
+      return;
+    }
+    if (waParamsBlank) {
+      toast.error(tr("whatsappParamsRequired"));
+      return;
+    }
+
     // A broadcast cannot be recalled and defaults to every user, and Enter in
     // the title field submits the form — so show who it reaches first.
     let recipientCount: number | null = null;
@@ -191,6 +252,7 @@ export default function AdminCommunicationsPage() {
           targetAll,
           targetRoles,
           channels: form.channels,
+          whatsapp: waSelected && waTemplate ? { templateName: waTemplate.name, language: waTemplate.language, params: waParams } : undefined,
         }),
       });
 
@@ -198,12 +260,22 @@ export default function AdminCommunicationsPage() {
         const data = await res.json();
         setSentCount(data.sent ?? 0);
         setForm({ title: "", message: "", targetRoles: ["all"], channels: ["in_app"] });
+        setWaTemplateId("");
+        setWaParams([]);
         toast.success(tr("sentToUsers", { count: data.sent ?? 0 }));
         void loadHistory();
         setTimeout(() => setSentCount(null), 4000);
       } else {
-        const data = await res.json();
-        const msg = data.error ?? tr("broadcastFailed");
+        // Fixed copy: the server's validation text ("Validation failed") is not for admins.
+        // The codes read: whatsapp_disabled (WhatsApp is switched off in its own settings) and
+        // duplicate_broadcast (this admin sent the same broadcast less than a minute ago).
+        const data = (await res.json().catch(() => ({}))) as { error?: unknown };
+        const msg =
+          res.status === 409 && data.error === "whatsapp_disabled"
+            ? tr("whatsappDisabled")
+            : res.status === 409 && data.error === "duplicate_broadcast"
+              ? tr("duplicateBroadcast")
+              : tr("broadcastFailed");
         setError(msg);
         toast.error(msg);
       }
@@ -291,12 +363,12 @@ export default function AdminCommunicationsPage() {
   const selectedChannels = form.channels.length;
   const quickTemplates = templates.slice(0, 3);
 
-  // WhatsApp is not connected to broadcasts yet: shown, but not selectable.
-  const CHANNEL_OPTIONS = [
+  // `comingSoon` stays for channels shown before their worker leg exists.
+  const CHANNEL_OPTIONS: ReadonlyArray<{ key: string; label: string; comingSoon: boolean }> = [
     { key: "in_app", label: tr("inAppChannel"), comingSoon: false },
     { key: "email", label: tr("emailChannel"), comingSoon: false },
-    { key: "whatsapp", label: tr("whatsappChannel"), comingSoon: true },
-  ] as const;
+    { key: "whatsapp", label: tr("whatsappChannel"), comingSoon: false },
+  ];
 
   const TABS = [
     { key: "broadcast" as const, label: tr("broadcastTabLabel"), icon: Radio },
@@ -383,7 +455,7 @@ export default function AdminCommunicationsPage() {
               </div>
               <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
                 <p className="font-semibold">{tr("channelsSelected", { count: form.channels.length })}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{tr("channelDeliveryNote")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{waSelected ? tr("channelDeliveryNoteWhatsApp") : tr("channelDeliveryNote")}</p>
               </div>
             </div>
 
@@ -488,6 +560,50 @@ export default function AdminCommunicationsPage() {
                   );
                 })}
               </div>
+              {waSelected && (
+                <div className="mt-3 space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                  {waLoadFailed ? (
+                    <ErrorState
+                      className="py-4 sm:py-6"
+                      title={tr("whatsappTemplatesLoadErrorTitle")}
+                      onRetry={retryWaTemplates}
+                    />
+                  ) : (
+                    <div className="space-y-1">
+                      <Label htmlFor="wa-template">{tr("whatsappTemplateLabel")}</Label>
+                      <Select value={waTemplateId} onValueChange={pickWaTemplate} disabled={!waTemplates?.length}>
+                        <SelectTrigger id="wa-template" aria-label={tr("whatsappTemplateLabel")}>
+                          <SelectValue placeholder={waTemplates && waTemplates.length === 0 ? tr("whatsappNoApprovedTemplates") : tr("whatsappTemplatePlaceholder")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(waTemplates ?? []).map((t) => (
+                            <SelectItem key={t._id} value={t._id}>{`${t.name} · ${t.language}`}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {waTemplate && waTemplate.bodyParamCount > 0 && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {waParams.map((value, i) => (
+                        <div key={i} className="space-y-1">
+                          <Label htmlFor={`wa-param-${i}`}>{tr("whatsappParamLabel", { index: i + 1 })}</Label>
+                          <Input
+                            id={`wa-param-${i}`}
+                            aria-label={tr("whatsappParamLabel", { index: i + 1 })}
+                            value={value}
+                            onChange={(e) => setWaParams((prev) => prev.map((p, j) => (j === i ? e.target.value : p)))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {waTemplate && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{waTemplate.bodyText}</p>}
+                  <p className="text-xs text-muted-foreground">{tr("whatsappTokensHelp")}</p>
+                  {waUsesMessage && <p className="text-xs text-muted-foreground">{tr("whatsappMessageLimitNote")}</p>}
+                  <p className="text-xs text-muted-foreground">{tr("whatsappRecipientsNote")}</p>
+                </div>
+              )}
             </div>
 
             {error ? (
@@ -498,13 +614,15 @@ export default function AdminCommunicationsPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-muted-foreground">
-                {sentCount !== null ? (
+                {waParamsBlank ? (
+                  <span role="status" className="font-medium text-amber-700">{tr("whatsappParamsRequired")}</span>
+                ) : sentCount !== null ? (
                   <span className="font-medium text-emerald-600">{tr("sentToUsers", { count: sentCount })}</span>
                 ) : (
                   tr("messagesStored")
                 )}
               </div>
-              <Button type="submit" disabled={sending} size="lg" className="gap-2 rounded-xl px-5">
+              <Button type="submit" disabled={sending || waParamsBlank} size="lg" className="gap-2 rounded-xl px-5">
                 <Send className="h-4 w-4" />
                 {sending ? tr("sending") : tr("sendNow")}
               </Button>
@@ -704,7 +822,7 @@ export default function AdminCommunicationsPage() {
                       </div>
                       <p className="text-sm font-medium text-foreground">{template.subject}</p>
                       <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{template.body}</p>
-                      <p className="text-xs text-muted-foreground">{tr("createdOn", { date: formatDate(new Date(template.createdAt)) })}</p>
+                      <p className="text-xs text-muted-foreground">{tr("createdOn", { date: formatListDate(new Date(template.createdAt), locale) })}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">

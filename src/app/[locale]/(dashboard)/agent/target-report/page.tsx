@@ -2,25 +2,23 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend,
 } from "recharts";
 import {
   Building2, Users,
-  CalendarDays, RotateCcw, FileText, X, Target,
+  CalendarDays, FileText, Target,
   CircleDollarSign, Activity,
   ArrowUpRight, ArrowDownRight, Minus, TrendingUp, Trophy,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import {
@@ -134,9 +132,10 @@ export default function AgentTargetReportPage() {
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
-  const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all";
+  const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all" || yearFilter !== currentYear;
 
   function clearFilters() {
+    setYearFilter(currentYear);
     setQuarterFilter("all");
     setCategoryFilter("all");
   }
@@ -313,54 +312,61 @@ export default function AgentTargetReportPage() {
       </section>
 
       {/* ═══════ TOOLBAR ═══════ */}
-      <TableToolbar
-        title={t("monthlyBreakdownTitle")}
-        description={t("reportFilterHint")}
+      {/* The standard filter row: year, quarter and category always in sight
+          (they sat behind Show/Hide), Print in the Export menu, and Clear
+          resets the year too. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0 print:hidden"
+        onClear={hasActiveFilters ? clearFilters : undefined}
+        clearLabel={t("clearFilters")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        hasActiveFilters={hasActiveFilters}
-        right={
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 gap-1.5 rounded-lg print:hidden">
-            <FileText className="h-3.5 w-3.5" /> Print
-          </Button>
-        }
-        actions={hasActiveFilters ? (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground">
-            <X className="h-3.5 w-3.5 mr-1" /> {t("clearFilters")}
-          </Button>
-        ) : undefined}
-        filterContent={
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
-            </div>
-            <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allQuarters")}</SelectItem>
-                <SelectItem value="1">{t("q1Quarter")}</SelectItem>
-                <SelectItem value="2">{t("q2Quarter")}</SelectItem>
-                <SelectItem value="3">{t("q3Quarter")}</SelectItem>
-                <SelectItem value="4">{t("q4Quarter")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allCategories")}</SelectItem>
-                <SelectItem value="employer">{t("categoryEmployer")}</SelectItem>
-                <SelectItem value="employee">{t("categoryEmployee")}</SelectItem>
-                <SelectItem value="finance">{t("categoryFinance")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="ghost" size="sm" onClick={() => setYearFilter(currentYear)} disabled={yearFilter === currentYear} className="h-9 gap-1.5 text-xs">
-              <RotateCcw className="h-3.5 w-3.5" /> {t("resetYear")}
-            </Button>
-          </div>
-        }
-      />
+        exportExtra={(
+          <DropdownMenuItem onClick={() => window.print()}>
+            <FileText className="h-4 w-4" />
+            {t("print")}
+          </DropdownMenuItem>
+        )}
+      >
+        <div className="relative min-w-0 max-w-32 flex-[1_1_6rem]">
+          <CalendarDays className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            type="number"
+            aria-label={t("year")}
+            value={yearFilter}
+            onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)}
+            className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
+          />
+        </div>
+        <SearchableSelect
+          id="agent-target-report-quarter"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allQuarters") },
+            { value: "1", label: t("q1Quarter") },
+            { value: "2", label: t("q2Quarter") },
+            { value: "3", label: t("q3Quarter") },
+            { value: "4", label: t("q4Quarter") },
+          ]}
+          value={quarterFilter}
+          onValueChange={setQuarterFilter}
+          placeholder={t("quarter")}
+        />
+        <SearchableSelect
+          id="agent-target-report-category"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allCategories") },
+            { value: "employer", label: t("categoryEmployer") },
+            { value: "employee", label: t("categoryEmployee") },
+            { value: "finance", label: t("categoryFinance") },
+          ]}
+          value={categoryFilter}
+          onValueChange={setCategoryFilter}
+          placeholder={t("category")}
+        />
+      </InlineFilterBar>
 
       {/* ═══════ Progress Rings ═══════ */}
       <section className="workspace-glass-panel rounded-2xl panel-body">

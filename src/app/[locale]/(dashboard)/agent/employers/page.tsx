@@ -11,17 +11,15 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
-import { Building2, Check, Copy, ExternalLink, LayoutGrid, Link2, Loader2, Power, PowerOff, Table2, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, Link2, Loader2, Power, PowerOff, UserPlus } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { ViewToggle } from "@/components/shared/ViewToggle";
-import { EmployerCardGrid } from "./_components/EmployerCardGrid";
 import { EmployerTable } from "./_components/EmployerTable";
-import { useEmployerView } from "./_components/useEmployerView";
 import type { Employer, EmployerListProps } from "./_components/types";
 
 const getEmployerFields = (t: ReturnType<typeof useTranslations>): CrudField[] => [
@@ -57,7 +55,7 @@ export default function AgentEmployersPage() {
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
-  const [view, setView] = useEmployerView();
+  const [loadError, setLoadError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editEmployer, setEditEmployer] = useState<Employer | null>(null);
   const [onboardOpen, setOnboardOpen] = useState(false);
@@ -103,6 +101,7 @@ export default function AgentEmployersPage() {
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
@@ -111,7 +110,12 @@ export default function AgentEmployersPage() {
         const data = await res.json();
         setEmployers(data.employers ?? []);
         pagination.updateTotal(data.pagination?.total ?? data.total ?? data.employers?.length ?? 0);
+      } else {
+        // Was ignored: a failed load read as "no employers yet".
+        setLoadError(true);
       }
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -138,7 +142,13 @@ export default function AgentEmployersPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog(t("deleteEmployerConfirm"));
     if (!ok) return;
-    await fetch(`/api/employers/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/employers/${id}`, { method: "DELETE" });
+    // Unchecked before: a refused delete left the row with no word on why.
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? t("deleteEmployerFailed"));
+      return;
+    }
     loadEmployers();
   };
 
@@ -335,35 +345,25 @@ export default function AgentEmployersPage() {
         </section>
       )}
 
-      {/* Bare toolbar row, not a panel: the panel's label + heading +
-          description restated the page title three times above one search box. */}
-      <TableToolbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder={t("searchEmployersPlaceholder")}
+      {/* One table, like admin's (owner, 2026-10-02): the card grid it could
+          switch to carried an inline Delete, and two layouts had to be kept
+          in step for every action. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={search ? () => setSearch("") : undefined}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        right={
-          <ViewToggle
-            ariaLabel={t("viewToggleLabel")}
-            active={view}
-            options={[
-              { key: "cards", label: t("viewCards"), icon: LayoutGrid, onSelect: () => setView("cards") },
-              { key: "table", label: t("viewTable"), icon: Table2, onSelect: () => setView("table") },
-            ]}
-          />
-        }
-      />
+      >
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchEmployersPlaceholder")} />
+      </InlineFilterBar>
 
-      {!loading && employers.length === 0 ? (
-        <section className="workspace-empty-state rounded-3xl p-10 text-center">
-          <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />
-          <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
+      {loadError ? (
+        <section className="workspace-panel-surface rounded-2xl p-6">
+          <ErrorState onRetry={() => void loadEmployers()} />
         </section>
       ) : (
-        view === "table" ? <EmployerTable {...listProps} /> : <EmployerCardGrid {...listProps} />
+        <EmployerTable {...listProps} />
       )}
 
       <PaginationControls

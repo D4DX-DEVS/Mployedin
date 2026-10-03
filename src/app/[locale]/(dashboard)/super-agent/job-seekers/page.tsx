@@ -16,7 +16,7 @@ import {
   Users, Briefcase, GraduationCap,
   Star, MapPin, Mail,
 } from "lucide-react";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
@@ -24,6 +24,8 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { ExportColumn } from "@/lib/export";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 
 /* ------------------------------------------------------------------ */
@@ -152,6 +154,24 @@ export default function SuperAgentJobSeekersPage() {
     { label: t("experienced"), value: totalStats.withExperience, note: t("experiencedHelper"), icon: Briefcase },
   ];
 
+  // The columns on screen, nothing more: this list is region-scoped candidate
+  // data (see CandidateDataNotice), so the export does not widen it.
+  const exportColumns: ExportColumn<JobSeekerItem>[] = [
+    { header: tc("name"), key: "fullName" },
+    { header: tc("email"), key: "email" },
+    { header: tc("location"), key: "location", formatter: (_v, row) => [row.location, row.country].filter(Boolean).join(", ") },
+    { header: t("currentRole"), key: "currentJobTitle" },
+    { header: tc("experience"), key: "experienceYears", formatter: (_v, row) => row.experienceYears ? String(row.experienceYears) : "" },
+    { header: t("profile"), key: "profileCompletion", formatter: (_v, row) => `${row.profileCompletion ?? 0}%` },
+    { header: tc("date"), key: "createdAt", formatter: (_v, row) => formatListDate(row.createdAt) },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: seekers as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-job-seekers",
+    title: t("pageTitle"),
+  });
+
   return (
     <div className="page-container">
       <SuperAgentPageIntro
@@ -168,6 +188,9 @@ export default function SuperAgentJobSeekersPage() {
       <InlineFilterBar
         className="workspace-panel-surface rounded-2xl border-b-0"
         onClear={(filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all") ? handleClearFilters : undefined}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
       >
         <InlineFilterSearch
           value={filters.search}
@@ -289,23 +312,23 @@ export default function SuperAgentJobSeekersPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(s.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{formatListDate(s.createdAt)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
         )}
-
-        <PaginationControls
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          limit={pagination.limit}
-          total={pagination.total}
-          onPageChange={pagination.setPage}
-          onLimitChange={pagination.setLimit}
-        />
       </SuperAgentSection>
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        limit={pagination.limit}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

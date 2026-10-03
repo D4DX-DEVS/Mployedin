@@ -12,19 +12,23 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, Handshake, ChevronDown, ChevronUp, Edit2, Eye, FileText, Filter, Inbox, MapPin, Search, UserRoundSearch, Users, X } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Inbox, MapPin, UserRoundSearch, Users } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import type { ReferralSummary } from "@/lib/referrals/summary";
@@ -57,11 +61,10 @@ function getCurrentTitle(s: JobSeeker): string | undefined {
 // These will be built inside the component to use translations
 
 export default function AgentJobSeekersPage() {
+  const locale = useLocale();
   const t = useTranslations("agentJobSeekers");
   const tf = useTranslations("formErrors");
-  const locale = useLocale();
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
   const { can } = usePermissions();
   const pagination = usePagination();
   const [seekers, setSeekers] = useState<JobSeeker[]>([]);
@@ -204,7 +207,7 @@ export default function AgentJobSeekersPage() {
     { header: t("tableHeaderTopSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
     { header: t("tableHeaderAvailability"), key: "availabilityStatus" },
     { header: t("tableHeaderProfile"), key: "profileCompleteness" },
-    { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v), locale) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -214,7 +217,7 @@ export default function AgentJobSeekersPage() {
     title: t("exportTitle"),
   });
 
-  const completenessColor = (pct: number) => "bg-primary";
+  const completenessColor = (_pct: number) => "bg-primary";
 
   const availabilityLabel = (val?: string) => AVAILABILITY_OPTIONS.find((o) => o.value === val)?.label ?? val ?? "\u2014";
 
@@ -239,301 +242,214 @@ export default function AgentJobSeekersPage() {
 
       <WorkspaceTabs tabs={viewTabs} ariaLabel={t("viewLabel")} activeKey={view} />
 
-      {/* One panel: privacy notice, search, filters and the table together.
-          The notice was a full-width text banner and the filters had their own
-          card — three stacked blocks before the first profile row. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
-            {/* Privacy detail at the point candidate data is shown, as an icon +
-                popover instead of a banner that pushed the list off-screen. */}
-            <CandidateDataNotice variant="candidateList" compact />
-          </div>
-          <TableToolbar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={t("searchPlaceholder")}
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="flex-1"
-          />
-
-          <Button
-            variant={showFilters ? "default" : "outline"}
-            size="sm"
-            className="gap-2 rounded-xl"
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            {tc("filter")}
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[11px]">{activeFilterCount}</Badge>
-            )}
-            {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </Button>
-
-          {activeFilterCount > 0 && (
-            <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={clearFilters}>
-              <X className="h-3 w-3" /> {t("clearAllFilters")}
-            </Button>
-          )}
-        </div>
-
-        {/* Collapsible filter panel */}
-        {/* data-table-toolbar opts this panel into the shared mobile filter
-            rules (globals.css): two-up instead of seven full-width rows. */}
-        {showFilters && (
-          <div data-table-toolbar="simple" className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 sm:grid-cols-2 lg:grid-cols-4 card-pad">
-            {/* Availability */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterAvailabilityLabel")}</label>
-              <Select value={availability} onValueChange={setAvailability}>
-                <SelectTrigger className="h-9 rounded-xl text-sm">
-                  <SelectValue placeholder={t("filterAvailabilityPlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {AVAILABILITY_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {availability && (
-                <button className="text-[11px] text-muted-foreground underline" onClick={() => setAvailability("")}>{tc("close")}</button>
-              )}
-            </div>
-
-            {/* Job type preference */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterJobTypeLabel")}</label>
-              <Select value={jobType} onValueChange={setJobType}>
-                <SelectTrigger className="h-9 rounded-xl text-sm">
-                  <SelectValue placeholder={t("filterJobTypePlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {JOB_TYPE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {jobType && (
-                <button className="text-[11px] text-muted-foreground underline" onClick={() => setJobType("")}>{tc("close")}</button>
-              )}
-            </div>
-
-            {/* Location */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("country")}</label>
-              <div className="relative">
-                <MapPin className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder={t("filterLocationPlaceholder")}
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                  className="h-9 rounded-xl pl-8 text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Skills */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterSkillsLabel")}</label>
-              <Input
-                placeholder={t("filterSkillsPlaceholder")}
-                value={skillsFilter}
-                onChange={(e) => setSkillsFilter(e.target.value)}
-                className="h-9 rounded-xl text-sm"
-              />
-              <p className="text-[11px] text-muted-foreground">{t("filterSkillsHint")}</p>
-            </div>
-
-            {/* Profile completeness range */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterProfileLabel")}</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={0} max={100}
-                  value={minProfile}
-                  onChange={(e) => setMinProfile(Math.max(0, Math.min(100, Number(e.target.value))))}
-                  className="h-9 w-20 rounded-xl text-sm text-center"
-                />
-                <span className="text-xs text-muted-foreground">{t("filterProfileTo")}</span>
-                <Input
-                  type="number"
-                  min={0} max={100}
-                  value={maxProfile}
-                  onChange={(e) => setMaxProfile(Math.max(0, Math.min(100, Number(e.target.value))))}
-                  className="h-9 w-20 rounded-xl text-sm text-center"
-                />
-              </div>
-            </div>
-
-            {/* Has CV */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterHasCVLabel")}</label>
-              <Button
-                variant={hasCV ? "default" : "outline"}
-                size="sm"
-                className="gap-2 rounded-xl px-4 text-sm"
-                onClick={() => setHasCV((v) => !v)}
-              >
-                <FileText className="h-3.5 w-3.5" />
-                {hasCV ? t("filterCVUploadedOnly") : tc("all")}
-              </Button>
-            </div>
-
-            {/* Sort */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterSortLabel")}</label>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="h-9 rounded-xl text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SORT_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        more={(
+          <>
+            <SearchableSelect
+              id="agent-seekers-availability"
+              className={INLINE_FILTER_CONTROL}
+              options={AVAILABILITY_OPTIONS}
+              value={availability}
+              onValueChange={(v) => { setAvailability(v); pagination.resetPage(); }}
+              placeholder={t("filterAvailabilityPlaceholder")}
+            />
+            <SearchableSelect
+              id="agent-seekers-jobtype"
+              className={INLINE_FILTER_CONTROL}
+              options={JOB_TYPE_OPTIONS}
+              value={jobType}
+              onValueChange={(v) => { setJobType(v); pagination.resetPage(); }}
+              placeholder={t("filterJobTypePlaceholder")}
+            />
+            <Input
+              aria-label={t("filterLocationPlaceholder")}
+              placeholder={t("filterLocationPlaceholder")}
+              value={locationFilter}
+              onChange={(e) => { setLocationFilter(e.target.value); pagination.resetPage(); }}
+              className={`${INLINE_FILTER_CONTROL} shadow-none`}
+            />
+            <Input
+              aria-label={t("filterSkillsPlaceholder")}
+              placeholder={t("filterSkillsPlaceholder")}
+              value={skillsFilter}
+              onChange={(e) => { setSkillsFilter(e.target.value); pagination.resetPage(); }}
+              className={`${INLINE_FILTER_CONTROL} shadow-none`}
+            />
+            <Select value={sortBy} onValueChange={(v) => { setSortBy(v); pagination.resetPage(); }}>
+              <SelectTrigger aria-label={t("filterSortLabel")} className={INLINE_FILTER_CONTROL}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
         )}
+        moreLabel={tc("filter")}
+        moreActiveCount={activeFilterCount}
+        moreOpen={showFilters}
+        onMoreOpenChange={setShowFilters}
+        onClear={activeFilterCount > 0 ? clearFilters : undefined}
+        clearLabel={t("clearAllFilters")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); pagination.resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        {/* In the search row, as on super-agent Job Seekers: as the bar's
+            footer it sat alone on a second line under the search box. */}
+        <CandidateDataNotice variant="candidateList" compact />
+      </InlineFilterBar>
 
-        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <Table>
           <TableHeader>
-            <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{tc("name")}</TableHead>
               <TableHead>{t("tableHeaderTitle")}</TableHead>
               <TableHead>{t("tableHeaderTopSkills")}</TableHead>
               <TableHead>{t("tableHeaderProfile")}</TableHead>
-              {can("job_seekers", "update") && <TableHead>{tc("actions")}</TableHead>}
+              {can("job_seekers", "update") && <TableHead className="text-right">{tc("actions")}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableBodySkeleton rows={5} cols={can("job_seekers", "update") ? 5 : 4} />
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    {view === "area" && activeFilterCount === 0 && !search ? (
-                      <>
-                        <MapPin className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">
-                          {areaAssigned ? t("areaEmptyTitle") : t("areaNoRegionTitle")}
-                        </span>
-                        <span className="max-w-md text-xs">
-                          {areaAssigned ? t("areaEmptyDescription") : t("areaNoRegionDescription")}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Inbox className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm">{t("noJobSeekersFound")}</span>
-                      </>
-                    )}
-                    {activeFilterCount > 0 && (
-                      <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={clearFilters}>{t("clearAllFilters")}</Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : seekers.map((s) => (
-              <TableRow key={s._id} className="hover:bg-secondary/50">
-                <TableCell>
-                  <span className="block font-medium text-foreground">{s.userId?.name ?? "\u2014"}</span>
-                  <span className="block text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</span>
-                  <span className={`mt-1 inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
-                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected"
-                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected"
-                    : "bg-status-shortlisted-bg text-status-shortlisted"
-                  }`}>
-                    {availabilityLabel(s.availabilityStatus)}
-                  </span>
-                  <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
-                  {s.staffAccess === "area" && (
-                    <span
-                      className="mt-1 ms-1 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium leading-none text-primary"
-                      title={t("inYourAreaViewOnly")}
-                    >
-                      <MapPin className="h-3 w-3" aria-hidden="true" />
-                      {t("inYourAreaChip")}
-                    </span>
+                <TableCell colSpan={can("job_seekers", "update") ? 5 : 4} className="py-12">
+                  {view === "area" && activeFilterCount === 0 && !search ? (
+                    <EmptyState
+                      icon={MapPin}
+                      title={areaAssigned ? t("areaEmptyTitle") : t("areaNoRegionTitle")}
+                      description={areaAssigned ? t("areaEmptyDescription") : t("areaNoRegionDescription")}
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={Inbox}
+                      title={t("noJobSeekersFound")}
+                      action={activeFilterCount > 0 ? (
+                        <Button variant="outline" onClick={clearFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+                          {t("clearAllFilters")}
+                        </Button>
+                      ) : undefined}
+                    />
                   )}
                 </TableCell>
-                <TableCell className="text-muted-foreground">
-                  <div className="grid w-full min-w-0 gap-1 text-start">
-                    <span className="font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      {s.currentLocation ?? "\u2014"}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {(s.skills ?? []).slice(0, 3).map((skill) => (
-                      <span key={skill} className="workspace-tone-sky rounded-full px-2 py-0.5 text-xs">{skill}</span>
-                    ))}
-                    {(s.skills ?? []).length > 3 && (
-                      <span className="text-xs text-muted-foreground">+{s.skills.length - 3}</span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${completenessColor(s.profileCompleteness ?? 0)}`}
-                        style={{ width: `${s.profileCompleteness ?? 0}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground">{s.profileCompleteness ?? 0}%</span>
-                  </div>
-                  <span className="mt-1 block text-xs text-muted-foreground">{formatDate(new Date(s.createdAt))}</span>
-                </TableCell>
-                {can("job_seekers", "update") && (
-                  <TableCell>
-                    {/* Seekers who are only in the agent's area are view-only:
-                        the server refuses edits to them. */}
-                    {s.staffAccess === "area" ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={t("inYourAreaViewOnly")}>
-                        <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span className="sr-only">{t("inYourAreaViewOnly")}</span>
-                      </span>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title={tc("edit")} aria-label={t("editJobSeeker", { name: s.userId?.name ?? "job seeker" })} data-table-action="">
-                        <Edit2 className="h-3.5 w-3.5 text-primary" />
-                      </Button>
-                    )}
-                  </TableCell>
-                )}
               </TableRow>
-            ))}
+            ) : seekers.map((s) => {
+              const actions: RowAction[] = [];
+              if (can("job_seekers", "update")) {
+                if (s.staffAccess !== "area") {
+                  actions.push({
+                    key: "edit",
+                    label: tc("edit"),
+                    icon: Edit2,
+                    iconOnly: true,
+                    onSelect: () => { setEditSeeker(s); setModalOpen(true); },
+                  });
+                }
+              }
+
+              return (
+                <TableRow key={s._id} className="group">
+                  <TableCell>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-9 w-9 shrink-0" colorful />
+                      <div className="min-w-0">
+                        <span className="block truncate font-medium text-foreground">{s.userId?.name ?? "\u2014"}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {/* No pill when the seeker never said: an amber "—" read as a status. */}
+                          {s.availabilityStatus ? (
+                            <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
+                              s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected"
+                              : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected"
+                              : "bg-status-shortlisted-bg text-status-shortlisted"
+                            }`}>
+                              {availabilityLabel(s.availabilityStatus)}
+                            </span>
+                          ) : null}
+                          <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
+                          {s.staffAccess === "area" && (
+                            <span
+                              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium leading-none text-primary"
+                              title={t("inYourAreaViewOnly")}
+                            >
+                              <MapPin className="h-3 w-3" aria-hidden="true" />
+                              {t("inYourAreaChip")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <div className="grid w-full min-w-0 gap-1 text-start">
+                      <span className="font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                        {s.currentLocation ?? "\u2014"}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {(s.skills ?? []).slice(0, 3).map((skill) => (
+                        <span key={skill} className="workspace-tone-sky rounded-full px-2 py-0.5 text-xs">{skill}</span>
+                      ))}
+                      {(s.skills ?? []).length > 3 && (
+                        <span className="text-xs text-muted-foreground">+{s.skills.length - 3}</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${completenessColor(s.profileCompleteness ?? 0)}`}
+                          style={{ width: `${s.profileCompleteness ?? 0}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground">{s.profileCompleteness ?? 0}%</span>
+                    </div>
+                    <span className="mt-1 block text-xs text-muted-foreground">{formatListDate(s.createdAt, locale)}</span>
+                  </TableCell>
+                  {can("job_seekers", "update") && (
+                    <TableCell className="text-right">
+                      {s.staffAccess === "area" ? (
+                        <span className="text-xs text-muted-foreground" title={t("inYourAreaViewOnly")}>
+                          {t("viewOnly")}
+                        </span>
+                      ) : (
+                        <RowActions name={s.userId?.name ?? "job seeker"} quick={actions} />
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
-        </div>
       </section>
 
-      <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
-      />
+      {pagination.total > 0 && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
+      )}
 
       <CrudModal
         open={modalOpen}

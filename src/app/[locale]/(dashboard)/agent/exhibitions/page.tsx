@@ -18,24 +18,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
   AlertTriangle,
   CalendarDays,
-  Clock,
   Copy,
   Edit,
   Eye,
   Inbox,
   MapPin,
+  Pencil,
   Plus,
   Save,
   Send,
   Trash2,
 } from "lucide-react";
-import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { useTranslations } from "next-intl";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { useConfirm } from "@/hooks/useConfirm";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { ExportColumn } from "@/lib/export";
 import { SUPPORTED_CURRENCIES, formatCurrency } from "@/lib/currency";
 import {
   EMPTY_AGENT_EXHIBITION_FORM,
@@ -46,6 +55,7 @@ import {
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ApprovalTimeline, type TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 interface ExhibitionRequest {
   _id: string;
@@ -165,21 +175,28 @@ const RESOURCE_TYPES = [
   { value: "booth_design", label: "Booth Design" },
 ];
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "submitted", label: "Submitted" },
-  { value: "under_review", label: "Under Review" },
-  { value: "approved", label: "Operationally Approved" },
-  { value: "revision_requested", label: "Revision Requested" },
-  { value: "completed", label: "Completed" },
-  { value: "rejected", label: "Rejected" },
-];
+// Filter options: values here, labels from the `exhibitions` namespace at render
+// (the hard-coded English labels showed in Arabic too).
+const STATUS_FILTER_KEYS = [
+  ["draft", "statusDraft"],
+  ["submitted", "statusSubmitted"],
+  ["under_review", "statusUnderReview"],
+  ["approved", "statusApproved"],
+  ["revision_requested", "statusRevisionRequested"],
+  ["completed", "statusCompleted"],
+  ["rejected", "statusRejected"],
+] as const;
 
-const CATEGORY_FILTER_OPTIONS = [
-  { value: "all", label: "All Categories" },
-  ...EVENT_CATEGORIES.map((category) => ({ value: category.value, label: category.label })),
-];
+const CATEGORY_FILTER_KEYS = [
+  ["career_fair", "categoryCareerFair"],
+  ["recruitment_expo", "categoryRecruitmentExpo"],
+  ["employer_branding", "categoryEmployerBranding"],
+  ["hiring_drive", "categoryHiringDrive"],
+  ["university_event", "categoryUniversityEvent"],
+  ["gcc_recruitment", "categoryGccRecruitment"],
+  ["job_fair", "categoryJobFair"],
+  ["other", "categoryOther"],
+] as const;
 
 const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((currency) => ({
   value: currency.code,
@@ -191,6 +208,7 @@ const SPINNERLESS_INPUT_CLASS = "[appearance:textfield] [&::-webkit-inner-spin-b
 export default function AgentExhibitionsPage() {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
+  const tf = useTranslations("exhibitionHeroFilters");
   const { confirm, ConfirmDialogNode } = useConfirm();
   const {
     page, limit, total, totalPages,
@@ -199,9 +217,9 @@ export default function AgentExhibitionsPage() {
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
+  const [categoryFilter, setCategoryFilter] = useUrlFilter("category", "all");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [showWizard, setShowWizard] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AgentExhibitionFormState>({ ...EMPTY_AGENT_EXHIBITION_FORM });
@@ -462,22 +480,21 @@ export default function AgentExhibitionsPage() {
     toast.success(t("requestCopied"));
   };
 
-  const formatDate = (value: string) => {
-    if (!value) {
-      return "-";
-    }
-
-    const parsedDate = new Date(value);
-    if (Number.isNaN(parsedDate.getTime())) {
-      return value;
-    }
-
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).format(parsedDate);
-  };
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: t("tableHeaderEvent"), key: "eventName" },
+    { header: t("tableHeaderCategory"), key: "eventCategory", formatter: (v) => labelFor(EVENT_CATEGORIES, String(v)) },
+    { header: t("tableHeaderLocation"), key: "eventLocation" },
+    { header: t("tableHeaderDates"), key: "eventStartDate", formatter: (_v, row) => {
+      const item = row as unknown as ExhibitionRequest;
+      return `${formatListDate(item.eventStartDate)}${item.eventEndDate ? ` – ${formatListDate(item.eventEndDate)}` : ""}`;
+    }},
+    { header: t("tableHeaderBudget"), key: "estimatedBudget", formatter: (_v, row) => {
+      const item = row as unknown as ExhibitionRequest;
+      return formatCurrency(item.estimatedBudget, item.budgetCurrency);
+    }},
+    { header: t("tableHeaderStatus"), key: "status", formatter: (v) => STATUS_LABELS[String(v)] ?? String(v) },
+    { header: t("tableHeaderPriority"), key: "priority" },
+  ];
   const dayCount = (startDate: string, endDate: string) => {
     const parsedStartDate = new Date(startDate);
     const parsedEndDate = new Date(endDate);
@@ -488,6 +505,13 @@ export default function AgentExhibitionsPage() {
 
     return Math.max(1, Math.ceil((parsedEndDate.getTime() - parsedStartDate.getTime()) / 86400000) + 1);
   };
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: items as unknown as Record<string, unknown>[],
+    columns: exportColumns,
+    filename: "agent-exhibitions",
+    title: t("title"),
+  });
   const labelFor = (options: { value: string; label: string }[], value: string) => (
     options.find((option) => option.value === value)?.label ?? value
   );
@@ -518,119 +542,145 @@ export default function AgentExhibitionsPage() {
         ] : undefined}
       />
 
-      {/* Search and filters belong to the list, not the header (Pattern A). */}
-      <div className="workspace-toolbar">
-        <ExhibitionHeroFilters
-          search={search}
-          onSearchChange={setSearch}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          statusOptions={STATUS_OPTIONS}
-          categoryFilter={categoryFilter}
-          onCategoryChange={setCategoryFilter}
-          categoryOptions={CATEGORY_FILTER_OPTIONS}
-          searchPlaceholder={t("searchPlaceholder")}
+      {/* Status and category were dropped when the filters left the header
+          panel; both still narrow the API request, so they are back here. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={search || statusFilter !== "all" || categoryFilter !== "all" ? () => { setSearch(""); setStatusFilter("all"); setCategoryFilter("all"); resetPage(); } : undefined}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); resetPage(); }} placeholder={t("searchPlaceholder")} />
+        <SearchableSelect
+          id="agent-exhibitions-status"
+          className={INLINE_FILTER_CONTROL}
+          options={[{ value: "all", label: tf("allStatuses") }, ...STATUS_FILTER_KEYS.map(([value, key]) => ({ value, label: t(key) }))]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={tf("allStatuses")}
         />
-      </div>
+        <SearchableSelect
+          id="agent-exhibitions-category"
+          className={INLINE_FILTER_CONTROL}
+          options={[{ value: "all", label: tf("allCategories") }, ...CATEGORY_FILTER_KEYS.map(([value, key]) => ({ value, label: t(key) }))]}
+          value={categoryFilter}
+          onValueChange={(v) => { setCategoryFilter(v); resetPage(); }}
+          placeholder={tf("allCategories")}
+        />
+      </InlineFilterBar>
 
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("listEyebrow")}</p>
-          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("listTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("listSubtitle")}</p>
-        </div>
-
-        <div className="mt-5">
-      {loading ? (
-        <div className="flex items-center justify-center py-14 text-muted-foreground">
-          <Clock className="mr-2 h-5 w-5 animate-spin" /> {tc("loading")}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="workspace-empty-state flex flex-col items-center gap-3 px-6 py-14 text-center">
-          <div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
-          <p className="text-sm font-semibold text-foreground">{t("noRequests")}</p>
-          <Button variant="outline" className="mt-2 rounded-xl" onClick={openNewRequest}>
-            <Plus className="mr-2 h-4 w-4" /> {t("createFirstRequest")}
-          </Button>
-        </div>
-      ) : (
-        <div className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {loading ? (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>{t("tableHeaderEvent")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("tableHeaderCategory")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderLocation")}</TableHead>
+                <TableHead>{t("tableHeaderDates")}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t("tableHeaderBudget")}</TableHead>
+                <TableHead>{t("tableHeaderStatus")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("tableHeaderPriority")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableBodySkeleton rows={5} cols={8} />
+            </TableBody>
+          </Table>
+        ) : items.length === 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>{t("tableHeaderEvent")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("tableHeaderCategory")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderLocation")}</TableHead>
+                <TableHead>{t("tableHeaderDates")}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t("tableHeaderBudget")}</TableHead>
+                <TableHead>{t("tableHeaderStatus")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("tableHeaderPriority")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={8} className="py-12">
+                  <EmptyState title={t("noRequests")} icon={Inbox} />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        ) : (
           <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gradient-to-r from-muted/80 to-muted/40">
-                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderEvent")}</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderCategory")}</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">{t("tableHeaderLocation")}</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderDates")}</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">{t("tableHeaderBudget")}</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderStatus")}</th>
-                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">{t("tableHeaderPriority")}</th>
-                <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tableHeaderActions")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {items.map((item, idx) => (
-                <tr key={item._id} className={`transition-colors hover:bg-primary/[0.03] ${idx % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
-                  <td className="px-4 py-3.5">
-                    <button onClick={() => setDetailItem(item)} className="text-left font-semibold text-foreground hover:text-primary hover:underline">
-                      {item.eventName}
-                    </button>
-                    {item.description && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.description}</p>}
-                  </td>
-                  <td className="hidden px-4 py-3.5 md:table-cell">
-                    <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-xs font-medium">
-                      {labelFor(EVENT_CATEGORIES, item.eventCategory)}
-                    </Badge>
-                  </td>
-                  <td className="hidden px-4 py-3.5 lg:table-cell">
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5 text-primary/60" /> {item.eventLocation}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3.5">
-                    <p className="text-xs font-medium">{formatDate(item.eventStartDate)}{item.eventEndDate ? ` – ${formatDate(item.eventEndDate)}` : ""}</p>
-                    {item.eventEndDate && <p className="mt-0.5 text-[11px] text-muted-foreground">{dayCount(item.eventStartDate, item.eventEndDate)} days</p>}
-                  </td>
-                  <td className="hidden whitespace-nowrap px-4 py-3.5 font-medium sm:table-cell">{formatCurrency(item.estimatedBudget, item.budgetCurrency)}</td>
-                  <td className="px-4 py-3.5">
-                    <Badge className={`${STATUS_COLORS[item.status] ?? STATUS_COLORS.draft} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>
-                      {STATUS_LABELS[item.status] ?? item.status}
-                    </Badge>
-                  </td>
-                  <td className="hidden px-4 py-3.5 md:table-cell">
-                    <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("viewDetails")} onClick={() => setDetailItem(item)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("duplicateRequest")} onClick={() => handleDuplicate(item)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      {["draft", "submitted", "revision_requested"].includes(item.status) && (
-                        <>
-                          <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("editRequest")} onClick={() => startEdit(item)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {["draft", "submitted"].includes(item.status) && (
-                            <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-destructive" title={t("deleteRequest")} onClick={() => handleDelete(item._id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>{t("tableHeaderEvent")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("tableHeaderCategory")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("tableHeaderLocation")}</TableHead>
+                  <TableHead>{t("tableHeaderDates")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t("tableHeaderBudget")}</TableHead>
+                  <TableHead>{t("tableHeaderStatus")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("tableHeaderPriority")}</TableHead>
+                  <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => {
+                  const quick: RowAction[] = [
+                    { key: "view", label: t("viewDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailItem(item) },
+                  ];
+                  const menu: RowAction[] = [
+                    { key: "copy", label: t("duplicateRequest"), icon: Copy, onSelect: () => handleDuplicate(item) },
+                  ];
+                  if (["draft", "submitted", "revision_requested"].includes(item.status)) {
+                    menu.push({ key: "edit", label: t("editRequest"), icon: Pencil, onSelect: () => startEdit(item) });
+                  }
+                  if (["draft", "submitted"].includes(item.status)) {
+                    menu.push({ key: "delete", label: t("deleteRequest"), icon: Trash2, destructive: true, onSelect: () => handleDelete(item._id) });
+                  }
+                  return (
+                    <TableRow key={item._id}>
+                      <TableCell>
+                        <button onClick={() => setDetailItem(item)} className="text-left font-semibold text-foreground hover:text-primary hover:underline">
+                          {item.eventName}
+                        </button>
+                        {item.description && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.description}</p>}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-xs font-medium">
+                          {labelFor(EVENT_CATEGORIES, item.eventCategory)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <MapPin className="h-3.5 w-3.5 text-primary/60" /> {item.eventLocation}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <p className="text-xs font-medium">{formatListDate(item.eventStartDate)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate)}` : ""}</p>
+                        {item.eventEndDate && <p className="mt-0.5 text-[11px] text-muted-foreground">{dayCount(item.eventStartDate, item.eventEndDate)} days</p>}
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap font-medium sm:table-cell">{formatCurrency(item.estimatedBudget, item.budgetCurrency)}</TableCell>
+                      <TableCell>
+                        <Badge className={`${STATUS_COLORS[item.status] ?? STATUS_COLORS.draft} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>
+                          {STATUS_LABELS[item.status] ?? item.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <RowActions name={item.eventName} quick={quick} menu={menu} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
-        </div>
-      )}
-        </div>
+        )}
       </section>
       <PaginationControls
         page={page}
@@ -685,7 +735,7 @@ export default function AgentExhibitionsPage() {
                   {[
                     { label: "Venue", value: detailItem.venue ?? "-" },
                     { label: "Country", value: detailItem.country ?? "-" },
-                    { label: "Dates", value: detailItem.eventEndDate ? `${formatDate(detailItem.eventStartDate)} – ${formatDate(detailItem.eventEndDate)}` : formatDate(detailItem.eventStartDate) },
+                    { label: "Dates", value: detailItem.eventEndDate ? `${formatListDate(detailItem.eventStartDate)} – ${formatListDate(detailItem.eventEndDate)}` : formatListDate(detailItem.eventStartDate) },
                     { label: "Duration", value: detailItem.eventEndDate ? `${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)} days` : "—" },
                     { label: "Organizer", value: detailItem.organizerName ?? "-" },
                     { label: "Contact", value: detailItem.organizerContact ?? "-" },

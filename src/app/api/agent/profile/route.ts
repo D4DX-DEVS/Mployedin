@@ -8,6 +8,7 @@ import { regionLocale, resolveAssignedRegions } from "@/lib/agents/assignedRegio
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { agentProfileUpdateSchema } from "@/lib/validators/settings";
+import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
 
 interface AuthCtx {
   userId: string;
@@ -77,6 +78,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (Object.keys(userUpdates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
+
+  // A new number invalidates the WhatsApp id learned for the old one.
+  if (typeof userUpdates.phone === "string") await forgetWaIdOnPhoneChange(ctx.userId, userUpdates.phone);
 
   await User.findByIdAndUpdate(ctx.userId, { $set: userUpdates }, { returnDocument: "after" })
     .select("name phone")

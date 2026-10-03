@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, Fragment } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Search, Crown, ArrowUpRight, ArrowDownRight, RotateCcw, X, Loader2,
   Clock, CheckCircle, XCircle, AlertTriangle, User, Briefcase,
-  ChevronDown, ChevronUp, CreditCard, Users, ChevronLeft, ChevronRight,
-  FileText, CalendarDays, BarChart3, Eye,
+  ChevronDown, ChevronUp, CreditCard, Users, FileText, Eye,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PageHero } from "@/components/shared/PageHero";
@@ -20,10 +19,12 @@ import {
 import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { useSubscriptionPlans, type SubscriptionPlanItem } from "@/hooks/useSubscriptionPlans";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -47,15 +48,9 @@ import {
   type HistoryItem,
   type BulkAssignResult,
 } from "@/hooks/useSubscriptionManagement";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatDate(d: string | undefined) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric", month: "short", day: "numeric",
-  });
-}
 
 function daysUntil(d: string | undefined) {
   if (!d) return 0;
@@ -195,14 +190,17 @@ export default function AdminSubscriptionsPage() {
             <h3 className="heading-label font-semibold text-muted-foreground uppercase tracking-wider">
               {t("searchUserLabel")}
             </h3>
-            <TableToolbar
-              search={searchQuery}
-              onSearchChange={(v) => setSearchQuery(v)}
-              searchPlaceholder={t("searchPlaceholder")}
+            <InlineFilterBar
               onExportCsv={handleExportCsv}
               onExportExcel={handleExportExcel}
               onExportPdf={handleExportPdf}
-            />
+            >
+              <InlineFilterSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder={t("searchPlaceholder")}
+              />
+            </InlineFilterBar>
             {filteredResults.length > 0 && !selectedUser && (
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {filteredResults.map((user) => (
@@ -310,8 +308,8 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
     { header: t("tableHeaderPrice"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => { const s = (r as unknown as AdminSubscriptionItem).planSnapshot; return s?.price > 0 ? `${s.price} ${s.currency}` : t("priceFreeLabel"); } },
     { header: t("exportHeaderBillingCycle"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.billingCycle ?? "—" },
     { header: t("tableHeaderStatus"), key: "status" as keyof AdminSubscriptionItem },
-    { header: t("tableHeaderStart"), key: "startDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
-    { header: t("tableHeaderEnd"), key: "endDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
+    { header: t("tableHeaderStart"), key: "startDate" as keyof AdminSubscriptionItem, formatter: (v) => formatListDate(v as string) },
+    { header: t("tableHeaderEnd"), key: "endDate" as keyof AdminSubscriptionItem, formatter: (v) => formatListDate(v as string) },
     { header: t("tableHeaderAutoRenew"), key: "autoRenew" as keyof AdminSubscriptionItem, formatter: (v) => v ? t("autoRenewYes") : t("autoRenewNo") },
     { header: t("tableHeaderDaysLeft"), key: "endDate" as keyof AdminSubscriptionItem, formatter: (v, r) => (r as unknown as AdminSubscriptionItem).status === "active" ? String(daysUntil(v as string)) : "—" },
   ], [t]);
@@ -352,32 +350,18 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
       </div>
 
       {/* ── Table Card ── */}
-      <div className="workspace-panel-surface overflow-hidden rounded-3xl">
-        {expiring && (
-          <button
-            type="button"
-            onClick={() => { setExpiring(""); resetPage(); }}
-            className="mb-3 inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary hover:bg-primary/10"
-            aria-label={t("expiringClearAria")}
-          >
-            {t("expiringChip", { days: expiring === "30d" ? 30 : 7 })}
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        )}
-        <TableToolbar
-          search={searchInput}
-          onSearchChange={(v) => { setSearchInput(v); resetPage(); }}
-          searchPlaceholder={t("searchPlaceholder")}
-          onExportCsv={exportCsv}
-          onExportExcel={exportExcel}
-          onExportPdf={exportPdf}
-          hasActiveFilters={hasActiveFilters}
-          filterContent={
-            <div className="space-y-3">
+      <div className="workspace-panel-surface overflow-hidden rounded-2xl">
+          <InlineFilterBar
+            onClear={hasActiveFilters ? clearFilters : undefined}
+            onExportCsv={exportCsv}
+            onExportExcel={exportExcel}
+            onExportPdf={exportPdf}
+            moreActiveCount={[filters.status, filters.planId, filters.autoRenew, dateFrom, dateTo].filter(Boolean).length}
+            more={
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 {/* Status */}
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">{t("planLabel")}</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("tableHeaderStatus")}</label>
                   <Select
                     value={filters.status ?? "all"}
                     onValueChange={(v) => { setFilters((f) => ({ ...f, status: v === "all" ? undefined : v })); resetPage(); }}
@@ -452,95 +436,89 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="outline" size="sm"
-                  onClick={clearFilters}
-                  disabled={!hasActiveFilters}
-                  className="gap-1.5"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" /> {t("clearFiltersBtn")}
-                </Button>
-                <Button
-                  size="sm" className="bg-primary hover:bg-primary/90 gap-1.5"
-                  onClick={() => { setFilters((f) => ({ ...f, search: searchInput || undefined })); resetPage(); }}
-                >
-                  <Search className="h-3.5 w-3.5" /> {t("applyFiltersBtn")}
-                </Button>
-              </div>
-            </div>
-          }
-          right={
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {total} {total !== 1 ? t("subscriberCountPlural") : t("subscriberCountLabel")}
-              </span>
-              <TableSortControl
-                value={sortBy}
-                onValueChange={(value) => setSort(value, sortOrder)}
-                options={[
-                  { value: "createdAt", label: t("sortDateAdded") },
-                  { value: "startDate", label: t("tableHeaderStart") },
-                  { value: "endDate", label: t("tableHeaderEnd") },
-                ]}
-                order={sortOrder}
-                onOrderChange={(next) => setSort(sortBy, next)}
-                compact
-              />
-            </div>
-          }
-        />
+            }
+          >
+            <InlineFilterSearch
+              value={searchInput}
+              onChange={(v) => { setSearchInput(v); resetPage(); }}
+              placeholder={t("searchPlaceholder")}
+            />
+            {expiring && (
+              <button
+                type="button"
+                onClick={() => { setExpiring(""); resetPage(); }}
+                className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary hover:bg-primary/10 sm:h-9"
+                aria-label={t("expiringClearAria")}
+              >
+                {t("expiringChip", { days: expiring === "30d" ? 30 : 7 })}
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            )}
+            <TableSortControl
+              value={sortBy}
+              onValueChange={(value) => setSort(value, sortOrder)}
+              options={[
+                { value: "createdAt", label: t("sortDateAdded") },
+                { value: "startDate", label: t("tableHeaderStart") },
+                { value: "endDate", label: t("tableHeaderEnd") },
+              ]}
+              order={sortOrder}
+              onOrderChange={(next) => setSort(sortBy, next)}
+              compact
+            />
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
+              {total} {total !== 1 ? t("subscriberCountPlural") : t("subscriberCountLabel")}
+            </span>
+          </InlineFilterBar>
 
         {/* ── Table ── */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/40 text-left text-xs text-muted-foreground uppercase tracking-wider">
-                <th className="px-4 py-3 font-medium w-8" />
-                <th className="px-4 py-3 font-medium">{t("tableHeaderUser")}</th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderRole")}</th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderPlan")}</th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderPrice")}</th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderStatus")}</th>
-                <th className="px-4 py-3 font-medium">
-                  <SortableTableHeader label={t("tableHeaderStart")} active={sortBy === "startDate"} order={sortOrder} onClick={() => sortByColumn("startDate")} />
-                </th>
-                <th className="px-4 py-3 font-medium">
-                  <SortableTableHeader label={t("tableHeaderEnd")} active={sortBy === "endDate"} order={sortOrder} onClick={() => sortByColumn("endDate")} />
-                </th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderAutoRenew")}</th>
-                <th className="px-4 py-3 font-medium">{t("tableHeaderDaysLeft")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/20">
-                    <td colSpan={10} className="px-4 py-3">
-                      <div className="h-5 animate-pulse rounded bg-muted/30" />
-                    </td>
-                  </tr>
-                ))
-              ) : subscriptions.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
-                    <Crown className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    {t("noSubscriptionsFound")}
-                  </td>
-                </tr>
-              ) : (
-                subscriptions.map((sub) => (
-                  <ExpandableRow
-                    key={sub._id}
-                    sub={sub}
-                    isExpanded={expandedId === sub._id}
-                    onToggle={() => setExpandedId(expandedId === sub._id ? null : sub._id)}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="w-8" />
+              <TableHead>{t("tableHeaderUser")}</TableHead>
+              <TableHead>{t("tableHeaderRole")}</TableHead>
+              <TableHead>{t("tableHeaderPlan")}</TableHead>
+              <TableHead>{t("tableHeaderPrice")}</TableHead>
+              <TableHead>{t("tableHeaderStatus")}</TableHead>
+              <TableHead>
+                <SortableTableHeader label={t("tableHeaderStart")} active={sortBy === "startDate"} order={sortOrder} onClick={() => sortByColumn("startDate")} />
+              </TableHead>
+              <TableHead>
+                <SortableTableHeader label={t("tableHeaderEnd")} active={sortBy === "endDate"} order={sortOrder} onClick={() => sortByColumn("endDate")} />
+              </TableHead>
+              <TableHead>{t("tableHeaderAutoRenew")}</TableHead>
+              <TableHead>{t("tableHeaderDaysLeft")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={10} className="py-3">
+                    <div className="h-5 animate-pulse rounded bg-muted/30" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : subscriptions.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
+                  <Crown className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  {t("noSubscriptionsFound")}
+                </TableCell>
+              </TableRow>
+            ) : (
+              subscriptions.map((sub) => (
+                <ExpandableRow
+                  key={sub._id}
+                  sub={sub}
+                  isExpanded={expandedId === sub._id}
+                  onToggle={() => setExpandedId(expandedId === sub._id ? null : sub._id)}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
 
         {/* ── Pagination ── */}
         <div className="border-t border-border/80 px-4 py-3 sm:px-5">
@@ -568,6 +546,7 @@ function ExpandableRow({
   onToggle: () => void;
 }) {
   const t = useTranslations("adminSubscriptions");
+  const locale = useLocale();
   const user = sub.userId;
   const snap = sub.planSnapshot;
   const days = daysUntil(sub.endDate);
@@ -576,16 +555,16 @@ function ExpandableRow({
 
   return (
     <Fragment>
-      <tr
-        className="border-b border-border/20 hover:bg-sky-500/5 transition-colors cursor-pointer"
+      <TableRow
+        className="cursor-pointer"
         onClick={onToggle}
       >
         {/* data-mobile-hidden: the phone card draws its own expand chevron, so
             this column would be a second chevron in an empty labelled row. */}
-        <td className="px-4 py-3" data-mobile-hidden>
+        <TableCell data-mobile-hidden>
           {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell>
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500 shrink-0">
               {sub.targetRole === "employer" ? <Briefcase className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
@@ -595,34 +574,34 @@ function ExpandableRow({
               <p className="text-xs text-muted-foreground truncate">{user?.email ?? "—"}</p>
             </div>
           </div>
-        </td>
-        <td className="px-4 py-3">
-          <Badge variant="outline" className="text-xs">
+        </TableCell>
+        <TableCell>
+          <Badge variant="outline" className="whitespace-nowrap text-xs">
             {sub.targetRole === "employer" ? t("employerBadge") : t("jobSeekerBadge")}
           </Badge>
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell>
           <p className="font-medium">{snap?.name ?? "—"}</p>
           <p className="text-xs text-muted-foreground">{t("tierLabel")} {snap?.tier ?? 0}</p>
-        </td>
-        <td className="px-4 py-3 text-sm">
+        </TableCell>
+        <TableCell className="text-sm">
           {snap?.price > 0 ? `${snap.price} ${snap.currency}` : t("priceFreeLabel")}
           {snap?.price > 0 && <span className="text-xs text-muted-foreground">{t("pricePerLabel")}{snap.billingCycle}</span>}
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell>
           <Badge className={`${sCfg.color} border text-xs`}>
             <SIcon className="h-3 w-3 mr-1" />
             {sub.status}
           </Badge>
-        </td>
-        <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(sub.startDate)}</td>
-        <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(sub.endDate)}</td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatListDate(sub.startDate, locale)}</TableCell>
+        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatListDate(sub.endDate, locale)}</TableCell>
+        <TableCell>
           <Badge variant="outline" className={`text-xs ${sub.autoRenew ? "text-emerald-500 border-emerald-500/30" : "text-muted-foreground"}`}>
             {sub.autoRenew ? t("autoRenewYes") : t("autoRenewNo")}
           </Badge>
-        </td>
-        <td className="px-4 py-3">
+        </TableCell>
+        <TableCell>
           {sub.status === "active" ? (
             <span className={`text-sm font-medium ${days <= 7 ? "text-red-400" : days <= 30 ? "text-amber-400" : "text-foreground"}`}>
               {days > 0 ? `${days}${t("daysLabelShort")}` : t("todayLabel")}
@@ -630,16 +609,16 @@ function ExpandableRow({
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
           )}
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
 
       {/* ── Expanded Detail ── */}
       {isExpanded && (
-        <tr>
-          <td colSpan={10} className="bg-muted/20 px-6 py-5 border-b border-border/40">
+        <TableRow>
+          <TableCell colSpan={10} className="bg-muted/20 py-5">
             <ExpandedDetail sub={sub} />
-          </td>
-        </tr>
+          </TableCell>
+        </TableRow>
       )}
     </Fragment>
   );
@@ -649,6 +628,7 @@ function ExpandableRow({
 
 function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
   const t = useTranslations("adminSubscriptions");
+  const locale = useLocale();
   const ta = useTranslations("a11y");
   const userId = sub.userId?._id;
   const [activeSection, setActiveSection] = useState<"details" | "history" | "invoices">("details");
@@ -695,8 +675,8 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <DetailCard label={t("detailCardPlanLabel")} value={snap?.name ?? "—"} sub={`${t("tierLabel")} ${snap?.tier ?? 0}`} />
           <DetailCard label={t("detailCardPriceLabel")} value={snap?.price > 0 ? `${snap.price} ${snap.currency}` : t("priceFreeLabel")} sub={snap?.billingCycle ?? "monthly"} />
-          <DetailCard label={t("detailCardPeriodLabel")} value={`${formatDate(sub.startDate)} — ${formatDate(sub.endDate)}`} sub={sub.status === "active" ? `${daysUntil(sub.endDate)} ${t("daysRemainingLabel")}` : sub.status} />
-          <DetailCard label={t("detailCardAutoRenewLabel")} value={sub.autoRenew ? t("autoRenewEnabledLabel") : t("autoRenewDisabledLabel")} sub={`${t("createdDatePrefix")} ${formatDate(sub.createdAt)}`} />
+          <DetailCard label={t("detailCardPeriodLabel")} value={`${formatListDate(sub.startDate, locale)} — ${formatListDate(sub.endDate, locale)}`} sub={sub.status === "active" ? `${daysUntil(sub.endDate)} ${t("daysRemainingLabel")}` : sub.status} />
+          <DetailCard label={t("detailCardAutoRenewLabel")} value={sub.autoRenew ? t("autoRenewEnabledLabel") : t("autoRenewDisabledLabel")} sub={`${t("createdDatePrefix")} ${formatListDate(sub.createdAt, locale)}`} />
         </div>
       )}
 
@@ -725,7 +705,7 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
                         <Badge variant="outline" className="text-xs">
                           {actionLabel}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
+                        <span className="text-xs text-muted-foreground">{formatListDate(item.createdAt, locale)}</span>
                       </div>
                       {item.fromPlanName && item.toPlanName && (
                         <p className="text-sm text-muted-foreground">{item.fromPlanName} {t("historyTransitionSeparator")} {item.toPlanName}</p>
@@ -751,49 +731,51 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
             <p className="text-sm text-muted-foreground text-center py-4">{t("noInvoicesYet")}</p>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-xl border border-border/40">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/40 text-left text-xs text-muted-foreground uppercase">
-                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderNumber")}</th>
-                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderPlan")}</th>
-                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderAmount")}</th>
-                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderStatus")}</th>
-                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderIssued")}</th>
-                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderPaid")}</th>
-                      <th className="px-3 py-2 font-medium" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* StatusBadge already maps paid / issued / overdue /
-                        partially_paid / cancelled and renders the *translated*
-                        label. The local ternary printed the raw DB value, so an
-                        Arabic admin read "overdue" in English. */}
-                    {(invoices as InvoiceItem[]).map((inv) => {
-                      return (
-                        <tr key={inv._id} className="border-b border-border/20 hover:bg-sky-500/5">
-                          <td className="px-3 py-2 font-mono text-xs">{inv.invoiceNumber}</td>
-                          <td className="px-3 py-2 text-xs">{inv.planName ?? "—"}</td>
-                          <td className="px-3 py-2 text-xs font-medium">{inv.amount} {inv.currency}</td>
-                          <td className="px-3 py-2">
-                            <StatusBadge status={inv.status} />
-                          </td>
-                          <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.issuedAt)}</td>
-                          <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.paidAt)}</td>
-                          <td className="px-3 py-2">
-                            <Button aria-label={ta("viewDetails")}
-                              variant="ghost" size="sm" className="h-7 w-7 p-0"
-                              onClick={(e) => { e.stopPropagation(); setSelectedInvoiceId(inv._id); }}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("invoiceHeaderNumber")}</TableHead>
+                    <TableHead>{t("invoiceHeaderPlan")}</TableHead>
+                    <TableHead>{t("invoiceHeaderAmount")}</TableHead>
+                    <TableHead>{t("invoiceHeaderStatus")}</TableHead>
+                    <TableHead>{t("invoiceHeaderIssued")}</TableHead>
+                    <TableHead>{t("invoiceHeaderPaid")}</TableHead>
+                    <TableHead className="text-right" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* StatusBadge already maps paid / issued / overdue /
+                      partially_paid / cancelled and renders the *translated*
+                      label. The local ternary printed the raw DB value, so an
+                      Arabic admin read "overdue" in English. */}
+                  {(invoices as InvoiceItem[]).map((inv) => {
+                    const actions: RowAction[] = [
+                      {
+                        key: "view",
+                        label: ta("viewDetails"),
+                        icon: Eye,
+                        iconOnly: true,
+                        onSelect: () => setSelectedInvoiceId(inv._id),
+                      },
+                    ];
+                    return (
+                      <TableRow key={inv._id}>
+                        <TableCell className="font-mono text-xs">{inv.invoiceNumber}</TableCell>
+                        <TableCell className="text-xs">{inv.planName ?? "—"}</TableCell>
+                        <TableCell className="text-xs font-medium">{inv.amount} {inv.currency}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={inv.status} />
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{formatListDate(inv.issuedAt, locale)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{formatListDate(inv.paidAt, locale)}</TableCell>
+                        <TableCell className="text-right">
+                          <RowActions name={t("invoiceHeaderNumber")} quick={actions} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
 
               {/* Invoice Detail Modal */}
               <InvoiceDetailView
@@ -830,6 +812,7 @@ function UserSubscriptionPanel({
   onClear: () => void;
 }) {
   const t = useTranslations("adminSubscriptions");
+  const locale = useLocale();
   const ta = useTranslations("a11y");
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [showChangeForm, setShowChangeForm] = useState(false);
@@ -905,7 +888,7 @@ function UserSubscriptionPanel({
             </div>
             <div className="rounded-xl border border-border/40 card-pad">
               <p className="text-xs text-muted-foreground mb-1">{t("detailCardPeriodLabel")}</p>
-              <p className="font-medium">{formatDate(subscription.startDate)} — {formatDate(subscription.endDate)}</p>
+              <p className="font-medium">{formatListDate(subscription.startDate, locale)} — {formatListDate(subscription.endDate, locale)}</p>
               <p className="text-xs text-muted-foreground">
                 {daysUntil(subscription.endDate) > 0
                   ? `${daysUntil(subscription.endDate)} ${t("daysRemainingLabel")}`
@@ -1306,6 +1289,7 @@ function ChangePlanForm({
 
 function HistoryTimeline({ history }: { history: HistoryItem[] }) {
   const t = useTranslations("adminSubscriptions");
+  const locale = useLocale();
   if (!history.length) {
     return (
       <section className="workspace-panel-surface rounded-3xl text-center panel-body">
@@ -1341,7 +1325,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
                   <Badge variant="outline" className="text-xs">
                     {actionLabel}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
+                  <span className="text-xs text-muted-foreground">{formatListDate(item.createdAt, locale)}</span>
                 </div>
                 {item.fromPlanName && item.toPlanName && (
                   <p className="text-sm text-muted-foreground">

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
 import { Search, Clock, CornerDownRight } from "lucide-react";
 import { formatActionCode } from "@/lib/admin/actionLabels";
@@ -13,12 +14,16 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
-import { formatCount, formatDateTime } from "@/lib/ui/intlFormat";
+import { formatCount, formatDateTime, formatListDate, formatTime } from "@/lib/ui/intlFormat";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { TableBodySkeleton } from "@/components/ui/loading";
 
 interface AuditLogEntry {
   _id: string;
@@ -60,6 +65,7 @@ function formatChangeValue(value: unknown): string {
 
 export default function AuditLogsPage() {
   const t = useTranslations("adminAuditLogs");
+  const locale = useLocale();
 
   /**
    * The table used to show only "user.update" on "users" — the row proved that
@@ -104,6 +110,7 @@ export default function AuditLogsPage() {
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   /* Actor search and role filter arrived with the merge of the separate
      activity-timeline page, which read this same collection through a second
      endpoint with a different — and non-overlapping — filter set. */
@@ -183,6 +190,7 @@ export default function AuditLogsPage() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (actorSearch) params.set("search", actorSearch);
@@ -200,10 +208,14 @@ export default function AuditLogsPage() {
         updateTotal(data.pagination.total);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || t("failedToLoadAuditLogs"));
+        const errMsg = err.error || t("failedToLoadAuditLogs");
+        setError(errMsg);
+        toast.error(errMsg);
       }
-    } catch (error) {
-      toast.error(t("failedToLoadAuditLogs"));
+    } catch {
+      const errMsg = t("failedToLoadAuditLogs");
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -220,71 +232,48 @@ export default function AuditLogsPage() {
         description={`${formatCount(total)} ${t("logEntriesDescription")}`}
       />
 
-      <TableToolbar
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={
+          (resource !== "all" || !!action || !!country || !!fromDate || !!toDate || !!actorSearch || actorRole !== "all")
+            ? () => {
+              setActorSearch("");
+              setActorRole("all");
+              setResource("all");
+              setAction("");
+              setCountry("");
+              setFromDate("");
+              setToDate("");
+              resetPage();
+            }
+            : undefined
+        }
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        hasActiveFilters={resource !== "all" || !!action || !!country || !!fromDate || !!toDate || !!actorSearch || actorRole !== "all"}
-        // The log has one order, time; the field list only names it, the button flips it.
-        right={(
-          <TableSortControl
-            value="createdAt"
-            onValueChange={() => undefined}
-            options={[{ value: "createdAt", label: t("timestamp") }]}
-            order={sortOrder}
-            onOrderChange={changeSortOrder}
-            compact
-          />
-        )}
-        filterContent={
-          <div className="flex gap-3 flex-wrap items-center">
+        moreActiveCount={
+          (action ? 1 : 0) + (country ? 1 : 0) + (fromDate ? 1 : 0) + (toDate ? 1 : 0)
+        }
+        more={(
+          <>
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder={t("filterByActor")}
-                value={actorSearch}
-                onChange={(e) => { setActorSearch(e.target.value); resetPage(); }}
-                className="h-11 rounded-xl border-border bg-card ps-10 w-56 text-sm shadow-none"
-              />
-            </div>
-            <SearchableSelect
-              className="h-11 w-44 rounded-xl border-border bg-card"
-              options={[
-                { value: "all", label: t("allRoles") },
-                { value: "admin", label: t("roleAdmin") },
-                { value: "super_agent", label: t("roleSuperAgent") },
-                { value: "agent", label: t("roleAgent") },
-                { value: "employer", label: t("roleEmployer") },
-                { value: "job_seeker", label: t("roleJobSeeker") },
-                { value: "system", label: t("roleSystem") },
-              ]}
-              value={actorRole}
-              onValueChange={(v) => { setActorRole(v); resetPage(); }}
-              placeholder={t("allRoles")}
-            />
-            <SearchableSelect
-              className="h-11 w-44 rounded-xl border-border bg-card"
-              options={resourceOptions}
-              value={resource}
-              onValueChange={(v) => { setResource(v); resetPage(); }}
-              placeholder={t("allResources")}
-            />
-            <div className="relative">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
+                aria-label={t("filterByAction")}
                 placeholder={t("filterByAction")}
                 value={action}
                 onChange={(e) => { setAction(e.target.value); resetPage(); }}
-                className="h-11 rounded-xl border-border bg-card ps-10 w-56 text-sm shadow-none"
+                className={INLINE_FILTER_CONTROL + " ps-10"}
               />
             </div>
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
+                aria-label={t("country")}
                 placeholder={t("countryCodeExample")}
                 value={country}
                 onChange={(e) => { setCountry(e.target.value.toUpperCase()); resetPage(); }}
-                className="h-11 rounded-xl border-border bg-card ps-10 w-44 text-sm shadow-none uppercase"
+                className={INLINE_FILTER_CONTROL + " ps-10 uppercase"}
                 maxLength={2}
               />
             </div>
@@ -293,119 +282,153 @@ export default function AuditLogsPage() {
               value={fromDate}
               onChange={(v) => { setFromDate(v); resetPage(); }}
               placeholder={t("from")}
-              className="h-11 w-40 rounded-xl border-border bg-card text-sm"
+              className={INLINE_FILTER_CONTROL}
             />
             <DateTimePicker
               mode="date"
               value={toDate}
               onChange={(v) => { setToDate(v); resetPage(); }}
               placeholder={t("to")}
-              className="h-11 w-40 rounded-xl border-border bg-card text-sm"
+              className={INLINE_FILTER_CONTROL}
             />
-          </div>
-        }
-      />
-
-      {/* Logs table */}
-      {loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />
-          ))}
-        </div>
-      ) : logs.length === 0 ? (
-        <EmptyState
-          title={t("noAuditLogEntriesFound")}
+          </>
+        )}
+      >
+        <InlineFilterSearch
+          value={actorSearch}
+          onChange={(value) => { setActorSearch(value); resetPage(); }}
+          placeholder={t("filterByActor")}
         />
-      ) : (
-        <div className="rounded-2xl border overflow-x-auto bg-background">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
-              <tr>
-                <th className="text-start px-4 py-3">
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allRoles") },
+            { value: "admin", label: t("roleAdmin") },
+            { value: "super_agent", label: t("roleSuperAgent") },
+            { value: "agent", label: t("roleAgent") },
+            { value: "employer", label: t("roleEmployer") },
+            { value: "job_seeker", label: t("roleJobSeeker") },
+            { value: "system", label: t("roleSystem") },
+          ]}
+          value={actorRole}
+          onValueChange={(v) => { setActorRole(v); resetPage(); }}
+          placeholder={t("allRoles")}
+        />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          options={resourceOptions}
+          value={resource}
+          onValueChange={(v) => { setResource(v); resetPage(); }}
+          placeholder={t("allResources")}
+        />
+        <TableSortControl
+          value="createdAt"
+          onValueChange={() => undefined}
+          options={[{ value: "createdAt", label: t("timestamp") }]}
+          order={sortOrder}
+          onOrderChange={changeSortOrder}
+          compact
+        />
+      </InlineFilterBar>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {error ? (
+          <div className="p-6">
+            <ErrorState onRetry={fetchLogs} />
+          </div>
+        ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>
                   <SortableTableHeader label={t("timestamp")} active order={sortOrder} onClick={() => changeSortOrder(sortOrder === "asc" ? "desc" : "asc")} />
-                </th>
-                <th className="text-start px-4 py-3">{t("actor")}</th>
-                <th className="text-start px-4 py-3">{t("action")}</th>
-                <th className="text-start px-4 py-3">{t("resource")}</th>
-                <th className="text-start px-4 py-3">{t("target")}</th>
-                <th className="text-start px-4 py-3">{t("changeDetail")}</th>
-                <th className="text-start px-4 py-3">{t("ipAddress")}</th>
-                <th className="text-start px-4 py-3">{t("country")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {logs.map((log) => {
-                const dt = new Date(log.createdAt);
-                const dateStr = dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                const timeStr = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-                return (
-                  <tr key={log._id} className="hover:bg-muted/20 transition-colors font-mono text-xs">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        <span>{dateStr} {timeStr}</span>
+                </TableHead>
+                <TableHead>{t("actor")}</TableHead>
+                <TableHead>{t("action")}</TableHead>
+                <TableHead>{t("resource")}</TableHead>
+                <TableHead>{t("target")}</TableHead>
+                <TableHead>{t("changeDetail")}</TableHead>
+                <TableHead>{t("ipAddress")}</TableHead>
+                <TableHead>{t("country")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableBodySkeleton rows={10} cols={8} />
+              ) : logs.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={8} className="py-12">
+                    <EmptyState title={t("noAuditLogEntriesFound")} />
+                  </TableCell>
+                </TableRow>
+              ) : logs.map((log) => (
+                <TableRow key={log._id} className="font-mono text-xs">
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatListDate(log.createdAt, locale)} {formatTime(log.createdAt, { hour: "2-digit", minute: "2-digit", second: "2-digit" }, locale)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {log.actorId ? (
+                      <div>
+                        <p className="font-medium text-foreground">{log.actorId.name ?? t("unknown")}</p>
+                        <p className="text-muted-foreground">{log.actorId.email}</p>
+                        {log.onBehalfOfId && (
+                          <p className="text-amber-600">
+                            <CornerDownRight className="me-1 inline h-3.5 w-3.5 align-[-2px] rtl:-scale-x-100" aria-hidden="true" />{t("onBehalfOf")} {log.onBehalfOfId.name ?? log.onBehalfOfId.email ?? log.onBehalfOfRole}
+                          </p>
+                        )}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {log.actorId ? (
-                        <div>
-                          <p className="font-medium text-foreground">{log.actorId.name ?? t("unknown")}</p>
-                          <p className="text-muted-foreground">{log.actorId.email}</p>
-                          {log.onBehalfOfId && (
-                            <p className="text-amber-600">
-                              <CornerDownRight className="me-1 inline h-3.5 w-3.5 align-[-2px] rtl:-scale-x-100" aria-hidden="true" />{t("onBehalfOf")} {log.onBehalfOfId.name ?? log.onBehalfOfId.email ?? log.onBehalfOfRole}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">{t("system")}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-foreground">{formatActionCode(log.action)}</td>
-                    <td className="px-4 py-3">
-                      <Badge className={`${RESOURCE_COLOR[log.resource] ?? "bg-muted text-muted-foreground"} border-0 text-xs`}>
-                        {log.resource}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      {log.meta?.targetEmail || log.meta?.targetName ? (
-                        <div className="min-w-0">
-                          {log.meta.targetName ? <p className="text-foreground truncate">{String(log.meta.targetName)}</p> : null}
-                          {log.meta.targetEmail ? <p className="text-muted-foreground truncate">{String(log.meta.targetEmail)}</p> : null}
-                        </div>
-                      ) : log.resourceId ? (
-                        <span className="text-muted-foreground font-mono text-[11px]">{log.resourceId}</span>
-                      ) : (
-                        <span className="text-muted-foreground">{t("noChangeRecorded")}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {describeChange(log) ?? <span className="text-muted-foreground">{t("noChangeRecorded")}</span>}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{log.ipAddress}</td>
-                    <td className="px-4 py-3">
-                      {log.country ? (
-                        <span className="inline-flex items-center gap-1">
-                          <img
-                            src={`/flags/${log.country.toLowerCase()}.svg`}
-                            alt={log.country}
-                            className="w-4 h-3 object-cover rounded-sm"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                          <span className="text-foreground">{log.country}</span>
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    ) : (
+                      <span className="text-muted-foreground">{t("system")}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-foreground">{formatActionCode(log.action)}</TableCell>
+                  <TableCell>
+                    <Badge className={`${RESOURCE_COLOR[log.resource] ?? "bg-muted text-muted-foreground"} border-0 text-xs`}>
+                      {log.resource}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {log.meta?.targetEmail || log.meta?.targetName ? (
+                      <div className="min-w-0">
+                        {log.meta.targetName ? <p className="text-foreground truncate">{String(log.meta.targetName)}</p> : null}
+                        {log.meta.targetEmail ? <p className="text-muted-foreground truncate">{String(log.meta.targetEmail)}</p> : null}
+                      </div>
+                    ) : log.resourceId ? (
+                      <span className="text-muted-foreground font-mono text-[11px]">{log.resourceId}</span>
+                    ) : (
+                      <span className="text-muted-foreground">{t("noChangeRecorded")}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {describeChange(log) ?? <span className="text-muted-foreground">{t("noChangeRecorded")}</span>}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{log.ipAddress}</TableCell>
+                  <TableCell>
+                    {log.country ? (
+                      <span className="inline-flex items-center gap-1">
+                        <img
+                          src={`/flags/${log.country.toLowerCase()}.svg`}
+                          alt={log.country}
+                          className="w-4 h-3 object-cover rounded-sm"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                        <span className="text-foreground">{log.country}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-      )}
+        )}
+      </section>
 
       {/* Pagination */}
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

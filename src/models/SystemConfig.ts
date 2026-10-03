@@ -1,6 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { DEFAULT_MIN_RELEVANCE } from "@/lib/matching/constants";
 import type { DigestCadence } from "@/lib/notifications/digestGate";
+import { AUTOMATION_KEYS, DEFAULT_AUTOMATION_PARAMS, defaultAutomation, type AutomationConfig, type AutomationKey } from "@/lib/communications/whatsapp/automationDefaults";
+import logger from "@/lib/logger";
 
 /**
  * SystemConfig — platform-wide settings controlled by admin.
@@ -17,6 +19,14 @@ export interface CronJobConfig {
   lastRunMessage?: string;
 }
 
+export interface WhatsAppSettings {
+  /** Master switch for every WhatsApp send. Env keys are still required. */
+  enabled: boolean;
+  /** Transactional messages per user per rolling 24 h (spec §5 gate 5). */
+  dailyCapPerUser: number;
+  automations: Record<AutomationKey, AutomationConfig>;
+}
+
 export interface ISystemConfig extends Document {
   _id: mongoose.Types.ObjectId;
   key: string; // "notification_system"
@@ -29,6 +39,7 @@ export interface ISystemConfig extends Document {
     profileCompletion: CronJobConfig;
     weeklyDigest: CronJobConfig;
     emailSequenceSender: CronJobConfig;
+    whatsappScheduler: CronJobConfig;
   };
 
   // Global email defaults
@@ -52,6 +63,8 @@ export interface ISystemConfig extends Document {
     /** Let Jev re-rank the shortlist. Off falls back to the deterministic score alone. */
     aiRerank: boolean;
   };
+
+  whatsapp: WhatsAppSettings;
 
   // Admin-managed overrides (force-unsubscribe abusive users, etc.)
   userOverrides: Array<{
@@ -77,6 +90,19 @@ const CronJobConfigSchema = new Schema(
   { _id: false },
 );
 
+const AutomationSettingSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    templateName: { type: String, required: true, maxlength: 512 },
+    params: { type: [String], default: () => [...DEFAULT_AUTOMATION_PARAMS] },
+  },
+  { _id: false },
+);
+
+const automationSchemaPaths = Object.fromEntries(
+  AUTOMATION_KEYS.map((key) => [key, { type: AutomationSettingSchema, default: () => defaultAutomation(key) }]),
+);
+
 const SystemConfigSchema = new Schema<ISystemConfig>(
   {
     key: { type: String, required: true, unique: true },
@@ -87,6 +113,7 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
       profileCompletion: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
       weeklyDigest: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
       emailSequenceSender: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
+      whatsappScheduler: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
     },
     globalDefaults: {
       // Weekly, not daily: see resolveDefaultDigestCadence() for why. Changing
@@ -99,6 +126,11 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
     matching: {
       minScore: { type: Number, default: DEFAULT_MIN_RELEVANCE, min: 0, max: 100 },
       aiRerank: { type: Boolean, default: true },
+    },
+    whatsapp: {
+      enabled: { type: Boolean, default: true },
+      dailyCapPerUser: { type: Number, default: 3, min: 1, max: 20 },
+      automations: automationSchemaPaths,
     },
     userOverrides: [
       {
@@ -194,6 +226,62 @@ export async function isAiRerankEnabled(): Promise<boolean> {
   }
 }
 
+const DEFAULT_WHATSAPP_DAILY_CAP = 3;
+const MAX_WHATSAPP_DAILY_CAP = 20;
+
+/** An integer in [1, 20]; anything that is not a finite number >= 1 gets the default. */
+function normalizeDailyCap(n: unknown): number {
+  if (typeof n !== "number" || !Number.isFinite(n) || n < 1) return DEFAULT_WHATSAPP_DAILY_CAP;
+  return Math.min(MAX_WHATSAPP_DAILY_CAP, Math.floor(n));
+}
+
+function mergeWhatsAppSettings(stored: Partial<WhatsAppSettings> | undefined): WhatsAppSettings {
+  const automations = Object.fromEntries(
+    AUTOMATION_KEYS.map((key) => {
+      const s = stored?.automations?.[key];
+      const d = defaultAutomation(key);
+      // Copy stored params too: callers get a list they may edit without touching the document.
+      // Only an absent list takes the defaults: an explicit [] is a template with no body variables.
+      return [key, { enabled: s?.enabled ?? d.enabled, templateName: s?.templateName || d.templateName, params: Array.isArray(s?.params) ? [...s.params] : d.params }];
+    }),
+  ) as Record<AutomationKey, AutomationConfig>;
+  return {
+    enabled: stored?.enabled ?? true,
+    dailyCapPerUser: normalizeDailyCap(stored?.dailyCapPerUser),
+    automations,
+  };
+}
+
+/**
+ * The stored WhatsApp settings with defaults filled in, for the admin editor.
+ * Throws when the config cannot be read: an editor must not be shown, and save
+ * back, the fail-closed defaults the senders get from getWhatsAppSettings.
+ */
+export async function readWhatsAppSettings(): Promise<WhatsAppSettings> {
+  const config = await getSystemConfig();
+  // A hydrated doc hands back a Mongoose nested object; a lean one is plain.
+  const raw = config.whatsapp as (Partial<WhatsAppSettings> & { toObject?: () => Partial<WhatsAppSettings> }) | undefined;
+  return mergeWhatsAppSettings(raw?.toObject ? raw.toObject() : raw);
+}
+
+/**
+ * WhatsApp settings with defaults filled in for documents that predate the
+ * field, so a config written before this feature never disables it by accident.
+ *
+ * "Field absent" and "config unreadable" are different: the first means the
+ * admin never touched it (defaults, switch on); the second means we cannot tell
+ * what the admin chose, and the master switch is the kill switch, so it comes
+ * back off rather than failing open. Every sender uses this one.
+ */
+export async function getWhatsAppSettings(): Promise<WhatsAppSettings> {
+  try {
+    return await readWhatsAppSettings();
+  } catch (err) {
+    logger.warn({ err }, "[whatsapp] SystemConfig unreadable — WhatsApp sends are off until it can be read");
+    return { ...mergeWhatsAppSettings(undefined), enabled: false };
+  }
+}
+
 /**
  * Update a cron job's last run status.
  */
@@ -222,6 +310,15 @@ export async function getUserOverride(
 ): Promise<ISystemConfig["userOverrides"][number] | null> {
   const config = await getSystemConfig();
   return config.userOverrides.find((o) => o.userId === userId) ?? null;
+}
+
+/**
+ * The users an admin force-unsubscribed: getUserOverride for a whole batch of
+ * recipients, in one read (the WhatsApp broadcast and schedule leg).
+ */
+export async function getForceUnsubscribedUserIds(): Promise<Set<string>> {
+  const config = await getSystemConfig();
+  return new Set(config.userOverrides.filter((o) => o.action === "force_unsubscribe").map((o) => o.userId));
 }
 
 export const SystemConfig =

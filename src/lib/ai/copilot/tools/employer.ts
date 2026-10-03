@@ -6,7 +6,9 @@ import JobSeeker from "@/models/JobSeeker";
 import Interview from "@/models/Interview";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
+import logger from "@/lib/logger";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
+import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
 import { notifyStatusChange, notifyInterviewSelected, notifyRejected, notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 import type { CopilotTool, CopilotToolPreview } from "../types";
@@ -23,6 +25,15 @@ async function loadOwnedApplication(applicationId: string, employerId: unknown) 
   const job = application.jobId as unknown as { employerId?: unknown; title?: string };
   if (String(job?.employerId) !== String(employerId)) return { application: null, error: "That application doesn't belong to one of your jobs." };
   return { application, error: null as string | null };
+}
+
+/**
+ * Application.jobSeekerId is the JobSeeker document; notifications are addressed to its
+ * *user*. Null when the profile or its user link is gone.
+ */
+async function findSeekerUserId(jobSeekerId: unknown): Promise<string | null> {
+  const seeker = (await JobSeeker.findById(jobSeekerId).select("userId").lean()) as { userId?: unknown } | null;
+  return seeker?.userId ? String(seeker.userId) : null;
 }
 
 interface Selection {
@@ -272,11 +283,8 @@ export const updateApplicationStatusTool: CopilotTool<{ applicationId: string; s
     // Same contract as the applications PATCH route: the candidate is addressed
     // by their *user* id and only when the hiring rule says to tell them.
     const { notifyOnStageChange } = resolveHiringRulesForJob(job, employer);
-    const seeker = notifyOnStageChange
-      ? ((await JobSeeker.findById(application.jobSeekerId).select("userId").lean()) as { userId?: unknown } | null)
-      : null;
-    if (seeker?.userId) {
-      const seekerUserId = String(seeker.userId);
+    const seekerUserId = notifyOnStageChange ? await findSeekerUserId(application.jobSeekerId) : null;
+    if (seekerUserId) {
       const appId = String(application._id);
       if (args.status === "rejected") {
         await notifyRejected(seekerUserId, jobTitle, appId).catch(() => {});
@@ -341,6 +349,9 @@ export const scheduleInterviewTool: CopilotTool<{
       location: args.location ? sanitizeAIInput(args.location, 500) : undefined,
       meetLink,
       status: "scheduled",
+      // Booked inside the hourly cron's 24 hour window, the candidate gets the
+      // booking notice below; see reminderWindow.ts.
+      reminderSent: isInsideReminderWindow(when),
     });
 
     application.status = "interview_scheduled";
@@ -348,13 +359,30 @@ export const scheduleInterviewTool: CopilotTool<{
     application.interviewIds.push(interview._id);
     await application.save();
 
-    await notifyInterviewScheduled(
-      String(application.jobSeekerId),
-      job.title ?? "the role",
-      when,
-      args.location ?? meetLink ?? "TBD",
-      String(interview._id)
-    ).catch(() => {});
+    // Best effort like the notify itself: the interview is already booked. A failed lookup is logged as one (name and
+    // message, no id but the application's), so an outage is not read as "no user to notify"; undefined marks it.
+    const seekerUserId = await findSeekerUserId(application.jobSeekerId).catch((err: unknown) => {
+      logger.warn(
+        {
+          applicationId: String(application._id),
+          errorName: err instanceof Error ? err.name : typeof err,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        },
+        "[copilot] schedule_interview: could not look up the candidate's user, so no one was notified",
+      );
+      return undefined;
+    });
+    if (seekerUserId) {
+      await notifyInterviewScheduled(
+        seekerUserId,
+        job.title ?? "the role",
+        when,
+        args.location ?? meetLink ?? "TBD",
+        String(interview._id)
+      ).catch(() => {});
+    } else if (seekerUserId === null) {
+      logger.warn({ applicationId: String(application._id) }, "[copilot] schedule_interview: no user to notify for this application");
+    }
 
     return { ok: true, message: `Interview scheduled for ${when.toUTCString()}.`, data: { interviewId: String(interview._id) } };
   },

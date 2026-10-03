@@ -27,7 +27,7 @@ import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
-import { formatDate, formatListDate } from "@/lib/ui/intlFormat";
+import { formatDate, formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
 
 /* ── Types ── */
 
@@ -376,15 +376,16 @@ export default function AgentDetailPage() {
         description={`${user.email} · ${t("joinedLabel")} ${formatDate(user.joinedAt, { day: "numeric", month: "short", year: "numeric" })}`}
         eyebrow={t("agentProfile")}
       >
-        <div className="hidden workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:block sm:min-w-[180px]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("status")}</p>
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className={cn("h-2.5 w-2.5 rounded-full", user.isActive ? "bg-emerald-500" : "bg-rose-400")} />
-            <span className="text-sm font-semibold text-foreground">{user.isActive ? tc("active") : tc("inactive")}</span>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t("commissionLabel")}: {agent.commissionRate ?? 0}%</p>
+        {/* Single-line status pill at h-9: the old three-line card (~90px)
+            towered over the size="sm" buttons (~36px) beside it, so the row
+            looked uneven. All info kept, one row, same height as the buttons. */}
+        <div className="hidden h-9 items-center gap-2 rounded-md border border-border/60 bg-card px-3 shadow-none sm:flex">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("status")}</span>
+          <span className={cn("h-2.5 w-2.5 rounded-full", user.isActive ? "bg-emerald-500" : "bg-rose-400")} />
+          <span className="text-sm font-semibold text-foreground">{user.isActive ? tc("active") : tc("inactive")}</span>
+          <span className="text-xs text-muted-foreground">· {t("commissionLabel")}: {agent.commissionRate ?? 0}%</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={openEditDialog} className="gap-2">
             <Pencil className="h-3.5 w-3.5" />
             {t("editAgentButton")}
@@ -558,7 +559,7 @@ export default function AgentDetailPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(rl.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      {formatListDate(rl.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -585,7 +586,7 @@ export default function AgentDetailPage() {
                     <p className="text-xs text-muted-foreground">{t("targetLabel")}: {act.targetType}</p>
                   )}
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {new Date(act.timestamp).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {formatDateTime(act.timestamp, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
               </div>

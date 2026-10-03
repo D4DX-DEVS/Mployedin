@@ -22,6 +22,16 @@ process.env.RECAPTCHA_SECRET_KEY = "";
 process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "";
 process.env.RECAPTCHA_ALLOWED_HOSTS = "";
 
+// WhatsApp and SES: a developer's .env with real keys would make lib tests
+// call Meta / AWS for real. Tests that exercise live mode set these explicitly.
+for (const k of [
+  "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_BUSINESS_ACCOUNT_ID",
+  "WHATSAPP_APP_SECRET", "WHATSAPP_WEBHOOK_VERIFY_TOKEN", "WHATSAPP_GRAPH_API_VERSION",
+  "EMAIL_PROVIDER", "SES_REGION", "SES_ACCESS_KEY_ID", "SES_SECRET_ACCESS_KEY", "SES_FROM_EMAIL", "SES_FROM_NAME", "SES_CONFIGURATION_SET",
+]) {
+  process.env[k] = "";
+}
+
 // jsdom does not implement ResizeObserver, which several UI components rely on.
 // Provide a no-op polyfill so component tests don't crash with "ResizeObserver is not defined".
 if (typeof globalThis.ResizeObserver === "undefined") {

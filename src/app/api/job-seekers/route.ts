@@ -5,7 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 import SuperAgent from "@/models/SuperAgent";
-import { getSuperAgentScope, getSuperAgentTerritory, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
+import { getAgentSeekerArea, getSuperAgentScope, getSuperAgentTerritory, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
 import { decorateReferralSummaries, type ReferralViewer } from "@/lib/referrals/summary";
 import mongoose from "mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -43,14 +43,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
   const viewer: ReferralViewer = { role: ctx.role as ReferralViewer["role"] };
-  // Staff also see the visible seekers whose area lies in their own region
-  // (client report 2026-09-30, #5). `areaMatch` is that clause; `ownsRow` tells
-  // the rows they own (and may edit) from the ones they can only view.
+  // Staff also see the visible seekers whose area lies in their region (client
+  // report 2026-09-30, #5) — for an agent, their own region widened to their
+  // super agent's (getAgentSeekerArea). `areaMatch` is that clause; `ownsRow`
+  // tells the rows they own (and may edit) from the ones they can only view.
   let areaMatch: Record<string, unknown> | null = null;
   let ownsRow: ((row: Record<string, unknown>) => boolean) | null = null;
   if (ctx.role === "agent") {
     const agent = await Agent.findOne({ userId: ctx.userId })
-      .select("assignedJobSeekerIds assignedCityIds assignedStateIds")
+      .select("assignedJobSeekerIds assignedCityIds assignedStateIds superAgentId")
       .lean();
     const agentDocId = agent?._id;
     if (!agentDocId) {
@@ -68,10 +69,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         { "referral.agentId": agentDocId },
       ];
       if (assignedIds.length > 0) orConds.push({ _id: { $in: assignedIds } });
-      areaMatch = seekerRegionMatch({
+      areaMatch = seekerRegionMatch(await getAgentSeekerArea({
         assignedCityIds: (agent?.assignedCityIds as mongoose.Types.ObjectId[]) ?? [],
         assignedStateIds: (agent?.assignedStateIds as mongoose.Types.ObjectId[]) ?? [],
-      });
+        superAgentId: agent?.superAgentId,
+      }));
       agentScopeFilter = { $or: areaMatch ? [...orConds, areaMatch] : orConds };
       const me = String(agentDocId);
       const assigned = new Set(assignedIds.map(String));

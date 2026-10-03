@@ -50,7 +50,8 @@ async function register(req: NextRequest) {
       return NextResponse.json(
         {
           error: "invalid_redirect_uri",
-          error_description: "redirect_uris must use HTTPS; HTTP is allowed only for exact loopback hosts",
+          error_description:
+            "redirect_uris must be HTTPS on a supported client host (ChatGPT, Claude) or an exact loopback host",
         },
         { status: 400 }
       );

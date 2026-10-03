@@ -57,17 +57,52 @@ const CHECKS: EnvCheck[] = [
 
 let validated = false;
 
+const WHATSAPP_GROUP = [
+  "WHATSAPP_ACCESS_TOKEN",
+  "WHATSAPP_PHONE_NUMBER_ID",
+  "WHATSAPP_APP_SECRET",
+  "WHATSAPP_WEBHOOK_VERIFY_TOKEN",
+] as const;
+
 /**
- * Validates required environment variables. Throws an aggregated error listing
- * every problem so misconfiguration is fixed in one pass. Idempotent.
+ * WhatsApp keys are all-or-nothing: with only some of them set the adapter
+ * would run live and fail on its first call (or accept unsigned webhooks).
+ * WHATSAPP_BUSINESS_ACCOUNT_ID is deliberately not in the group — without it
+ * only template sync is unavailable (instrumentation warns).
  */
-export function validateEnv(): void {
-  if (validated) return;
+function whatsAppGroupErrors(env: Record<string, string | undefined>): string[] {
+  const anySet = Object.keys(env).some((k) => k.startsWith("WHATSAPP_") && env[k]);
+  if (!anySet) return [];
+  return WHATSAPP_GROUP.filter((k) => !env[k]).map(
+    (k) => `WhatsApp is partially configured: missing ${k} (set all of ${WHATSAPP_GROUP.join(", ")} or none)`,
+  );
+}
 
+const SES_GROUP = ["SES_REGION", "SES_ACCESS_KEY_ID", "SES_SECRET_ACCESS_KEY", "SES_FROM_EMAIL"] as const;
+
+/**
+ * EMAIL_PROVIDER=ses with a SES_* value missing (or blank) does not stop the
+ * server: mail falls back to the SMTP env chain (resolveTransport step 4), and
+ * the env SES tier only applies when the admin saved no provider anyway. So it
+ * is a warning, read the way resolveTransport reads it: trimmed, in any case.
+ */
+function sesGroupWarnings(env: Record<string, string | undefined>): string[] {
+  if (env.EMAIL_PROVIDER?.trim().toLowerCase() !== "ses") return [];
+  return SES_GROUP.filter((k) => !env[k]?.trim()).map(
+    (k) => `EMAIL_PROVIDER=ses but ${k} is missing: the env SES fallback is off until all of ${SES_GROUP.join(", ")} are set`,
+  );
+}
+
+/** Configuration gaps that do not stop the server; instrumentation logs them at boot. */
+export function collectEnvWarnings(env: Record<string, string | undefined> = process.env): string[] {
+  return sesGroupWarnings(env);
+}
+
+/** Every configuration problem, so misconfiguration is fixed in one pass. */
+export function collectEnvErrors(env: Record<string, string | undefined> = process.env): string[] {
   const errors: string[] = [];
-
   for (const check of CHECKS) {
-    const value = process.env[check.name];
+    const value = env[check.name];
     if (!value) {
       if (check.required) errors.push(`Missing required env var: ${check.name}`);
       continue;
@@ -75,12 +110,19 @@ export function validateEnv(): void {
     const msg = check.validate?.(value);
     if (msg) errors.push(msg);
   }
+  errors.push(...whatsAppGroupErrors(env));
+  return errors;
+}
 
+/**
+ * Validates required environment variables. Throws an aggregated error listing
+ * every problem. Idempotent.
+ */
+export function validateEnv(): void {
+  if (validated) return;
+  const errors = collectEnvErrors();
   if (errors.length > 0) {
-    throw new Error(
-      `Environment validation failed:\n  - ${errors.join("\n  - ")}`,
-    );
+    throw new Error(`Environment validation failed:\n  - ${errors.join("\n  - ")}`);
   }
-
   validated = true;
 }

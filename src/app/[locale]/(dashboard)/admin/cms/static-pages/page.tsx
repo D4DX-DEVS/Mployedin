@@ -1,9 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import CmsPage from "@/components/features/admin/CmsPage";
 import { FileText } from "lucide-react";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 /**
  * The legal pages (lib/cms/legalPages) — edit only. No Add New: a new slug
@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/ui/intlFormat";
  */
 export default function StaticPagesAdminPage() {
   const t = useTranslations("adminCmsStaticPages");
+  const locale = useLocale();
 
   const COLUMNS = [
     { key: "slug", label: t("slugLabel"), sortable: true },
@@ -21,7 +22,7 @@ export default function StaticPagesAdminPage() {
       sortable: true,
       label: t("lastUpdatedColumnLabel"),
       render: (value: unknown) =>
-        value ? formatDate(new Date(String(value))) : t("emptyDateValue"),
+        value ? formatListDate(new Date(String(value)), locale) : t("emptyDateValue"),
     },
     { key: "isActive", label: t("statusLabel") },
   ];

@@ -402,7 +402,7 @@ export default function AdminCommissionsPage() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
+              <TableRow className="border-border/80 bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderRecipient")}</TableHead>
                 <TableHead className="hidden lg:table-cell">{t("tableHeaderType")}</TableHead>
                 <TableHead>{t("tableHeaderInvoice")}</TableHead>

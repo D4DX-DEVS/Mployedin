@@ -19,128 +19,56 @@ import {
 } from "@/components/ui/table";
 import {
   AlertCircle, AlertTriangle, Building2, Calendar, Check, Copy,
-  Edit2, Flame, Gauge, GripVertical, Inbox, LayoutGrid, List,
-  Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Search,
-  Sparkles, Target, Trash2, TrendingUp, XCircle,
+  Flame, Gauge, Inbox, LayoutGrid, List,
+  Mail, MapPin, MessageSquare, PanelRightOpen, Pencil, Plus,
+  Trash2,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, closestCorners, useSensor, useSensors,
   MouseSensor, TouchSensor, KeyboardSensor,
   type DragStartEvent, type DragEndEvent,
 } from "@dnd-kit/core";
-import { useDroppable, useDraggable } from "@dnd-kit/core";
-import Link from "next/link";
+import { useDroppable } from "@dnd-kit/core";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions, InlinePicker, type RowAction } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { HIRING_RANGES, knownStageDetails, missingStageFields } from "@/lib/leads/stageRules";
+import {
+  HIRING_RANGE_KEYS, STAGES, TEMP_STYLES, getStageConfig,
+  type Lead, type LeadStatus,
+} from "./_components/leadShared";
+import { DraggableLeadCard } from "./_components/LeadCard";
+import type { LeadActionHandlers, LeadActionState } from "./_components/LeadActionsMenu";
+import { LeadWorkspace, type WorkspaceTab } from "./_components/LeadWorkspace";
+import { MoveStageDialog } from "./_components/MoveStageDialog";
+import { FollowUpDialog } from "./_components/FollowUpDialog";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
-type LeadStatus = "new" | "contacted" | "interested" | "negotiating" | "converted" | "lost";
-type LeadQualification = "cold" | "warm" | "hot" | "qualified";
 type ViewMode = "board" | "table";
-
-interface Lead {
-  _id: string;
-  companyName: string;
-  contactPerson: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  country?: string;
-  industry?: string;
-  score?: number;
-  qualificationLevel?: LeadQualification;
-  expectedRevenue?: number;
-  expectedRevenueCurrency?: string;
-  source?: string;
-  lostReason?: string;
-  exhibitionId?: string;
-  autoRouted?: boolean;
-  status: LeadStatus;
-  notes?: string;
-  followUpAt?: string;
-  createdAt: string;
-}
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 
-const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
-
-/* How many cards a board column holds before it asks. The board used to pull
-   `limit=200` in one request and drop the lot into six columns, so a busy
-   pipeline buried the page and the column counts were capped at whatever that
-   one page happened to contain. Each column now pages its own stage. */
-const BOARD_PAGE_SIZE = 10;
-type StageBucket = { items: Lead[]; total: number; page: number; loadingMore: boolean };
+/* The board pages every stage together: page 2 shows each column's next
+   `limit` cards, under the same pagination bar as the table. The board used to
+   pull `limit=200` in one request, and later hid a "Load more" button at the
+   bottom of each column's own scroll, where nobody found it (owner,
+   2026-10-02: "this page need a pagination"). */
+type StageBucket = { items: Lead[]; total: number };
 const emptyStageBuckets = (): Record<LeadStatus, StageBucket> =>
   STAGES.reduce((acc, st) => {
-    acc[st] = { items: [], total: 0, page: 1, loadingMore: false };
+    acc[st] = { items: [], total: 0 };
     return acc;
   }, {} as Record<LeadStatus, StageBucket>);
-
-function getStageConfig(t: ReturnType<typeof useTranslations>): Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode; description: string }> {
-  return {
-    new: {
-      label: t("stageNew"),
-      color: "text-status-applied",
-      bgColor: "bg-status-applied-bg",
-      borderColor: "border-status-applied/20",
-      icon: <Sparkles className="h-4 w-4" />,
-      description: t("stageNewDescription"),
-    },
-    contacted: {
-      label: t("stageContacted"),
-      color: "text-status-interview",
-      bgColor: "bg-status-interview-bg",
-      borderColor: "border-status-interview/20",
-      icon: <Phone className="h-4 w-4" />,
-      description: t("stageContactedDescription"),
-    },
-    interested: {
-      label: t("stageInterested"),
-      color: "text-status-shortlisted",
-      bgColor: "bg-status-shortlisted-bg",
-      borderColor: "border-status-shortlisted/20",
-      icon: <TrendingUp className="h-4 w-4" />,
-      description: t("stageInterestedDescription"),
-    },
-    negotiating: {
-      label: t("stageNegotiating"),
-      color: "text-status-interview",
-      bgColor: "bg-status-interview-bg",
-      borderColor: "border-status-interview/20",
-      icon: <Target className="h-4 w-4" />,
-      description: t("stageNegotiatingDescription"),
-    },
-    converted: {
-      label: t("stageWon"),
-      color: "text-status-selected",
-      bgColor: "bg-status-selected-bg",
-      borderColor: "border-status-selected/20",
-      icon: <Building2 className="h-4 w-4" />,
-      description: t("stageWonDescription"),
-    },
-    lost: {
-      label: t("stageLost"),
-      color: "text-status-rejected",
-      bgColor: "bg-status-rejected-bg",
-      borderColor: "border-status-rejected/20",
-      icon: <XCircle className="h-4 w-4" />,
-      description: t("stageLostDescription"),
-    },
-  };
-}
-
-const TEMP_STYLES: Record<string, string> = {
-  hot: "border-status-rejected/20 bg-status-rejected-bg text-status-rejected",
-  warm: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted",
-  cold: "border-status-applied/20 bg-status-applied-bg text-status-applied",
-  qualified: "border-status-selected/20 bg-status-selected-bg text-status-selected",
-};
 
 interface LeadScoreResult {
   lead: { id: string; companyName: string };
@@ -153,7 +81,7 @@ interface LeadScoreResult {
   riskFactors: string[];
 }
 
-function getLeadFields(t: ReturnType<typeof useTranslations>, stageConfig: Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode; description: string }>): CrudField[] {
+function getLeadFields(t: ReturnType<typeof useTranslations>, { isEdit }: { isEdit: boolean }): CrudField[] {
   return [
     { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
     { name: "contactPerson", label: t("fieldContactPerson"), type: "text", required: true },
@@ -162,253 +90,30 @@ function getLeadFields(t: ReturnType<typeof useTranslations>, stageConfig: Recor
     { name: "country", label: t("fieldCountry"), type: "text" },
     { name: "industry", label: t("fieldIndustry"), type: "text" },
     { name: "expectedRevenue", label: t("fieldExpectedRevenue"), type: "number" },
+    {
+      name: "expectedHiring",
+      label: t("moveFieldExpectedHiring"),
+      type: "select",
+      options: [{ value: "", label: t("noneOption") }, ...HIRING_RANGES.map((range) => ({ value: range, label: t(HIRING_RANGE_KEYS[range]) }))],
+    },
+    { name: "requirement", label: t("moveFieldRequirement"), type: "text", placeholder: t("requirementPlaceholder") },
     { name: "source", label: t("fieldLeadSource"), type: "text" },
     { name: "exhibitionId", label: t("fieldExhibition"), type: "select", options: [] },
-    { name: "status", label: t("fieldStage"), type: "select", options: STAGES.map((s) => ({ value: s, label: stageConfig[s].label })) },
-    { name: "lostReason", label: t("fieldLostReason"), type: "text" },
     { name: "notes", label: t("fieldNotes"), type: "textarea" },
-    { name: "followUpAt", label: t("fieldFollowUpDate"), type: "date" },
+    // Stage and lost reason are no longer form fields: a stage changes only
+    // through the Move dialog, which asks for that stage's details. A follow-up
+    // is managed in the workspace with its time and type; only a new lead's
+    // form offers a first date, so editing cannot flatten a set time to midnight.
+    ...(isEdit ? [] : [{ name: "followUpAt", label: t("fieldFollowUpDate"), type: "date" as const }]),
   ];
 }
 
-const FORWARD_STAGES: LeadStatus[] = STAGES.filter((st) => st !== "lost");
-
-/* ─── Stage progress ────────────────────────────────────────────────────── */
-
-/** Where a lead stands on the pipeline, under the stage picker in the table. */
-function StageProgress({
-  stage,
-  stageConfig,
-  t,
-}: {
-  stage: LeadStatus;
-  stageConfig: ReturnType<typeof getStageConfig>;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  const idx = FORWARD_STAGES.indexOf(stage);
-  const isLost = stage === "lost";
-  const label = isLost
-    ? stageConfig.lost.label
-    : `${t("pipelineProgress")} — ${t("stageStep", { step: idx + 1, total: FORWARD_STAGES.length })}`;
-
-  return (
-    <div className="flex items-center gap-0.5" role="img" aria-label={label} title={label}>
-      {FORWARD_STAGES.map((st, i) => (
-        <span
-          key={st}
-          className={`h-1 w-4 rounded-full ${
-            isLost ? "bg-status-rejected/40" : i <= idx ? "bg-status-selected" : "bg-border/60"
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
-
-/* ─── Lead Card (Kanban) ────────────────────────────────────────────────── */
-
-function DraggableLeadCard({
-  lead,
-  onEdit,
-  onScore,
-  onConvert,
-  onStatusChange,
-  scoring,
-  converting,
-  exhibitions,
-  t,
-  stageConfig,
-}: {
-  lead: Lead;
-  onEdit: (lead: Lead) => void;
-  onScore: (id: string) => void;
-  onConvert: (lead: Lead) => void;
-  onStatusChange: (id: string, status: LeadStatus) => void;
-  scoring: boolean;
-  converting: boolean;
-  exhibitions: { _id: string; eventName: string }[];
-  t: ReturnType<typeof useTranslations>;
-  stageConfig: ReturnType<typeof getStageConfig>;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: lead._id,
-    data: { lead },
-  });
-
-  // The pointerup that ends a real drag still fires a click on the card, which
-  // opened the edit modal on every drop. Swallow clicks for a beat after a drag.
-  const wasDraggingRef = useRef(false);
-  const dragEndedAtRef = useRef(0);
-  useEffect(() => {
-    if (isDragging) { wasDraggingRef.current = true; return; }
-    if (wasDraggingRef.current) {
-      wasDraggingRef.current = false;
-      dragEndedAtRef.current = Date.now();
-    }
-  }, [isDragging]);
-
-  const handleEdit = useCallback((l: Lead) => {
-    if (Date.now() - dragEndedAtRef.current < 250) return;
-    onEdit(l);
-  }, [onEdit]);
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        opacity: isDragging ? 0.35 : 1,
-        // Touch drag runs off TouchSensor's long-press, so the column keeps its
-        // own vertical scroll; `none` here would have killed it.
-        touchAction: "manipulation",
-      }}
-      className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-      {...attributes}
-      {...listeners}
-    >
-      <LeadCard
-        lead={lead}
-        onEdit={handleEdit}
-        onScore={onScore}
-        onConvert={onConvert}
-        onStatusChange={onStatusChange}
-        scoring={scoring}
-        converting={converting}
-        exhibitions={exhibitions}
-        draggable
-        t={t}
-        stageConfig={stageConfig}
-      />
-    </div>
-  );
-}
-
-function LeadCard({
-  lead,
-  onEdit,
-  onScore,
-  onConvert,
-  onStatusChange,
-  scoring,
-  converting,
-  exhibitions,
-  draggable,
-  t,
-  stageConfig,
-}: {
-  lead: Lead;
-  onEdit: (lead: Lead) => void;
-  onScore: (id: string) => void;
-  onConvert: (lead: Lead) => void;
-  onStatusChange: (id: string, status: LeadStatus) => void;
-  scoring: boolean;
-  converting: boolean;
-  exhibitions: { _id: string; eventName: string }[];
-  draggable?: boolean;
-  t: ReturnType<typeof useTranslations>;
-  stageConfig: ReturnType<typeof getStageConfig>;
-}) {
-  const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
-  const exhibition = lead.exhibitionId ? exhibitions.find((e) => e._id === lead.exhibitionId) : null;
-  const stageIdx = STAGES.indexOf(lead.status);
-  const nextStage = stageIdx >= 0 && stageIdx < STAGES.length - 2 ? STAGES[stageIdx + 1] : null;
-  const hasRevenue = lead.expectedRevenue != null && lead.expectedRevenue > 0;
-  const canConvert = lead.status !== "converted" && lead.status !== "lost" && Boolean(lead.contactEmail);
-  // Location and industry ride one clipped line instead of a wrapping icon
-  // grid — the old card ran ~130px tall, mostly on a wrapped email address.
-  const place = [lead.country, lead.industry].filter(Boolean).join(" · ");
-
-  return (
-    <div
-      className={`group relative rounded-xl border border-border/60 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:border-border chip-pad ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
-      onClick={() => onEdit(lead)}
-    >
-      {/* Company + score. The grip is a cue only — the whole card is the
-          drag activator, so it must not swallow the pointer. */}
-      <div className="flex items-start gap-1.5">
-        {draggable && (
-          <GripVertical className="pointer-events-none mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/25 transition group-hover:text-muted-foreground/60" />
-        )}
-        <div className="min-w-0 flex-1">
-          <h4 className="truncate text-[13px] font-semibold leading-tight text-foreground" title={lead.companyName}>{lead.companyName}</h4>
-        </div>
-        {lead.score != null && (
-          <span className={`shrink-0 rounded-full border px-1.5 py-0 text-[10px] font-bold leading-5 ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
-            <Gauge className="mr-0.5 inline h-2.5 w-2.5 align-[-1px]" />
-            {lead.score}
-          </span>
-        )}
-      </div>
-
-      {/* Contact, country and industry share one clipped line — three stacked
-          rows with an icon each is what made the old card 130px tall. */}
-      <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground">
-        {lead.contactPerson}
-        {place && <><span className="mx-1 opacity-40">·</span><MapPin className="mr-0.5 inline h-2.5 w-2.5 align-[-1px]" />{place}</>}
-      </p>
-
-      {(lead.followUpAt || exhibition || hasRevenue) && (
-        <div className="mt-1.5 flex items-center gap-1 overflow-hidden text-[10px] font-medium">
-          {lead.followUpAt && (
-            <span className={`shrink-0 rounded px-1.5 py-0.5 ${isOverdue ? "bg-status-rejected-bg text-rose-700" : "bg-muted text-muted-foreground"}`}>
-              <Calendar className="mr-0.5 inline h-2.5 w-2.5 align-[-1px]" />
-              {formatDate(new Date(lead.followUpAt), { month: "short", day: "numeric" })}
-            </span>
-          )}
-          {exhibition && (
-            <span className="min-w-0 truncate rounded bg-primary/5 px-1.5 py-0.5 text-primary">{exhibition.eventName}</span>
-          )}
-          {hasRevenue && (
-            <span className="ml-auto shrink-0 font-semibold text-status-selected">
-              {lead.expectedRevenueCurrency ?? "AED"} {formatCount(lead.expectedRevenue!)}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Actions float over the card corner. The old bar sat on the bottom
-          edge and, on a card this short, covered the content it belonged to. */}
-      <div
-        className="absolute end-1 top-1 hidden items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm group-hover:flex group-focus-within:flex"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={() => onScore(lead._id)}
-          disabled={scoring}
-          className="rounded-md p-1 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600"
-          title={t("aiScore")}
-          aria-label={t("aiScore")}
-        >
-          {scoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
-        </button>
-        {canConvert && (
-          <button
-            type="button"
-            onClick={() => onConvert(lead)}
-            disabled={converting}
-            className="rounded-md p-1 text-muted-foreground transition hover:bg-status-selected-bg hover:text-status-selected"
-            title={t("convertToEmployer")}
-            aria-label={t("convertToEmployer")}
-          >
-            {converting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Building2 className="h-3.5 w-3.5" />}
-          </button>
-        )}
-        {nextStage && (
-          <button
-            type="button"
-            onClick={() => onStatusChange(lead._id, nextStage)}
-            className="rounded-md p-1 text-primary transition hover:bg-primary/10"
-            title={t("moveToStage", { stage: stageConfig[nextStage].label })}
-            aria-label={t("moveToStage", { stage: stageConfig[nextStage].label })}
-          >
-            <TrendingUp className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+// Thirteen fields scrolled past the footer in one column, so the form is two
+// steps: who the lead is, then where the deal stands.
+const LEAD_FORM_STEPS = [
+  { labelKey: "formStepCompany", fields: ["companyName", "contactPerson", "contactEmail", "contactPhone", "country", "industry"] },
+  { labelKey: "formStepDeal", fields: ["expectedRevenue", "expectedHiring", "requirement", "source", "exhibitionId", "notes", "followUpAt"] },
+] as const;
 
 /* ─── Kanban Column ─────────────────────────────────────────────────────── */
 
@@ -416,35 +121,25 @@ function DroppableKanbanColumn({
   stage,
   leads,
   total,
-  loadingMore,
-  onLoadMore,
-  onEdit,
-  onScore,
-  onConvert,
-  onStatusChange,
   onAdd,
-  scoringLeadId,
-  convertingLeadId,
-  exhibitions,
+  actions,
+  actionState,
+  exhibitionName,
   canCreate,
   t,
+  locale,
   stageConfig,
 }: {
   stage: LeadStatus;
   leads: Lead[];
   total: number;
-  loadingMore: boolean;
-  onLoadMore: (stage: LeadStatus) => void;
-  onEdit: (lead: Lead) => void;
-  onScore: (id: string) => void;
-  onConvert: (lead: Lead) => void;
-  onStatusChange: (id: string, status: LeadStatus) => void;
   onAdd: () => void;
-  scoringLeadId: string | null;
-  convertingLeadId: string | null;
-  exhibitions: { _id: string; eventName: string }[];
+  actions: LeadActionHandlers;
+  actionState: LeadActionState;
+  exhibitionName: (id?: string) => string | undefined;
   canCreate: boolean;
   t: ReturnType<typeof useTranslations>;
+  locale: string;
   stageConfig: ReturnType<typeof getStageConfig>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `column-${stage}` });
@@ -490,43 +185,32 @@ function DroppableKanbanColumn({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-1 overflow-y-auto p-1.5" style={{ maxHeight: "calc(100vh - 236px)" }}>
+      <div className="flex-1 space-y-1.5 overflow-y-auto p-1.5" style={{ maxHeight: "calc(100vh - 236px)" }}>
         {leads.length === 0 ? (
           <div className={`flex flex-col items-center gap-1.5 rounded-lg border border-dashed py-5 text-center transition-colors ${isOver ? "border-primary/60 bg-primary/5" : "border-transparent"}`}>
             <div className={`rounded-full p-2 ${config.bgColor}`}>
               <Inbox className={`h-4 w-4 ${config.color}`} />
             </div>
-            <p className="px-2 text-[11px] leading-tight text-muted-foreground">{config.description}</p>
+            {/* A stage with leads that simply ran out before this page. */}
+            <p className="px-2 text-[11px] leading-tight text-muted-foreground">
+              {total > 0 ? t("boardColumnPageEmpty") : config.description}
+            </p>
           </div>
         ) : (
           leads.map((lead) => (
             <DraggableLeadCard
               key={lead._id}
               lead={lead}
-              onEdit={onEdit}
-              onScore={onScore}
-              onConvert={onConvert}
-              onStatusChange={onStatusChange}
-              scoring={scoringLeadId === lead._id}
-              converting={convertingLeadId === lead._id}
-              exhibitions={exhibitions}
+              stage={config}
+              exhibitionName={exhibitionName(lead.exhibitionId)}
+              actions={actions}
+              state={actionState}
               t={t}
-              stageConfig={stageConfig}
+              locale={locale}
             />
           ))
         )}
 
-        {leads.length > 0 && leads.length < total && (
-          <button
-            type="button"
-            onClick={() => onLoadMore(stage)}
-            disabled={loadingMore}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/70 py-1.5 text-[11px] font-semibold text-muted-foreground transition hover:border-border hover:text-foreground disabled:opacity-60"
-          >
-            {loadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
-            {t("loadMoreLeads", { count: total - leads.length })}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -539,13 +223,19 @@ export default function AgentLeadsPage() {
   const tf = useTranslations("formErrors");
   const locale = useLocale();
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
-  const tconf = useTranslations("confirm");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
+  const { setTotal, setTotalPages, setPage, resetPage } = pagination;
+  // Only the newest list request may answer. Six column requests per page
+  // plus a fetch per search keystroke race; a slow old one landing last would
+  // show page 2's cards under "page 3" (or call setPage from a stale page).
+  const listRequestRef = useRef(0);
+  // handleDragEnd is declared before refreshData; it resyncs through this.
+  const quietResyncRef = useRef<() => void>(() => {});
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   // Filters live in the query string so "leads due today" and "leads in
   // negotiation" are addresses the dashboard queue, nav badges and ⌘K can link.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
@@ -587,6 +277,15 @@ export default function AgentLeadsPage() {
   // using `leads` with the shared page controls.
   const [stageBuckets, setStageBuckets] = useState<Record<LeadStatus, StageBucket>>(emptyStageBuckets);
   const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The Lead Workspace has an address (`?lead=<id>`), so a notification, the
+  // dashboard or a shared link can open one lead over the board.
+  const [workspaceLeadId, setWorkspaceLeadId] = useUrlFilter("lead", "");
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("overview");
+  const [focusNoteComposer, setFocusNoteComposer] = useState(false);
+  // Bumped after a page-owned dialog changes a lead, so the workspace re-reads it.
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
+  const [moveRequest, setMoveRequest] = useState<{ lead: Lead; target?: LeadStatus; lock: boolean } | null>(null);
+  const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
 
   const STAGE_CONFIG = useMemo(() => getStageConfig(t), [t]);
 
@@ -622,6 +321,12 @@ export default function AgentLeadsPage() {
       ? (overId.replace("column-", "") as LeadStatus)
       : allLoaded.find((l) => l._id === overId)?.status;
     if (!newStatus || lead.status === newStatus) return;
+    // A drop that needs details (Won, Lost, or a forward stage the lead has no
+    // facts for yet) opens the Move dialog on that stage instead of moving.
+    if (newStatus === "converted" || newStatus === "lost" || missingStageFields(lead.status, newStatus, {}, knownStageDetails(lead)).length > 0) {
+      setMoveRequest({ lead, target: newStatus, lock: true });
+      return;
+    }
     const leadId = lead._id;
     const from = lead.status;
     // Optimistic update — the card jumps columns now, and each stage's total
@@ -657,8 +362,8 @@ export default function AgentLeadsPage() {
       }));
     };
     // Persist to API (fire-and-forget, fetchLeads will re-sync)
-    fetch(`/api/leads/${leadId}`, {
-      method: "PATCH",
+    fetch(`/api/leads/${leadId}/stage`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     }).then((res) => {
@@ -668,6 +373,9 @@ export default function AgentLeadsPage() {
         return;
       }
       toast.success(t("leadMovedToStage", { stage: STAGE_CONFIG[newStatus].label }));
+      // The optimistic card can leave a column one over the page size and the
+      // page count stale; re-read the page quietly.
+      quietResyncRef.current();
     }).catch(() => {
       toast.error(t("failedToMoveLead"));
       revert();
@@ -682,10 +390,15 @@ export default function AgentLeadsPage() {
   }, []);
 
   const leadFields = useMemo<CrudField[]>(() => {
-    const baseFields = getLeadFields(t, STAGE_CONFIG);
+    const baseFields = getLeadFields(t, { isEdit: Boolean(editLead) });
     const exOpts = [{ value: "", label: t("noneOption") }, ...exhibitions.map((e) => ({ value: e._id, label: e.eventName }))];
     return baseFields.map((f) => f.name === "exhibitionId" ? { ...f, options: exOpts } : f);
-  }, [exhibitions, t, STAGE_CONFIG]);
+  }, [exhibitions, t, editLead]);
+
+  const leadSteps = useMemo(
+    () => LEAD_FORM_STEPS.map((step) => ({ label: t(step.labelKey), fields: [...step.fields] })),
+    [t],
+  );
 
   // Filters every request carries, whichever view is asking.
   const sharedParams = useCallback(() => {
@@ -701,79 +414,119 @@ export default function AgentLeadsPage() {
     [statusFilter],
   );
 
-  const fetchStage = useCallback(async (stage: LeadStatus, page: number) => {
+  const fetchStage = useCallback(async (stage: LeadStatus) => {
     const params = sharedParams();
     params.set("status", stage);
-    params.set("limit", String(BOARD_PAGE_SIZE));
-    params.set("page", String(page));
-    const res = await fetch(`/api/leads?${params}`);
-    if (!res.ok) return { items: [] as Lead[], total: 0 };
-    const data = await res.json();
-    return { items: (data.items ?? []) as Lead[], total: (data.total ?? 0) as number };
-  }, [sharedParams]);
+    params.set("limit", String(pagination.limit));
+    params.set("page", String(pagination.page));
+    try {
+      const res = await fetch(`/api/leads?${params}`);
+      if (!res.ok) return { items: [] as Lead[], total: 0, success: false };
+      const data = await res.json();
+      return { items: (data.items ?? []) as Lead[], total: (data.total ?? 0) as number, success: true };
+    } catch {
+      return { items: [] as Lead[], total: 0, success: false };
+    }
+  }, [sharedParams, pagination.page, pagination.limit]);
 
-  const fetchBoard = useCallback(async () => {
-    setLoading(true);
-    const results = await Promise.all(visibleStages.map((st) => fetchStage(st, 1)));
+  // `quiet` re-reads after a change without the skeleton: the agent stays on
+  // the cards they were looking at instead of watching the board blink.
+  const fetchBoard = useCallback(async ({ quiet = false }: { quiet?: boolean } = {}) => {
+    const request = ++listRequestRef.current;
+    if (!quiet) setLoading(true);
+    setError("");
+    const results = await Promise.all(visibleStages.map((st) => fetchStage(st)));
+    if (request !== listRequestRef.current) return;
+    if (results.some((r) => !r.success)) {
+      // A failed background refresh keeps the board it already shows.
+      if (!quiet) setError(t("failedToLoadLeads"));
+      setLoading(false);
+      return;
+    }
     setStageBuckets(() => {
       const next = emptyStageBuckets();
       visibleStages.forEach((st, i) => {
-        next[st] = { items: results[i].items, total: results[i].total, page: 1, loadingMore: false };
+        next[st] = { items: results[i].items, total: results[i].total };
       });
       return next;
     });
+    // As many pages as the longest stage needs.
+    const pages = Math.max(1, ...results.map((r) => Math.ceil(r.total / pagination.limit)));
+    setTotal(results.reduce((sum, r) => sum + r.total, 0));
+    setTotalPages(pages);
+    // A move or delete can empty the last page; step back to one that exists.
+    if (pagination.page > pages) setPage(pages);
     setLoading(false);
-  }, [visibleStages, fetchStage]);
+  }, [visibleStages, fetchStage, t, pagination.limit, pagination.page, setTotal, setTotalPages, setPage]);
 
-  // A column asks for its own next page; the others are untouched.
-  const loadMoreStage = useCallback(async (stage: LeadStatus) => {
-    const bucket = stageBuckets[stage];
-    if (!bucket || bucket.loadingMore || bucket.items.length >= bucket.total) return;
-    const nextPage = bucket.page + 1;
-    setStageBuckets((prev) => ({ ...prev, [stage]: { ...prev[stage], loadingMore: true } }));
-    const { items, total } = await fetchStage(stage, nextPage);
-    setStageBuckets((prev) => {
-      const seen = new Set(prev[stage].items.map((l) => l._id));
-      return {
-        ...prev,
-        [stage]: {
-          items: [...prev[stage].items, ...items.filter((l) => !seen.has(l._id))],
-          total: total || prev[stage].total,
-          page: nextPage,
-          loadingMore: false,
-        },
-      };
-    });
-  }, [stageBuckets, fetchStage]);
-
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
+  const fetchLeads = useCallback(async ({ quiet = false }: { quiet?: boolean } = {}) => {
+    const request = ++listRequestRef.current;
+    const current = () => request === listRequestRef.current;
+    if (!quiet) setLoading(true);
+    setError("");
     const params = sharedParams();
     const pp = pagination.paginationParams();
     pp.forEach((v, k) => params.set(k, v));
     if (statusFilter !== "all") params.set("status", statusFilter);
 
-    const res = await fetch(`/api/leads?${params}`);
-    const data = await res.json();
-    setLeads(data.items ?? []);
-    pagination.updateTotal(data.total ?? data.items?.length ?? 0);
-    setLoading(false);
-  }, [sharedParams, statusFilter, pagination.page, pagination.limit]);
+    try {
+      const res = await fetch(`/api/leads?${params}`);
+      if (!current()) return;
+      if (!res.ok) {
+        setError(t("failedToLoadLeads"));
+        setLeads([]);
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (!current()) return;
+      setLeads(data.items ?? []);
+      pagination.updateTotal(data.total ?? data.items?.length ?? 0);
+      setError("");
+    } catch {
+      if (!current()) return;
+      setError(t("failedToLoadLeads"));
+      setLeads([]);
+    } finally {
+      if (current()) setLoading(false);
+    }
+  }, [sharedParams, statusFilter, pagination.page, pagination.limit, t]);
 
-  const refreshData = useCallback(() => {
-    return viewMode === "board" ? fetchBoard() : fetchLeads();
+  const refreshData = useCallback((options?: { quiet?: boolean }) => {
+    return viewMode === "board" ? fetchBoard(options) : fetchLeads(options);
   }, [viewMode, fetchBoard, fetchLeads]);
 
   useEffect(() => {
     if (viewMode === "board") { fetchBoard(); } else { fetchLeads(); }
   }, [viewMode, fetchBoard, fetchLeads]);
-  useEffect(() => { pagination.resetPage(); }, [search, statusFilter, exhibitionFilter, followUpFilter]);
+  // Back to page 1 when a filter actually changes. Running this on load as
+  // well dropped a ?page= from the URL, so back/forward never restored it.
+  const filterKey = [search, statusFilter, exhibitionFilter, followUpFilter].join("|");
+  const lastFilterKeyRef = useRef(filterKey);
+  useEffect(() => {
+    if (lastFilterKeyRef.current === filterKey) return;
+    lastFilterKeyRef.current = filterKey;
+    resetPage();
+  }, [filterKey, resetPage]);
 
-  const updateStatus = async (id: string, status: LeadStatus) => {
-    setUpdating(id);
+  /** After any change to a lead: re-read the board or table, and the open workspace. */
+  const afterLeadChange = useCallback(() => {
+    void refreshData({ quiet: true });
+    setWorkspaceVersion((v) => v + 1);
+  }, [refreshData]);
+  useEffect(() => { quietResyncRef.current = () => { void refreshData({ quiet: true }); }; }, [refreshData]);
+
+  /** The table's stage picker: moves at once when the stage needs nothing new,
+   *  otherwise asks for it in the Move dialog — the same rule as a drop. */
+  const requestStageChange = async (lead: Lead, status: LeadStatus) => {
+    if (status === "converted" || status === "lost" || missingStageFields(lead.status, status, {}, knownStageDetails(lead)).length > 0) {
+      setMoveRequest({ lead, target: status, lock: true });
+      return;
+    }
+    setUpdating(lead._id);
     try {
-      const res = await fetch(`/api/leads/${id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/leads/${lead._id}/stage`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
@@ -782,7 +535,7 @@ export default function AgentLeadsPage() {
         return;
       }
       toast.success(t("leadMovedToStage", { stage: STAGE_CONFIG[status].label }));
-      await refreshData();
+      afterLeadChange();
     } catch {
       toast.error(t("failedToMoveLead"));
     } finally {
@@ -805,7 +558,7 @@ export default function AgentLeadsPage() {
       throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: leadFields, conflict: tf("emailInUse") });
     }
     setEditLead(null);
-    refreshData();
+    afterLeadChange();
   };
 
   const handleDelete = async (id: string) => {
@@ -818,6 +571,7 @@ export default function AgentLeadsPage() {
       toast.error(t("failedToDeleteLead"));
       return;
     }
+    if (workspaceLeadId === id) setWorkspaceLeadId("");
     refreshData();
   };
 
@@ -837,8 +591,8 @@ export default function AgentLeadsPage() {
     { header: t("exportHeaderExpectedRevenue"), key: "expectedRevenue" },
     { header: t("exportHeaderSource"), key: "source" },
     { header: t("exportHeaderExhibition"), key: "exhibitionId", formatter: (v) => v ? exhibitions.find((e) => e._id === String(v))?.eventName ?? "" : "" },
-    { header: t("exportHeaderFollowUp"), key: "followUpAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
-    { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("exportHeaderFollowUp"), key: "followUpAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "" },
+    { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -883,22 +637,24 @@ export default function AgentLeadsPage() {
       const data: LeadScoreResult = await res.json();
       setScoreResult(data);
       toast.success(t("leadScored", { temperature: data.temperature, score: data.score }));
-    } catch (err) {
+    } catch {
       toast.error(t("aiScoringFailed"));
     } finally {
       setScoringLeadId(null);
     }
   };
 
-  const convertLead = async (lead: Lead) => {
+  const convertLead = async (lead: Lead, { skipConfirm = false }: { skipConfirm?: boolean } = {}) => {
     if (!lead.contactEmail) {
       toast.error(t("cannotConvertNoEmail"));
       return;
     }
-    const ok = await confirmDialog(
-      t("confirmConvertLead", { company: lead.companyName, email: lead.contactEmail }),
-    );
-    if (!ok) return;
+    if (!skipConfirm) {
+      const ok = await confirmDialog(
+        t("confirmConvertLead", { company: lead.companyName, email: lead.contactEmail }),
+      );
+      if (!ok) return;
+    }
     setConvertingLeadId(lead._id);
     try {
       const res = await fetch(`/api/leads/${lead._id}/convert`, {
@@ -919,12 +675,64 @@ export default function AgentLeadsPage() {
           emailSent: data.credentials.emailSent !== false,
         });
       }
-      refreshData();
-    } catch (err) {
+      afterLeadChange();
+    } catch {
       toast.error(t("leadConversionFailed"));
     } finally {
       setConvertingLeadId(null);
     }
+  };
+
+  const exhibitionName = useCallback(
+    (id?: string) => (id ? exhibitions.find((e) => e._id === id)?.eventName : undefined),
+    [exhibitions],
+  );
+
+  /** Marking a lead Won offers its employer account straight away (owner's
+   *  call, 2026-10-02); "Cancel" leaves Create employer account on the lead. */
+  const offerEmployerAccount = async (lead: Lead) => {
+    if (!can("leads", "update")) return;
+    if (!lead.contactEmail) {
+      toast.info(t("wonAddEmailForAccount"));
+      return;
+    }
+    const ok = await confirmDialog({
+      title: t("createAccountPromptTitle"),
+      message: t("createAccountPromptMessage", { company: lead.companyName, email: lead.contactEmail }),
+      confirmLabel: t("createAccountNow"),
+      // Creating an account is the good outcome, not a destructive one.
+      variant: "default",
+    });
+    if (ok) await convertLead(lead, { skipConfirm: true });
+  };
+
+  const onLeadMoved = (lead: Lead) => {
+    toast.success(t("leadMovedToStage", { stage: STAGE_CONFIG[lead.status].label }));
+    afterLeadChange();
+    if (lead.status === "converted" && !lead.convertedToEmployerId) void offerEmployerAccount(lead);
+  };
+
+  const openWorkspace = (lead: Lead, tab: WorkspaceTab = "overview") => {
+    setWorkspaceTab(tab);
+    setFocusNoteComposer(false);
+    setWorkspaceLeadId(lead._id);
+  };
+
+  const leadActions: LeadActionHandlers = {
+    open: openWorkspace,
+    edit: openEdit,
+    move: (lead, target, lockTarget = false) => setMoveRequest({ lead, target, lock: lockTarget }),
+    followUp: setFollowUpLead,
+    addNote: (lead) => { openWorkspace(lead, "notes"); setFocusNoteComposer(true); },
+    score: (lead) => { void scoreLead(lead._id); },
+    createAccount: (lead) => { void convertLead(lead); },
+    remove: (lead) => { void handleDelete(lead._id); },
+  };
+  const actionState: LeadActionState = {
+    canUpdate: can("leads", "update"),
+    canDelete: can("leads", "delete"),
+    scoringId: scoringLeadId,
+    convertingId: convertingLeadId,
   };
 
   return (
@@ -942,124 +750,81 @@ export default function AgentLeadsPage() {
         ) : null}
       />
 
-      {/* ──── Toolbar ──── */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        {/* Opt into the shared mobile toolbar rules (see globals.css). Scoped to
-            this row, not the whole section — the stage pills below carry leading
-            icons too, and the icon-only rule would strip their labels. */}
-        <div className="flex flex-wrap items-center gap-2" data-table-toolbar="simple">
-          {/* View toggle */}
-          <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
-            <button
-              onClick={() => setViewMode("board")}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition min-h-11 px-3 ${ viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" }`}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />{t("viewBoard")}
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition min-h-11 px-3 ${ viewMode === "table" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" }`}
-            >
-              <List className="h-3.5 w-3.5" />{t("viewTable")}
-            </button>
-          </div>
+      {/* ──── View Toggle ──── */}
+      <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1 mb-3">
+        <button
+          onClick={() => { if (viewMode !== "board") { setViewMode("board"); pagination.resetPage(); } }}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition min-h-11 px-3 ${ viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" }`}
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />{t("viewBoard")}
+        </button>
+        <button
+          onClick={() => { if (viewMode !== "table") { setViewMode("table"); pagination.resetPage(); } }}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition min-h-11 px-3 ${ viewMode === "table" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" }`}
+        >
+          <List className="h-3.5 w-3.5" />{t("viewTable")}
+        </button>
+      </div>
 
-          {/* Search & Filters — flat children of the toolbar row. A nested
-              wrapper made these wrap inside themselves on phones, which left
-              the search box stranded on a line of its own. */}
-          <>
-            <div className="relative toolbar-search-field min-w-[180px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                aria-label={t("searchPlaceholder")}
-                className="h-10 w-full rounded-xl border border-border bg-background/70 pl-9 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 w-auto min-w-[132px] shrink-0 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allStages")}</SelectItem>
-                {STAGES.map((s) => (
-                  <SelectItem key={s} value={s}>{STAGE_CONFIG[s].label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={exhibitionFilter} onValueChange={setExhibitionFilter}>
-              <SelectTrigger
-                title={exhibitions.find((e) => e._id === exhibitionFilter)?.eventName}
-                className="h-10 w-auto min-w-[132px] max-w-[280px] shrink-0 truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allExhibitions")}</SelectItem>
-                {exhibitions.map((e) => (
-                  <SelectItem key={e._id} value={e._id}>{e.eventName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* The dashboard queue and the nav badge both link ?followUp=due;
-                this toggle is how the agent turns that view off again. */}
-            <button
-              type="button"
-              onClick={() => setFollowUpFilter(followUpFilter === "due" ? "all" : "due")}
-              aria-pressed={followUpFilter === "due"}
-              title={t("dueFollowUpsHint")}
-              className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-sm font-semibold transition ${
-                followUpFilter === "due"
-                  ? "border-status-rejected/30 bg-status-rejected-bg text-status-rejected"
-                  : "border-border bg-background/70 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              {t("dueFollowUps")}
-            </button>
-          </>
-
-          {/* Export */}
-          <div className="ms-auto flex items-center">
-          <TableToolbar
-            onExportCsv={viewMode === "board" ? () => exportBoard("csv") : handleExportCsv}
-            onExportExcel={viewMode === "board" ? () => exportBoard("excel") : handleExportExcel}
-            onExportPdf={viewMode === "board" ? () => exportBoard("pdf") : handleExportPdf}
-          />
-          </div>
-        </div>
-
-        {/* Stage pill filters — the board's own column headers already carry
-            every label and count, so on the board these were a second copy of
-            the same six numbers above the thing displaying them. */}
-        {viewMode === "table" && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {STAGES.map((s) => {
-            const config = STAGE_CONFIG[s];
-            return (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
-                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold transition [&_svg]:h-3 [&_svg]:w-3 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5 ${
-                  statusFilter === s
-                    ? `${config.bgColor} ${config.borderColor} ${config.color}`
-                    : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
-                }`}
-              >
-                {config.icon}
-                <span>{config.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        )}
-      </section>
+      {/* ──── Filters (InlineFilterBar) ──── */}
+      {/* Both views: the board's stage fetches read the same search, stage,
+          exhibition and follow-up filters as the table. */}
+      <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 mb-3"
+        onExportCsv={viewMode === "board" ? () => void exportBoard("csv") : handleExportCsv}
+        onExportExcel={viewMode === "board" ? () => void exportBoard("excel") : handleExportExcel}
+        onExportPdf={viewMode === "board" ? () => void exportBoard("pdf") : handleExportPdf}
+        onClear={search || statusFilter !== "all" || exhibitionFilter !== "all" || followUpFilter !== "all" ? () => {
+          setSearch("");
+          setStatusFilter("all");
+          setExhibitionFilter("all");
+          setFollowUpFilter("all");
+        } : undefined}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); pagination.resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}>
+          <SelectTrigger aria-label={t("tableHeaderStage")} className={INLINE_FILTER_CONTROL}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allStages")}</SelectItem>
+            {STAGES.map((s) => (
+              <SelectItem key={s} value={s}>{STAGE_CONFIG[s].label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={exhibitionFilter} onValueChange={(v) => { setExhibitionFilter(v); pagination.resetPage(); }}>
+          <SelectTrigger aria-label={t("allExhibitions")} className={`${INLINE_FILTER_CONTROL} truncate`} title={exhibitions.find((e) => e._id === exhibitionFilter)?.eventName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allExhibitions")}</SelectItem>
+            {exhibitions.map((e) => (
+              <SelectItem key={e._id} value={e._id}>{e.eventName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <button
+          type="button"
+          onClick={() => setFollowUpFilter(followUpFilter === "due" ? "all" : "due")}
+          aria-pressed={followUpFilter === "due"}
+          title={t("dueFollowUpsHint")}
+          className={`inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm font-semibold transition sm:h-9 ${
+            followUpFilter === "due"
+              ? "border-status-rejected/30 bg-status-rejected-bg text-status-rejected"
+              : "border-border bg-background/70 text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          {t("dueFollowUps")}
+        </button>
+      </InlineFilterBar>
 
       {/* ──── Content Area ──── */}
-      {loading ? (
+      {loading && viewMode === "board" ? (
         <section className="flex gap-2.5 overflow-x-auto pb-2">
           {Array.from({ length: 5 }).map((_, c) => (
             <div key={c} className="w-[252px] shrink-0 space-y-1.5">
@@ -1069,6 +834,10 @@ export default function AgentLeadsPage() {
               ))}
             </div>
           ))}
+        </section>
+      ) : error && viewMode === "board" ? (
+        <section className="workspace-panel-surface rounded-2xl p-6">
+          <ErrorState onRetry={() => void fetchBoard()} />
         </section>
       ) : viewMode === "board" ? (
         /* ──── KANBAN BOARD with Drag & Drop ──── */
@@ -1091,18 +860,13 @@ export default function AgentLeadsPage() {
                   stage={stage}
                   leads={stageBuckets[stage].items}
                   total={stageBuckets[stage].total}
-                  loadingMore={stageBuckets[stage].loadingMore}
-                  onLoadMore={loadMoreStage}
-                  onEdit={openEdit}
-                  onScore={scoreLead}
-                  onConvert={convertLead}
-                  onStatusChange={updateStatus}
                   onAdd={openAdd}
-                  scoringLeadId={scoringLeadId}
-                  convertingLeadId={convertingLeadId}
-                  exhibitions={exhibitions}
+                  actions={leadActions}
+                  actionState={actionState}
+                  exhibitionName={exhibitionName}
                   canCreate={can("leads", "create")}
                   t={t}
+                  locale={locale}
                   stageConfig={STAGE_CONFIG}
                 />
               ))}
@@ -1120,57 +884,130 @@ export default function AgentLeadsPage() {
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
-          <section className="workspace-panel-surface overflow-hidden rounded-3xl">
-            {leads.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-16 text-center">
-                <div className="rounded-2xl bg-muted/50 p-4">
-                  <Inbox className="h-10 w-10 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">{t("emptyPipelineTitle")}</p>
-                <p className="text-xs text-muted-foreground/70">{t("emptyPipelineDescription")}</p>
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+            {error ? (
+              <div className="p-6">
+                <ErrorState onRetry={() => void fetchLeads()} />
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-border/40 bg-muted/30 hover:bg-muted/30">
-                      <TableHead className="w-[200px] pl-5 text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderCompany")}</TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderContact")}</TableHead>
-                      <TableHead className="hidden text-[11px] font-semibold uppercase tracking-wider md:table-cell">{t("tableHeaderLocation")}</TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderStage")}</TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderScore")}</TableHead>
-                      <TableHead className="hidden text-[11px] font-semibold uppercase tracking-wider sm:table-cell">{t("tableHeaderFollowUp")}</TableHead>
-                      <TableHead className="pr-5 text-right text-[11px] font-semibold uppercase tracking-wider">{tc("actions")}</TableHead>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead>{t("tableHeaderCompany")}</TableHead>
+                      <TableHead>{t("tableHeaderStage")}</TableHead>
+                      <TableHead>{t("tableHeaderContact")}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t("tableHeaderLocation")}</TableHead>
+                      <TableHead className="hidden sm:table-cell">{t("tableHeaderFollowUp")}</TableHead>
+                      <TableHead>{t("tableHeaderScore")}</TableHead>
+                      <TableHead className="text-right">{tc("actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {leads.map((lead) => {
+                    {loading ? (
+                      <TableBodySkeleton rows={5} cols={7} />
+                    ) : leads.length === 0 ? (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={7} className="py-12">
+                          <EmptyState title={t("emptyPipelineTitle")} description={t("emptyPipelineDescription")} icon={Inbox} />
+                        </TableCell>
+                      </TableRow>
+                    ) : leads.map((lead) => {
                       const config = STAGE_CONFIG[lead.status];
                       const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
+                      const rowActions: { quick: RowAction[]; menu: RowAction[] } = {
+                        quick: [],
+                        menu: [],
+                      };
+
+                      rowActions.quick.push({
+                        key: "open",
+                        label: t("openLead"),
+                        icon: PanelRightOpen,
+                        iconOnly: true,
+                        onSelect: () => openWorkspace(lead),
+                      });
+
+                      // Quick action: Edit
+                      if (can("leads", "update")) {
+                        rowActions.quick.push({
+                          key: "edit",
+                          label: tc("edit"),
+                          icon: Pencil,
+                          iconOnly: true,
+                          onSelect: () => openEdit(lead),
+                        });
+                      }
+
+                      // Menu actions
+                      rowActions.menu.push({
+                        key: "score",
+                        label: t("aiScore"),
+                        icon: Flame,
+                        pending: scoringLeadId === lead._id,
+                        onSelect: () => scoreLead(lead._id),
+                      });
+
+                      // An employer account follows a Won lead (Mark Won offers it).
+                      if (lead.status === "converted" && !lead.convertedToEmployerId && can("leads", "update")) {
+                        rowActions.menu.push({
+                          key: "convert",
+                          label: t("createEmployerAccount"),
+                          icon: Building2,
+                          pending: convertingLeadId === lead._id,
+                          onSelect: () => convertLead(lead),
+                        });
+                      }
+
+                      if (can("leads", "delete")) {
+                        rowActions.menu.push({
+                          key: "delete",
+                          label: tc("delete"),
+                          icon: Trash2,
+                          onSelect: () => handleDelete(lead._id),
+                          destructive: true,
+                        });
+                      }
+
                       return (
                         <TableRow
                           key={lead._id}
                           className="group border-border/30 transition-colors hover:bg-muted/20"
                         >
                           {/* Company */}
-                          <TableCell className="pl-5">
-                            <div className="flex items-center gap-2.5">
-                              <div className={`h-8 w-1 shrink-0 rounded-full bg-current ${config.color}`} />
+                          <TableCell className="min-w-0">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <UserAvatar name={lead.companyName} className="h-9 w-9 shrink-0" colorful />
                               <div className="min-w-0">
-                                <Link
-                                  href={`/${locale}/agent/leads/${lead._id}`}
-                                  className="block truncate text-sm font-semibold text-foreground underline-offset-2 hover:text-primary hover:underline"
-                                  title={lead.companyName}
+                                {/* `!justify-start`: phone card tables centre every button (globals.css). */}
+                                <button
+                                  type="button"
+                                  onClick={() => openWorkspace(lead)}
+                                  className="max-w-full !justify-start text-start text-sm font-semibold text-foreground hover:text-primary hover:underline"
                                 >
-                                  {lead.companyName}
-                                </Link>
+                                  <span className="truncate">{lead.companyName}</span>
+                                </button>
                                 {lead.industry && (
-                                  <span className="mt-0.5 inline-block rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                                    {lead.industry}
-                                  </span>
+                                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.industry}</p>
                                 )}
                               </div>
                             </div>
+                          </TableCell>
+
+                          {/* Stage: column 2, so a collapsed phone card shows it */}
+                          <TableCell>
+                            <InlinePicker
+                              name={lead.companyName}
+                              picker={{
+                                label: t("currentStage", { stage: config.label }),
+                                value: lead.status,
+                                options: STAGES.map((s) => ({ value: s, label: STAGE_CONFIG[s].label })),
+                                onChange: (next) => { void requestStageChange(lead, next as LeadStatus); },
+                                display: <StatusBadge status={lead.status} />,
+                                pending: updating === lead._id,
+                                disabled: updating === lead._id || !can("leads", "update"),
+                              }}
+                            />
                           </TableCell>
 
                           {/* Contact */}
@@ -1179,11 +1016,6 @@ export default function AgentLeadsPage() {
                             {lead.contactEmail && (
                               <p className="mt-0.5 truncate text-xs text-muted-foreground" title={lead.contactEmail}>
                                 <Mail className="me-1 inline h-3 w-3 align-[-2px]" />{lead.contactEmail}
-                              </p>
-                            )}
-                            {lead.contactPhone && (
-                              <p className="mt-0.5 hidden truncate whitespace-nowrap text-xs text-muted-foreground xl:block">
-                                <Phone className="me-1 inline h-3 w-3 align-[-2px]" />{lead.contactPhone}
                               </p>
                             )}
                           </TableCell>
@@ -1199,37 +1031,21 @@ export default function AgentLeadsPage() {
                             )}
                           </TableCell>
 
-                          {/* Stage — pick it here, and see how far along it is */}
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <Select
-                                value={lead.status}
-                                onValueChange={(v) => updateStatus(lead._id, v as LeadStatus)}
-                                disabled={updating === lead._id || !can("leads", "update")}
-                              >
-                                <SelectTrigger
-                                  aria-label={t("currentStage", { stage: config.label })}
-                                  title={t("currentStage", { stage: config.label })}
-                                  className={`h-7 w-[140px] gap-1 rounded-full border px-2.5 text-[11px] font-semibold shadow-none ${config.bgColor} ${config.borderColor} ${config.color}`}
-                                >
-                                  <span className="flex min-w-0 items-center gap-1.5 [&_svg]:h-3 [&_svg]:w-3">
-                                    {updating === lead._id ? <Loader2 className="h-3 w-3 animate-spin" /> : config.icon}
-                                    <span className="truncate">{config.label}</span>
-                                  </span>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {STAGES.map((st) => (
-                                    <SelectItem key={st} value={st} className="text-xs">
-                                      <span className="flex items-center gap-1.5 [&_svg]:h-3 [&_svg]:w-3">
-                                        <span className={STAGE_CONFIG[st].color}>{STAGE_CONFIG[st].icon}</span>
-                                        {STAGE_CONFIG[st].label}
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <StageProgress stage={lead.status} stageConfig={STAGE_CONFIG} t={t} />
-                            </div>
+                          {/* Follow-up */}
+                          <TableCell className="hidden sm:table-cell">
+                            {lead.followUpAt ? (
+                              <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+                                isOverdue
+                                  ? "text-rose-700"
+                                  : "text-muted-foreground"
+                              }`}>
+                                <Calendar className="h-3 w-3" />
+                                {formatListDate(new Date(lead.followUpAt))}
+                                {isOverdue && <AlertCircle className="h-3 w-3" />}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground/40">&mdash;</span>
+                            )}
                           </TableCell>
 
                           {/* Score */}
@@ -1243,63 +1059,9 @@ export default function AgentLeadsPage() {
                             )}
                           </TableCell>
 
-                          {/* Follow-up */}
-                          <TableCell className="hidden sm:table-cell">
-                            {lead.followUpAt ? (
-                              <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${
-                                isOverdue
-                                  ? "bg-status-rejected-bg text-rose-700"
-                                  : "bg-muted text-muted-foreground"
-                              }`}>
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(new Date(lead.followUpAt), { month: "short", day: "numeric" })}
-                                {isOverdue && <AlertCircle className="h-3 w-3" />}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground/40">&mdash;</span>
-                            )}
-                          </TableCell>
-
                           {/* Actions */}
-                          <TableCell className="pr-5 text-right">
-                            <div className="inline-flex items-center gap-0.5">
-                              <button
-                                onClick={() => scoreLead(lead._id)}
-                                disabled={scoringLeadId === lead._id}
-                                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600"
-                                title={t("aiScore")}
-                              >
-                                {scoringLeadId === lead._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
-                              </button>
-                              {lead.status !== "converted" && lead.status !== "lost" && lead.contactEmail && (
-                                <button
-                                  onClick={() => convertLead(lead)}
-                                  disabled={convertingLeadId === lead._id}
-                                  className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-selected-bg hover:text-status-selected"
-                                  title={t("convertToEmployer")}
-                                >
-                                  {convertingLeadId === lead._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-                                </button>
-                              )}
-                              {can("leads", "update") && (
-                                <button
-                                  onClick={() => openEdit(lead)}
-                                  className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-                                  title={tc("edit")}
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </button>
-                              )}
-                              {can("leads", "delete") && (
-                                <button
-                                  onClick={() => handleDelete(lead._id)}
-                                  className="hidden rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-rejected-bg hover:text-status-rejected group-hover:inline-flex"
-                                  title={tc("delete")}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
+                          <TableCell className="text-right">
+                            <RowActions name={lead.companyName} {...rowActions} />
                           </TableCell>
                         </TableRow>
                       );
@@ -1318,6 +1080,23 @@ export default function AgentLeadsPage() {
             onLimitChange={pagination.setLimit}
           />
         </>
+      )}
+
+      {/* The board's bar sits outside the loading swap, so it stays put (and
+          keeps focus) while the next page's columns load. It waits for the
+          first load, so it never opens on "0 leads". */}
+      {viewMode === "board" && !error && (!loading || pagination.total > 0) && (
+        <PaginationControls
+          className="mt-3"
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+          sizeLabel={t("boardPerStage")}
+          summary={t("boardPageSummary", { total: pagination.total })}
+        />
       )}
 
       {/* ──── Sign-in details, shown once after a conversion ──── */}
@@ -1389,12 +1168,51 @@ export default function AgentLeadsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ──── Lead Workspace and the dialogs every view shares ──── */}
+      <LeadWorkspace
+        // A hand-edited or truncated ?lead= opens nothing rather than a 400.
+        leadId={/^[a-f0-9]{24}$/i.test(workspaceLeadId) ? workspaceLeadId : null}
+        tab={workspaceTab}
+        onTabChange={(tab) => { setWorkspaceTab(tab); setFocusNoteComposer(tab === "notes"); }}
+        focusComposer={focusNoteComposer}
+        version={workspaceVersion}
+        onClose={() => setWorkspaceLeadId("")}
+        onLeadChanged={() => { void refreshData({ quiet: true }); }}
+        actions={leadActions}
+        state={actionState}
+        stageConfig={STAGE_CONFIG}
+        exhibitionName={exhibitionName}
+        t={t}
+        locale={locale}
+      />
+      <MoveStageDialog
+        open={Boolean(moveRequest)}
+        lead={moveRequest?.lead ?? null}
+        target={moveRequest?.target}
+        lockTarget={moveRequest?.lock}
+        onOpenChange={(open) => { if (!open) setMoveRequest(null); }}
+        onMoved={onLeadMoved}
+        stageConfig={STAGE_CONFIG}
+        t={t}
+        tf={tf}
+        locale={locale}
+      />
+      <FollowUpDialog
+        open={Boolean(followUpLead)}
+        lead={followUpLead}
+        onOpenChange={(open) => { if (!open) setFollowUpLead(null); }}
+        onSaved={() => { toast.success(t("followUpSaved")); afterLeadChange(); }}
+        t={t}
+        tf={tf}
+      />
+
       {/* ──── CrudModal ──── */}
       <CrudModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditLead(null); }}
         title={editLead ? t("modalTitleEdit") : t("modalTitleNew")}
         fields={leadFields}
+        steps={leadSteps}
         initialValues={editLead ? {
           companyName: editLead.companyName,
           contactPerson: editLead.contactPerson,
@@ -1403,12 +1221,11 @@ export default function AgentLeadsPage() {
           country: editLead.country ?? "",
           industry: editLead.industry ?? "",
           expectedRevenue: editLead.expectedRevenue != null ? String(editLead.expectedRevenue) : "",
+          expectedHiring: editLead.expectedHiring ?? "",
+          requirement: editLead.requirement ?? "",
           source: editLead.source ?? "",
           exhibitionId: editLead.exhibitionId ?? "",
-          status: editLead.status,
-          lostReason: editLead.lostReason ?? "",
           notes: editLead.notes ?? "",
-          followUpAt: editLead.followUpAt?.slice(0, 10) ?? "",
         } : undefined}
         onSubmit={handleSave}
         onValuesChange={(vals) => {

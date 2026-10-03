@@ -264,7 +264,7 @@ export default function AdminBulkImportPage() {
           <div className="max-h-96 overflow-auto rounded-xl">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-16">{t("headerRow")}</TableHead>
                   <TableHead className="w-16">{t("headerStatus")}</TableHead>
                   {TEMPLATES[importType].map((h) => (

@@ -36,7 +36,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { Inbox } from "lucide-react";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 
 interface AgentProfile {
@@ -135,7 +135,7 @@ export default function AdminAgentsPage() {
     { header: tr("exportSuperAgent"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => (r as unknown as Agent).agentProfile?.superAgentName ?? "—" },
     { header: tr("exportCommission"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => String((r as unknown as Agent).agentProfile?.commissionRate ?? 0) },
     { header: tr("exportStatus"), key: "isActive", formatter: (v) => v !== false ? tr("active") : tr("inactive") },
-    { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: agents as unknown as Record<string, unknown>[],
@@ -562,7 +562,7 @@ export default function AdminAgentsPage() {
                 <TableCell className="text-sm">
                   {agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(agent.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatListDate(new Date(agent.createdAt), locale)}</TableCell>
                 {(can("agents", "update") || can("agents", "delete")) && (
                   <TableCell className="text-right">
                     <RowActions name={agent.name} {...rowActionsFor(agent)} />

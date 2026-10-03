@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Fragment } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { endOfDay, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -20,50 +19,33 @@ import {
   linkStatus,
 } from "@/hooks/useReferralLinks";
 import {
-  Building2,
-  UserRound,
   Calendar,
   Check,
-  ChevronDown,
-  ChevronUp,
   Copy,
-  Hash,
   Link2,
   Loader2,
   Plus,
-  Search,
-  Tag,
+  Power,
+  PowerOff,
   Trash2,
   Users,
   X,
+  Mail,
+  MapPin,
 } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
 import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
 import { registrationDisplayName } from "@/lib/referrals/display";
-import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
-
-function formatDate(d: string | undefined): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-
-function statusLabel(s: ReturnType<typeof linkStatus>): string {
-  switch (s) {
-    case "active": return "Active";
-    case "expired": return "Expired";
-    case "maxed": return "Limit Reached";
-    case "inactive": return "Disabled";
-  }
-}
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 export default function AgentReferralLinksPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -135,8 +117,8 @@ export default function AgentReferralLinksPage() {
     { header: tc("active"), key: "isActive", formatter: (v) => v ? t("exportYes") : t("exportNo") },
     { header: t("tableHeaderUsed"), key: "usedCount" },
     { header: t("tableHeaderMaxUses"), key: "maxUses" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
-    { header: t("tableHeaderExpires"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "" },
+    { header: t("tableHeaderExpires"), key: "expiresAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -167,7 +149,6 @@ export default function AgentReferralLinksPage() {
           { label: t("statTotalLinks"), value: total, icon: Link2, tone: "primary" },
           { label: tc("active"), value: activeLinks, icon: Check, tone: "success" },
           { label: t("statRegistrations"), value: totalRegistrations, icon: Users, tone: "info" },
-          { label: t("statConversions"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, icon: Hash, tone: "warning" },
         ]}
       />
 
@@ -226,134 +207,157 @@ export default function AgentReferralLinksPage() {
         </section>
       )}
 
-      {/* Bare toolbar row, not a panel. The list below is a stack of cards, so
-          wrapping one search box in its own surface added a border and a block
-          of padding for nothing. */}
-      <TableToolbar
-        search={search}
-        onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-        searchPlaceholder={t("searchPlaceholder")}
+      {/* Filters */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-      />
+        onClear={search ? () => { setSearch(""); pagination.resetPage(); } : undefined}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearch(v); pagination.resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+      </InlineFilterBar>
 
-      {/* Links list */}
-      {isLoading ? (
-        <section className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-11 w-11 rounded-2xl" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </section>
-      ) : links.length === 0 ? (
-        <section className="workspace-empty-state rounded-3xl p-10 text-center">
-          <Link2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />
-          <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
-        </section>
-      ) : (
-        <section className="space-y-4">
-          {links.map((link) => {
-            const status = linkStatus(link);
-            const isExpanded = expandedId === link._id;
-            return (
-              <div key={link._id} className="workspace-panel-surface rounded-2xl sm:rounded-3xl transition-all duration-200 panel-body">
-                {/* Link header */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="workspace-tone-sky flex h-11 w-11 items-center justify-center rounded-2xl">
-                      <Link2 className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-mono text-sm font-semibold text-foreground">{link.code}</p>
-                        {link.label && <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"><Tag className="h-2.5 w-2.5" />{link.label}</span>}
-                        <ReferralAudienceChip audience={link.audience} namespace="agentReferralLinks" />
-                      </div>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("labelCreated")} {formatDate(link.createdAt)}</span>
-                        {link.expiresAt && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("labelExpires")} {formatDate(link.expiresAt)}</span>}
-                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""} {t("labelUsed")}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={status === "active" ? "active" : status === "expired" ? "expired" : "inactive"} />
-                    <button
-                      onClick={() => handleCopy(link)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-muted-foreground hover:border-primary/25 hover:text-primary"
-                    >
-                      {copyMap[link.code] ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copyMap[link.code] ? t("copiedFeedback") : t("copyLinkButton")}
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(link)}
-                      className={`inline-flex h-8 items-center rounded-lg border px-2.5 text-xs font-medium ${link.isActive ? "border-status-shortlisted/20 text-status-shortlisted hover:bg-status-shortlisted/10" : "border-status-selected/20 text-status-selected hover:bg-status-selected/10"}`}
-                    >
-                      {link.isActive ? t("disableButton") : t("enableButton")}
-                    </button>
-                    {link.usedCount === 0 && link.registrations.length === 0 && (
-                      <button
-                        onClick={() => handleDelete(link._id)}
-                        disabled={deleteMutation.isPending}
-                        title={t("deleteButtonTitle")}
-                        className="inline-flex h-8 items-center rounded-lg border border-status-rejected/20 px-2.5 text-xs font-medium text-status-rejected hover:bg-status-rejected/10 disabled:opacity-50"
+      {/* Links table */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="min-w-[120px]">{t("tableHeaderCode")}</TableHead>
+                <TableHead className="w-[100px]">{tc("status")}</TableHead>
+                <TableHead>{t("tableHeaderLabel")}</TableHead>
+                <TableHead>{t("tableHeaderUsed")}</TableHead>
+                <TableHead>{t("tableHeaderExpires")}</TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableBodySkeleton rows={5} cols={6} />
+              ) : links.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={6} className="py-12">
+                    <EmptyState
+                      title={t("emptyStateTitle")}
+                      description={t("emptyStateDescription")}
+                      icon={Link2}
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                links.map((link) => {
+                  const status = linkStatus(link);
+                  const isExpanded = expandedId === link._id;
+                  return (
+                    <Fragment key={link._id}>
+                      <TableRow
+                        className="group cursor-pointer"
+                        onClick={(event) => {
+                          const cardMode =
+                            event.currentTarget.hasAttribute("data-mobile-collapsible") &&
+                            (typeof window.matchMedia !== "function" || window.matchMedia("(max-width: 639px)").matches);
+                          if (cardMode) return;
+                          if (!isRowToggleClick(event)) return;
+                          setExpandedId(isExpanded ? null : link._id);
+                        }}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(isExpanded ? null : link._id)}
-                      aria-expanded={isExpanded}
-                      aria-label={isExpanded ? t("hideDetails") : t("showDetails")}
-                      className="inline-flex h-8 items-center rounded-lg border border-border px-2 text-muted-foreground hover:text-foreground"
-                    >
-                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded: registrations */}
-                {isExpanded && (
-                  <div className="mt-5 border-t border-border pt-5">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("registrationsLabel", { count: link.registrations.length })}</p>
-                    {link.registrations.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">{t("noRegistrationsYet")}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {link.registrations.map((reg, i) => (
-                          <div key={i} className="flex items-center gap-3 rounded-xl bg-secondary/40 px-4 py-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-status-applied-bg text-status-applied">
-                              {reg.kind === "job_seeker" ? <UserRound className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-foreground">{registrationDisplayName(reg)}</p>
-                              <p className="text-xs text-muted-foreground">{reg.email}</p>
-                            </div>
-                            <div className="text-right text-xs text-muted-foreground">
-                              {reg.country && <p>{reg.city ? `${reg.city}, ` : ""}{reg.country}</p>}
-                              <p>{formatDate(reg.registeredAt)}</p>
-                            </div>
+                        <TableCell className="font-mono text-sm font-medium">{link.code}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={status === "active" ? "active" : status === "expired" ? "expired" : "inactive"} />
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{link.label || "—"}</TableCell>
+                        <TableCell className="text-sm">{link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            {link.expiresAt ? formatListDate(new Date(link.expiresAt)) : "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            <RowActions
+                              name={link.code}
+                              quick={[
+                                {
+                                  key: "copy",
+                                  label: copyMap[link.code] ? t("copiedFeedback") : t("copyLinkButton"),
+                                  icon: copyMap[link.code] ? Check : Copy,
+                                  onSelect: () => handleCopy(link),
+                                },
+                              ]}
+                              menu={[
+                                {
+                                  key: "toggle",
+                                  label: link.isActive ? t("disableButton") : t("enableButton"),
+                                  icon: link.isActive ? PowerOff : Power,
+                                  destructive: link.isActive,
+                                  onSelect: () => { void handleToggleActive(link); },
+                                },
+                                ...(link.usedCount === 0 && link.registrations.length === 0 ? [{
+                                  key: "delete",
+                                  label: tc("delete"),
+                                  icon: Trash2,
+                                  destructive: true,
+                                  onSelect: () => { void handleDelete(link._id); },
+                                }] : []),
+                              ]}
+                            />
+                            <RowExpandToggle
+                              expanded={isExpanded}
+                              onToggle={() => setExpandedId(isExpanded ? null : link._id)}
+                            />
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </section>
-      )}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow key={`${link._id}-detail`} className="hover:bg-transparent">
+                          <TableCell colSpan={6} className="bg-secondary/30 px-6 py-4">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                              {t("registrationsLabel", { count: link.registrations.length })}
+                            </p>
+                            {link.registrations.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">{t("noRegistrationsYet")}</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {link.registrations.map((reg, i) => (
+                                  <div key={i} className="flex items-center gap-3 rounded-xl bg-background/60 px-4 py-3">
+                                    <UserAvatar name={registrationDisplayName(reg)} className="h-8 w-8 shrink-0" colorful />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-medium text-foreground">{registrationDisplayName(reg)}</p>
+                                      <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                        <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                        <span className="truncate">{reg.email}</span>
+                                      </p>
+                                    </div>
+                                    <div className="shrink-0 text-right text-xs text-muted-foreground">
+                                      {reg.country && (
+                                        <p className="flex items-center justify-end gap-1">
+                                          <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                          {reg.city ? `${reg.city}, ` : ""}{reg.country}
+                                        </p>
+                                      )}
+                                      <p>{formatListDate(new Date(reg.registeredAt))}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
 
       <PaginationControls
         page={pagination.page}

@@ -144,9 +144,15 @@ const CSRF_EXEMPT_PREFIXES = [
  * JSON-RPC endpoint is bearer-token authenticated (never carries our CSRF
  * cookie), but a prefix match on "/api/mcp" would also swallow
  * "/api/mcp/consent" and "/api/mcp/authorize", which must stay CSRF-protected.
+ *
+ * "/api/webhooks/whatsapp" is the Meta WhatsApp webhook: Meta sends no cookies,
+ * so X-Hub-Signature-256 (HMAC of the raw body with the app secret, checked in
+ * the route) is the guard. Exact on purpose — a future /api/webhooks/<other>
+ * must opt in by name, with its own signature check.
  */
 const CSRF_EXEMPT_EXACT_PATHS = new Set([
   "/api/mcp",
+  "/api/webhooks/whatsapp",
 ]);
 
 /**

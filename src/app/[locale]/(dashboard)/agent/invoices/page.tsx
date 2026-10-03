@@ -10,21 +10,23 @@ import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  Plus, RotateCcw,
+  Plus,
   BarChart3, FileText, RefreshCw, CircleDollarSign, CheckCircle2, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { InvoiceTable } from "@/components/shared/InvoiceTable";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 
 import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
+import { useLocale } from "next-intl";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -52,7 +54,7 @@ interface Invoice {
 export default function AgentInvoicesPage() {
   const t = useTranslations("agentInvoices");
   const tc = useTranslations("common");
-  const tconf = useTranslations("confirm");
+  const locale = useLocale();
 
   const STATUS_OPTIONS = [
     { value: "all", label: t("statusAll") },
@@ -119,7 +121,7 @@ export default function AgentInvoicesPage() {
       setInvoices(data.invoices ?? []);
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
-    } catch (err) {
+    } catch {
       const msg = t("errorFailedToLoad");
       setErrorMessage(msg);
       toast.error(msg);
@@ -147,7 +149,7 @@ export default function AgentInvoicesPage() {
       return ac ? `${ac.rate}% = ${ac.amount}` : "—";
     }},
     { header: tc("status"), key: "status" },
-    { header: t("exportHeaderDue"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderDue"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatListDate(String(v), locale) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -177,40 +179,46 @@ export default function AgentInvoicesPage() {
         ]}
       />
 
-      <TableToolbar
-        search={search} onSearchChange={(v) => { setSearch(v); resetPage(); }} searchPlaceholder={t("searchPlaceholder")}
-        right={
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        more={(
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-lg border border-border/70 bg-card">
-              <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonInvoices")}
-              </button>
-              <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonAnalytics")}
-              </button>
-            </div>
+            <DateTimePicker mode="date" className="h-11 rounded-lg text-sm" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} placeholder="From" />
+            <span className="text-xs text-muted-foreground">{t("filterDateTo")}</span>
+            <DateTimePicker mode="date" className="h-11 rounded-lg text-sm" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} placeholder="To" />
           </div>
-        }
-        onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}
-        filterContent={
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <SearchableSelect id="ag-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("statusAll")} />
-              <div className="flex items-center gap-2 xl:col-span-2">
-                <DateTimePicker mode="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateFrom} onChange={v => { setDateFrom(v); resetPage(); }} />
-                <span className="text-xs text-muted-foreground">{t("filterDateTo")}</span>
-                <DateTimePicker mode="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateTo} onChange={v => { setDateTo(v); resetPage(); }} />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> {tc("filter")}
-              </Button>
-            </div>
+        )}
+        moreOpen={false}
+        onClear={hasActiveFilters ? () => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); } : undefined}
+        clearLabel={tc("filter")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          id="ag-inv-status"
+          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+          options={STATUS_OPTIONS}
+          value={statusFilter || "all"}
+          onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+          placeholder={t("statusAll")}
+        />
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-border/70 bg-card">
+            <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonInvoices")}
+            </button>
+            <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonAnalytics")}
+            </button>
           </div>
-        }
-        hasActiveFilters={hasActiveFilters}
-      />
+        </div>
+      </InlineFilterBar>
 
       {/* Analytics View */}
       {activeView === "analytics" && (
@@ -231,19 +239,24 @@ export default function AgentInvoicesPage() {
       {/* Table View */}
       {activeView === "table" && (
         <>
-          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
+          {errorMessage ? (
+            <ErrorState onRetry={fetchInvoices} />
+          ) : (
+            <>
+              <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
+                <InvoiceTable
+                  invoices={invoices}
+                  loading={loading}
+                  role="agent"
+                  onSelect={setSelectedInvoiceId}
+                />
+              </section>
 
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
-            <InvoiceTable
-              invoices={invoices}
-              loading={loading}
-              role="agent"
-              onSelect={setSelectedInvoiceId}
-            />
-            <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-              <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
-            </div>
-          </section>
+              {total > 0 && (
+                <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+              )}
+            </>
+          )}
         </>
       )}
 

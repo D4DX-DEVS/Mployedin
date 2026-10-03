@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -24,7 +24,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
-import { InlinePicker, RowActions } from "@/components/shared/RowActions";
+import { InlinePicker } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -32,6 +32,11 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { toast } from "sonner";
+import { knownStageDetails, missingStageFields } from "@/lib/leads/stageRules";
+// The agent board's Move dialog: a stage that needs details (a final value
+// for Won, a reason for Lost…) collects them here too, not just on the board.
+import { MoveStageDialog } from "../../agent/leads/_components/MoveStageDialog";
+import { getStageConfig, type Lead as WorkspaceLead } from "../../agent/leads/_components/leadShared";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -165,6 +170,10 @@ export default function SuperAgentLeadsPage() {
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const tStage = useTranslations("statusBadge");
+  const tLead = useTranslations("agentLeads");
+  const tf = useTranslations("formErrors");
+  const locale = useLocale();
+  const stageConfig = useMemo(() => getStageConfig(tLead), [tLead]);
 
   const [leads, setLeads] = useState<Lead[]>([]);
   // Per-stage totals across the whole filtered pipeline, from the API.
@@ -314,31 +323,41 @@ export default function SuperAgentLeadsPage() {
   }, [aiQuery, setFilter, resetPage]);
 
   /* -- Change lead stage -- */
-  const handleChangeStage = useCallback(async (leadId: string, newStatus: LeadStatus) => {
-    setUpdatingLeadId(leadId);
+  // A move whose stage needs details the lead does not hold opens the Move
+  // dialog; anything else goes straight through the stage route.
+  const [moveRequest, setMoveRequest] = useState<{ lead: Lead; target: LeadStatus } | null>(null);
+
+  const onStageMoved = useCallback((moved: { _id: string; status: LeadStatus }) => {
+    setLeads((prev) => prev.map((l) => (l._id === moved._id ? { ...l, status: moved.status } : l)));
+    toast.success(t("stageUpdated", { stage: tStage(moved.status) }));
+    // The stage strip counts the whole pipeline; refetch so it moves too.
+    void fetchLeads();
+  }, [t, tStage, fetchLeads]);
+
+  const handleChangeStage = useCallback(async (lead: Lead, newStatus: LeadStatus) => {
+    if (newStatus === lead.status) return;
+    if (missingStageFields(lead.status, newStatus, {}, knownStageDetails(lead)).length > 0) {
+      setMoveRequest({ lead, target: newStatus });
+      return;
+    }
+    setUpdatingLeadId(lead._id);
     try {
-      const res = await fetch(`/api/leads/${leadId}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/leads/${lead._id}/stage`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        setLeads((prev) =>
-          prev.map((l) => (l._id === leadId ? { ...l, status: newStatus } : l))
-        );
-        const message = t("stageUpdated", { stage: tStage(newStatus) });
-        toast.success(message);
+        onStageMoved({ _id: lead._id, status: newStatus });
       } else {
-        const message = t("stageUpdateError");
-        toast.error(message);
+        toast.error(t("stageUpdateError"));
       }
     } catch {
-      const message = t("stageUpdateError");
-      toast.error(message);
+      toast.error(t("stageUpdateError"));
     } finally {
       setUpdatingLeadId(null);
     }
-  }, [t, tStage]);
+  }, [t, onStageMoved]);
 
   /* -- Computed values -- */
   // Counts come from the API aggregate, over the whole filtered pipeline.
@@ -703,7 +722,7 @@ export default function SuperAgentLeadsPage() {
                             label: t("changeStageFor", { company: lead.companyName }),
                             value: lead.status,
                             options: STAGES.map((s) => ({ value: s, label: tStage(s) })),
-                            onChange: (next) => { void handleChangeStage(lead._id, next as LeadStatus); },
+                            onChange: (next) => { void handleChangeStage(lead, next as LeadStatus); },
                             display: <StatusBadge status={lead.status} />,
                             pending: updatingLeadId === lead._id,
                             disabled: updatingLeadId === lead._id,
@@ -721,6 +740,21 @@ export default function SuperAgentLeadsPage() {
       </SuperAgentSection>
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+
+      <MoveStageDialog
+        open={Boolean(moveRequest)}
+        // The list row carries the whole lead document; only `agentId` is
+        // populated differently, and the dialog does not read it.
+        lead={(moveRequest?.lead ?? null) as unknown as WorkspaceLead | null}
+        target={moveRequest?.target}
+        lockTarget
+        onOpenChange={(open) => { if (!open) setMoveRequest(null); }}
+        onMoved={(moved) => onStageMoved(moved)}
+        stageConfig={stageConfig}
+        t={tLead}
+        tf={tf}
+        locale={locale}
+      />
     </div>
   );
 }

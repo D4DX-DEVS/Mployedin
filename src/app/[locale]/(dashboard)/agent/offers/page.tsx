@@ -10,25 +10,29 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { useTableExport } from "@/hooks/useTableExport";
+import { useConfirm } from "@/hooks/useConfirm";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import type { ExportColumn } from "@/lib/export";
 import {
-  Search, RotateCcw, Gift, Clock, CheckCircle2, XCircle,
+  Gift, Clock, CheckCircle2, XCircle,
   Inbox, Eye, X, FileDown, Pencil, Send, History, ArrowLeftRight,
 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -88,6 +92,7 @@ const INITIAL_FILTERS: Filters = { search: "", status: "all" };
 export default function AgentOffersPage() {
   const t = useTranslations("agentOffers");
   const locale = useLocale();
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [offers, setOffers] = useState<OfferItem[]>([]);
   const [loading, setLoading] = useState(true);
   // Filters mirror into the query string: "offers awaiting a response" is a
@@ -98,8 +103,6 @@ export default function AgentOffersPage() {
   );
   const [stats, setStats] = useState({ total: 0, pending: 0, accepted: 0, declined: 0 });
   const [detailOffer, setDetailOffer] = useState<OfferItem | null>(null);
-  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
-  const [withdrawPending, setWithdrawPending] = useState(false);
   const [reviseOffer, setReviseOffer] = useState<OfferItem | null>(null);
   const [reviseForm, setReviseForm] = useState({
     amount: "", currency: "AED", period: "monthly", startDate: "", expiresAt: "", benefits: "", notes: "", revisionNote: "",
@@ -119,8 +122,6 @@ export default function AgentOffersPage() {
     { value: "expired", label: t("status.expired") },
     { value: "withdrawn", label: t("status.withdrawn") },
   ];
-
-  const formatDate = useCallback((date?: string) => date ? new Date(date).toLocaleDateString(locale) : "—", [locale]);
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -190,18 +191,23 @@ export default function AgentOffersPage() {
 
 
   const handleWithdraw = async (offerId: string) => {
-    setWithdrawPending(true);
+    const shouldWithdraw = await confirm({
+      title: t("withdrawDialog.title"),
+      message: t("withdrawDialog.description"),
+      confirmLabel: t("withdrawDialog.confirm"),
+      variant: "destructive",
+    });
+
+    if (!shouldWithdraw) return;
+
     try {
       const res = await csrfFetch(`/api/offers/${offerId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to withdraw");
       toast.success(t("success.withdrawn"));
-      setWithdrawingId(null);
       if (detailOffer?._id === offerId) setDetailOffer(null);
       await fetchOffers();
     } catch {
       toast.error(t("errors.withdrawFailed"));
-    } finally {
-      setWithdrawPending(false);
     }
   };
 
@@ -291,9 +297,9 @@ export default function AgentOffersPage() {
     { header: t("table.job"), key: "jobTitle" },
     { header: t("table.salary"), key: "salary", formatter: (_v, r) => formatSalary(r as unknown as OfferItem) },
     { header: t("table.status"), key: "status", formatter: (v) => statusLabel(String(v)) },
-    { header: t("table.startDate"), key: "startDate", formatter: (v) => formatDate(v ? String(v) : undefined) },
-    { header: t("table.expires"), key: "expiresAt", formatter: (v) => formatDate(v ? String(v) : undefined) },
-    { header: t("table.sent"), key: "createdAt", formatter: (v) => formatDate(v ? String(v) : undefined) },
+    { header: t("table.startDate"), key: "startDate", formatter: (v) => v ? formatListDate(String(v)) : "" },
+    { header: t("table.expires"), key: "expiresAt", formatter: (v) => v ? formatListDate(String(v)) : "" },
+    { header: t("table.sent"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v)) : "" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: offers as unknown as Record<string, unknown>[],
@@ -304,6 +310,7 @@ export default function AgentOffersPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <WorkspaceHeader
         title={t("header.title")}
         context={t("header.description")}
@@ -321,70 +328,51 @@ export default function AgentOffersPage() {
         ]}
       />
 
-      {/* One panel: filters and export share the list header, table below.
-          The filter row was a card of its own stacked above the table. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
-          <div className="relative min-w-[140px] flex-1">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t("filters.searchPlaceholder")}
-              aria-label={t("filters.searchPlaceholder")}
-              value={filters.search}
-              onChange={(e) => updateFilter("search", e.target.value)}
-              className="ps-9"
-            />
-          </div>
-          <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
-          <Button variant="ghost" size="sm" className="shrink-0" onClick={resetFilters}>
-            <RotateCcw className="me-1 h-4 w-4" /> {t("actions.reset")}
-          </Button>
-          {!loading && offers.length > 0 && (
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-              className="shrink-0"
-            />
-          )}
-        </div>
+      <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0" onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}>
+        <InlineFilterSearch value={filters.search} onChange={(v) => updateFilter("search", v)} placeholder={t("filters.searchPlaceholder")} />
+        <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
+      </InlineFilterBar>
 
-        <div className="pt-4">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {loading ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("table.candidate")}</TableHead>
-                  <TableHead>{t("table.job")}</TableHead>
-                  <TableHead>{t("table.salary")}</TableHead>
-                  <TableHead>{t("table.startDate")}</TableHead>
-                  <TableHead className="text-right">{t("table.actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>{t("table.candidate")}</TableHead>
+                <TableHead>{t("table.job")}</TableHead>
+                <TableHead>{t("table.salary")}</TableHead>
+                <TableHead>{t("table.startDate")}</TableHead>
+                <TableHead className="text-right">{t("table.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableBodySkeleton rows={5} cols={5} />
+            </TableBody>
+          </Table>
         ) : offers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("empty")}</p>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>{t("table.candidate")}</TableHead>
+                <TableHead>{t("table.job")}</TableHead>
+                <TableHead>{t("table.salary")}</TableHead>
+                <TableHead>{t("table.startDate")}</TableHead>
+                <TableHead className="text-right">{t("table.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="py-12">
+                  <EmptyState title={t("empty")} icon={Inbox} />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("table.candidate")}</TableHead>
                   <TableHead>{t("table.job")}</TableHead>
                   <TableHead>{t("table.salary")}</TableHead>
@@ -393,71 +381,57 @@ export default function AgentOffersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {offers.map((o) => (
-                  <TableRow key={o._id} className={isExpiringSoon(o) ? "bg-amber-500/10" : undefined}>
-                    <TableCell>
-                      <p className="font-medium text-foreground">{o.candidateName}</p>
-                      {o.candidateEmail && <p className="text-xs text-muted-foreground">{o.candidateEmail}</p>}
-                      <Badge variant={getStatusBadgeVariant(o.status)}>
-                        {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{o.jobTitle}</p>
-                      {o.companyName && <p className="text-xs text-muted-foreground">{o.companyName}</p>}
-                    </TableCell>
-                    <TableCell className="text-sm">{formatSalary(o)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <span className="block">{formatDate(o.startDate)}</span>
-                      <span className="mt-1 block text-xs">{t("table.expires")}: {formatDate(o.expiresAt)}</span>
-                      <span className="mt-1 block text-xs">{t("table.sent")}: {formatDate(o.createdAt)}</span>
-                      {isExpiringSoon(o) && (
-                        <span className="mt-1 block text-xs font-semibold text-amber-600">{t("expiringSoon")}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button size="dense" variant="ghost" className="rounded-lg px-2.5 text-xs"
-                          onClick={() => setDetailOffer(o)}>
-                          <Eye className="me-1 h-3.5 w-3.5" />
-                          {t("actions.view")}
-                        </Button>
-                        {(o.status === "pending" || o.status === "countered") && !isExpired(o) && (
-                          <Button size="dense" variant="ghost"
-                            className="rounded-lg px-2.5 text-xs"
-                            onClick={() => openRevise(o)}>
-                            {o.status === "countered"
-                              ? <ArrowLeftRight className="me-1 h-3.5 w-3.5" />
-                              : <Pencil className="me-1 h-3.5 w-3.5" />}
-                            {o.status === "countered" ? t("actions.respondCounter") : t("actions.revise")}
-                          </Button>
+                {offers.map((o) => {
+                  const quick: RowAction[] = [
+                    { key: "view", label: t("actions.view"), icon: Eye, iconOnly: true, onSelect: () => setDetailOffer(o) },
+                  ];
+                  if ((o.status === "pending" || o.status === "countered") && !isExpired(o)) {
+                    quick.push({
+                      key: o.status === "countered" ? "respondCounter" : "revise",
+                      label: o.status === "countered" ? t("actions.respondCounter") : t("actions.revise"),
+                      icon: o.status === "countered" ? ArrowLeftRight : Pencil,
+                      onSelect: () => openRevise(o),
+                    });
+                  }
+                  const menu: RowAction[] = [];
+                  if (o.status === "pending" && !isExpired(o)) {
+                    menu.push({ key: "remind", label: t("actions.remind"), icon: Send, onSelect: () => handleRemind(o._id) });
+                  }
+                  if ((o.status === "pending" || o.status === "countered") && !isExpired(o)) {
+                    menu.push({ key: "withdraw", label: t("actions.withdraw"), icon: X, destructive: true, onSelect: () => handleWithdraw(o._id) });
+                  }
+                  return (
+                    <TableRow key={o._id} className={isExpiringSoon(o) ? "bg-amber-500/10" : undefined}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">{o.candidateName}</p>
+                        {o.candidateEmail && <p className="text-xs text-muted-foreground">{o.candidateEmail}</p>}
+                        <Badge variant={getStatusBadgeVariant(o.status)}>
+                          {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{o.jobTitle}</p>
+                        {o.companyName && <p className="text-xs text-muted-foreground">{o.companyName}</p>}
+                      </TableCell>
+                      <TableCell className="text-sm">{formatSalary(o)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <span className="block">{formatListDate(o.startDate)}</span>
+                        <span className="mt-1 block text-xs">{t("table.expires")}: {formatListDate(o.expiresAt)}</span>
+                        <span className="mt-1 block text-xs">{t("table.sent")}: {formatListDate(o.createdAt)}</span>
+                        {isExpiringSoon(o) && (
+                          <span className="mt-1 block text-xs font-semibold text-amber-600">{t("expiringSoon")}</span>
                         )}
-                        {o.status === "pending" && !isExpired(o) && (
-                          <Button size="dense" variant="ghost"
-                            className="rounded-lg px-2.5 text-xs"
-                            disabled={remindingId === o._id}
-                            onClick={() => handleRemind(o._id)}>
-                            <Send className="me-1 h-3.5 w-3.5" />
-                            {t("actions.remind")}
-                          </Button>
-                        )}
-                        {(o.status === "pending" || o.status === "countered") && !isExpired(o) && (
-                          <Button size="dense" variant="ghost"
-                            className="rounded-lg px-2.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => setWithdrawingId(o._id)}>
-                            <X className="me-1 h-3.5 w-3.5" />
-                            {t("actions.withdraw")}
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <RowActions name={o.candidateName} quick={quick} menu={menu} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         )}
-        </div>
       </section>
 
       <PaginationControls
@@ -468,27 +442,6 @@ export default function AgentOffersPage() {
         onPageChange={pagination.setPage}
         onLimitChange={pagination.setLimit}
       />
-
-      {/* Withdraw confirm */}
-      {withdrawingId && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
-            <div className="border-b border-border/60 px-6 py-5">
-              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("withdrawDialog.title")}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("withdrawDialog.description")}</p>
-            </div>
-            <div className="flex justify-end gap-2 px-6 py-5">
-              <Button variant="ghost" className="rounded-xl" onClick={() => setWithdrawingId(null)} disabled={withdrawPending}>
-                {t("actions.cancel")}
-              </Button>
-              <Button variant="destructive" className="rounded-xl" disabled={withdrawPending} onClick={() => handleWithdraw(withdrawingId)}>
-                {withdrawPending ? t("withdrawDialog.withdrawing") : t("withdrawDialog.confirm")}
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Detail modal */}
       {detailOffer && typeof document !== "undefined" && createPortal(
@@ -523,15 +476,15 @@ export default function AgentOffersPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.startDate")}</p>
-                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.startDate)}</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatListDate(detailOffer.startDate)}</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.createdAt")}</p>
-                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.createdAt)}</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatListDate(detailOffer.createdAt)}</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.expires")}</p>
-                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.expiresAt)}</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatListDate(detailOffer.expiresAt)}</p>
                 </div>
               </div>
               {detailOffer.benefits && (
@@ -549,7 +502,7 @@ export default function AgentOffersPage() {
               {detailOffer.respondedAt && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.responded")}</p>
-                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.respondedAt)}</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatListDate(detailOffer.respondedAt)}</p>
                 </div>
               )}
               {detailOffer.declineReason && (
@@ -631,7 +584,7 @@ export default function AgentOffersPage() {
                   <Button
                     variant="ghost"
                     className="rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
-                    onClick={() => setWithdrawingId(detailOffer._id)}
+                    onClick={() => handleWithdraw(detailOffer._id)}
                   >
                     <X className="mr-2 h-4 w-4" />
                     {t("actions.withdraw")}

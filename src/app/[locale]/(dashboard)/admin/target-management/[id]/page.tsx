@@ -263,7 +263,7 @@ export default function AdminTargetProfileDetailPage() {
           <div className="rounded-2xl border border-border/60 bg-card overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                     <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {t("employer")}</div>

@@ -73,6 +73,15 @@ interface NotifyPayload {
   link?: string;
   sendEmail?: boolean;
   sendWhatsApp?: boolean;
+  /**
+   * Asks for the event when email and WhatsApp are both off. Web push rides on
+   * the same event, so a caller with neither leg (a bulk rejection, an interview
+   * reschedule or cancellation) would otherwise reach the recipient by the
+   * in-app row alone. The orchestrator's push step needs no flag of its own: it
+   * runs whenever push is configured and the category is enabled, while its email
+   * and WhatsApp steps still need theirs.
+   */
+  sendPush?: boolean;
   metadata?: Record<string, unknown>;
   /** Translation key (notificationContent namespace) for localized title. */
   titleKey?: string;
@@ -88,10 +97,16 @@ interface NotifyPayload {
 }
 
 /**
- * `link` must be stored WITHOUT a locale segment ("/employer/applications").
- * `localizeActionUrl` prefixes the reader's active locale when the bell renders
- * it — a link that already begins with a locale is passed through untouched, so
- * the eight helpers that hardcoded `/en/` dropped Arabic readers into English.
+ * Writes the in-app row, then emits `notification/instant` for the
+ * orchestrator's email, WhatsApp and push legs when any of `sendEmail`,
+ * `sendWhatsApp` or `sendPush` is on. The event carries the row's
+ * `notificationId`, so the orchestrator's dedup step skips the row this call
+ * just wrote instead of matching it.
+ *
+ * `link` should be stored without a locale segment ("/employer/applications").
+ * The bell (`localizeActionUrl`) and the orchestrator's email and push links put
+ * the reader's locale in front; a stored `/en/` or `/ar/` is swapped for the
+ * reader's, never stacked.
  */
 export async function notify(payload: NotifyPayload): Promise<void> {
   if (payload.actorId && String(payload.actorId) === String(payload.userId)) return;
@@ -104,7 +119,7 @@ export async function notify(payload: NotifyPayload): Promise<void> {
   if (payload.params) meta.params = payload.params;
 
   // Always create an in-app notification synchronously (fast, no queue needed)
-  await Notification.create({
+  const created = await Notification.create({
     userId: payload.userId,
     type: payload.type,
     title: payload.title,
@@ -115,9 +130,9 @@ export async function notify(payload: NotifyPayload): Promise<void> {
     isRead: false,
   });
 
-  // Emit event to Inngest for async email/WhatsApp delivery
-  // The orchestrator handles: preference checks, dedup, retries, channel routing
-  if (payload.sendEmail || payload.sendWhatsApp) {
+  // One event for email, WhatsApp and push, emitted when any of them is on (push alone asks with sendPush). The
+  // orchestrator handles preference checks, dedup, retries and channel routing.
+  if (payload.sendEmail || payload.sendWhatsApp || payload.sendPush) {
     try {
       await inngest.send({
         name: "notification/instant",
@@ -133,6 +148,9 @@ export async function notify(payload: NotifyPayload): Promise<void> {
           titleKey: payload.titleKey,
           bodyKey: payload.bodyKey,
           params: payload.params,
+          // The orchestrator's dedup step skips this row; without it every run
+          // matched its own row and never emailed, messaged or pushed.
+          notificationId: created?._id ? String(created._id) : undefined,
         },
       });
     } catch (err) {
@@ -142,13 +160,27 @@ export async function notify(payload: NotifyPayload): Promise<void> {
   }
 }
 
+/**
+ * For a helper whose caller already emails the recipient about the same event
+ * (calendar invitation, employer-written status mail).
+ * `sendEmail: false` drops only the orchestrator's email copy; the in-app row and
+ * any WhatsApp leg still go, so nobody gets the same news twice in their inbox.
+ * `sendPush` is for a helper with no WhatsApp leg (`notifyRejected`): with email off
+ * it would otherwise emit no event, and push rides on the event.
+ */
+export interface NotifyHelperOptions {
+  sendEmail?: boolean;
+  sendPush?: boolean;
+}
+
 // Convenience trigger functions
 export async function notifyApplicationReceived(
   jobSeekerId: string,
   jobSeekername: string,
   jobTitle: string,
   companyName: string,
-  applicationId: string
+  applicationId: string,
+  options: NotifyHelperOptions = {},
 ): Promise<void> {
   await notify({
     userId: jobSeekerId,
@@ -156,7 +188,9 @@ export async function notifyApplicationReceived(
     title: "Application Received",
     message: `Your application for "${jobTitle}" at ${companyName} has been submitted successfully.`,
     link: `/job-seeker/applications`,
-    sendEmail: true,
+    sendEmail: options.sendEmail ?? true,
+    sendPush: options.sendPush,
+    sendWhatsApp: true,
     metadata: { jobTitle, companyName, applicationId },
     titleKey: "applicationReceivedTitle",
     bodyKey: "applicationReceivedBody",
@@ -168,7 +202,8 @@ export async function notifyStatusChange(
   jobSeekerId: string,
   jobTitle: string,
   status: string,
-  applicationId: string
+  applicationId: string,
+  options: NotifyHelperOptions = {},
 ): Promise<void> {
   await notify({
     userId: jobSeekerId,
@@ -176,7 +211,9 @@ export async function notifyStatusChange(
     title: "Application Status Updated",
     message: `Your application for "${jobTitle}" has been moved to: ${status.toUpperCase()}.`,
     link: `/job-seeker/applications`,
-    sendEmail: true,
+    sendEmail: options.sendEmail ?? true,
+    sendPush: options.sendPush,
+    sendWhatsApp: true,
     metadata: { jobTitle, status, applicationId },
     titleKey: "statusUpdatedTitle",
     bodyKey: "statusUpdatedBody",
@@ -189,7 +226,8 @@ export async function notifyInterviewScheduled(
   jobTitle: string,
   scheduledAt: Date,
   location: string,
-  interviewId: string
+  interviewId: string,
+  options: NotifyHelperOptions = {},
 ): Promise<void> {
   // The email/WhatsApp bodies are this stored string, so it has to be written
   // in the *recipient's* zone and say which zone that is. `dateIso` and
@@ -202,7 +240,9 @@ export async function notifyInterviewScheduled(
     title: "Interview Scheduled",
     message: `Your interview for "${jobTitle}" is scheduled for ${dateStr} at ${location}.`,
     link: `/job-seeker/interviews`,
-    sendEmail: true,
+    sendEmail: options.sendEmail ?? true,
+    sendPush: options.sendPush,
+    sendWhatsApp: true,
     metadata: { jobTitle, scheduledAt, location, interviewId },
     titleKey: "interviewScheduledTitle",
     bodyKey: "interviewScheduledBody",
@@ -229,6 +269,7 @@ export async function notifyInterviewSelected(
     message: `Great news! You have been selected for an interview for the "${jobTitle}" position at ${companyName}. The employer will reach out to you soon with further details.`,
     link: `/job-seeker/applications`,
     sendEmail: true,
+    sendWhatsApp: true,
     metadata: { jobTitle, companyName, applicationId },
     titleKey: "interviewSelectedTitle",
     bodyKey: "interviewSelectedBody",
@@ -240,7 +281,8 @@ export async function notifyOfferMade(
   jobSeekerId: string,
   jobTitle: string,
   companyName: string,
-  applicationId: string
+  applicationId: string,
+  options: NotifyHelperOptions = {},
 ): Promise<void> {
   await notify({
     userId: jobSeekerId,
@@ -248,7 +290,9 @@ export async function notifyOfferMade(
     title: "Offer Extended!",
     message: `${companyName} has extended an offer to you for the "${jobTitle}" position. Log in to review the details.`,
     link: `/job-seeker/applications`,
-    sendEmail: true,
+    sendEmail: options.sendEmail ?? true,
+    sendPush: options.sendPush,
+    sendWhatsApp: true,
     metadata: { jobTitle, companyName, applicationId },
     titleKey: "offerMadeTitle",
     bodyKey: "offerMadeBody",
@@ -259,7 +303,8 @@ export async function notifyOfferMade(
 export async function notifyRejected(
   jobSeekerId: string,
   jobTitle: string,
-  applicationId: string
+  applicationId: string,
+  options: NotifyHelperOptions = {},
 ): Promise<void> {
   await notify({
     userId: jobSeekerId,
@@ -267,7 +312,8 @@ export async function notifyRejected(
     title: "Application Update",
     message: `We're sorry to inform you that your application for "${jobTitle}" was not selected at this time. Keep applying — the right opportunity is ahead.`,
     link: `/job-seeker/applications`,
-    sendEmail: true,
+    sendEmail: options.sendEmail ?? true,
+    sendPush: options.sendPush,
     metadata: { jobTitle, applicationId },
     titleKey: "rejectedTitle",
     bodyKey: "rejectedBody",
@@ -477,6 +523,7 @@ export async function notifyCommissionPaid(
     message: `Your commission of ${currency} ${formatCount(amount)} has been paid. Reference: ${paymentRef}.`,
     link: getCommissionLink(role, locale),
     sendEmail: true,
+    sendWhatsApp: true,
     metadata: { amount, currency, paymentRef, role, status: "paid" },
     titleKey: "commissionPaidTitle",
     bodyKey: "commissionPaidBody",

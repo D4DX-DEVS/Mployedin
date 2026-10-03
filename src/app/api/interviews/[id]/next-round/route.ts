@@ -11,6 +11,7 @@ import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { verifyInterviewAccess } from "@/lib/interviews/access";
+import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import type { UserRole } from "@/models/User";
@@ -137,7 +138,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     instructions: body.instructions,
     status: "scheduled",
     interviewRound: nextRound,
-    reminderSent: false,
+    // Booked inside the hourly cron's 24 hour window, the candidate already got
+    // the booking notice below; see reminderWindow.ts.
+    reminderSent: isInsideReminderWindow(reqDate),
     rescheduleCount: 0,
   });
 

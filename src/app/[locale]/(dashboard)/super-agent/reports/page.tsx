@@ -170,7 +170,14 @@ export default function SuperAgentReportsPage() {
         title={t("agentPerformanceBreakdown")}
         description={t("agentPerformanceDescription")}
       >
-        {agentBreakdown.length === 0 ? (
+        {/* "No agent data" used to show while the report was still loading. */}
+        {loading ? (
+          <div className="space-y-3" aria-hidden="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-2xl bg-muted/50" />
+            ))}
+          </div>
+        ) : agentBreakdown.length === 0 ? (
           <div className="rounded-2xl border border-border/70 bg-secondary/50 text-sm leading-6 text-muted-foreground panel-body">
             {t("noAgentData")}
           </div>
@@ -185,7 +192,7 @@ export default function SuperAgentReportsPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">{agent.name}</p>
-                      <p className="text-xs text-muted-foreground">{agent.leads} leads · {agent.placements} placements</p>
+                      <p className="text-xs text-muted-foreground">{t("leads")}: {agent.leads} · {t("placements")}: {agent.placements}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-right">

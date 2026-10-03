@@ -18,12 +18,14 @@ import {
   Calendar, Video, MapPin, Phone, Clock, BriefcaseBusiness, Mail,
   CheckCircle2, XCircle,
 } from "lucide-react";
-import { formatDate, formatTime } from "@/lib/ui/intlFormat";
+import { formatListDate, formatTime } from "@/lib/ui/intlFormat";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { ExportColumn } from "@/lib/export";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -62,7 +64,6 @@ const INITIAL_FILTERS: Filters = { search: "", status: "all", type: "all", dateF
 export default function SuperAgentInterviewsPage() {
   const t = useTranslations("superAgentInterviews");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
   const locale = useLocale();
   const [interviews, setInterviews] = useState<InterviewItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +123,21 @@ export default function SuperAgentInterviewsPage() {
     { value: "hybrid", label: t("typeHybrid") },
   ];
 
+  const exportColumns: ExportColumn<InterviewItem>[] = [
+    { header: t("columnCandidate"), key: "candidateName" },
+    { header: tc("email"), key: "candidateEmail" },
+    { header: t("columnJob"), key: "jobTitle", formatter: (_v, row) => [row.jobTitle, row.companyName, row.agentName].filter(Boolean).join(" · ") },
+    { header: t("columnType"), key: "type", formatter: (_v, row) => TYPE_OPTIONS.find((o) => o.value === row.type)?.label ?? row.type },
+    { header: tc("status"), key: "status", formatter: (_v, row) => STATUS_OPTIONS.find((o) => o.value === row.status)?.label ?? row.status },
+    { header: t("columnScheduled"), key: "scheduledAt", formatter: (_v, row) => `${formatListDate(row.scheduledAt, locale)} ${formatTime(new Date(row.scheduledAt), { hour: "2-digit", minute: "2-digit" }, locale)}` },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: interviews as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-interviews",
+    title: t("pageTitle"),
+  });
+
   const metricsArray = [
     { label: t("totalInterviews"), value: stats.total, icon: Calendar },
     { label: t("scheduled"), value: stats.scheduled, icon: Clock },
@@ -169,6 +185,9 @@ export default function SuperAgentInterviewsPage() {
           </div>
         )}
         moreActiveCount={[filters.dateFrom, filters.dateTo].filter(Boolean).length}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
       >
         <InlineFilterSearch
           value={filters.search}
@@ -248,7 +267,7 @@ export default function SuperAgentInterviewsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(new Date(i.scheduledAt), { day: "2-digit", month: "short", year: "numeric" }, locale)}{" "}
+                    {formatListDate(i.scheduledAt, locale)}{" "}
                     <span className="text-xs">{formatTime(new Date(i.scheduledAt), { hour: "2-digit", minute: "2-digit" }, locale)}</span>
                     <span className="mt-1 block text-xs">{i.duration ? t("durationMinutes", { duration: i.duration }) : "—"}</span>
                   </TableCell>
@@ -258,16 +277,16 @@ export default function SuperAgentInterviewsPage() {
           </Table>
         </div>
         )}
-
-        <PaginationControls
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          limit={pagination.limit}
-          total={pagination.total}
-          onPageChange={pagination.setPage}
-          onLimitChange={pagination.setLimit}
-        />
       </SuperAgentSection>
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        limit={pagination.limit}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

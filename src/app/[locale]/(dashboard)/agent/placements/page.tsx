@@ -1,24 +1,25 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
-import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Filter, Inbox, RotateCcw, Search, UserCheck, X } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Inbox, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 
 interface Placement {
   _id: string;
@@ -34,14 +35,11 @@ interface Placement {
 
 // Status options are built dynamically in component with translations
 
-const selectClass = "h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20";
-
 export default function AgentPlacementsPage() {
   const t = useTranslations("agentPlacements");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
+  const locale = useLocale();
 
-  const { can } = usePermissions();
   const pagination = usePagination();
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +106,7 @@ export default function AgentPlacementsPage() {
     { header: t("tableHeaderSalary"), key: "salary" },
     { header: t("tableHeaderCurrency"), key: "currency" },
     { header: tc("status"), key: "status" },
-    { header: t("tableHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("tableHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatListDate(String(v), locale) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -131,106 +129,54 @@ export default function AgentPlacementsPage() {
         ]}
       />
 
-      {/* One panel: search, status and dates inline on the list header, table
-          below. The filter card carried its own label and heading before a
-          single select — two headings for one dropdown. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body" data-table-toolbar="simple">
-        <div className="space-y-3 border-b border-border pb-3 sm:pb-4 sm:flex sm:flex-wrap sm:items-end sm:gap-2">
-          <p className="w-full text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:w-auto sm:pb-2.5">
-            {t("resultsLabel")}
-          </p>
-
-          {/* Search row - full width on mobile */}
-          <div className="relative toolbar-search-field w-full sm:ms-auto sm:w-56 sm:flex-none">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              aria-label={t("searchPlaceholder")}
-              className="h-11 sm:h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        more={(
+          <>
+            <SearchableSelect
+              id="agent-placements-status"
+              className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+              options={STATUS_OPTIONS}
+              value={statusFilter}
+              onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
+              placeholder={t("statusAllStatuses")}
             />
-          </div>
-
-          {/* Status and Export row on mobile */}
-          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:gap-2">
-            <div className="flex flex-col min-w-0">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
-                {tc("status")}
-              </label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-11 sm:h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col items-end justify-end">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
-                {tc("export")}
-              </label>
-              <TableToolbar
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-                className="w-full sm:shrink-0"
-              />
-            </div>
-          </div>
-
-          {/* Date pickers row on mobile */}
-          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:gap-2">
-            <div className="flex flex-col min-w-0">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
-                {t("dateFromLabel")}
-              </label>
-              <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("dateFromLabel")} />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
-                {t("dateToLabel")}
-              </label>
-              <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} placeholder={t("dateToLabel")} />
-            </div>
-          </div>
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-11 sm:h-10 w-full sm:w-auto shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-              <X className="h-3.5 w-3.5" />{t("clearAll")}
-            </Button>
-          )}
-        </div>
-
-        {hasActiveFilters && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {statusFilter !== "all" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("filterTagStatus")}: {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
-                <button type="button" onClick={() => setStatusFilter("all")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {(dateFrom || dateTo) && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("filterTagDate")}: {dateFrom || "..."} – {dateTo || "..."}
-                <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {debouncedSearch && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Search className="h-3 w-3" />{t("filterTagSearch")}: &quot;{debouncedSearch}&quot;
-                <button type="button" onClick={() => setSearch("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-          </div>
+            <DateTimePicker
+              mode="date"
+              value={dateFrom}
+              onChange={(v) => { setDateFrom(v); pagination.resetPage(); }}
+              className="h-11 rounded-lg text-sm"
+              placeholder={t("dateFromLabel")}
+            />
+            <DateTimePicker
+              mode="date"
+              value={dateTo}
+              onChange={(v) => { setDateTo(v); pagination.resetPage(); }}
+              className="h-11 rounded-lg text-sm"
+              placeholder={t("dateToLabel")}
+            />
+          </>
         )}
+        moreLabel="Filter"
+        moreActiveCount={[statusFilter !== "all", dateFrom, dateTo].filter(Boolean).length}
+        moreOpen={false}
+        onClear={hasActiveFilters ? clearAllFilters : undefined}
+        clearLabel={tc("status")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); pagination.resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+      </InlineFilterBar>
 
-        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <Table>
           <TableHeader>
-            <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{t("tableHeaderCandidate")}</TableHead>
               <TableHead>{t("tableHeaderJob")}</TableHead>
               <TableHead>{t("tableHeaderSalary")}</TableHead>
@@ -239,26 +185,23 @@ export default function AgentPlacementsPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 4 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <TableBodySkeleton rows={5} cols={4} />
             ) : placements.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={4} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm">{t("noPlacementsYet")}</span>
-                  </div>
+                <TableCell colSpan={4} className="py-12">
+                  <EmptyState
+                    icon={Inbox}
+                    title={t("noPlacementsYet")}
+                    action={hasActiveFilters ? (
+                      <Button variant="outline" onClick={clearAllFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+                        Clear filters
+                      </Button>
+                    ) : undefined}
+                  />
                 </TableCell>
               </TableRow>
             ) : placements.map((p) => (
-              <TableRow key={p._id} className="hover:bg-secondary/50">
+              <TableRow key={p._id} className="group">
                 <TableCell>
                   <span className="block font-medium text-foreground">{p.jobSeekerId?.fullName ?? "—"}</span>
                   <StatusBadge status={p.status} />
@@ -270,22 +213,23 @@ export default function AgentPlacementsPage() {
                 <TableCell className="text-muted-foreground">
                   {p.salary ? `${p.currency ?? "USD"} ${formatCount(p.salary)}` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{p.startDate ? formatDate(new Date(p.startDate)) : "—"}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{p.startDate ? formatListDate(p.startDate, locale) : "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        </div>
       </section>
 
-      <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
-      />
+      {pagination.total > 0 && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
+      )}
     </div>
   );
 }

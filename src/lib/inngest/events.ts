@@ -17,6 +17,12 @@ export interface NotificationInstantEvent {
     titleKey?: string;
     bodyKey?: string;
     params?: Record<string, unknown>;
+    /**
+     * The in-app Notification row notify() wrote for this event. The
+     * orchestrator's dedup step must not count that row (or a later one) as a
+     * duplicate — before this field every run matched its own row and stopped.
+     */
+    notificationId?: string;
   };
 }
 
@@ -127,7 +133,16 @@ export interface AdminBroadcastEvent {
     targetRoles?: string[];
     targetAll?: boolean;
     channels: string[];
+    /** Correlates the audit entry, the event and every WhatsApp log row of one send. */
+    broadcastId?: string;
+    whatsapp?: { templateName: string; language: string; params: string[] };
   };
+}
+
+export interface WhatsAppScheduleRunEvent {
+  name: "whatsapp/schedule.run";
+  /** `runId` is the single-use token the claim wrote on the schedule; the runner's first step consumes it. */
+  data: { scheduleId: string; runAt: string; runId: string };
 }
 
 /**
@@ -139,4 +154,5 @@ export type NotificationEvent =
   | NotificationReEngagementEvent
   | NotificationProfileCompletionEvent
   | NotificationWeeklyDigestEvent
-  | AdminBroadcastEvent;
+  | AdminBroadcastEvent
+  | WhatsAppScheduleRunEvent;

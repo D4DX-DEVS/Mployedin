@@ -1,14 +1,15 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 import { Badge } from "@/components/ui/badge";
 import { Newspaper } from "lucide-react";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 export default function BlogsAdminPage() {
   const t = useTranslations("adminCmsBlogs");
+  const locale = useLocale();
 
   const FIELDS: CrudField[] = [
     { name: "title", label: t("titleFieldLabel"), type: "text", required: true, placeholder: t("titleFieldPlaceholder") },
@@ -59,7 +60,7 @@ export default function BlogsAdminPage() {
       sortable: true,
       label: t("publishedAtColumnLabel"),
       render: (value: unknown) =>
-        value ? formatDate(new Date(String(value))) : "—",
+        value ? formatListDate(new Date(String(value)), locale) : "—",
     },
   ];
 

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { defaultFilter } from "cmdk";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,17 @@ interface SearchableSelectProps {
 
 /** Below this many options, scrolling beats typing — hide the search box. */
 const SEARCH_THRESHOLD = 8;
+
+/**
+ * cmdk identifies an item by its `value`, so items keyed by label merged when
+ * two options shared one (two employer accounts with the same company name):
+ * they highlighted together and Enter always chose the first. Items are keyed
+ * by option value instead, and search scores the label carried in `keywords`
+ * so typing never matches an id.
+ */
+const itemValue = (option: SearchableSelectOption) => `option:${option.value}`;
+const filterByLabel = (_value: string, search: string, keywords?: string[]) =>
+  defaultFilter(keywords?.join(" ") ?? "", search);
 
 export function SearchableSelect({
   options,
@@ -177,7 +189,7 @@ export function SearchableSelect({
           maxWidth: "min(28rem, calc(100vw - 2rem))",
         }}
       >
-        <Command>
+        <Command filter={filterByLabel}>
           {/* Kept mounted when hidden: cmdk routes arrow/enter keys through the
               focused input, so removing it would break keyboard navigation. */}
           <div className={cn(!showSearch && "sr-only")}>
@@ -194,8 +206,11 @@ export function SearchableSelect({
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
-                  key={option.value}
-                  value={option.label}
+                  // cmdk re-reads `keywords` only when `value` changes, so a
+                  // relabelled option remounts to be searched by its new label.
+                  key={`${option.value}\u0000${option.label}`}
+                  value={itemValue(option)}
+                  keywords={[option.label]}
                   disabled={option.disabled}
                   onSelect={() => {
                     onValueChange(option.value);

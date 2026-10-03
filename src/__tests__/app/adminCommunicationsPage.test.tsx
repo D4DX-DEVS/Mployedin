@@ -5,8 +5,8 @@
  * Admin → System → Broadcasts.
  *
  * "Send Now" mailed every user with no confirmation (the audience defaults to
- * all, and Enter in the title field submits), and WhatsApp was selectable
- * although the broadcast worker never delivers it.
+ * all, and Enter in the title field submits). The WhatsApp channel (template
+ * picker, parameters) is covered in adminCommunicationsWhatsApp.test.tsx.
  */
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -62,10 +62,16 @@ describe("broadcast send", () => {
     );
   });
 
-  it("shows WhatsApp as coming soon and does not let it be picked", () => {
-    render(<AdminCommunicationsPage />);
-    const whatsapp = screen.getByRole("button", { name: /whatsapp/i });
-    expect(whatsapp).toBeDisabled();
-    expect(whatsapp).toHaveTextContent(/coming soon/i);
+  // The server refuses the same broadcast by the same admin within a minute (a double click, a second tab).
+  it("explains a refused duplicate (409 duplicate_broadcast) in fixed copy, never the code", async () => {
+    confirm.mockResolvedValue(true);
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Promise.resolve({ ok: false, status: 409, json: async () => ({ error: "duplicate_broadcast" }) });
+      if (String(url).startsWith("/api/admin/communications/audience")) return Promise.resolve({ ok: true, json: async () => ({ count: 411 }) });
+      return Promise.resolve({ ok: true, json: async () => ({ broadcasts: [] }) });
+    });
+    await fillAndSend();
+    expect(await screen.findByText("We couldn't send this broadcast: you sent the same one less than a minute ago. Wait a minute if you mean to send it again.")).toBeInTheDocument();
+    expect(screen.queryByText(/duplicate_broadcast/)).not.toBeInTheDocument();
   });
 });

@@ -5,7 +5,6 @@ import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { notify } from "@/lib/notifications/trigger";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
 import { forEachBounded } from "@/lib/cron/scale";
-import logger from "@/lib/logger";
 
 // This route is meant to be called by a cron job (e.g. Vercel Cron, external scheduler)
 // Secured with a shared CRON_SECRET header
@@ -112,15 +111,25 @@ export async function GET(req: NextRequest) {
     }
 
     const minutesUntil = Math.round((scheduledAt.getTime() - now.getTime()) / 60000);
+    const jobTitle = job?.title ?? "a position";
 
+    // Keys, like the 24-hour reminder's, so the bell, the email and WhatsApp
+    // reach an Arabic reader in Arabic; the literals stay as the fallback.
     await notify({
       userId: candidate.userId._id.toString(),
       type: "interview_reminder",
       title: "Interview Starting Soon",
-      message: `Your interview for "${job?.title ?? "a position"}" starts in ${minutesUntil} minutes.${meetLink ? ` Join: ${meetLink}` : ""}`,
+      message: `Your interview for "${jobTitle}" starts in ${minutesUntil} ${minutesUntil === 1 ? "minute" : "minutes"}.${meetLink ? ` Join: ${meetLink}` : ""}`,
       link: `/en/job-seeker/interviews`,
       sendEmail: true,
+      sendWhatsApp: true,
       metadata: { interviewId: String(interview._id), minutesUntil },
+      titleKey: "interviewStartingSoonTitle",
+      bodyKey: meetLink ? "interviewStartingSoonWithLinkBody" : "interviewStartingSoonBody",
+      // `minutes` stays a number: the body keys are ICU plurals.
+      params: meetLink
+        ? { jobTitle, minutes: minutesUntil, meetLink }
+        : { jobTitle, minutes: minutesUntil },
     });
   }, "interview-1h-reminder");
 

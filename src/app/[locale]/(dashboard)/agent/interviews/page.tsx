@@ -14,14 +14,21 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CalendarCheck2, CheckCircle, Edit2, Inbox, Search, Video, MapPin, Phone, XCircle, RotateCcw, Filter, X } from "lucide-react";
+import { CalendarCheck2, CheckCircle, Inbox, Video, MapPin, Pencil, Phone, XCircle, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useConfirm } from "@/hooks/useConfirm";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate, formatTime } from "@/lib/ui/intlFormat";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -80,6 +87,17 @@ const OUTCOME_OPTIONS_BASE: (t: ReturnType<typeof useTranslations>) => Array<{ v
   { value: "no_show", label: t("outcomeNoShow") },
 ];
 
+// StatusBadge has no passed/failed/hold entries, so an outcome passed as the
+// status rendered "Unknown status". Borrow a status with the right colour and
+// pass the outcome's own label.
+const OUTCOME_TONE: Record<string, string> = {
+  pending: "pending",
+  passed: "completed",
+  failed: "cancelled",
+  hold: "rescheduled",
+  no_show: "no_show",
+};
+
 const typeIcon = (type?: string) => {
   switch (type) {
     case "video": return <Video className="h-3.5 w-3.5" />;
@@ -89,8 +107,6 @@ const typeIcon = (type?: string) => {
   }
 };
 
-const selectClass = "h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20";
-
 /* ── Page Component ─────────────────────────────────────────────────── */
 
 export default function AgentInterviewsPage() {
@@ -98,13 +114,17 @@ export default function AgentInterviewsPage() {
   const tf = useTranslations("formErrors");
   const locale = useLocale();
   const tc = useTranslations("common");
-  const ttable = useTranslations("table");
   const { can } = usePermissions();
   const pagination = usePagination();
+  const { confirm, ConfirmDialogNode } = useConfirm();
+  const canUpdate = can("interviews", "update");
+  const columnCount = canUpdate ? 6 : 5;
 
   /* Data state */
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
   /* Initialize filter options */
@@ -129,10 +149,6 @@ export default function AgentInterviewsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
   const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
-  // Five selects and two date pickers were always open, filling a screen
-  // before the first interview row. Collapsed by default; the active pills
-  // below still show what is applied.
-  const [showFilters, setShowFilters] = useState(false);
 
   /* Modal state */
   // `?new=1` from the Create menu and ⌘K opens the schedule dialog on arrival.
@@ -184,6 +200,7 @@ export default function AgentInterviewsPage() {
   /* Fetch interviews */
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const params = pagination.paginationParams();
       if (status) params.set("status", status);
@@ -201,8 +218,13 @@ export default function AgentInterviewsPage() {
         setInterviews(data.items ?? data.interviews ?? []);
         pagination.updateTotal(data.total ?? data.totalCount ?? 0);
         if (data.statusCounts) setStatusCounts(data.statusCounts);
+      } else {
+        // Was swallowed: a failed load read as "No interviews found".
+        setLoadError(true);
       }
-    } catch { /* ignore */ }
+    } catch {
+      setLoadError(true);
+    }
     setLoading(false);
   }, [status, employerFilter, jobFilter, typeFilter, outcomeFilter, debouncedSearch, dateFrom, dateTo, pagination.page, pagination.limit]);
 
@@ -213,11 +235,39 @@ export default function AgentInterviewsPage() {
 
   /* Actions */
   const updateInterviewStatus = async (id: string, newStatus: string) => {
-    const res = await fetch(`/api/interviews/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }),
-    });
-    if (res.ok) fetchInterviews();
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/interviews/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }),
+      });
+      // A refused update used to do nothing at all, with no message.
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? t("statusUpdateFailed"));
+        return;
+      }
+      await fetchInterviews();
+    } catch {
+      toast.error(t("statusUpdateFailed"));
+    } finally {
+      setUpdatingId(null);
+    }
   };
+
+  // Cancel was one click with no confirm, right beside Mark completed.
+  const cancelInterview = async (iv: Interview) => {
+    const ok = await confirm({
+      title: t("cancelConfirmTitle"),
+      message: t("cancelConfirmMessage", { name: iv.jobSeekerId?.fullName ?? tc("name") }),
+      confirmLabel: t("ariaCancel"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    await updateInterviewStatus(iv._id, "cancelled");
+  };
+
+  const typeLabel = (type?: string) =>
+    type === "offline" ? t("typeInPerson") : type === "video" ? t("typeVideo") : type === "hybrid" ? t("typeHybrid") : "—";
 
   const handleSave = async (values: Record<string, string>) => {
     if (!editInterview) return;
@@ -258,11 +308,11 @@ export default function AgentInterviewsPage() {
     { header: t("columnCandidate"), key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },
     { header: t("columnJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
     { header: t("columnEmployer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
-    { header: t("columnType"), key: "type" },
-    { header: t("columnScheduled"), key: "scheduledAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("columnType"), key: "type", formatter: (v) => v ? typeLabel(String(v)) : "" },
+    { header: t("columnScheduled"), key: "scheduledAt", formatter: (v) => v ? `${formatListDate(String(v), locale)} ${formatTime(String(v), { hour: "2-digit", minute: "2-digit" }, locale)}` : "" },
     { header: t("columnRound"), key: "interviewRound" },
-    { header: t("columnStatus"), key: "status" },
-    { header: t("columnOutcome"), key: "outcome" },
+    { header: t("columnStatus"), key: "status", formatter: (v) => STATUS_OPTIONS.find((o) => o.value === v)?.label ?? String(v ?? "") },
+    { header: t("columnOutcome"), key: "outcome", formatter: (v) => v ? OUTCOME_OPTIONS.find((o) => o.value === v)?.label ?? String(v) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -281,6 +331,7 @@ export default function AgentInterviewsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <WorkspaceHeader
         title={t("pageTitle")}
         context={`${totalAll} ${t("labelInterviews")}`}
@@ -292,273 +343,189 @@ export default function AgentInterviewsPage() {
         ]}
       />
 
-      {/* One panel: search, filter toggle and export inline; the filter grid
-          collapses; the table follows. The old filter card announced itself
-          with a label and a heading before showing a single search box. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body" data-table-toolbar="simple">
-        <div className="grid gap-3 border-b border-border pb-3 sm:pb-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>
-            <Button
-              variant={showFilters ? "default" : "outline"}
-              size="sm"
-              className="h-10 shrink-0 gap-1.5 rounded-xl sm:ms-auto"
-              onClick={() => setShowFilters((v) => !v)}
-              aria-expanded={showFilters}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              {tc("filter")}
-            </Button>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10 shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" />{t("buttonClearAll")}
-              </Button>
-            )}
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-              className="shrink-0"
+      {/* Filters: the admin row. Search and status in sight, the rest behind
+          Filter; the open/close grid with uppercase labels, the "results"
+          eyebrow and the pill row restating each filter are gone. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={hasActiveFilters ? clearAllFilters : undefined}
+        clearLabel={t("buttonClearAll")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        moreActiveCount={[employerFilter !== "all", jobFilter !== "all", typeFilter, outcomeFilter, dateFrom, dateTo].filter(Boolean).length}
+        more={(
+          <>
+            <SearchableSelect
+              id="agent-interviews-employer"
+              className={INLINE_FILTER_CONTROL}
+              options={[{ value: "all", label: t("filterAllEmployers") }, ...employers.map((emp) => ({ value: emp._id, label: emp.companyName }))]}
+              value={employerFilter}
+              onValueChange={(value) => { setEmployerFilter(value); setJobFilter("all"); }}
+              placeholder={t("filterEmployer")}
             />
-          </div>
-          <div className="relative toolbar-search-field">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              aria-label={t("searchPlaceholder")}
-              className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+            <SearchableSelect
+              id="agent-interviews-job"
+              className={INLINE_FILTER_CONTROL}
+              options={[{ value: "all", label: t("filterAllJobs") }, ...jobs.map((j) => ({ value: j._id, label: j.title }))]}
+              value={jobFilter}
+              onValueChange={setJobFilter}
+              placeholder={t("filterJob")}
             />
-          </div>
-        </div>
-
-        {/* Filter row */}
-        {showFilters && (
-        <>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {/* Status */}
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
-            <Select value={status || "all"} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((o) => <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Employer */}
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterEmployer")}</label>
-            <Select value={employerFilter} onValueChange={(value) => { setEmployerFilter(value); setJobFilter("all"); }}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("filterAllEmployers")}</SelectItem>
-                {employers.map((emp) => <SelectItem key={emp._id} value={emp._id}>{emp.companyName}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Job */}
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterJob")}</label>
-            <Select value={jobFilter} onValueChange={setJobFilter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("filterAllJobs")}</SelectItem>
-                {jobs.map((j) => <SelectItem key={j._id} value={j._id}>{j.title}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Type */}
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterType")}</label>
-            <Select value={typeFilter || "all"} onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TYPE_OPTIONS.map((o) => <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Outcome */}
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterOutcome")}</label>
-            <Select value={outcomeFilter || "all"} onValueChange={(v) => setOutcomeFilter(v === "all" ? "" : v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {OUTCOME_OPTIONS.map((o) => <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Date range – separate row for breathing room */}
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelFromDate")}</label>
-            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("labelFromDate")} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelToDate")}</label>
-            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} placeholder={t("labelToDate")} />
-          </div>
-        </div>
-        </>
+            <SearchableSelect
+              id="agent-interviews-type"
+              className={INLINE_FILTER_CONTROL}
+              options={TYPE_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }))}
+              value={typeFilter || "all"}
+              onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}
+              placeholder={t("filterType")}
+            />
+            <SearchableSelect
+              id="agent-interviews-outcome"
+              className={INLINE_FILTER_CONTROL}
+              options={OUTCOME_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }))}
+              value={outcomeFilter || "all"}
+              onValueChange={(v) => setOutcomeFilter(v === "all" ? "" : v)}
+              placeholder={t("filterOutcome")}
+            />
+            <div className="min-w-0 flex-[1_1_8rem] sm:max-w-56">
+              <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("labelFromDate")} />
+            </div>
+            <div className="min-w-0 flex-[1_1_8rem] sm:max-w-56">
+              <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} placeholder={t("labelToDate")} />
+            </div>
+          </>
         )}
+      >
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        <SearchableSelect
+          id="agent-interviews-status"
+          className={INLINE_FILTER_CONTROL}
+          options={STATUS_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }))}
+          value={status || "all"}
+          onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+          placeholder={t("filterAllStatuses")}
+        />
+      </InlineFilterBar>
 
-        {/* Active filter pills */}
-        {hasActiveFilters && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {status && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillStatus")}: {STATUS_OPTIONS.find(o => o.value === status)?.label}
-                <button type="button" onClick={() => setStatus("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {employerFilter && employerFilter !== "all" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillEmployer")}: {employers.find(e => e._id === employerFilter)?.companyName ?? employerFilter}
-                <button type="button" onClick={() => { setEmployerFilter("all"); setJobFilter("all"); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {jobFilter && jobFilter !== "all" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillJob")}: {jobs.find(j => j._id === jobFilter)?.title ?? jobFilter}
-                <button type="button" onClick={() => setJobFilter("all")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {typeFilter && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillType")}: {TYPE_OPTIONS.find(o => o.value === typeFilter)?.label}
-                <button type="button" onClick={() => setTypeFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {outcomeFilter && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillOutcome")}: {OUTCOME_OPTIONS.find(o => o.value === outcomeFilter)?.label}
-                <button type="button" onClick={() => setOutcomeFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {(dateFrom || dateTo) && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />{t("pillDate")}: {dateFrom || "..."} – {dateTo || "..."}
-                <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
-            {debouncedSearch && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Search className="h-3 w-3" />{t("pillSearch")}: &quot;{debouncedSearch}&quot;
-                <button type="button" onClick={() => setSearch("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
-              </span>
-            )}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {loadError ? (
+          <div className="p-6">
+            <ErrorState onRetry={() => void fetchInterviews()} />
           </div>
-        )}
-
-        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
+        ) : (
           <Table>
             <TableHeader>
-              <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-              <TableHead>{t("columnCandidate")}</TableHead>
-              <TableHead>{t("columnJob")}</TableHead>
-              <TableHead>{t("columnType")}</TableHead>
-              <TableHead>{t("columnScheduled")}</TableHead>
-              {can("interviews", "update") && <TableHead>{tc("actions")}</TableHead>}
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>{t("columnCandidate")}</TableHead>
+                <TableHead>{t("columnStatus")}</TableHead>
+                <TableHead>{t("columnJob")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("columnType")}</TableHead>
+                <TableHead>{t("columnScheduled")}</TableHead>
+                {canUpdate && <TableHead className="text-right">{tc("actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j}>
-                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <TableBodySkeleton rows={5} cols={columnCount} />
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={5} className="h-32 text-center">
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <Inbox className="h-8 w-8 text-muted-foreground" />
-                      <span className="text-sm">{hasActiveFilters ? t("emptyStateWithFilters") : t("emptyStateNoResults")}</span>
-                      {hasActiveFilters && (
-                        <Button variant="ghost" size="sm" onClick={clearAllFilters} className="mt-1 gap-1 text-xs">
-                          <X className="h-3 w-3" />{t("buttonClearFilters")}
+                  <TableCell colSpan={columnCount} className="py-12">
+                    <EmptyState
+                      icon={Inbox}
+                      title={hasActiveFilters ? t("emptyStateWithFilters") : t("emptyStateNoResults")}
+                      action={hasActiveFilters ? (
+                        <Button variant="outline" onClick={clearAllFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+                          {t("buttonClearFilters")}
                         </Button>
-                      )}
-                    </div>
+                      ) : undefined}
+                    />
                   </TableCell>
                 </TableRow>
-              ) : interviews.map((iv) => (
-                <TableRow key={iv._id} className="hover:bg-secondary/50">
-                  <TableCell>
-                    <div className="grid w-full min-w-0 gap-1">
-                      <p className="truncate font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</p>
-                      {iv.jobSeekerId?.email && <p className="truncate text-xs text-muted-foreground">{iv.jobSeekerId.email}</p>}
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      <StatusBadge status={iv.status} />
-                      {iv.outcome && <StatusBadge status={iv.outcome === "no_show" ? "no-show" : iv.outcome} />}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-foreground/80 max-w-[180px]" title={iv.jobId?.title}>
-                    <span className="block truncate">{iv.jobId?.title ?? "—"}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">{iv.employerId?.companyName ?? "—"}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground">
-                      {typeIcon(iv.type)}
-                      {iv.type === "offline" ? t("typeInPerson") : iv.type ? t(`type${iv.type.charAt(0).toUpperCase()}${iv.type.slice(1)}`) : "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">
-                    <div>
-                      <p className="text-sm">{formatDate(new Date(iv.scheduledAt))}</p>
-                      <p className="text-xs text-muted-foreground/70">{new Date(iv.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{iv.duration ? ` · ${iv.duration}min` : ""}</p>
-                      <p className="text-xs text-muted-foreground/70">{t("columnRound")}: {iv.interviewRound ?? 1}</p>
-                    </div>
-                  </TableCell>
-                  {can("interviews", "update") && (
+              ) : interviews.map((iv) => {
+                const name = iv.jobSeekerId?.fullName ?? tc("name");
+                const open = iv.status === "scheduled" || iv.status === "confirmed";
+                return (
+                  <TableRow key={iv._id} className="group">
                     <TableCell>
-                      <div>
-                      <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
-                        <Button variant="ghost" size="xs" onClick={() => { setEditInterview(iv); setModalOpen(true); }} title={tc("edit")} aria-label={t("ariaEditInterview", { name: iv.jobSeekerId?.fullName ?? tc("name") })} className="min-h-11">
-                          <Edit2 className="h-3.5 w-3.5 text-primary" />
-                        </Button>
-                        {(iv.status === "scheduled" || iv.status === "confirmed") && (
-                          <>
-                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "completed")} title={t("buttonMarkCompleted")} aria-label={t("ariaMarkCompleted")} className="min-h-11">
-                              <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
-                            </Button>
-                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "cancelled")} title={tc("cancel")} aria-label={t("ariaCancel")} className="min-h-11">
-                              <XCircle className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <UserAvatar name={iv.jobSeekerId?.fullName} email={iv.jobSeekerId?.email} className="h-9 w-9 shrink-0" colorful />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</p>
+                          {iv.jobSeekerId?.email && <p className="truncate text-xs text-muted-foreground">{iv.jobSeekerId.email}</p>}
+                        </div>
                       </div>
                     </TableCell>
-                  )}
-                </TableRow>
-              ))}
+                    {/* Status second: a collapsed phone card shows cells 1–2. */}
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        <StatusBadge status={iv.status} />
+                        {iv.outcome && (
+                          <StatusBadge
+                            status={OUTCOME_TONE[iv.outcome] ?? iv.outcome}
+                            label={OUTCOME_OPTIONS.find((o) => o.value === iv.outcome)?.label}
+                          />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[200px] text-foreground/80" title={iv.jobId?.title}>
+                      <span className="block truncate">{iv.jobId?.title ?? "—"}</span>
+                      <span className="mt-1 block truncate text-xs text-muted-foreground">{iv.employerId?.companyName ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        {typeIcon(iv.type)}
+                        {typeLabel(iv.type)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      <p className="text-sm">{formatListDate(iv.scheduledAt, locale)}</p>
+                      <p className="text-xs text-muted-foreground/70">
+                        {formatTime(iv.scheduledAt, { hour: "2-digit", minute: "2-digit" }, locale)}
+                        {iv.duration ? ` · ${t("durationMinutes", { duration: iv.duration })}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">{t("columnRound")}: {iv.interviewRound ?? 1}</p>
+                    </TableCell>
+                    {canUpdate && (
+                      <TableCell className="text-right">
+                        <RowActions
+                          name={name}
+                          quick={[
+                            {
+                              key: "edit",
+                              label: t("ariaEditInterview", { name }),
+                              icon: Pencil,
+                              iconOnly: true,
+                              onSelect: () => { setEditInterview(iv); setModalOpen(true); },
+                            },
+                          ]}
+                          menu={open ? [
+                            {
+                              key: "complete",
+                              label: t("buttonMarkCompleted"),
+                              icon: CheckCircle,
+                              iconClassName: "text-emerald-600",
+                              pending: updatingId === iv._id,
+                              onSelect: () => void updateInterviewStatus(iv._id, "completed"),
+                            },
+                            {
+                              key: "cancel",
+                              label: t("ariaCancel"),
+                              icon: XCircle,
+                              destructive: true,
+                              pending: updatingId === iv._id,
+                              onSelect: () => void cancelInterview(iv),
+                            },
+                          ] : []}
+                        />
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
-        </div>
+        )}
       </section>
 
       <PaginationControls

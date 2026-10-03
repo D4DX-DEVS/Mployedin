@@ -1,4 +1,14 @@
 import mongoose, { Document, Schema } from "mongoose";
+import {
+  CONTACT_METHODS,
+  FOLLOW_UP_TYPES,
+  HIRING_RANGES,
+  LOST_REASONS,
+  type ContactMethod,
+  type FollowUpType,
+  type HiringRange,
+  type LostReasonCode,
+} from "@/lib/leads/stageRules";
 
 export type LeadStatus =
   | "new"
@@ -29,10 +39,25 @@ export interface ILead extends Document {
   expectedRevenueCurrency: string;
   // Lead details
   status: LeadStatus;
+  /** Free-text detail; the category the agent picked is `lostReasonCode`. */
   lostReason?: string;
+  lostReasonCode?: LostReasonCode;
+  lostAt?: Date;
   source?: string;
   notes?: string;
+  /** The roles the employer is hiring for, in the agent's words. */
+  requirement?: string;
+  expectedHiring?: HiringRange;
   followUpAt?: Date;
+  followUpType?: FollowUpType;
+  /** What the follow-up is for ("Send proposal"). */
+  followUpNote?: string;
+  /** Kept on the lead so the card and the Contacted rule need no log scan. */
+  lastContactedAt?: Date;
+  lastContactMethod?: ContactMethod;
+  /** The deal's final value; `expectedRevenue` stays the estimate. */
+  wonValue?: number;
+  /** When the lead was Won (set by the Move dialog, or by conversion). */
   convertedAt?: Date;
   convertedToEmployerId?: mongoose.Types.ObjectId;
   // Auto-routing
@@ -46,6 +71,9 @@ export interface ILead extends Document {
     note?: string;
     timestamp: Date;
     by?: mongoose.Types.ObjectId;
+    /** Set on "stage_change" entries. */
+    fromStatus?: LeadStatus;
+    toStatus?: LeadStatus;
   }[];
   lastFollowupReminderAt?: Date;
   createdAt: Date;
@@ -84,9 +112,18 @@ const LeadSchema = new Schema<ILead>(
       default: "new",
     },
     lostReason: { type: String, maxlength: 500 },
+    lostReasonCode: { type: String, enum: LOST_REASONS },
+    lostAt: Date,
     source: String,
     notes: String,
+    requirement: { type: String, maxlength: 500, trim: true },
+    expectedHiring: { type: String, enum: HIRING_RANGES },
     followUpAt: Date,
+    followUpType: { type: String, enum: FOLLOW_UP_TYPES },
+    followUpNote: { type: String, maxlength: 200, trim: true },
+    lastContactedAt: Date,
+    lastContactMethod: { type: String, enum: CONTACT_METHODS },
+    wonValue: { type: Number, min: 0 },
     convertedAt: Date,
     convertedToEmployerId: { type: Schema.Types.ObjectId, ref: "Employer" },
     territoryId: { type: Schema.Types.ObjectId, ref: "Territory" },
@@ -98,6 +135,8 @@ const LeadSchema = new Schema<ILead>(
         note: String,
         timestamp: { type: Date, default: Date.now },
         by: Schema.Types.ObjectId,
+        fromStatus: String,
+        toStatus: String,
         _id: false,
       },
     ],

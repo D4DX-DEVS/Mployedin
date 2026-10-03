@@ -11,7 +11,7 @@ export interface Employer {
   assignedToMe?: boolean;
 }
 
-/** What the cards and the table both do with a row; the page owns the handlers. */
+/** What the table does with a row; the page owns the handlers. */
 export interface EmployerListProps {
   employers: Employer[];
   loading: boolean;

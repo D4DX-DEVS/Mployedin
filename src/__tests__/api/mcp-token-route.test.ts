@@ -199,4 +199,16 @@ describe("POST /api/mcp/token security", () => {
       authorizationExpiresAt,
     }));
   });
+
+  it("rate-limits token calls per client so one app cannot hammer the endpoint", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 21; i += 1) {
+      const res = await POST(formRequest({ grant_type: "password", client_id: "mcpc_flood" }));
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 20).every((status) => status === 400)).toBe(true);
+    expect(statuses[20]).toBe(429);
+    const other = await POST(formRequest({ grant_type: "password", client_id: "mcpc_other" }));
+    expect(other.status).toBe(400);
+  });
 });

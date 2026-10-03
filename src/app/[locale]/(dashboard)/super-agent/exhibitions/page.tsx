@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,11 @@ import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { ExportColumn } from "@/lib/export";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -22,23 +27,14 @@ import {
   ThumbsUp, ThumbsDown, Eye,
   RotateCcw,
 } from "lucide-react";
-import {
-  ExhibitionFilterTrigger,
-  ExhibitionFilterClearButton,
-  ExhibitionFilterPanel,
-  exhibitionFiltersAreActive,
-} from "@/components/features/exhibitions/ExhibitionHeroFilters";
+import { exhibitionFiltersAreActive } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations, useLocale } from "next-intl";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTimeline";
-import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
-  SuperAgentSection,
-} from "@/components/features/super-agent/WorkspacePage";
+import { SuperAgentSection } from "@/components/features/super-agent/WorkspacePage";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -185,10 +181,10 @@ function getParticipationLabels(t: ReturnType<typeof useTranslations>): Record<s
 }
 
 // Helper to create status options with translations
-function getStatusOptions(t: ReturnType<typeof useTranslations>) {
+function getStatusOptions(t: ReturnType<typeof useTranslations>, allLabel: string) {
   const statusLabels = getStatusLabels(t);
   return [
-    { value: "all", label: t("tableHeaderStatus") },
+    { value: "all", label: allLabel },
     { value: "pending_review", label: t("statusPendingReview") },
     { value: "submitted", label: statusLabels.submitted },
     { value: "under_review", label: statusLabels.under_review },
@@ -202,10 +198,10 @@ function getStatusOptions(t: ReturnType<typeof useTranslations>) {
 }
 
 // Helper to create priority options with translations
-function getPriorityOptions(t: ReturnType<typeof useTranslations>) {
+function getPriorityOptions(t: ReturnType<typeof useTranslations>, allLabel: string) {
   const priorityLabels = getPriorityLabels(t);
   return [
-    { value: "all", label: t("tableHeaderPriority") },
+    { value: "all", label: allLabel },
     { value: "low", label: priorityLabels.low },
     { value: "medium", label: priorityLabels.medium },
     { value: "high", label: priorityLabels.high },
@@ -214,10 +210,10 @@ function getPriorityOptions(t: ReturnType<typeof useTranslations>) {
 }
 
 // Helper to create category options with translations
-function getCategoryOptions(t: ReturnType<typeof useTranslations>) {
+function getCategoryOptions(t: ReturnType<typeof useTranslations>, allLabel: string) {
   const categoryLabels = getCategoryLabels(t);
   return [
-    { value: "all", label: t("tableHeaderDates") },
+    { value: "all", label: allLabel },
     ...Object.entries(categoryLabels).map(([value, label]) => ({ value, label })),
   ];
 }
@@ -229,6 +225,7 @@ function getCategoryOptions(t: ReturnType<typeof useTranslations>) {
 export default function SuperAgentExhibitionsPage() {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
+  const tf = useTranslations("exhibitionHeroFilters");
   const locale = useLocale();
   const statusLabels = getStatusLabels(t);
   const priorityLabels = getPriorityLabels(t);
@@ -236,9 +233,9 @@ export default function SuperAgentExhibitionsPage() {
   const objectiveLabels = getObjectiveLabels(t);
   const resourceLabels = getResourceLabels(t);
   const participationLabels = getParticipationLabels(t);
-  const statusOptions = getStatusOptions(t);
-  const priorityOptions = getPriorityOptions(t);
-  const categoryOptions = getCategoryOptions(t);
+  const statusOptions = getStatusOptions(t, tf("allStatuses"));
+  const priorityOptions = getPriorityOptions(t, tf("allPriorities"));
+  const categoryOptions = getCategoryOptions(t, tf("allCategories"));
   const {
     page, limit, total, totalPages,
     setPage, setLimit, updateTotal, resetPage, paginationParams,
@@ -249,7 +246,7 @@ export default function SuperAgentExhibitionsPage() {
   // only ever saw the current page, so the header under-reported past page 1.
   const [pendingReview, setPendingReview] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const { filters, setFilter, resetFilters } = useUrlFilters(
     { status: "all", priority: "all", category: "all", search: "" },
@@ -268,6 +265,7 @@ export default function SuperAgentExhibitionsPage() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const params = paginationParams();
       if (filters.status !== "all") params.set("status", filters.status);
@@ -280,8 +278,10 @@ export default function SuperAgentExhibitionsPage() {
         setItems(data.items ?? []);
         setPendingReview(data.summary?.pendingReview ?? 0);
         updateTotal(data.total ?? 0);
+      } else {
+        setLoadError(true);
       }
-    } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
+    } catch { setLoadError(true); } finally { setLoading(false); }
   }, [filters, t, page, limit, paginationParams, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
@@ -334,6 +334,31 @@ export default function SuperAgentExhibitionsPage() {
   };
 
   const hasActiveFilters = exhibitionFiltersAreActive(filters.search, filters.status, filters.priority, filters.category);
+  // A narrower filter on page 3 used to stay on page 3 and show an empty list.
+  const applyFilter = (key: "search" | "status" | "priority" | "category", value: string) => {
+    setFilter(key, value);
+    resetPage();
+  };
+
+  const exportColumns = useMemo<ExportColumn<ExhibitionRequest>[]>(() => [
+    { header: t("tableHeaderEvent"), key: "eventName" },
+    { header: t("tableHeaderCategory"), key: "eventCategory", formatter: (_v, row) => categoryLabels[row.eventCategory] ?? row.eventCategory },
+    { header: t("tableHeaderLocation"), key: "eventLocation", formatter: (_v, row) => [row.eventLocation, row.country].filter(Boolean).join(", ") },
+    { header: t("tableHeaderAgent"), key: "agentId", formatter: (_v, row) => row.agentId?.name ?? "" },
+    { header: t("tableHeaderStatus"), key: "status", formatter: (_v, row) => statusLabels[row.status] ?? row.status },
+    { header: t("tableHeaderPriority"), key: "priority", formatter: (_v, row) => priorityLabels[row.priority] ?? row.priority },
+    { header: t("tableHeaderDates"), key: "eventStartDate", formatter: (_v, row) => `${fmtDate(row.eventStartDate)} – ${fmtDate(row.eventEndDate)}` },
+    { header: t("tableHeaderBudget"), key: "estimatedBudget", formatter: (_v, row) => `${row.budgetCurrency} ${formatCount(row.estimatedBudget)}` },
+    { header: t("detailBudgetApproved"), key: "approvedBudget", formatter: (_v, row) => typeof row.approvedBudget === "number" ? `${row.budgetCurrency} ${formatCount(row.approvedBudget)}` : "" },
+    { header: t("detailSubmitted"), key: "createdAt", formatter: (_v, row) => fmtDate(row.createdAt) },
+  ], [t, locale]);
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: items as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-exhibitions",
+    title: t("exhibitionManagement"),
+  });
+
   return (
     <div className="page-container">
       <DashboardPageHeader
@@ -341,37 +366,50 @@ export default function SuperAgentExhibitionsPage() {
         title={t("exhibitionManagement")}
         description={t("exhibitionManagementDesc")}
         summary={{ label: t("queueHealth"), value: formatCount(pendingReview), note: t("queueHealthNote") }}
-        actions={
-          <div className="flex items-center gap-1">
-            <ExhibitionFilterTrigger
-              open={showFilters}
-              onToggle={() => setShowFilters((value) => !value)}
-              hasActiveFilters={hasActiveFilters}
-            />
-            {hasActiveFilters && <ExhibitionFilterClearButton onClear={resetFilters} />}
-          </div>
-        }
-      >
-        <ExhibitionFilterPanel
-          open={showFilters}
-          search={filters.search}
-          onSearchChange={(v) => setFilter("search", v)}
-          statusFilter={filters.status}
-          onStatusChange={(v) => setFilter("status", v)}
-          statusOptions={statusOptions}
-          priorityFilter={filters.priority}
-          onPriorityChange={(v) => setFilter("priority", v)}
-          priorityOptions={priorityOptions}
-          categoryFilter={filters.category}
-          onCategoryChange={(v) => setFilter("category", v)}
-          categoryOptions={categoryOptions}
-          searchPlaceholder={t("searchPlaceholder")}
-        />
-      </DashboardPageHeader>
+      />
 
+      {/* Filters sat in the page header behind a Show/Hide toggle, so the
+          search was one click away and the page had no export. Same standalone
+          row as every other list in the role. */}
       <SuperAgentSection>
-        {loading ? (
-          <SuperAgentDataTableShell>
+        <InlineFilterBar
+          className="mb-4"
+          onClear={hasActiveFilters ? () => { resetFilters(); resetPage(); } : undefined}
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        >
+          <InlineFilterSearch value={filters.search} onChange={(v) => applyFilter("search", v)} placeholder={t("searchPlaceholder")} />
+          <SearchableSelect
+            id="sa-exhibitions-status"
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={filters.status}
+            onValueChange={(v) => applyFilter("status", v)}
+            placeholder={tf("allStatuses")}
+          />
+          <SearchableSelect
+            id="sa-exhibitions-priority"
+            className={INLINE_FILTER_CONTROL}
+            options={priorityOptions}
+            value={filters.priority}
+            onValueChange={(v) => applyFilter("priority", v)}
+            placeholder={tf("allPriorities")}
+          />
+          <SearchableSelect
+            id="sa-exhibitions-category"
+            className={INLINE_FILTER_CONTROL}
+            options={categoryOptions}
+            value={filters.category}
+            onValueChange={(v) => applyFilter("category", v)}
+            placeholder={tf("allCategories")}
+          />
+        </InlineFilterBar>
+
+        {loadError ? (
+          <ErrorState description={t("fetchError")} onRetry={() => void fetchItems()} />
+        ) : (
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -384,28 +422,16 @@ export default function SuperAgentExhibitionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableBodySkeleton rows={5} cols={6} />
-              </TableBody>
-            </Table>
-          </SuperAgentDataTableShell>
-        ) : items.length === 0 ? (
-          <EmptyState title={t("noExhibitionRequestsFound")} description={t("tryAdjustingFiltersExhibitions")} icon={Inbox} />
-        ) : (
-          <SuperAgentDataTableShell>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead>{t("tableHeaderEvent")}</TableHead>
-                    <TableHead>{t("tableHeaderStatus")}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t("tableHeaderAgent")}</TableHead>
-                    <TableHead className="hidden sm:table-cell">{t("tableHeaderDates")}</TableHead>
-                    <TableHead className="hidden lg:table-cell">{t("tableHeaderBudget")}</TableHead>
-                    <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
+                {loading ? (
+                  <TableBodySkeleton rows={5} cols={6} />
+                ) : items.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="py-12">
+                      <EmptyState title={t("noExhibitionRequestsFound")} description={t("tryAdjustingFiltersExhibitions")} icon={Inbox} />
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item, idx) => {
+                ) : (
+                  items.map((item, idx) => {
                     const days = dayCount(item.eventStartDate, item.eventEndDate);
                     return (
                       <TableRow
@@ -497,11 +523,11 @@ export default function SuperAgentExhibitionsPage() {
                         </TableCell>
                       </TableRow>
                     );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </SuperAgentDataTableShell>
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </SuperAgentSection>
       <PaginationControls

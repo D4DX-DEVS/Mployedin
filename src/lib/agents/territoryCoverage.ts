@@ -85,6 +85,50 @@ export async function resolveEmployerRegion(input: {
 }
 
 /**
+ * A job seeker's area: a catalogue city, or — when their town isn't listed —
+ * just the region (state) it lies in (owner, 2026-10-02). A region-only area
+ * has no city, so only staff who hold the whole region match it.
+ */
+export interface SeekerAreaRegion {
+  cityId: mongoose.Types.ObjectId | null;
+  cityName: string | null;
+  stateId: mongoose.Types.ObjectId;
+  stateName: string;
+  /** ISO 3166-1 alpha-2 of the region's country. */
+  countryCode: string;
+}
+
+/** Resolve a picked city (wins) or region; null for anything not active in the catalogue. */
+export async function resolveSeekerArea(input: {
+  cityId?: string | null;
+  stateId?: string | null;
+}): Promise<SeekerAreaRegion | null> {
+  await connectDB();
+  let city: CityDoc | null = null;
+  let stateId = input.stateId;
+  if (input.cityId) {
+    if (!isValidObjectId(input.cityId)) return null;
+    city = await City.findOne({ _id: input.cityId, isActive: true }).select("_id name stateId").lean<CityDoc | null>();
+    if (!city) return null;
+    stateId = String(city.stateId);
+  }
+  if (!stateId || !isValidObjectId(stateId)) return null;
+  // An active city counts whatever its state's flag; a region picked alone must be active.
+  const state = await State.findOne(city ? { _id: stateId } : { _id: stateId, isActive: true })
+    .select("_id name countryId")
+    .lean<(StateDoc & { name: string }) | null>();
+  if (!state) return null;
+  const country = await Country.findById(state.countryId).select("_id code").lean<CountryDoc | null>();
+  return {
+    cityId: city?._id ?? null,
+    cityName: city?.name ?? null,
+    stateId: state._id,
+    stateName: state.name,
+    countryCode: (country?.code ?? "").toUpperCase(),
+  };
+}
+
+/**
  * Every active city inside a territory (its own cities plus the cities of its
  * whole states), named with their state — for pickers that must stay inside
  * the territory. Capped; a territory larger than `limit` is truncated.

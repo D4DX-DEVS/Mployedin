@@ -43,6 +43,8 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
       "reEngagement",
       "profileCompletion",
       "weeklyDigest",
+      "emailSequenceSender",
+      "whatsappScheduler",
     ];
     for (const key of validKeys) {
       if (key in body.cronJobs && typeof body.cronJobs[key]?.enabled === "boolean") {

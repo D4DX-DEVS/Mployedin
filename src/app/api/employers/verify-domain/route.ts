@@ -11,6 +11,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { actingUserId, canManageTeam } from "@/lib/permissions/team";
 import { sendEmail } from "@/lib/communications/email";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { escapeHtml } from "@/lib/security/html-escape";
 import logger from "@/lib/logger";
 
 /**
@@ -73,11 +74,12 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     await sendEmail({
       to: verifyEmail,
       subject: `Domain Verification for ${employer.companyName} — Mployedin`,
+      // Typed by the requester and read by a third party (admin@<domain>): escaped, so a name can never become a link.
       html: `
         <h2>Domain Verification</h2>
-        <p>${employer.companyName} is requesting domain verification on Mployedin.</p>
-        <p>Click below to verify ownership of <strong>${domain}</strong>:</p>
-        <p><a href="${confirmUrl}" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Verify Domain</a></p>
+        <p>${escapeHtml(employer.companyName)} is requesting domain verification on Mployedin.</p>
+        <p>Click below to verify ownership of <strong>${escapeHtml(domain)}</strong>:</p>
+        <p><a href="${escapeHtml(confirmUrl)}" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Verify Domain</a></p>
         <p>This link expires in 48 hours.</p>
         <p>If you did not request this, please ignore this email.</p>
       `,

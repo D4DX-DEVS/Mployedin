@@ -31,6 +31,7 @@ jest.mock("@/lib/auth/agentRestrictions", () => ({
   getSuperAgentScope: (...a: unknown[]) => scope(...a),
   // No area assigned: the region clause (seeker-area-scope.test.ts) stays out.
   getSuperAgentTerritory: async () => null,
+  getAgentSeekerArea: async () => ({ assignedCityIds: [], assignedStateIds: [] }),
   seekerRegionMatch: () => null,
 }));
 

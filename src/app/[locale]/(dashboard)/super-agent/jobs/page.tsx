@@ -441,14 +441,6 @@ export default function SuperAgentJobsPage() {
     return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  const tableHeaders = [
-    t("jobTitleHeader"),
-    t("employerHeader"),
-    t("typeHeader"),
-    t("salaryHeader"),
-    "",
-  ];
-
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: "Title", key: "title" },
     { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string; name?: string })?.companyName ?? (row.employerId as { name?: string })?.name ?? "" },
@@ -823,32 +815,9 @@ export default function SuperAgentJobsPage() {
             </button>
           ))}
         </InlineFilterBar>
+        {/* One table for every state: the loading copy had its own header with
+            no sort buttons, and the empty state replaced the table outright. */}
         <div className="overflow-x-auto">
-          {loading ? (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  {tableHeaders.map((h, i) => (
-                    <TableHead
-                      key={i}
-                      className={i === tableHeaders.length - 1 ? "text-right" : ""}
-                    >
-                      {h}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableBodySkeleton rows={5} cols={5} />
-              </TableBody>
-            </Table>
-          ) : jobs.length === 0 ? (
-            <EmptyState
-              title={t("noJobsFound")}
-              description={aiActive ? t("noJobsMatchedAiSearch") : t("noJobsMatchFilters")}
-              icon={Briefcase}
-            />
-          ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -860,11 +829,23 @@ export default function SuperAgentJobsPage() {
                   <TableHead>
                     <SortableTableHeader label={t("salaryHeader")} active={sortBy === "salary"} order={sortOrder} onClick={() => toggleSort("salary")} />
                   </TableHead>
-                  <TableHead className="text-right" />
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobs.map((job) => (
+                {loading ? (
+                  <TableBodySkeleton rows={5} cols={5} />
+                ) : jobs.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={5} className="py-12">
+                      <EmptyState
+                        title={t("noJobsFound")}
+                        description={aiActive ? t("noJobsMatchedAiSearch") : t("noJobsMatchFilters")}
+                        icon={Briefcase}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : jobs.map((job) => (
                   <TableRow key={job._id} className="group">
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-3">
@@ -935,21 +916,19 @@ export default function SuperAgentJobsPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
         </div>
       </SuperAgentSection>
 
-      {/* Pagination */}
-      {!loading && jobs.length > 0 && (
-        <PaginationControls
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          limit={limit}
-          onPageChange={setPage}
-          onLimitChange={setLimit}
-        />
-      )}
+      {/* Kept on screen while loading, like every other list, so the page
+          does not jump when a fetch lands. */}
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+      />
       {/* ── Job Detail Dialog ── */}
       <Dialog open={detailOpen} onOpenChange={(open) => {
         setDetailOpen(open);

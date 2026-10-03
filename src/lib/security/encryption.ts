@@ -77,6 +77,26 @@ export function decrypt(ciphertext: string): string {
   return decrypted.toString("utf8");
 }
 
+const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * Whether `value` has the shape `encrypt()` produces: base64 of iv + ciphertext + tag, so longer
+ * than the iv and tag together. A 40-character AWS secret or a 16-character app password is not.
+ */
+function looksEncrypted(value: string): boolean {
+  if (value.length % 4 !== 0 || !BASE64_RE.test(value)) return false;
+  return Buffer.from(value, "base64").length > IV_LENGTH + TAG_LENGTH;
+}
+
+/**
+ * Decrypts a value in the ciphertext format and hands anything else back unchanged: a model's
+ * read hook may already have decrypted it. A value in the format that will not decrypt (a changed
+ * ENCRYPTION_KEY) still throws, so the caller can warn about a real failure.
+ */
+export function decryptIfEncrypted(value: string): string {
+  return looksEncrypted(value) ? decrypt(value) : value;
+}
+
 /**
  * Hash a value using SHA-256 (for non-reversible storage like passport numbers for lookup).
  */

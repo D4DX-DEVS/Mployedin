@@ -79,6 +79,24 @@ export const notificationPreferencesUpdateSchema = z.object({
   unsubscribedAll: z.boolean().optional(),
   dailyDigestTime: z.string().max(10).optional(),
   timezone: z.string().max(50).optional(),
+  // The `updatedAt` the page last loaded or saved. When the stored copy is
+  // newer (a STOP reply, another tab), the route answers 409 instead of letting
+  // a stale snapshot overwrite it. Absent = unconditional, as before.
+  expectedUpdatedAt: z.string().datetime().optional(),
+});
+
+/** AWS region id, e.g. eu-west-1, us-east-1, me-central-1. */
+export const SES_REGION_RE = /^[a-z]{2}-[a-z]+-\d$/;
+/** What the settings API sends in place of a stored secret, and what the form sends back unchanged. */
+export const SECRET_MASK = "••••••••";
+
+const sesSettingsSchema = z.object({
+  region: z.union([z.string().regex(SES_REGION_RE, "Enter an AWS region such as eu-west-1"), z.literal("")]).optional(),
+  accessKeyId: z.string().max(128).trim().optional(),
+  secretAccessKey: z.string().trim().max(500).optional(),
+  fromEmail: z.union([z.string().email().max(254), z.literal("")]).optional(),
+  fromName: z.string().max(100).trim().optional(),
+  configurationSet: z.string().max(64).trim().optional(),
 });
 
 /** POST /api/admin/settings — system settings */
@@ -95,6 +113,13 @@ export const systemSettingsUpdateSchema = z.object({
       smtpPort: z.number().int().min(1).max(65535).optional(),
       smtpSecure: z.boolean().optional(),
       smtpAppPassword: z.string().max(500).optional(),
+    })
+    .optional(),
+  // System-wide email provider: SMTP (default) or Amazon SES. Employer SMTP overrides still win.
+  email: z
+    .object({
+      provider: z.enum(["smtp", "ses"]).optional(),
+      ses: sesSettingsSchema.optional(),
     })
     .optional(),
   // The FROM block and payment instructions printed on every invoice PDF.
@@ -187,6 +212,28 @@ export const smtpTestSchema = z.object({
     smtpSecure: z.boolean().optional(),
   }),
 });
+
+/** POST /api/admin/settings/test-email — one provider per call. */
+export const emailProviderTestSchema = z.discriminatedUnion("provider", [
+  z.object({
+    provider: z.literal("smtp"),
+    smtp: smtpTestSchema.shape.smtp,
+    to: z.string().email().max(254).optional(),
+  }),
+  z.object({
+    provider: z.literal("ses"),
+    ses: z.object({
+      region: z.string().regex(SES_REGION_RE, "Enter an AWS region such as eu-west-1"),
+      accessKeyId: z.string().min(1).max(128).trim(),
+      /** May be the mask: the route then uses the stored (encrypted) secret. Trimmed: a pasted key often carries a space or newline. */
+      secretAccessKey: z.string().trim().min(1).max(500),
+      fromEmail: z.string().email().max(254),
+      fromName: z.string().max(100).trim().optional(),
+      configurationSet: z.string().max(64).trim().optional(),
+    }),
+    to: z.string().email().max(254).optional(),
+  }),
+]);
 
 /** PUT /api/employers/me/smtp */
 export const employerSmtpConfigSchema = z.object({

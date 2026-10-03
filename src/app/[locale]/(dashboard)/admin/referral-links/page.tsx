@@ -203,7 +203,7 @@ export default function AdminReferralLinksPage() {
         <div className="workspace-panel-surface overflow-hidden rounded-2xl">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderCode")}</TableHead>
                 <TableHead>{t("tableHeaderCreator")}</TableHead>
                 <TableHead className="hidden 2xl:table-cell">{t("tableHeaderRole")}</TableHead>
@@ -239,7 +239,7 @@ export default function AdminReferralLinksPage() {
         <div className="workspace-panel-surface overflow-hidden rounded-2xl">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>
                   <SortableTableHeader
                     label={t("tableHeaderCode")}

@@ -6,6 +6,7 @@ import { validateBody } from "@/lib/validators";
 import { jobSeekerProfileUpdateSchema } from "@/lib/validators/job-seekers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
+import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -64,6 +65,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (Object.keys(userUpdate).length > 0) {
+    // A new number invalidates the WhatsApp id learned for the old one.
+    if (userUpdate.phone) await forgetWaIdOnPhoneChange(ctx.userId, userUpdate.phone);
     await User.findByIdAndUpdate(ctx.userId, userUpdate, { runValidators: true });
   }
 

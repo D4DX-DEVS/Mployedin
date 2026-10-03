@@ -409,15 +409,15 @@ export default function AgentTargetManagementPage() {
             </div>
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("overall")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("stage")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("employer")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("employee")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("finance")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="w-16 text-center">{t("rank")}</TableHead>
+                  <TableHead>{t("agent")}</TableHead>
+                  <TableHead className="text-center">{t("overall")}</TableHead>
+                  <TableHead className="text-center">{t("stage")}</TableHead>
+                  <TableHead className="text-center">{t("employer")}</TableHead>
+                  <TableHead className="text-center">{t("employee")}</TableHead>
+                  <TableHead className="text-center">{t("finance")}</TableHead>
+                  <TableHead className="text-center">{t("risk")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

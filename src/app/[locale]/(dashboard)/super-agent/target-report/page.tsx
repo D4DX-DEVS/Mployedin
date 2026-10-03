@@ -5,9 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -17,7 +16,7 @@ import {
 } from "recharts";
 import {
   Building2, Users,
-  CalendarDays, RotateCcw, FileText, X,
+  CalendarDays, RotateCcw, FileText, Printer,
   CircleDollarSign, Activity,
   ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
@@ -31,6 +30,9 @@ import {
 import { formatCount } from "@/lib/ui/intlFormat";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -169,14 +171,19 @@ export default function SuperAgentTargetReportPage() {
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
-  const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all" || riskFilter !== "all" || Boolean(searchQuery);
+  const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all" || riskFilter !== "all" || Boolean(searchQuery) || yearFilter !== currentYear;
 
   function clearFilters() {
+    setYearFilter(currentYear);
     setQuarterFilter("all");
     setCategoryFilter("all");
     setRiskFilter("all");
     setSearchQuery("");
+    pagination.resetPage();
   }
+
+  const riskLabel = (risk: string) =>
+    risk === "high" ? t("highRisk") : risk === "medium" ? t("mediumRisk") : risk === "low" ? t("lowRisk") : risk;
 
   // Filter data by quarter
   const filteredTrend = useMemo(() => {
@@ -257,8 +264,8 @@ export default function SuperAgentTargetReportPage() {
     { header: t("csvHeaderFinanceTarget"), key: "financeTarget", formatter: (v) => String(v ?? 0) },
     { header: t("csvHeaderFinanceAchieved"), key: "financeAchieved", formatter: (v) => String(v ?? 0) },
     { header: t("csvHeaderOverallPercent"), key: "overallProgress", formatter: (v) => `${v ?? 0}%` },
-    { header: t("csvHeaderRisk"), key: "riskScore" },
-    { header: t("platinum"), key: "incentiveTier" },
+    { header: t("csvHeaderRisk"), key: "riskScore", formatter: (v) => riskLabel(String(v ?? "")) },
+    { header: t("exportHeaderIncentiveTier"), key: "incentiveTier" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -328,75 +335,79 @@ export default function SuperAgentTargetReportPage() {
         compact
       />
 
-      {/* ═══════ FILTER CONTROLS ═══════ */}
-      {/* Phones: 2-up grid — five stacked full-width controls pushed the first
-          chart a whole screen down. */}
-      <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
-        <div className="flex items-center gap-1.5">
-          <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <Input type="number" aria-label={t("year")} value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-full sm:w-24 rounded-lg text-sm" />
-        </div>
-        <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-          <SelectTrigger aria-label={t("quarter")} className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("allQuarters")}</SelectItem>
-            <SelectItem value="1">{t("q1")}</SelectItem>
-            <SelectItem value="2">{t("q2")}</SelectItem>
-            <SelectItem value="3">{t("q3")}</SelectItem>
-            <SelectItem value="4">{t("q4")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger aria-label={t("category")} className="h-9 w-full sm:w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("allCategories")}</SelectItem>
-            <SelectItem value="employer">{t("metricEmployer")}</SelectItem>
-            <SelectItem value="employee">{t("metricEmployee")}</SelectItem>
-            <SelectItem value="finance">{t("metricRevenue")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={riskFilter} onValueChange={setRiskFilter}>
-          <SelectTrigger aria-label={t("risk")} className="h-9 w-full sm:w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("allRisks")}</SelectItem>
-            <SelectItem value="high">{t("highRisk")}</SelectItem>
-            <SelectItem value="medium">{t("mediumRisk")}</SelectItem>
-            <SelectItem value="low">{t("lowRisk")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="ghost" size="sm" onClick={() => setYearFilter(currentYear)} disabled={yearFilter === currentYear} className="h-9 gap-1.5 text-xs max-sm:col-span-2 max-sm:justify-self-start">
-          <RotateCcw className="h-3.5 w-3.5" /> {t("resetYear")}
-        </Button>
-      </div>
-
-      {/* ═══════ TOOLBAR ROW ═══════ */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="text"
-          aria-label={t("searchAgentName")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t("searchAgentName")}
-          className="h-9 min-w-0 flex-1 rounded-lg text-sm max-sm:min-h-11 max-sm:w-full max-sm:flex-none"
-        />
-        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 gap-1.5 rounded-lg print:hidden max-sm:min-h-11">
-          <FileText className="h-3.5 w-3.5" /> {t("print")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportCsv} className="h-9 gap-1.5 rounded-lg text-xs max-sm:min-h-11">
-          CSV
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportExcel} className="h-9 gap-1.5 rounded-lg text-xs max-sm:min-h-11">
-          Excel
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleExportPdf} className="h-9 gap-1.5 rounded-lg text-xs max-sm:min-h-11">
-          PDF
-        </Button>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground max-sm:min-h-11">
-            <X className="h-3.5 w-3.5 mr-1" /> {t("clearFilters")}
-          </Button>
+      {/* One filter row, as on every other list: the year, quarter, category
+          and risk controls and the name search were two hand-built rows with
+          five loose export/print buttons. Print lives in the Export menu. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0 print:hidden"
+        onClear={hasActiveFilters ? clearFilters : undefined}
+        clearLabel={t("clearFilters")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        exportExtra={(
+          <DropdownMenuItem onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            {t("print")}
+          </DropdownMenuItem>
         )}
-      </div>
+      >
+        <InlineFilterSearch
+          value={searchQuery}
+          onChange={(v) => { setSearchQuery(v); pagination.resetPage(); }}
+          placeholder={t("searchAgentName")}
+        />
+        <div className="relative min-w-0 max-w-32 flex-[1_1_6rem]">
+          <CalendarDays className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            type="number"
+            aria-label={t("year")}
+            value={yearFilter}
+            onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)}
+            className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
+          />
+        </div>
+        <SearchableSelect
+          id="sa-target-report-quarter"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allQuarters") },
+            { value: "1", label: t("q1") },
+            { value: "2", label: t("q2") },
+            { value: "3", label: t("q3") },
+            { value: "4", label: t("q4") },
+          ]}
+          value={quarterFilter}
+          onValueChange={setQuarterFilter}
+          placeholder={t("quarter")}
+        />
+        <SearchableSelect
+          id="sa-target-report-category"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allCategories") },
+            { value: "employer", label: t("metricEmployer") },
+            { value: "employee", label: t("metricEmployee") },
+            { value: "finance", label: t("metricRevenue") },
+          ]}
+          value={categoryFilter}
+          onValueChange={setCategoryFilter}
+          placeholder={t("category")}
+        />
+        <SearchableSelect
+          id="sa-target-report-risk"
+          className={INLINE_FILTER_CONTROL}
+          options={[
+            { value: "all", label: t("allRisks") },
+            { value: "high", label: t("highRisk") },
+            { value: "medium", label: t("mediumRisk") },
+            { value: "low", label: t("lowRisk") },
+          ]}
+          value={riskFilter}
+          onValueChange={(v) => { setRiskFilter(v); pagination.resetPage(); }}
+          placeholder={t("risk")}
+        />
+      </InlineFilterBar>
 
       {/* ═══════ Monthly Trend ═══════ */}
       <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid card-pad">
@@ -513,59 +524,71 @@ export default function SuperAgentTargetReportPage() {
       )}
 
       {/* ═══════ Team Breakdown Table ═══════ */}
-      {filteredTeam.length > 0 && (
-        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid card-pad">
-          <div className="mb-5 flex items-center justify-between gap-3">
+      {/* Always on screen: it used to vanish when the search or risk filter
+          matched nobody, with no word on why. Rank leads the row; on phones
+          (cards show two cells) the agent and the rank are what matter. */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl print:break-inside-avoid">
+          <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 sm:px-5">
             <div>
               <h2 className="heading-section font-semibold tracking-tight">{t("teamPerformance")}</h2>
               <p className="text-sm text-muted-foreground">{t("agentsRankedByProgress", { count: filteredTeam.length })}</p>
             </div>
             <Users className="h-5 w-5 text-primary" />
           </div>
-          <div className="overflow-x-auto rounded-xl border border-border/50">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">#</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">{t("agent")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("metricEmployer")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("metricEmployee")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("metricRevenue")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("overallProgress")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">{t("risk")}</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>{t("agent")}</TableHead>
+                  <TableHead className="text-center">{t("overallProgress")}</TableHead>
+                  <TableHead className="text-center">{t("metricEmployer")}</TableHead>
+                  <TableHead className="text-center">{t("metricEmployee")}</TableHead>
+                  <TableHead className="text-center">{t("metricRevenue")}</TableHead>
+                  <TableHead className="text-center">{t("risk")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pagedTeam.map((row, i) => (
+                {pagedTeam.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="py-12">
+                      <EmptyState
+                        title={data.teamBreakdown.length === 0 ? t("noAgentsInTeam") : t("noAgentsMatchFilters")}
+                        icon={Users}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : pagedTeam.map((row, i) => (
                   <TableRow key={row._id}>
-                    <TableCell className="text-sm font-bold tabular-nums">{(pagination.page - 1) * pagination.limit + i + 1}</TableCell>
-                    <TableCell><p className="font-medium">{row.assigneeName}</p></TableCell>
+                    <TableCell>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="w-6 shrink-0 text-sm font-bold tabular-nums text-muted-foreground">{(pagination.page - 1) * pagination.limit + i + 1}</span>
+                        <UserAvatar name={row.assigneeName} className="h-9 w-9 shrink-0" colorful />
+                        <p className="truncate font-medium">{row.assigneeName}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
+                    </TableCell>
                     <TableCell className="text-center tabular-nums">{row.employerAchieved}/{row.employerTarget}</TableCell>
                     <TableCell className="text-center tabular-nums">{row.employeeAchieved}/{row.employeeTarget}</TableCell>
                     <TableCell className="text-center tabular-nums">{formatCurrency(row.financeAchieved, currency)}</TableCell>
                     <TableCell className="text-center">
-                      <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[11px]">{row.riskScore}</Badge>
+                      <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[11px]">{riskLabel(row.riskScore)}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          <div className="mt-4">
-            <PaginationControls
-              page={pagination.page}
-              totalPages={pagination.totalPages}
-              limit={pagination.limit}
-              total={pagination.total}
-              onPageChange={pagination.setPage}
-              onLimitChange={pagination.setLimit}
-            />
-          </div>
-        </section>
-      )}
+      </section>
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        limit={pagination.limit}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { verifyInterviewAccess } from "@/lib/interviews/access";
 import { generateMeetingLink } from "@/lib/interviews/meetingLink";
 import { isMaterialChange } from "@/lib/interviews/materialChange";
 import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
+import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
@@ -62,6 +63,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }
   }
 
+  // A time inside the next 24 h is announced by the reissued invitation below.
+  // The hourly cron would otherwise send its "24 hour" reminder (the same
+  // "Interview Scheduled" text) for it within the hour, so mark it reminded now.
+  // The 1 hour reminder needs reminderSent true, so it still fires.
+  if (body.scheduledAt && isInsideReminderWindow(new Date(body.scheduledAt))) {
+    update.reminderSent = true;
+  }
+
   // Auto-provision a video room for video/hybrid interviews that have none
   // (e.g. when the type is switched to video or a reschedule drops the link).
   const effectiveType = (body.type ?? interview.type) as string;
@@ -98,7 +107,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     void sendInterviewInvite(String(interview._id), ctx.locale).catch(() => {});
   }
 
-  // Notify candidate when interview is rescheduled (in-place)
+  // Notify candidate when interview is rescheduled (in-place). A new time is a
+  // material change, so the reissued invitation above is their email for it;
+  // the notification keeps to in-app and push (sendPush: with email off and no
+  // WhatsApp leg, nothing else would make it emit an event).
   if (body.scheduledAt && !body.status) {
     const jobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
     const job = await Job.findById(interview.jobId).select("title").lean();
@@ -111,13 +123,16 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         title: "Interview Rescheduled",
         message: `Your interview for "${jobTitle}" has been rescheduled to ${new Date(body.scheduledAt).toLocaleString()}. Please confirm your availability.`,
         link: `/en/job-seeker/interviews`,
-        sendEmail: true,
+        sendEmail: false,
+        sendPush: true,
         metadata: { jobTitle, interviewId: params?.id, scheduledAt: body.scheduledAt },
       }).catch(() => { /* non-blocking */ });
     }
   }
 
-  // Notify candidate when interview is cancelled via PATCH
+  // Notify candidate when interview is cancelled via PATCH. A cancellation is a
+  // material change, so the calendar CANCEL above is their email for it; the
+  // notification keeps to in-app and push, as for a reschedule.
   if (body.status === "cancelled") {
     const jobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
     const job = await Job.findById(interview.jobId).select("title").lean();
@@ -130,7 +145,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         title: "Interview Cancelled",
         message: `Your interview for "${jobTitle}" has been cancelled by the employer.`,
         link: `/en/job-seeker/interviews`,
-        sendEmail: true,
+        sendEmail: false,
+        sendPush: true,
         metadata: { jobTitle, interviewId: params?.id },
       }).catch(() => { /* non-blocking */ });
     }

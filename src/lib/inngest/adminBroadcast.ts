@@ -16,13 +16,23 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { sendEmail } from "@/lib/communications/email";
 import { broadcastRecipientQuery } from "@/lib/communications/broadcastAudience";
+import { sendWhatsAppToUsers, type AudienceUser } from "@/lib/communications/whatsapp/audienceSend";
 import logger from "@/lib/logger";
 import type { AdminBroadcastEvent } from "./events";
 
 // 50 recipients per batch: sequential batches keep concurrent email sends
 // bounded (≤50 in flight) so we don't trip the email provider's rate limit.
 // ponytail: add Inngest `throttle` if the provider needs a hard per-second cap.
+// ponytail: step budget. Each batch is one step, two with the WhatsApp leg, under Inngest's 1,000-step
+// cap: a broadcast stops at roughly 50k users, or roughly 25k when WhatsApp is one of its channels.
+// A larger audience needs fan-out to child runs.
 const BATCH_SIZE = 50;
+
+interface WhatsAppCounts {
+  sent: number;
+  failed: number;
+  skipped: number;
+}
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -39,10 +49,17 @@ function broadcastHtml(title: string, message: string): string {
 }
 
 export const adminBroadcastSender = inngest.createFunction(
-  { id: "admin-broadcast-sender", name: "Admin Broadcast Sender", retries: 2, concurrency: { limit: 3 } },
+  {
+    id: "admin-broadcast-sender",
+    name: "Admin Broadcast Sender",
+    retries: 2,
+    concurrency: { limit: 3 },
+    // Inngest 4 takes the trigger from the config; without it the function registers with none and never runs.
+    triggers: [{ event: "admin/broadcast" }],
+  },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: { event: AdminBroadcastEvent; step: any }) => {
-    const { title, message, targetRoles, targetAll, channels } = event.data;
+    const { title, message, targetRoles, targetAll, channels, broadcastId, whatsapp } = event.data;
 
     await connectDB();
 
@@ -50,12 +67,16 @@ export const adminBroadcastSender = inngest.createFunction(
     const baseQuery = broadcastRecipientQuery(Boolean(targetAll), targetRoles);
     const needsEmail = channels.includes("email");
     const needsInApp = channels.includes("in_app");
+    const needsWhatsApp = channels.includes("whatsapp") && Boolean(whatsapp);
     const html = needsEmail ? broadcastHtml(title, message) : "";
 
     let lastId: string | null = null;
     let batchIndex = 0;
     let totalInApp = 0;
     let totalEmail = 0;
+    let totalWhatsApp = 0;
+    let totalWhatsAppFailed = 0;
+    let totalWhatsAppSkipped = 0;
 
     // Cursor over users by ascending _id so no single step ever loads the whole
     // recipient set. Each batch is a durable step; the loop replays deterministically.
@@ -113,13 +134,41 @@ export const adminBroadcastSender = inngest.createFunction(
       });
 
       if (result.done) break;
+
+      // WhatsApp is its own durable step. If it throws (its preference lookup can),
+      // Inngest retries only this step; the in-app rows and emails above are already
+      // memoized and are not sent again. It re-reads the same _id range instead of
+      // returning users from the step above, so no phone numbers sit in step output,
+      // and phone/whatsapp consent are read fresh: a STOP that landed after the
+      // broadcast was queued is honoured. The event payload carries no consent state.
+      // ponytail: a WhatsApp step that fails after some sends (or whose result is lost) is re-executed
+      // whole, so up to BATCH_SIZE (50) recipients can get the message twice.
+      if (needsWhatsApp && whatsapp) {
+        const from = lastId;
+        const to = result.lastId;
+        const wa: WhatsAppCounts = await step.run(`batch-${batchIndex}-wa`, async () => {
+          const range = { ...baseQuery, _id: { ...(from ? { $gt: from } : {}), $lte: to } };
+          const users = (await User.find(range)
+            .sort({ _id: 1 })
+            .select("_id phone name role locale whatsapp")
+            .lean()) as AudienceUser[];
+          return sendWhatsAppToUsers(users, whatsapp, { source: "broadcast", category: "system", broadcastId, tokens: { title, message } });
+        });
+        totalWhatsApp += wa.sent;
+        totalWhatsAppFailed += wa.failed;
+        totalWhatsAppSkipped += wa.skipped;
+      }
+
       lastId = result.lastId;
       totalInApp += result.inApp;
       totalEmail += result.emailSent;
       batchIndex += 1;
     }
 
-    logger.info({ totalInApp, totalEmail, batches: batchIndex }, "[admin-broadcast] delivery complete");
-    return { totalInApp, totalEmail, batches: batchIndex };
+    logger.info(
+      { totalInApp, totalEmail, totalWhatsApp, totalWhatsAppFailed, totalWhatsAppSkipped, batches: batchIndex },
+      "[admin-broadcast] delivery complete",
+    );
+    return { totalInApp, totalEmail, totalWhatsApp, totalWhatsAppFailed, totalWhatsAppSkipped, batches: batchIndex };
   },
 );

@@ -30,7 +30,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import type { ExportColumn } from "@/lib/export";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatDate, formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 /* ------------------------------------------------------------------ */
@@ -264,7 +264,7 @@ export default function AdminApplicationsPage() {
     { header: t("status"), key: "status" },
     { header: t("exportHeaderSource"), key: "source", formatter: (v) => sourceLabel(v as string) },
     { header: t("exportHeaderAIScore"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: t("exportHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],

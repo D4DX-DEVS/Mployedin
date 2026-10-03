@@ -33,11 +33,17 @@ it("shows the saved city and its country", async () => {
   expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
 });
 
-it("won't save without a city picked from the list", async () => {
+it("shows a region-only area as the region and its country", async () => {
+  respond({ cityId: null, cityName: null, stateId: "s1", stateName: "Kerala", countryCode: "IN" });
+  render(<SeekerAreaCard />);
+  expect(await screen.findByText("Kerala, India")).toBeInTheDocument();
+});
+
+it("won't save without a city or region picked from the list", async () => {
   respond(null);
   render(<SeekerAreaCard />);
   await userEvent.click(await screen.findByRole("button", { name: "Add area" }));
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
-  expect(await screen.findByText("Pick your city from the list.")).toBeInTheDocument();
+  expect(await screen.findByText("Pick your city, or your region if your city isn't listed.")).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1); // the load only — no PATCH
 });

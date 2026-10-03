@@ -7,6 +7,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
+import { CONTACT_METHODS, type ContactMethod } from "@/lib/leads/stageRules";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -66,6 +67,12 @@ export const POST = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   };
 
   lead!.activityLog.push(activity as never);
+  // A call, WhatsApp, email, meeting or visit is the lead's latest contact; the
+  // card shows it and it satisfies the "Contacted" stage rule.
+  if ((CONTACT_METHODS as readonly string[]).includes(body.action)) {
+    lead!.lastContactedAt = activity.timestamp;
+    lead!.lastContactMethod = body.action as ContactMethod;
+  }
   await lead!.save();
 
   await logActivity({

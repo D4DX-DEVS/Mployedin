@@ -7,7 +7,7 @@
  * src/lib/auth/agentRestrictions.ts).
  *
  *   Super agents (4)
- *     sa1  Sharjah city              team: ag1, ag2
+ *     sa1  Sharjah + Khor Fakkan     team: ag1, ag2 (both Sharjah city only)
  *     sa2  Sharjah city (same as sa1) team: ag3
  *     sa3  Abu Dhabi city            team: ag4, ag5
  *     sa4  Sharjah (whole emirate), no team
@@ -19,6 +19,14 @@
  *     e7-e8  no region
  *     e9     no region, assigned to ag1 (both ends of the link)
  *     e10    Khor Fakkan (Sharjah, a different city)
+ *
+ *   Job seekers (6) — the area a seeker picks makes them visible (view-only)
+ *   to the staff covering it; a hidden profile never shows. An agent's seeker
+ *   area is their super agent's whole region (getAgentSeekerArea), so ag1/ag2
+ *   see the Khor Fakkan seeker but not the Khor Fakkan employer.
+ *     s1  Sharjah city, visible       s4  Khor Fakkan, visible
+ *     s2  Sharjah city, HIDDEN        s5  Ajman (nobody covers it), visible
+ *     s3  Abu Dhabi city, visible     s6  no area, visible
  *
  * Every account: <key>@regionqa.test / RegionQa@1234
  *
@@ -59,7 +67,7 @@ const OLD_CITY_NAMES = { "Abu Dhabi": "Abu Dhabi Municipality", "Ajman": "Ajman 
 const anyName = (name, old) => ({ $in: [name, ...(old[name] ? [old[name]] : [])] });
 
 const SUPER_AGENTS = [
-  { key: "sa1", name: "RQA SA Sharjah One", cities: ["sharjah"], states: [] },
+  { key: "sa1", name: "RQA SA Sharjah One", cities: ["sharjah", "khorFakkan"], states: [] },
   { key: "sa2", name: "RQA SA Sharjah Two", cities: ["sharjah"], states: [] },
   { key: "sa3", name: "RQA SA Abu Dhabi", cities: ["abuDhabi"], states: [] },
   { key: "sa4", name: "RQA SA Sharjah State", cities: [], states: ["Sharjah"] },
@@ -88,7 +96,7 @@ const EMPLOYERS = [
 
 /** Who should see what, per the rules in agentRestrictions.ts. */
 export const EXPECTED = {
-  sa1: ["e1", "e2", "e3", "e9"],
+  sa1: ["e1", "e2", "e3", "e9", "e10"],
   sa2: ["e1", "e2", "e3"],
   sa3: ["e4", "e5"],
   sa4: ["e1", "e2", "e3", "e10"],
@@ -99,19 +107,47 @@ export const EXPECTED = {
   ag5: ["e4", "e5"],
 };
 
+const SEEKERS = [
+  { key: "s1", name: "RQA Seeker Sharjah", area: "sharjah", visibility: "visible" },
+  { key: "s2", name: "RQA Seeker Sharjah Hidden", area: "sharjah", visibility: "hidden" },
+  { key: "s3", name: "RQA Seeker Abu Dhabi", area: "abuDhabi", visibility: "visible" },
+  { key: "s4", name: "RQA Seeker Khor Fakkan", area: "khorFakkan", visibility: "visible" },
+  { key: "s5", name: "RQA Seeker Ajman", area: "ajman", visibility: "visible" },
+  { key: "s6", name: "RQA Seeker No Area", area: null, visibility: "visible" },
+];
+
+/** Seekers each staff account sees through the area (seekerRegionMatch). */
+export const EXPECTED_SEEKERS = {
+  sa1: ["s1", "s4"],
+  sa2: ["s1"],
+  sa3: ["s3"],
+  sa4: ["s1", "s4"],
+  // ag1/ag2 cover Sharjah city only; s4 reaches them through sa1's region.
+  ag1: ["s1", "s4"],
+  ag2: ["s1", "s4"],
+  ag3: ["s1"],
+  ag4: ["s3"],
+  ag5: ["s3"],
+};
+
 const email = (key) => `${key}@${DOMAIN}`;
 
 async function removeSeed(db) {
   const users = await db.collection("users").find({ email: { $regex: `@${DOMAIN.replace(".", "\\.")}$` } }).project({ _id: 1 }).toArray();
   const userIds = users.map((u) => u._id);
   if (userIds.length === 0) return 0;
-  const [agents, superAgents, employers] = await Promise.all([
+  const [agents, superAgents, employers, seekers] = await Promise.all([
     db.collection("agents").find({ userId: { $in: userIds } }).project({ _id: 1 }).toArray(),
     db.collection("superagents").find({ userId: { $in: userIds } }).project({ _id: 1 }).toArray(),
     db.collection("employers").find({ userId: { $in: userIds } }).project({ _id: 1 }).toArray(),
+    db.collection("jobseekers").find({ userId: { $in: userIds } }).project({ _id: 1 }).toArray(),
   ]);
   const agentIds = agents.map((a) => a._id);
   const employerIds = employers.map((e) => e._id);
+  const seekerIds = seekers.map((s) => s._id);
+  const jobIds = (await db.collection("jobs").find({ employerId: { $in: employerIds } }).project({ _id: 1 }).toArray()).map((j) => j._id);
+  await db.collection("applications").deleteMany({ $or: [{ jobId: { $in: jobIds } }, { jobSeekerId: { $in: seekerIds } }] });
+  await db.collection("jobseekers").deleteMany({ _id: { $in: seekerIds } });
   // Unlink from anything outside the seed before deleting.
   await db.collection("superagents").updateMany({ agentIds: { $in: agentIds } }, { $pull: { agentIds: { $in: agentIds } } });
   await db.collection("agents").updateMany({ assignedEmployerIds: { $in: employerIds } }, { $pull: { assignedEmployerIds: { $in: employerIds } } });
@@ -260,14 +296,46 @@ async function main() {
     }
   }
 
+  for (const seeker of SEEKERS) {
+    const userId = await createUser(seeker.key, seeker.name, "job_seeker");
+    const area = seeker.area ? cities[seeker.area] : null;
+    await db.collection("jobseekers").insertOne({
+      userId,
+      fullName: seeker.name,
+      isOnboarded: true,
+      profileVisibility: seeker.visibility,
+      // What PATCH /api/job-seekers/profile { cityId } stores.
+      regionCityId: area ? area.cityId : null,
+      regionStateId: area ? area.stateId : null,
+      currentLocation: area ? `${area.label.split(",")[0]}, AE` : "",
+      roleArchivedAt: null,
+      skills: ["Driving"],
+      experience: [],
+      education: [],
+      languages: [],
+      certifications: [],
+      preferredCountries: ["United Arab Emirates"],
+      preferredRoles: ["Driver"],
+      preferredLocations: [],
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
   const companyOf = Object.fromEntries(EMPLOYERS.map((e) => [e.key, e.company]));
-  console.log(`\nSeeded ${SUPER_AGENTS.length} super agents, ${AGENTS.length} agents, ${EMPLOYERS.length} employers.`);
+  const seekerOf = Object.fromEntries(SEEKERS.map((s) => [s.key, s.name]));
+  console.log(`\nSeeded ${SUPER_AGENTS.length} super agents, ${AGENTS.length} agents, ${EMPLOYERS.length} employers, ${SEEKERS.length} job seekers.`);
   console.log(`Password for every account: ${PASSWORD}\n`);
   console.log("Expected employer lists:");
   for (const [key, keys] of Object.entries(EXPECTED)) {
     console.log(`  ${email(key).padEnd(20)} ${String(keys.length).padStart(2)}  ${keys.map((k) => companyOf[k]).join(", ")}`);
   }
   console.log("\nSeen by nobody: RQA Ajman Uncovered Co 6, RQA No Region Co 7, RQA No Region Co 8");
+  console.log("\nExpected job seekers (through the area):");
+  for (const [key, keys] of Object.entries(EXPECTED_SEEKERS)) {
+    console.log(`  ${email(key).padEnd(20)} ${String(keys.length).padStart(2)}  ${keys.map((k) => seekerOf[k]).join(", ")}`);
+  }
+  console.log("\nSeen by nobody: RQA Seeker Sharjah Hidden, RQA Seeker Ajman, RQA Seeker No Area");
 
   await mongoose.disconnect();
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Types } from "mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { canAccess } from "@/lib/permissions/matrix";
 import { connectDB } from "@/lib/db/mongoose";
@@ -8,6 +9,8 @@ import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
+import { applyStageMove, stageMoveProblems } from "@/lib/leads/applyStageMove";
+import type { StageField } from "@/lib/leads/stageRules";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -53,22 +56,43 @@ export const POST = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
     ];
   }
 
-  let result: { modified: number; deleted: number } = { modified: 0, deleted: 0 };
+  const result: {
+    modified: number;
+    deleted: number;
+    skipped: { id: string; missing: StageField[] }[];
+    failed: string[];
+  } = { modified: 0, deleted: 0, skipped: [], failed: [] };
 
   switch (action) {
     case "move_status": {
       if (!params?.status) {
         return NextResponse.json({ error: "Status is required for move_status action" }, { status: 400 });
       }
-      const update: Record<string, unknown> = { status: params.status };
-      if (params.status === "lost" && params.lostReason) {
-        update.lostReason = params.lostReason;
+      // Each lead moves through the same rules as the Move dialog. A bulk move
+      // carries no details, so a lead whose target stage needs some it does
+      // not hold (every Won; Lost without a reason category) is left where it
+      // is and reported back, instead of landing in a stage it cannot prove.
+      const to = params.status;
+      const leads = await Lead.find(filter);
+      const by = ctx.userId as unknown as Types.ObjectId;
+      for (const lead of leads) {
+        if (lead.status === to) continue;
+        const move = { status: to, note: params.lostReason };
+        const { missing } = stageMoveProblems(lead, move);
+        if (missing.length > 0) {
+          result.skipped.push({ id: String(lead._id), missing });
+          continue;
+        }
+        // One legacy document failing validation must not abort the rest
+        // half-done with no record of which leads moved.
+        try {
+          applyStageMove(lead, move, by);
+          await lead.save();
+          result.modified += 1;
+        } catch {
+          result.failed.push(String(lead._id));
+        }
       }
-      if (params.status === "converted") {
-        update.convertedAt = new Date();
-      }
-      const res = await Lead.updateMany(filter, { $set: update });
-      result.modified = res.modifiedCount;
       break;
     }
     case "delete": {

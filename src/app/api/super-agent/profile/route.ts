@@ -8,6 +8,7 @@ import { regionLocale, resolveAssignedRegions } from "@/lib/agents/assignedRegio
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { superAgentProfileUpdateSchema } from "@/lib/validators/settings";
+import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
 
 interface AuthCtx {
   userId: string;
@@ -95,6 +96,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (Object.keys(userUpdates).length > 0) {
+    // A new number invalidates the WhatsApp id learned for the old one.
+    if (typeof userUpdates.phone === "string") await forgetWaIdOnPhoneChange(ctx.userId, userUpdates.phone);
     promises.push(
       User.findByIdAndUpdate(ctx.userId, { $set: userUpdates }, { returnDocument: "after" })
         .select("name phone")

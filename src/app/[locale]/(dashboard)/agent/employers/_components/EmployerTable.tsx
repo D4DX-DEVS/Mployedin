@@ -2,7 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { ArrowRight, BriefcaseBusiness, Building2, Check, Edit2, LogIn, MapPin, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -63,7 +65,7 @@ export function EmployerTable({
   };
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl">
       <div className="overflow-x-auto">
         <TooltipProvider delayDuration={200}>
           <Table>
@@ -72,14 +74,20 @@ export function EmployerTable({
                 <TableHead className="min-w-[200px]">{t("exportColumnCompany")}</TableHead>
                 <TableHead>{tc("status")}</TableHead>
                 {/* Secondary: below 1280px the row keeps company, status and
-                    actions, and the cards view still shows both fields. */}
+                    actions; the export carries both fields. */}
                 <TableHead className="hidden xl:table-cell">{`${t("exportColumnIndustry")} / ${t("exportColumnLocation")}`}</TableHead>
-                <TableHead className="text-end">{tc("actions")}</TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableBodySkeleton rows={6} cols={COLUMN_COUNT} />
+              ) : employers.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={COLUMN_COUNT} className="py-12">
+                    <EmptyState title={t("emptyStateTitle")} description={t("emptyStateDescription")} icon={Building2} />
+                  </TableCell>
+                </TableRow>
               ) : (
                 employers.map((em) => {
                   const { quick, menu } = rowActions(em);
@@ -87,9 +95,7 @@ export function EmployerTable({
                     <TableRow key={em._id}>
                       <TableCell>
                         <div className="flex min-w-0 items-center gap-3">
-                          <div className="workspace-tone-sky flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-                            <Building2 className="h-4 w-4" aria-hidden="true" />
-                          </div>
+                          <UserAvatar name={em.companyName ?? em.name} email={em.email} className="h-9 w-9 shrink-0" colorful />
                           <div className="min-w-0 max-w-[14rem]">
                             <p className="truncate font-medium text-foreground">{em.companyName ?? em.name}</p>
                             <p className="truncate text-xs text-muted-foreground">{em.email}</p>
@@ -132,7 +138,7 @@ export function EmployerTable({
                           <span className="mt-1 block text-xs">{em.location || "—"}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-end">
+                      <TableCell className="text-right">
                         <RowActions name={em.companyName ?? em.name} quick={quick} menu={menu} />
                       </TableCell>
                     </TableRow>

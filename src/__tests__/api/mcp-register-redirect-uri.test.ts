@@ -48,8 +48,14 @@ describe("POST /api/mcp/register — redirect_uri validation", () => {
     expect(res.status).toBe(400);
   });
 
-  it("accepts https and http loopback", async () => {
-    const res = await register(["https://chat.example.com/cb", "http://localhost:3000/cb"]);
+  it("rejects https on a host that is not a supported AI client (consent phishing)", async () => {
+    const res = await register(["https://chat.example.com/cb"]);
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({ error: "invalid_redirect_uri" });
+  });
+
+  it("accepts a supported AI client over https and http loopback", async () => {
+    const res = await register(["https://chatgpt.com/connector_platform_oauth_redirect", "http://localhost:3000/cb"]);
     expect(res.status).toBe(201);
   });
 });
