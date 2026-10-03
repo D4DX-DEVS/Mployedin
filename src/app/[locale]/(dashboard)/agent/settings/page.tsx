@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Globe, DollarSign, Save, CheckCircle2, Bell, Shield, Clock,
   Users, Calendar, FileText, Briefcase, Mail, ChevronRight, Percent,
@@ -17,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
+import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
+import { WhatsAppVerificationPanel, hasWhatsAppOn, type WhatsAppVerification } from "@/components/features/settings/WhatsAppVerificationPanel";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -690,9 +693,15 @@ function NotificationsTab() {
   const [saved, setSaved] = useState(false);
   const [serverSnap, setServerSnap] = useState("");
   const hasChanges = serverSnap ? JSON.stringify(prefs) !== serverSnap : false;
+  // The `updatedAt` of the copy this tab last loaded or saved. Sent back with
+  // every save so the server can refuse to overwrite a newer one (a STOP reply
+  // on WhatsApp, another tab) with this tab's stale snapshot.
+  const updatedAtRef = useRef<string | undefined>(undefined);
+  // Whether a START from the profile phone has verified it (WhatsApp messages need it).
+  const [waVerification, setWaVerification] = useState<WhatsAppVerification | null>(null);
 
-  useEffect(() => {
-    fetch("/api/user/notification-preferences")
+  const loadPrefs = () => {
+    return fetch("/api/user/notification-preferences")
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -712,11 +721,16 @@ function NotificationsTab() {
           };
           setPrefs(loaded);
           setServerSnap(JSON.stringify(loaded));
+          updatedAtRef.current = d.updatedAt;
+          setWaVerification(res.whatsappVerification ?? null);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-   
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadPrefs().finally(() => setLoading(false));
+
   }, []);
 
   const handleSave = async () => {
@@ -725,12 +739,19 @@ function NotificationsTab() {
       const res = await fetch("/api/user/notification-preferences", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefs),
+        body: JSON.stringify({ ...prefs, expectedUpdatedAt: updatedAtRef.current }),
       });
       if (res.ok) {
+        // A missing stamp just means the next save is unconditional, as before.
+        updatedAtRef.current = await res.json().then((j) => j?.data?.updatedAt, () => undefined);
         setServerSnap(JSON.stringify(prefs));
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
+      } else if (res.status === 409) {
+        // Newer preferences exist (e.g. a STOP reply). Never overwrite them with
+        // this snapshot: show the latest and let the user decide again.
+        toast.error(t("notifications.changedElsewhere"));
+        await loadPrefs();
       }
     } finally {
       setSaving(false);
@@ -817,6 +838,10 @@ function NotificationsTab() {
       {/* Categories */}
       <SectionCard>
         <SectionHeader icon={Bell} title={t("notifications.categoriesTitle")} description={t("notifications.categoriesDescription")} />
+        {/* No WhatsApp toggle here: until a START verifies the number the panel invites one (a START also turns the channel on). The phone is edited under Profile & Avatar. */}
+        <div className="px-4 pt-4 empty:hidden">
+          <WhatsAppVerificationPanel invite phoneEditPlace="settingsProfileTab" whatsAppOn={hasWhatsAppOn(prefs.categories)} verification={waVerification} />
+        </div>
         <div className="divide-y divide-border/30">
           {AGENT_CATEGORIES.map((cat) => {
             const pref = prefs.categories[cat.key];
@@ -1417,6 +1442,7 @@ function SecurityTab() {
 
       <ChangeEmailCard />
       <CalendarFeedCard />
+      <ConnectedAppsCard />
 
       {/* Downloading your data and deleting the account live on Data & Privacy
           (the dead "Deactivate" button that sat here did nothing). */}

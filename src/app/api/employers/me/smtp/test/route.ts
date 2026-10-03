@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { assertPublicHost } from "@/lib/security/ssrf";
+import { escapeHtml } from "@/lib/security/html-escape";
 import { smtpTestSchema } from "@/lib/validators/settings";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -60,13 +61,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">${employer.companyName}</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">${escapeHtml(employer.companyName)}</h1>
           </div>
           <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
             <p>This is a test email from your custom SMTP configuration on MPLOYEDIN.</p>
             <p>If you're reading this, your email setup is working correctly!</p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 16px;">
-              Host: ${host}:${smtp.smtpPort || 587}
+              Host: ${escapeHtml(host)}:${smtp.smtpPort || 587}
             </p>
           </div>
         </div>

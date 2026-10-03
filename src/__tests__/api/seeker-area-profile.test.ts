@@ -37,10 +37,14 @@ jest.mock("@/models/JobSeeker", () => ({
   },
 }));
 const mockUserUpdate = jest.fn(async () => ({}));
+// The phone-change reset (whatsapp/waId.ts): null means the stored phone was the same, so nothing else runs.
+const mockUserReset = jest.fn((..._a: unknown[]) => ({ select: () => ({ lean: async () => null }) }));
+jest.mock("@/models/NotificationPreference", () => ({ __esModule: true, default: { updateOne: jest.fn(async () => ({ modifiedCount: 0 })) }, CATEGORY_KEYS: [] }));
 jest.mock("@/models/User", () => ({
   __esModule: true,
   default: {
     findByIdAndUpdate: (...a: unknown[]) => mockUserUpdate(...(a as [])),
+    findOneAndUpdate: (...a: unknown[]) => mockUserReset(...a),
     findById: jest.fn(() => ({ select: () => ({ lean: async () => ({ phone: "+971500000000" }) }) })),
   },
 }));
@@ -138,4 +142,25 @@ it("returns a region-only area too", async () => {
   const body = await (await GET(new NextRequest("http://localhost/api/job-seekers/profile"), {} as never)).json();
   expect(body.profile.area).toEqual({ cityId: null, cityName: null, stateId: STATE, stateName: "Kerala", countryCode: "IN" });
   expect(mockResolve).toHaveBeenCalledWith({ stateId: STATE });
+});
+
+describe("a phone change and the WhatsApp id learned for the old number", () => {
+  it("forgets the stored wa_id, before saving, when a save carries a phone", async () => {
+    const res = await patch({ phone: "+971 50 765 4321" });
+    expect(res.status).toBe(200);
+    // The stored phone (+971500000000) is another number: the reset applies while it is still the one stored.
+    expect(mockUserReset).toHaveBeenCalledWith(
+      { _id: USER, phone: "+971500000000" },
+      { $unset: { "whatsapp.waId": 1, "whatsapp.optInAt": 1, "whatsapp.lastInboundAt": 1, "whatsapp.verifiedNumber": 1, "whatsapp.verifiedAt": 1, "whatsapp.startCode": 1 } },
+      { returnDocument: "before" },
+    );
+    expect(mockUserUpdate).toHaveBeenCalledWith(USER, { phone: "+971 50 765 4321" });
+    expect(mockUserReset.mock.invocationCallOrder[0]).toBeLessThan(mockUserUpdate.mock.invocationCallOrder[0]);
+  });
+
+  it("leaves the wa_id alone when a save carries no phone", async () => {
+    await patch({ name: "Asha", headline: "Accountant" });
+    expect(mockUserUpdate).toHaveBeenCalled();
+    expect(mockUserReset).not.toHaveBeenCalled();
+  });
 });

@@ -46,8 +46,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const lead = await Lead.findById(id);
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-  if (lead.status === "converted") {
+  // Won and "has an employer account" are separate facts: a lead marked Won in
+  // the Move dialog is offered its account afterwards. Refuse only a second
+  // account, not a Won lead.
+  if (lead.convertedToEmployerId) {
     return NextResponse.json({ error: "Lead is already converted" }, { status: 409 });
+  }
+  // The account follows a win; it does not record one. Making the lead Won
+  // here skipped the final value, the stage_change entry and the clearing of a
+  // Lost lead's reason, so the win goes through the Move dialog first.
+  if (lead.status !== "converted") {
+    return NextResponse.json({ error: "Mark the lead Won before creating its employer account" }, { status: 409 });
   }
 
   let agentDoc: { _id: unknown; userId?: unknown } | null = null;
@@ -182,9 +191,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     });
   }
 
-  // Update lead status to converted
-  lead.status = "converted";
-  lead.convertedAt = new Date();
+  // The lead is already Won (checked above); keep the date the agent recorded.
+  lead.convertedAt = lead.convertedAt ?? new Date();
   lead.convertedToEmployerId = employer._id;
   lead.activityLog.push({
     action: "converted_to_employer",

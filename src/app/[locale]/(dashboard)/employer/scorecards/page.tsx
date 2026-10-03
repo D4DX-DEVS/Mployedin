@@ -72,15 +72,16 @@ export default function ScorecardListPage() {
     const js = sc.jobSeekerId as { fullName?: string; userId?: string | { name?: string } };
     if (typeof js?.userId === "object" && js.userId?.name) return js.userId.name;
     if (js?.fullName) return js.fullName;
-    return `Candidate #${sc._id.slice(-4)}`;
+    return t("candidateFallback", { id: sc._id.slice(-4) });
   }
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Candidate", key: "_id", formatter: (_v, r) => candidateNameOf(r as unknown as (typeof scorecards)[number]) },
-    { header: "Interview Date", key: "interviewId", formatter: (_v, r) => formatDate(new Date((r as Record<string, any>).interviewId?.scheduledAt), { day: "2-digit", month: "short", year: "numeric" }) },
-    { header: "Overall Score", key: "overallScore", formatter: (v) => `${Number(v).toFixed(1)}/5` },
-    { header: "Recommendation", key: "recommendation", formatter: (v) => RECOMMENDATION_LABELS_KEY[String(v)] ?? String(v) },
-    { header: "Evaluated", key: "createdAt", formatter: (v) => formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) },
+    // Same headers as the table; the recommendation exported as its label, not its key.
+    { header: t("candidate"), key: "_id", formatter: (_v, r) => candidateNameOf(r as unknown as (typeof scorecards)[number]) },
+    { header: t("date"), key: "interviewId", formatter: (_v, r) => formatDate(new Date((r as Record<string, any>).interviewId?.scheduledAt), { day: "2-digit", month: "short", year: "numeric" }) },
+    { header: t("overallRating"), key: "overallScore", formatter: (v) => `${Number(v).toFixed(1)}/5` },
+    { header: t("recommendation"), key: "recommendation", formatter: (v) => (RECOMMENDATION_LABELS_KEY[String(v)] ? t(RECOMMENDATION_LABELS_KEY[String(v)]) : String(v)) },
+    { header: t("evaluated"), key: "createdAt", formatter: (v) => formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: scorecards as unknown as Record<string, unknown>[],

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -12,7 +11,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +19,10 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import {
   CalendarPlus,
   Check,
@@ -28,16 +30,17 @@ import {
   Gift,
   Inbox,
   Loader2,
-  Search,
   Star,
   X,
 } from "lucide-react";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 interface ApplicationItem {
   _id: string;
@@ -79,13 +82,12 @@ const SCHEDULABLE_STATUSES = new Set(["applied", "shortlisted", "interview_sched
 export default function AgentCandidatesPage() {
   const t = useTranslations("agentCandidates");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
-  const tconf = useTranslations("confirm");
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
   const pagination = usePagination();
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   // This page already read jobId and status from the URL on mount but then
   // stopped writing them back, and search was never in the URL at all — so
   // ⌘K's "candidates" hit had nowhere to send a name. All three round-trip now.
@@ -96,17 +98,22 @@ export default function AgentCandidatesPage() {
 
   const loadApplications = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const params = pagination.paginationParams();
       if (statusFilter) params.set("status", statusFilter);
       if (jobIdFilter) params.set("jobId", jobIdFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/applications?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setApplications(data.applications ?? []);
-        pagination.updateTotal(data.pagination?.total ?? 0);
+      if (!res.ok) {
+        setError(true);
+        return;
       }
+      const data = await res.json();
+      setApplications(data.applications ?? []);
+      pagination.updateTotal(data.pagination?.total ?? 0);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -299,7 +306,7 @@ export default function AgentCandidatesPage() {
     { header: t("tableHeaderJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
     { header: tc("status"), key: "status" },
     { header: t("tableHeaderAIMatch"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "" },
-    { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v)) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -316,189 +323,124 @@ export default function AgentCandidatesPage() {
         context={`${pagination.total} ${t("application", { count: pagination.total })}`}
       />
 
-      {/* One panel: search + export inline, status pills below, table under
-          them. The old separate filter card restated the page title three
-          times before the first row was reachable. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {t("currentResultsLabel")}
-          </p>
-          <div className="relative min-w-0 flex-1 sm:ms-auto sm:w-64 sm:flex-none">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              aria-label={t("searchPlaceholder")}
-              className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
-            />
+      {/* Status was a row of pills inside the list panel; it is a select in the
+          filter row like every other list, and the job narrowing a chip there. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={search || statusFilter || jobIdFilter ? () => { setSearch(""); setStatusFilter(""); setJobIdFilter(""); pagination.resetPage(); } : undefined}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      >
+        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); pagination.resetPage(); }} placeholder={t("searchPlaceholder")} />
+        <SearchableSelect
+          id="agent-candidates-status"
+          className={INLINE_FILTER_CONTROL}
+          options={STATUS_OPTIONS.map((status) => ({ value: status || "all", label: status ? t(`status_${status}`) : t("filterAllStatuses") }))}
+          value={statusFilter || "all"}
+          onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); pagination.resetPage(); }}
+          placeholder={tc("status")}
+        />
+        {jobIdFilter && (
+          <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-11 max-w-56 rounded-lg border-transparent px-3 hover:opacity-90 sm:h-9">
+            <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{filteredJobTitle ?? t("clearJobFilter")}</span>
+          </Button>
+        )}
+      </InlineFilterBar>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        {error ? (
+          <div className="p-6">
+            <ErrorState onRetry={loadApplications} />
           </div>
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="shrink-0"
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-1.5 pt-3 sm:gap-2 sm:pt-4">
-          {jobIdFilter && (
-            <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-9 rounded-xl border-transparent px-3 hover:opacity-90">
-              {filteredJobTitle ? <><X className="h-3.5 w-3.5" aria-hidden="true" />{filteredJobTitle}</> : t("clearJobFilter")}
-            </Button>
-          )}
-          {STATUS_OPTIONS.map((status) => {
-            const isSelected = statusFilter === status;
-
-            return (
-              <Button
-                key={status || "all"}
-                onClick={() => setStatusFilter(status)}
-                aria-pressed={isSelected}
-                variant="outline"
-                size="sm"
-                className={isSelected
-                  ? "workspace-tone-sky h-9 rounded-xl border-transparent px-3 capitalize hover:opacity-90"
-                  : "workspace-muted-pill h-9 rounded-xl px-3 capitalize hover:bg-card"
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>{t("tableHeaderCandidate")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead>{t("tableHeaderJob")}</TableHead>
+                <TableHead>{t("tableHeaderAIMatch")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("tableHeaderApplied")}</TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableBodySkeleton rows={5} cols={6} />
+              ) : applications.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={6} className="py-12">
+                    <EmptyState title={t("noCandidatesFound")} description={t("noCandidatesHint")} icon={Inbox} />
+                  </TableCell>
+                </TableRow>
+              ) : applications.map((app) => {
+                const name = app.jobSeekerId?.userId?.name ?? tc("unknownCandidate");
+                const busy = updatingId === app._id;
+                const nextStage = NEXT_STAGE_KEYS[app.status];
+                const quick: RowAction[] = [];
+                const menu: RowAction[] = [];
+                if (!TERMINAL_STATUSES.has(app.status)) {
+                  // The obvious next step stays a labelled button; the rest,
+                  // and Reject (its own dialog asks for a reason), go in "…".
+                  if (nextStage) {
+                    quick.push({
+                      key: "advance",
+                      label: t(`actionLabel_${app.status}`),
+                      icon: app.status === "applied" ? Check : ChevronRight,
+                      pending: busy,
+                      onSelect: () => advanceStage(app._id, nextStage),
+                    });
+                  } else if (app.status === "selected") {
+                    quick.push({ key: "offer", label: t("makeOfferLabel"), icon: Gift, iconClassName: "text-emerald-700", onSelect: () => openOffer(app) });
+                  }
+                  if (SCHEDULABLE_STATUSES.has(app.status)) {
+                    menu.push({ key: "schedule", label: t("scheduleInterviewTooltip"), icon: CalendarPlus, onSelect: () => openSchedule(app) });
+                  }
+                  menu.push({
+                    key: "reject",
+                    label: t("rejectCandidateTooltip"),
+                    icon: X,
+                    destructive: true,
+                    disabled: busy,
+                    onSelect: () => { setRejectError(""); setRejectReason(""); setRejectApp(app); },
+                  });
                 }
-              >
-                {status ? t(`status_${status}`) : tc("all")}
-              </Button>
-            );
-          })}
-        </div>
-
-        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
-          {loading ? (
-            <Table>
-              <TableHeader>
-                <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-                  <TableHead>{t("tableHeaderCandidate")}</TableHead>
-                  <TableHead>{t("tableHeaderJob")}</TableHead>
-                  <TableHead>{t("tableHeaderAIMatch")}</TableHead>
-                  <TableHead>{t("tableHeaderApplied")}</TableHead>
-                  <TableHead className="text-right">{tc("actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : applications.length === 0 ? (
-            <div className="workspace-empty-state m-4 rounded-3xl py-12 text-center">
-              <div className="flex flex-col items-center gap-2">
-                <Inbox className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">{t("noCandidatesFound")}</p>
-                <p className="text-sm text-muted-foreground">{t("noCandidatesHint")}</p>
-              </div>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-                  <TableHead>{t("tableHeaderCandidate")}</TableHead>
-                  <TableHead>{t("tableHeaderJob")}</TableHead>
-                  <TableHead>{t("tableHeaderAIMatch")}</TableHead>
-                  <TableHead>{t("tableHeaderApplied")}</TableHead>
-                  <TableHead className="text-right">{tc("actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {applications.map((app) => (
-                  <TableRow key={app._id} className="hover:bg-secondary/50">
+                return (
+                  <TableRow key={app._id} className="group">
                     <TableCell>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{app.jobSeekerId?.userId?.name ?? "Unknown"}</p>
-                        {app.jobSeekerId?.totalExperienceYears != null && (
-                          <p className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{app.jobSeekerId.totalExperienceYears}y exp</p>
-                        )}
-                        <StatusBadge status={app.status} />
+                      <div className="flex min-w-0 items-center gap-3">
+                        <UserAvatar name={app.jobSeekerId?.userId?.name} className="h-9 w-9 shrink-0" colorful />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{name}</p>
+                          {app.jobSeekerId?.totalExperienceYears != null && (
+                            <p className="whitespace-nowrap text-xs text-muted-foreground">{t("yearsExperience", { years: app.jobSeekerId.totalExperienceYears })}</p>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{app.jobId?.title ?? "—"}</TableCell>
+                    {/* Status second: a collapsed phone card shows cells 1–2. */}
+                    <TableCell><StatusBadge status={app.status} /></TableCell>
+                    <TableCell className="max-w-[220px] truncate text-sm text-muted-foreground" title={app.jobId?.title}>{app.jobId?.title ?? "—"}</TableCell>
                     <TableCell>
                       <div className={`flex items-center gap-1 text-sm font-medium ${matchScoreColor(app.aiMatchScore)}`}>
-                        <Star className="h-3.5 w-3.5" />
+                        <Star className="h-3.5 w-3.5" aria-hidden="true" />
                         {app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(app.appliedAt ?? app.createdAt))}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1.5">
-                        {updatingId === app._id ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        ) : TERMINAL_STATUSES.has(app.status) ? (
-                          <span className="text-xs text-muted-foreground">{t(`status_${app.status}`)}</span>
-                        ) : (
-                          <>
-                            {NEXT_STAGE_KEYS[app.status] && (
-                              <Button
-                                size="dense"
-                                variant="outline"
-                                className="gap-1 rounded-lg px-2.5 text-xs"
-                                title={t(`actionLabel_${app.status}`)}
-                                data-table-action=""
-                                onClick={() => advanceStage(app._id, NEXT_STAGE_KEYS[app.status])}
-                              >
-                                {app.status === "applied" ? <Check className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                                {t(`actionLabel_${app.status}`)}
-                              </Button>
-                            )}
-                            {SCHEDULABLE_STATUSES.has(app.status) && (
-                              <Button
-                                size="dense"
-                                variant="ghost"
-                                className="w-8 rounded-lg p-0 text-status-applied hover:bg-status-applied-bg"
-                                title={t("scheduleInterviewTooltip")}
-                                aria-label={t("scheduleInterviewTooltip")}
-                                onClick={() => openSchedule(app)}
-                              >
-                                <CalendarPlus className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {app.status === "selected" && (
-                              <Button
-                                size="dense"
-                                variant="outline"
-                                className="gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
-                                title={t("makeOfferTooltip")}
-                                data-table-action=""
-                                onClick={() => openOffer(app)}
-                              >
-                                <Gift className="h-3.5 w-3.5" />
-                                {t("makeOfferLabel")}
-                              </Button>
-                            )}
-                            <Button
-                              size="dense"
-                              variant="ghost"
-                              className="w-8 rounded-lg p-0 text-destructive hover:bg-destructive/10"
-                              title={t("rejectCandidateTooltip")}
-                              aria-label={t("rejectCandidateTooltip")}
-                              onClick={() => { setRejectError(""); setRejectReason(""); setRejectApp(app); }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                    <TableCell className="hidden text-sm text-muted-foreground md:table-cell">{formatListDate(app.appliedAt ?? app.createdAt, locale)}</TableCell>
+                    <TableCell className="text-right">
+                      {quick.length + menu.length > 0 ? (
+                        <RowActions name={name} quick={quick} menu={menu} />
+                      ) : null}
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
       </section>
 
       <PaginationControls

@@ -5,6 +5,7 @@ import McpToken from "@/models/McpToken";
 import User from "@/models/User";
 import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
 import { defaultScopesForRole, type McpScope } from "@/lib/mcp/scopes";
+import { grantPredatesPasswordChange } from "@/lib/mcp/oauth";
 
 export async function verifyMcpToken(
   _req: Request,
@@ -23,10 +24,14 @@ export async function verifyMcpToken(
   // Authorization is live, not a 90-day snapshot. Deactivation, role changes,
   // and custom permission changes take effect on the very next tool call.
   const user = await User.findById(token.userId)
-    .select("role isActive permissionMode customPermissions")
+    .select("role isActive permissionMode customPermissions passwordChangedAt")
     .lean();
   if (!user?.isActive || user.role !== token.role) {
     McpToken.updateMany({ userId: token.userId }, { $set: { isRevoked: true } }).catch(() => {});
+    return undefined;
+  }
+  if (grantPredatesPasswordChange(token.authorizationExpiresAt, user.passwordChangedAt)) {
+    McpToken.updateMany({ familyId: token.familyId }, { $set: { isRevoked: true } }).catch(() => {});
     return undefined;
   }
 

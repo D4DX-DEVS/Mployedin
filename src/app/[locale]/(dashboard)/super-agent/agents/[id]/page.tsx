@@ -27,7 +27,7 @@ import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
-import { formatDate, formatListDate } from "@/lib/ui/intlFormat";
+import { formatDate, formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
 
 /* ── Types ── */
 
@@ -559,7 +559,7 @@ export default function AgentDetailPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(rl.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      {formatListDate(rl.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -586,7 +586,7 @@ export default function AgentDetailPage() {
                     <p className="text-xs text-muted-foreground">{t("targetLabel")}: {act.targetType}</p>
                   )}
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {new Date(act.timestamp).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {formatDateTime(act.timestamp, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
               </div>

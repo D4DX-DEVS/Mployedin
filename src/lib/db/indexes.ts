@@ -65,6 +65,14 @@ export async function ensureIndexes() {
     { key: { createdAt: -1 } },
     // Admin user list: filter by role, sort newest first
     { key: { role: 1, createdAt: -1 } },
+    // The WhatsApp START code: the webhook finds the account by it, and no two accounts may share one. Partial, not
+    // sparse: only accounts that hold a code (a string) are indexed.
+    {
+      key: { "whatsapp.startCode": 1 },
+      unique: true,
+      partialFilterExpression: { "whatsapp.startCode": { $type: "string" } },
+      name: "unique_whatsapp_start_code",
+    },
   ]);
 
   // ── JobSeekers ─────────────────────────────────────────────────────────────
@@ -855,6 +863,39 @@ export async function ensureIndexes() {
     { key: { createdAt: -1 } },
     // "latest consent per (user, type)" aggregation + per-user history
     { key: { userId: 1, consentType: 1, createdAt: -1 } },
+  ]);
+
+  // ── WhatsApp (Cloud API) ───────────────────────────────────────────────────
+  await safeCreateIndexes(db, "whatsappmessagelogs", [
+    { key: { sentAt: -1 } },
+    { key: { status: 1, sentAt: -1 } },
+    { key: { userId: 1, sentAt: -1 } },
+    // The orchestrator's daily cap counts per recipient number (notificationDelivery.ts).
+    { key: { to: 1, sentAt: -1 } },
+    { key: { source: 1, sentAt: -1 } },
+    { key: { scheduleId: 1, sentAt: -1 } },
+    { key: { broadcastId: 1 } },
+    // Webhook status updates look messages up by Meta's id.
+    { key: { waMessageId: 1 }, unique: true, sparse: true },
+    { key: { createdAt: 1 }, expireAfterSeconds: 90 * 24 * 60 * 60 },
+  ]);
+
+  await safeCreateIndexes(db, "whatsapptemplates", [
+    { key: { metaId: 1 }, unique: true },
+    // One row per (name, language); the sender looks templates up this way.
+    { key: { name: 1, language: 1 }, unique: true },
+    { key: { status: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "whatsappschedules", [
+    // The tick's due query.
+    { key: { enabled: 1, nextRunAt: 1 } },
+    { key: { createdAt: -1 } },
+  ]);
+
+  // Numbers that replied STOP: every send looks its recipient up here.
+  await safeCreateIndexes(db, "whatsappsuppressions", [
+    { key: { number: 1 }, unique: true },
   ]);
 
   logger.info("[DB] Indexes ensured ✅");

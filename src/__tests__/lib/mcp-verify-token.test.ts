@@ -86,6 +86,37 @@ describe("verifyMcpToken live authorization", () => {
     expect(tokenModel.updateMany).toHaveBeenCalled();
   });
 
+  it("rejects and revokes a grant approved before the user's last password change", async () => {
+    // Approved ~90 days minus 2 minutes ago; password reset just now.
+    tokenModel.findOne.mockReturnValue(leanResult(validToken({ familyId: "family-1" })));
+    userModel.findById.mockReturnValue(userResult({
+      role: "employer",
+      isActive: true,
+      passwordChangedAt: new Date(),
+    }));
+
+    await expect(verifyMcpToken(new Request("http://localhost:3000/api/mcp"), "secret"))
+      .resolves.toBeUndefined();
+    expect(tokenModel.updateMany).toHaveBeenCalledWith(
+      { familyId: "family-1" },
+      { $set: { isRevoked: true } },
+    );
+  });
+
+  it("keeps a grant approved after the last password change", async () => {
+    tokenModel.findOne.mockReturnValue(leanResult(validToken({
+      authorizationExpiresAt: new Date(Date.now() + 90 * 24 * 3600 * 1000 - 60_000),
+    })));
+    userModel.findById.mockReturnValue(userResult({
+      role: "employer",
+      isActive: true,
+      passwordChangedAt: new Date(Date.now() - 24 * 3600 * 1000),
+    }));
+
+    await expect(verifyMcpToken(new Request("http://localhost:3000/api/mcp"), "secret"))
+      .resolves.toMatchObject({ extra: { userId: "user-id" } });
+  });
+
   it("returns current custom permissions for every tool authorization", async () => {
     tokenModel.findOne.mockReturnValue(leanResult(validToken()));
     userModel.findById.mockReturnValue(userResult({

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
+import { broadcastWhatsAppSchema } from "./whatsapp";
 
 const VALID_ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"] as const;
 const PERMISSION_MODES = ["role_default", "custom"] as const;
@@ -101,15 +102,22 @@ export const impersonateSchema = z
   });
 
 /** POST /api/admin/communications */
-export const communicationSchema = z.object({
-  title: z.string().min(1).max(200).trim(),
-  message: z.string().min(1).max(5000).trim(),
-  targetRoles: z.array(z.enum(VALID_ROLES)).max(10).optional(),
-  targetAll: z.boolean().optional(),
-  // WhatsApp is shown as "coming soon": the broadcast worker delivers in-app
-  // and email only, so accepting it queued a send that reached nobody.
-  channels: z.array(z.enum(["in_app", "email"])).min(1).default(["in_app"]),
-});
+export const communicationSchema = z
+  .object({
+    title: z.string().min(1).max(200).trim(),
+    message: z.string().min(1).max(5000).trim(),
+    targetRoles: z.array(z.enum(VALID_ROLES)).max(10).optional(),
+    targetAll: z.boolean().optional(),
+    channels: z.array(z.enum(["in_app", "email", "whatsapp"])).min(1).default(["in_app"]),
+    // Required whenever "whatsapp" is a channel: the approved template that
+    // carries the broadcast and its body parameters (tokens allowed).
+    whatsapp: broadcastWhatsAppSchema.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.channels.includes("whatsapp") && !v.whatsapp) {
+      ctx.addIssue({ code: "custom", path: ["whatsapp"], message: "Choose a WhatsApp template for the WhatsApp channel" });
+    }
+  });
 
 /** POST /api/admin/comm-templates */
 export const broadcastTemplateSchema = z.object({

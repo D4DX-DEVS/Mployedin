@@ -14,6 +14,7 @@ import { interviewCreateSchema } from "@/lib/validators/interviews";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
+import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
 import { verifyInterviewAccess } from "@/lib/interviews/access";
 import { memberMayAccessJob } from "@/lib/permissions/team";
 import {
@@ -486,7 +487,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     meetLink: resolveMeetingLink(type, meetLink),
     instructions,
     status: "scheduled",
-    reminderSent: false,
+    // The invitation below is the announcement. The hourly cron's "24 hour"
+    // reminder repeats it ("Interview Scheduled") for anything less than 24 h
+    // away, so such a booking starts out reminded; the 1 hour reminder still fires.
+    reminderSent: isInsideReminderWindow(new Date(scheduledAt)),
     rescheduleCount: 0,
   });
 
@@ -513,13 +517,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     },
   });
 
+  // The calendar invitation above is the candidate's email for this booking,
+  // so the notification keeps to in-app and WhatsApp.
   if (seekerDoc?.userId) {
     await notifyInterviewScheduled(
       String(seekerDoc.userId),
       job?.title ?? "Interview",
       new Date(scheduledAt),
       location ?? meetLink ?? "TBD",
-      String(interview._id)
+      String(interview._id),
+      { sendEmail: false },
     ).catch((err) => logger.error({ err, interviewId: String(interview._id) }, "Failed to notify job seeker of scheduled interview"));
   }
 

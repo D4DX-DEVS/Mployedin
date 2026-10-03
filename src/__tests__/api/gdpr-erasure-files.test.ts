@@ -41,9 +41,20 @@ jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: { find: (...a: unknown[]) => appFind(...a), updateMany: (...a: unknown[]) => appUpdateMany(...a) },
 }));
-jest.mock("@/models/User", () => ({ __esModule: true, default: { findByIdAndUpdate: jest.fn().mockResolvedValue(undefined) } }));
+// The subject's number, read before anonymisation so log rows under another user's id can be erased too.
+const userFindById = jest.fn((..._a: unknown[]) => lean({ phone: "971501234567", whatsapp: { waId: "971501234567" } }));
+jest.mock("@/models/User", () => ({
+  __esModule: true,
+  // updateOne: eraseWhatsAppData clears the whatsapp subdocument.
+  default: { findById: (...a: unknown[]) => userFindById(...a), findByIdAndUpdate: jest.fn().mockResolvedValue(undefined), updateOne: jest.fn().mockResolvedValue({}) },
+}));
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { find: jest.fn() } }));
 jest.mock("@/models/Notification", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+const waDeleteMany = jest.fn((..._a: unknown[]) => Promise.resolve(undefined));
+jest.mock("@/models/WhatsAppMessageLog", () => ({ __esModule: true, default: { deleteMany: (...a: unknown[]) => waDeleteMany(...a) } }));
+// The STOP list: the erasure drops the subject's entries that no longer suppress anything (erasureWhatsApp.test.ts).
+const deleteLiftedSuppressions = jest.fn((..._a: unknown[]) => Promise.resolve(undefined));
+jest.mock("@/models/WhatsAppSuppression", () => ({ __esModule: true, deleteLiftedSuppressions: (...a: unknown[]) => deleteLiftedSuppressions(...a) }));
 jest.mock("@/models/GdprRequest", () => ({ __esModule: true, default: { create: jest.fn().mockResolvedValue({}) } }));
 const deleteCvRecordsOfSeeker = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/cv/cvDocuments", () => ({ deleteCvRecordsOfSeeker: (...a: unknown[]) => deleteCvRecordsOfSeeker(...a) }));
@@ -67,5 +78,12 @@ describe("eraseUserPersonalData removes every uploaded file", () => {
       "https://s3/documents/passport.pdf",
     ]);
     expect(deleteCvRecordsOfSeeker).toHaveBeenCalledWith(SEEKER_ID);
+
+    // WhatsApp delivery log: the user's own rows, and rows under another user's id that hold their number.
+    expect(waDeleteMany).toHaveBeenCalledWith({ userId: USER_ID });
+    const byNumber = waDeleteMany.mock.calls.map((c) => c[0] as { to?: { $in: string[] } }).find((f) => f.to);
+    expect([...(byNumber?.to?.$in ?? [])].sort()).toEqual(["+971501234567", "971501234567"]);
+    // STOP-list entries of the same numbers that are no longer in force.
+    expect([...(deleteLiftedSuppressions.mock.calls[0][0] as string[])].sort()).toEqual(["+971501234567", "971501234567"]);
   });
 });

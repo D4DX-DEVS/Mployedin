@@ -97,6 +97,19 @@ export default function TeamManagementPage() {
 
   const showJobAccess = (role: CompanyRole) => role === "hiring_manager" || role === "viewer" || role === "finance_viewer";
   const showJobAccessForRoles = (roles: CompanyRole[]) => roles.some(showJobAccess);
+  const rolesOf = (member: TeamMember) =>
+    (member.companyRoles && member.companyRoles.length > 0 ? member.companyRoles : [member.companyRole]) as CompanyRole[];
+  /** Pencil for every member but the owner: job access for job-scoped roles, else the role alone. */
+  const editAction = (member: TeamMember) =>
+    member.companyRole === "owner" || member.status === "deactivated"
+      ? []
+      : [{
+          key: "access",
+          label: showJobAccessForRoles(rolesOf(member)) ? t("editJobAccess") : t("editRole"),
+          icon: Pencil,
+          iconOnly: true,
+          onSelect: () => openJobAccessEditor(member),
+        }];
 
   const roleOptions = [
     { value: "admin", label: t("roleOptions.admin") },
@@ -119,6 +132,11 @@ export default function TeamManagementPage() {
   async function handleRoleChange(memberId: string, newRole: CompanyRole) {
     await updateMutation.mutateAsync({ memberId, companyRole: newRole });
   }
+
+  // The job list applies to job-scoped roles — including one just picked in the dialog.
+  const editingScopesJobs = editingMember
+    ? showJobAccessForRoles(editRole ? [editRole as CompanyRole] : rolesOf(editingMember))
+    : false;
 
   function openJobAccessEditor(member: TeamMember) {
     setEditingMember(member);
@@ -370,9 +388,7 @@ export default function TeamManagementPage() {
                     <TableCell className="text-right">
                       <RowActions
                         name={member.user?.name ?? member.email}
-                        quick={showJobAccessForRoles(member.companyRoles && member.companyRoles.length > 0 ? member.companyRoles : [member.companyRole]) && member.status !== "deactivated"
-                          ? [{ key: "access", label: t("editJobAccess"), icon: Pencil, iconOnly: true, onSelect: () => openJobAccessEditor(member) }]
-                          : []}
+                        quick={editAction(member)}
                         menu={member.companyRole !== "owner" && member.status !== "deactivated"
                           ? [{ key: "deactivate", label: t("deactivateMember"), icon: UserX, destructive: true, onSelect: () => { void handleDeactivate(member._id); } }]
                           : []}
@@ -386,6 +402,11 @@ export default function TeamManagementPage() {
 
           {/* ── Mobile Card List ── */}
           <div className="md:hidden divide-y divide-border/40">
+            {members.length === 0 && (
+              <div className="py-10">
+                <EmptyState title={t("empty.title")} description={t("empty.description")} icon={Inbox} />
+              </div>
+            )}
             {members.map((member) => (
               <div key={member._id} className="p-4 space-y-3">
                 {/* Member info row */}
@@ -407,9 +428,7 @@ export default function TeamManagementPage() {
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                     <RowActions
                       name={member.user?.name ?? member.email}
-                      quick={showJobAccessForRoles(member.companyRoles && member.companyRoles.length > 0 ? member.companyRoles : [member.companyRole]) && member.status !== "deactivated"
-                        ? [{ key: "access", label: t("editJobAccess"), icon: Pencil, iconOnly: true, onSelect: () => openJobAccessEditor(member) }]
-                        : []}
+                      quick={editAction(member)}
                       menu={member.companyRole !== "owner" && member.status !== "deactivated"
                         ? [{ key: "deactivate", label: t("deactivateMember"), icon: UserX, destructive: true, onSelect: () => { void handleDeactivate(member._id); } }]
                         : []}
@@ -486,7 +505,7 @@ export default function TeamManagementPage() {
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Briefcase className="h-4 w-4 text-primary" />
               </div>
-              {t("jobAccessModal.title")}
+              {editingScopesJobs ? t("jobAccessModal.title") : t("editRole")}
             </DialogTitle>
             <DialogDescription>
               {editingMember?.user?.name ?? editingMember?.email} — {editingMember ? roleLabel(editingMember.companyRole) : ""}
@@ -505,6 +524,7 @@ export default function TeamManagementPage() {
                 />
               </div>
             )}
+            {editingScopesJobs && (
             <div className="space-y-2">
               <Label>{t("jobAccessModal.assignedJobs")}</Label>
               <p className="text-xs text-muted-foreground">
@@ -519,6 +539,7 @@ export default function TeamManagementPage() {
                 searchable
               />
             </div>
+            )}
 
             <CompanyFunctionChecklist
               roles={(editingMember?.companyRoles?.length ? editingMember.companyRoles : editingMember ? [editingMember.companyRole] : []) as CompanyRole[]}

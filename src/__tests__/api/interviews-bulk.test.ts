@@ -43,6 +43,11 @@ jest.mock("@/lib/notifications/trigger", () => ({
   notifyInterviewScheduled: jest.fn().mockResolvedValue(undefined),
 }));
 
+// ── Mock Calendar Invitation ────────────────────────────────────────────────
+jest.mock("@/lib/interviews/sendInvite", () => ({
+  sendInterviewInvite: jest.fn().mockResolvedValue(true),
+}));
+
 // ── Mock Validator ──────────────────────────────────────────────────────────
 jest.mock("@/lib/validators", () => ({
   validateBody: jest.fn(async (req: NextRequest) => req.json()),
@@ -204,6 +209,68 @@ describe("POST /api/interviews/bulk", () => {
     expect(data.created).toBe(2);
     expect(data.failed).toBe(0);
     expect(createdInterviews).toHaveLength(2);
+  });
+
+  it("emails each candidate once: the calendar invitation, with notify() kept to in-app and WhatsApp", async () => {
+    const { sendInterviewInvite } = await import("@/lib/interviews/sendInvite");
+    const { notifyInterviewScheduled } = await import("@/lib/notifications/trigger");
+
+    const res = await POST(createBulkRequest({
+      candidates: [{ applicationId: "app_001", jobSeekerId: "seeker_001" }],
+      scheduledAt: "2026-05-05T10:00:00Z",
+      duration: 30,
+      type: "video",
+    }));
+
+    expect((await res.json()).created).toBe(1);
+    expect(sendInterviewInvite).toHaveBeenCalledWith("iv_1", "en");
+    expect(notifyInterviewScheduled).toHaveBeenCalledWith(
+      "user_seeker_001",
+      "React Developer",
+      new Date("2026-05-05T10:00:00Z"),
+      "TBD",
+      "iv_1",
+      { sendEmail: false },
+    );
+  });
+
+  describe("reminder flag", () => {
+    const HOUR = 3_600_000;
+    const book = (firstSlotHours: number, candidateCount = 1, extra: Record<string, unknown> = {}) =>
+      POST(createBulkRequest({
+        candidates: Array.from({ length: candidateCount }, (_, i) => ({ applicationId: `app_00${i + 1}`, jobSeekerId: `seeker_00${i + 1}` })),
+        scheduledAt: new Date(Date.now() + firstSlotHours * HOUR).toISOString(),
+        duration: 30,
+        type: "video",
+        ...extra,
+      }));
+
+    // The hourly cron sends the "24 hour" reminder to every interview less than
+    // 24 h away that is not marked reminded, and its text is the booking notice,
+    // so an interview booked inside the window would be told twice.
+    it("marks an interview booked 3 hours ahead as already reminded", async () => {
+      expect((await (await book(3)).json()).created).toBe(1);
+      expect(createdInterviews[0].reminderSent).toBe(true);
+    });
+
+    it("leaves an interview booked 3 days ahead for the 24 hour reminder", async () => {
+      expect((await (await book(72)).json()).created).toBe(1);
+      expect(createdInterviews[0].reminderSent).toBe(false);
+    });
+
+    it("marks an interview booked 24.5 hours ahead as already reminded", async () => {
+      // The cron runs hourly, so this slot crosses the 24 h line before its next run.
+      expect((await (await book(24.5)).json()).created).toBe(1);
+      expect(createdInterviews[0].reminderSent).toBe(true);
+    });
+
+    it("decides per slot when a staggered batch crosses the reminder window", async () => {
+      // Slots 24 h and 26 h ahead (30 minute interviews, 90 minute gap): the
+      // window runs to 25 h, one hourly cron interval past the 24 h line.
+      const res = await book(24, 2, { gapMinutes: 90 });
+      expect((await res.json()).created).toBe(2);
+      expect(createdInterviews.map((i) => i.reminderSent)).toEqual([true, false]);
+    });
   });
 
   it("prevents duplicate when candidate already has active interview (race condition guard)", async () => {

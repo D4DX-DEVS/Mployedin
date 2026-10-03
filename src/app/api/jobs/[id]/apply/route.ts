@@ -11,6 +11,7 @@ import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { escapeHtml } from "@/lib/security/html-escape";
 import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import { inngest } from "@/lib/inngest/client";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -53,7 +54,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const [job, seeker, seekerUser] = await Promise.all([
     Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status screeningQuestions maxApplicants applicantIds").lean(),
     JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl isAgentReferred").lean(),
-    User.findById(ctx.userId).select("email name").lean(),
+    User.findById(ctx.userId).select("name").lean(),
   ]);
 
   if (!job) {
@@ -195,41 +196,25 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     data: { applicationId: String(application._id) },
   }).catch((err) => { logger.error({ err, applicationId: String(application._id) }, "failed to dispatch ai-screen event for easy-apply"); });
 
-  // Send emails (non-blocking — don't fail the response if email errors)
   const seekerName = (seeker as { fullName?: string }).fullName ?? seekerUser?.name ?? "Applicant";
   const applicationId = String(application._id);
 
-  // 1. Confirmation to job seeker
-  if (seekerUser?.email) {
-    sendEmail({
-      to: seekerUser.email,
-      subject: `Application received — ${job.title} at ${company}`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
-        <div style="background:#0a2a6e;padding:20px 24px;text-align:center"><h1 style="color:#fff;margin:0;font-size:20px">MPLOYEDIN</h1></div>
-        <div style="padding:24px">
-          <p>Hi ${seekerName},</p>
-          <p>Your application for <strong>${job.title}</strong> at <strong>${company}</strong> has been received.</p>
-          <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId}</p>
-        </div>
-      </div>`,
-      userId: ctx.userId,
-    }).catch((err) => { logger.error({ err, applicationId, userId: ctx.userId }, "failed to send seeker confirmation email"); });
-  }
-
-  // 2. Alert to employer (only if they have emailNewApplicant enabled or pref is unset)
+  // Alert to employer (non-blocking — don't fail the response if email errors;
+  // only if they have emailNewApplicant enabled or pref is unset)
   const employerPrefs = (employer as { notificationPrefs?: { emailNewApplicant?: boolean } } | null)?.notificationPrefs;
   const shouldNotifyEmployer = employerPrefs?.emailNewApplicant !== false;
   if (shouldNotifyEmployer && employer) {
     const employerUser = await User.findById((employer as { userId: unknown }).userId).select("email name").lean();
     if (employerUser?.email) {
+      // Every value below is typed by a user (the seeker its name, the employer the title and its own name): escaped into the HTML.
       sendEmail({
         to: employerUser.email,
         subject: `New applicant for ${job.title} — ${seekerName}`,
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
           <div style="background:#0a2a6e;padding:20px 24px;text-align:center"><h1 style="color:#fff;margin:0;font-size:20px">MPLOYEDIN</h1></div>
           <div style="padding:24px">
-            <p>Hi ${employerUser.name},</p>
-            <p><strong>${seekerName}</strong> has applied for: <strong>${job.title}</strong>.</p>
+            <p>Hi ${escapeHtml(employerUser.name)},</p>
+            <p><strong>${escapeHtml(seekerName)}</strong> has applied for: <strong>${escapeHtml(job.title)}</strong>.</p>
             <p style="color:#6b7280;font-size:13px">Manage notifications from your employer dashboard settings.</p>
           </div>
         </div>`,
@@ -238,13 +223,16 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }
   }
 
-  // In-app notification to the candidate (parity with POST /api/applications)
+  // In-app notification to the candidate (parity with POST /api/applications).
+  // It is also the candidate's confirmation email: the orchestrator copy is
+  // localized, linked, escaped and follows their notification preferences, so
+  // no separate confirmation is sent from here.
   notifyApplicationReceived(
     ctx.userId,
     "",
     String(job.title ?? "the position"),
     company || "the employer",
-    String(application._id)
+    String(application._id),
   ).catch((err) => { logger.error({ err, applicationId, userId: ctx.userId }, "failed to notify applicant of easy-apply submission"); });
 
   // Fire ActivityEvent (non-blocking — don't fail the response if this errors)

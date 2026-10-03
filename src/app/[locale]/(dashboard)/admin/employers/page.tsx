@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
 import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { PageHero } from "@/components/shared/PageHero";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -32,14 +32,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, UserCog, Building2, MapPin, Mail, UserRoundCheck, UserRoundX } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AssignAgentDialog } from "./_components/AssignAgentDialog";
 import { ChangeRegionDialog } from "./_components/ChangeRegionDialog";
 import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
 import type { EmployerRegionSummary } from "@/lib/agents/territoryCoverage";
 import { useConfirm } from "@/hooks/useConfirm";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 interface Employer {
   _id: string;
@@ -133,7 +133,7 @@ export default function AdminEmployersPage() {
     { header: t("exportColumnIndustry"), key: "industry" },
     { header: t("exportColumnAgent"), key: "assignedAgent", formatter: (v, r) => r.assignedAgent?.name ?? "—" },
     { header: t("exportColumnStatus"), key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
-    { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
@@ -337,6 +337,17 @@ export default function AdminEmployersPage() {
   const canManageRows = can("employers", "update") || can("employers", "delete") || can("employers", "approve");
   const tableColumnCount = canManageRows ? 5 : 4;
 
+  const toggleSort = (col: "companyName" | "industry" | "createdAt") => {
+    if (sortBy === col) {
+      // useUrlFilter's setter takes a value, not an updater.
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(col);
+      setSortOrder(col === "companyName" ? "asc" : "desc");
+    }
+    resetPage();
+  };
+
   // The row's open task goes in plain sight — an agent for a "No agent" row,
   // then verification — else the workspace; everything else sits under More.
   const rowActionsFor = (emp: Employer): { quick: RowAction[]; menu: RowAction[] } => {
@@ -427,82 +438,71 @@ export default function AdminEmployersPage() {
         ]}
       />
 
-      <TableToolbar
-        title={t("directoryTitle")}
-        description={t("directoryDescription")}
-        search={search}
-        onSearchChange={(value) => { setSearch(value); resetPage(); }}
-        searchPlaceholder={t("searchPlaceholder")}
-        hasActiveFilters={agentFilter !== "all" || statusFilter !== "all" || coverageFilter !== "all"}
-        filterContent={(
-          <div className="grid gap-4 sm:max-w-xs">
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-status-filter">
-                {t("statusFilterLabel")}
-              </label>
-              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); resetPage(); }}>
-                <SelectTrigger id="employer-status-filter" className="h-10 rounded-xl bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("statusFilterAll")}</SelectItem>
-                  <SelectItem value="active">{t("statusFilterActive")}</SelectItem>
-                  <SelectItem value="inactive">{t("statusFilterInactive")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-agent-filter">
-                {t("agentFilterLabel")}
-              </label>
-              <Select value={agentFilter} onValueChange={(value) => { setAgentFilter(value); resetPage(); }}>
-                <SelectTrigger id="employer-agent-filter" className="h-10 rounded-xl bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("agentFilterAll")}</SelectItem>
-                  <SelectItem value="none">{t("agentFilterNone")}</SelectItem>
-                  <SelectItem value="any">{t("agentFilterAny")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="employer-coverage-filter">
-                {t("coverageFilterLabel")}
-              </label>
-              <Select value={coverageFilter} onValueChange={(value) => { setCoverageFilter(value); resetPage(); }}>
-                <SelectTrigger id="employer-coverage-filter" className="h-10 rounded-xl bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("coverageFilterAll")}</SelectItem>
-                  <SelectItem value="none">{t("coverageFilterNone")}</SelectItem>
-                  <SelectItem value="covered">{t("coverageFilterCovered")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={
+          search || agentFilter !== "all" || statusFilter !== "all" || coverageFilter !== "all"
+            ? () => { setSearch(""); setAgentFilter("all"); setStatusFilter("all"); setCoverageFilter("all"); resetPage(); }
+            : undefined
+        }
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        right={(
-          <TableSortControl
-            value={sortBy}
-            onValueChange={(value) => { setSortBy(value); resetPage(); }}
-            options={[
-              { value: "companyName", label: t("tableHeaderCompany") },
-              { value: "industry", label: t("tableHeaderIndustry") },
-              { value: "createdAt", label: t("tableHeaderJoined") },
-            ]}
-            order={order}
-            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
-            compact
-          />
-        )}
-      />
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(value) => { setSearch(value); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <InlineSearchSelect
+          options={[
+            { value: "all", label: t("statusFilterAll") },
+            { value: "active", label: t("statusFilterActive") },
+            { value: "inactive", label: t("statusFilterInactive") },
+          ]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={t("statusFilterLabel")}
+          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+        />
+        <InlineSearchSelect
+          options={[
+            { value: "all", label: t("agentFilterAllShort") },
+            { value: "none", label: t("agentFilterNone") },
+            { value: "any", label: t("agentFilterAny") },
+          ]}
+          value={agentFilter}
+          onValueChange={(v) => { setAgentFilter(v); resetPage(); }}
+          placeholder={t("agentFilterLabel")}
+          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+        />
+        <InlineSearchSelect
+          options={[
+            { value: "all", label: t("coverageFilterAllShort") },
+            { value: "none", label: t("coverageFilterNone") },
+            { value: "covered", label: t("coverageFilterCovered") },
+          ]}
+          value={coverageFilter}
+          onValueChange={(v) => { setCoverageFilter(v); resetPage(); }}
+          placeholder={t("coverageFilterLabel")}
+          className="h-11 w-44 rounded-lg text-xs sm:h-9 sm:text-sm"
+        />
+        {/* Phones have no column headers to sort by. */}
+        <TableSortControl
+          value={sortBy}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          options={[
+            { value: "companyName", label: t("tableHeaderCompany") },
+            { value: "industry", label: t("tableHeaderIndustry") },
+            { value: "createdAt", label: t("tableHeaderJoined") },
+          ]}
+          order={order}
+          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+          compact
+        />
+      </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={fetchEmployers} />
@@ -511,10 +511,10 @@ export default function AdminEmployersPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="min-w-[220px]"><SortableTableHeader label={t("tableHeaderCompany")} active={sortBy === "companyName"} order={order} onClick={() => { setSortBy("companyName"); setSortOrder(sortBy === "companyName" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
-              <TableHead className="min-w-[120px]"><SortableTableHeader label={t("tableHeaderIndustry")} active={sortBy === "industry"} order={order} onClick={() => { setSortBy("industry"); setSortOrder(sortBy === "industry" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead className="min-w-[220px]"><SortableTableHeader label={t("tableHeaderCompany")} active={sortBy === "companyName"} order={order} onClick={() => toggleSort("companyName")} /></TableHead>
+              <TableHead className="min-w-[120px]"><SortableTableHeader label={t("tableHeaderIndustry")} active={sortBy === "industry"} order={order} onClick={() => toggleSort("industry")} /></TableHead>
               <TableHead className="min-w-[160px]">{t("tableHeaderAgent")}</TableHead>
-              <TableHead className="whitespace-nowrap"><SortableTableHeader label={t("tableHeaderJoined")} active={sortBy === "createdAt"} order={order} onClick={() => { setSortBy("createdAt"); setSortOrder(sortBy === "createdAt" && order === "asc" ? "desc" : "asc"); resetPage(); }} /></TableHead>
+              <TableHead className="whitespace-nowrap"><SortableTableHeader label={t("tableHeaderJoined")} active={sortBy === "createdAt"} order={order} onClick={() => toggleSort("createdAt")} /></TableHead>
               {canManageRows && (
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               )}
@@ -596,7 +596,7 @@ export default function AdminEmployersPage() {
                       : emp.region ? t("regionUncovered") : t("regionMissing")}
                   </p>
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(new Date(emp.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatListDate(new Date(emp.createdAt), locale)}</TableCell>
                 {canManageRows && (
                   <TableCell className="text-right">
                     <RowActions name={emp.companyName || emp.name || ""} {...rowActionsFor(emp)} />

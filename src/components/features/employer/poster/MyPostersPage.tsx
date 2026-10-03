@@ -157,24 +157,23 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
               return (
                 <div
                   key={poster._id}
-                  onClick={() => reuseHref && router.push(reuseHref)}
-                  onKeyDown={(e) => {
-                    if (!reuseHref) return;
-                    if (e.target !== e.currentTarget && (e.target as Element).closest("a,button")) return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      router.push(reuseHref);
-                    }
-                  }}
-                  role={reuseHref ? "button" : undefined}
-                  tabIndex={reuseHref ? 0 : undefined}
-                  aria-label={reuseHref ? t("reusePosterLabel", { job: poster.jobId?.title || t("untitledJob") }) : undefined}
-                  className={`group relative rounded-xl border overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${reuseHref ? "cursor-pointer" : ""}`}
+                  className="group relative rounded-xl border overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow focus-within:ring-2 focus-within:ring-ring"
                 >
-                  {/* Composed poster thumbnail (background + branding/text overlay) */}
-                  <div className="aspect-square relative" style={{ containerType: "size" }} aria-hidden="true">
+                  {/* Opens this poster in the editor. A link stretched under the
+                      card, so View and Delete below are its siblings — a card
+                      that was itself a button held buttons inside a button. */}
+                  {reuseHref && (
+                    <Link
+                      href={reuseHref}
+                      aria-label={t("reusePosterLabel", { job: poster.jobId?.title || t("untitledJob") })}
+                      className="absolute inset-0 z-0 focus-visible:outline-none"
+                    />
+                  )}
+                  {/* Composed poster thumbnail (background + branding/text overlay).
+                      Clicks pass through to the link; only the actions take them. */}
+                  <div className="aspect-square relative pointer-events-none" style={{ containerType: "size" }}>
                     {thumb ? (
-                      <>
+                      <div aria-hidden="true">
                         <div
                           className="absolute inset-0 bg-cover bg-center"
                           style={{ backgroundImage: `url(${thumb})` }}
@@ -187,16 +186,16 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                           format="instagram-post"
                           style={poster.styleOverrides}
                         />
-                      </>
+                      </div>
                     ) : (
-                      <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                      <div className="absolute inset-0 bg-muted flex items-center justify-center" aria-hidden="true">
                         <Image className="w-8 h-8 text-muted-foreground" />
                       </div>
                     )}
-                    {/* Hover actions — also shown on touch (no hover there) and
-                        when keyboard focus lands on them, or the overlay's
-                        Delete would be unreachable outside a mouse. */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 focus-within:opacity-100 max-sm:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    {/* Hover actions — always shown on touch screens of any size
+                        (no hover there: invisible buttons still took taps), and
+                        whenever keyboard focus is anywhere on the card. */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       {poster.shareSlug && (
                         <a
                           href={buildPosterShareUrl(poster.shareSlug)}
@@ -204,7 +203,7 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           aria-label={t("viewPosterLabel", { job: poster.jobId?.title || t("untitledJob") })}
-                          className="p-2 rounded-full bg-white/20 hover:bg-white/30"
+                          className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/30"
                         >
                           <ExternalLink className="w-4 h-4 text-white" aria-hidden="true" />
                         </a>
@@ -220,15 +219,15 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                           if (ok) deleteMutation.mutate(poster._id);
                         }}
                         aria-label={t("deleteLabel")}
-                        className="p-2 rounded-full bg-white/20 hover:bg-red-500/50"
+                        className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-red-500/50"
                       >
-                        <Trash2 className="w-4 h-4 text-white" />
+                        <Trash2 className="w-4 h-4 text-white" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
 
                   {/* Info */}
-                  <div className="p-3 space-y-1.5">
+                  <div className="p-3 space-y-1.5 pointer-events-none">
                     <p className="text-sm font-medium truncate">
                       {poster.jobId?.title || t("untitledJob")}
                     </p>

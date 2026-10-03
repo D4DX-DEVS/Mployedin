@@ -35,6 +35,10 @@ jest.mock("@/lib/notifications/trigger", () => ({
   notifyInterviewScheduled: jest.fn(() => Promise.resolve(undefined)),
 }));
 
+jest.mock("@/lib/interviews/sendInvite", () => ({
+  sendInterviewInvite: jest.fn(() => Promise.resolve(true)),
+}));
+
 jest.mock("@/lib/logger", () => ({
   __esModule: true,
   default: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() },
@@ -61,9 +65,21 @@ jest.mock("@/models/Employer", () => ({
   Employer: { findOne: jest.fn(), findById: jest.fn() },
 }));
 
-const SCHEDULED_AT = "2026-10-05T06:00:00.000Z";
+// The route's zod schema rejects a time in the past, so the booking has to be
+// computed from the clock. Always a Monday at 06:00 UTC (10:00 in Asia/Dubai):
+// the availability test below relies on it not being the Sunday its candidate is
+// available on. It lies more than 30 hours out (two days ahead, then moved back
+// to 06:00 of that day at worst, then on to the Monday), so it is always in the
+// future and outside the 25-hour reminder window.
+function nextMonday(): string {
+  const d = new Date(Date.now() + 2 * 86_400_000);
+  d.setUTCHours(6, 0, 0, 0);
+  while (d.getUTCDay() !== 1) d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString();
+}
+const SCHEDULED_AT = nextMonday();
 
-async function post(seekerSettings: Record<string, unknown>, conflict: unknown) {
+async function post(seekerSettings: Record<string, unknown>, conflict: unknown, scheduledAt: string = SCHEDULED_AT) {
   const Application = (await import("@/models/Application")).default as never as {
     findById: jest.Mock;
   };
@@ -95,7 +111,7 @@ async function post(seekerSettings: Record<string, unknown>, conflict: unknown) 
   const req = new NextRequest("http://localhost/api/interviews", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ applicationId: APP_ID, type: "video", scheduledAt: SCHEDULED_AT, duration: 30 }),
+    body: JSON.stringify({ applicationId: APP_ID, type: "video", scheduledAt, duration: 30 }),
   });
   const res = await POST(req, { params: Promise.resolve({}) } as never);
   const payload = res.status === 201 ? {} : await res.clone().json();
@@ -142,5 +158,61 @@ describe("POST /api/interviews double-booking guard", () => {
       null,
     );
     expect(res.status).toBe(201);
+  });
+});
+
+describe("POST /api/interviews emails the candidate once", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("sends the calendar invitation and keeps notify() to in-app and WhatsApp", async () => {
+    const { res } = await post({ instantBooking: false }, null);
+    expect(res.status).toBe(201);
+    const { sendInterviewInvite } = await import("@/lib/interviews/sendInvite");
+    const { notifyInterviewScheduled } = await import("@/lib/notifications/trigger");
+    expect(sendInterviewInvite).toHaveBeenCalledWith("iv_new", "en");
+    expect(notifyInterviewScheduled).toHaveBeenCalledWith(
+      "u1",
+      "Accountant",
+      new Date(SCHEDULED_AT),
+      "TBD",
+      "iv_new",
+      { sendEmail: false },
+    );
+  });
+});
+
+describe("POST /api/interviews reminder flag", () => {
+  beforeEach(() => jest.clearAllMocks());
+  const HOUR = 3_600_000;
+  const created = (Interview: { create: jest.Mock }) => Interview.create.mock.calls[0][0] as { reminderSent: boolean };
+
+  // The hourly cron sends the "24 hour" reminder to every interview less than
+  // 24 h away that is not marked reminded, and its text is the booking notice.
+  // One booked inside the window would get the invitation and then, within the
+  // hour, the same message again.
+  it("marks an interview booked 3 hours ahead as already reminded", async () => {
+    const { res, Interview } = await post({ instantBooking: false }, null, new Date(Date.now() + 3 * HOUR).toISOString());
+    expect(res.status).toBe(201);
+    expect(created(Interview).reminderSent).toBe(true);
+  });
+
+  it("leaves an interview booked 3 days ahead for the 24 hour reminder", async () => {
+    const { res, Interview } = await post({ instantBooking: false }, null, new Date(Date.now() + 72 * HOUR).toISOString());
+    expect(res.status).toBe(201);
+    expect(created(Interview).reminderSent).toBe(false);
+  });
+
+  // The cron runs hourly, so a slot booked 24.5 h ahead crosses the 24 h line
+  // before its next run and would still get the reminder.
+  it("marks an interview booked 24.5 hours ahead as already reminded", async () => {
+    const { res, Interview } = await post({ instantBooking: false }, null, new Date(Date.now() + 24.5 * HOUR).toISOString());
+    expect(res.status).toBe(201);
+    expect(created(Interview).reminderSent).toBe(true);
+  });
+
+  it("leaves an interview booked 26 hours ahead for the 24 hour reminder", async () => {
+    const { res, Interview } = await post({ instantBooking: false }, null, new Date(Date.now() + 26 * HOUR).toISOString());
+    expect(res.status).toBe(201);
+    expect(created(Interview).reminderSent).toBe(false);
   });
 });

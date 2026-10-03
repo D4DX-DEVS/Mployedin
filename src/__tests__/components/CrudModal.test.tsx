@@ -111,3 +111,72 @@ describe("CrudModal error surfacing", () => {
     expect(input).toHaveAttribute("type", "password");
   });
 });
+
+describe("CrudModal steps", () => {
+  const stepFields: CrudField[] = [
+    { name: "company", label: "Company", type: "text", required: true },
+    { name: "contact", label: "Contact", type: "text", required: true },
+    { name: "email", label: "Email", type: "email" },
+    { name: "notes", label: "Notes", type: "textarea" },
+    { name: "extra", label: "Extra", type: "text" },
+  ];
+  const steps = [
+    { label: "Who", fields: ["company", "contact", "email"] },
+    { label: "Deal", fields: ["notes"] },
+  ];
+
+  function renderSteps(onSubmit = jest.fn(async () => {})) {
+    const user = userEvent.setup();
+    render(<CrudModal open onClose={() => {}} title="New Lead" fields={stepFields} steps={steps} onSubmit={onSubmit} />);
+    return { user, onSubmit };
+  }
+
+  it("shows only the first step's fields, with Next instead of Create", () => {
+    renderSteps();
+    expect(screen.getByLabelText(/Company/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Notes/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create" })).not.toBeInTheDocument();
+  });
+
+  it("names every empty required field and stays on the step", async () => {
+    const { user } = renderSteps();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Fill in Company and Contact to continue.");
+    expect(screen.queryByLabelText(/Notes/)).not.toBeInTheDocument();
+  });
+
+  it("rejects a malformed optional email before moving on", async () => {
+    const { user } = renderSteps();
+    await user.type(screen.getByLabelText(/Company/), "Acme");
+    await user.type(screen.getByLabelText(/Contact/), "Sara");
+    await user.type(screen.getByLabelText(/Email/), "sara@");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/valid email/);
+  });
+
+  it("keeps values across Back and submits every field, unlisted ones on the last step", async () => {
+    const { user, onSubmit } = renderSteps();
+    await user.type(screen.getByLabelText(/Company/), "Acme");
+    await user.type(screen.getByLabelText(/Contact/), "Sara");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    // A field no step lists is not dropped: it lands on the last step.
+    expect(screen.getByLabelText(/Extra/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Notes/), "Met at expo");
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByLabelText(/Company/)).toHaveValue("Acme");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith({ company: "Acme", contact: "Sara", email: "", notes: "Met at expo", extra: "" });
+  });
+
+  it("shows a server rejection on the step the user is on", async () => {
+    const { user } = renderSteps(jest.fn(async () => { throw new FormError("This lead already exists."); }));
+    await user.type(screen.getByLabelText(/Company/), "Acme");
+    await user.type(screen.getByLabelText(/Contact/), "Sara");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("This lead already exists."));
+  });
+});

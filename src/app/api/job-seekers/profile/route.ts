@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/audit/log";
 import ConsentLog from "@/models/ConsentLog";
 import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
+import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import { recomputeCompleteness } from "@/lib/jobSeeker/persistCompleteness";
@@ -185,6 +186,8 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   if (name) userUpdate.name = name;
   if (phone) userUpdate.phone = phone;
   if (Object.keys(userUpdate).length > 0) {
+    // A new number invalidates the WhatsApp id learned for the old one.
+    if (userUpdate.phone) await forgetWaIdOnPhoneChange(ctx.userId, userUpdate.phone);
     await User.findByIdAndUpdate(ctx.userId, userUpdate);
   }
 

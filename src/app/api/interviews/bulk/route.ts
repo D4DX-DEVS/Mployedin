@@ -12,6 +12,7 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { conflictWindow, findOverlap, type ExistingInterview } from "@/lib/interviews/conflict";
 import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
+import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
 import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import logger from "@/lib/logger";
 
@@ -234,7 +235,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         location: location ?? null,
         meetLink: resolveMeetingLink(type, meetLink) ?? null,
         status: "scheduled",
-        reminderSent: false,
+        // Per slot: the invitation below is the announcement, and the hourly
+        // cron's "24 hour" reminder would repeat it for a slot less than 24 h
+        // away. The 1 hour reminder still fires.
+        reminderSent: isInsideReminderWindow(candidateTime),
       });
 
       await Application.findByIdAndUpdate(candidate.applicationId, {
@@ -252,14 +256,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
       const seeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean() as { userId?: unknown } | null;
 
-      // Fire notification (non-blocking)
+      // Fire notification (non-blocking). The calendar invitation below is the
+      // candidate's email for this booking, so this keeps to in-app and WhatsApp.
       if (seeker?.userId) {
         notifyInterviewScheduled(
           String(seeker.userId),
           job?.title ?? "Interview",
           candidateTime,
           location ?? meetLink ?? "TBD",
-          String(interview._id)
+          String(interview._id),
+          { sendEmail: false },
         ).catch((err) =>
           logger.error({ err, interviewId: String(interview._id) }, "failed to notify interview scheduled (bulk)"));
       }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -22,7 +22,7 @@ import {
 import {
   Shield, Download, Trash2, Eye, FileText, UserCheck, Clock, AlertTriangle, CheckCircle2, XCircle, ShieldCheck, Users, CalendarDays,
 } from "lucide-react";
-import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
+import { formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -91,6 +91,7 @@ const CONSENT_TYPE_VALUES = ["terms_and_privacy", "cookies", "marketing"] as con
 
 export default function AdminGdprPage() {
   const t = useTranslations("adminGdpr");
+  const locale = useLocale();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [activeTab, setActiveTab] = useState<"requests" | "consent">("requests");
   const [requests, setRequests] = useState<GdprRequest[]>([]);
@@ -368,7 +369,7 @@ export default function AdminGdprPage() {
             <p className="text-sm font-semibold text-foreground">{t("termsVersionTitle")}</p>
             <p className="text-sm text-muted-foreground">
               {t("termsVersionSummary", {
-                date: formatDate(new Date(termsSummary.version)),
+                date: formatListDate(new Date(termsSummary.version), locale),
                 accepted: termsSummary.acceptedUsers,
                 total: termsSummary.totalUsers,
               })}
@@ -447,7 +448,7 @@ export default function AdminGdprPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableHead>{t("userColumnHeader")}</TableHead>
                       <TableHead>{t("requestTypeColumnHeader")}</TableHead>
                       <TableHead>{t("statusColumnHeader")}</TableHead>
@@ -479,7 +480,7 @@ export default function AdminGdprPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableHead>{t("userColumnHeader")}</TableHead>
                       <TableHead>{t("requestTypeColumnHeader")}</TableHead>
                       <TableHead>{t("statusColumnHeader")}</TableHead>
@@ -514,8 +515,8 @@ export default function AdminGdprPage() {
                           </span>
                         </TableCell>
                         <TableCell><StatusBadge status={r.status} /></TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(r.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{r.completedAt ? formatDate(new Date(r.completedAt), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatListDate(new Date(r.createdAt), locale)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{r.completedAt ? formatListDate(new Date(r.completedAt), locale) : "—"}</TableCell>
                         <TableCell className="text-right">
                           <RowActions
                             name={r.userName}
@@ -554,7 +555,7 @@ export default function AdminGdprPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableHead>{t("consentUserColumnHeader")}</TableHead>
                       <TableHead>{t("consentTypeColumnHeader")}</TableHead>
                       <TableHead>{t("grantedColumnHeader")}</TableHead>
@@ -578,7 +579,7 @@ export default function AdminGdprPage() {
                           <p>{CONSENT_TYPE_LABELS[c.consentType] ?? c.consentType.replace(/_/g, " ")}</p>
                           {c.policyVersion ? (
                             <p className="text-xs text-muted-foreground">
-                              {t("consentPolicyVersion", { date: formatDate(new Date(c.policyVersion)) })}
+                              {t("consentPolicyVersion", { date: formatListDate(new Date(c.policyVersion), locale) })}
                             </p>
                           ) : null}
                         </TableCell>

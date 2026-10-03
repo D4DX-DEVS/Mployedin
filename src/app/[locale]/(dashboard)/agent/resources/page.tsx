@@ -17,7 +17,7 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { formatFileSize } from "@/lib/ui/fileSize";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
@@ -173,7 +173,7 @@ export default function ResourceDownloadsPage() {
                       ))}
                     </div>
 
-                    <p className="text-xs text-muted-foreground">{formatDate(new Date(item.createdAt))}</p>
+                    <p className="text-xs text-muted-foreground">{formatListDate(item.createdAt)}</p>
                   </div>
                 </article>
               );

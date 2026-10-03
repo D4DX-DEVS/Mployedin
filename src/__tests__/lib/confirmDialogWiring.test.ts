@@ -36,6 +36,14 @@ function sourceFiles(): string[] {
   return files;
 }
 
+/** The node is renamed too: `const { ConfirmDialogNode: ConfirmWithdrawNode } = useConfirm()`. */
+function nodeName(source: string): string {
+  const aliased = source.match(
+    /const\s*\{[^}]*ConfirmDialogNode\s*:\s*(\w+)[^}]*\}\s*=\s*useConfirm\s*\(/
+  );
+  return aliased ? aliased[1] : "ConfirmDialogNode";
+}
+
 /** The hook is routinely renamed: `const { confirm: confirmDialog } = useConfirm()`. */
 function confirmFnName(source: string): string {
   const aliased = source.match(
@@ -58,7 +66,7 @@ describe("useConfirm wiring", () => {
       .filter((file) => {
         const source = fs.readFileSync(file, "utf8");
         // Destructuring the node but never placing it in the tree is the same bug.
-        return !/\{\s*ConfirmDialogNode\s*\}/.test(source);
+        return !new RegExp(`\\{\\s*${nodeName(source)}\\s*\\}`).test(source);
       })
       .map((file) => path.relative(process.cwd(), file).split(path.sep).join("/"));
 

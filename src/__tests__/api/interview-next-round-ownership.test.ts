@@ -85,11 +85,11 @@ jest.mock("@/models/Agent", () => ({
 
 import { POST } from "@/app/api/interviews/[id]/next-round/route";
 
-function post() {
+function post(scheduledAt: string = new Date(Date.now() + 86_400_000).toISOString()) {
   return POST(
     new NextRequest(`http://localhost/api/interviews/${PREV}/next-round`, {
       method: "POST",
-      body: JSON.stringify({ scheduledAt: new Date(Date.now() + 86_400_000).toISOString(), type: "video" }),
+      body: JSON.stringify({ scheduledAt, type: "video" }),
       headers: { "content-type": "application/json" },
     }),
     { params: Promise.resolve({ id: PREV }) } as never,
@@ -127,4 +127,33 @@ it("lets the owning employer schedule the next round", async () => {
   const res = await post();
   expect(res.status).toBeLessThan(300);
   expect(interviewCreate).toHaveBeenCalled();
+});
+
+/**
+ * The hourly cron sends its "24 hour" reminder, whose text is the booking notice,
+ * to every interview less than 24 h away that is not marked reminded. A next
+ * round booked inside that window (plus one cron interval) gets the booking
+ * notice from the route and would get it again within the hour.
+ */
+describe("the reminder flag of a booked next round", () => {
+  const HOUR = 3_600_000;
+  const book = async (hoursAhead: number) => {
+    callerEmployer = OWNER_EMP;
+    currentCtx = { userId: "6", role: "employer", locale: "en" };
+    const res = await post(new Date(Date.now() + hoursAhead * HOUR).toISOString());
+    expect(res.status).toBe(201);
+    return interviewCreate.mock.calls[0][0] as { reminderSent: boolean };
+  };
+
+  it("marks a round booked 3 hours ahead as already reminded", async () => {
+    expect((await book(3)).reminderSent).toBe(true);
+  });
+
+  it("marks a round booked 24.5 hours ahead as already reminded", async () => {
+    expect((await book(24.5)).reminderSent).toBe(true);
+  });
+
+  it("leaves a round booked 3 days ahead for the 24 hour reminder", async () => {
+    expect((await book(72)).reminderSent).toBe(false);
+  });
 });

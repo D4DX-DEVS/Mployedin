@@ -263,7 +263,7 @@ export default function ContactSubmissionsPage() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
+              <TableRow className="border-border/80 bg-muted/30 hover:bg-muted/30">
                 <TableHead className="w-[30px]"></TableHead>
 <TableHead>
                   <SortableTableHeader label={t("tableHeaderName")} active={sortBy === "name"} order={sortOrder} onClick={() => sortByColumn("name")} />

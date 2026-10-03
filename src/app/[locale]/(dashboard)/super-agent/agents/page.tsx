@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
@@ -503,7 +504,14 @@ export default function SuperAgentAgentsPage() {
                 <TableRow
                   key={a._id}
                   className="group cursor-pointer transition-colors"
-                  onClick={() => router.push(`/${locale}/super-agent/agents/${a.agentId}`)}
+                  onClick={(e) => {
+                    // Phones: the row is a collapsible card and its tap expands
+                    // it, so it must not also navigate; the name link opens the
+                    // agent there (and for keyboard users everywhere).
+                    if (e.currentTarget.hasAttribute("data-mobile-collapsible") && window.matchMedia("(max-width: 639px)").matches) return;
+                    if ((e.target as HTMLElement).closest("a, button, [data-table-action]")) return;
+                    router.push(`/${locale}/super-agent/agents/${a.agentId}`);
+                  }}
                 >
                   <TableCell>
                     {/* `grid`, not `flex-col`: the card layout re-flows any
@@ -514,7 +522,15 @@ export default function SuperAgentAgentsPage() {
                     <div className="flex min-w-0 items-center gap-3">
                       <UserAvatar name={a.name} email={a.email} className="h-9 w-9 shrink-0" colorful />
                       <div className="grid w-full min-w-0 gap-1 max-sm:pe-12">
-                        <p className="truncate font-medium text-foreground">{a.name}</p>
+                        <Link
+                          href={`/${locale}/super-agent/agents/${a.agentId}`}
+                          // `!`: the phone card table centres every link as an
+                          // inline-flex button (globals.css), which pulled the name
+                          // off its avatar.
+                          className="truncate !justify-start font-medium text-foreground hover:text-primary hover:underline"
+                        >
+                          {a.name}
+                        </Link>
                         <p className="flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground">
                           <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
                           <span className="truncate">{a.email}</span>

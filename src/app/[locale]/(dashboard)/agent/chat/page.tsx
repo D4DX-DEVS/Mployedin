@@ -6,6 +6,7 @@ import { AgentSectionTabs, AGENT_INBOX_TABS } from "@/components/features/agent/
 import { ChevronLeft, Hash, Loader2, Send, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { formatTime as formatIntlTime } from "@/lib/ui/intlFormat";
 
 interface Message {
   _id: string;
@@ -32,7 +33,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 function formatTime(iso: string) {
-  return new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  return formatIntlTime(iso, { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function AgentChatPage() {

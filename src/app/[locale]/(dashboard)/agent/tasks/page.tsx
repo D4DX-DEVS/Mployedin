@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -14,12 +13,17 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { readQuery } from "@/lib/ui/urlQuery";
 import {
   Plus, Clock, AlertCircle, CheckCircle2,
-  Trash2, Edit, Calendar, RotateCcw, Search, Inbox, Star,
+  Trash2, Calendar, Star,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { RowActions } from "@/components/shared/RowActions";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBodySkeleton } from "@/components/ui/loading";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -47,14 +51,16 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: "text-emerald-600 bg-emerald-50",
 };
 
-const getStatusOptions = (t: any) => [
-  { value: "all", label: t("statusAll") },
+type TranslationFunction = ReturnType<typeof useTranslations>;
+
+const getStatusOptions = (t: TranslationFunction) => [
+  { value: "all", label: t("filterAllStatuses") },
   { value: "pending", label: t("statusPending") },
   { value: "in_progress", label: t("statusInProgress") },
   { value: "completed", label: t("statusCompleted") },
 ];
 
-const getCategoryOptions = (t: any) => [
+const getCategoryOptions = (t: TranslationFunction) => [
   { value: "follow_up", label: t("categoryFollowUp") },
   { value: "call", label: t("categoryCall") },
   { value: "meeting", label: t("categoryMeeting") },
@@ -62,7 +68,7 @@ const getCategoryOptions = (t: any) => [
   { value: "other", label: t("categoryOther") },
 ];
 
-const getPriorityOptions = (t: any) => [
+const getPriorityOptions = (t: TranslationFunction) => [
   { value: "high", label: t("priorityHigh") },
   { value: "medium", label: t("priorityMedium") },
   { value: "low", label: t("priorityLow") },
@@ -252,107 +258,128 @@ export default function AgentTasksPage() {
         </section>
       )}
 
-      {/* One panel: the filter row was a card of its own holding nothing but a
-          search box, a select and Reset, stacked above the list it filters. */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        {/* Wraps rather than stacks on phones, so the status dropdown and Reset
-            share a line with the search box (see [data-table-toolbar] in globals.css). */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4" data-table-toolbar="simple">
-          <div className="relative toolbar-search-field flex-1">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9" />
-          </div>
-          <SearchableSelect options={getStatusOptions(t)} value={statusFilter} onValueChange={setStatusFilter} placeholder={tc("status")} className="w-36" />
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); }} className="min-h-11 min-w-11">
-            <RotateCcw className="me-1 h-4 w-4" /> {t("resetButton")}
-          </Button>
-        </div>
+      {/* Filters */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={(search || statusFilter !== "all" || dueFilter !== "all") ? () => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); resetPage(); } : undefined}
+      >
+        <InlineFilterSearch
+          value={search}
+          onChange={(v) => { setSearch(v); resetPage(); }}
+          placeholder={t("searchPlaceholder")}
+        />
+        <SearchableSelect
+          options={getStatusOptions(t)}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          placeholder={tc("status")}
+          ariaLabel={tc("status")}
+          className={INLINE_FILTER_CONTROL}
+        />
+      </InlineFilterBar>
 
-        <div className="pt-4">
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel card-pad rounded-2xl">
-                <div className="flex items-start gap-3">
-                  <Skeleton className="mt-0.5 h-5 w-5 rounded" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("emptyStateTitle")}</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">{t("emptyStateDescription")}</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {tasks.map((task) => (
-              <div
-                key={task._id}
-                className={`workspace-glass-panel rounded-2xl transition-all ${ task.status === "completed" ? "opacity-60" : "" } card-pad`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <button
-                      type="button"
-                      onClick={() => updateTaskStatus(task._id, task.status === "completed" ? "pending" : "completed")}
-                      aria-pressed={task.status === "completed"}
-                      aria-label={task.status === "completed" ? t("markPending") : t("markComplete")}
-                      className={`tap-target-box mt-0.5 flex h-5 w-5 items-center justify-center rounded border-2 transition-colors ${
-                        task.status === "completed"
-                          ? "border-emerald-500 bg-emerald-500 text-white"
-                          : "border-muted-foreground/30 hover:border-primary"
-                      }`}
-                    >
-                      {task.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
-                    </button>
-                    <div>
-                      <p className={`text-sm font-medium ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                        {task.title}
-                      </p>
-                      {task.description && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{task.description}</p>
-                      )}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
+      {/* Table section */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="min-w-[200px]">{t("columnTask")}</TableHead>
+                {/* Was headed "Status" over the priority badge and "Date" over the due date. */}
+                <TableHead className="w-[100px]">{t("priorityPlaceholder")}</TableHead>
+                <TableHead className="w-[120px]">{t("columnDueDate")}</TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableBodySkeleton rows={5} cols={4} />
+              ) : tasks.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="py-12">
+                    <EmptyState
+                      title={t("emptyStateTitle")}
+                      description={t("emptyStateDescription")}
+                      icon={Calendar}
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tasks.map((task) => (
+                  <TableRow key={task._id} className={`group ${task.status === "completed" ? "opacity-60" : ""}`}>
+                    <TableCell>
+                      <div className="flex min-w-0 items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => updateTaskStatus(task._id, task.status === "completed" ? "pending" : "completed")}
+                          aria-pressed={task.status === "completed"}
+                          aria-label={task.status === "completed" ? t("markPending") : t("markComplete")}
+                          // `!min-*-0`: the phone 44px button floor exempts only
+                          // role="checkbox", so this toggle drew as a 44px empty
+                          // box. tap-target-box keeps the 44px hit area.
+                          className={`tap-target-box mt-0.5 flex h-5 w-5 shrink-0 !min-h-0 !min-w-0 items-center justify-center rounded border-2 transition-colors ${
+                            task.status === "completed"
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-muted-foreground/30 hover:border-primary"
+                          }`}
+                        >
+                          {task.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
+                        </button>
+                        <div className="min-w-0">
+                          <p className={`text-sm font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                            {task.title}
+                          </p>
+                          {task.description && (
+                            <p className="mt-0.5 text-xs text-muted-foreground truncate">{task.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
                           {t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
                         </span>
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
-                          {t(`categoryLabel${task.category.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`)}
-                        </span>
-                        {task.dueDate && (
-                          <span className={`inline-flex items-center gap-1 text-[11px] ${
-                            new Date(task.dueDate) < new Date() && task.status !== "completed"
-                              ? "text-red-500 font-semibold"
-                              : "text-muted-foreground"
-                          }`}>
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(new Date(task.dueDate))}
-                          </span>
-                        )}
                       </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {task.status !== "completed" && task.status !== "in_progress" && (
-                      <Button variant="ghost" size="sm" onClick={() => updateTaskStatus(task._id, "in_progress")} aria-label={t("markInProgress")}>
-                        <Star className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => deleteTask(task._id)} aria-label={tc("delete")}>
-                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {task.dueDate ? (
+                        <span className={`inline-flex items-center gap-1 whitespace-nowrap ${
+                          new Date(task.dueDate) < new Date() && task.status !== "completed"
+                            ? "text-red-500 font-semibold"
+                            : ""
+                        }`}>
+                          <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          {formatListDate(new Date(task.dueDate))}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <RowActions
+                        name={task.title}
+                        quick={task.status !== "completed" && task.status !== "in_progress" ? [{
+                          key: "star",
+                          label: t("markInProgress"),
+                          icon: Star,
+                          iconOnly: true,
+                          onSelect: () => { void updateTaskStatus(task._id, "in_progress"); },
+                        }] : []}
+                        menu={[
+                          {
+                            key: "delete",
+                            label: tc("delete"),
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () => { void deleteTask(task._id); },
+                          },
+                        ]}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </section>
 

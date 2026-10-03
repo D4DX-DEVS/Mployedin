@@ -38,7 +38,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Inbox } from "lucide-react";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 
 interface AgentRef {
@@ -201,7 +201,7 @@ export default function AdminSuperAgentsPage() {
     { header: t("exportHeaderAgents"), key: "superAgentProfile" as keyof SuperAgent, formatter: (_v, r) => String((r as unknown as SuperAgent).superAgentProfile?.agentCount ?? 0) },
     { header: t("exportHeaderOverridePercent"), key: "superAgentProfile" as keyof SuperAgent, formatter: (_v, r) => String((r as unknown as SuperAgent).superAgentProfile?.overrideCommissionRate ?? 0) },
     { header: t("exportHeaderStatus"), key: "isActive", formatter: (v) => v !== false ? t("exportStatusActive") : t("exportStatusInactive") },
-    { header: t("exportHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : t("exportDashCharacter") },
+    { header: t("exportHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : t("exportDashCharacter") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: superAgents as unknown as Record<string, unknown>[],
@@ -588,7 +588,7 @@ export default function AdminSuperAgentsPage() {
                     ? `${sa.superAgentProfile.overrideCommissionRate}%`
                     : t("exportDashCharacter")}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(sa.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatListDate(new Date(sa.createdAt), locale)}</TableCell>
                 {(can("super_agents", "update") || can("super_agents", "delete")) && (
                   <TableCell className="text-right">
                     <RowActions name={sa.name} {...rowActionsFor(sa)} />

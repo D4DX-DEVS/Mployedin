@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
@@ -8,6 +9,7 @@ import { validateBody } from "@/lib/validators";
 import { communicationSchema } from "@/lib/validators/admin";
 import { inngest } from "@/lib/inngest/client";
 import { broadcastRecipientQuery } from "@/lib/communications/broadcastAudience";
+import { getWhatsAppSettings } from "@/models/SystemConfig";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -18,6 +20,25 @@ interface BroadcastAuditMeta {
   channels?: string[];
   recipientCount?: number;
   targetRoles?: string[] | "all";
+  targetAll?: boolean;
+  /** Set only when the WhatsApp channel was selected. */
+  whatsappTemplate?: string;
+}
+
+/** How long a second identical broadcast by the same admin is refused. */
+const DUPLICATE_WINDOW_MS = 60_000;
+
+/**
+ * A broadcast's identity for the duplicate guard: subject, message, audience
+ * (`targetRoles` and `targetAll`), channels and, with the WhatsApp channel, the
+ * template, as its audit entry records them, order-insensitive. An empty role
+ * list is the same as "all". Another template is another broadcast.
+ */
+function broadcastKey(meta: BroadcastAuditMeta): string {
+  const roles = Array.isArray(meta.targetRoles) && meta.targetRoles.length > 0 ? [...meta.targetRoles].sort() : "all";
+  const channels = [...(meta.channels ?? [])].sort();
+  const template = channels.includes("whatsapp") ? (meta.whatsappTemplate ?? "") : "";
+  return JSON.stringify([meta.title ?? "", meta.message ?? "", roles, channels, Boolean(meta.targetAll), template]);
 }
 
 async function getHandler(_req: NextRequest, ctx: AuthCtx) {
@@ -66,13 +87,38 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   if (req.method === "POST") {
-    const { targetRoles, targetAll, message, title, channels } = await validateBody(req, communicationSchema);
+    const { targetRoles, targetAll, message, title, channels, whatsapp } = await validateBody(req, communicationSchema);
 
     if (!message || !title) {
       return NextResponse.json({ error: "title and message required" }, { status: 400 });
     }
 
     const selectedChannels = channels ?? ["in_app"];
+    // With the master switch off the WhatsApp leg would skip every recipient: say so instead of queuing a silent no-op.
+    if (selectedChannels.includes("whatsapp") && !(await getWhatsAppSettings()).enabled) {
+      return NextResponse.json({ error: "whatsapp_disabled" }, { status: 409 });
+    }
+
+    // A double click, a retry after a slow answer or a second tab must not mail every user twice. Each send
+    // writes one audit entry (the History tab's): the same broadcast by this admin within the window is refused.
+    const key = broadcastKey({
+      title,
+      message,
+      targetRoles: targetRoles ?? "all",
+      targetAll: Boolean(targetAll),
+      channels: selectedChannels,
+      whatsappTemplate: selectedChannels.includes("whatsapp") ? whatsapp?.templateName : undefined,
+    });
+    const recent = await AuditLog.find({ action: "communication.broadcast", actorId: ctx.userId, createdAt: { $gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) } })
+      .select("meta")
+      .lean();
+    if (recent.some((entry) => broadcastKey((entry.meta ?? {}) as BroadcastAuditMeta) === key)) {
+      return NextResponse.json({ error: "duplicate_broadcast" }, { status: 409 });
+    }
+
+    const broadcastId = randomUUID();
+    // A template that arrived without the channel is not part of this send.
+    const waLeg = selectedChannels.includes("whatsapp") ? whatsapp : undefined;
 
     // Count recipients cheaply (index-only) for the response; the actual
     // per-user notification + email fan-out is offloaded to Inngest so a
@@ -82,7 +128,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     await inngest.send({
       name: "admin/broadcast",
-      data: { title, message, targetRoles, targetAll: Boolean(targetAll), channels: selectedChannels },
+      data: { title, message, targetRoles, targetAll: Boolean(targetAll), channels: selectedChannels, broadcastId, whatsapp: waLeg },
     });
 
     await logActivity({
@@ -91,7 +137,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       action: "communication.broadcast",
       resource: "notifications",
       // The History tab is built from this entry, message included.
-      meta: { title, message, targetRoles: targetRoles ?? "all", recipientCount, channels: selectedChannels },
+      meta: { title, message, targetRoles: targetRoles ?? "all", targetAll: Boolean(targetAll), recipientCount, channels: selectedChannels, broadcastId, whatsappTemplate: waLeg?.templateName },
       req,
     });
 

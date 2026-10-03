@@ -6,12 +6,18 @@ import McpAuthorizationCode from "@/models/McpAuthorizationCode";
 import McpToken from "@/models/McpToken";
 import User from "@/models/User";
 import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
-import { isValidPkceVerifier } from "@/lib/mcp/oauth";
+import {
+  grantPredatesPasswordChange,
+  isValidPkceVerifier,
+  MCP_AUTHORIZATION_TTL_SECONDS,
+} from "@/lib/mcp/oauth";
 import { defaultScopesForRole, type McpScope } from "@/lib/mcp/scopes";
 import { mintToken } from "@/lib/security/mintToken";
+import { getClientIp } from "@/lib/security/clientIp";
+import { MCP_RATE_LIMITS, mcpRateLimited } from "@/lib/mcp/rateLimit";
 
 const ACCESS_TOKEN_TTL_SECONDS = 3600; // 1h
-const AUTHORIZATION_TTL_SECONDS = 60 * 60 * 24 * 90; // fixed 90d ceiling
+const AUTHORIZATION_TTL_SECONDS = MCP_AUTHORIZATION_TTL_SECONDS; // fixed 90d ceiling
 
 function tokenError(error: string, description: string, status = 400) {
   return NextResponse.json(
@@ -55,6 +61,12 @@ async function parseParams(req: NextRequest): Promise<URLSearchParams> {
 export async function POST(req: NextRequest) {
   const params = await parseParams(req);
   const grantType = params.get("grant_type");
+
+  const limited = await mcpRateLimited([
+    [getClientIp(req.headers), MCP_RATE_LIMITS.tokenPerIp],
+    [params.get("client_id") || "anonymous", MCP_RATE_LIMITS.tokenPerClient],
+  ]);
+  if (limited) return limited;
 
   await connectDB();
 
@@ -172,7 +184,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await User.findById(oldToken.userId)
-      .select("role isActive permissionMode customPermissions")
+      .select("role isActive permissionMode customPermissions passwordChangedAt")
       .lean();
     if (!user?.isActive) {
       await McpToken.updateMany({ userId: oldToken.userId }, { $set: { isRevoked: true } });
@@ -181,6 +193,10 @@ export async function POST(req: NextRequest) {
     if (user.role !== oldToken.role) {
       await McpToken.updateMany({ userId: oldToken.userId }, { $set: { isRevoked: true } });
       return tokenError("invalid_grant", "User role changed; authorization is required again");
+    }
+    if (grantPredatesPasswordChange(authorizationExpiresAt, user.passwordChangedAt)) {
+      await McpToken.updateMany({ familyId: oldToken.familyId }, { $set: { isRevoked: true } });
+      return tokenError("invalid_grant", "Password changed; authorization is required again");
     }
     const scopes = retainAuthorizedScopes(oldToken.scopes, user.role);
     if (scopes.length === 0) {

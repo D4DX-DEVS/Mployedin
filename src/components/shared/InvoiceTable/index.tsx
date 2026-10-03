@@ -182,6 +182,10 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
                 onClick={(e) => {
                   const target = e.target as HTMLElement;
                   if (target.closest("[data-table-action]")) return;
+                  // Below 640px the row is a collapsible card and its own tap
+                  // expands it; opening the invoice too would fire both. The
+                  // eye button in the expanded card is the phone entry point.
+                  if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 639px)").matches) return;
                   onSelect(inv._id);
                 }}
               >

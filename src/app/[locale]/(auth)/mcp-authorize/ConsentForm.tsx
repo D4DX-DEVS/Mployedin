@@ -10,12 +10,14 @@ export function ConsentForm({
   clientId,
   redirectUri,
   codeChallenge,
+  resource,
   scope,
   state,
 }: {
   clientId: string;
   redirectUri: string;
   codeChallenge: string;
+  resource: string;
   scope: string;
   state: string;
 }) {
@@ -35,6 +37,7 @@ export function ConsentForm({
           client_id: clientId,
           redirect_uri: redirectUri,
           code_challenge: codeChallenge,
+          resource,
           scope,
           state,
         }),

@@ -65,8 +65,10 @@ const DialogContent = React.forwardRef<
     mobileSheet?: boolean
     /** Whether a click (or focus move) outside closes the dialog. Left unset, a dialog holding an editable field stays open and a read-only one closes. */
     closeOnOutsideClick?: boolean
+    /** "end": a full-height panel docked to the inline end (right in LTR, left in Arabic), for a record's workspace beside the list it came from. Ignores mobileSheet; full width on phones. */
+    side?: "end"
   }
->(({ className, children, hideClose, overlayClassName, mobileSheet = true, closeOnOutsideClick, onInteractOutside, onCloseAutoFocus, ...props }, ref) => {
+>(({ className, children, hideClose, overlayClassName, mobileSheet = true, closeOnOutsideClick, side, onInteractOutside, onCloseAutoFocus, ...props }, ref) => {
   const tCommon = useTranslations("common");
   /* A stray click on the backdrop used to close every dialog, so a half-filled
      create/edit form vanished with everything typed into it (admin Add
@@ -118,6 +120,7 @@ const DialogContent = React.forwardRef<
      Detecting the caller's width and leaving ours out is what makes the
      declared width authoritative, rather than hoping the merge resolves it. */
   const declaresMaxWidth = /(?:^|\s)(?:[a-z-]+:)*max-w-/.test(className ?? "");
+  const docked = side === "end";
   return (
   <DialogPortal>
     <DialogOverlay className={overlayClassName} />
@@ -128,13 +131,15 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed z-[10000] grid gap-3 overflow-y-auto overscroll-contain border border-border bg-background p-4 shadow-2xl shadow-black/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:gap-4 sm:p-6",
         /* Only when the caller named no width of its own. */
-        !declaresMaxWidth && (mobileSheet ? "sm:max-w-lg" : "max-w-lg"),
+        !docked && !declaresMaxWidth && (mobileSheet ? "sm:max-w-lg" : "max-w-lg"),
         /* The phone sheet is edge-to-edge by design, so a caller width that is
            narrower than a small tablet must not shrink it into a floating card
            down there — it applies from `sm` up, where the dialog is centred. */
-        mobileSheet && "max-sm:max-w-none",
-        mobileSheet
-          ? "inset-x-0 bottom-0 mx-auto max-h-[85dvh] w-full rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl sm:pb-6 sm:data-[state=closed]:zoom-out-[0.97] sm:data-[state=open]:zoom-in-[0.97] sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]"
+        !docked && mobileSheet && "max-sm:max-w-none",
+        docked
+          ? "inset-y-0 end-0 flex h-dvh max-h-dvh w-full flex-col gap-0 overflow-hidden rounded-none border-y-0 border-e-0 p-0 sm:max-h-dvh sm:max-w-[32rem] sm:gap-0 sm:p-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right rtl:data-[state=closed]:slide-out-to-left rtl:data-[state=open]:slide-in-from-left"
+          : mobileSheet
+          ?"inset-x-0 bottom-0 mx-auto max-h-[85dvh] w-full rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl sm:pb-6 sm:data-[state=closed]:zoom-out-[0.97] sm:data-[state=open]:zoom-in-[0.97] sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]"
           : "left-[50%] top-[50%] max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] translate-x-[-50%] translate-y-[-50%] rounded-2xl data-[state=closed]:zoom-out-[0.97] data-[state=open]:zoom-in-[0.97] data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}

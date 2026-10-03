@@ -33,7 +33,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import {
   JobSeekersFilterPanel, EMPTY_JOB_SEEKER_FILTERS, countActiveJobSeekerFilters,
@@ -181,7 +181,7 @@ export default function AdminJobSeekersPage() {
     { header: tr("tableHeaderProfilePercent"), key: "profileCompleteness", formatter: (v) => v != null ? `${v}%` : "—" },
     { header: tr("exportColumnHeaderHasCv"), key: "cv", formatter: (v) => (v as JobSeeker["cv"])?.originalUrl ? tr("exportYes") : tr("exportNo") },
     { header: tr("tableHeaderStatus"), key: "status", formatter: (v) => String(v ?? "active") },
-    { header: tr("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: tr("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
     { header: tr("exportHeaderReferredBy"), key: "referralSummary", formatter: (v) => {
       const sum = v as ReferralSummary | undefined;
       if (!sum) return "—";
@@ -655,7 +655,7 @@ export default function AdminJobSeekersPage() {
                 <TableCell className="text-xs font-semibold tabular-nums">
                   {js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}
                 </TableCell>
-                <TableCell className="hidden whitespace-nowrap min-[1360px]:table-cell text-xs text-muted-foreground">{formatDate(new Date(js.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
+                <TableCell className="hidden whitespace-nowrap min-[1360px]:table-cell text-xs text-muted-foreground">{formatListDate(new Date(js.createdAt), locale)}</TableCell>
                 <TableCell className="text-xs">
                   {js.referralSummary
                     ? <ReferralSourceChip namespace="adminJobSeekers" summary={js.referralSummary} />
@@ -686,7 +686,7 @@ export default function AdminJobSeekersPage() {
                         <p className="text-muted-foreground text-xs">{js.email ?? js.userId?.email ?? "—"}</p>
                         {js.phone && <p className="text-muted-foreground text-xs">{js.phone}</p>}
                         {js.currentLocation && <p className="text-muted-foreground text-xs">{js.currentLocation}</p>}
-                        <p className="mt-1 flex items-center gap-1 text-muted-foreground text-xs"><CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" /> {tr("tableHeaderJoined")}: {formatDate(new Date(js.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</p>
+                        <p className="mt-1 flex items-center gap-1 text-muted-foreground text-xs"><CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" /> {tr("tableHeaderJoined")}: {formatListDate(new Date(js.createdAt), locale)}</p>
                       </div>
                       {/* Experience */}
                       <div>

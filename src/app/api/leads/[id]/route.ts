@@ -9,6 +9,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
 import { autoRouteLead } from "@/lib/leads/autoRouter";
 import { canAccessLead } from "@/lib/leads/access";
+import Agent from "@/models/Agent";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -29,7 +30,13 @@ export const GET = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   await connectDB();
   const { lead, error } = await verifyLeadAccess(id!, ctx);
   if (error) return error;
-  return NextResponse.json(lead);
+  // The workspace shows who owns the lead; a super-agent or admin reading it
+  // otherwise sees only an id.
+  const agent = await Agent.findById(lead!.agentId)
+    .select("userId")
+    .populate("userId", "name")
+    .lean() as { userId?: { name?: string } } | null;
+  return NextResponse.json({ ...lead, assignedAgentName: agent?.userId?.name ?? null });
 }, { resource: "leads", action: "read" });
 
 export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
@@ -43,13 +50,19 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   const update: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
-  // Auto-set convertedAt when status transitions to "converted"
   const current = await Lead.findById(id).lean() as Record<string, unknown> | null;
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (update.status === "converted" && current.status !== "converted") {
-    update.convertedAt = new Date();
+  // A stage move is more than a new status: it carries the stage's details,
+  // undoes a Won or Lost it leaves and is logged. That lives in one place
+  // (POST /api/leads/[id]/stage), so an edit cannot move a lead around it.
+  if (update.status !== undefined && update.status !== current.status) {
+    return NextResponse.json(
+      { error: "Move a lead between stages with POST /api/leads/[id]/stage" },
+      { status: 400 },
+    );
   }
+  delete update.status;
 
   // Re-route if the location changed and lead has no manual superAgent assignment
   if ((update.country || update.city) && !current.superAgentId) {

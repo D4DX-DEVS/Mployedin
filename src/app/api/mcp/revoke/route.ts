@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import McpToken from "@/models/McpToken";
 import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { getClientIp } from "@/lib/security/clientIp";
+import { MCP_RATE_LIMITS, mcpRateLimited } from "@/lib/mcp/rateLimit";
 
 async function parseParams(req: NextRequest): Promise<URLSearchParams> {
   const contentType = req.headers.get("content-type") ?? "";
@@ -24,6 +26,12 @@ export async function POST(req: NextRequest) {
   const rawToken = params.get("token") ?? "";
   const clientId = params.get("client_id") ?? "";
   const resource = params.get("resource") ?? "";
+
+  const limited = await mcpRateLimited([
+    [getClientIp(req.headers), MCP_RATE_LIMITS.revokePerIp],
+    [clientId || "anonymous", MCP_RATE_LIMITS.revokePerClient],
+  ]);
+  if (limited) return limited;
 
   if (!rawToken || !clientId || resource !== getMcpResourceUrl()) {
     return NextResponse.json(

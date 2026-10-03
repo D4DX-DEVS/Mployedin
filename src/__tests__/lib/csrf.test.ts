@@ -41,3 +41,29 @@ describe("interview response CSRF exemption", () => {
     expect(isCsrfExempt("/api/interviews/bulk")).toBe(false);
   });
 });
+
+/**
+ * Meta posts WhatsApp events with no cookies, so the double-submit token can
+ * never be present; X-Hub-Signature-256 over the raw body is the guard (checked
+ * in the route). Without the exemption the proxy answers 403 "Missing CSRF
+ * token" and the route handler is never reached.
+ */
+describe("WhatsApp webhook CSRF exemption", () => {
+  it("exempts exactly the Meta webhook path", () => {
+    expect(isCsrfExempt("/api/webhooks/whatsapp")).toBe(true);
+  });
+
+  it("does not exempt a sibling webhook or anything nested under it", () => {
+    expect(isCsrfExempt("/api/webhooks/other")).toBe(false);
+    expect(isCsrfExempt("/api/webhooks")).toBe(false);
+    expect(isCsrfExempt("/api/webhooks/")).toBe(false);
+    expect(isCsrfExempt("/api/webhooks/whatsapp/extra")).toBe(false);
+    expect(isCsrfExempt("/api/webhooks/whatsapp-admin")).toBe(false);
+  });
+
+  it("does not exempt look-alike authenticated routes", () => {
+    expect(isCsrfExempt("/api/webhook")).toBe(false);
+    expect(isCsrfExempt("/api/admin/webhooks/whatsapp")).toBe(false);
+    expect(isCsrfExempt("/api/admin/whatsapp/test")).toBe(false);
+  });
+});

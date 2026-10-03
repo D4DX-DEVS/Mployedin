@@ -43,7 +43,7 @@ describe("HiresList", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("Amina Noor")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
-    expect(screen.getByText(/Starts Oct 1, 2026 · Visa pending/)).toBeInTheDocument();
+    expect(screen.getByText(/Starts Oct 01, 2026 · Visa pending/)).toBeInTheDocument();
     expect(screen.getByText("In progress")).toBeInTheDocument();
     expect(screen.getByText("1/2 references replied")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Onboarding" })).toHaveAttribute("href", "/en/employer/placements/pl-1/onboarding");

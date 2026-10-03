@@ -355,6 +355,10 @@ export function ApplicationsWorkspace({
   const ta = useTranslations("employerAts");
   const tw = useTranslations("employerJobWorkspace");
   const tc = useTranslations("employerCommon");
+  // The job form's labels for the selected job's facts (work mode, type, pay period).
+  const tf = useTranslations("employerJobForm");
+  const jobFact = (group: "step1.workModes" | "step1.employmentTypes" | "step4.salaryPeriods", value: string) =>
+    tf.has(`${group}.${value}`) ? tf(`${group}.${value}`) : value.replace(/_/g, " ");
   const pipelineStages = usePipelineStages();
 
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
@@ -1415,25 +1419,25 @@ export function ApplicationsWorkspace({
               {selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30 ? (
                 <>
                   <span className="text-border">•</span>
-                  <span>{selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax} yrs exp</span>
+                  <span>{t("experienceRange", { min: selectedJob.requirements.experienceMin, max: selectedJob.requirements.experienceMax })}</span>
                 </>
               ) : null}
               {selectedJob.salary.min > 0 ? (
                 <>
                   <span className="text-border">•</span>
-                  <span>{selectedJob.salary.currency} {formatCount(selectedJob.salary.min)}–{formatCount(selectedJob.salary.max)}/{selectedJob.salary.period ?? "monthly"}</span>
+                  <span>{selectedJob.salary.currency} {formatCount(selectedJob.salary.min)}–{formatCount(selectedJob.salary.max)}/{jobFact("step4.salaryPeriods", selectedJob.salary.period ?? "monthly")}</span>
                 </>
               ) : null}
               {selectedJob.workMode ? (
                 <>
                   <span className="text-border">•</span>
-                  <span className="capitalize">{selectedJob.workMode.replace("_", " ")}</span>
+                  <span>{jobFact("step1.workModes", selectedJob.workMode)}</span>
                 </>
               ) : null}
               {selectedJob.employmentType ? (
                 <>
                   <span className="text-border">•</span>
-                  <span className="capitalize">{selectedJob.employmentType.replace(/_/g, " ")}</span>
+                  <span>{jobFact("step1.employmentTypes", selectedJob.employmentType)}</span>
                 </>
               ) : null}
               <Button
@@ -1442,7 +1446,7 @@ export function ApplicationsWorkspace({
                 className="ml-auto h-6 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground"
                 onClick={() => { setJobFilter(""); setExperienceRange([null, null]); setSkillsFilter([]); }}
               >
-                <X className="mr-1 h-3 w-3" /> Clear Job
+                <X className="me-1 h-3 w-3" aria-hidden="true" /> {t("clearJob")}
               </Button>
             </div>
           )}

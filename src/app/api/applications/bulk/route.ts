@@ -8,6 +8,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { bulkActionSchema } from "@/lib/validators/applications";
 import { sanitizeHtml } from "@/lib/security/html";
+import { escapeHtml } from "@/lib/security/html-escape";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import Agent from "@/models/Agent";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
@@ -206,16 +207,20 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           await closeOpenInterviewsForAdvance(app._id, { now });
         }
 
-        // Send notification + email based on new status (both follow the notify rule)
+        // Send notification + email based on new status (both follow the notify rule).
+        // The direct email below is the candidate's email for this move (it can
+        // carry the employer's own wording), so the notification keeps to in-app,
+        // WhatsApp and push. A rejection has no WhatsApp leg, so it asks for push
+        // itself; with email off it would otherwise emit nothing.
         if (seekerUserId && notifyCandidate) {
           if (action === "reject") {
-            notifyRejected(seekerUserId, jobTitle, String(app._id)).catch((err) =>
+            notifyRejected(seekerUserId, jobTitle, String(app._id), { sendEmail: false, sendPush: true }).catch((err) =>
               logger.error({ err, applicationId: String(app._id) }, "failed to notify rejection (bulk)"));
           } else if (newStatus === "offer") {
-            notifyOfferMade(seekerUserId, jobTitle, companyName, String(app._id)).catch((err) =>
+            notifyOfferMade(seekerUserId, jobTitle, companyName, String(app._id), { sendEmail: false }).catch((err) =>
               logger.error({ err, applicationId: String(app._id) }, "failed to notify offer (bulk)"));
           } else {
-            notifyStatusChange(seekerUserId, jobTitle, newStatus, String(app._id)).catch((err) =>
+            notifyStatusChange(seekerUserId, jobTitle, newStatus, String(app._id), { sendEmail: false }).catch((err) =>
               logger.error({ err, applicationId: String(app._id) }, "failed to notify status change (bulk)"));
           }
         }
@@ -226,11 +231,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
             let emailContent: { subject: string; html: string };
 
             if (emailSubjectOverride && emailBodyOverride) {
-              // Use employer's customized email
+              // Use employer's customized email. The placeholder values were typed by
+              // others (the candidate's name, a job title): they go into the HTML as
+              // text, escaped, since sanitizeHtml below keeps links. A function
+              // replacement, so a "$&" in a name is not read as a pattern.
               const interpolated = emailBodyOverride
-                .replace(/\{\{candidateName\}\}/g, seekerName)
-                .replace(/\{\{jobTitle\}\}/g, jobTitle)
-                .replace(/\{\{companyName\}\}/g, companyName)
+                .replace(/\{\{candidateName\}\}/g, () => escapeHtml(seekerName))
+                .replace(/\{\{jobTitle\}\}/g, () => escapeHtml(jobTitle))
+                .replace(/\{\{companyName\}\}/g, () => escapeHtml(companyName))
                 .replace(/\{\{status\}\}/g, newStatus.replace(/_/g, " "));
               const interpolatedSubject = emailSubjectOverride
                 .replace(/\{\{jobTitle\}\}/g, jobTitle)
@@ -262,10 +270,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         // Send message without status change
         if (seekerEmail && (emailBodyOverride || params?.messageContent)) {
           try {
+            // Placeholder values escaped into the HTML body, as above.
             const body = (emailBodyOverride ?? params!.messageContent as string)
-              .replace(/\{\{candidateName\}\}/g, seekerName)
-              .replace(/\{\{jobTitle\}\}/g, jobTitle)
-              .replace(/\{\{companyName\}\}/g, companyName);
+              .replace(/\{\{candidateName\}\}/g, () => escapeHtml(seekerName))
+              .replace(/\{\{jobTitle\}\}/g, () => escapeHtml(jobTitle))
+              .replace(/\{\{companyName\}\}/g, () => escapeHtml(companyName));
             const subject = (emailSubjectOverride ?? `Update regarding ${jobTitle}`)
               .replace(/\{\{jobTitle\}\}/g, jobTitle)
               .replace(/\{\{companyName\}\}/g, companyName);

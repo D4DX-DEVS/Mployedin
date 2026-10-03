@@ -445,7 +445,7 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderAgent")}</TableHead>
                 <TableHead className="text-center">{t("tableHeaderRequests")}</TableHead>
                 <TableHead className="text-center">{t("tableHeaderApproval")}</TableHead>

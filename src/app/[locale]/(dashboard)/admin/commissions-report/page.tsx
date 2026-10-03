@@ -20,9 +20,8 @@ import {
 import {
   CircleDollarSign, Clock, CheckCircle2, Wallet,
   CalendarDays, RotateCcw, Users, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
-import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount } from "@/lib/ui/intlFormat";
@@ -133,12 +132,6 @@ function StatusBadge({ status }: { status: string }) {
       {statusLabel}
     </span>
   );
-}
-
-function DeltaChip({ value }: { value: number }) {
-  if (value > 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3 w-3" />+{value}%</span>;
-  if (value < 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3 w-3" />{value}%</span>;
-  return <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"><Minus className="h-3 w-3" />0%</span>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -362,24 +355,26 @@ export default function AdminCommissionsReportPage() {
 
       {/* ── Agent Breakdown Table ── */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <h2 className="heading-label font-semibold">{t("agentBreakdownTitle")}</h2>
-            {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
-          </div>
-          <TableToolbar
-            search={searchQuery}
-            onSearchChange={setSearchQuery}
-            searchPlaceholder={t("searchPlaceholder")}
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-          />
+        <div className="flex items-center gap-2 border-b px-4 py-3">
+          <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <h2 className="heading-label font-semibold">{t("agentBreakdownTitle")}</h2>
+          {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
         </div>
+        <InlineFilterBar
+          className="border-b px-4 py-3"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+        >
+          <InlineFilterSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder={t("searchPlaceholder")}
+          />
+        </InlineFilterBar>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("agentTableHeader")}</TableHead>
                 <TableHead>{t("superAgentTableHeader")}</TableHead>
                 <TableHead className="text-right">{t("totalTableHeader")}</TableHead>

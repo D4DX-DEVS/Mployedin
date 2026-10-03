@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Bell,
   Mail,
@@ -24,6 +25,7 @@ import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { WhatsAppVerificationPanel, hasWhatsAppOn, type WhatsAppVerification } from "@/components/features/settings/WhatsAppVerificationPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,7 +58,8 @@ const DEFAULT_PREFS: Preferences = {
   categories: {
     jobs: { enabled: true, channels: ["in_app", "email"] },
     applications: { enabled: true, channels: ["in_app", "email"] },
-    interviews: { enabled: true, channels: ["in_app", "email", "whatsapp"] },
+    // No WhatsApp in any default: only the user turns it on (messages then start after their START), and the server defaults never include it.
+    interviews: { enabled: true, channels: ["in_app", "email"] },
     offers: { enabled: true, channels: ["in_app", "email"] },
     profile_views: { enabled: true, channels: ["in_app", "email"] },
     marketing: { enabled: false, channels: ["email"] },
@@ -151,10 +154,16 @@ export default function NotificationSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [serverPrefs, setServerPrefs] = useState<string>("");
+  // The `updatedAt` of the copy this page last loaded or saved. Sent back with
+  // every save so the server can refuse to overwrite a newer one (a STOP reply
+  // on WhatsApp, another tab) with this page's stale snapshot.
+  const updatedAtRef = useRef<string | undefined>(undefined);
+  // Whether a START from the profile phone has verified it (WhatsApp messages need it).
+  const [waVerification, setWaVerification] = useState<WhatsAppVerification | null>(null);
 
   // Fetch current preferences
-  useEffect(() => {
-    fetch("/api/user/notification-preferences")
+  const loadPrefs = useCallback(() => {
+    return fetch("/api/user/notification-preferences")
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -176,11 +185,16 @@ export default function NotificationSettingsPage() {
           };
           setPrefs(loaded);
           setServerPrefs(JSON.stringify(loaded));
+          updatedAtRef.current = data.updatedAt;
+          setWaVerification(res.whatsappVerification ?? null);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadPrefs().finally(() => setLoading(false));
+  }, [loadPrefs]);
 
   // Track changes
   useEffect(() => {
@@ -195,18 +209,25 @@ export default function NotificationSettingsPage() {
       const res = await fetch("/api/user/notification-preferences", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefs),
+        body: JSON.stringify({ ...prefs, expectedUpdatedAt: updatedAtRef.current }),
       });
       if (res.ok) {
+        // A missing stamp just means the next save is unconditional, as before.
+        updatedAtRef.current = await res.json().then((j) => j?.data?.updatedAt, () => undefined);
         setServerPrefs(JSON.stringify(prefs));
         setHasChanges(false);
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
+      } else if (res.status === 409) {
+        // Newer preferences exist (e.g. a STOP reply). Never overwrite them with
+        // this snapshot: show the latest and let the user decide again.
+        toast.error(t("changedElsewhere"));
+        await loadPrefs();
       }
     } finally {
       setSaving(false);
     }
-  }, [prefs]);
+  }, [prefs, t, loadPrefs]);
 
   const toggleCategory = (key: CategoryKey) => {
     setPrefs((p) => ({
@@ -341,6 +362,10 @@ export default function NotificationSettingsPage() {
               </p>
             </div>
           </div>
+        </div>
+        {/* Shown while a WhatsApp channel is on, saved or not; renders nothing otherwise. */}
+        <div className="px-4 pt-4 empty:hidden">
+          <WhatsAppVerificationPanel whatsAppOn={hasWhatsAppOn(prefs.categories)} verification={waVerification} />
         </div>
         <div className="divide-y divide-border/30">
           {CATEGORIES.map((cat) => {

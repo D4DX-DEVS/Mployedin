@@ -43,6 +43,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityCalendar, type DayAvailability } from "@/components/features/job-seeker/settings/AvailabilityCalendar";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
+import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { getCsrfToken } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -827,6 +828,7 @@ export default function JobSeekerSettingsPage() {
 
             <ChangeEmailCard />
             <CalendarFeedCard />
+            <ConnectedAppsCard />
             <PrivacySettingsLink href="/job-seeker/settings/privacy" />
           </TabsContent>
 

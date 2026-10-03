@@ -54,6 +54,10 @@ jest.mock("@/models/User", () => ({
   __esModule: true,
   default: { countDocuments: (...a: unknown[]) => userCount(...a) },
 }));
+let whatsAppEnabled = true;
+jest.mock("@/models/SystemConfig", () => ({
+  getWhatsAppSettings: async () => ({ enabled: whatsAppEnabled, dailyCapPerUser: 3, automations: {} }),
+}));
 
 import { GET, POST } from "@/app/api/admin/communications/route";
 import { GET as GET_AUDIENCE } from "@/app/api/admin/communications/audience/route";
@@ -66,6 +70,7 @@ const post = (body: unknown) =>
 
 beforeEach(() => {
   ctxRole = "admin";
+  whatsAppEnabled = true;
   jest.clearAllMocks();
 });
 
@@ -113,6 +118,9 @@ describe("broadcast history", () => {
 });
 
 describe("sending", () => {
+  // No broadcast in the last minute unless a test says otherwise (the duplicate check reads the history entries).
+  beforeEach(() => auditFind.mockReturnValue(chain([])));
+
   it("queues the broadcast and records its message for the history", async () => {
     const res = await POST(post({ title: "Hello", message: "World", targetAll: true, channels: ["in_app"] }), noParams);
     const body = await res.json();
@@ -128,11 +136,146 @@ describe("sending", () => {
     );
   });
 
-  // The worker only delivers in-app and email; WhatsApp was offered and silently dropped.
-  it("refuses a channel the broadcast worker cannot deliver", async () => {
-    const res = await POST(post({ title: "Hi", message: "There", targetAll: true, channels: ["whatsapp"] }), noParams);
+  it("rejects the WhatsApp channel without a template", async () => {
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"] }), noParams);
     expect(res.status).toBe(400);
     expect(inngestSend).not.toHaveBeenCalled();
+  });
+
+  it("queues the WhatsApp leg with a broadcast id", async () => {
+    const whatsapp = { templateName: "mployedin_admin_announcement", language: "en", params: ["{{firstName}}", "{{message}}"] };
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], whatsapp }), noParams);
+    expect(res.status).toBe(200);
+    const data = inngestSend.mock.calls[0][0].data as Record<string, unknown>;
+    expect(data.whatsapp).toEqual(whatsapp);
+    expect(typeof data.broadcastId).toBe("string");
+    expect(logActivity.mock.calls[0][0].meta.broadcastId).toBe(data.broadcastId);
+    expect(logActivity.mock.calls[0][0].meta.whatsappTemplate).toBe("mployedin_admin_announcement");
+  });
+
+  it("forwards no template and audits none when the WhatsApp channel is not selected", async () => {
+    const whatsapp = { templateName: "mployedin_admin_announcement", language: "en", params: ["{{firstName}}"] };
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "email"], whatsapp }), noParams);
+    expect(res.status).toBe(200);
+    expect((inngestSend.mock.calls[0][0].data as Record<string, unknown>).whatsapp).toBeUndefined();
+    expect(logActivity.mock.calls[0][0].meta.whatsappTemplate).toBeUndefined();
+  });
+
+  it("accepts a zero-variable template and carries its empty parameter list", async () => {
+    const whatsapp = { templateName: "hello_world", language: "en_US" };
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["whatsapp"], whatsapp }), noParams);
+    expect(res.status).toBe(200);
+    expect((inngestSend.mock.calls[0][0].data as { whatsapp: unknown }).whatsapp).toEqual({ ...whatsapp, params: [] });
+  });
+
+  describe("while WhatsApp is switched off in its settings", () => {
+    const whatsapp = { templateName: "mployedin_admin_announcement", language: "en", params: ["{{firstName}}", "{{message}}"] };
+
+    it("refuses a broadcast with the WhatsApp channel: 409 whatsapp_disabled, nothing queued or audited", async () => {
+      whatsAppEnabled = false;
+      const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], whatsapp }), noParams);
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "whatsapp_disabled" });
+      expect(inngestSend).not.toHaveBeenCalled();
+      expect(logActivity).not.toHaveBeenCalled();
+    });
+
+    it("still sends a broadcast without the WhatsApp channel", async () => {
+      whatsAppEnabled = false;
+      const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "email"], whatsapp }), noParams);
+      expect(res.status).toBe(200);
+      expect(inngestSend).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("refuses a template name or language Meta would not accept", async () => {
+    const bad = (whatsapp: unknown) => POST(post({ title: "T", message: "M", targetAll: true, channels: ["whatsapp"], whatsapp }), noParams);
+    expect((await bad({ templateName: "Has Spaces", language: "en", params: [] })).status).toBe(400);
+    expect((await bad({ templateName: "ok_name", language: "english", params: [] })).status).toBe(400);
+    expect(inngestSend).not.toHaveBeenCalled();
+  });
+});
+
+// A double click, a retry after a slow answer, or a second tab must not mail every user twice. The history
+// entry each send writes is the record: a second identical send by the same admin within 60 s is refused.
+describe("a second identical broadcast within a minute", () => {
+  const SENT = { title: "Hello", message: "World", targetRoles: "all", targetAll: true, channels: ["in_app", "email"], recipientCount: 411 };
+  const recent = (meta: Record<string, unknown>) => auditFind.mockReturnValue(chain([{ _id: "a1", meta }]));
+  const send = (body: Record<string, unknown>) => POST(post({ title: "Hello", message: "World", targetAll: true, channels: ["in_app", "email"], ...body }), noParams);
+  beforeEach(() => auditFind.mockReturnValue(chain([])));
+
+  it("is refused with 409 duplicate_broadcast, nothing queued or audited", async () => {
+    recent(SENT);
+    const res = await send({});
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "duplicate_broadcast" });
+    expect(inngestSend).not.toHaveBeenCalled();
+    expect(logActivity).not.toHaveBeenCalled();
+  });
+
+  it("looks only at this admin's broadcasts of the last 60 seconds", async () => {
+    recent(SENT);
+    await send({});
+    const [filter] = auditFind.mock.calls[0] as [{ action: string; actorId: string; createdAt: { $gte: Date } }];
+    expect(filter.action).toBe("communication.broadcast");
+    expect(filter.actorId).toBe(ADMIN_ID);
+    const age = Date.now() - filter.createdAt.$gte.getTime();
+    expect(age).toBeGreaterThanOrEqual(59_000);
+    expect(age).toBeLessThanOrEqual(61_000);
+  });
+
+  it("treats the same channels or roles in another order as the same broadcast", async () => {
+    recent({ ...SENT, channels: ["email", "in_app"] });
+    expect((await send({})).status).toBe(409);
+    recent({ ...SENT, targetAll: false, targetRoles: ["agent", "employer"] });
+    expect((await send({ targetAll: false, targetRoles: ["employer", "agent"] })).status).toBe(409);
+  });
+
+  it("records targetAll on the audit entry, so the next send can compare it", async () => {
+    expect((await send({})).status).toBe(200);
+    expect(logActivity.mock.calls[0][0].meta.targetAll).toBe(true);
+  });
+
+  // C6: the WhatsApp leg is part of what goes out. Another template is another broadcast; the same one is a duplicate.
+  describe("with the WhatsApp channel", () => {
+    const WA = (templateName: string) => ({ templateName, language: "en", params: [] });
+    const SENT_WA = { ...SENT, channels: ["in_app", "whatsapp"], whatsappTemplate: "mployedin_admin_announcement" };
+
+    it("sends one with another WhatsApp template", async () => {
+      recent(SENT_WA);
+      const res = await send({ channels: ["in_app", "whatsapp"], whatsapp: WA("mployedin_job_alert") });
+      expect(res.status).toBe(200);
+      expect(inngestSend).toHaveBeenCalledTimes(1);
+    });
+
+    it("refuses the same subject, message, audience, channels and template with 409", async () => {
+      recent(SENT_WA);
+      const res = await send({ channels: ["whatsapp", "in_app"], whatsapp: WA("mployedin_admin_announcement") });
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "duplicate_broadcast" });
+      expect(inngestSend).not.toHaveBeenCalled();
+    });
+  });
+
+  it("sends one to everyone after the same one to the empty role list without targetAll", async () => {
+    recent({ ...SENT, targetAll: false });
+    expect((await send({ targetAll: true })).status).toBe(200);
+  });
+
+  it.each([
+    ["another subject", { title: "Hello again" }],
+    ["another message", { message: "World, part two" }],
+    ["another audience", { targetAll: false, targetRoles: ["employer"] }],
+    ["other channels", { channels: ["in_app"] }],
+  ])("sends one with %s", async (_label, change) => {
+    recent(SENT);
+    const res = await send(change);
+    expect(res.status).toBe(200);
+    expect(inngestSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends when this admin sent nothing in the last minute", async () => {
+    expect((await send({})).status).toBe(200);
   });
 });
 

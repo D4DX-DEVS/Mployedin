@@ -6,7 +6,7 @@
  *
  * Flow: emitEvent("notification/instant") → this function →
  *   ├─ Check user NotificationPreference
- *   ├─ Deduplicate (no same type+userId within 5 min)
+ *   ├─ Deduplicate (no identical earlier notification within 5 min)
  *   ├─ Route to enabled channels
  *   └─ Deliver: Email / WhatsApp / In-app (via existing services)
  */
@@ -21,9 +21,10 @@ import {
 } from "@/models/NotificationPreference";
 import { sendEmail } from "@/lib/communications/email";
 import { unsubscribeUrl, notificationSettingsPath } from "@/lib/communications/unsubscribeLink";
-import { sendWhatsApp } from "@/lib/communications/whatsapp";
+import { deliverNotificationWhatsApp } from "@/lib/communications/whatsapp/notificationDelivery";
 import { sendPushToUser, isPushEnabled } from "@/lib/push";
 import { getSystemConfig, getUserOverride } from "@/models/SystemConfig";
+import { localizeActionUrl } from "@/lib/notifications/resolve";
 import type { NotificationInstantEvent } from "./events";
 import { IntlMessageFormat } from "intl-messageformat";
 import enMessages from "../../../messages/en.json";
@@ -45,7 +46,7 @@ export const notificationOrchestrator = inngest.createFunction(
     event: { data: NotificationInstantEvent["data"] };
     step: { run: <T>(name: string, fn: () => Promise<T>) => Promise<T> };
   }) => {
-    const { userId, type, title, message, link, sendEmail: wantEmail, sendWhatsApp: wantWhatsApp, titleKey, bodyKey, params } = event.data;
+    const { userId, type, title, message, link, sendEmail: wantEmail, sendWhatsApp: wantWhatsApp, titleKey, bodyKey, params, notificationId } = event.data;
 
     await connectDB();
 
@@ -66,12 +67,27 @@ export const notificationOrchestrator = inngest.createFunction(
       return { skipped: true, reason: systemBlock.reason };
     }
 
-    // 1. Deduplication — skip if identical notification sent recently
+    // 1. Deduplication — skip if an identical notification was written just
+    // before this one. notify() writes this run's own row before emitting, so
+    // that row (and any later one) is excluded: matching it made every run a
+    // "duplicate" from 2026-04-17 until 2026-10-02. Only rows with a smaller _id
+    // than ours count, so two identical events are never both dropped: the one
+    // whose row has the smaller id finds no earlier twin and is delivered. An
+    // ObjectId is ordered by creation time only within one server (across servers
+    // only to the second), so in a rare cross-instance race both can be
+    // delivered; losing a notification would be worse. Body and link are matched
+    // too (a link-less event matches link-less rows only), so two different
+    // updates sharing a generic title ("Application Status Updated") are both
+    // delivered. Served by the { userId, type, createdAt } index in
+    // lib/db/indexes.ts.
     const isDuplicate = await step.run("check-dedup", async () => {
       const recent = await Notification.findOne({
         userId,
         type,
         title,
+        body: message,
+        actionUrl: link ?? null,
+        ...(notificationId ? { _id: { $lt: notificationId } } : {}),
         createdAt: { $gte: new Date(Date.now() - DEDUP_WINDOW_MS) },
       }).lean();
       return !!recent;
@@ -102,9 +118,10 @@ export const notificationOrchestrator = inngest.createFunction(
 
     const deliveredChannels: string[] = ["in_app"];
 
+    // No phone or WhatsApp consent state here: Inngest stores step output, and the WhatsApp step re-reads both at send time.
     const recipient = await step.run("load-recipient", () =>
-      User.findById(userId).select("name email role locale phone").lean(),
-    ) as { name?: string; email?: string; role?: string; locale?: string; phone?: string } | null;
+      User.findById(userId).select("name email role locale").lean(),
+    ) as { name?: string; email?: string; role?: string; locale?: string } | null;
     const localized = localizeNotification({
       locale: recipient?.locale,
       title,
@@ -113,6 +130,13 @@ export const notificationOrchestrator = inngest.createFunction(
       bodyKey,
       params,
     });
+    // Email and push links need a locale segment. notify() stores the link
+    // without one, and src/proxy.ts reads the first path segment as the locale,
+    // so "/job-seeker/interviews" sent a signed-out click into a login redirect
+    // loop. localizeActionUrl adds the recipient's locale to a bare path and
+    // swaps a leading /en or /ar for it (it returns null for no usable link).
+    // Only this delivery link is localized: dedup above matches the stored one.
+    const deliveryLink = localizeActionUrl(link, recipient?.locale === "ar" ? "ar" : "en") ?? undefined;
 
     // 4. Email delivery
     const shouldEmail = wantEmail && categoryPref.channels.includes("email");
@@ -123,7 +147,7 @@ export const notificationOrchestrator = inngest.createFunction(
         await sendEmail({
           to: recipient.email,
           subject: localized.title,
-          html: buildNotificationEmailHtml(localized.title, localized.message, link, {
+          html: buildNotificationEmailHtml(localized.title, localized.message, deliveryLink, {
             userId,
             category,
             role: recipient.role,
@@ -137,26 +161,21 @@ export const notificationOrchestrator = inngest.createFunction(
       deliveredChannels.push("email");
     }
 
-    // 5. WhatsApp delivery
+    // 5. WhatsApp delivery — approved template outside the 24 h window, free
+    // text inside it, otherwise a logged skip (notificationDelivery.ts).
     const shouldWhatsApp = wantWhatsApp && categoryPref.channels.includes("whatsapp");
     if (shouldWhatsApp) {
-      await step.run("send-whatsapp", async () => {
-        const phone = recipient?.phone;
-        if (!phone) return;
-
-        await sendWhatsApp({
-          to: phone,
-          body: `${localized.title}\n\n${localized.message}`,
-        });
-      });
-      deliveredChannels.push("whatsapp");
+      const outcome = await step.run("send-whatsapp", () =>
+        deliverNotificationWhatsApp({ userId, type, category, recipient, title: localized.title, message: localized.message, params }),
+      );
+      if (outcome.status === "sent" || outcome.status === "mock") deliveredChannels.push("whatsapp");
     }
 
     // 6. Web Push delivery — mirrors the in-app notification. Only runs when
     // VAPID keys are configured AND the user's category is enabled (checked above).
     if (isPushEnabled()) {
       await step.run("send-push", () =>
-        sendPushToUser(userId, { title: localized.title, body: localized.message, link })
+        sendPushToUser(userId, { title: localized.title, body: localized.message, link: deliveryLink })
       );
       deliveredChannels.push("push");
     }
@@ -219,7 +238,7 @@ function buildNotificationEmailHtml(
         <p style="color: #374151; line-height: 1.6;">${escapeHtml(message)}</p>
         ${link ? `
         <div style="text-align: center; margin: 24px 0;">
-          <a href="${baseUrl}${link}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">View Details</a>
+          <a href="${escapeHtml(`${baseUrl}${link}`)}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">View Details</a>
         </div>` : ""}
       </div>
       <div style="padding: 16px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; background: #f9fafb;">

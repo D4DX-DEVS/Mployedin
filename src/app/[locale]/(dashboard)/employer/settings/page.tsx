@@ -22,6 +22,8 @@ import { Progress } from "@/components/ui/progress";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { LogoUpload } from "@/components/features/employer/LogoUpload";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
+import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
+import { WhatsAppVerificationPanel, hasWhatsAppOn, type WhatsAppVerification } from "@/components/features/settings/WhatsAppVerificationPanel";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { useConfirm } from "@/hooks/useConfirm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
@@ -1040,6 +1042,7 @@ function CompanySettingsPage() {
                 {/* Email change */}
                 <ChangeEmailCard />
             <CalendarFeedCard />
+            <ConnectedAppsCard />
 
                 {/* Danger Zone */}
                 <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] space-y-3 sm:space-y-4 panel-body">
@@ -1186,9 +1189,15 @@ function EmployerNotificationsTab() {
   const [saved, setSaved] = useState(false);
   const [serverSnap, setServerSnap] = useState("");
   const hasChanges = serverSnap ? JSON.stringify(prefs) !== serverSnap : false;
+  // The `updatedAt` of the copy this tab last loaded or saved. Sent back with
+  // every save so the server can refuse to overwrite a newer one (a STOP reply
+  // on WhatsApp, another tab) with this tab's stale snapshot.
+  const updatedAtRef = useRef<string | undefined>(undefined);
+  // Whether a START from the profile phone has verified it (WhatsApp messages need it).
+  const [waVerification, setWaVerification] = useState<WhatsAppVerification | null>(null);
 
-  useEffect(() => {
-    fetch("/api/user/notification-preferences")
+  const loadPrefs = () => {
+    return fetch("/api/user/notification-preferences")
       .then((r) => r.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -1206,10 +1215,15 @@ function EmployerNotificationsTab() {
           };
           setPrefs(loaded);
           setServerSnap(JSON.stringify(loaded));
+          updatedAtRef.current = d.updatedAt;
+          setWaVerification(res.whatsappVerification ?? null);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadPrefs().finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
@@ -1218,12 +1232,19 @@ function EmployerNotificationsTab() {
       const res = await fetch("/api/user/notification-preferences", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(prefs),
+        body: JSON.stringify({ ...prefs, expectedUpdatedAt: updatedAtRef.current }),
       });
       if (res.ok) {
+        // A missing stamp just means the next save is unconditional, as before.
+        updatedAtRef.current = await res.json().then((j) => j?.data?.updatedAt, () => undefined);
         setServerSnap(JSON.stringify(prefs));
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
+      } else if (res.status === 409) {
+        // Newer preferences exist (e.g. a STOP reply). Never overwrite them with
+        // this snapshot: show the latest and let the user decide again.
+        toast.error(t("notificationsChangedElsewhere"));
+        await loadPrefs();
       }
     } finally {
       setSaving(false);
@@ -1257,6 +1278,10 @@ function EmployerNotificationsTab() {
       {/* Categories */}
       <SectionCard>
         <SectionHeader icon={Bell} title={t("notificationCategories")} description={t("notificationCategoriesDesc")} />
+        {/* No WhatsApp toggle here: until a START verifies the number the panel invites one (a START also turns the channel on). An employer's own phone is not editable here, so the no-phone copy names no place. */}
+        <div className="px-4 pt-4 empty:hidden">
+          <WhatsAppVerificationPanel invite phoneEditPlace="none" whatsAppOn={hasWhatsAppOn(prefs.categories)} verification={waVerification} />
+        </div>
         <div className="divide-y divide-border/30">
           {EMPLOYER_CATEGORIES.map((cat) => {
             const pref = prefs.categories[cat.key];

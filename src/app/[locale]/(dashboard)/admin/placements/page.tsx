@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   CheckCircle2, Clock, AlertCircle, Pencil,
@@ -31,7 +31,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 
 function salaryAmount(salary: Placement["salary"]): number | undefined {
   return typeof salary === "number" ? salary : salary?.amount;
@@ -84,6 +84,7 @@ function formatCurrencyBreakdown(salaryByCurrency: Record<string, number>, t: an
 export default function AdminPlacementsPage() {
   const t = useTranslations("adminPlacements");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -300,7 +301,7 @@ export default function AdminPlacementsPage() {
     { header: t("exportHeaderSalary"), key: "salary", formatter: (_v, r) => `${salaryAmount((r as unknown as Placement).salary) ?? 0} ${salaryCurrency(r as unknown as Placement)}` },
     { header: t("exportHeaderVisaStatus"), key: "visaStatus" },
     { header: t("exportHeaderCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? t("exportYes") : t("exportNo") },
-    { header: t("exportHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
@@ -524,7 +525,7 @@ export default function AdminPlacementsPage() {
                     <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                    {formatDate(new Date(p.startDate), { day: "2-digit", month: "short", year: "numeric" })}
+                    {formatListDate(new Date(p.startDate), locale)}
                   </TableCell>
                   <TableCell className="text-right">
                     <RowActions name={p.candidateName ?? t("dashSeparator")} {...rowActionsFor(p)} />

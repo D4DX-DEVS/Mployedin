@@ -48,6 +48,35 @@ export interface IUser extends Document {
   twoFactorEnabledAt?: Date;
   avatar?: string;
   phone?: string;
+  /**
+   * WhatsApp channel state (spec §4). Written only by:
+   * - the webhook handlers (whatsapp/webhookHandlers.ts): STOP and START, and
+   *   the window and `waId` on every inbound message;
+   * - whatsapp/waId.ts: the `waId` Meta returns for a send, and the reset when
+   *   the profile phone changes to another number (called by every route that
+   *   writes `phone`);
+   * - the GDPR erasure (gdpr/erasure.ts, admin erasure and a job seeker's own
+   *   account deletion), which removes the whole subdocument;
+   * - whatsapp/startLink.ts (ensureStartCode): `startCode`, the first time the
+   *   notification-preferences GET needs one.
+   * Otherwise the notification-preferences route does not write it: the channel
+   * toggle is a preference, recorded in the ConsentLog only.
+   * `lastInboundAt` drives the 24 h customer-service window; `optOutAt` is an
+   * inbound STOP. `verifiedNumber` (E.164 with "+") is the number a signed
+   * START came from: sends go out only while it equals the normalised `phone`.
+   * `startCode` is the account's personal code (whatsapp/startCode.ts): only a
+   * `START <code>` from the profile phone verifies the account.
+   */
+  whatsapp?: {
+    optInAt?: Date;
+    optInSource?: string;
+    optOutAt?: Date;
+    lastInboundAt?: Date;
+    waId?: string;
+    verifiedNumber?: string;
+    verifiedAt?: Date;
+    startCode?: string;
+  };
   /** Secret token for the subscribable iCal feed (/api/calendar/feed/[token]) */
   calendarFeedToken?: string;
   lastLogin?: Date;
@@ -117,6 +146,16 @@ const UserSchema = new Schema<IUser>(
     twoFactorEnabledAt: { type: Date },
     avatar: { type: String },
     phone: { type: String },
+    whatsapp: {
+      optInAt: { type: Date },
+      optInSource: { type: String, maxlength: 60 },
+      optOutAt: { type: Date },
+      lastInboundAt: { type: Date },
+      waId: { type: String, maxlength: 32 },
+      verifiedNumber: { type: String, maxlength: 32 },
+      verifiedAt: { type: Date },
+      startCode: { type: String, maxlength: 6 },
+    },
     calendarFeedToken: { type: String, select: false },
     lastLogin: { type: Date },
     referredBy: { type: String, index: true },
@@ -153,6 +192,8 @@ UserSchema.index({ createdAt: -1 });
 UserSchema.index({ linkedinSub: 1 }, { unique: true, sparse: true });
 UserSchema.index({ appleSub: 1 }, { unique: true, sparse: true });
 UserSchema.index({ calendarFeedToken: 1 }, { unique: true, sparse: true });
+// The WhatsApp START code: one account per code, and the many accounts without one stay out (built by ensureIndexes()).
+UserSchema.index({ "whatsapp.startCode": 1 }, { unique: true, partialFilterExpression: { "whatsapp.startCode": { $type: "string" } } });
 
 // Password comparison method
 UserSchema.methods.comparePassword = async function (

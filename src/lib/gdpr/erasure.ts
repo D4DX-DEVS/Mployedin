@@ -3,10 +3,49 @@ import User from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import Notification from "@/models/Notification";
-import { logActivity } from "@/lib/audit/log";
+import WhatsAppMessageLog from "@/models/WhatsAppMessageLog";
+import { deleteLiftedSuppressions } from "@/models/WhatsAppSuppression";
 import { redactUserMessages } from "@/lib/gdpr/redactMessages";
 import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
+import { toWaRecipient } from "@/lib/communications/whatsapp/phone";
 import logger from "@/lib/logger";
+
+/**
+ * The WhatsApp part of an erasure, shared by the admin erasure below and the
+ * job seeker's own account deletion (api/job-seekers/account): the delivery log
+ * rows, the number's STOP-list entries that are no longer in force, then the
+ * whole `whatsapp` subdocument (wa_id, consent, window, STOP, START code).
+ *
+ * Log rows hold the subject's number in `to`, and some are owned by another user
+ * (an admin's test send stamps the admin's id), so they are deleted by number as
+ * well as by userId. Run it before the phone is nulled: after that nothing links
+ * such a row to the subject. A failure throws before the subdocument is cleared,
+ * so a retry still has the number.
+ *
+ * A WhatsAppSuppression entry whose STOP is still in force is kept on purpose:
+ * a STOP belongs to the number, not the account, and must outlive it (the next
+ * account to type the number must not message it again). An entry a newer
+ * START lifted suppresses nothing (a START keeps it, with `liftedAt`, only so a
+ * late redelivered STOP cannot list the number again), so it is deleted rather
+ * than keep the erased person's number for no purpose. The same rule every send
+ * reads decides which is which (deleteLiftedSuppressions).
+ */
+export async function eraseWhatsAppData(userId: string): Promise<void> {
+  const subject = await User.findById(userId).select("phone whatsapp.waId").lean<{ phone?: string | null; whatsapp?: { waId?: string } } | null>();
+  const numbers = new Set<string>();
+  // A legacy or hand-edited document may hold something other than a string: it must not crash the erasure.
+  const phone = typeof subject?.phone === "string" ? subject.phone : undefined;
+  const normalised = toWaRecipient(phone);
+  if (normalised) numbers.add(`+${normalised}`);
+  if (subject?.whatsapp?.waId) numbers.add(`+${subject.whatsapp.waId}`);
+  // Invalid-phone skipped rows keep the raw input (whatsapp/send.ts).
+  if (phone?.trim()) numbers.add(phone);
+  // The scan by `to` uses the { to, sentAt } index (the per-number daily cap's).
+  if (numbers.size) await WhatsAppMessageLog.deleteMany({ to: { $in: [...numbers] } });
+  await WhatsAppMessageLog.deleteMany({ userId });
+  await deleteLiftedSuppressions([...numbers]);
+  await User.updateOne({ _id: userId }, { $unset: { whatsapp: 1 } });
+}
 
 /**
  * Erase all personal data for a user — anonymize their account,
@@ -20,8 +59,12 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
 
   const anonymizedEmail = `deleted_${userId}@anonymized.mployedin.com`;
 
+  // The WhatsApp data first: it is found by the phone the anonymisation below nulls. Done before any other
+  // write, so erasure can be retried (admin/gdpr/[id]) with the number still there.
+  await eraseWhatsAppData(userId);
+
   const [, seekerBefore] = await Promise.all([
-    // Anonymize user account
+    // Anonymize user account (the WhatsApp state went with eraseWhatsAppData)
     User.findByIdAndUpdate(userId, {
       name: "Deleted User",
       email: anonymizedEmail,

@@ -3,7 +3,10 @@ import Lead from "@/models/Lead";
 import Agent from "@/models/Agent";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
+import type { Types } from "mongoose";
 import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
+import { applyStageMove, stageMoveProblems } from "@/lib/leads/applyStageMove";
+import { STAGE_FIELD_NAMES, type LeadStage } from "@/lib/leads/stageRules";
 import { autoRouteLead } from "@/lib/leads/autoRouter";
 import type { CopilotTool } from "../types";
 
@@ -204,29 +207,30 @@ export const updateLeadStatusTool: CopilotTool<{ leadId: string; status: string;
     }
 
     const prevStatus = lead.status;
-    lead.status = args.status as typeof lead.status;
-    if (args.status === "converted" && prevStatus !== "converted") lead.convertedAt = new Date();
-    if (args.followUpInDays !== undefined) {
-      lead.followUpAt = new Date(Date.now() + args.followUpInDays * 24 * 60 * 60 * 1000);
+    if (prevStatus === args.status) {
+      return { ok: false, message: `Lead "${lead.companyName}" is already "${args.status}".` };
     }
-    if (args.note) {
-      lead.notes = lead.notes ? `${lead.notes}\n${sanitizeAIInput(args.note, 2000)}` : sanitizeAIInput(args.note, 2000);
-    }
-    lead.activityLog.push({
-      action: `status_changed:${prevStatus}->${args.status}`,
-      note: args.note ? sanitizeAIInput(args.note, 2000) : undefined,
-      timestamp: new Date(),
-    });
+    const note = args.note ? sanitizeAIInput(args.note, 2000) : undefined;
+    const followUpAt = args.followUpInDays !== undefined
+      ? new Date(Date.now() + args.followUpInDays * 24 * 60 * 60 * 1000).toISOString()
+      : undefined;
+    const move = { status: args.status as LeadStage, note, followUpAt };
 
-    lead.score = calculateLeadScore({
-      status: lead.status,
-      hasEmail: Boolean(lead.contactEmail),
-      hasPhone: Boolean(lead.contactPhone),
-      hasExpectedRevenue: Boolean(lead.expectedRevenue),
-      hasIndustry: Boolean(lead.industry),
-      activityCount: lead.activityLog.length,
-    });
-    lead.qualificationLevel = deriveQualification(lead.score);
+    // The same rules as the Move dialog: a stage that needs facts (a final
+    // value for Won, a reason for Lost…) is not entered without them. The tool
+    // cannot collect them, so it says what is missing and the agent finishes
+    // the move from the lead's workspace.
+    const { missing } = stageMoveProblems(lead, move);
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        message: `Moving "${lead.companyName}" to "${args.status}" needs ${missing.map((f) => STAGE_FIELD_NAMES[f]).join(", ")}. ` +
+          "Ask the user to make this move from the lead's page (Leads → Open lead → Move stage), where they can enter those details.",
+      };
+    }
+
+    applyStageMove(lead, move, ctx.userId as unknown as Types.ObjectId);
+    if (note) lead.notes = lead.notes ? `${lead.notes}\n${note}` : note;
 
     await lead.save();
     return { ok: true, message: `Lead "${lead.companyName}" moved from "${prevStatus}" to "${args.status}".` };

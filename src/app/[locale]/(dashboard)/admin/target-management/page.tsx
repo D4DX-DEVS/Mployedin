@@ -572,7 +572,7 @@ export default function AdminTargetManagementPage() {
           <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
             <Table className="sm:[&_td]:px-3 sm:[&_th]:px-3">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{sortHeader("name", t("supervisorHeader"))}</TableHead>
                   <TableHead className="text-center">{sortHeader("teamSize", t("teamHeader"))}</TableHead>
                   <TableHead>{sortHeader("employerProgress", t("employerHeader"))}</TableHead>
@@ -738,7 +738,7 @@ export default function AdminTargetManagementPage() {
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("supervisor")}</TableHead>
                   <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("overall")}</TableHead>

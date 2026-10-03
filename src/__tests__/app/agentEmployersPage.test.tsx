@@ -8,10 +8,10 @@ import userEvent from "@testing-library/user-event";
 
 import AgentEmployersPage from "@/app/[locale]/(dashboard)/agent/employers/page";
 
-/* The agent's employer list shows as cards or as a table. The choice lives in
-   `?view=` (so a shared link opens the same layout) and is remembered in the
-   browser, and both layouts must offer the same actions: posting and entering
-   the account only for employers assigned to the agent. */
+/* The agent's employer list is one table, like admin's. Posting and entering
+   the account are offered only for employers assigned to the agent; a
+   region-only row can still open its jobs. A failed load or delete must say
+   so instead of reading as an empty list or a no-op. */
 
 const PATHNAME = "/en/agent/employers";
 let searchParamsState = new URLSearchParams();
@@ -42,12 +42,14 @@ jest.mock("@/hooks/usePagination", () => ({
   }),
 }));
 
+let allowedActions = ["update"];
 jest.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ can: (_resource: string, action: string) => action === "update" }),
+  usePermissions: () => ({ can: (_resource: string, action: string) => allowedActions.includes(action) }),
 }));
 
+const confirmMock = jest.fn();
 jest.mock("@/hooks/useConfirm", () => ({
-  useConfirm: () => ({ confirm: jest.fn(), ConfirmDialogNode: null }),
+  useConfirm: () => ({ confirm: (...args: unknown[]) => confirmMock(...args), ConfirmDialogNode: null }),
 }));
 
 jest.mock("@/hooks/useTableExport", () => ({
@@ -99,53 +101,29 @@ async function renderPage() {
   await screen.findAllByText("Acme Assigned");
 }
 
-describe("AgentEmployersPage cards / table view", () => {
+describe("AgentEmployersPage table", () => {
   beforeEach(() => {
     searchParamsState = new URLSearchParams();
     window.history.replaceState({}, "", PATHNAME);
-    window.localStorage.clear();
     replaceMock.mockClear();
+    allowedActions = ["update"];
+    confirmMock.mockReset();
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ employers: EMPLOYERS, pagination: { total: 2 } }),
     }) as unknown as typeof fetch;
   });
 
-  it("opens as cards by default", async () => {
+  it("shows a table, with no cards/table switch", async () => {
     await renderPage();
 
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cards" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "false");
-  });
-
-  it("switches to the table, writes ?view=table and remembers the choice", async () => {
-    const user = userEvent.setup();
-    await renderPage();
-
-    await user.click(screen.getByRole("button", { name: "Table" }));
-
-    const table = await screen.findByRole("table");
+    const table = screen.getByRole("table");
     expect(within(table).getByRole("columnheader", { name: "Company" })).toBeInTheDocument();
     expect(within(table).getByRole("columnheader", { name: "Industry / Location" })).toBeInTheDocument();
-    expect(replaceMock).toHaveBeenLastCalledWith("?view=table");
-    expect(window.localStorage.getItem("agent-employers-view")).toBe("table");
-    expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Cards" })).not.toBeInTheDocument();
   });
 
-  it("keeps the current page when the layout changes", async () => {
-    const user = userEvent.setup();
-    searchParamsState = new URLSearchParams("page=2");
-    window.history.replaceState({}, "", `${PATHNAME}?page=2`);
-    await renderPage();
-
-    await user.click(screen.getByRole("button", { name: "Table" }));
-
-    expect(replaceMock).toHaveBeenLastCalledWith("?page=2&view=table");
-  });
-
-  it("opens the table straight from ?view=table, with actions only where the employer is assigned", async () => {
-    searchParamsState = new URLSearchParams("view=table");
+  it("offers posting and entering only where the employer is assigned", async () => {
     await renderPage();
 
     const rows = within(screen.getByRole("table")).getAllByRole("row");
@@ -171,18 +149,56 @@ describe("AgentEmployersPage cards / table view", () => {
     expect(within(region).getByText("—")).toBeInTheDocument();
   });
 
-  it("uses the remembered layout when the URL has no ?view=", async () => {
-    window.localStorage.setItem("agent-employers-view", "table");
-    await renderPage();
+  it("shows the empty state inside the table when there are no employers", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ employers: [], pagination: { total: 0 } }),
+    }) as unknown as typeof fetch;
+    await act(async () => {
+      render(<AgentEmployersPage />);
+    });
 
-    await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument());
+    const table = await screen.findByRole("table");
+    expect(await within(table).findByText("No employer accounts yet")).toBeInTheDocument();
   });
 
-  it("lets ?view= override the remembered layout", async () => {
-    window.localStorage.setItem("agent-employers-view", "table");
-    searchParamsState = new URLSearchParams("view=cards");
+  it("shows an error with a retry when the list fails to load", async () => {
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+      .mockResolvedValue({ ok: true, json: async () => ({ employers: EMPLOYERS, pagination: { total: 2 } }) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const user = userEvent.setup();
+    await act(async () => {
+      render(<AgentEmployersPage />);
+    });
+
+    const retry = await screen.findByRole("button", { name: /try again/i });
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    await user.click(retry);
+    expect(await screen.findAllByText("Acme Assigned")).not.toHaveLength(0);
+  });
+
+  it("says so when a delete is refused, and keeps the row", async () => {
+    allowedActions = ["update", "delete"];
+    confirmMock.mockResolvedValue(true);
+    const { toast } = jest.requireMock("sonner") as { toast: { error: jest.Mock } };
+    toast.error.mockClear();
+    const fetchMock = jest.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "DELETE") {
+        return Promise.resolve({ ok: false, json: async () => ({}) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ employers: EMPLOYERS, pagination: { total: 2 } }) });
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const user = userEvent.setup();
     await renderPage();
 
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    const rows = within(screen.getByRole("table")).getAllByRole("row");
+    const region = rows.find((row) => within(row).queryByText("Region Co"))!;
+    await user.click(within(region).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("We couldn't delete this employer. Please try again."));
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(1);
+    expect(screen.getAllByText("Region Co")).not.toHaveLength(0);
   });
 });

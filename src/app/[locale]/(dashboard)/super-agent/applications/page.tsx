@@ -18,12 +18,14 @@ import {
   FileText, TrendingUp,
   CheckCircle2, Star, BriefcaseBusiness, Mail, Calendar,
 } from "lucide-react";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { formatListDate } from "@/lib/ui/intlFormat";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { ExportColumn } from "@/lib/export";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -68,6 +70,7 @@ const getStatusOptions = (t: ReturnType<typeof useTranslations>) => [
 
 export default function SuperAgentApplicationsPage() {
   const t = useTranslations("superAgentApplications");
+  const tc = useTranslations("common");
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -118,6 +121,24 @@ export default function SuperAgentApplicationsPage() {
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
+  const statusLabel = (status: string) => getStatusOptions(t).find((o) => o.value === status)?.label ?? status;
+  const exportColumns: ExportColumn<ApplicationItem>[] = [
+    { header: t("tableHeaders.candidate"), key: "candidateName" },
+    { header: tc("email"), key: "candidateEmail" },
+    { header: t("tableHeaders.job"), key: "jobTitle", formatter: (_v, row) => [row.jobTitle, row.companyName].filter(Boolean).join(" · ") },
+    { header: t("tableHeaders.agent"), key: "agentName" },
+    { header: t("tableHeaders.status"), key: "status", formatter: (_v, row) => statusLabel(row.status) },
+    { header: t("tableHeaders.matchScore"), key: "matchScore", formatter: (_v, row) => row.matchScore != null ? `${row.matchScore}%` : "" },
+    { header: t("tableHeaders.source"), key: "source", formatter: (_v, row) => (row.source ?? "direct").replace(/_/g, " ") },
+    { header: t("tableHeaders.applied"), key: "appliedAt", formatter: (_v, row) => formatListDate(row.appliedAt) },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: applications as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-applications",
+    title: t("pageTitle"),
+  });
+
   const metrics = [
     { label: t("metrics.totalApplications"), value: stats.total, icon: FileText },
     { label: t("metrics.shortlisted"), value: stats.shortlisted, icon: Star },
@@ -139,10 +160,13 @@ export default function SuperAgentApplicationsPage() {
         <InlineFilterBar
           className="mb-4"
           onClear={(filters.search || filters.status !== "all" || filters.agent !== "all") ? () => { resetFilters(); pagination.resetPage(); } : undefined}
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
         >
           <InlineFilterSearch
             value={filters.search}
-            onChange={(v) => setFilter("search", v)}
+            onChange={(v) => { setFilter("search", v); pagination.resetPage(); }}
             placeholder={t("searchPlaceholder")}
           />
           <SearchableSelect
@@ -230,7 +254,7 @@ export default function SuperAgentApplicationsPage() {
                   <TableCell className="text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
-                      {formatDate(new Date(a.appliedAt), { day: "2-digit", month: "short", year: "numeric" })}
+                      {formatListDate(a.appliedAt)}
                     </span>
                   </TableCell>
                 </TableRow>
@@ -239,16 +263,16 @@ export default function SuperAgentApplicationsPage() {
           </Table>
         </div>
         )}
-
-        <PaginationControls
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          limit={pagination.limit}
-          total={pagination.total}
-          onPageChange={pagination.setPage}
-          onLimitChange={pagination.setLimit}
-        />
       </SuperAgentSection>
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        limit={pagination.limit}
+        total={pagination.total}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }
