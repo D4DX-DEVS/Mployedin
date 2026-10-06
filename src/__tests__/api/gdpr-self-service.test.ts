@@ -237,12 +237,27 @@ describe("Admin PATCH /api/admin/gdpr/[id] — completing a deletion request", (
       { $set: expect.objectContaining({ status: "in_progress" }) },
     );
     expect(erase).toHaveBeenCalledWith(USER_ID);
-    expect(gdprUpdateOne).toHaveBeenCalledWith({ _id: REQUEST_ID }, { $set: expect.objectContaining({
+    expect(gdprUpdateOne).toHaveBeenCalledWith({ _id: REQUEST_ID }, expect.objectContaining({ $set: expect.objectContaining({
       status: "completed",
       userName: "Deleted User",
       userEmail: `deleted_${USER_ID}@anonymized.mployedin.com`,
-    }) });
+    }) }));
     expect((await res.json()).request).toMatchObject({ status: "completed", userName: "Deleted User" });
+  });
+
+  it("erases the reason the user typed along with the rest of their data", async () => {
+    // Free text in the user's own words can name them; the anonymised record
+    // keeps only what was done, when and by whom.
+    ctxRole = "admin";
+    requestDoc.status = "pending";
+    (requestDoc as Record<string, unknown>).notes = "Moving to 12 King St, call me on 0501234567";
+    erase.mockResolvedValue({ anonymizedEmail: `deleted_${USER_ID}@anonymized.mployedin.com` });
+    const { PATCH } = await import("@/app/api/admin/gdpr/[id]/route");
+    const res = await PATCH(req(`/api/admin/gdpr/${REQUEST_ID}`, "PATCH", { status: "completed" }), params);
+
+    expect(res.status).toBe(200);
+    expect(gdprUpdateOne).toHaveBeenCalledWith({ _id: REQUEST_ID }, expect.objectContaining({ $unset: { notes: 1 } }));
+    expect((await res.json()).request.notes).toBeUndefined();
   });
 
   it("refuses when the request changed underneath (e.g. the user cancelled it)", async () => {

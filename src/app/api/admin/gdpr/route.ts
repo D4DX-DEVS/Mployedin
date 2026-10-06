@@ -10,8 +10,6 @@ import { escapeRegex } from "@/lib/security/sanitize";
 /*  GET /api/admin/gdpr — GDPR data-subject requests + stats           */
 /* ------------------------------------------------------------------ */
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 async function handler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -51,8 +49,11 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       GdprRequest.countDocuments({}),
       GdprRequest.countDocuments({ status: { $in: ["pending", "in_progress"] } }),
       GdprRequest.countDocuments({ status: "completed" }),
+      // Exports complete the instant the user downloads them, so they measure
+      // nothing about how fast admins answer — and they outnumber every other
+      // request, which held the average at zero.
       GdprRequest.aggregate([
-        { $match: { status: "completed", completedAt: { $ne: null } } },
+        { $match: { status: "completed", completedAt: { $ne: null }, requestType: { $ne: "export" } } },
         { $group: { _id: null, avgMs: { $avg: { $subtract: ["$completedAt", "$createdAt"] } } } },
       ]),
       User.countDocuments({ isActive: true }),
@@ -65,10 +66,23 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       ]),
     ]);
 
-  const avgMs = (responseAgg as Array<{ avgMs?: number }>)[0]?.avgMs ?? 0;
+  const avgMs = (responseAgg as Array<{ avgMs?: number }>)[0]?.avgMs;
   const activeConsents = (consentAgg as Array<{ activeConsents?: number }>)[0]?.activeConsents ?? 0;
 
-  const mapped = (items as Array<Record<string, unknown>>).map((item) => ({
+  // Who moved each request, for the details view. One lookup for the page.
+  const rows = items as Array<Record<string, unknown>>;
+  const handlerIds = [...new Set(rows.map((item) => item.handledBy).filter(Boolean).map(String))];
+  const handlerNames = new Map<string, string>();
+  if (handlerIds.length > 0) {
+    const handlers = await User.find({ _id: { $in: handlerIds } })
+      .select("name")
+      .lean<Array<{ _id: unknown; name?: string }>>();
+    for (const handlerUser of handlers) {
+      if (handlerUser.name) handlerNames.set(String(handlerUser._id), handlerUser.name);
+    }
+  }
+
+  const mapped = rows.map((item) => ({
     _id: String(item._id),
     userId: String(item.userId ?? ""),
     userName: item.userName ?? "Unknown",
@@ -78,6 +92,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     createdAt: item.createdAt,
     completedAt: item.completedAt,
     notes: item.notes,
+    handledByName: item.handledBy ? handlerNames.get(String(item.handledBy)) ?? null : null,
   }));
 
   return NextResponse.json({
@@ -87,7 +102,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       totalRequests,
       pendingRequests,
       completedRequests,
-      avgResponseDays: Math.round((avgMs / DAY_MS) * 10) / 10,
+      // Milliseconds; the page picks minutes, hours or days. null = none handled yet.
+      avgResponseMs: typeof avgMs === "number" ? Math.round(avgMs) : null,
       dataSubjects: totalUsers,
       activeConsents,
     },

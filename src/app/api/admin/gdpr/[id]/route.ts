@@ -78,6 +78,8 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
     // The register keeps only the anonymised identity. An atomic write, so
     // nothing concurrent can stop the completed status landing after erasure.
+    // The reason the user typed goes too: it is their own words and can name
+    // them, so it is part of the data being erased.
     const completedAt = new Date();
     const done = {
       status: "completed" as const,
@@ -87,8 +89,12 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       userEmail: anonymizedEmail,
       ...(body.notes !== undefined ? { notes: body.notes } : {}),
     };
-    await GdprRequest.updateOne({ _id: request._id }, { $set: done });
+    await GdprRequest.updateOne(
+      { _id: request._id },
+      body.notes !== undefined ? { $set: done } : { $set: done, $unset: { notes: 1 } },
+    );
     Object.assign(request, done);
+    if (body.notes === undefined) request.notes = undefined;
   } else {
     request.status = to;
     request.handledBy = ctx.userId as unknown as typeof request.handledBy;

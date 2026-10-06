@@ -20,25 +20,16 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Shield, Download, Trash2, Eye, FileText, UserCheck, Clock, AlertTriangle, CheckCircle2, XCircle, ShieldCheck, Users, CalendarDays,
+  Shield, Download, Trash2, Eye, FileText, UserCheck, Clock, Timer, CheckCircle2, XCircle, ShieldCheck,
 } from "lucide-react";
 import { formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
+import { GdprRequestDetailsDialog } from "./_components/GdprRequestDetailsDialog";
+import { useGdprLabels } from "./_components/useGdprLabels";
+import type { GdprRequestRow } from "./_components/types";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
-
-interface GdprRequest {
-  _id: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  requestType: "export" | "delete" | "rectification" | "restrict";
-  status: "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
-  createdAt: string;
-  completedAt?: string;
-  notes?: string;
-}
 
 interface ConsentLog {
   _id: string;
@@ -65,7 +56,8 @@ interface GdprStats {
   totalRequests: number;
   pendingRequests: number;
   completedRequests: number;
-  avgResponseDays: number;
+  /** Over requests an admin completed; null while there are none. */
+  avgResponseMs: number | null;
   dataSubjects: number;
   activeConsents: number;
 }
@@ -76,7 +68,7 @@ interface GdprStats {
 
 
 /** Mirrors GDPR_REQUEST_STATUSES; the model file cannot be imported client-side. */
-const GDPR_STATUS_VALUES = ["pending", "in_progress", "completed", "rejected"] as const;
+const GDPR_STATUS_VALUES = ["pending", "in_progress", "completed", "rejected", "cancelled"] as const;
 
 /** Mirrors CONSENT_TYPES in lib/gdpr/consent.ts (a server module). */
 const CONSENT_TYPE_VALUES = ["terms_and_privacy", "cookies", "marketing"] as const;
@@ -93,12 +85,17 @@ export default function AdminGdprPage() {
   const t = useTranslations("adminGdpr");
   const locale = useLocale();
   const { confirm, ConfirmDialogNode } = useConfirm();
+  const { typeLabel, responseTime } = useGdprLabels();
   const [activeTab, setActiveTab] = useState<"requests" | "consent">("requests");
-  const [requests, setRequests] = useState<GdprRequest[]>([]);
+  const [requests, setRequests] = useState<GdprRequestRow[]>([]);
+  // The request in the details dialog. Kept after closing so the dialog keeps
+  // its content while it animates out; `viewOpen` is what opens and closes it.
+  const [viewing, setViewing] = useState<GdprRequestRow | null>(null);
+  const [viewOpen, setViewOpen] = useState(false);
   const [consentLogs, setConsentLogs] = useState<ConsentLog[]>([]);
   const [stats, setStats] = useState<GdprStats>({
     totalRequests: 0, pendingRequests: 0, completedRequests: 0,
-    avgResponseDays: 0, dataSubjects: 0, activeConsents: 0,
+    avgResponseMs: null, dataSubjects: 0, activeConsents: 0,
   });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -120,13 +117,14 @@ export default function AdminGdprPage() {
     pagination.resetPage();
   };
 
-  // i18n option maps (moved inside component)
+  // Only the types a user can actually file: a JSON download (export) and an
+  // account deletion. Rectification and restriction stay in the model and
+  // still get a label in the table, but no form creates them, so as filters
+  // they could only ever come back empty.
   const REQUEST_TYPE_OPTIONS = [
     { value: "all", label: t("allTypesLabel") },
-    { value: "export", label: t("dataExportLabel") },
-    { value: "delete", label: t("erasureLabel") },
-    { value: "rectification", label: t("rectificationLabel") },
-    { value: "restrict", label: t("restrictProcessingLabel") },
+    { value: "export", label: typeLabel("export") },
+    { value: "delete", label: typeLabel("delete") },
   ];
 
   const STATUS_OPTIONS = [
@@ -230,7 +228,8 @@ export default function AdminGdprPage() {
   };
 
   /* ---- Actions ---- */
-  const handleUpdateStatus = async (id: string, status: string, subject: string, requestType?: string) => {
+  /** `onSaved` runs only once the change is stored — not on a cancelled confirm or a failed save. */
+  const handleUpdateStatus = async (id: string, status: string, subject: string, requestType?: string, onSaved?: () => void) => {
     // Completed and rejected are terminal (GDPR_REQUEST_TRANSITIONS): once
     // either is saved the request can never move again, so ask first.
     if (status === "completed" || status === "rejected") {
@@ -262,6 +261,7 @@ export default function AdminGdprPage() {
       if (res.ok) {
         toast.success(t("statusUpdatedSuccess"));
         fetchRequests();
+        onSaved?.();
       } else {
         const error = (await res.json().catch(() => ({}))) as { code?: string };
         toast.error(error.code === "ADMIN_ACCOUNT" ? t("cannotEraseAdmin") : t("failedUpdateStatus"));
@@ -269,6 +269,19 @@ export default function AdminGdprPage() {
     } catch {
       toast.error(t("errorUpdatingRequest"));
     }
+  };
+
+  /** The moves still open to a request — shared by its row menu and its details dialog. */
+  const statusActionsFor = (r: GdprRequestRow, onSaved?: () => void): RowAction[] => {
+    const items: RowAction[] = [];
+    if (r.status === "pending") {
+      items.push({ key: "start", label: t("startButton"), icon: Clock, onSelect: () => handleUpdateStatus(r._id, "in_progress", r.userName, r.requestType, onSaved) });
+      items.push({ key: "reject", label: t("rejectButton"), icon: XCircle, onSelect: () => handleUpdateStatus(r._id, "rejected", r.userName, r.requestType, onSaved), destructive: true });
+    }
+    if (r.status === "in_progress") {
+      items.push({ key: "complete", label: t("completeButton"), icon: CheckCircle2, onSelect: () => handleUpdateStatus(r._id, "completed", r.userName, r.requestType, onSaved) });
+    }
+    return items;
   };
 
   // A static map, not t(`consentType_${type}`): an unknown stored type must
@@ -307,6 +320,12 @@ export default function AdminGdprPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
+      <GdprRequestDetailsDialog
+        request={viewing}
+        open={viewOpen}
+        onClose={() => setViewOpen(false)}
+        actions={viewing ? statusActionsFor(viewing, () => setViewOpen(false)) : []}
+      />
       <DashboardPageHeader
         compact
         compactOnMobile
@@ -336,9 +355,9 @@ export default function AdminGdprPage() {
             iconSurfaceClassName: "bg-emerald-50",
           },
           {
-            label: t("avgResponseDaysLabel"),
-            value: stats.avgResponseDays,
-            icon: AlertTriangle,
+            label: t("avgResponseTimeLabel"),
+            value: responseTime(stats.avgResponseMs),
+            icon: Timer,
             iconClassName: "text-violet-600",
             iconSurfaceClassName: "bg-violet-50",
           },
@@ -506,12 +525,12 @@ export default function AdminGdprPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center gap-1.5 text-sm capitalize">
-                            {r.requestType === "export" && <Download className="h-3.5 w-3.5" />}
-                            {r.requestType === "delete" && <Trash2 className="h-3.5 w-3.5" />}
-                            {r.requestType === "rectification" && <FileText className="h-3.5 w-3.5" />}
-                            {r.requestType === "restrict" && <XCircle className="h-3.5 w-3.5" />}
-                            {r.requestType.replace("_", " ")}
+                          <span className="inline-flex items-center gap-1.5 text-sm">
+                            {r.requestType === "export" && <Download className="h-3.5 w-3.5" aria-hidden="true" />}
+                            {r.requestType === "delete" && <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                            {r.requestType === "rectification" && <FileText className="h-3.5 w-3.5" aria-hidden="true" />}
+                            {r.requestType === "restrict" && <XCircle className="h-3.5 w-3.5" aria-hidden="true" />}
+                            {typeLabel(r.requestType)}
                           </span>
                         </TableCell>
                         <TableCell><StatusBadge status={r.status} /></TableCell>
@@ -520,19 +539,8 @@ export default function AdminGdprPage() {
                         <TableCell className="text-right">
                           <RowActions
                             name={r.userName}
-                            menu={
-                              (() => {
-                                const items: RowAction[] = [];
-                                if (r.status === "pending") {
-                                  items.push({ key: "start", label: t("startButton"), icon: Clock, onSelect: () => handleUpdateStatus(r._id, "in_progress", r.userName, r.requestType) });
-                                  items.push({ key: "reject", label: t("rejectButton"), icon: XCircle, onSelect: () => handleUpdateStatus(r._id, "rejected", r.userName, r.requestType), destructive: true });
-                                }
-                                if (r.status === "in_progress") {
-                                  items.push({ key: "complete", label: t("completeButton"), icon: CheckCircle2, onSelect: () => handleUpdateStatus(r._id, "completed", r.userName, r.requestType) });
-                                }
-                                return items;
-                              })()
-                            }
+                            quick={[{ key: "view", label: t("viewButton"), icon: Eye, onSelect: () => { setViewing(r); setViewOpen(true); } }]}
+                            menu={statusActionsFor(r)}
                           />
                         </TableCell>
                       </TableRow>
