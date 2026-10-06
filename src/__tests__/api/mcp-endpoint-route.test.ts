@@ -105,6 +105,57 @@ describe("POST /api/mcp (real mcp-handler)", () => {
     });
   });
 
+  function modernRequest(body: Record<string, unknown>) {
+    return POST(
+      new Request(URL_, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          authorization: "Bearer mcp_at_valid",
+          "mcp-protocol-version": "2026-07-28",
+          "mcp-method": String(body.method),
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", ...body }),
+      }),
+    );
+  }
+
+  it("answers a 2026-07-28 discover probe like a legacy server so the client falls back", async () => {
+    const res = await modernRequest({ id: "probe-1", method: "server/discover", params: {} });
+    // HTTP 200 + JSON-RPC -32601: MCP Inspector 2.x reads this as "legacy" and
+    // retries with initialize; any 4xx made it fail outright.
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      jsonrpc: "2.0",
+      id: "probe-1",
+      error: { code: -32601, message: "Method not found" },
+    });
+  });
+
+  it("answers any other unsupported-version request with an empty 400", async () => {
+    const res = await modernRequest({ id: 7, method: "tools/list", params: {} });
+    expect(res.status).toBe(400);
+    // Spec: "If the body is empty ... fall back to initialize".
+    await expect(res.text()).resolves.toBe("");
+  });
+
+  it("still serves a legacy request that declares a supported version", async () => {
+    const res = await POST(
+      new Request(URL_, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          authorization: "Bearer mcp_at_valid",
+          "mcp-protocol-version": "2025-06-18",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
+      }),
+    );
+    expect(res.status).toBe(200);
+  });
+
   it("lists the registered tools", async () => {
     const res = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" });
     expect(res.status).toBe(200);
