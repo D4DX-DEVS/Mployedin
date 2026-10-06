@@ -125,6 +125,79 @@ describe("Admin GDPR register", () => {
     expect(gdprFind).toHaveBeenCalled();
   });
 
+  it("GET /api/admin/gdpr averages response time over admin-handled requests, never self-service exports", async () => {
+    // An export completes the instant the user downloads it; counting those
+    // pinned the average at 0 days whatever admins actually did.
+    gdprAggregate.mockResolvedValueOnce([{ avgMs: 30 * 60 * 60 * 1000 }]);
+    const { GET } = await import("@/app/api/admin/gdpr/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr?page=1&limit=10"), { params: Promise.resolve({}) });
+    const payload = await res.json();
+
+    const [pipeline] = gdprAggregate.mock.calls[0] as [Array<{ $match?: Record<string, unknown> }>];
+    expect(pipeline[0].$match).toEqual(expect.objectContaining({
+      status: "completed",
+      requestType: { $ne: "export" },
+    }));
+    expect(payload.stats.avgResponseMs).toBe(30 * 60 * 60 * 1000);
+  });
+
+  it("GET /api/admin/gdpr reports no average until an admin has completed a request", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr?page=1&limit=10"), { params: Promise.resolve({}) });
+    const payload = await res.json();
+
+    expect(payload.stats.avgResponseMs).toBeNull();
+  });
+
+  it("GET /api/admin/gdpr names the admin who handled a request and returns the user's reason", async () => {
+    gdprFind.mockImplementation(() => chain([{
+      ...requestDoc,
+      requestType: "delete",
+      status: "completed",
+      completedAt: new Date("2026-08-02T10:00:00Z"),
+      handledBy: ADMIN_ID,
+      notes: "Moving abroad",
+    }]));
+    userFind.mockImplementationOnce(() => chain([{ _id: ADMIN_ID, name: "Super Admin" }]));
+    const { GET } = await import("@/app/api/admin/gdpr/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr?page=1&limit=10"), { params: Promise.resolve({}) });
+    const payload = await res.json();
+
+    expect(userFind).toHaveBeenCalledWith({ _id: { $in: [ADMIN_ID] } });
+    expect(payload.items[0]).toEqual(expect.objectContaining({
+      handledByName: "Super Admin",
+      notes: "Moving abroad",
+    }));
+  });
+
+  it("GET /api/admin/gdpr looks each handler up once, matching stored ObjectIds", async () => {
+    const { Types } = jest.requireActual("mongoose") as typeof import("mongoose");
+    const OTHER_ADMIN = "64d000000000000000000009";
+    gdprFind.mockImplementation(() => chain([
+      { ...requestDoc, _id: "64d000000000000000000011", status: "in_progress", handledBy: new Types.ObjectId(ADMIN_ID) },
+      { ...requestDoc, _id: "64d000000000000000000012", status: "rejected", handledBy: new Types.ObjectId(ADMIN_ID) },
+      // An admin account that no longer exists.
+      { ...requestDoc, _id: "64d000000000000000000013", status: "rejected", handledBy: new Types.ObjectId(OTHER_ADMIN) },
+    ]));
+    userFind.mockImplementationOnce(() => chain([{ _id: new Types.ObjectId(ADMIN_ID), name: "Super Admin" }]));
+    const { GET } = await import("@/app/api/admin/gdpr/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr?page=1&limit=10"), { params: Promise.resolve({}) });
+    const payload = await res.json();
+
+    expect(userFind).toHaveBeenCalledTimes(1);
+    expect(userFind).toHaveBeenCalledWith({ _id: { $in: [ADMIN_ID, OTHER_ADMIN] } });
+    expect(payload.items.map((i: { handledByName: string | null }) => i.handledByName)).toEqual(["Super Admin", "Super Admin", null]);
+  });
+
+  it("GET /api/admin/gdpr skips the handler lookup when no request on the page was handled", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr?page=1&limit=10"), { params: Promise.resolve({}) });
+    const payload = await res.json();
+
+    expect(userFind).not.toHaveBeenCalled();
+    expect(payload.items[0].handledByName).toBeNull();
+  });
+
   it("GET /api/admin/gdpr/consent lists consent log entries", async () => {
     const { GET } = await import("@/app/api/admin/gdpr/consent/route");
     const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?page=1&limit=10"), { params: Promise.resolve({}) });
