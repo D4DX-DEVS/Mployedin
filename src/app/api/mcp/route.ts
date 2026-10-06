@@ -11,7 +11,13 @@ const baseHandler = createMcpHandler(
     registerMcpTools(server);
   },
   { serverInfo: { name: "mployedin", version: "1.0.0" } },
-  { disableSse: true } // SSE transport is deprecated by the MCP spec — streamable HTTP only
+  {
+    // mcp-handler serves only `${basePath}/mcp` and answers every other path
+    // with a bare 404. Without basePath it expects "/mcp", so every signed-in
+    // request to this route (/api/mcp) got "Not found" once auth had passed.
+    basePath: "/api",
+    disableSse: true, // SSE transport is deprecated by the MCP spec — streamable HTTP only
+  }
 );
 
 /**
