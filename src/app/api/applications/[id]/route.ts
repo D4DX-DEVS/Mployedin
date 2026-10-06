@@ -19,6 +19,7 @@ import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWor
 import { stageForApplication, type WorkflowStageDef } from "@/lib/hiring/workflowStages";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { SEEKER_HIDDEN_APPLICATION_FIELDS } from "@/lib/applications/seekerView";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
@@ -310,7 +311,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const application = await Application.findById(params?.id)
     .populate({
       path: "jobId",
-      select: "title location salary employerId agentId",
+      // employmentType/workMode/status: the seeker's application page shows
+      // the job beside the application, and whether it is still open.
+      select: "title location salary employerId agentId employmentType workMode status",
       populate: { path: "employerId", select: "companyName logo" },
     })
     // JobSeeker holds no `name`/`email` of its own — those live on the linked
@@ -366,20 +369,14 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result: Record<string, any> = { ...application };
 
-  // Candidates never see recruiter-internal fields. The list handler already
-  // strips these for job_seeker (handlers.ts .select("-employerNotes ...")), but
-  // this detail route returned the raw document — leaking employer/agent notes,
+  // Candidates never see recruiter-internal fields (one shared list with the
+  // list handler, lib/applications/seekerView.ts). This route once returned the raw document — leaking employer/agent notes,
   // the rejection reason, AI match gaps and the internal notes thread to the
   // applicant. The seeker UI renders aiMatchScore, so it carries the seeker's
   // own number: the engine score, not an employer's re-weighted ranking.
   if (ctx.role === "job_seeker") {
     if (typeof result.seekerMatchScore === "number") result.aiMatchScore = result.seekerMatchScore;
-    for (const key of [
-      "employerNotes", "agentNotes", "rejectionReason", "matchStrengths", "matchGaps", "matchBreakdown", "notes",
-      "qualifications", "requirementsStatus", "missingSkills", "weightsApplied",
-    ]) {
-      delete result[key];
-    }
+    for (const key of SEEKER_HIDDEN_APPLICATION_FIELDS) delete result[key];
   }
 
   if (includes.includes("interviews")) {

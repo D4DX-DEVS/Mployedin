@@ -241,6 +241,9 @@ export default function JobSeekerDocumentsPage() {
     try {
       const formData = new FormData();
       formData.append("cv", file);
+      // Read only: the card below shows the reading and "Save to Profile"
+      // writes it. Without this the read itself overwrote the profile.
+      formData.append("mode", "preview");
       const res = await csrfFetch("/api/ai/cv-extract", {
         method: "POST",
         body: formData,

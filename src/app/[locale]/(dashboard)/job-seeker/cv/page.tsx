@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import {
-  Upload, CheckCircle, AlertCircle, Sparkles,
+  Upload, AlertCircle, Sparkles,
   X, Plus, Pencil, Save, Download, Loader2,
   Trash2, Eye, EyeOff, Briefcase, GraduationCap,
   Globe, Award, User as UserIcon, FolderKanban,
@@ -95,7 +95,10 @@ export default function CVBuilderPage() {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  // An import fills the form only; the profile changes when the seeker selects
+  // "Add to Profile". Kept so "Discard import" can put back what was there.
+  const [importPending, setImportPending] = useState(false);
+  const preImportForm = useRef<CVForm | null>(null);
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -216,11 +219,13 @@ export default function CVBuilderPage() {
   async function handleImportCV(file: File) {
     const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) {
-      setError(t("errors.supportedFormats"));
+      setError(t("errors.unsupportedFile"));
+      toast.error(t("errors.unsupportedFile"));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
       setError(t("errors.fileSize"));
+      toast.error(t("errors.fileSize"));
       return;
     }
 
@@ -232,6 +237,9 @@ export default function CVBuilderPage() {
     try {
       const formData = new FormData();
       formData.append("cv", file);
+      // Read only — nothing is saved until "Add to Profile" (QA 2026-10-06:
+      // an import used to overwrite the saved profile on the spot).
+      formData.append("mode", "preview");
       const res = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: formData });
       clearInterval(tick);
       setImportProgress(100);
@@ -252,6 +260,7 @@ export default function CVBuilderPage() {
           : []),
       ]));
 
+      if (!importPending) preImportForm.current = form;
       setForm((prev) => ({
         ...prev,
         fullName: ext.fullName || prev.fullName,
@@ -306,11 +315,11 @@ export default function CVBuilderPage() {
             }))
           : prev.projects,
       }));
-      setSuccessMsg(t("messages.importSuccess"));
-      setTimeout(() => setSuccessMsg(""), 5000);
+      setImportPending(true);
     } catch (e) {
       clearInterval(tick);
-      setError(t("errors.generic"));
+      setError(t("errors.readFailed"));
+      toast.error(t("errors.readFailed"));
     } finally {
       setImporting(false);
       setImportProgress(0);
@@ -443,11 +452,19 @@ export default function CVBuilderPage() {
       });
       if (!res.ok) throw new Error(t("errors.saveProfile"));
       toast.success(t("messages.profileSaved"));
+      setImportPending(false);
+      preImportForm.current = null;
     } catch (e) {
       toast.error(t("errors.saveFailed"));
     } finally {
       setSaving(false);
     }
+  }
+
+  function discardImport() {
+    if (preImportForm.current) setForm(preImportForm.current);
+    preImportForm.current = null;
+    setImportPending(false);
   }
 
   /* ── PDF Download ── */
@@ -551,10 +568,22 @@ export default function CVBuilderPage() {
         </div>
       )}
 
-      {successMsg && (
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 text-sm border border-emerald-200 mb-4 card-pad">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          {successMsg}
+      {importPending && (
+        <div role="status" className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm mb-4 card-pad sm:flex-row sm:items-center">
+          <AlertCircle aria-hidden="true" className="w-4 h-4 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{t("import.pendingTitle")}</p>
+            <p>{t("import.pendingBody", { action: t("actions.addToProfile") })}</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="outline" size="sm" onClick={discardImport} disabled={saving}>
+              {t("import.discard")}
+            </Button>
+            <Button size="sm" onClick={handleSaveToProfile} disabled={saving} className="gap-2">
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {saving ? t("actions.saving") : t("actions.addToProfile")}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -615,7 +644,8 @@ export default function CVBuilderPage() {
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png,.webp"
                       className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportCV(f); }}
+                      // Cleared after each pick so choosing the same file again still fires.
+                      onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) handleImportCV(f); }}
                     />
                   </div>
                   {importing && (

@@ -1,722 +1,337 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
+  ArrowRight,
   Banknote,
   Calendar,
-  Check,
-  Clock,
   ExternalLink,
-  FileText,
-  Loader2,
+  Gauge,
+  Lightbulb,
+  LogOut,
   MapPin,
-  Paperclip,
-  Plus,
   RotateCcw,
+  Star,
   ThumbsUp,
-  Trash2,
-  Upload,
   Video,
-  X,
-  XCircle,
-  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-} from "@/components/ui/select";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { cn } from "@/lib/utils";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
-import { csrfFetch } from "@/lib/security/csrf-client";
-import { useConfirm } from "@/hooks/useConfirm";
 import { userInitials } from "@/components/shared/UserAvatar";
+import { cn } from "@/lib/utils";
+import { formatApplicationDate, formatApplicationSalary } from "@/lib/jobSeeker/applicationFormat";
+import { buildApplicationTimeline, nextStepFor, type NextStepKey } from "@/lib/jobSeeker/applicationTimeline";
+import { useRefreshSeekerApplications, useSeekerApplication } from "@/hooks/useSeekerApplications";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
+import { WithdrawApplicationDialog } from "@/components/features/job-seeker/WithdrawApplicationDialog";
+import { ApplicationTimeline } from "./_components/ApplicationTimeline";
+import { InterviewActionCard } from "./_components/InterviewActionCard";
+import { OfferActionCard } from "./_components/OfferActionCard";
+import { DocumentsSection } from "./_components/DocumentsSection";
+import { WhatYouSent } from "./_components/WhatYouSent";
+import type { InterviewItem, OfferItem } from "./_components/types";
 
-// ── Types ──────────────────────────────────────────────────────────
 interface ApplicationDetail {
   _id: string;
   status: string;
   aiMatchScore?: number;
   appliedAt: string;
+  viewedByEmployerAt?: string;
   coverLetter?: string;
+  screeningAnswers?: { questionId?: string; questionLabel: string; answer: unknown }[];
   documents?: { name: string; url: string; type: string }[];
   statusHistory: { status: string; changedAt: string; note?: string }[];
   jobId: {
     _id: string;
     title: string;
+    status?: string;
     location?: { city?: string; country?: string; isRemote?: boolean };
-    salary?: { min: number; max: number; currency: string };
+    salary?: { min?: number; max?: number; currency?: string };
     employerId?: { _id: string; companyName?: string; logo?: string };
-  };
-  interviews: InterviewItem[];
-  offers: OfferItem[];
+  } | null;
+  interviews?: InterviewItem[];
+  offers?: OfferItem[];
 }
 
-interface InterviewItem {
-  _id: string;
-  type: "video" | "offline" | "hybrid";
-  scheduledAt: string;
-  duration: number;
-  location?: string;
-  meetLink?: string;
-  instructions?: string;
-  status: string;
-  interviewRound: number;
-  candidateResponse: string;
-  outcome?: string;
-}
+const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
 
-interface OfferItem {
-  _id: string;
-  salary?: { amount: number; currency: string; period: string };
-  startDate?: string;
-  benefits?: string;
-  status: string;
-  expiresAt?: string;
-}
-
-// Note: DOC_TYPES labels will be populated from translations
-// The .value is sent to the API as-is (stays English)
-
-// ── Main Page ──────────────────────────────────────────────────────
+/**
+ * One application, the way LinkedIn, Indeed and Naukri show an applied job:
+ * where it stands and what happens next, the dated trail (including when the
+ * employer opened it), anything that needs a reply, what was sent, and the
+ * job beside it. Before (client report 2026-10-06) the page was a header,
+ * undated status pills and the documents list.
+ */
 export default function ApplicationDetailPage() {
   const { id, locale } = useParams<{ id: string; locale: string }>();
-  const router = useRouter();
   const t = useTranslations("applicationDetail");
   const tc = useTranslations("common");
-  const [app, setApp] = useState<ApplicationDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const fetchApplication = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/applications/${id}?include=interviews,offers,documents`);
-      if (!res.ok) throw new Error("Not found");
-      const data = await res.json();
-      setApp(data.application ?? data);
-    } catch {
-      setError(t("errorLoadingDetails"));
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+  const ta = useTranslations("jobSeekerApplications");
+  const { goBack } = useBackNavigation(`/${locale}/job-seeker/applications`);
+  const { data: app, isPending, isError, refetch } = useSeekerApplication<ApplicationDetail>(id);
+  const refresh = useRefreshSeekerApplications();
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   useEffect(() => {
-    fetchApplication();
-  }, [fetchApplication]);
+    document.title = app?.jobId?.title ? `${app.jobId.title} · MPLOYEDIN` : "Application Details · MPLOYEDIN";
+  }, [app?.jobId?.title]);
 
-  useEffect(() => {
-    document.title = "Application Details · MPLOYEDIN";
-  }, []);
+  if (isPending) return <DetailSkeleton />;
 
-  if (loading) {
+  if (isError || !app) {
     return (
-      <div className="page-container max-w-3xl">
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="card-base h-24 animate-pulse rounded-2xl" />
-          ))}
+      <div className="page-container max-w-5xl py-16 text-center">
+        <p className="text-muted-foreground">{isError ? t("errorLoadingDetails") : t("applicationNotFound")}</p>
+        <div className="mt-4 flex justify-center gap-2">
+          <Button variant="outline" onClick={goBack}>
+            <ArrowLeft className="me-2 size-4 rtl:rotate-180" /> {tc("back")}
+          </Button>
+          {isError && (
+            <Button onClick={() => refetch()}>
+              <RotateCcw className="me-2 size-4" /> {tc("tryAgain")}
+            </Button>
+          )}
         </div>
-      </div>
-    );
-  }
-
-  if (error || !app) {
-    return (
-      <div className="page-container max-w-3xl text-center py-16">
-        <p className="text-muted-foreground">{error || t("applicationNotFound")}</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> {tc("back")}
-        </Button>
       </div>
     );
   }
 
   const job = app.jobId;
-  const employer = typeof job?.employerId === "object" ? job.employerId : null;
-  const isActive = !["rejected", "withdrawn", "hired"].includes(app.status);
+  const employer = job?.employerId && typeof job.employerId === "object" ? job.employerId : null;
+  const jobTitle = job?.title ?? t("position");
+  const isActive = !TERMINAL_STATUSES.includes(app.status);
+  const salary = formatApplicationSalary(job?.salary, locale);
+  const location = job?.location?.isRemote
+    ? t("remote")
+    : [job?.location?.city, job?.location?.country].filter(Boolean).join(", ");
+  const timeline = buildApplicationTimeline(app);
+  const nextStep = nextStepFor(app.status, !!app.viewedByEmployerAt);
+  const interviews = app.interviews ?? [];
+  const offers = app.offers ?? [];
+  const jobPath = job?._id ? `/${locale}/job-seeker/jobs/${job._id}` : null;
 
   return (
-    <div className="page-container max-w-3xl pt-3 md:pt-4">
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground"
-        onClick={() => router.push(`/${locale}/job-seeker/applications`)}
-      >
-        <ArrowLeft className="h-4 w-4" /> {t("backToApplications")}
+    <div className="page-container max-w-5xl pt-3 md:pt-4">
+      {/* self-start: .page-container is a flex column, so the button stretched
+          full width and its label sat in the middle of the page. */}
+      <Button variant="ghost" size="sm" className="-ms-2 gap-1.5 self-start text-muted-foreground hover:text-foreground" onClick={goBack}>
+        <ArrowLeft className="size-4 rtl:rotate-180" /> {t("backToApplications")}
       </Button>
 
-      {/* ── Header Card ─────────────────────────────────────────── */}
-      <section className="card-base rounded-lg sm:rounded-2xl border space-y-3 panel-body">
-        <div className="flex items-start gap-2 sm:gap-3">
-          <div className="h-12 w-12 overflow-hidden rounded-full border bg-primary/10 flex items-center justify-center shrink-0 text-sm font-semibold text-primary">
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <section className="card-base rounded-2xl border panel-body">
+        <div className="flex items-start gap-3">
+          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-primary/10 text-sm font-semibold text-primary">
             {employer?.logo ? (
-              <img src={employer.logo} alt={employer.companyName ?? ""} className="h-full w-full bg-card object-contain p-1.5" />
+              <img src={employer.logo} alt={employer.companyName ?? ""} className="size-full bg-card object-contain p-1.5" />
             ) : (
               userInitials(employer?.companyName ?? t("company"))
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-semibold truncate">{job?.title ?? t("position")}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{jobTitle}</h1>
             <p className="text-sm text-muted-foreground">{employer?.companyName ?? t("company")}</p>
           </div>
-          <StatusBadge status={app.status} />
+          <StatusBadge status={app.status} size="md" />
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            {t("applied")} {formatDate(new Date(app.appliedAt))}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Calendar className="size-4" aria-hidden="true" />
+            {t("applied")} {formatApplicationDate(app.appliedAt, locale, { withYear: true })}
           </span>
-          {(() => {
-            const loc = job?.location?.isRemote
-              ? t("remote")
-              : [job?.location?.city, job?.location?.country].filter(Boolean).join(", ");
-            return loc ? (
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> {loc}
-              </span>
-            ) : null;
-          })()}
-          {job?.salary && (job.salary.min || job.salary.max) && (
-            <span className="flex items-center gap-1">
-              <Banknote className="h-4 w-4" aria-hidden="true" />
-              {job.salary.min && job.salary.max
-                ? `${job.salary.currency ?? "AED"} ${formatCount(job.salary.min)} – ${formatCount(job.salary.max)}`
-                : `From ${job.salary.currency ?? "AED"} ${formatCount((job.salary.min || job.salary.max))}`}
+          {location && (
+            <span className="flex items-center gap-1.5">
+              <MapPin className="size-4" aria-hidden="true" /> {location}
             </span>
           )}
-          {app.aiMatchScore != null && app.aiMatchScore > 0 && (
-            <span className={cn(
-              "font-medium",
-              app.aiMatchScore >= 70 ? "text-emerald-600" : app.aiMatchScore >= 50 ? "text-amber-600" : "text-muted-foreground"
-            )}>
-              {app.aiMatchScore}% {t("match")}
+          {salary && (
+            <span className="flex items-center gap-1.5">
+              <Banknote className="size-4" aria-hidden="true" /> {salary}
             </span>
           )}
         </div>
 
-        {job?._id && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => router.push(`/${locale}/job-seeker/jobs/${job._id}`)}
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> {t("viewJobPosting")}
-          </Button>
-        )}
-
-        {/* Status Timeline */}
-        {app.statusHistory?.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t">
-            {app.statusHistory.map((h, i) => (
-              <span key={`${h.status}-${h.changedAt}`} className="flex items-center gap-1 text-xs">
-                {i > 0 && <ArrowRight className="h-3 w-3 text-muted-foreground/60 rtl:rotate-180" aria-hidden="true" />}
-                <StatusBadge status={h.status} size="sm" />
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {jobPath && (
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link href={jobPath}>
+                <ExternalLink className="size-4" aria-hidden="true" /> {t("viewJobPosting")}
+              </Link>
+            </Button>
+          )}
+          {isActive ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-destructive hover:text-destructive"
+              onClick={() => setWithdrawOpen(true)}
+            >
+              <LogOut className="size-4" aria-hidden="true" /> {ta("withdraw")}
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" className="gap-1.5 text-amber-700 hover:text-amber-800" asChild>
+              <Link href={`/${locale}/job-seeker/applications/${app._id}/feedback`}>
+                <Star className="size-4" aria-hidden="true" /> {ta("rateExperience")}
+              </Link>
+            </Button>
+          )}
+        </div>
       </section>
 
-      {/* ── Interviews Section ──────────────────────────────────── */}
-      {app.interviews?.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="heading-section font-semibold flex items-center gap-2">
-            <Video className="h-4 w-4" /> {t("interviews")} ({app.interviews.length})
-          </h2>
-          {app.interviews.map((iv) => (
-            <InterviewActionCard key={iv._id} interview={iv} onUpdated={fetchApplication} />
-          ))}
-        </section>
-      )}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        {/* ── Main column ──────────────────────────────────────────── */}
+        <div className="min-w-0 space-y-6">
+          {nextStep && <NextStepCallout step={nextStep} locale={locale} />}
 
-      {/* ── Offers Section ──────────────────────────────────────── */}
-      {app.offers?.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="heading-section font-semibold flex items-center gap-2">
-            <ThumbsUp className="h-4 w-4" /> {t("offers")} ({app.offers.length})
-          </h2>
-          {app.offers.map((offer) => (
-            <OfferActionCard key={offer._id} offer={offer} onUpdated={fetchApplication} />
-          ))}
-        </section>
-      )}
+          {interviews.length > 0 && (
+            <section className="space-y-3" aria-labelledby="interviews-heading">
+              <h2 id="interviews-heading" className="heading-section flex items-center gap-2 font-semibold">
+                <Video className="size-4" aria-hidden="true" /> {t("interviews")} ({interviews.length})
+              </h2>
+              {interviews.map((iv) => (
+                <InterviewActionCard key={iv._id} interview={iv} onUpdated={refresh} />
+              ))}
+            </section>
+          )}
 
-      {/* ── Documents Section ───────────────────────────────────── */}
-      <DocumentsSection
+          {offers.length > 0 && (
+            <section className="space-y-3" aria-labelledby="offers-heading">
+              <h2 id="offers-heading" className="heading-section flex items-center gap-2 font-semibold">
+                <ThumbsUp className="size-4" aria-hidden="true" /> {t("offers")} ({offers.length})
+              </h2>
+              {offers.map((offer) => (
+                <OfferActionCard key={offer._id} offer={offer} onUpdated={refresh} />
+              ))}
+            </section>
+          )}
+
+          <ApplicationTimeline events={timeline} />
+
+          <WhatYouSent coverLetter={app.coverLetter} screeningAnswers={app.screeningAnswers}>
+            <DocumentsSection
+              applicationId={app._id}
+              documents={app.documents ?? []}
+              isActive={isActive}
+              onUpdated={refresh}
+              t={t}
+              tc={tc}
+            />
+          </WhatYouSent>
+        </div>
+
+        {/* ── The job ─────────────────────────────────────────────────
+            The header already names the job, company, place and pay; this
+            card adds what it doesn't: the match and whether the job is open. */}
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start" aria-labelledby="job-card-heading">
+          <section className="card-base rounded-2xl border panel-body">
+            <h2 id="job-card-heading" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+              {t("jobCardTitle")}
+            </h2>
+
+            {typeof app.aiMatchScore === "number" && app.aiMatchScore > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">{t("yourMatch")}</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-lg font-semibold">
+                  <Gauge className="size-4 text-primary" aria-hidden="true" />
+                  {t("matchScore", { score: app.aiMatchScore })}
+                </p>
+                {jobPath && (
+                  <Link href={jobPath} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    {t("howMatchWorks")} <ArrowRight className="size-3 rtl:rotate-180" aria-hidden="true" />
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {job?.status && (
+              <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">
+                {job.status === "active" ? t("jobOpen") : t("jobClosed")}
+              </p>
+            )}
+
+            {jobPath && (
+              <Button variant="outline" size="sm" className="mt-3 w-full gap-1.5" asChild>
+                <Link href={jobPath}>
+                  <ExternalLink className="size-4" aria-hidden="true" /> {t("viewJobPosting")}
+                </Link>
+              </Button>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      <WithdrawApplicationDialog
         applicationId={app._id}
-        documents={app.documents ?? []}
-        isActive={isActive}
-        onUpdated={fetchApplication}
-        t={t}
-        tc={tc}
+        jobTitle={jobTitle}
+        open={withdrawOpen}
+        onOpenChange={setWithdrawOpen}
+        onWithdrawn={refresh}
       />
     </div>
   );
 }
 
-// ── Interview Action Card ──────────────────────────────────────────
-function InterviewActionCard({ interview: iv, onUpdated }: { interview: InterviewItem; onUpdated: () => void }) {
+function NextStepCallout({ step, locale }: { step: NextStepKey; locale: string }) {
   const t = useTranslations("applicationDetail");
-  const [responding, setResponding] = useState(false);
-  const [showReschedule, setShowReschedule] = useState(false);
-  const [rescheduleNote, setRescheduleNote] = useState("");
-
-  const upcoming = new Date(iv.scheduledAt) >= new Date();
-  const canRespond = upcoming && (!iv.candidateResponse || iv.candidateResponse === "pending") &&
-    ["scheduled", "rescheduled"].includes(iv.status);
-
-  async function handleRespond(response: "confirmed" | "declined" | "reschedule_requested") {
-    setResponding(true);
-    try {
-      const res = await csrfFetch(`/api/interviews/${iv._id}/respond`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          response,
-          ...(response === "reschedule_requested" && { rescheduleNote: rescheduleNote.trim() }),
-        }),
-      });
-      if (res.ok) {
-        onUpdated();
-        setShowReschedule(false);
-      }
-    } finally {
-      setResponding(false);
+  const text = (() => {
+    switch (step) {
+      case "applied": return t("next.applied");
+      case "applied_viewed": return t("next.applied_viewed");
+      case "shortlisted": return t("next.shortlisted");
+      case "interview_scheduled": return t("next.interview_scheduled");
+      case "selected": return t("next.selected");
+      case "offer": return t("next.offer");
+      case "hired": return t("next.hired");
+      case "rejected": return t("next.rejected");
+      case "withdrawn": return t("next.withdrawn");
     }
-  }
-
+  })();
+  const closed = step === "rejected" || step === "withdrawn";
   return (
-    <div className="card-base rounded-xl border space-y-2.5 panel-body">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="capitalize text-xs">
-            {iv.type === "video" ? <Video className="h-3 w-3 mr-1" /> : <MapPin className="h-3 w-3 mr-1" />}
-            {iv.type} · Round {iv.interviewRound}
-          </Badge>
-          <StatusBadge status={iv.status} size="sm" />
-        </div>
-        {iv.candidateResponse && iv.candidateResponse !== "pending" && (
-          <Badge variant="outline" className={cn(
-            "text-xs",
-            iv.candidateResponse === "confirmed" && "bg-emerald-50 text-emerald-700 border-emerald-200",
-            iv.candidateResponse === "declined" && "bg-red-50 text-red-700 border-red-200",
-            iv.candidateResponse === "reschedule_requested" && "bg-amber-50 text-amber-700 border-amber-200",
-          )}>
-            {iv.candidateResponse === "confirmed" ? t("confirmed") : iv.candidateResponse === "declined" ? t("declined") : t("rescheduleRequested")}
-          </Badge>
+    <section
+      className={cn(
+        "flex gap-3 rounded-2xl border p-4",
+        closed ? "border-border bg-muted/30" : "border-primary/20 bg-primary/[0.04]",
+      )}
+      aria-labelledby="next-step-heading"
+    >
+      <Lightbulb className={cn("mt-0.5 size-5 shrink-0", closed ? "text-muted-foreground" : "text-primary")} aria-hidden="true" />
+      <div className="min-w-0">
+        <h2 id="next-step-heading" className="text-sm font-semibold">{t("nextTitle")}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{text}</p>
+        {step === "rejected" && (
+          <Link href={`/${locale}/job-seeker/jobs`} className="mt-2 inline-flex text-sm font-medium text-primary hover:underline">
+            {t("findJobs")}
+          </Link>
+        )}
+        {step === "hired" && (
+          <Link href={`/${locale}/job-seeker/onboarding`} className="mt-2 inline-flex text-sm font-medium text-primary hover:underline">
+            {t("goToOnboarding")}
+          </Link>
         )}
       </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Calendar className="h-3 w-3" />
-          {new Date(iv.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-        </span>
-        <span className="flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          {new Date(iv.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · {iv.duration}{t("minSuffix")}
-        </span>
-        {iv.meetLink && (
-          <a href={iv.meetLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-            <ExternalLink className="h-3 w-3" /> {t("joinMeeting")}
-          </a>
-        )}
-        {iv.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{iv.location}</span>}
-      </div>
-
-      {iv.instructions && (
-        <p className="text-xs italic text-muted-foreground">{iv.instructions}</p>
-      )}
-
-      {iv.outcome && (
-        <div className="text-xs">
-          {t("outcome")}: <span className="font-medium capitalize">{iv.outcome.replace("_", " ")}</span>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      {canRespond && !showReschedule && (
-        <div className="flex items-center gap-2 pt-1">
-          <Button
-            size="dense"
-            className="gap-1.5"
-            onClick={() => handleRespond("confirmed")}
-            disabled={responding}
-          >
-            {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            {t("confirm")}
-          </Button>
-          <Button
-            size="dense"
-            variant="outline"
-            className="gap-1.5"
-            onClick={() => setShowReschedule(true)}
-            disabled={responding}
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> {t("reschedule")}
-          </Button>
-          <Button
-            size="dense"
-            variant="ghost"
-            className="gap-1.5 text-destructive hover:text-destructive"
-            onClick={() => handleRespond("declined")}
-            disabled={responding}
-          >
-            <X className="h-3.5 w-3.5" /> {t("decline")}
-          </Button>
-        </div>
-      )}
-
-      {/* Reschedule Form */}
-      {showReschedule && (
-        <div className="space-y-2 pt-1 border-t">
-          <Textarea
-            placeholder={t("rescheduleReasonPlaceholder")}
-            value={rescheduleNote}
-            onChange={(e) => setRescheduleNote(e.target.value)}
-            maxLength={500}
-            rows={2}
-            className="resize-none text-sm"
-          />
-          <div className="flex gap-2">
-            <Button
-              size="dense"
-              className=""
-              onClick={() => handleRespond("reschedule_requested")}
-              disabled={!rescheduleNote.trim() || responding}
-            >
-              {responding && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-              {t("requestReschedule")}
-            </Button>
-            <Button size="dense" variant="ghost" className="" onClick={() => setShowReschedule(false)}>
-              {t("cancel")}
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Offer Action Card ──────────────────────────────────────────────
-function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: () => void }) {
-  const t = useTranslations("applicationDetail");
-  const [responding, setResponding] = useState(false);
-  const [showDeclineForm, setShowDeclineForm] = useState(false);
-  const [declineReason, setDeclineReason] = useState("");
-
-  const isPending = offer.status === "pending";
-  const isExpired = offer.expiresAt && new Date(offer.expiresAt) < new Date();
-
-  async function handleRespond(status: "accepted" | "declined") {
-    setResponding(true);
-    try {
-      const res = await csrfFetch(`/api/offers/${offer._id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          status,
-          ...(status === "declined" && declineReason && { declineReason }),
-        }),
-      });
-      if (res.ok) {
-        onUpdated();
-        setShowDeclineForm(false);
-      }
-    } finally {
-      setResponding(false);
-    }
-  }
-
-  return (
-    <div className="card-base rounded-xl border border-emerald-200/70 bg-emerald-50/30 space-y-2.5 panel-body">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-emerald-800">{t("offer")}</span>
-        <Badge variant="outline" className={cn(
-          "text-xs",
-          offer.status === "pending" && "bg-amber-50 text-amber-700 border-amber-200",
-          offer.status === "accepted" && "bg-emerald-50 text-emerald-700 border-emerald-200",
-          offer.status === "declined" && "bg-red-50 text-red-700 border-red-200",
-          offer.status === "expired" && "bg-gray-50 text-gray-600 border-gray-200",
-        )}>
-          {offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
-        </Badge>
-      </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {offer.salary && (
-          <span className="font-medium text-foreground">
-            {new Intl.NumberFormat("en-US", { style: "currency", currency: offer.salary.currency, maximumFractionDigits: 0 }).format(offer.salary.amount)} / {offer.salary.period}
-          </span>
-        )}
-        {offer.startDate && (
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> {t("startDate")}: {formatDate(new Date(offer.startDate))}
-          </span>
-        )}
-        {offer.expiresAt && isPending && (
-          <span className={cn("text-[11px]", isExpired ? "text-red-600" : "text-amber-600")}>
-            {isExpired ? t("expired") : `${t("expires")}: ${formatDate(new Date(offer.expiresAt))}`}
-          </span>
-        )}
-      </div>
-
-      {offer.benefits && (
-        <p className="text-xs text-muted-foreground">{offer.benefits}</p>
-      )}
-
-      {/* Offer Actions */}
-      {isPending && !isExpired && !showDeclineForm && (
-        <div className="flex items-center gap-2 pt-1">
-          <Button
-            size="dense"
-            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
-            onClick={() => handleRespond("accepted")}
-            disabled={responding}
-          >
-            {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            {t("acceptOffer")}
-          </Button>
-          <Button
-            size="dense"
-            variant="outline"
-            className="gap-1.5 text-red-600 hover:text-red-700 border-red-200"
-            onClick={() => setShowDeclineForm(true)}
-            disabled={responding}
-          >
-            <XCircle className="h-3.5 w-3.5" /> {t("decline")}
-          </Button>
-        </div>
-      )}
-
-      {showDeclineForm && (
-        <div className="space-y-2 pt-1 border-t">
-          <Textarea
-            placeholder={t("declineReasonPlaceholder")}
-            value={declineReason}
-            onChange={(e) => setDeclineReason(e.target.value)}
-            maxLength={500}
-            rows={2}
-            className="resize-none text-sm"
-          />
-          <div className="flex gap-2">
-            <Button
-              size="dense"
-              variant="destructive"
-              className=""
-              onClick={() => handleRespond("declined")}
-              disabled={responding}
-            >
-              {responding && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-              {t("confirmDecline")}
-            </Button>
-            <Button size="dense" variant="ghost" className="" onClick={() => setShowDeclineForm(false)}>
-              {t("cancel")}
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Documents Section ──────────────────────────────────────────────
-function DocumentsSection({
-  applicationId,
-  documents,
-  isActive,
-  onUpdated,
-  t,
-  tc,
-}: {
-  applicationId: string;
-  documents: { name: string; url: string; type: string }[];
-  isActive: boolean;
-  onUpdated: () => void;
-  t: ReturnType<typeof useTranslations>;
-  tc: ReturnType<typeof useTranslations>;
-}) {
-  const { confirm, ConfirmDialogNode } = useConfirm();
-  const tConfirm = useTranslations("confirm");
-  const [showUpload, setShowUpload] = useState(false);
-  const [docName, setDocName] = useState("");
-  const [docUrl, setDocUrl] = useState("");
-  const [docType, setDocType] = useState("other");
-  const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-
-  async function handleAdd() {
-    if (!docName.trim() || !docUrl.trim()) return;
-    setUploading(true);
-    try {
-      const res = await csrfFetch(`/api/applications/${applicationId}/documents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: docName.trim(), url: docUrl.trim(), type: docType }),
-      });
-      if (res.ok) {
-        setDocName("");
-        setDocUrl("");
-        setDocType("other");
-        setShowUpload(false);
-        onUpdated();
-      }
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleDelete(url: string) {
-    const ok = await confirm({
-      message: tConfirm("deleteMessage"),
-      confirmLabel: tConfirm("delete"),
-      variant: "destructive",
-    });
-    if (!ok) return;
-    setDeleting(url);
-    try {
-      const res = await csrfFetch(`/api/applications/${applicationId}/documents`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      if (res.ok) onUpdated();
-    } finally {
-      setDeleting(null);
-    }
-  }
-
-  return (
-    <section className="space-y-3">
-      {ConfirmDialogNode}
-      <div className="flex items-center justify-between">
-        <h2 className="heading-section font-semibold flex items-center gap-2">
-          <Paperclip className="h-4 w-4" /> {t("documents")} ({documents.length})
-        </h2>
-        {isActive && (
-          <Button
-            size="dense"
-            variant="outline"
-            className="gap-1.5"
-            onClick={() => setShowUpload(!showUpload)}
-          >
-            <Plus className="h-3.5 w-3.5" /> {t("addDocument")}
-          </Button>
-        )}
-      </div>
-
-      {/* Document List */}
-      {documents.length > 0 ? (
-        <div className="space-y-2">
-          {documents.map((doc, i) => (
-            <div
-              key={`${doc.url}-${i}`}
-              className="card-base rounded-xl border flex items-center gap-3 panel-body"
-            >
-              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
-                <a
-                  href={`/api/applications/${applicationId}/documents/download?i=${i}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-primary hover:underline truncate block"
-                >
-                  {doc.name}
-                </a>
-                <span className="text-[11px] text-muted-foreground capitalize">{doc.type.replace("_", " ")}</span>
-              </div>
-              {isActive && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDelete(doc.url)}
-                  disabled={deleting === doc.url}
-                >
-                  {deleting === doc.url ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="card-base rounded-xl border border-dashed text-center text-muted-foreground text-sm panel-body">
-          {t("noDocumentsAttached")}
-        </div>
-      )}
-
-      {/* Add Document Form */}
-      {showUpload && (
-        <div className="card-base rounded-xl border space-y-3 panel-body">
-          <h3 className="heading-label font-medium">{t("addDocument")}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">{t("documentName")}</label>
-              <Input
-                placeholder={t("documentNamePlaceholder")}
-                value={docName}
-                onChange={(e) => setDocName(e.target.value)}
-                className="h-9 text-sm"
-                maxLength={200}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">{t("type")}</label>
-              <Select value={docType} onValueChange={setDocType}>
-                <SelectTrigger className="h-9"><SelectValue placeholder={t("selectType")} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="resume">{t("docResume")}</SelectItem>
-                  <SelectItem value="cover_letter">{t("docCoverLetter")}</SelectItem>
-                  <SelectItem value="portfolio">{t("docPortfolio")}</SelectItem>
-                  <SelectItem value="certification">{t("docCertification")}</SelectItem>
-                  <SelectItem value="reference">{t("docReference")}</SelectItem>
-                  <SelectItem value="id_document">{t("docIdDocument")}</SelectItem>
-                  <SelectItem value="other">{t("docOther")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium">{t("documentUrl")}</label>
-            <Input
-              placeholder="https://drive.google.com/..."
-              value={docUrl}
-              onChange={(e) => setDocUrl(e.target.value)}
-              className="h-9 text-sm"
-              type="url"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              {t("uploadDocumentHint")}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="dense"
-              className="gap-1.5"
-              onClick={handleAdd}
-              disabled={!docName.trim() || !docUrl.trim() || uploading}
-            >
-              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              {t("addDocument")}
-            </Button>
-            <Button size="dense" variant="ghost" className="" onClick={() => setShowUpload(false)}>
-              {tc("cancel")}
-            </Button>
-          </div>
-        </div>
-      )}
     </section>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="page-container max-w-5xl pt-3 md:pt-4" aria-busy="true">
+      <div className="h-8 w-40 animate-pulse rounded-lg bg-muted" />
+      <div className="card-base mt-2 h-40 animate-pulse rounded-2xl" />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="space-y-6">
+          <div className="h-20 animate-pulse rounded-2xl bg-muted" />
+          <div className="card-base h-56 animate-pulse rounded-2xl" />
+          <div className="card-base h-32 animate-pulse rounded-2xl" />
+        </div>
+        <div className="card-base h-48 animate-pulse rounded-2xl" />
+      </div>
+    </div>
   );
 }

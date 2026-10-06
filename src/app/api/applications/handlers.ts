@@ -25,6 +25,7 @@ import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hir
 import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
 import { stageQueryFilter } from "@/lib/hiring/workflowStages";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { SEEKER_APPLICATION_PROJECTION, stripSeekerHiddenFields } from "@/lib/applications/seekerView";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
@@ -407,9 +408,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .limit(limit)
       // The employer's judgement stays with the employer: notes, narrative,
       // the requirements checklist and the (possibly re-weighted) ranking.
-      .select(ctx.role === "job_seeker"
-        ? "-employerNotes -matchStrengths -matchGaps -rejectionReason -matchBreakdown -qualifications -requirementsStatus -missingSkills -weightsApplied"
-        : "")
+      .select(ctx.role === "job_seeker" ? SEEKER_APPLICATION_PROJECTION : "")
       .populate({
         path: "jobId",
         // requirements powers the "matching skills" column in the employer list
@@ -627,7 +626,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   return NextResponse.json({
     applications: applications.map((app) => ({
-      ...app,
+      // Belt and braces with the projection above: nothing recruiter-only
+      // leaves this route for a seeker even if a query path forgets it.
+      ...(ctx.role === "job_seeker" ? stripSeekerHiddenFields(app) : app),
       // A seeker is shown the engine's number for the pair, never an
       // employer's re-weighted ranking (equal unless weights were saved).
       ...(ctx.role === "job_seeker" && typeof app.seekerMatchScore === "number"

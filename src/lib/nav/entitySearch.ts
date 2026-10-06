@@ -23,6 +23,8 @@ export interface EntitySearchRoutes {
   candidateHeadingKey?: string;
   /** Search-box placeholder key; defaults to the staff wording. */
   placeholderKey?: string;
+  /** False when the hits hold no people, so the palette offers no People filter. */
+  peopleFilter?: boolean;
 }
 
 export const ENTITY_SEARCH_ROUTES: Partial<Record<UserRole, EntitySearchRoutes>> = {
@@ -50,6 +52,8 @@ export const ENTITY_SEARCH_ROUTES: Partial<Record<UserRole, EntitySearchRoutes>>
     candidateHeadingKey: "applicationsFound",
     // The default placeholder offers to search candidates. A seeker cannot.
     placeholderKey: "placeholderJobSeeker",
+    // Its second group is its own applications — there is no one to find.
+    peopleFilter: false,
   },
   // A super-agent has no `jobs/[id]` route, which is why this role used to be
   // left out — but its jobs list opens the same record in a detail dialog, and

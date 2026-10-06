@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { renderWithProviders as render, screen, waitFor, within } from "@/test-utils";
 import userEvent from "@testing-library/user-event";
 
 import ApplicationsPage from "@/app/[locale]/(dashboard)/job-seeker/applications/page";
@@ -24,6 +24,11 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
   // The application-journey nav marks the current stage active.
   usePathname: () => "/en/job-seeker/applications",
+}));
+
+// The status tab lives in the URL on the page; plain state is enough here.
+jest.mock("@/hooks/useUrlFilter", () => ({
+  useUrlFilter: (_key: string, fallback: string) => React.useState(fallback),
 }));
 
 jest.mock("next/link", () => ({
@@ -275,7 +280,7 @@ describe("ApplicationsPage", () => {
 
     expect(screen.queryByTestId("journey-context-skeleton")).not.toBeInTheDocument();
     expect(screen.queryByText(/applications? · \d+ active/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /senior full stack developer/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /senior full stack developer/i })).toBeInTheDocument();
   });
 
   it("shows the loading skeleton, not a line of text, while counts are still loading", async () => {

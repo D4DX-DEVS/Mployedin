@@ -111,5 +111,91 @@ describe("CommandMenu", () => {
     fireEvent.click(inbox);
     expect(pushMock).toHaveBeenCalledWith("/en/employer/jobs/j1/applications");
   });
+
+  describe("People / Pages / Actions filters", () => {
+    async function openPalette(role: "employer" | "job_seeker" = "employer") {
+      render(<CommandMenu navGroups={getNavGroups(role, "en")} locale="en" userRole={role} />);
+      fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+      const dialog = within(await screen.findByRole("dialog"));
+      await waitFor(() => expect(dialog.getByText("General")).toBeInTheDocument());
+      return dialog;
+    }
+
+    it("narrows the list to actions, and back to everything on a second click", async () => {
+      const dialog = await openPalette();
+      const chip = dialog.getByRole("button", { name: "Actions" });
+
+      fireEvent.click(chip);
+      expect(chip).toHaveAttribute("aria-pressed", "true");
+      expect(dialog.getByText("Write a job myself")).toBeInTheDocument();
+      expect(dialog.queryByText("General")).not.toBeInTheDocument();
+
+      fireEvent.click(chip);
+      expect(chip).toHaveAttribute("aria-pressed", "false");
+      expect(dialog.getByText("General")).toBeInTheDocument();
+    });
+
+    it("narrows the list to pages", async () => {
+      const dialog = await openPalette();
+
+      fireEvent.click(dialog.getByRole("button", { name: "Pages" }));
+
+      expect(dialog.getByText("General")).toBeInTheDocument();
+      expect(dialog.queryByText("Write a job myself")).not.toBeInTheDocument();
+    });
+
+    it("narrows the list to people, asking for a name until one is typed", async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({
+            jobs: [{ id: "j1", title: "Sara's team lead", status: "active" }],
+            candidates: [{ id: "c1", name: "Sara Ahmed", jobTitle: "QA Engineer", status: "new" }],
+          }),
+        })
+      );
+      const dialog = await openPalette();
+
+      fireEvent.click(dialog.getByRole("button", { name: "People" }));
+      expect(dialog.getByText("Type at least 2 letters of a name to find people.")).toBeInTheDocument();
+      expect(dialog.queryByText("General")).not.toBeInTheDocument();
+
+      fireEvent.change(dialog.getByRole("combobox"), { target: { value: "Sa" } });
+      await dialog.findByText("Sara Ahmed");
+      // A job is not a person.
+      expect(dialog.queryByText("Sara's team lead")).not.toBeInTheDocument();
+
+      fireEvent.click(dialog.getByText("Sara Ahmed"));
+      expect(pushMock).toHaveBeenCalledWith("/en/employer/applications?search=Sara%20Ahmed");
+    });
+
+    it("says it is searching, not that nothing was found, while the lookup runs", async () => {
+      (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
+      const dialog = await openPalette();
+
+      fireEvent.click(dialog.getByRole("button", { name: "People" }));
+      fireEvent.change(dialog.getByRole("combobox"), { target: { value: "Sa" } });
+
+      expect(await dialog.findByText("Searching…")).toBeInTheDocument();
+      expect(dialog.queryByText("No results found.")).not.toBeInTheDocument();
+    });
+
+    it("toggles the chip on Enter instead of opening the highlighted row", async () => {
+      const dialog = await openPalette();
+      const chip = dialog.getByRole("button", { name: "Pages" });
+
+      chip.focus();
+      fireEvent.keyDown(chip, { key: "Enter" });
+
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    it("offers no People filter to a job seeker, who has no people to find", async () => {
+      const dialog = await openPalette("job_seeker");
+
+      expect(dialog.queryByRole("button", { name: "People" })).not.toBeInTheDocument();
+      expect(dialog.getByRole("button", { name: "Pages" })).toBeInTheDocument();
+    });
+  });
 });
 

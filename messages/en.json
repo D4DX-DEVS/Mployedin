@@ -569,6 +569,8 @@
     "applicationsForJob": "Applications for {title}",
     "whatLookingFor": "What are you looking for?",
     "people": "People",
+    "peopleHint": "Type at least 2 letters of a name to find people.",
+    "searching": "Searching…",
     "pages": "Pages",
     "navigate": "Navigate",
     "select": "Select",
@@ -1104,7 +1106,8 @@
         "changed_mind": "Changed my mind",
         "personal_reasons": "Personal reasons",
         "other": "Other"
-      }
+      },
+      "failed": "We couldn't withdraw this application. Please try again."
     },
     "export": {
       "title": "My Applications",
@@ -1601,7 +1604,19 @@
         "specifyJobType": "Specify a job type preference"
       },
       "matchPercent": "{score}% match",
-      "noOpenJobs": "No open jobs in your preferred locations yet."
+      "noOpenJobs": "No open jobs in your preferred locations yet.",
+      "fixErrors": "Fix the highlighted fields, then save again.",
+      "noticeHint": "Enter 0 if you can start right away.",
+      "errors": {
+        "roleTooLong": "“{value}” is too long. Keep each role under {max} characters.",
+        "tooManyRoles": "You can add up to {max} roles.",
+        "countryTooLong": "“{value}” is too long. Keep each location under {max} characters.",
+        "tooManyCountries": "You can add up to {max} locations.",
+        "salaryNegative": "Salary can't be negative.",
+        "salaryOrder": "The minimum can't be higher than the maximum.",
+        "noticeRange": "Enter a whole number of days from 0 to {max}.",
+        "invalid": "Check this field and try again."
+      }
     },
     "personalDetails": {
       "documentTitle": "Personal Details · MPLOYEDIN",
@@ -1948,7 +1963,10 @@
       "description": "Upload a PDF or image and let AI fill in the fields",
       "upload": "Upload CV",
       "importing": "Importing...",
-      "reading": "AI is reading your CV..."
+      "reading": "AI is reading your CV...",
+      "pendingTitle": "Imported, not saved yet",
+      "pendingBody": "We filled the fields from your CV. Your profile hasn't changed. Review the fields, then select {action} to save them.",
+      "discard": "Discard import"
     },
     "sections": {
       "personalDetails": "Personal Details",
@@ -2079,7 +2097,9 @@
       "saveFailed": "We couldn't save",
       "pdfFailed": "We couldn't generate PDF. Please try again.",
       "linkedinInvalid": "Enter your LinkedIn profile address, like https://www.linkedin.com/in/your-name",
-      "linkInvalid": "\"{label}\" isn't a web address. Enter a link like https://example.com"
+      "linkInvalid": "\"{label}\" isn't a web address. Enter a link like https://example.com",
+      "unsupportedFile": "This file type can't be imported. Upload a PDF, JPG, PNG or WEBP file.",
+      "readFailed": "We couldn't read this CV. Please try again."
     },
     "defaults": {
       "link": "Link"
@@ -16262,7 +16282,40 @@
     "website": "Website",
     "viewCompanyProfile": "View company profile",
     "jobSearch": "Job Search",
-    "remote": "Remote"
+    "remote": "Remote",
+    "niceToHave": "Nice to have",
+    "match": {
+      "eyebrow": "Your match",
+      "score": "{score}% match",
+      "howItWorks": "How this score is worked out",
+      "skills": "Skills",
+      "role": "Role fit",
+      "experience": "Experience",
+      "weight": "counts for {weight}%",
+      "aiUp": "AI review added {points, plural, one {# point} other {# points}}.",
+      "aiDown": "AI review took off {points, plural, one {# point} other {# points}}.",
+      "skillsUnknown": "This job lists no skills, so the skills part is an estimate.",
+      "gatesNote": "Location, salary and work mode don't add points. They decide whether we recommend a job to you.",
+      "notRecommended": "Not recommended to you: {reason}.",
+      "reasons": {
+        "country": "the job is outside your preferred countries",
+        "work_mode": "the work mode doesn't match your preference",
+        "salary": "the pay is below your expected salary",
+        "experience": "you have less experience than the job asks for",
+        "education": "the job asks for a higher qualification than your profile lists",
+        "experience_unknown": "the job asks for experience and your profile doesn't say how much you have",
+        "education_unknown": "the job asks for a qualification and your profile lists none",
+        "other": "it doesn't meet one of your preferences"
+      },
+      "error": "We couldn't load your match for this job."
+    },
+    "insights": {
+      "eyebrow": "Profile insights",
+      "description": "Here's how the job's skills compare with your profile.",
+      "matched": "{matched} of {total} skills matched",
+      "skills": "Skills",
+      "showDenied": "Show skills you said you don't have ({count})"
+    }
   },
   "publicJobDetail": {
     "jobDescription": "Job Description",
@@ -16336,7 +16389,67 @@
     "docReference": "Reference Letter",
     "docIdDocument": "ID Document",
     "docOther": "Other",
-    "selectType": "Select type"
+    "selectType": "Select type",
+    "progressTitle": "Application progress",
+    "currentStage": "Current stage",
+    "events": {
+      "applied": "You applied",
+      "viewed": "The employer viewed your application",
+      "shortlisted": "The employer shortlisted you",
+      "interview_scheduled": "Moved to interviews",
+      "selected": "The employer selected you",
+      "offer": "You received an offer",
+      "hired": "You were hired",
+      "rejected": "The employer didn't move forward",
+      "withdrawn": "You withdrew your application"
+    },
+    "nextTitle": "What happens next",
+    "next": {
+      "applied": "The employer hasn't opened your application yet. We'll let you know when they view it or move you forward.",
+      "applied_viewed": "The employer has seen your application. We'll let you know when they move you forward.",
+      "shortlisted": "You're on the employer's shortlist. They may contact you to arrange an interview.",
+      "interview_scheduled": "Check your interview details below and let the employer know whether you can attend.",
+      "selected": "The employer has selected you. We'll let you know as soon as they send an offer.",
+      "offer": "Review the offer below and accept or decline it before it expires.",
+      "hired": "Congratulations on your new role. Your onboarding steps are on the Onboarding page.",
+      "rejected": "The employer has decided not to move forward this time. New jobs that match your profile are on the Jobs page.",
+      "withdrawn": "You withdrew this application. While the job is open, you can apply again from the job page."
+    },
+    "sentTitle": "What you sent",
+    "coverLetter": "Cover letter",
+    "screeningAnswers": "Screening answers",
+    "answerYes": "Yes",
+    "answerNo": "No",
+    "jobCardTitle": "About the job",
+    "jobClosed": "This job is no longer taking applications.",
+    "matchScore": "{score}% match",
+    "howMatchWorks": "See how your match is worked out",
+    "findJobs": "Find jobs",
+    "goToOnboarding": "Go to onboarding",
+    "jobOpen": "This job is still taking applications.",
+    "yourMatch": "Your match",
+    "interviewType": {
+      "video": "Video",
+      "offline": "In person",
+      "hybrid": "Hybrid"
+    },
+    "interviewRound": "Round {round}",
+    "outcomes": {
+      "passed": "Passed",
+      "failed": "Not passed",
+      "hold": "On hold",
+      "noShow": "Missed"
+    },
+    "offerStatus": {
+      "pending": "Awaiting your reply",
+      "accepted": "Accepted",
+      "declined": "Declined",
+      "expired": "Expired",
+      "withdrawn": "Withdrawn",
+      "countered": "Counter-offer sent"
+    },
+    "perMonth": "/ month",
+    "perYear": "/ year"
   },
   "applicationFeedback": {
     "errorLoadingDetails": "Could not load application details.",

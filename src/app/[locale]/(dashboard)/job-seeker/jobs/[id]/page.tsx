@@ -12,6 +12,7 @@ import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/feature
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
+import { JobMatchCard } from "@/components/features/job-seeker/skills/JobMatchCard";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
@@ -367,6 +368,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </section>
               )}
 
+              {/* The list's match percentage, and what it is made of */}
+              <JobMatchCard jobId={String(job._id)} />
+
               {/* Profile Insights — skill matching + micro questions */}
               <SkillInsights jobId={String(job._id)} source="job_view" />
 
@@ -382,6 +386,22 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                         <div className="flex flex-wrap gap-2">
                           {job.requirements.skills.map((s: string) => (
                             <span key={s} className="rounded-full border border-border/60 bg-muted/20 px-3 py-1 text-sm text-muted-foreground">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Preferred skills count toward the match and the skill
+                        check, so they are shown here too — otherwise a matched
+                        "TypeScript" looked like it came from nowhere. */}
+                    {job.requirements.preferredSkills?.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-foreground">{t("niceToHave")}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {job.requirements.preferredSkills.map((s: string) => (
+                            <span key={s} className="rounded-full border border-dashed border-border/60 px-3 py-1 text-sm text-muted-foreground">
                               {s}
                             </span>
                           ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, useCallback, useMemo } from "react";
+import { Fragment, useEffect, useId, useState, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { CornerDownLeft, Search } from "lucide-react";
@@ -18,6 +18,7 @@ import { getIcon } from "@/lib/nav/iconRegistry";
 import { getQuickActions } from "@/lib/nav/quickActions";
 import { getEntitySearchRoutes } from "@/lib/nav/entitySearch";
 import { usePermissions } from "@/hooks/usePermissions";
+import { cn } from "@/lib/utils";
 
 interface CommandMenuProps {
   navGroups: NavGroup[];
@@ -38,16 +39,33 @@ interface EntityHits {
 
 const NO_HITS: EntityHits = { jobs: [], candidates: [], people: [] };
 
+/* The "What are you looking for?" chips. Each narrows the list to one kind of
+   result; null shows everything. Job hits belong to none of them — a job is
+   neither a person nor a page — so they appear only in the unfiltered list. */
+type Scope = "people" | "pages" | "actions";
+
 export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
   const [open, setOpen] = useState(false);
   const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<EntityHits>(NO_HITS);
+  const [scope, setScope] = useState<Scope | null>(null);
+  const [searching, setSearching] = useState(false);
+  const scopeLabelId = useId();
   const router = useRouter();
   const pathname = usePathname();
   const { can } = usePermissions();
 
-  const toggle = useCallback(() => setOpen((o) => !o), []);
+  // Every open starts unfiltered; a chip left on from last time would hide results.
+  const toggle = useCallback(() => {
+    setOpen((o) => !o);
+    setScope(null);
+  }, []);
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (!next) setScope(null);
+  }
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -64,6 +82,7 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
     router.push(href);
     setOpen(false);
     setQuery("");
+    setScope(null);
   }
 
   const isAr = locale === "ar";
@@ -132,11 +151,23 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
   const entityRoutes = getEntitySearchRoutes(userRole);
   const trimmedQuery = query.trim();
 
+  // Offer only the chips that can hold something for this role.
+  const scopes: Scope[] = [
+    ...(entityRoutes && entityRoutes.peopleFilter !== false ? (["people"] as const) : []),
+    "pages",
+    ...(quickActions.length > 0 ? (["actions"] as const) : []),
+  ];
+  const shows = (target: Scope) => scope === null || scope === target;
+
   useEffect(() => {
-    if (!open || !entityRoutes || trimmedQuery.length < 2) {
+    // Pages and Actions never show a hit, so they need no lookup.
+    const peopleHidden = scope !== null && scope !== "people";
+    if (!open || !entityRoutes || trimmedQuery.length < 2 || peopleHidden) {
       setHits(NO_HITS);
+      setSearching(false);
       return;
     }
+    setSearching(true);
     const controller = new AbortController();
     const timer = setTimeout(() => {
       fetch(`/api/workspace-search?q=${encodeURIComponent(trimmedQuery)}`, {
@@ -153,6 +184,10 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
         .catch(() => {
           // An aborted or failed lookup leaves navigation and actions intact —
           // entity hits are an addition to the palette, never its content.
+        })
+        .finally(() => {
+          // An aborted lookup was replaced by a newer one that is still running.
+          if (!controller.signal.aborted) setSearching(false);
         });
     }, 250);
     return () => {
@@ -160,10 +195,10 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
       clearTimeout(timer);
     };
      
-  }, [open, trimmedQuery, Boolean(entityRoutes)]);
+  }, [open, trimmedQuery, Boolean(entityRoutes), scope]);
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={handleOpenChange}>
       <CommandInput
         placeholder={entityRoutes ? t(entityRoutes.placeholderKey ?? "placeholderWithEntities") : t("placeholder")}
         value={query}
@@ -172,22 +207,46 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
         shortcut="⌘ K"
       />
       <div className="border-b border-border/60 px-4 pb-3 pt-2.5">
-        <p className="mb-2 text-[11px] font-semibold text-muted-foreground">{t("whatLookingFor")}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {["people", "pages", "actions"].map((filter) => (
-            <span
-              key={filter}
-              className="inline-flex items-center rounded-md border border-border/70 bg-muted/45 px-2 py-1 text-[11px] font-medium text-muted-foreground"
-            >
-              {t(filter)}
-            </span>
-          ))}
+        <p id={scopeLabelId} className="mb-2 text-[11px] font-semibold text-muted-foreground">{t("whatLookingFor")}</p>
+        <div role="group" aria-labelledby={scopeLabelId} className="flex flex-wrap gap-1.5">
+          {scopes.map((filter) => {
+            const active = scope === filter;
+            return (
+              <button
+                key={filter}
+                type="button"
+                aria-pressed={active}
+                // Keep the caret in the search box so typing carries on after a click.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setScope(active ? null : filter)}
+                // cmdk answers Enter anywhere in the palette by opening the
+                // highlighted row; on a chip, Enter must press the chip.
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.stopPropagation();
+                }}
+                className={cn(
+                  "tap-target-box inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+                  active
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/70 bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {t(filter)}
+              </button>
+            );
+          })}
         </div>
       </div>
       <CommandList>
-        <CommandEmpty>{t("noResults")}</CommandEmpty>
+        <CommandEmpty>
+          {scope === "people" && trimmedQuery.length < 2
+            ? t("peopleHint")
+            : searching
+              ? t("searching")
+              : t("noResults")}
+        </CommandEmpty>
 
-        {quickActions.length > 0 && (
+        {shows("actions") && quickActions.length > 0 && (
           <>
             <CommandGroup heading={t("actions")}>
               {quickActions.map((action) => {
@@ -211,11 +270,11 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
                 );
               })}
             </CommandGroup>
-            <CommandSeparator />
+            {scope === null && <CommandSeparator />}
           </>
         )}
 
-        {entityRoutes && hits.jobs.length > 0 && (
+        {scope === null && entityRoutes && hits.jobs.length > 0 && (
           <CommandGroup heading={t("jobsFound")}>
             {hits.jobs.map((job) => {
               const Icon = getIcon("Briefcase");
@@ -249,7 +308,7 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
           </CommandGroup>
         )}
 
-        {hits.people.length > 0 && (
+        {shows("people") && hits.people.length > 0 && (
           <CommandGroup heading={t("peopleFound")}>
             {hits.people.map((person) => {
               const Icon = getIcon("Building2");
@@ -272,7 +331,7 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
           </CommandGroup>
         )}
 
-        {entityRoutes && hits.candidates.length > 0 && (
+        {shows("people") && entityRoutes && hits.candidates.length > 0 && (
           <CommandGroup heading={t(entityRoutes.candidateHeadingKey ?? "candidatesFound")}>
             {hits.candidates.map((candidate) => {
               const Icon = getIcon("UserSearch");
@@ -295,7 +354,7 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
           </CommandGroup>
         )}
 
-        {recentItems.length > 0 && (
+        {shows("pages") && recentItems.length > 0 && (
           <>
             <CommandGroup heading={t("recent")}>
               {recentItems.map((item) => {
@@ -317,7 +376,7 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
         )}
 
         {/* Standalone items (Dashboard, Notifications, Settings, etc.) */}
-        {standaloneItems.length > 0 && (
+        {shows("pages") && standaloneItems.length > 0 && (
           <CommandGroup heading={t("general")}>
             {standaloneItems.map((item) => {
               const Icon = getIcon(item.icon);
@@ -343,7 +402,7 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
         )}
 
         {/* Grouped items — each parent gets its own section */}
-        {groupedItems.map((parent) => (
+        {shows("pages") && groupedItems.map((parent) => (
           <CommandGroup
             key={parent.href}
             heading={isAr ? parent.titleAr : parent.title}
