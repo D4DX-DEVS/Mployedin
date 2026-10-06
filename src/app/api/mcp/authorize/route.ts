@@ -63,25 +63,11 @@ export async function GET(req: NextRequest) {
     return authorizeError(redirectUri, "invalid_target", "resource does not identify this MCP server", state);
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    const loginUrl = new URL(`/${DEFAULT_LOCALE}/login`, getAppBaseUrl());
-    loginUrl.searchParams.set("callbackUrl", req.url);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  if ((session.user as unknown as { pending2fa?: boolean }).pending2fa) {
-    const verifyUrl = new URL(`/${DEFAULT_LOCALE}/verify-oauth-2fa`, getAppBaseUrl());
-    verifyUrl.searchParams.set("callbackUrl", req.url);
-    return NextResponse.redirect(verifyUrl);
-  }
-
-  // Fully authenticated — hand off to the consent screen. The params are the
-  // same ones a browser already carries in the URL bar for any OAuth
-  // provider's own /authorize screen (Google, GitHub, ...) — none of them are
-  // secret, so passing them through as query params (rather than a signed
-  // server-side stash) adds no risk and no extra round trip.
+  // The consent screen. The params are the same ones a browser already carries
+  // in the URL bar for any OAuth provider's own /authorize screen (Google,
+  // GitHub, ...) — none of them are secret, so passing them through as query
+  // params (rather than a signed server-side stash) adds no risk and no extra
+  // round trip. It re-validates client, redirect, challenge and resource itself.
   const consentUrl = new URL(`/${DEFAULT_LOCALE}/mcp-authorize`, getAppBaseUrl());
   consentUrl.searchParams.set("client_id", clientId);
   consentUrl.searchParams.set("redirect_uri", redirectUri);
@@ -89,5 +75,25 @@ export async function GET(req: NextRequest) {
   consentUrl.searchParams.set("resource", resource);
   consentUrl.searchParams.set("scope", scope);
   if (state) consentUrl.searchParams.set("state", state);
+  // Login only follows a relative /<locale>/… callback (safeCallbackPath rejects
+  // absolute URLs and /api paths as open-redirect guards). Passing this route's
+  // own absolute URL meant every signed-out user was dropped on their dashboard
+  // after login and the app never got its code; the consent path passes.
+  const consentPath = `${consentUrl.pathname}${consentUrl.search}`;
+
+  const session = await auth();
+
+  if (!session?.user) {
+    const loginUrl = new URL(`/${DEFAULT_LOCALE}/login`, getAppBaseUrl());
+    loginUrl.searchParams.set("callbackUrl", consentPath);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if ((session.user as unknown as { pending2fa?: boolean }).pending2fa) {
+    const verifyUrl = new URL(`/${DEFAULT_LOCALE}/verify-oauth-2fa`, getAppBaseUrl());
+    verifyUrl.searchParams.set("callbackUrl", consentPath);
+    return NextResponse.redirect(verifyUrl);
+  }
+
   return NextResponse.redirect(consentUrl);
 }

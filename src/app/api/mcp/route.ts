@@ -1,4 +1,5 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
+import { SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
 import { registerMcpTools } from "@/lib/mcp/tools";
 import { verifyMcpToken } from "@/lib/mcp/verifyToken";
 import { MCP_RATE_LIMITS, mcpRateLimited, tokenKey } from "@/lib/mcp/rateLimit";
@@ -27,6 +28,36 @@ const baseHandler = createMcpHandler(
  */
 const authedHandler = withMcpAuth(baseHandler, verifyMcpToken, { required: true });
 
+/**
+ * This server speaks the legacy (initialize-handshake) MCP versions, up to
+ * 2025-11-25. A 2026-07-28 ("modern") client opens with a request declaring its
+ * own version — usually a `server/discover` probe — and falls back to
+ * `initialize` only if the answer reads as a legacy server. The SDK's own
+ * rejection (400 + JSON-RPC -32000) made MCP Inspector 2.x give up instead:
+ * through its web proxy every HTTP 4xx surfaces as a fatal "Version
+ * negotiation probe failed".
+ *
+ * So answer the way a legacy server answers an unknown method — HTTP 200 with
+ * JSON-RPC -32601 — for the discover probe, which every dual-era client
+ * (Inspector included) treats as "legacy, fall back". Any other request with
+ * an unsupported version gets an empty 400, the 2026-07-28 Streamable HTTP
+ * spec's own fallback signal ("If the body is empty … fall back to initialize").
+ */
+async function legacyFallbackResponse(req: Request): Promise<Response | null> {
+  if (req.method !== "POST") return null;
+  const version = req.headers.get("mcp-protocol-version");
+  if (version === null || SUPPORTED_PROTOCOL_VERSIONS.includes(version)) return null;
+
+  const body = (await req.clone().json().catch(() => null)) as { id?: unknown; method?: unknown } | null;
+  if (body?.method === "server/discover" && (typeof body.id === "string" || typeof body.id === "number")) {
+    return Response.json(
+      { jsonrpc: "2.0", id: body.id, error: { code: -32601, message: "Method not found" } },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+  return new Response(null, { status: 400, headers: { "Cache-Control": "no-store" } });
+}
+
 /** Rate-limited before the token is looked up, so a flood never reaches the database. */
 async function handler(req: Request): Promise<Response> {
   const bearer = req.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
@@ -35,6 +66,8 @@ async function handler(req: Request): Promise<Response> {
     ...(bearer ? [[tokenKey(bearer), MCP_RATE_LIMITS.toolCallsPerToken] as const] : []),
   ]);
   if (limited) return limited;
+  const fallback = await legacyFallbackResponse(req);
+  if (fallback) return fallback;
   return authedHandler(req);
 }
 
