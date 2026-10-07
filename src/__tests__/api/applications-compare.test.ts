@@ -33,12 +33,16 @@ const applications = [
   {
     _id: APP_A, status: "shortlisted", appliedAt: new Date("2026-09-01"), employerId: EMPLOYER_ID, aiMatchScore: 88,
     matchBreakdown: { skills: 90, experience: 80 },
+    requirementsStatus: "met",
+    qualifications: [{ key: "skills", status: "partial", hard: false }],
     jobSeekerId: { fullName: "Amal Haddad", userId: { name: "amal (account)", avatar: null }, skills: ["React", "Node.js"], experience: [{ startDate: new Date("2022-01-01") }], preferredSalary: null, profileCompleteness: 80 },
     jobId: { title: "Full Stack Developer", salaryRange: null },
   },
   {
     _id: APP_B, status: "shortlisted", appliedAt: new Date("2026-09-02"), employerId: EMPLOYER_ID, aiMatchScore: 74,
     matchBreakdown: null,
+    requirementsStatus: "met",
+    qualifications: [{ key: "experience", status: "met", hard: true }],
     jobSeekerId: { fullName: undefined, userId: { name: "Bilal Khan", avatar: "https://cdn/bilal.png" }, skills: ["react", "Go"], experience: [], preferredSalary: { min: 1, max: 2, currency: "AED" }, profileCompleteness: 55 },
     jobId: { title: "Full Stack Developer", salaryRange: null },
   },
@@ -68,6 +72,12 @@ describe("GET /api/applications/compare", () => {
     expect(populateArg).toMatchObject({ path: "jobSeekerId", populate: { path: "userId" } });
     expect(populateArg.select).toContain("fullName");
     expect(populateArg.select).not.toMatch(/\bname\b/);
+  });
+
+  /** "Meets" on a job with no must-haves said nothing; the dialog hides it (owner 2026-10-07). */
+  it("says whether the job set any must-have, so the badge can stay quiet when it set none", async () => {
+    const { body } = await get(`?ids=${APP_A},${APP_B}`);
+    expect(body.candidates.map((c: { hasMustHaves: boolean | null }) => c.hasMustHaves)).toEqual([false, true]);
   });
 
   it("rejects fewer than two ids", async () => {

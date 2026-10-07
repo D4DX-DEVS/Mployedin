@@ -28,7 +28,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
-  Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp, X,
+  Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, SlidersHorizontal, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 import { JobsFilterSheet } from "./_components/JobsFilterSheet";
 import { toUserFacingError } from "@/lib/errors/user-facing";
@@ -514,7 +514,7 @@ export default function AdminJobsPage() {
           onClick={() => setFilterSheetOpen(true)}
           className="h-11 shrink-0 gap-1.5 rounded-lg px-3 text-sm sm:hidden"
         >
-          <Filter className="h-3.5 w-3.5" />
+          <SlidersHorizontal className="h-3.5 w-3.5" />
           {activeFilterCount > 0 ? t("filtersButtonWithCount", { count: activeFilterCount }) : t("filtersButton")}
         </Button>
         <SearchableSelect

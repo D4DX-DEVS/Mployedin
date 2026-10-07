@@ -2211,6 +2211,24 @@ input::placeholder {
   }
 }
 
+/* Seeker below lg: the header and tab bar slide away while the page scrolls
+   down and return on the first scroll up (useHideChromeOnScroll). A bar
+   holding keyboard focus or an open menu stays put. */
+@media (max-width: 1023.98px) {
+  .dashboard-role-job-seeker .dashboard-topbar,
+  .dashboard-role-job-seeker [data-bottom-nav] {
+    transition: transform 0.25s ease-out;
+  }
+
+  :root[data-scroll-chrome="hidden"] .dashboard-role-job-seeker .dashboard-topbar:not(:has(:focus-visible, [aria-expanded="true"])) {
+    transform: translateY(-100%);
+  }
+
+  :root[data-scroll-chrome="hidden"] .dashboard-role-job-seeker [data-bottom-nav]:not(:has(:focus-visible, [aria-expanded="true"])) {
+    transform: translateY(100%);
+  }
+}
+
 /* Every semantic table is enhanced by ResponsiveTables with its actual column
    labels. On phones, rows become readable label/value cards instead of forcing
    horizontal scrolling. Set data-mobile-table="scroll" on a table only when

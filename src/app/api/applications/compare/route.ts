@@ -117,6 +117,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       isAgentReferred: app.isAgentReferred === true,
       matchBreakdown: app.matchBreakdown ?? null,
       requirementsStatus: app.requirementsStatus ?? null,
+      // False when the job set no must-haves: "met" then means nothing, so no badge.
+      hasMustHaves: Array.isArray(app.qualifications) ? app.qualifications.some((check: { hard?: boolean }) => check.hard === true) : null,
       candidate: {
         name: seeker?.fullName ?? seeker?.userId?.name ?? "Unknown",
         profilePicture: seeker?.profilePicture ?? seeker?.userId?.avatar ?? null,

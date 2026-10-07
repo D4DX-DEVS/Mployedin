@@ -5,7 +5,7 @@ import {
   Search,
   Activity,
   Clock,
-  Filter,
+  RotateCcw,
   Calendar,
   Users,
   LogIn,
@@ -398,7 +398,7 @@ export default function TeamActivityLogsPage() {
             }}
             className="text-muted-foreground"
           >
-            <Filter className="h-4 w-4 mr-1" />
+            <RotateCcw className="h-4 w-4 me-1" />
             Clear
           </Button>
         )}

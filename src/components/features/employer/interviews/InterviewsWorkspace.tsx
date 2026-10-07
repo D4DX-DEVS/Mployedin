@@ -21,7 +21,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import {
   Inbox, Sparkles, CalendarDays, CircleCheckBig, RotateCcw, ArrowRight, Clock3, ClipboardCheck,
   CalendarClock, CheckCircle2, XCircle, AlertTriangle, Forward, FileText,
-  Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, ChevronRight, X,
+  Send, Ban, Loader2, BookOpen, Search, SlidersHorizontal, ChevronDown, ChevronUp, ChevronRight, X,
   List,
   MoreHorizontal,
 } from "lucide-react";
@@ -704,7 +704,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
           aria-label={t("filters")}
           className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${filtersOpen ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
         >
-          <Filter className="h-4 w-4 sm:me-2" aria-hidden="true" />
+          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
           <span className="hidden sm:inline">{t("filters")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</span>
           {activeFilterCount > 0 ? (
             <span className="ms-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground sm:hidden">

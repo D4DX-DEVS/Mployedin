@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { RequirementsBadge, RequirementsChecklist } from "@/components/features/employer/applications/RequirementsChecklist";
+import { RequirementsBadge, RequirementsChecklist, setsNoMustHaves } from "@/components/features/employer/applications/RequirementsChecklist";
 
 describe("RequirementsChecklist — location", () => {
   it("names countries instead of showing the stored country keys", () => {
@@ -55,13 +55,48 @@ describe("RequirementsChecklist — missing information (client report 2026-09-3
     expect(document.body.textContent).not.toContain("Asks + years");
   });
 
-  it("warns 'Requirements not met' in full, and 'Not met' in the narrow list column", () => {
+  it("names the must-have it checks, in full and in the narrow list column", () => {
     const { unmount } = render(<RequirementsBadge status="not_met" />);
-    expect(screen.getByText("Requirements not met")).toBeInTheDocument();
+    expect(screen.getByText("Missing a must-have")).toBeInTheDocument();
     unmount();
     render(<RequirementsBadge status="not_met" compact />);
-    expect(screen.getByText("Not met")).toBeInTheDocument();
-    expect(screen.getByText("Requirements not met")).toHaveClass("sr-only");
+    expect(screen.getAllByText("Missing a must-have")).toHaveLength(2); // visible + screen-reader copy
+    expect(screen.queryByText("Not met")).not.toBeInTheDocument();
     expect(screen.queryByText("Fails")).not.toBeInTheDocument();
+  });
+});
+
+describe("RequirementsBadge — a job with no must-haves (owner 2026-10-07)", () => {
+  /** "Meets" under a 44% read as a verdict on the score; on a job with no
+      must-haves it said nothing at all, since there was nothing to fail. */
+  const softOnly = [{ key: "skills", status: "partial" as const, hard: false, required: "5", actual: "2" }];
+  const withMustHave = [{ key: "experience", status: "met" as const, hard: true, required: "3", actual: "4" }];
+
+  it("knows a checklist with no must-haves from one with any, and from one it hasn't seen", () => {
+    expect(setsNoMustHaves(softOnly)).toBe(true);
+    expect(setsNoMustHaves([])).toBe(true);
+    expect(setsNoMustHaves(withMustHave)).toBe(false);
+    expect(setsNoMustHaves(undefined)).toBe(false);
+  });
+
+  it("shows no badge when there is nothing to meet", () => {
+    render(<RequirementsBadge status="met" noMustHaves compact />);
+    expect(screen.queryByText("Must-haves met")).not.toBeInTheDocument();
+  });
+
+  it("says Must-haves met when the job has one", () => {
+    render(<RequirementsBadge status="met" compact />);
+    expect(screen.getAllByText("Must-haves met").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Meets")).not.toBeInTheDocument();
+  });
+
+  it("tags each must-have in the checklist and says when the job set none", () => {
+    const { unmount } = render(<RequirementsChecklist status="met" checks={withMustHave} />);
+    expect(screen.getByText("Must-have")).toBeInTheDocument();
+    expect(screen.getByText("Must-haves met")).toBeInTheDocument();
+    unmount();
+    render(<RequirementsChecklist status="met" checks={softOnly} />);
+    expect(screen.getByText("No must-haves set")).toBeInTheDocument();
+    expect(screen.queryByText("Must-haves met")).not.toBeInTheDocument();
   });
 });

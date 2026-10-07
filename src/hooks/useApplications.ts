@@ -490,6 +490,8 @@ export interface CompareCandidate {
   matchBreakdown: { skills?: number; role?: number; experience?: number; education?: number; location?: number; salary?: number } | null;
   /** Requirements checklist roll-up; null before the ATS scoring has run. */
   requirementsStatus?: "met" | "not_met" | "unverified" | null;
+  /** Whether the job set any must-have; null when the checklist isn't known. */
+  hasMustHaves?: boolean | null;
   candidate: {
     name: string;
     profilePicture: string | null;

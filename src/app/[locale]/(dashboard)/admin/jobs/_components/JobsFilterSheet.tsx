@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  ChevronDown, ChevronRight, Filter, MapPin, Search, Sparkles, Wand2, X,
+  ChevronDown, ChevronRight, SlidersHorizontal, MapPin, Search, Sparkles, Wand2, X,
 } from "lucide-react";
 
 export interface FilterOption { value: string; label: string }
@@ -64,7 +64,7 @@ export function JobsFilterSheet(props: JobsFilterSheetProps) {
         <DialogHeader className="border-b border-border/60 px-4 pb-3 pt-3.5 text-start">
           <div className="flex items-center justify-between gap-2">
             <DialogTitle className="flex items-center gap-2 text-base">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
               {t("filtersButton")}
               {props.activeCount > 0 && (
                 <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">{props.activeCount}</Badge>
@@ -245,7 +245,7 @@ export function JobsFilterSheet(props: JobsFilterSheetProps) {
             onClick={() => props.onOpenChange(false)}
             className="h-9 gap-1.5 rounded-lg px-4 text-xs font-semibold"
           >
-            <Filter className="h-3.5 w-3.5" />
+            <SlidersHorizontal className="h-3.5 w-3.5" />
             {props.activeCount > 0
               ? t("applyFiltersWithCount", { count: props.activeCount })
               : t("applyFilters")}

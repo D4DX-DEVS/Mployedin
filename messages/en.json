@@ -4843,6 +4843,7 @@
     "scoreAllAlreadyScored": "Every applicant in view already has a match score. Scores refresh automatically as new applications arrive.",
     "scoreAllMissingData": "These applications are missing candidate data, so they can't be scored yet.",
     "shortlistTop": "Shortlist Top",
+    "pickJobToShortlist": "Pick a job to score and shortlist candidates",
     "shortlistNoneInView": "No applicants in view. Clear your filters to see the full pipeline.",
     "shortlistAllPastApplied": "Nothing to shortlist — every applicant has already moved past Applied.",
     "shortlistNeedsScores": "No match scores yet. Run Score All first, then Shortlist Top.",
@@ -4854,6 +4855,7 @@
     "sortNewest": "Newest first",
     "sortOldest": "Oldest first",
     "sortScore": "Highest match",
+    "sortScoreLow": "Lowest match",
     "latestPosting": "Latest",
     "filters": "Filters",
     "pipelineStages": "Hiring pipeline stages",
@@ -18298,19 +18300,19 @@
   "employerAts": {
     "requirements": "Requirements",
     "status": {
-      "met": "Meets requirements",
-      "not_met": "Doesn't meet requirements",
-      "unverified": "Unverified"
+      "met": "Must-haves met",
+      "not_met": "Missing a must-have",
+      "unverified": "Must-have not stated"
     },
     "statusShort": {
-      "met": "Meets",
-      "not_met": "Fails",
-      "unverified": "Unverified"
+      "met": "Must-haves met",
+      "not_met": "Missing a must-have",
+      "unverified": "Must-have not stated"
     },
     "statusHint": {
-      "met": "Meets every requirement the job states (or is within a year or one level of it).",
-      "not_met": "Fails at least one hard requirement: experience, qualification, hiring country or a deal-breaker answer. Left out of Shortlist Top.",
-      "unverified": "Nothing failed, but the candidate hasn't stated something the job requires."
+      "met": "Has every must-have this job sets: minimum experience, required qualification, hiring countries for a remote job and deal-breaker answers (within a year or one level counts). Skills aren't checked here; they're in the match score.",
+      "not_met": "Misses at least one must-have: minimum experience, required qualification, hiring country or a deal-breaker answer. Left out of Shortlist Top, whatever the match score.",
+      "unverified": "No must-have failed, but the candidate hasn't stated something one needs (such as their experience), so it couldn't be checked."
     },
     "itemStatus": {
       "met": "Met",
@@ -18384,16 +18386,17 @@
       "remote": "remote"
     },
     "notStated": "not stated",
-    "hardTag": "Required",
+    "hardTag": "Must-have",
     "noneStated": "This job states no requirements to check.",
+    "noMustHaves": "No must-haves set",
     "hasSkills": "Has",
     "missingSkills": "Missing",
     "weightsApplied": "Score uses your saved matching weights.",
-    "shortlistExcluded": "{count, plural, one {# applicant doesn't meet the job's requirements and is left out.} other {# applicants don't meet the job's requirements and are left out.}}",
+    "shortlistExcluded": "{count, plural, one {# applicant is missing a must-have and is left out.} other {# applicants are missing a must-have and are left out.}}",
     "shortlistUnscored": "{count, plural, one {# applicant is still being scored.} other {# applicants are still being scored.}}",
     "shortlistPoolCapped": "Only the top {shown} are listed. Shortlist them, then run Shortlist Top again for the next batch.",
     "shortlistLoading": "Finding the best candidates…",
-    "shortlistNoQualified": "No scored applicants who meet the requirements are waiting at Applied.",
+    "shortlistNoQualified": "No scored applicants with every must-have are waiting at Applied.",
     "shortlistLoadFailed": "We couldn't load the candidates to shortlist. Please try again.",
     "knockout": {
       "toggle": "Deal-breaker",
@@ -18421,8 +18424,8 @@
       "unreadable": "Couldn't read",
       "none": "Not sent"
     },
-    "requirementsNotMet": "Requirements not met",
-    "requirementsNotMetShort": "Not met"
+    "requirementsNotMet": "Missing a must-have",
+    "requirementsNotMetShort": "Missing a must-have"
   },
   "assignedRegion": {
     "label": "Region",

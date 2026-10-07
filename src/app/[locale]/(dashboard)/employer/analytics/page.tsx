@@ -25,7 +25,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Download,
-  Filter,
+  SlidersHorizontal,
   Clock,
   ArrowDownRight,
   Users,
@@ -562,7 +562,7 @@ function PipelineTab({
           single dropdown and the funnel below already says what it scopes. */}
       {jobOptions.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Filter className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("selectedJob")}
           </span>
