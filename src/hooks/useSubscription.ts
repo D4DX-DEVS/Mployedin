@@ -37,6 +37,8 @@ export interface MySubscription {
     aiUsage: Record<string, number>;
   };
   usageResetAt: string;
+  /** Live counts from /api/subscriptions/my (employers): what exists now, not the period counter. */
+  liveUsage?: { activeJobs: number; teamMembers: number };
   createdAt: string;
   updatedAt: string;
 }
@@ -104,7 +106,8 @@ async function fetchMySubscription(): Promise<MySubscription | null> {
   const res = await fetch("/api/subscriptions/my");
   if (!res.ok) throw new Error("Failed to load subscription");
   const data = await res.json();
-  return data.subscription ?? null;
+  if (!data.subscription) return null;
+  return data.liveUsage ? { ...data.subscription, liveUsage: data.liveUsage } : data.subscription;
 }
 
 async function fetchMyHistory(): Promise<MyHistoryItem[]> {

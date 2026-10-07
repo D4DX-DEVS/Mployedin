@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatNumber } from "@/lib/formatNumber";
+import { isValidWebsiteInput } from "@/lib/validators/website";
 import { formatDateTime as formatIntlDateTime } from "@/lib/ui/intlFormat";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -93,7 +94,17 @@ interface PrepBriefResult {
  * arriving from a link, a dashboard tile or a hand-edited URL is checked
  * against the same list the UI can produce.
  */
-const INTERVIEW_STATUSES = ["scheduled", "confirmed", "completed", "cancelled"] as const;
+/**
+ * Row buckets, judged on each application's latest round (server:
+ * listApplicationRows). "upcoming" replaced "scheduled" so a past interview
+ * nobody closed shows under "attention" instead of looking booked (QA EMP-008).
+ */
+const INTERVIEW_STATUSES = ["upcoming", "attention", "completed", "confirmed"] as const;
+
+/** Scheduled or confirmed but already in the past with no outcome: it needs closing. */
+function isAwaitingOutcome(iv: { status: string; scheduledAt: string; outcome?: string }): boolean {
+  return (iv.status === "scheduled" || iv.status === "confirmed") && !iv.outcome && new Date(iv.scheduledAt).getTime() < Date.now();
+}
 const INTERVIEW_TYPES = ["video", "offline", "hybrid"] as const;
 const INTERVIEW_OUTCOMES = ["passed", "failed", "hold", "no_show"] as const;
 const INTERVIEW_SORT_FIELDS = ["scheduledAt", "createdAt"] as const;
@@ -170,6 +181,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
     dateTo: dateTo || undefined,
     sortBy,
     sortOrder,
+    group: "application",
   });
   const updateMutation = useUpdateInterview();
   const nextRoundMutation = useScheduleNextRound();
@@ -178,7 +190,6 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
   const interviews = data?.interviews ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const statusCounts = data?.statusCounts ?? {};
 
   // Deduplicate: per application show only the latest actionable interview,
   // but keep the earlier rounds so the row can expand into a round history.
@@ -220,11 +231,13 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
     };
   })();
 
-  // Stats from API statusCounts (covers ALL records, not just current page)
-  const scheduledTotal = (statusCounts.scheduled ?? 0) + (statusCounts.confirmed ?? 0);
-  const completedTotal = statusCounts.completed ?? 0;
-  const attentionTotal = (statusCounts.rescheduled ?? 0) + (statusCounts.cancelled ?? 0);
-  const confirmedTotal = statusCounts.confirmed ?? 0;
+  // Bucket sizes from the server, one per application — the same rows each
+  // tile filters to, so a tile's number is the length of its list.
+  const rowCounts = data?.rowCounts;
+  const scheduledTotal = rowCounts?.upcoming ?? 0;
+  const completedTotal = rowCounts?.completed ?? 0;
+  const attentionTotal = rowCounts?.attention ?? 0;
+  const confirmedTotal = rowCounts?.confirmed ?? 0;
 
   // AI-powered search: parse natural language into filters
   async function handleAiSearch() {
@@ -426,7 +439,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
         <>
           <WorkspaceHeader
             title={tn("interviews")}
-            context={`${formatNumber(deduplicatedInterviews.length, locale)} ${t("active")} · ${formatNumber(total, locale)} ${t("total")}`}
+            context={`${formatNumber(scheduledTotal, locale)} ${t("active")} · ${formatNumber(rowCounts?.total ?? 0, locale)} ${t("total")}`}
             actions={
               <>
               {/* The calendar left the sidebar; it is a view of this page now. */}
@@ -495,9 +508,9 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
               </>
             }
             metrics={([
-              { key: "scheduled", label: t("scheduled"), value: scheduledTotal, icon: CalendarDays, tone: "primary" },
+              { key: "upcoming", label: t("scheduled"), value: scheduledTotal, icon: CalendarDays, tone: "primary" },
               { key: "completed", label: t("completed"), value: completedTotal, icon: CircleCheckBig, tone: "success" },
-              { key: "cancelled", label: t("needsAttention"), shortLabel: t("attentionShort"), value: attentionTotal, icon: RotateCcw, tone: "warning" },
+              { key: "attention", label: t("needsAttention"), shortLabel: t("attentionShort"), value: attentionTotal, icon: RotateCcw, tone: "warning" },
               { key: "confirmed", label: t("confirmed"), value: confirmedTotal, icon: Clock3, tone: "info" },
             ] as const).map((m) => ({
               label: m.label,
@@ -520,10 +533,10 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
           {/* Status chips */}
           <button
             type="button"
-            onClick={() => { setStatus(status === "scheduled" ? "" : "scheduled"); setPage(1); }}
-            aria-pressed={status === "scheduled"}
+            onClick={() => { setStatus(status === "upcoming" ? "" : "upcoming"); setPage(1); }}
+            aria-pressed={status === "upcoming"}
             className={`min-h-11 sm:min-h-9 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
-              status === "scheduled"
+              status === "upcoming"
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
@@ -548,10 +561,10 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
           </button>
           <button
             type="button"
-            onClick={() => { setStatus(status === "cancelled" ? "" : "cancelled"); setPage(1); }}
-            aria-pressed={status === "cancelled"}
+            onClick={() => { setStatus(status === "attention" ? "" : "attention"); setPage(1); }}
+            aria-pressed={status === "attention"}
             className={`min-h-11 sm:min-h-9 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
-              status === "cancelled"
+              status === "attention"
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary text-foreground hover:bg-secondary/80"
             }`}
@@ -717,10 +730,10 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 className="w-full"
                 options={[
                   { value: "all", label: t("allStatuses") },
-                  { value: "scheduled", label: t("scheduledStatus") },
+                  { value: "upcoming", label: t("scheduledStatus") },
                   { value: "confirmed", label: t("confirmedStatus") },
                   { value: "completed", label: t("completedStatus") },
-                  { value: "cancelled", label: t("cancelledStatus") },
+                  { value: "attention", label: t("needsAttention") },
                 ]}
                 value={status || "all"}
                 onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}
@@ -938,7 +951,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col items-start gap-1">
-                        <StatusBadge status={iv.status} />
+                        <StatusBadge status={isAwaitingOutcome(iv) ? "rescheduled" : iv.status} label={isAwaitingOutcome(iv) ? t("awaitingOutcome") : undefined} />
                         {outcomeMeta ? (
                           <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${outcomeMeta.color}`}>
                             {outcomeMeta.label}
@@ -1018,7 +1031,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                   <p className="text-xs text-muted-foreground">R{round} · <span className="capitalize">{iv.type ?? "in-person"}</span> · {scheduled.date}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <StatusBadge status={iv.status} />
+                  <StatusBadge status={isAwaitingOutcome(iv) ? "rescheduled" : iv.status} label={isAwaitingOutcome(iv) ? t("awaitingOutcome") : undefined} />
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
@@ -1096,7 +1109,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("status")}</p>
-                      <div className="mt-1"><StatusBadge status={iv.status} /></div>
+                      <div className="mt-1"><StatusBadge status={isAwaitingOutcome(iv) ? "rescheduled" : iv.status} label={isAwaitingOutcome(iv) ? t("awaitingOutcome") : undefined} /></div>
                     </div>
                   </div>
 
@@ -1356,6 +1369,11 @@ function InterviewActionModal({
   const [type, setType] = useState<string>("video");
   const [location, setLocation] = useState("");
   const [meetLink, setMeetLink] = useState("");
+  // QA EMP-007: any text used to be stored as the candidate's join link.
+  // Only Video shows the link field here (Hybrid's field is the location), so
+  // only Video can block on it; a hybrid interview sends the link only if valid.
+  const meetLinkInvalid = type === "video" && !isValidWebsiteInput(meetLink);
+  const sendMeetLink = type === "video" || (type === "hybrid" && isValidWebsiteInput(meetLink));
 
   // FG-8: structured scorecard capture as part of interview completion.
   const createScorecard = useCreateScorecard();
@@ -1392,6 +1410,7 @@ function InterviewActionModal({
         return;
       } else if (modal.kind === "reschedule") {
         if (!scheduledAt) { setSubmitError(t("selectDateTime")); setSubmitting(false); return; }
+        if (meetLinkInvalid) { setSubmitError(t("meetLinkInvalid")); setSubmitting(false); return; }
         // Update interview in-place — no duplicate creation
         await updateMutation.mutateAsync({
           id: iv._id,
@@ -1399,17 +1418,18 @@ function InterviewActionModal({
           duration,
           type,
           location: type !== "video" ? (location || undefined) : undefined,
-          meetLink: type !== "offline" ? (meetLink || undefined) : undefined,
+          meetLink: sendMeetLink ? (meetLink.trim() || undefined) : undefined,
         });
       } else if (modal.kind === "next-round") {
         if (!scheduledAt) { setSubmitError(t("selectDateTime")); setSubmitting(false); return; }
+        if (meetLinkInvalid) { setSubmitError(t("meetLinkInvalid")); setSubmitting(false); return; }
         await nextRoundMutation.mutateAsync({
           interviewId: iv._id,
           scheduledAt: new Date(scheduledAt).toISOString(),
           duration,
           type,
           location: type !== "video" ? (location || undefined) : undefined,
-          meetLink: type !== "offline" ? (meetLink || undefined) : undefined,
+          meetLink: sendMeetLink ? (meetLink.trim() || undefined) : undefined,
         });
       } else if (modal.kind === "offer") {
         if (!salaryAmount || !startDate) { setSubmitError(t("salaryStartRequired")); setSubmitting(false); return; }
@@ -1588,14 +1608,20 @@ function InterviewActionModal({
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("locationMeetLink")}</label>
+                <label htmlFor="iv-modal-place" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("locationMeetLink")}</label>
                 <input
+                  id="iv-modal-place"
                   type="text"
                   value={type === "video" ? meetLink : location}
                   onChange={(e) => type === "video" ? setMeetLink(e.target.value) : setLocation(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary chip-pad"
+                  aria-invalid={(type === "video" && meetLinkInvalid) || undefined}
+                  aria-describedby={type === "video" && meetLinkInvalid ? "iv-modal-place-error" : undefined}
+                  className="w-full rounded-xl border border-border bg-background text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary aria-[invalid=true]:border-destructive chip-pad"
                   placeholder={type === "video" ? t("meetLinkPlaceholder") : t("officePlaceholder")}
                 />
+                {type === "video" && meetLinkInvalid && (
+                  <p id="iv-modal-place-error" className="mt-1 text-xs text-destructive">{t("meetLinkInvalid")}</p>
+                )}
                 {(type === "video" || type === "hybrid") && (
                   <div className="mt-1.5 flex items-center gap-2">
                     <button

@@ -192,19 +192,42 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     await session.endSession();
   }
 
-  // Notify employer
+  // Notify employer — naming the candidate and the job, and opening that
+  // application (QA EMP-013: "Your offer has been accepted" said neither).
   const employer = await Employer.findById(committedOffer.employerId).select("userId").lean();
   if (employer) {
+    // Wording only: a failed lookup must never fail the response itself.
+    const job = await (async () => {
+      try {
+        const { default: Job } = await import("@/models/Job");
+        return (await Job.findById(committedOffer.jobId).select("title").lean()) as { title?: string } | null;
+      } catch {
+        return null;
+      }
+    })();
+    const candidateName = (seekerName as { name?: string } | null)?.name || "The candidate";
+    const jobTitle = job?.title ?? "your job";
     let title: string;
     let message: string;
+    let titleKey: string;
+    let bodyKey: string;
+    let counter = "";
     if (status === "countered" && counterOffer) {
-      const counterText = `${counterOffer.currency} ${Number(counterOffer.amount).toLocaleString()} / ${counterOffer.period}`;
+      counter = `${counterOffer.currency} ${Number(counterOffer.amount).toLocaleString()} / ${counterOffer.period}`;
       title = "Counter-Offer Received";
-      message = `The candidate submitted a counter-offer: ${counterText}.${counterOffer.note ? `\n\nNote: ${counterOffer.note}` : ""}\n\nReview and revise or decline.`;
+      message = `${candidateName} sent a counter-offer for "${jobTitle}": ${counter}.${counterOffer.note ? `\n\nNote: ${counterOffer.note}` : ""}\n\nReview and revise or decline.`;
+      titleKey = "offerCounteredTitle";
+      bodyKey = "offerCounteredBody";
+    } else if (status === "accepted") {
+      title = "Offer Accepted";
+      message = `${candidateName} accepted your offer for "${jobTitle}".`;
+      titleKey = "offerAcceptedTitle";
+      bodyKey = "offerAcceptedBody";
     } else {
-      const statusLabel = status === "accepted" ? "accepted" : "declined";
-      title = `Offer ${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}`;
-      message = `Your offer has been ${statusLabel}. Check the details for more information.`;
+      title = "Offer Declined";
+      message = `${candidateName} declined your offer for "${jobTitle}".`;
+      titleKey = "offerDeclinedTitle";
+      bodyKey = "offerDeclinedBody";
     }
     await notify({
       actorId: ctx.userId,
@@ -212,9 +235,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       type: "offer_update",
       title,
       message,
-      link: `/${ctx.locale}/employer/applications`,
+      link: `/employer/applications?application=${String(committedOffer.applicationId)}`,
       sendEmail: true,
       metadata: { offerId: String(committedOffer._id), status },
+      titleKey,
+      bodyKey,
+      params: { candidateName, jobTitle, counter },
     }).catch(() => {
       /* non-blocking */
     });

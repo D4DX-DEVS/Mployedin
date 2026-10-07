@@ -39,6 +39,14 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
   const rawPreferredSkills = watch("requirements.preferredSkills") ?? [];
   const expMin = watch("requirements.experienceMin");
   const expMax = watch("requirements.experienceMax");
+  // A bad minimum used to block Next with no message at all (QA EMP-010).
+  const experienceError = errors.requirements?.experienceMin
+    ? t("validation.experienceRange")
+    : errors.requirements?.experienceMax
+      ? errors.requirements.experienceMax.type === "custom"
+        ? t("validation.experienceOrder")
+        : t("validation.experienceRange")
+      : null;
   const maxSkillsLabel = (30).toLocaleString(numberLocale);
 
   // Bridge between string[] (form) and Skill[] (SkillsChips)
@@ -206,6 +214,8 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
                 max={50}
                 {...register("requirements.experienceMin", { valueAsNumber: true })}
                 className={cn(errors.requirements?.experienceMin && "border-destructive")}
+                aria-invalid={!!errors.requirements?.experienceMin}
+                aria-describedby={experienceError ? "experience-error" : undefined}
               />
             </div>
             <div className="field">
@@ -220,13 +230,14 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
                 {...register("requirements.experienceMax", { valueAsNumber: true })}
                 className={cn(errors.requirements?.experienceMax && "border-destructive")}
                 aria-invalid={!!errors.requirements?.experienceMax}
+                aria-describedby={experienceError ? "experience-error" : undefined}
               />
             </div>
           </div>
 
-          {errors.requirements?.experienceMax?.message && (
-            <p role="alert" className="text-xs font-medium text-destructive">
-              {errors.requirements.experienceMax.message}
+          {experienceError && (
+            <p id="experience-error" role="alert" className="text-xs font-medium text-destructive">
+              {experienceError}
             </p>
           )}
 

@@ -32,7 +32,7 @@ interface PriorityActionsProps {
   newApplications: number;
   scheduledInterviews: number;
   totalApplications: number;
-  placements: number;
+  hiredCount: number;
   locale: string;
 }
 
@@ -41,7 +41,7 @@ export function PriorityActions({
   newApplications,
   scheduledInterviews,
   totalApplications,
-  placements,
+  hiredCount,
   locale,
 }: PriorityActionsProps) {
   const t = useTranslations("employerDashboard.priorityActions");
@@ -74,7 +74,7 @@ export function PriorityActions({
       icon: FileText,
       textKey: newApplications !== 1 ? "reviewNewAppsPlural" : "reviewNewApps",
       textValues: { count: newApplications },
-      href: `/${locale}/employer/applications?status=applied`,
+      href: `/${locale}/employer/applications?status=applied&unreviewed=1`,
       priority: "urgent",
       actionLabelKey: "reviewCandidates",
     });
@@ -111,7 +111,7 @@ export function PriorityActions({
     });
   }
 
-  if (totalApplications > 2 && placements === 0) {
+  if (totalApplications > 2 && hiredCount === 0) {
     actions.push({
       icon: Sparkles,
       textKey: "moveTopMatched",

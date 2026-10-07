@@ -71,21 +71,15 @@ describe("MCP OAuth security helpers", () => {
     expect(isValidPkceVerifier(`${"a".repeat(42)}+`)).toBe(false);
   });
 
-  it("defaults omitted scopes by role and never grants cross-role scopes", () => {
-    expect(scopesForRole([], "job_seeker")).toEqual([
-      "read:jobs",
-      "read:applications",
-      "read:profile",
-    ]);
-    expect(defaultScopesForRole("admin")).toEqual([
-      "read:employer_jobs",
-      "read:applicants",
-    ]);
-    expect(scopesForRole(["read:jobs", "read:applicants"], "employer")).toEqual([
-      "read:applicants",
-    ]);
-    expect(defaultScopesForRole("agent")).toContain("read:employer_jobs");
-    expect(defaultScopesForRole("super_agent")).toContain("read:applicants");
+  it("grants every role the single reports scope and nothing else", () => {
+    for (const role of ["job_seeker", "employer", "agent", "super_agent", "admin"] as const) {
+      expect(defaultScopesForRole(role)).toEqual(["read:reports"]);
+      expect(scopesForRole([], role)).toEqual(["read:reports"]);
+    }
+    expect(scopesForRole(["read:reports"], "employer")).toEqual(["read:reports"]);
+    // A client still asking for the retired record scopes gets reports, never records.
+    expect(scopesForRole(["read:jobs", "read:applicants"], "employer")).toEqual(["read:reports"]);
+    expect(scopesForRole(["write:everything"], "admin")).toEqual(["read:reports"]);
   });
 
   it("keeps browser consent protected while exempting server OAuth exchanges", () => {

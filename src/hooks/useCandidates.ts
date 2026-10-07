@@ -46,6 +46,8 @@ export interface CandidateJob {
 interface CandidatesResponse {
   items?: Candidate[];
   total?: number;
+  /** Talent search only: candidates available immediately, across every page. */
+  availableNow?: number;
 }
 
 interface PublishedJobsResponse {
@@ -70,7 +72,7 @@ export const candidateKeys = {
 };
 
 // ── Fetchers ───────────────────────────────────────────────────────
-async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates: Candidate[]; total: number }> {
+async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates: Candidate[]; total: number; availableNow?: number }> {
   // When a job is selected, fetch applicants for that job from applications API
   if (filters.jobId) {
     const params = new URLSearchParams();
@@ -139,7 +141,7 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
   if (!res.ok) throw new Error("Failed to fetch candidates");
   const data: CandidatesResponse = await res.json();
   const items = data.items ?? [];
-  return { candidates: items, total: data.total ?? items.length };
+  return { candidates: items, total: data.total ?? items.length, availableNow: data.availableNow };
 }
 
 async function fetchPublishedJobs(): Promise<CandidateJob[]> {
@@ -180,7 +182,12 @@ export function useStartConversation() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientId }),
       });
-      if (!res.ok) throw new Error("Failed to start conversation");
+      if (!res.ok) {
+        // "not_connected": an employer may only open chats with its own
+        // applicants, its agent and support (QA EMP-001).
+        const err = (await res.json().catch(() => ({}))) as { code?: string };
+        throw new Error(err.code === "not_connected" ? "not_connected" : "Failed to start conversation");
+      }
       return res.json();
     },
   });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { knockoutRuleOf } from "@/lib/matching/knockouts";
 import { DEFAULT_JOB_CATEGORY_NAMES } from "@/lib/jobs/jobCategories";
+import { containsMarkup, PLAIN_TEXT_ERROR } from "@/lib/validators/plainText";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -126,7 +127,12 @@ export function isPlausibleCityName(city: string): boolean {
 
 export const jobFormSchema = z.object({
   // Step 1 — Basic Info
-  title: z.string().min(5, "Title must be at least 5 characters").max(200).trim(),
+  title: z
+    .string()
+    .min(5, "Title must be at least 5 characters")
+    .max(200, "Title must be 200 characters or fewer")
+    .trim()
+    .refine((title) => !containsMarkup(title), PLAIN_TEXT_ERROR),
   category: z.string().max(100).optional(),
   location: z.object({
     country: z.string().min(1, "Country is required"),
@@ -160,8 +166,9 @@ export const jobFormSchema = z.object({
     .object({
       skills: z.array(z.string().max(100)).max(50).default([]),
       preferredSkills: z.array(z.string().max(100)).max(30).default([]),
-      experienceMin: z.number().int().min(0).max(50).default(0),
-      experienceMax: z.number().int().min(0).max(50).default(10),
+      // One message for every way a year count can be wrong: blank (NaN), 1.5, -1, 51.
+      experienceMin: z.number({ error: "Enter whole years from 0 to 50" }).int("Enter whole years from 0 to 50").min(0, "Enter whole years from 0 to 50").max(50, "Enter whole years from 0 to 50").default(0),
+      experienceMax: z.number({ error: "Enter whole years from 0 to 50" }).int("Enter whole years from 0 to 50").min(0, "Enter whole years from 0 to 50").max(50, "Enter whole years from 0 to 50").default(10),
       education: z.string().max(200).optional(),
     })
     // The API enforces the same rule (lib/validators/jobs.ts). Without it here
@@ -200,7 +207,12 @@ export const jobFormSchema = z.object({
   // A workflow template picked by hand. Unset = matched from the job's details; null = back to automatic.
   workflowTemplateId: z.string().nullable().optional(),
   visibility: z.enum(["public", "private", "invite_only"]).default("public"),
-  vacancies: z.number().int().min(1).max(100).optional(),
+  vacancies: z
+    .number({ error: "Enter a whole number of openings from 1 to 100" })
+    .int("Enter a whole number of openings from 1 to 100")
+    .min(1, "Enter a whole number of openings from 1 to 100")
+    .max(100, "Enter a whole number of openings from 1 to 100")
+    .optional(),
   maxApplicants: z.number().int().min(1).max(10000).optional(),
   showSalary: z.boolean().default(true),
   expiresAt: z.string().optional(),

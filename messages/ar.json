@@ -3459,6 +3459,7 @@
     "startDate": "تاريخ البدء",
     "endDate": "تاريخ الانتهاء",
     "autoRenew": "التجديد التلقائي",
+    "notApplicable": "غير منطبق",
     "enabled": "مفعّل",
     "disabled": "معطّل",
     "daysLeft": "{count} يوم متبقي",
@@ -3531,6 +3532,7 @@
     "showLess": "عرض أقل",
     "viewAllInvoices": "عرض جميع الفواتير ({count})",
     "nextRenewal": "التجديد القادم",
+    "freeNoRenewal": "خطة مجانية — لا يلزم تجديد",
     "daysRemaining": "({days} يوم)",
     "billingCycleLabel": "دورة الفوترة",
     "invoiceCountLabel": "{count, plural, one {# فاتورة} other {# فواتير}}",
@@ -4430,6 +4432,7 @@
     "screeningFailed": "تعذر فحص الذكاء الاصطناعي. حاول مرة أخرى لاحقاً.",
     "aiScreenedToast": "تم فحص {total} مرشحين بالذكاء الاصطناعي لـ {jobTitle}",
     "messageFailed": "تعذر فتح محادثة مع هذا المرشح الآن.",
+    "messageNotApplied": "يمكنك مراسلة المرشحين بعد تقدّمهم لإحدى وظائفك. ادعهم للتقديم أولاً.",
     "noCandidatesYet": "لا يوجد مرشحون متاحون في هذه الصفحة بعد.",
     "aiMatchDescription": "تقوم مطابقة الذكاء الاصطناعي بتقييم المرشحين الظاهرين حالياً بعد البحث والفلاتر.",
     "aiSearchDegraded": "بحث الذكاء الاصطناعي غير متاح. تم تطبيق بحث الكلمات المفتاحية.",
@@ -4805,7 +4808,7 @@
   },
   "employerMessages": {
     "title": "الرسائل",
-    "description": "رسائل مباشرة مع الوكلاء والوكلاء الرئيسيين",
+    "description": "راسل المتقدمين لوظائفك ووكيلك وفريق الدعم",
     "newChat": "محادثة جديدة",
     "searchConversations": "البحث في المحادثات...",
     "emptyState": "لا توجد محادثات بعد. ابدأ واحدة بزر \"محادثة جديدة\" أعلاه.",
@@ -4862,6 +4865,7 @@
     "detailedView": "عرض تفصيلي",
     "applied": "مقدّم",
     "shortlisted": "مرشّح",
+    "shortlistedOnwards": "في القائمة المختصرة أو ما بعدها",
     "interview": "مقابلة",
     "offer": "عرض",
     "hired": "تم التوظيف",
@@ -5063,6 +5067,7 @@
     "ivMinutes": "{count} دقيقة",
     "ivLocationPlaceholder": "عنوان المكتب أو رقم الغرفة",
     "ivMeetingLink": "رابط الاجتماع",
+    "ivMeetingLinkInvalid": "أدخل رابط اجتماع مثل meet.google.com/abc-defg-hij، أو اتركه فارغًا لإنشاء غرفة فيديو تلقائيًا.",
     "ivInstructions": "تعليمات (اختياري)",
     "ivInstructionsPlaceholder": "أي معلومات يحتاجها المرشح قبل الانضمام",
     "ivScheduling": "جارٍ الجدولة…",
@@ -5442,6 +5447,8 @@
     "email": "البريد الإلكتروني",
     "phone": "الهاتف",
     "website": "الموقع الإلكتروني",
+    "socialLinks": "روابط التواصل الاجتماعي",
+    "websiteInvalid": "أدخل موقعًا إلكترونيًا مثل yourcompany.com، أو اتركه فارغًا.",
     "linkedin": "لينكد إن",
     "twitter": "تويتر / إكس",
     "companyNamePlaceholder": "اسم شركتك",
@@ -6868,7 +6875,8 @@
       "inviteSent": "تم إرسال الدعوة إلى {email}",
       "errors": {
         "emailInUse": "هذا البريد الإلكتروني مستخدم بالفعل.",
-        "alreadyMember": "هذا الشخص عضو في فريقك بالفعل أو لديه دعوة معلّقة."
+        "alreadyMember": "هذا الشخص عضو في فريقك بالفعل أو لديه دعوة معلّقة.",
+        "invalidEmail": "أدخل عنوان بريد إلكتروني كاملًا، مثل name@company.com"
       }
     },
     "jobAccessModal": {
@@ -6972,6 +6980,7 @@
     "completed": "مكتملة",
     "completedDesc": "مقابلات انتهت مع تسجيل النتيجة.",
     "needsAttention": "تحتاج إلى متابعة",
+    "awaitingOutcome": "بانتظار النتيجة",
     "needsAttentionDesc": "جلسات أُعيد جدولتها أو أُلغيت وتحتاج إلى متابعة.",
     "confirmed": "مؤكدة",
     "confirmedDesc": "مرشحون أكدوا حضورهم.",
@@ -7074,6 +7083,7 @@
     "pickDateTime": "اختر التاريخ والوقت",
     "thisCandidate": "هذا المرشح",
     "meetLinkPlaceholder": "https://meet.google.com/...",
+    "meetLinkInvalid": "أدخل رابط اجتماع مثل meet.google.com/abc-defg-hij، أو اتركه فارغًا لإنشاء غرفة فيديو تلقائيًا.",
     "officePlaceholder": "عنوان المكتب أو الغرفة",
     "salaryPlaceholder": "5000",
     "generateMeetLink": "إنشاء رابط",
@@ -7091,6 +7101,7 @@
     "pending": "قيد الانتظار",
     "accepted": "مقبول",
     "declined": "مرفوض",
+    "closedStat": "مغلقة",
     "expired": "منتهي الصلاحية",
     "expiring": "ينتهي قريبًا",
     "withdrawn": "مسحوب",
@@ -7227,6 +7238,8 @@
     "assignedToMe": "المُسند إليّ",
     "allChecks": "جميع الفحوصات",
     "unassigned": "غير مُسند",
+    "noTeammate": "لم يُسند إلى زميل",
+    "agentFollowing": "الوكيل: {name}",
     "assignTo": "إسناد إلى",
     "assignHint": "أسند هذا الفحص إلى زميل لديه صلاحية الفرز.",
     "verifiedBy": "تم التحقق بواسطة {name}",
@@ -7690,7 +7703,9 @@
         "titleRequired": "المسمى الوظيفي مطلوب",
         "titleMin": "يجب أن يتكون المسمى من 5 أحرف على الأقل",
         "countryRequired": "الدولة مطلوبة",
-        "cityRequired": "المدينة مطلوبة"
+        "cityRequired": "المدينة مطلوبة",
+        "titleMax": "يجب ألا يتجاوز المسمى الوظيفي 200 حرف",
+        "titleMarkup": "استخدم نصًا عاديًا في المسمى الوظيفي بدون وسوم HTML"
       },
       "assignAgent": "تعيين مسؤول توظيف",
       "noAgent": "بدون مسؤول - إدارة ذاتية",
@@ -7866,7 +7881,11 @@
       "candidateFitRange": "نطاق ملاءمة المرشح",
       "education": "الحد الأدنى للتعليم",
       "educationHint": "اختياري. الحد الأدنى من التعليم أو المؤهل المتوقع لهذا الدور.",
-      "educationPlaceholder": "مثال: بكالوريوس في علوم الحاسب"
+      "educationPlaceholder": "مثال: بكالوريوس في علوم الحاسب",
+      "validation": {
+        "experienceRange": "أدخل عدد سنوات صحيحًا من 0 إلى 50",
+        "experienceOrder": "يجب أن يكون الحد الأقصى للسنوات مساويًا للحد الأدنى أو أكبر منه"
+      }
     },
     "step4": {
       "title": "الراتب والإعدادات",
@@ -7900,7 +7919,10 @@
       "trackOpeningsHint": "فعّل هذا الخيار إذا أردت أن يرى المتقدمون عدد الأشخاص المطلوب توظيفهم.",
       "showOpeningsHint": "أظهر عدد الأشخاص الذين تخطط لتوظيفهم لهذا الدور.",
       "noOpeningsHint": "لن يظهر عدد الشواغر في إعلان الوظيفة.",
-      "advancedHint": "اجعل تفاصيل التوظيف بسيطة هنا. تبقى حدود الفرز وقواعد الظهور والقيود في الإعدادات المتقدمة أدناه."
+      "advancedHint": "اجعل تفاصيل التوظيف بسيطة هنا. تبقى حدود الفرز وقواعد الظهور والقيود في الإعدادات المتقدمة أدناه.",
+      "validation": {
+        "vacanciesRange": "أدخل عددًا صحيحًا من الوظائف الشاغرة من 1 إلى 100"
+      }
     },
     "step5": {
       "title": "أسئلة الفرز",
@@ -9124,6 +9146,12 @@
     "interviewSelectedBody": "أخبار رائعة! تم اختيارك لإجراء مقابلة لوظيفة \"{jobTitle}\" في {companyName}. سيتواصل معك صاحب العمل قريبًا بمزيد من التفاصيل.",
     "offerMadeTitle": "تم تقديم عرض!",
     "offerMadeBody": "قدّمت {companyName} عرضًا لك لوظيفة \"{jobTitle}\". سجّل الدخول لمراجعة التفاصيل.",
+    "offerAcceptedTitle": "تم قبول العرض",
+    "offerAcceptedBody": "قبل {candidateName} عرضك لوظيفة \"{jobTitle}\".",
+    "offerDeclinedTitle": "تم رفض العرض",
+    "offerDeclinedBody": "رفض {candidateName} عرضك لوظيفة \"{jobTitle}\".",
+    "offerCounteredTitle": "تم استلام عرض مضاد",
+    "offerCounteredBody": "أرسل {candidateName} عرضًا مضادًا لوظيفة \"{jobTitle}\": {counter}. راجعه وعدّله أو ارفضه.",
     "rejectedTitle": "تحديث الطلب",
     "rejectedBody": "يؤسفنا إبلاغك بأن طلبك لوظيفة \"{jobTitle}\" لم يتم اختياره هذه المرة. واصل التقديم — الفرصة المناسبة قادمة.",
     "mentionTitle": "تمت الإشارة إليك في ملاحظة",
@@ -9152,6 +9180,7 @@
     "saPlacementBody": "تم تعيين {candidateName} كـ \"{jobTitle}\" في {companyName}.",
     "stageChangedTitle": "تغيّرت مرحلة الطلب",
     "stageChangedBody": "تم نقل طلب لوظيفة \"{jobTitle}\" إلى {status}.",
+    "stageChangedNamedBody": "انتقل طلب {candidateName} لوظيفة \"{jobTitle}\" إلى {status}.",
     "bulkActionTitle": "تحديث جماعي للطلبات",
     "bulkActionBody": "تم تحديث {count} طلب/طلبات عبر إجراء جماعي: {action}.",
     "adminSupportTicketTitle": "تم إسناد تذكرة دعم",
@@ -9297,11 +9326,13 @@
     "saveChanges": "حفظ التغييرات",
     "edit": "تعديل",
     "delete": "حذف المجموعة",
+    "archivePool": "أرشفة المجموعة",
     "deletePoolConfirm": "أرشفة هذه المجموعة؟ لن يتم حذف المرشحين.",
     "updated": "آخر تحديث {date}",
     "open": "فتح",
     "back": "العودة إلى المجموعات",
     "nameRequired": "اسم المجموعة مطلوب",
+    "nameLength": "يجب أن يتراوح اسم المجموعة بين {min} و{max} حرفًا.",
     "poolCreated": "تم إنشاء المجموعة",
     "poolUpdated": "تم تحديث المجموعة",
     "viewProfile": "عرض الملف الشخصي",
@@ -9753,11 +9784,13 @@
     "inPerson": "حضوري",
     "hybrid": "هجين",
     "meetingPlaceholder": "https://meet.google.com/…",
+    "meetLinkInvalid": "أدخل رابط اجتماع مثل meet.google.com/abc-defg-hij، أو اتركه فارغًا.",
     "locationPlaceholder": "عنوان المكتب…",
     "hybridHint": "أضف رابط اجتماع وموقع للمقابلات الهجينة.",
     "scheduleFor": "جدولة لـ {count} مرشح(ين)",
     "scheduling": "جارٍ الجدولة…",
     "scheduledSuccess": "تمت الجدولة لـ {success} مرشح(ين). {failed} فشل.",
+    "scheduleFailed": "تعذّر جدولة هذه المقابلات. تحقّق من التفاصيل وحاول مرة أخرى.",
     "notification": "سيتلقى المرشحون إشعارات تلقائية بجميع التفاصيل.",
     "pickDate": "اختر تاريخاً",
     "pickTime": "اختر وقتاً",
@@ -9997,6 +10030,7 @@
     "description": "التغييرات تُحفظ كمسودة ما لم تنشرها.",
     "publishedTitle": "تم نشر الوظيفة",
     "backToJob": "العودة للوظيفة",
+    "backToJobs": "العودة إلى الوظائف",
     "saveDraft": "حفظ كمسودة",
     "saving": "جارٍ الحفظ…",
     "saved": "تم الحفظ!",
@@ -10063,6 +10097,11 @@
     "placeholderQuestion": "أدخل سؤالك…",
     "errorTitleRequired": "المسمى الوظيفي مطلوب",
     "errorTitleLength": "يجب أن يكون 5 أحرف على الأقل",
+    "errorTitleMax": "يجب ألا يتجاوز المسمى الوظيفي 200 حرف",
+    "errorTitleMarkup": "استخدم نصًا عاديًا في المسمى الوظيفي بدون وسوم HTML",
+    "errorVacancies": "أدخل عددًا صحيحًا من الوظائف الشاغرة من 1 إلى 100",
+    "errorExperience": "أدخل عدد سنوات صحيحًا من 0 إلى 50",
+    "errorExperienceOrder": "يجب أن يكون الحد الأقصى للسنوات مساويًا للحد الأدنى أو أكبر منه",
     "errorDescRequired": "وصف الوظيفة مطلوب",
     "errorDescLength": "يجب أن يكون 20 حرفاً على الأقل",
     "errorCountry": "الدولة مطلوبة للنشر",
@@ -10143,6 +10182,8 @@
     "aiMatching": "مطابقة الذكاء الاصطناعي",
     "charCount": "{count} / 5000 حرف",
     "jobNotFound": "الوظيفة غير موجودة",
+    "jobNotFoundHint": "هذه الوظيفة غير موجودة، أو ليست لديك صلاحية تعديلها.",
+    "loadJobError": "تعذر تحميل هذه الوظيفة. تحقق من اتصالك وحاول مرة أخرى.",
     "remoteScope": "من يمكنك توظيفه لهذه الوظيفة عن بُعد؟",
     "remoteScopeHint": "العمل عن بُعد يحدد طريقة العمل، وهذا يحدد مكان إقامة الموظف قانونياً. نرشّح فقط من يمكنك توظيفه فعلاً.",
     "remoteScopeWorldwide": "من أي مكان في العالم",
@@ -17653,9 +17694,10 @@
     "scopeReadEmployerJobs": "عرض الوظائف التي يمكنك الوصول إليها في Mployedin",
     "scopeReadApplicants": "عرض المتقدمين الذين يمكنك الوصول إليهم في Mployedin",
     "signedInAs": "تم تسجيل الدخول باسم {email}",
-    "readOnlyNote": "يمكن لهذا التطبيق القراءة فقط، ولا يمكنه التقديم أو التغيير أو الحذف.",
+    "readOnlyNote": "يتلقى هذا التطبيق أرقامًا ملخصة فقط، ولا يرى الأسماء أو عناوين البريد الإلكتروني أو أرقام الهواتف، ولا يمكنه تغيير أي شيء.",
     "returnTo": "بعد اختيارك، ستعود إلى {host}.",
-    "teamMemberBlocked": "لا يمكن لحسابات أعضاء الفريق ربط التطبيقات. اطلب من مالك الحساب إجراء الربط."
+    "teamMemberBlocked": "لا يمكن لحسابات أعضاء الفريق ربط التطبيقات. اطلب من مالك الحساب إجراء الربط.",
+    "scopeReadReports": "عرض التقارير الملخصة: الإجماليات والاتجاهات الخاصة بحسابك"
   },
   "employerCompliance": {
     "wording": {
@@ -19083,7 +19125,7 @@
   "connectedApps": {
     "label": "مساعدات الذكاء الاصطناعي",
     "title": "التطبيقات المتصلة",
-    "description": "تطبيقات ذكاء اصطناعي مثل ChatGPT أو Claude سمحت لها بقراءة بياناتك في Mployedin. يمكنها القراءة فقط ولا تستطيع تغيير أي شيء. افصل أي تطبيق لم تعد تستخدمه.",
+    "description": "تطبيقات ذكاء اصطناعي مثل ChatGPT أو Claude سمحت لها بقراءة التقارير الملخصة من Mployedin: إجماليات واتجاهات فقط، دون أسماء أو بيانات اتصال. افصل أي تطبيق لم تعد تستخدمه.",
     "loading": "جارٍ تحميل التطبيقات المتصلة",
     "loadError": "تعذر تحميل التطبيقات المتصلة.",
     "retry": "إعادة المحاولة",

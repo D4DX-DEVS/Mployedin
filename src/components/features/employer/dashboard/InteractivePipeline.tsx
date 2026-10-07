@@ -31,6 +31,7 @@ interface InteractivePipelineProps {
   interviews: number;
   offers: number;
   offersSent: number;
+  hiredCount: number;
   placements: number;
   avgMatchScore: number;
   locale: string;
@@ -44,6 +45,7 @@ export function InteractivePipeline({
   interviews,
   offers,
   offersSent,
+  hiredCount,
   placements,
   locale,
 }: InteractivePipelineProps) {
@@ -88,11 +90,11 @@ export function InteractivePipeline({
     },
     {
       labelKey: "hired",
-      value: placements,
+      value: hiredCount,
       subCount: placements,
       subLabelKey: "placed",
       icon: BriefcaseBusiness,
-      href: `/${locale}/employer/placements`,
+      href: `/${locale}/employer/applications?status=hired`,
       accent: "text-teal-600",
     },
   ];

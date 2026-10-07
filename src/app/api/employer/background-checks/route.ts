@@ -26,7 +26,7 @@ interface AuthCtx {
  */
 async function listHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId").lean();
   if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
 
   const url = new URL(req.url);
@@ -49,7 +49,12 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
   const [items, total] = await Promise.all([
     BackgroundCheck.find(filter)
       .populate({ path: "jobSeekerId", select: "fullName userId", populate: { path: "userId", select: "name" } })
-      .populate({ path: "jobId", select: "title" })
+      // The job's agent follows its checks (QA EMP-002), so the list names them.
+      .populate({
+        path: "jobId",
+        select: "title agentId",
+        populate: { path: "agentId", select: "userId", populate: { path: "userId", select: "name" } },
+      })
       // The job worklist shows where each candidate sits, so a check that has
       // overtaken its candidate (or been left behind) is visible at a glance.
       .populate({ path: "applicationId", select: "status" })
@@ -62,7 +67,34 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
     BackgroundCheck.countDocuments(filter),
   ]);
 
-  return NextResponse.json({ items, total, page, limit });
+  const accountAgentName = await agentDisplayName((emp as { agentId?: unknown }).agentId);
+  const withAgent = (items as Array<Record<string, unknown> & { jobId?: PopulatedJob | null }>).map((c) => {
+    const job = c.jobId;
+    return {
+      ...c,
+      jobId: job ? { _id: job._id, title: job.title } : job,
+      agentName: job?.agentId?.userId?.name || accountAgentName || null,
+    };
+  });
+
+  return NextResponse.json({ items: withAgent, total, page, limit });
+}
+
+interface PopulatedJob {
+  _id: unknown;
+  title?: string;
+  agentId?: { userId?: { name?: string } | null } | null;
+}
+
+/** Name of the employer's account agent, the fallback when a job has none of its own. */
+async function agentDisplayName(agentId: unknown): Promise<string | null> {
+  if (!agentId) return null;
+  const { default: Agent } = await import("@/models/Agent");
+  const agent = (await Agent.findById(agentId)
+    .select("userId")
+    .populate({ path: "userId", select: "name" })
+    .lean()) as { userId?: { name?: string } | null } | null;
+  return agent?.userId?.name || null;
 }
 
 /**
@@ -123,22 +155,24 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 interface EmployerForNotice { _id: unknown; agentId?: unknown; companyName?: string }
 
 /**
- * The agent who works with this employer hears that a check was requested
- * (client report 2026-09-30). They can follow it on their Background checks
- * page; the employer's team still runs it.
+ * The agents who work with this employer hear that a check was requested
+ * (client report 2026-09-30): the job's own agent and the employer's account
+ * agent, once each when they are the same person (QA EMP-002, 2026-10-06).
+ * They follow it on their Background checks page; the employer's team still
+ * runs it.
  */
 async function notifyAgentOfCheck(emp: EmployerForNotice, jobId: unknown, actorId: string): Promise<void> {
-  if (!emp.agentId) return;
   const [{ default: Agent }, { default: Job }] = await Promise.all([import("@/models/Agent"), import("@/models/Job")]);
-  const [agent, job] = await Promise.all([
-    Agent.findById(emp.agentId).select("userId").lean() as Promise<{ userId?: unknown } | null>,
-    Job.findById(jobId).select("title").lean() as Promise<{ title?: string } | null>,
-  ]);
-  if (!agent?.userId) return;
+  const job = (await Job.findById(jobId).select("title agentId").lean()) as { title?: string; agentId?: unknown } | null;
+  const agentIds = [...new Set([job?.agentId, emp.agentId].filter(Boolean).map(String))];
+  if (agentIds.length === 0) return;
+
+  const agents = (await Agent.find({ _id: { $in: agentIds } }).select("userId").lean()) as Array<{ userId?: unknown }>;
+  const userIds = [...new Set(agents.map((a) => a.userId).filter(Boolean).map(String))];
   const companyName = emp.companyName ?? "";
   const jobTitle = job?.title ?? "";
-  await notify({
-    userId: String(agent.userId),
+  await Promise.all(userIds.map((userId) => notify({
+    userId,
     actorId,
     type: "system",
     title: "Background check requested",
@@ -148,7 +182,7 @@ async function notifyAgentOfCheck(emp: EmployerForNotice, jobId: unknown, actorI
     titleKey: "backgroundCheckRequestedTitle",
     bodyKey: "backgroundCheckRequestedBody",
     params: { companyName, jobTitle },
-  });
+  })));
 }
 
 export const GET = withAuth(listHandler, { resource: "applications", action: "read" });

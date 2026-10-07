@@ -79,6 +79,7 @@ import { availabilityWindowStart, firstFreeSlots } from "@/lib/interviews/availa
 import { resolveHiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
+  useApplicationJobOptions,
   useApplicationTimeline,
   useApplications,
   useBulkAction,
@@ -114,6 +115,7 @@ import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
 import { RowActions } from "@/components/shared/RowActions";
 import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom, type PipelineStage } from "@/lib/hiring/pipeline";
+import { isValidWebsiteInput } from "@/lib/validators/website";
 import {
   DEFAULT_WORKFLOW_STAGE_DEFS,
   nextWorkflowStage,
@@ -416,6 +418,30 @@ export function ApplicationsWorkspace({
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
   const [detailPanel, setDetailPanel] = useState<Applicant | null>(null);
   const detailTriggerRef = useRef<HTMLElement | null>(null);
+  // ?application=<id> — notification links open that applicant's drawer instead
+  // of dropping the employer on the whole list (QA EMP-013). The list API keeps
+  // the caller's scope, so a foreign id opens nothing.
+  const linkedApplicationId = searchParams.get("application");
+  useEffect(() => {
+    if (!linkedApplicationId) return;
+    // No cancel-on-cleanup: removing the param below re-runs this effect, and
+    // cancelling there would drop the very fetch it started.
+    fetch(`/api/applications?applicationId=${encodeURIComponent(linkedApplicationId)}&limit=1`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { applications?: Applicant[] } | null) => {
+        const app = data?.applications?.[0];
+        if (app) openDetailPanel(app);
+      })
+      .catch(() => {});
+    // One-shot: drop the param so closing the drawer stays closed on refresh.
+    // The native History API, which Next syncs into useSearchParams: a
+    // router.replace issued while the page is still mounting never reached the
+    // address bar, so a refresh reopened the drawer.
+    const params = new URLSearchParams(window.location.search);
+    params.delete("application");
+    window.history.replaceState(null, "", `${window.location.pathname}${params.size ? `?${params.toString()}` : ""}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per linked id
+  }, [linkedApplicationId]);
   const [layoutRef, isWide] = useContainerWide(1020);
   const [viewingCv, setViewingCv] = useState<{
     url: string;
@@ -479,7 +505,6 @@ export function ApplicationsWorkspace({
     return [emin ? Number(emin) : null, emax ? Number(emax) : null];
   });
   const [skillsFilter, setSkillsFilter] = useState<string[]>(() => (searchParams.get("skills") ?? "").split(",").filter(Boolean));
-  const [jobsLoaded, setJobsLoaded] = useState(false);
 
   interface EmployerJob {
     _id: string;
@@ -492,7 +517,9 @@ export function ApplicationsWorkspace({
     status: string;
     createdAt?: string;
   }
-  const [employerJobs, setEmployerJobs] = useState<EmployerJob[]>([]);
+  const jobOptionsQuery = useApplicationJobOptions<EmployerJob>();
+  const employerJobs = useMemo(() => jobOptionsQuery.data ?? [], [jobOptionsQuery.data]);
+  const jobsLoaded = jobOptionsQuery.isSuccess;
 
   // Sort order for the list. API supports appliedAt/aiMatchScore; "newest" is the default.
   const [sortOption, setSortOption] = useState<"newest" | "oldest" | "score">(() => {
@@ -542,7 +569,6 @@ export function ApplicationsWorkspace({
     sortBy,
     sortOrder,
     unreviewed: unreviewedOnly || undefined,
-    fetchJobs: !jobsLoaded,
     fetchCounts: true,
   });
   const updateStatus = useUpdateApplicationStatus();
@@ -574,14 +600,6 @@ export function ApplicationsWorkspace({
   const metricValue = (n: number) => (statusCounts ? n : "\u2014");
   const timelineData: TimelineEntry[] = timelineQuery.data?.timeline ?? [];
   const timelineLoading = timelineQuery.isLoading;
-
-  // Store employer jobs from the first successful fetch
-  useEffect(() => {
-    if (applicationsQuery.data?.employerJobs && !jobsLoaded) {
-      setEmployerJobs(applicationsQuery.data.employerJobs);
-      setJobsLoaded(true);
-    }
-  }, [applicationsQuery.data?.employerJobs, jobsLoaded]);
 
   // Selected job's details (for dynamic filter hints)
   const selectedJob = employerJobs.find((j) => j._id === jobFilter) ?? null;
@@ -1349,7 +1367,9 @@ export function ApplicationsWorkspace({
               }`}
             >
               <span className={`h-2 w-2 shrink-0 rounded-full ${STAGE_DOT_CLASS[stage.value as ApplicationStatus] ?? "bg-muted-foreground"}`} aria-hidden="true" />
-              <span>{stage.label}</span>
+              {/* Counts shortlisted plus every later stage, so it is not labelled
+                  "Shortlisted" beside the header's shortlisted-only number (QA EMP-005). */}
+              <span>{t("shortlistedOnwards")}</span>
               <span className="tabular-nums">{metricValue(stageCount)}</span>
             </button>
           );
@@ -3615,8 +3635,11 @@ function BulkInterviewScheduleModal({
 
   const isPast = scheduledAt ? new Date(scheduledAt) < new Date() : false;
 
+  // QA EMP-007: "not a link" used to be scheduled and sent to the candidate.
+  const meetLinkInvalid = type !== "offline" && !isValidWebsiteInput(meetLink);
+
   async function handleSubmit() {
-    if (!scheduledAt || isPast) return;
+    if (!scheduledAt || isPast || meetLinkInvalid) return;
     const validBreaks = breaks.filter((b) => b.start && b.end && b.start < b.end);
     await onSubmit({
       scheduledAt: new Date(scheduledAt).toISOString(),
@@ -3625,7 +3648,7 @@ function BulkInterviewScheduleModal({
       durationPerCandidate,
       gapMinutes,
       ...(location && { location }),
-      ...(meetLink && { meetLink }),
+      ...(type !== "offline" && meetLink.trim() && { meetLink: meetLink.trim() }),
       workingHours: { start: whStart, end: whEnd },
       ...(validBreaks.length > 0 && { breaks: validBreaks }),
     });
@@ -3766,10 +3789,15 @@ function BulkInterviewScheduleModal({
         )}
         {type !== "offline" && (
           <div>
-            <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
-            <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
+            <label htmlFor="bulk-iv-meet-link" className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
+            <input id="bulk-iv-meet-link" value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
               placeholder="https://meet.google.com/..."
-              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+              aria-invalid={meetLinkInvalid || undefined}
+              aria-describedby={meetLinkInvalid ? "bulk-iv-meet-link-error" : undefined}
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 aria-[invalid=true]:border-destructive" />
+            {meetLinkInvalid && (
+              <p id="bulk-iv-meet-link-error" className="mt-1 text-xs text-destructive">{t("ivMeetingLinkInvalid")}</p>
+            )}
           </div>
         )}
 
@@ -3817,7 +3845,7 @@ function BulkInterviewScheduleModal({
       </div>
       <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
         <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || meetLinkInvalid || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
           <Calendar className="w-3.5 h-3.5 me-1" />
           {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
         </Button>
@@ -4012,8 +4040,10 @@ function InterviewScheduleModal({
   const [pickerContainer, setPickerContainer] = useState<HTMLDivElement | null>(null);
   const t = useTranslations("employerApplications");
 
+  const meetLinkInvalid = type !== "offline" && !isValidWebsiteInput(meetLink);
+
   async function handleSubmit() {
-    if (!scheduledAt) return;
+    if (!scheduledAt || meetLinkInvalid) return;
     setSubmitting(true);
     try {
       await onSubmit({
@@ -4021,7 +4051,7 @@ function InterviewScheduleModal({
         type,
         duration,
         ...(location && { location }),
-        ...(meetLink && { meetLink }),
+        ...(type !== "offline" && meetLink.trim() && { meetLink: meetLink.trim() }),
         ...(instructions && { instructions }),
       });
     } finally {
@@ -4085,10 +4115,15 @@ function InterviewScheduleModal({
         )}
         {type !== "offline" && (
           <div>
-            <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
-            <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
+            <label htmlFor="iv-meet-link" className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
+            <input id="iv-meet-link" value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
               placeholder="https://meet.google.com/..."
-              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+              aria-invalid={meetLinkInvalid || undefined}
+              aria-describedby={meetLinkInvalid ? "iv-meet-link-error" : undefined}
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 aria-[invalid=true]:border-destructive" />
+            {meetLinkInvalid && (
+              <p id="iv-meet-link-error" className="mt-1 text-xs text-destructive">{t("ivMeetingLinkInvalid")}</p>
+            )}
           </div>
         )}
         <div>
@@ -4101,7 +4136,7 @@ function InterviewScheduleModal({
       </div>
       <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
         <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || submitting} className="">
+        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || meetLinkInvalid || submitting} className="">
           {submitting ? t("ivScheduling") : t("scheduleInterview")}
         </Button>
       </div>

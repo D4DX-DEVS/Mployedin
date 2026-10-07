@@ -253,6 +253,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   if (statusChanged) {
     const jobTitle = (application.jobId as unknown as { title?: string })?.title ?? "a job";
+    const candidateName = await applicantName(application.jobSeekerId);
 
     await logActivity({
       ...actorFromCtx(ctx),
@@ -271,12 +272,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         userId: empUserId,
         type: "system",
         title: "Application stage changed",
-        message: `An application for "${jobTitle}" moved to ${effectiveStatus.replace(/_/g, " ")}.`,
-        link: `/employer/applications`,
+        message: `${candidateName}'s application for "${jobTitle}" moved to ${effectiveStatus.replace(/_/g, " ")}.`,
+        // Opens this application, not the whole list (QA EMP-013).
+        link: `/employer/applications?application=${String(application._id)}`,
         sendEmail: false,
         titleKey: "stageChangedTitle",
-        bodyKey: "stageChangedBody",
-        params: { jobTitle, status: effectiveStatus },
+        bodyKey: "stageChangedNamedBody",
+        params: { jobTitle, status: effectiveStatus, candidateName },
       }).catch((err) => { logger.error({ err, applicationId: params?.id, employerId: emp?._id }, "Failed to notify employer about stage change"); });
     }
 
@@ -404,3 +406,18 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
 export const GET = withAuth(getHandler, { resource: "applications", action: "read" });
 export const PATCH = withAuth(patchHandler, { resource: "applications", action: "update" });
+
+/** The applicant's name for the employer's notification (QA EMP-013: "an application" named nobody). */
+async function applicantName(jobSeekerId: unknown): Promise<string> {
+  // Wording only: a failed lookup must never fail the stage change itself.
+  try {
+    const JobSeeker = (await import("@/models/JobSeeker")).default;
+    const seeker = (await JobSeeker.findById(jobSeekerId)
+      .select("fullName userId")
+      .populate({ path: "userId", select: "name" })
+      .lean()) as { fullName?: string; userId?: { name?: string } | null } | null;
+    return seeker?.userId?.name || seeker?.fullName || "A candidate";
+  } catch {
+    return "A candidate";
+  }
+}

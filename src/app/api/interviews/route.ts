@@ -29,6 +29,7 @@ import { addMinutes } from "date-fns";
 import { escapeRegex } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { listApplicationRows, type RowCounts } from "@/lib/interviews/applicationRows";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
@@ -50,6 +51,9 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   const dateTo = searchParams.get("dateTo") ?? "";
   const sortBy = searchParams.get("sortBy") ?? "scheduledAt";
   const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;
+  // Opt-in (employer interview list): one row per application, paged by
+  // application, `status` read as a bucket — see listApplicationRows.
+  const groupByApplication = searchParams.get("group") === "application";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: Record<string, any> = {};
@@ -113,7 +117,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   if (Array.isArray(scopeQuery.$or)) scopeQuery.$or = [...scopeQuery.$or];
   const now = new Date();
 
-  if (status) query.status = status;
+  if (status && !groupByApplication) query.status = status;
   // Cast ids to ObjectId: `find` casts strings via the schema but the
   // statusCounts `aggregate` below does not, so string ids silently returned
   // empty counts for job/application-scoped requests.
@@ -234,30 +238,62 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   const baseQuery = { ...query };
   delete baseQuery.status;
 
-  const [interviews, total, statusAgg, counts] = await Promise.all([
-    Interview.find(query)
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limit)
-      .populate("jobId", "title requirements")
-      .populate("employerId", "companyName")
-      .populate({
-        path: "jobSeekerId",
-        select: "userId skills experience",
-        populate: { path: "userId", select: "name email" },
-      })
-      .lean(),
-    Interview.countDocuments(query),
-    Interview.aggregate([
-      { $match: baseQuery },
-      { $group: { _id: "$status", count: { $sum: 1 } } },
-    ]),
-    fetchCounts ? journeyCounts(scopeQuery, now) : Promise.resolve(null),
-  ]);
-
+  let interviews: Array<Record<string, unknown> & { jobId?: unknown; employerId?: unknown; jobSeekerId?: unknown }>;
+  let total: number;
+  let counts: { upcoming: number; past: number } | null;
+  let rowCounts: RowCounts | undefined;
   const statusCounts: Record<string, number> = {};
-  for (const s of statusAgg) {
-    statusCounts[s._id] = s.count;
+
+  if (groupByApplication) {
+    const rows = await listApplicationRows({ match: query, bucket: status, sortBy, sortOrder: sortOrder as 1 | -1, skip, limit, now });
+    const [docs, journey] = await Promise.all([
+      rows.ids.length === 0
+        ? Promise.resolve([])
+        : Interview.find({ _id: { $in: rows.ids } })
+            .populate("jobId", "title requirements")
+            .populate("employerId", "companyName")
+            .populate({
+              path: "jobSeekerId",
+              select: "userId skills experience",
+              populate: { path: "userId", select: "name email" },
+            })
+            .lean(),
+      fetchCounts ? journeyCounts(scopeQuery, now) : Promise.resolve(null),
+    ]);
+    const position = new Map(rows.ids.map((id, i) => [String(id), i]));
+    interviews = [...(docs as typeof interviews)].sort(
+      (a, b) => (position.get(String(a._id)) ?? 0) - (position.get(String(b._id)) ?? 0),
+    );
+    total = rows.total;
+    counts = journey;
+    rowCounts = rows.counts;
+  } else {
+    const [found, totalFound, statusAgg, journey] = await Promise.all([
+      Interview.find(query)
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
+        .populate("jobId", "title requirements")
+        .populate("employerId", "companyName")
+        .populate({
+          path: "jobSeekerId",
+          select: "userId skills experience",
+          populate: { path: "userId", select: "name email" },
+        })
+        .lean(),
+      Interview.countDocuments(query),
+      Interview.aggregate([
+        { $match: baseQuery },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      fetchCounts ? journeyCounts(scopeQuery, now) : Promise.resolve(null),
+    ]);
+    interviews = found as typeof interviews;
+    total = totalFound;
+    counts = journey;
+    for (const s of statusAgg) {
+      statusCounts[s._id] = s.count;
+    }
   }
 
   const enriched = interviews.map((iv) => {
@@ -309,6 +345,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     page,
     limit,
     statusCounts,
+    ...(rowCounts ? { rowCounts } : {}),
     ...(fetchCounts ? { counts: counts ?? { upcoming: 0, past: 0 } } : {}),
   });
 }
@@ -524,7 +561,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       String(seekerDoc.userId),
       job?.title ?? "Interview",
       new Date(scheduledAt),
-      location ?? meetLink ?? "TBD",
+      location || interview.meetLink || "TBD",
       String(interview._id),
       { sendEmail: false },
     ).catch((err) => logger.error({ err, interviewId: String(interview._id) }, "Failed to notify job seeker of scheduled interview"));

@@ -22,6 +22,10 @@ import { CompanyFunctionChecklist } from "@/components/features/employer/team/Co
 import { TeamInviteError, useInviteTeamMember } from "@/hooks/useTeam";
 import type { CompanyRole, TeamInvitePayload } from "@/hooks/useTeam";
 import type { PermissionFlag } from "@/lib/permissions/companyRoles";
+import { z } from "zod";
+
+/** Same rule as the server (commonSchemas.email). */
+const INVITE_EMAIL = z.string().email().max(254);
 
 type Mode = NonNullable<TeamInvitePayload["mode"]>;
 
@@ -102,10 +106,17 @@ export function InviteMemberDialog({
       setError(t("selectAtLeastOneRole"));
       return;
     }
+    // The browser accepts "a@b" as an email; the server does not (QA EMP-011
+    // got "failed to send invite" for it). Say so at the field.
+    if (!INVITE_EMAIL.safeParse(email.trim()).success) {
+      setError("");
+      setEmailError(t("inviteModal.errors.invalidEmail"));
+      return;
+    }
     setEmailError("");
     setError("");
 
-    const payload: TeamInvitePayload = { email, companyRoles, mode };
+    const payload: TeamInvitePayload = { email: email.trim(), companyRoles, mode };
     if (isTempPassword) payload.name = name.trim();
     if (Object.keys(overrides).length > 0) payload.permissionOverrides = overrides;
     // Only send jobAccess for restricted roles
@@ -128,6 +139,7 @@ export function InviteMemberDialog({
       const code = err instanceof TeamInviteError ? err.code : undefined;
       if (code === "email_in_use") setEmailError(t("inviteModal.errors.emailInUse"));
       else if (code === "already_member") setEmailError(t("inviteModal.errors.alreadyMember"));
+      else if (code === "invalid_email") setEmailError(t("inviteModal.errors.invalidEmail"));
       else setError(t("failedToSendInvite"));
     }
   }

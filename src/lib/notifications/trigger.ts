@@ -332,7 +332,7 @@ export async function notifyMention(
     type: "mention",
     title: "You were mentioned in a note",
     message: `${authorName} mentioned you in a note on ${candidateName}'s application.`,
-    link: `/employer/applications?highlight=${applicationId}`,
+    link: `/employer/applications?application=${applicationId}`,
     sendEmail: false,
     metadata: { applicationId, authorName },
     titleKey: "mentionTitle",

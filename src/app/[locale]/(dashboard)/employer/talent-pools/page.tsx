@@ -35,6 +35,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Archive,
   Users,
   ExternalLink,
   Tag,
@@ -57,13 +58,11 @@ import {
   type PooledCandidateRef,
 } from "@/hooks/useTalentPools";
 import { useCandidates } from "@/hooks/useCandidates";
+import { isValidPoolName, normalizePoolTags, POOL_NAME_MAX, POOL_NAME_MIN } from "@/lib/talentPools/fields";
 
+/** "qa, auto, qa" → ["qa", "auto"]: the server's rules, applied before sending. */
 function parseTags(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .slice(0, 20);
+  return normalizePoolTags(raw.split(","));
 }
 
 function refOf(candidate: PooledCandidate): PooledCandidateRef | null {
@@ -131,7 +130,7 @@ export default function EmployerTalentPoolsPage() {
   const { confirm, ConfirmDialogNode } = useConfirm();
 
   async function handleDeletePool(pool: TalentPool) {
-    const ok = await confirm({ message: t("deletePoolConfirm"), variant: "destructive", confirmLabel: t("delete") });
+    const ok = await confirm({ message: t("deletePoolConfirm"), variant: "destructive", confirmLabel: t("archivePool") });
     if (!ok) return;
     try {
       await deletePool.mutateAsync(pool._id);
@@ -297,7 +296,8 @@ function PoolCard({
           menu={[
             // Icon-only like the pen: a labelled button is ~110px wide and the
             // pool name ran underneath it. Label survives as tooltip + name.
-            { key: "delete", label: t("delete"), icon: Trash2, iconOnly: true, destructive: true, onSelect: onDelete },
+            // The pool is archived, not deleted (QA EMP-016: "Delete Pool" over an "Archive?" dialog).
+            { key: "delete", label: t("archivePool"), icon: Archive, iconOnly: true, destructive: true, onSelect: onDelete },
           ]}
         />
       </div>
@@ -350,6 +350,10 @@ function CreatePoolDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     const trimmed = name.trim();
     if (!trimmed) {
       toast.error(t("nameRequired"));
+      return;
+    }
+    if (!isValidPoolName(trimmed)) {
+      toast.error(t("nameLength", { min: POOL_NAME_MIN, max: POOL_NAME_MAX }));
       return;
     }
     try {
@@ -436,6 +440,10 @@ function RenamePoolDialog({ pool, onClose }: { pool: TalentPool | null; onClose:
 
   async function handleSave() {
     if (!pool || !name.trim()) return;
+    if (!isValidPoolName(name)) {
+      toast.error(t("nameLength", { min: POOL_NAME_MIN, max: POOL_NAME_MAX }));
+      return;
+    }
     try {
       await updatePool.mutateAsync({ id: pool._id, name: name.trim(), description: description.trim() });
       toast.success(t("poolUpdated"));
@@ -858,8 +866,8 @@ function PoolDetailDialog({
                       className="text-red-600 hover:bg-red-50 hover:text-red-700"
                       onClick={() => onDelete(pool)}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {t("delete")}
+                      <Archive className="mr-2 h-4 w-4" />
+                      {t("archivePool")}
                     </Button>
                   </DialogFooter>
                 </>

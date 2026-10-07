@@ -13,15 +13,26 @@ import { NextRequest } from "next/server";
 const EMP_A = "651000000000000000000a01";
 let mockCtx = { userId: "651000000000000000000009", role: "agent", locale: "en" };
 const mockScope = jest.fn();
+const mockBook = jest.fn();
 const mockFind = jest.fn();
 const mockCount = jest.fn();
+const mockJobDistinct = jest.fn();
+let agentDoc: { _id: string } | null = null;
 
 jest.mock("@/lib/auth/withAuth", () => ({
   withAuth: (handler: (req: NextRequest, ctx: unknown) => Promise<Response>) =>
     (req: NextRequest) => handler(req, mockCtx),
 }));
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getScopedEmployerIds: (...a: unknown[]) => mockScope(...a) }));
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getScopedEmployerIds: (...a: unknown[]) => mockScope(...a),
+  getSuperAgentBook: (...a: unknown[]) => mockBook(...a),
+}));
+jest.mock("@/models/Agent", () => ({
+  __esModule: true,
+  default: { findOne: jest.fn(() => ({ select: () => ({ lean: async () => agentDoc }) })) },
+}));
+jest.mock("@/models/Job", () => ({ __esModule: true, default: { distinct: (...a: unknown[]) => mockJobDistinct(...a) } }));
 
 function query(result: unknown) {
   const q: Record<string, unknown> = {};
@@ -61,6 +72,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockCtx = { userId: "651000000000000000000009", role: "agent", locale: "en" };
   mockScope.mockResolvedValue([EMP_A]);
+  mockBook.mockResolvedValue({ employerIds: [EMP_A], agentIds: [] });
+  mockJobDistinct.mockResolvedValue([]);
+  agentDoc = null;
   mockFind.mockImplementation(() => query([stored]));
   mockCount.mockResolvedValue(1);
 });
@@ -112,4 +126,40 @@ it("is for agents, super agents and admins only", async () => {
   }
   mockCtx = { ...mockCtx, role: "super_agent" };
   expect((await get()).status).toBe(200);
+});
+
+describe("checks on jobs the caller's agents handle (QA EMP-002)", () => {
+  const AGENT = "651000000000000000000b01";
+  const JOB = "651000000000000000000c01";
+
+  it("adds checks on the agent's own jobs, even for an employer outside their scope", async () => {
+    agentDoc = { _id: AGENT };
+    mockJobDistinct.mockResolvedValue([JOB]);
+    await get();
+    expect(mockJobDistinct).toHaveBeenCalledWith("_id", { agentId: { $in: [AGENT] } });
+    expect(mockFind.mock.calls[0][0]).toEqual({ $or: [{ employerId: { $in: [EMP_A] } }, { jobId: { $in: [JOB] } }] });
+  });
+
+  it("sees the job's checks alone when no employer is in scope", async () => {
+    agentDoc = { _id: AGENT };
+    mockScope.mockResolvedValue([]);
+    mockJobDistinct.mockResolvedValue([JOB]);
+    await get();
+    expect(mockFind.mock.calls[0][0]).toEqual({ jobId: { $in: [JOB] } });
+  });
+
+  it("gives a super agent the checks on their agents' jobs", async () => {
+    mockCtx = { ...mockCtx, role: "super_agent" };
+    mockBook.mockResolvedValue({ employerIds: [], agentIds: [AGENT] });
+    mockJobDistinct.mockResolvedValue([JOB]);
+    await get();
+    expect(mockScope).not.toHaveBeenCalled();
+    expect(mockFind.mock.calls[0][0]).toEqual({ jobId: { $in: [JOB] } });
+  });
+
+  it("lets an admin see every check", async () => {
+    mockCtx = { ...mockCtx, role: "admin" };
+    await get();
+    expect(mockFind.mock.calls[0][0]).toEqual({});
+  });
 });

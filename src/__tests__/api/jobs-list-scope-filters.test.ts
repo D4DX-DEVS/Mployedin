@@ -156,6 +156,34 @@ describe("short search", () => {
     await getHandler(new NextRequest("http://localhost/api/jobs?search=developer"), ctx);
     expect(lastQuery().$text).toEqual({ $search: "developer" });
   });
+
+  it("trims, so a trailing space does not change the results (QA EMP-009)", async () => {
+    const ctx = { userId: "cccccccccccccccccccccccc", role: "job_seeker" as const, locale: "en" };
+    await getHandler(new NextRequest("http://localhost/api/jobs?search=QA%20"), ctx);
+    const q = lastQuery();
+    expect(q.$text).toBeUndefined();
+    expect(q.title).toEqual(/QA/i);
+  });
+});
+
+describe("employer's own jobs search (QA EMP-009)", () => {
+  const ctx = { userId: "bbbbbbbbbbbbbbbbbbbbbbbb", role: "employer" as const, locale: "en" };
+  const fieldsFor = (term: string) => {
+    const p = new RegExp(term, "i");
+    return { $or: [{ title: p }, { category: p }, { "location.city": p }, { "location.country": p }, { "requirements.skills": p }] };
+  };
+
+  it("needs every word, each matching any field a job card shows", async () => {
+    await getHandler(new NextRequest("http://localhost/api/jobs?myJobs=true&search=QA-AUTO%20Agent%20222605"), ctx);
+    const q = lastQuery();
+    expect(q.$text).toBeUndefined();
+    expect(q.$and).toEqual(expect.arrayContaining([fieldsFor("QA-AUTO"), fieldsFor("Agent"), fieldsFor("222605")]));
+  });
+
+  it("finds jobs by city or category", async () => {
+    await getHandler(new NextRequest("http://localhost/api/jobs?myJobs=true&search=Dubai"), ctx);
+    expect(lastQuery().$and).toEqual(expect.arrayContaining([fieldsFor("Dubai")]));
+  });
 });
 
 describe("colleague job restriction", () => {

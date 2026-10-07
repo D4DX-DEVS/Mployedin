@@ -99,8 +99,14 @@ export function useInviteTeamMember() {
         body: JSON.stringify(inviteData),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-        throw new TeamInviteError(data.error ?? "We couldn't send the invite", data.code);
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          code?: string;
+          details?: { path?: string }[];
+        };
+        // A rejected address comes back as a generic validation failure; name it.
+        const code = data.code ?? (data.details?.some((d) => d.path === "email") ? "invalid_email" : undefined);
+        throw new TeamInviteError(data.error ?? "We couldn't send the invite", code);
       }
       return res.json();
     },

@@ -11,7 +11,7 @@ import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerCreateSchema } from "@/lib/validators/offers";
 import { defaultOfferExpiry } from "@/lib/offers/expiry";
-import { CLOSED_APPLICATION_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
+import { CLOSED_APPLICATION_STATUSES, CLOSED_OFFER_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
 import { agentCanSeeEmployer, getAgentEmployerIds, getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
@@ -24,7 +24,7 @@ interface AuthCtx {
   locale: string;
 }
 
-const EMPTY_STATS = { total: 0, pending: 0, accepted: 0, declined: 0, expired: 0, countered: 0 };
+const EMPTY_STATS = { total: 0, pending: 0, accepted: 0, declined: 0, expired: 0, countered: 0, withdrawn: 0, open: 0, closed: 0 };
 
 function offersListResponse({
   offers = [],
@@ -94,7 +94,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.employerId = { $in: employerIds };
   }
 
-  if (status) query.status = status;
+  // "open" / "closed" are the grouped tabs, so open + accepted + closed = total
+  // (QA EMP-005: expired and withdrawn offers fell in no bucket).
+  if (status === "open") query.status = { $in: [...OPEN_OFFER_STATUSES] };
+  else if (status === "closed") query.status = { $in: [...CLOSED_OFFER_STATUSES] };
+  else if (status) query.status = status;
 
   const jobId = searchParams.get("jobId") ?? "";
   if (jobId) query.jobId = jobId;
@@ -128,7 +132,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // One count per status tab the client can select, so a pill's number always
   // describes the list that pill produces. countDocuments rather than a $group
   // aggregate: this query can carry string ids, which $match would not cast.
-  const [totalCount, pendingCount, acceptedCount, declinedCount, expiredCount, counteredCount] =
+  const [totalCount, pendingCount, acceptedCount, declinedCount, expiredCount, counteredCount, withdrawnCount] =
     await Promise.all([
       Offer.countDocuments(statsQuery),
       Offer.countDocuments({ ...statsQuery, status: "pending" }),
@@ -136,6 +140,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       Offer.countDocuments({ ...statsQuery, status: "declined" }),
       Offer.countDocuments({ ...statsQuery, status: "expired" }),
       Offer.countDocuments({ ...statsQuery, status: "countered" }),
+      Offer.countDocuments({ ...statsQuery, status: "withdrawn" }),
     ]);
 
   const skip = (page - 1) * limit;
@@ -214,6 +219,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       declined: declinedCount,
       expired: expiredCount,
       countered: counteredCount,
+      withdrawn: withdrawnCount,
+      open: pendingCount + counteredCount,
+      closed: declinedCount + expiredCount + withdrawnCount,
     },
   });
 }

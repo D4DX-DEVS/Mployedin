@@ -1048,7 +1048,10 @@ export default function EmployerCandidatesPage() {
   const hasAnyScore = structuredCandidates.some((candidate) => candidate.matchScore != null);
   const scoreCounts = useMemo(() => getScoreFilterCounts(structuredCandidates), [structuredCandidates]);
   const visibleHighMatchCount = structuredCandidates.filter((candidate) => (candidate.matchScore ?? 0) >= AI_MATCH_HIGH_THRESHOLD).length;
-  const readyNowCount = structuredCandidates.filter((candidate) => candidate.availabilityStatus === "immediately").length;
+  // Talent pool: the server's count across every page. A job's applicants come
+  // one page at a time with no such total, so that view still counts the page.
+  const readyNowCount = candidatesData?.availableNow
+    ?? structuredCandidates.filter((candidate) => candidate.availabilityStatus === "immediately").length;
   const scoredCount = structuredCandidates.filter((candidate) => candidate.matchScore != null).length;
   const reviewCount = reviewListIds.size;
   const allVisibleSelected = filteredCandidates.length > 0 && filteredCandidates.every((candidate) => reviewListIds.has(candidate._id));
@@ -1320,10 +1323,10 @@ export default function EmployerCandidatesPage() {
     try {
       const data = await startDmMutation.mutateAsync(recipientUserId);
       router.push(`/${locale}/employer/messages?conv=${data.conversation._id}`);
-    } catch {
+    } catch (err) {
       setMatchFeedback({
         type: "error",
-        message: t("messageFailed"),
+        message: err instanceof Error && err.message === "not_connected" ? t("messageNotApplied") : t("messageFailed"),
       });
     }
   };

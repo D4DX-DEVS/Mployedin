@@ -23,6 +23,12 @@ describe("normalizeWebsiteUrl", () => {
     expect(normalizeWebsiteUrl(undefined)).toEqual({ ok: true, value: "" });
   });
 
+  it("accepts a non-Latin top-level domain (punycode TLD)", () => {
+    expect(normalizeWebsiteUrl("موقع.امارات").ok).toBe(true);
+    expect(normalizeWebsiteUrl("https://example.xn--mgbaam7a8h/x").ok).toBe(true);
+    expect(normalizeWebsiteUrl("example.xn-").ok).toBe(false);
+  });
+
   it("rejects schemes we would never render as a company link", () => {
     expect(normalizeWebsiteUrl("javascript:alert(1)").ok).toBe(false);
     expect(normalizeWebsiteUrl("data:text/html,<script>").ok).toBe(false);

@@ -8,5 +8,8 @@ import type { ApplicationStatus } from "@/models/Application";
  */
 export const OPEN_OFFER_STATUSES = ["pending", "countered"] as const;
 
+/** Offers that ended without a hire. With open and accepted, these cover every offer. */
+export const CLOSED_OFFER_STATUSES = ["declined", "expired", "withdrawn"] as const;
+
 /** Applications that can no longer receive or respond to an offer. */
 export const CLOSED_APPLICATION_STATUSES: readonly ApplicationStatus[] = ["hired", "rejected", "withdrawn"];

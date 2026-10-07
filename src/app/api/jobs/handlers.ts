@@ -50,7 +50,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
-  const search = (searchParams.get("search") ?? "").slice(0, 500);
+  // Trimmed: "QA " used to switch to word search and return 9 jobs to "QA"'s 3 (QA EMP-009).
+  const search = (searchParams.get("search") ?? "").trim().slice(0, 500);
   const status = searchParams.get("status") ?? "";
   const category = (searchParams.get("category") ?? "").slice(0, 200);
   const location = (searchParams.get("location") ?? "").slice(0, 200);
@@ -131,7 +132,28 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const canFilterManagedJobs = ownershipScoped || ctx.role === "admin";
 
   if (status && canFilterManagedJobs) query.status = status;
-  if (search) {
+  if (search && canFilterManagedJobs) {
+    // Someone's own jobs (or admin): every word must match one of the fields a
+    // job card shows — title, category, city, country, skills. $text ORed the
+    // words (a full title returned 10 unrelated jobs) and never looked at
+    // location or category ("Dubai" found 2 of 15) (QA EMP-009).
+    const terms = search.split(/\s+/).filter(Boolean).slice(0, 8);
+    query.$and = [
+      ...(query.$and ?? []),
+      ...terms.map((term) => {
+        const pattern = new RegExp(escapeRegex(term), "i");
+        return {
+          $or: [
+            { title: pattern },
+            { category: pattern },
+            { "location.city": pattern },
+            { "location.country": pattern },
+            { "requirements.skills": pattern },
+          ],
+        };
+      }),
+    ];
+  } else if (search) {
     // $text drops short terms and stop words ("a" matched nothing), so a
     // 1–2 character search matches the title instead. Sorting by textScore
     // below only applies when $text is actually in the query.

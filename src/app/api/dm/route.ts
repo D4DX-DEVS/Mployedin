@@ -12,6 +12,8 @@ import { validateBody } from "@/lib/validators";
 import { dmStartConversationSchema } from "@/lib/validators/dm";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import logger from "@/lib/logger";
+import { canEmployerStartConversation } from "@/lib/dm/employerContacts";
+import { applyLiveAvatars } from "@/lib/dm/liveAvatars";
 
 interface AuthCtx { userId: string; role: UserRole; }
 
@@ -21,7 +23,7 @@ interface AuthCtx { userId: string; role: UserRole; }
  *   admin       → anyone                 ✅
  *   super_agent → admin, agent, employer  ✅
  *   agent       → super_agent, employer   ✅
- *   employer    → job_seeker, agent, super_agent  ✅
+ *   employer    → its applicants, its agent, admin (support)  ✅
  *   job_seeker  → employer, job_seeker    ✅  (rate-limited: 10 new conversations/day)
  *   same role   → same role               ❌ (except job_seeker ↔ job_seeker)
  */
@@ -31,7 +33,7 @@ function canRolesMessage(from: UserRole, to: UserRole): "yes" | "no" {
 
   const allowed: Partial<Record<UserRole, UserRole[]>> = {
     job_seeker: ["employer", "job_seeker"],
-    employer: ["job_seeker", "agent", "super_agent"],
+    employer: ["job_seeker", "agent", "admin"],
     agent: ["employer", "super_agent"],
   };
   return allowed[from]?.includes(to) ? "yes" : "no";
@@ -53,55 +55,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .sort({ lastMessageAt: -1, updatedAt: -1 })
     .lean();
 
-  // Backfill missing avatars — older conversations may have been created
-  // before the avatar field was correctly populated.
-  const missingAvatarIds = new Set<string>();
-  const missingAvatarRoles = new Map<string, string>();
-  for (const conv of conversations) {
-    for (const p of conv.participantDetails ?? []) {
-      if (!p.avatar) {
-        missingAvatarIds.add(p.userId.toString());
-        missingAvatarRoles.set(p.userId.toString(), p.role);
-      }
-    }
-  }
-
-  if (missingAvatarIds.size > 0) {
-    const ids = [...missingAvatarIds].map((id) => new mongoose.Types.ObjectId(id));
-
-    const users = await User.find({ _id: { $in: ids } })
-      .select("_id avatar")
-      .lean();
-
-    const avatarMap = new Map<string, string>();
-    for (const u of users) {
-      if (u.avatar) avatarMap.set(u._id.toString(), u.avatar);
-    }
-
-    // For employer users still missing avatar, fall back to Employer.logo
-    const stillMissingEmployerIds = [...missingAvatarIds]
-      .filter((id) => !avatarMap.has(id) && missingAvatarRoles.get(id) === "employer");
-
-    if (stillMissingEmployerIds.length > 0) {
-      const employers = await Employer.find({
-        userId: { $in: stillMissingEmployerIds.map((id) => new mongoose.Types.ObjectId(id)) },
-      })
-        .select("userId logo")
-        .lean();
-      for (const emp of employers) {
-        if (emp.logo) avatarMap.set(emp.userId.toString(), emp.logo);
-      }
-    }
-
-    for (const conv of conversations) {
-      for (const p of conv.participantDetails ?? []) {
-        if (!p.avatar) {
-          const a = avatarMap.get(p.userId.toString());
-          if (a) p.avatar = a;
-        }
-      }
-    }
-  }
+  await applyLiveAvatars(conversations);
 
   return NextResponse.json({ conversations });
 }
@@ -163,6 +117,18 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     if (permission === "no") {
       return NextResponse.json(
         { error: "Messaging between these roles is not allowed." },
+        { status: 403 }
+      );
+    }
+
+    // Owner decision 2026-10-06 (QA EMP-001): an employer opens conversations
+    // only with its own applicants, its agent and support — not the directory.
+    if (roleA === "employer" && !(await canEmployerStartConversation(ctx.userId, userB))) {
+      return NextResponse.json(
+        {
+          error: "You can message people who applied to your jobs, your agent and the support team.",
+          code: "not_connected",
+        },
         { status: 403 }
       );
     }

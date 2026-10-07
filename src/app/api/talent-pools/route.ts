@@ -5,6 +5,7 @@ import TalentPool from "@/models/TalentPool";
 import Employer from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
+import { isValidPoolName, normalizePoolTags, POOL_DESCRIPTION_MAX, POOL_NAME_ERROR } from "@/lib/talentPools/fields";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
   await connectDB();
@@ -31,13 +32,12 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   if (!employer) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
 
   const body = await req.json();
-  const name = body.name?.trim();
-  const description = body.description?.trim() || "";
-  const tags = (body.tags || []).map((t: string) => t.trim()).filter(Boolean).slice(0, 20);
-
-  if (!name || name.length > 100) {
-    return NextResponse.json({ error: "Name is required (max 100 chars)" }, { status: 400 });
+  if (!isValidPoolName(body.name)) {
+    return NextResponse.json({ error: POOL_NAME_ERROR }, { status: 400 });
   }
+  const name = (body.name as string).trim();
+  const description = typeof body.description === "string" ? body.description.trim().slice(0, POOL_DESCRIPTION_MAX) : "";
+  const tags = normalizePoolTags(body.tags);
 
   const pool = await TalentPool.create({
     employerId: employer._id,

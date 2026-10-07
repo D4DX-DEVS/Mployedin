@@ -67,3 +67,20 @@ describe("GET /api/employer/talent-search RBAC", () => {
     }
   });
 });
+
+describe("available-now total (QA EMP-012)", () => {
+  it("counts immediately-available candidates across every page, inside the same filter", async () => {
+    const JobSeeker = (await import("@/models/JobSeeker")).default as unknown as { countDocuments: jest.Mock };
+    JobSeeker.countDocuments.mockReset();
+    JobSeeker.countDocuments.mockResolvedValueOnce(248).mockResolvedValueOnce(230);
+    const res = await GET(withCtx({ userId: "u1", role: "employer", locale: "en" }));
+    const body = await res.json();
+    expect(body).toMatchObject({ total: 248, availableNow: 230 });
+    const availableFilter = JobSeeker.countDocuments.mock.calls[1][0];
+    expect(availableFilter.$and).toEqual(expect.arrayContaining([
+      { profileVisibility: "visible" },
+      { roleArchivedAt: null },
+      { availabilityStatus: "immediately" },
+    ]));
+  });
+});

@@ -42,7 +42,7 @@ const STEP_FIELDS: Record<number, (keyof JobFormValues)[]> = {
   1: ["title", "location"],
   2: ["description"],
   3: ["requirements"],
-  4: ["salary"],
+  4: ["salary", "vacancies"],
   5: ["screeningQuestions"],
 };
 

@@ -67,7 +67,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   const filter = conditions.length > 0 ? { $and: conditions } : {};
 
-  const [docs, total] = await Promise.all([
+  const [docs, total, availableNow] = await Promise.all([
     JobSeeker.find(filter)
       // No `cv` here on purpose. The CV route requires an application or talent
       // pool membership, so a sourced-only employer could never open it — the
@@ -82,6 +82,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       .limit(limit)
       .lean(),
     JobSeeker.countDocuments(filter),
+    // Across every page, not the 20 rows on screen (QA EMP-012: card said 16 of 230).
+    JobSeeker.countDocuments({ $and: [...conditions, { availabilityStatus: "immediately" }] }),
   ]);
 
   const items = (docs as Array<Record<string, unknown>>).map((d) => {
@@ -101,7 +103,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     };
   });
 
-  return NextResponse.json({ items, total, page, limit });
+  return NextResponse.json({ items, total, availableNow, page, limit });
 }
 
 export const GET = withAuth(handler, { resource: "job_seekers", action: "read" });

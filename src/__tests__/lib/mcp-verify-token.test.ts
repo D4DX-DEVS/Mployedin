@@ -50,7 +50,7 @@ function validToken(overrides: Record<string, unknown> = {}) {
     resource: "http://localhost:3000",
     userId: "user-id",
     role: "employer",
-    scopes: ["read:employer_jobs", "read:applicants"],
+    scopes: ["read:reports"],
     accessTokenExpiresAt: new Date(Date.now() + 60_000),
     authorizationExpiresAt: new Date(Date.now() + 120_000),
     ...overrides,
@@ -133,7 +133,7 @@ describe("verifyMcpToken live authorization", () => {
 
     expect(auth).toMatchObject({
       clientId: "mcpc_example",
-      scopes: ["read:employer_jobs", "read:applicants"],
+      scopes: ["read:reports"],
       extra: {
         userId: "user-id",
         role: "employer",

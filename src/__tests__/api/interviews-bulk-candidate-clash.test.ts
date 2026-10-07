@@ -110,7 +110,8 @@ import { POST as _POST } from "@/app/api/interviews/bulk/route";
 const POST = _POST as unknown as (req: NextRequest) => Promise<Response>;
 
 /** 2026-10-05 is a Monday; 09:00 Dubai sits inside any sane working window. */
-const START = "2026-10-05T05:00:00.000Z";
+// Far enough ahead that "must be in the future" never trips (a Monday, as before).
+const START = "2032-10-04T05:00:00.000Z";
 const APP_ID = "64b000000000000000000030";
 const SEEKER_ID = "64b000000000000000000040";
 

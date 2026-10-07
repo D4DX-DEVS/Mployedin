@@ -5,12 +5,13 @@ import type { EmailPayload } from "./types";
 import { resolveTransport } from "./resolveTransport";
 
 /**
- * Seed and QA accounts use reserved domains (RFC 2606 .test/.invalid/.example,
- * plus our own test.* subdomains). They can never receive mail, but every attempt
- * still spends one of the sending account's limited daily recipients and earns a
- * bounce against its reputation — 26 of 229 digest recipients on 2026-09-17.
+ * Seed and QA accounts use reserved domains (RFC 2606 .test/.invalid/.example
+ * and example.com/.net/.org, plus our own test.* subdomains). They can never
+ * receive mail, but every attempt still spends one of the sending account's
+ * limited daily recipients and earns a bounce against its reputation — 26 of
+ * 229 digest recipients on 2026-09-17. example.com was missed until 2026-10-06.
  */
-const UNDELIVERABLE_HOST = /(^|\.)(test|invalid|example|localhost)$|^test\./i;
+const UNDELIVERABLE_HOST = /(^|\.)(test|invalid|example|localhost)$|(^|\.)example\.(com|net|org)$|^test\./i;
 
 export function isUndeliverableAddress(address: string): boolean {
   const host = address.split("@")[1]?.trim().toLowerCase();

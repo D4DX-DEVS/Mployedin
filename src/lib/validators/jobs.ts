@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
 import { knockoutRuleOf } from "@/lib/matching/knockouts";
+import { containsMarkup, PLAIN_TEXT_ERROR } from "./plainText";
+
+const jobTitleSchema = z
+  .string()
+  .min(5)
+  .max(200)
+  .trim()
+  .refine((title) => !containsMarkup(title), PLAIN_TEXT_ERROR);
 
 const screeningQuestionSchema = z.object({
   id: z.string().min(1).max(50),
@@ -81,7 +89,7 @@ const requirementsSchema = z
   );
 
 export const jobCreateSchema = z.object({
-  title: z.string().min(5).max(200).trim(),
+  title: jobTitleSchema,
   description: z.string().min(20).max(5000).trim(),
   category: z.string().max(100).optional(),
   location: locationSchema.optional(),
@@ -114,7 +122,7 @@ export const jobCreateSchema = z.object({
 });
 
 export const jobUpdateSchema = z.object({
-  title: z.string().min(5).max(200).trim().optional(),
+  title: jobTitleSchema.optional(),
   description: z.string().min(20).max(5000).trim().optional(),
   category: z.string().max(100).optional(),
   location: locationSchema.optional(),

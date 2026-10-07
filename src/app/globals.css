@@ -4428,3 +4428,38 @@ table.workspace-list-table tbody tr:focus-visible {
 }
 
 /* rebuild nudge 2026-10-01 sa-metric-tile */
+
+/* List pages: room at the end of the scroll for the Copilot button, so the
+   last row's actions and the pagination "Last page" button can always scroll
+   out from under it (QA EMP-018, 2026-10-06). The workspace clearance above
+   never applied: DashboardShell's `pb-16 lg:pb-0` utilities outrank that
+   layered rule, so desktop had none at all. Unlayered here so it wins. Role
+   dashboards keep their tight bottom (owner, 2026-09-24). */
+.dashboard-shell-workspace .dashboard-main-workspace:not(:has(.page-container.dashboard-overview-page)) {
+  --copilot-clearance: calc(
+    var(--workspace-mobile-nav-height) +
+    var(--workspace-copilot-size) +
+    (var(--workspace-copilot-gap) * 2) +
+    env(safe-area-inset-bottom)
+  );
+  padding-bottom: var(--copilot-clearance);
+  scroll-padding-bottom: var(--copilot-clearance);
+}
+
+@media (min-width: 1024px) {
+  /* The button docks 1rem from the bottom corner on desktop. */
+  .dashboard-shell-workspace .dashboard-main-workspace:not(:has(.page-container.dashboard-overview-page)) {
+    --copilot-clearance: calc(1rem + var(--workspace-copilot-size) + var(--workspace-copilot-gap));
+  }
+}
+
+/* While the cookie banner shows, the button rides above it (see .copilot-fab),
+   and the dashboard scrolls inside <main>, so the body padding for the banner
+   does not reach it. */
+:root[data-cookie-banner="visible"] .dashboard-shell-workspace .dashboard-main-workspace:not(:has(.page-container.dashboard-overview-page)) {
+  --copilot-clearance: calc(
+    var(--cookie-banner-top, 7rem) + 0.75rem +
+    var(--workspace-copilot-size) +
+    var(--workspace-copilot-gap)
+  );
+}

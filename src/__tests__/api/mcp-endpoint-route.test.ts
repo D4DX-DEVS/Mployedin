@@ -15,7 +15,7 @@ jest.mock("@/lib/mcp/verifyToken", () => ({
       ? {
           token: bearer,
           clientId: "mcpc_test",
-          scopes: ["read:jobs"],
+          scopes: ["read:reports"],
           expiresAt: Math.floor(Date.now() / 1000) + 3600,
           extra: { userId: "user-1", role: "job_seeker", permissionMode: "role_default" },
         }

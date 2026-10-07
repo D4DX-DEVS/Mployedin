@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, type ReactNode } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Search, Loader2, MessageSquare, Users } from "lucide-react";
 import {
@@ -34,6 +35,8 @@ function highlightMatch(text: string, query: string): ReactNode[] {
   );
 }
 
+const ROLE_KEYS = ["admin", "super_agent", "agent", "employer", "job_seeker"] as const;
+
 interface NewChatSearchProps {
   /** Which dashboard context (for routing after conversation creation) */
   dashboardPrefix: "employer" | "job-seeker" | "admin" | "super-agent" | "agent";
@@ -53,6 +56,7 @@ export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewCha
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const { data: session } = useSession();
+  const tRoles = useTranslations("messagesPage.roles");
 
   const { data: users = [], isLoading, isFetching } = useUserSearch(query);
 
@@ -98,10 +102,13 @@ export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewCha
   const roleBadgeColor = (role: string) =>
     role === "employer"
       ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
-      : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
+      : role === "job_seeker"
+        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+        : "bg-violet-500/10 text-violet-600 border-violet-500/20";
 
+  // Every role gets its own label — agents and super agents used to read "Job Seeker".
   const roleLabel = (role: string) =>
-    role === "employer" ? "Employer" : "Job Seeker";
+    ROLE_KEYS.includes(role as (typeof ROLE_KEYS)[number]) ? tRoles(role as (typeof ROLE_KEYS)[number]) : role;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

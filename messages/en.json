@@ -3459,6 +3459,7 @@
     "startDate": "Start Date",
     "endDate": "End Date",
     "autoRenew": "Auto-Renew",
+    "notApplicable": "Not applicable",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "daysLeft": "{count} days left",
@@ -3531,6 +3532,7 @@
     "showLess": "Show less",
     "viewAllInvoices": "View all {count} invoices",
     "nextRenewal": "Next Renewal",
+    "freeNoRenewal": "Free plan — nothing to renew",
     "daysRemaining": "({days}d)",
     "billingCycleLabel": "Billing Cycle",
     "invoiceCountLabel": "{count, plural, one {# invoice} other {# invoices}}",
@@ -4430,6 +4432,7 @@
     "screeningFailed": "AI screening failed. Try again later.",
     "aiScreenedToast": "AI screened {total} candidates for {jobTitle}",
     "messageFailed": "Could not open a conversation with this candidate right now.",
+    "messageNotApplied": "You can message candidates once they apply to one of your jobs. Invite them to apply first.",
     "noCandidatesYet": "No candidates are available on this page yet.",
     "aiMatchDescription": "AI matching scores the candidates currently visible after your search and filters.",
     "aiSearchDegraded": "AI search unavailable. Keyword search applied.",
@@ -4805,7 +4808,7 @@
   },
   "employerMessages": {
     "title": "Messages",
-    "description": "Direct messages with agents & super agents",
+    "description": "Message your applicants, your agent and the support team",
     "newChat": "New Chat",
     "searchConversations": "Search conversations…",
     "emptyState": "No conversations yet. Start one with the \"New Chat\" button above.",
@@ -4862,6 +4865,7 @@
     "detailedView": "Detailed View",
     "applied": "Applied",
     "shortlisted": "Shortlisted",
+    "shortlistedOnwards": "Shortlisted or later",
     "interview": "Interview",
     "offer": "Offer",
     "hired": "Hired",
@@ -5063,6 +5067,7 @@
     "ivMinutes": "{count} min",
     "ivLocationPlaceholder": "Office address or room",
     "ivMeetingLink": "Meeting link",
+    "ivMeetingLinkInvalid": "Enter a meeting link like meet.google.com/abc-defg-hij, or leave it blank for an automatic video room.",
     "ivInstructions": "Instructions (optional)",
     "ivInstructionsPlaceholder": "Anything the candidate should know before joining",
     "ivScheduling": "Scheduling…",
@@ -5442,6 +5447,8 @@
     "email": "Email",
     "phone": "Phone",
     "website": "Website",
+    "socialLinks": "Social links",
+    "websiteInvalid": "Enter a website like yourcompany.com, or leave it blank.",
     "linkedin": "LinkedIn",
     "twitter": "Twitter / X",
     "companyNamePlaceholder": "Your company name",
@@ -6868,7 +6875,8 @@
       "inviteSent": "Invitation sent to {email}",
       "errors": {
         "emailInUse": "This email is already in use.",
-        "alreadyMember": "This person is already on your team or has a pending invite."
+        "alreadyMember": "This person is already on your team or has a pending invite.",
+        "invalidEmail": "Enter a full email address, like name@company.com"
       }
     },
     "jobAccessModal": {
@@ -6972,6 +6980,7 @@
     "completed": "Completed",
     "completedDesc": "Interviews finished with outcome recorded.",
     "needsAttention": "Needs attention",
+    "awaitingOutcome": "Awaiting outcome",
     "needsAttentionDesc": "Rescheduled or cancelled sessions requiring follow-up.",
     "confirmed": "Confirmed",
     "confirmedDesc": "Candidates who confirmed their attendance.",
@@ -7074,6 +7083,7 @@
     "pickDateTime": "Pick date & time",
     "thisCandidate": "this candidate",
     "meetLinkPlaceholder": "https://meet.google.com/...",
+    "meetLinkInvalid": "Enter a meeting link like meet.google.com/abc-defg-hij, or leave it blank for an automatic video room.",
     "officePlaceholder": "Office address or room",
     "salaryPlaceholder": "5000",
     "generateMeetLink": "Generate link",
@@ -7091,6 +7101,7 @@
     "pending": "Pending",
     "accepted": "Accepted",
     "declined": "Declined",
+    "closedStat": "Closed",
     "expired": "Expired",
     "expiring": "Expiring soon",
     "withdrawn": "Withdrawn",
@@ -7227,6 +7238,8 @@
     "assignedToMe": "Assigned to me",
     "allChecks": "All checks",
     "unassigned": "Unassigned",
+    "noTeammate": "No teammate assigned",
+    "agentFollowing": "Agent: {name}",
     "assignTo": "Assign to",
     "assignHint": "Hand this check to a colleague who can run screening.",
     "verifiedBy": "Verified by {name}",
@@ -7690,7 +7703,9 @@
         "titleRequired": "Job title is required",
         "titleMin": "Title must be at least 5 characters",
         "countryRequired": "Country is required",
-        "cityRequired": "City is required"
+        "cityRequired": "City is required",
+        "titleMax": "Title must be 200 characters or fewer",
+        "titleMarkup": "Use plain text in the title, without HTML tags"
       },
       "assignAgent": "Assign Agent",
       "noAgent": "No agent - self-manage",
@@ -7866,7 +7881,11 @@
       "candidateFitRange": "Candidate fit range",
       "education": "Minimum Education",
       "educationHint": "Optional. The minimum education or qualification expected for this role.",
-      "educationPlaceholder": "e.g. Bachelor's degree in Computer Science"
+      "educationPlaceholder": "e.g. Bachelor's degree in Computer Science",
+      "validation": {
+        "experienceRange": "Enter whole years from 0 to 50",
+        "experienceOrder": "Maximum years must be at least the minimum"
+      }
     },
     "step4": {
       "title": "Salary & Settings",
@@ -7900,7 +7919,10 @@
       "trackOpeningsHint": "Turn this on if you want applicants to see how many people you plan to hire.",
       "showOpeningsHint": "Show how many people you plan to hire for this role.",
       "noOpeningsHint": "No opening count will be shown on the job posting.",
-      "advancedHint": "Keep hiring details simple here. Screening thresholds, visibility rules, and limits stay in Advanced Settings below."
+      "advancedHint": "Keep hiring details simple here. Screening thresholds, visibility rules, and limits stay in Advanced Settings below.",
+      "validation": {
+        "vacanciesRange": "Enter a whole number of openings from 1 to 100"
+      }
     },
     "step5": {
       "title": "Screening Questions",
@@ -9124,6 +9146,12 @@
     "interviewSelectedBody": "Great news! You have been selected for an interview for the \"{jobTitle}\" position at {companyName}. The employer will reach out to you soon with further details.",
     "offerMadeTitle": "Offer Extended!",
     "offerMadeBody": "{companyName} has extended an offer to you for the \"{jobTitle}\" position. Log in to review the details.",
+    "offerAcceptedTitle": "Offer accepted",
+    "offerAcceptedBody": "{candidateName} accepted your offer for \"{jobTitle}\".",
+    "offerDeclinedTitle": "Offer declined",
+    "offerDeclinedBody": "{candidateName} declined your offer for \"{jobTitle}\".",
+    "offerCounteredTitle": "Counter-offer received",
+    "offerCounteredBody": "{candidateName} sent a counter-offer for \"{jobTitle}\": {counter}. Review and revise or decline.",
     "rejectedTitle": "Application Update",
     "rejectedBody": "We're sorry to inform you that your application for \"{jobTitle}\" was not selected at this time. Keep applying — the right opportunity is ahead.",
     "mentionTitle": "You were mentioned in a note",
@@ -9152,6 +9180,7 @@
     "saPlacementBody": "{candidateName} was placed as \"{jobTitle}\" at {companyName}.",
     "stageChangedTitle": "Application stage changed",
     "stageChangedBody": "An application for \"{jobTitle}\" moved to {status}.",
+    "stageChangedNamedBody": "{candidateName}'s application for \"{jobTitle}\" moved to {status}.",
     "bulkActionTitle": "Bulk application update",
     "bulkActionBody": "{count} application(s) were updated via bulk action: {action}.",
     "adminSupportTicketTitle": "Support ticket assigned",
@@ -9297,11 +9326,13 @@
     "saveChanges": "Save Changes",
     "edit": "Edit",
     "delete": "Delete Pool",
+    "archivePool": "Archive pool",
     "deletePoolConfirm": "Archive this pool? Candidates will not be deleted.",
     "updated": "Updated {date}",
     "open": "Open",
     "back": "Back to pools",
     "nameRequired": "Pool name is required",
+    "nameLength": "Pool name must be {min}–{max} characters.",
     "poolCreated": "Pool created",
     "poolUpdated": "Pool updated",
     "viewProfile": "View profile",
@@ -9753,11 +9784,13 @@
     "inPerson": "In Person",
     "hybrid": "Hybrid",
     "meetingPlaceholder": "https://meet.google.com/…",
+    "meetLinkInvalid": "Enter a meeting link like meet.google.com/abc-defg-hij, or leave it blank.",
     "locationPlaceholder": "Office address…",
     "hybridHint": "Add both a meeting link and a location for hybrid interviews.",
     "scheduleFor": "Schedule for {count} Candidate(s)",
     "scheduling": "Scheduling…",
     "scheduledSuccess": "Scheduled for {success} candidate(s). {failed} failed.",
+    "scheduleFailed": "We couldn't schedule these interviews. Check the details and try again.",
     "notification": "Candidates will receive automatic notifications with all details.",
     "pickDate": "Pick a date",
     "pickTime": "Pick a time",
@@ -9997,6 +10030,7 @@
     "description": "Changes save as draft unless you publish.",
     "publishedTitle": "Job published",
     "backToJob": "Back to Job",
+    "backToJobs": "Back to jobs",
     "saveDraft": "Save Draft",
     "saving": "Saving…",
     "saved": "Saved!",
@@ -10063,6 +10097,11 @@
     "placeholderQuestion": "Enter your question…",
     "errorTitleRequired": "Job title is required",
     "errorTitleLength": "Must be at least 5 characters",
+    "errorTitleMax": "Title must be 200 characters or fewer",
+    "errorTitleMarkup": "Use plain text in the title, without HTML tags",
+    "errorVacancies": "Enter a whole number of openings from 1 to 100",
+    "errorExperience": "Enter whole years from 0 to 50",
+    "errorExperienceOrder": "Maximum years must be at least the minimum",
     "errorDescRequired": "Job description is required",
     "errorDescLength": "Must be at least 20 characters",
     "errorCountry": "Country is required to publish",
@@ -10143,6 +10182,8 @@
     "aiMatching": "AI Matching",
     "charCount": "{count} / 5000 characters",
     "jobNotFound": "Job not found",
+    "jobNotFoundHint": "This job doesn't exist, or you don't have access to edit it.",
+    "loadJobError": "We couldn't load this job. Check your connection and try again.",
     "remoteScope": "Who can you hire for this remote role?",
     "remoteScopeHint": "Remote says how the work is done. This says where a hire may legally be based. We only match candidates you can actually hire.",
     "remoteScopeWorldwide": "Anywhere in the world",
@@ -17653,9 +17694,10 @@
     "scopeReadEmployerJobs": "View the job postings you can access in Mployedin",
     "scopeReadApplicants": "View the applicants you can access in Mployedin",
     "signedInAs": "Signed in as {email}",
-    "readOnlyNote": "This app can only read. It can't apply, change or delete anything.",
+    "readOnlyNote": "This app only receives summary numbers. It never sees names, email addresses or phone numbers, and it can't change anything.",
     "returnTo": "After you choose, you'll go back to {host}.",
-    "teamMemberBlocked": "Team member accounts can't connect apps. Ask your account owner to connect instead."
+    "teamMemberBlocked": "Team member accounts can't connect apps. Ask your account owner to connect instead.",
+    "scopeReadReports": "View summary reports: totals and trends for your account"
   },
   "employerCompliance": {
     "wording": {
@@ -19083,7 +19125,7 @@
   "connectedApps": {
     "label": "AI assistants",
     "title": "Connected apps",
-    "description": "AI apps such as ChatGPT or Claude that you allowed to read your Mployedin data. They can only read, never change anything. Disconnect any app you no longer use.",
+    "description": "AI apps such as ChatGPT or Claude that you allowed to read summary reports from Mployedin: totals and trends only, never names or contact details. Disconnect any app you no longer use.",
     "loading": "Loading connected apps",
     "loadError": "We couldn't load your connected apps.",
     "retry": "Try again",

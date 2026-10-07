@@ -348,8 +348,15 @@ export function Step4SalarySettings() {
                 {...register("vacancies", {
                   setValueAs: (value) => value === "" || isNaN(Number(value)) ? undefined : Number(value),
                 })}
-                className="w-32"
+                className={cn("w-32", errors.vacancies && "border-destructive")}
+                aria-invalid={!!errors.vacancies}
+                aria-describedby={errors.vacancies ? "vacancies-error" : undefined}
               />
+              {errors.vacancies && (
+                <p id="vacancies-error" role="alert" className="text-xs font-medium text-destructive">
+                  {t("validation.vacanciesRange")}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 {t("showOpeningsHint")}
               </p>
