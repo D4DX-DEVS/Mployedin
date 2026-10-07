@@ -59,21 +59,6 @@ export function formatListDate(value: DateInput, locale?: string): string {
   return formatDate(value, { day: "2-digit", month: "short", year: "numeric" }, locale);
 }
 
-/**
- * Compact date for narrow table columns: "Oct 6" in the current year, "Sep 25,
- * 2025" otherwise. The year appears only when it adds something, and the month
- * stays a word: an all-number 06/10 is 6 October in the Gulf and India but
- * June 10 in en-US, which is worse than wrapping.
- */
-export function formatCompactDate(value: DateInput, locale?: string, now: Date = new Date()): string {
-  const d = toDate(value);
-  if (!d) return "—";
-  const options: Intl.DateTimeFormatOptions = d.getFullYear() === now.getFullYear()
-    ? { day: "numeric", month: "short" }
-    : { day: "numeric", month: "short", year: "numeric" };
-  return d.toLocaleDateString(resolveIntlLocale(locale), options);
-}
-
 /** Date and time together. */
 export function formatDateTime(
   value: DateInput,

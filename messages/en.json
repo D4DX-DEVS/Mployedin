@@ -18304,11 +18304,6 @@
       "not_met": "Missing a must-have",
       "unverified": "Must-have not stated"
     },
-    "statusShort": {
-      "met": "Must-haves met",
-      "not_met": "Missing a must-have",
-      "unverified": "Must-have not stated"
-    },
     "statusHint": {
       "met": "Has every must-have this job sets: minimum experience, required qualification, hiring countries for a remote job and deal-breaker answers (within a year or one level counts). Skills aren't checked here; they're in the match score.",
       "not_met": "Misses at least one must-have: minimum experience, required qualification, hiring country or a deal-breaker answer. Left out of Shortlist Top, whatever the match score.",
@@ -18424,8 +18419,7 @@
       "unreadable": "Couldn't read",
       "none": "Not sent"
     },
-    "requirementsNotMet": "Missing a must-have",
-    "requirementsNotMetShort": "Missing a must-have"
+    "requirementsNotMet": "Missing a must-have"
   },
   "assignedRegion": {
     "label": "Region",

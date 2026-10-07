@@ -114,7 +114,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
 import type { ExportColumn } from "@/lib/export";
-import { formatCount, formatDate, formatTime, formatCompactDate } from "@/lib/ui/intlFormat";
+import { formatCount, formatDate, formatTime, formatListDate } from "@/lib/ui/intlFormat";
 import { RowActions } from "@/components/shared/RowActions";
 import { PIPELINE_STAGES, STAGE_LABEL_KEYS, type PipelineStage } from "@/lib/hiring/pipeline";
 import { isValidWebsiteInput } from "@/lib/validators/website";
@@ -2230,10 +2230,9 @@ function TableView({
   // When the detail panel is open the list is squeezed — drop the middle
   // columns (all shown in the panel) so the candidate cell can't overflow.
   const gridCols = compact
-    ? "28px minmax(0,1fr) 88px 100px"
-    // Match fits "Must-haves met" on two lines; Applied On fits "Sep 25, 2025"
-    // on one line, and its header the sort arrow.
-    : "28px 1.4fr 1fr 96px 1.2fr 112px 100px";
+    ? "28px minmax(0,1fr) 72px 100px"
+    // Applied On fits "Sep 25, 2025" on one line, and its header the sort arrow.
+    : "28px 1.4fr 1fr 80px 1.2fr 112px 100px";
 
   if (!applications.length) {
     return (
@@ -2282,10 +2281,9 @@ function TableView({
           const shownSkillsCount = matchingSkills.length + otherSkills.length;
           const extraSkillsCount = (app.jobSeekerId?.skills?.length ?? 0) - shownSkillsCount;
           const isNew = app.status === "applied" && !app.viewedByEmployerAt;
-          // "Oct 6" this year, "Sep 25, 2025" before: one line in the column,
-          // the full date on hover.
-          const appliedDate = formatCompactDate(app.appliedAt, locale);
-          const appliedDateFull = formatDate(app.appliedAt, { day: "numeric", month: "long", year: "numeric" }, locale);
+          // The list-table standard, year always shown: "Oct 6" alone left the
+          // employer guessing which year (owner, 2026-10-07).
+          const appliedDate = formatListDate(app.appliedAt, locale);
           const scorecard = scorecardMap?.[app._id];
           const matchScore = app.aiMatchScore;
           const matchColor = matchScore != null ? (matchScore >= 80 ? "text-status-selected" : matchScore >= 70 ? "text-status-applied" : matchScore >= 50 ? "text-status-shortlisted" : "text-rose-500") : "text-muted-foreground";
@@ -2415,14 +2413,16 @@ function TableView({
                 <div className="flex shrink-0 flex-col items-end gap-1 lg:hidden">
                   {matchScore != null ? (
                     <div className="text-end">
-                      <p className={`text-base font-bold leading-tight ${matchColor}`}>{matchScore}%</p>
+                      <p className={`inline-flex items-center gap-1 text-base font-bold leading-tight ${matchColor}`}>
+                        {matchScore}%
+                        {/* Icon only: the wording crushed the name column on phones. */}
+                        <RequirementsBadge status={app.requirementsStatus} noMustHaves={setsNoMustHaves(app.qualifications)} compact />
+                      </p>
                       <p className={`text-[11px] font-semibold leading-tight ${matchColor}`}>{matchText}</p>
                     </div>
                   ) : (
                     <p className="text-[11px] text-muted-foreground">{t("aiPending")}</p>
                   )}
-                  {/* Short form: the full wording crushed the name column on phones. */}
-                  <RequirementsBadge status={app.requirementsStatus} noMustHaves={setsNoMustHaves(app.qualifications)} compact />
                   <StatusBadge status={app.status} />
                 </div>
               </div>
@@ -2442,10 +2442,12 @@ function TableView({
               <div className="hidden lg:block">
                 {matchScore != null ? (
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className={`text-lg font-bold leading-tight ${matchColor}`}>{matchScore}%</p>
+                    <p className={`inline-flex items-center gap-1 text-lg font-bold leading-tight ${matchColor}`}>
+                      {matchScore}%
+                      {/* Must-haves as an icon beside the score; the wording is on hover and in the panel. */}
+                      <RequirementsBadge status={app.requirementsStatus} noMustHaves={setsNoMustHaves(app.qualifications)} compact />
+                    </p>
                     <p className={`text-[11px] font-semibold ${matchColor}`}>{matchText}</p>
-                    {/* The column is 96px: the short form on up to two lines, full wording on hover. */}
-                    <RequirementsBadge status={app.requirementsStatus} noMustHaves={setsNoMustHaves(app.qualifications)} compact />
                   </div>
                 ) : (
                   <p className="text-center text-xs text-muted-foreground">{t("aiPending")}</p>
@@ -2477,7 +2479,7 @@ function TableView({
               {/* Applied On */}
               {!compact && (
                 <div className="hidden text-xs text-muted-foreground lg:block">
-                  <time dateTime={app.appliedAt} title={appliedDateFull} className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <time dateTime={app.appliedAt} className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
                     {appliedDate}
                   </time>
