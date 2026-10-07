@@ -144,11 +144,14 @@ function ActiveView({
   const limits = snap?.employerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
   const remaining = daysUntil(subscription.endDate);
+  // A free plan has nothing to renew or charge (QA EMP-006 saw a renewal date
+  // and Auto-Renew "Enabled" on Free).
+  const isFreePlan = !(snap?.price > 0);
 
   const usageItems = [
-    { label: t("activeJobs"), icon: <Briefcase className="h-5 w-5" />, used: usage?.activeJobs ?? 0, max: (limits?.maxActiveJobs as number) ?? 0 },
+    { label: t("activeJobs"), icon: <Briefcase className="h-5 w-5" />, used: subscription.liveUsage?.activeJobs ?? usage?.activeJobs ?? 0, max: (limits?.maxActiveJobs as number) ?? 0 },
     { label: t("applicationsViewed"), icon: <Eye className="h-5 w-5" />, used: usage?.applicationsViewed ?? 0, max: (limits?.maxApplicationsViewPerMonth as number) ?? 0 },
-    { label: t("teamMembers"), icon: <Users className="h-5 w-5" />, used: 0, max: (limits?.maxTeamMembers as number) ?? 0 },
+    { label: t("teamMembers"), icon: <Users className="h-5 w-5" />, used: subscription.liveUsage?.teamMembers ?? 0, max: (limits?.maxTeamMembers as number) ?? 0 },
   ];
 
   const hasWarning = usageItems.some((u) => u.max > 0 && u.max !== -1 && pctUsed(u.used, u.max) >= 80);
@@ -198,18 +201,24 @@ function ActiveView({
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <div>
               <p className="text-muted-foreground text-xs">{t("nextRenewal")}</p>
-              <p className="font-medium">{formatDate(subscription.endDate)} {t("daysRemaining", { days: remaining })}</p>
+              <p className="font-medium">
+                {isFreePlan ? t("freeNoRenewal") : `${formatDate(subscription.endDate)} ${t("daysRemaining", { days: remaining })}`}
+              </p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs" id="autoRenewLabel">{t("autoRenew")}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Switch
-                  checked={subscription.autoRenew}
-                  onCheckedChange={() => toast.info(t("autoRenewAdminOnly"))}
-                  aria-labelledby="autoRenewLabel"
-                />
-                <span className="text-sm font-medium">{subscription.autoRenew ? t("enabled") : t("disabled")}</span>
-              </div>
+              {isFreePlan ? (
+                <p className="font-medium text-muted-foreground">{t("notApplicable")}</p>
+              ) : (
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Switch
+                    checked={subscription.autoRenew}
+                    onCheckedChange={() => toast.info(t("autoRenewAdminOnly"))}
+                    aria-labelledby="autoRenewLabel"
+                  />
+                  <span className="text-sm font-medium">{subscription.autoRenew ? t("enabled") : t("disabled")}</span>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-muted-foreground text-xs">{t("billingCycleLabel")}</p>

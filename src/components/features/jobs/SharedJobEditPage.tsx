@@ -7,9 +7,11 @@ import {
   ArrowLeft, Lightbulb, Sparkles, Plus, X, ChevronDown, ChevronUp,
   Briefcase, MapPin, DollarSign, Settings2, Tags,
   Globe, Users, Eye, CheckCircle2, AlertCircle, Loader2,
-  Search, Rocket, ClipboardList, GripVertical, Trash2,
+  Search, SearchX, Rocket, ClipboardList, GripVertical, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -25,6 +27,7 @@ import { useJobCategoryOptions } from "@/hooks/useJobCategories";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import type { CountryOption } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
+import { containsMarkup } from "@/lib/validators/plainText";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 import { KnockoutEditor, hasKnockoutProblem } from "@/components/features/employer/job-form/KnockoutEditor";
@@ -318,10 +321,12 @@ export function SharedJobEditPage({
   // Load job via React Query
   // The admin-managed list; a value the list no longer holds stays selectable.
   const categoryOptions = useJobCategoryOptions(form.category);
-  const { data: jobData, isLoading: jobLoading, isError: jobError } = useJobDetail(id);
+  const { data: jobData, isLoading: jobLoading, isError: jobError, refetch: refetchJob } = useJobDetail(id);
   const updateJob = useUpdateJob();
 
-  const loading = jobLoading || (!formLoaded && !jobError);
+  // null = the job doesn't exist or isn't the caller's (see useJobDetail).
+  const jobMissing = jobError || jobData === null;
+  const loading = jobLoading || (!formLoaded && !jobMissing);
 
   // Populate form when job data arrives
   useEffect(() => {
@@ -399,8 +404,8 @@ export function SharedJobEditPage({
 
   // Show error if job not found
   useEffect(() => {
-    if (jobError) setGlobalError(t("jobNotFound"));
-  }, [jobError]);
+    if (jobData === null) setGlobalError(t("jobNotFound"));
+  }, [jobData]);
 
   // Close country dropdown on outside click
   useEffect(() => {
@@ -475,6 +480,16 @@ export function SharedJobEditPage({
     const errors: FieldErrors = {};
     if (!form.title.trim()) errors.title = t("errorTitleRequired");
     else if (form.title.trim().length < 5) errors.title = t("errorTitleLength");
+    else if (form.title.trim().length > 200) errors.title = t("errorTitleMax");
+    else if (containsMarkup(form.title)) errors.title = t("errorTitleMarkup");
+    // QA EMP-011: -3 openings was quietly saved as 1.
+    if (!Number.isInteger(form.vacancies) || form.vacancies < 1 || form.vacancies > 100) {
+      errors.vacancies = t("errorVacancies");
+    }
+    const { experienceMin, experienceMax } = form.requirements;
+    const validYears = (n: number) => Number.isInteger(n) && n >= 0 && n <= 50;
+    if (!validYears(experienceMin) || !validYears(experienceMax)) errors.experience = t("errorExperience");
+    else if (experienceMax < experienceMin) errors.experience = t("errorExperienceOrder");
     if (!form.description.trim()) errors.description = t("errorDescRequired");
     else if (form.description.trim().length < 20) errors.description = t("errorDescLength");
     if (forPublish && !form.location.country) errors.country = t("errorCountry");
@@ -616,6 +631,35 @@ export function SharedJobEditPage({
     );
   }
 
+  // QA EMP-014: an unknown or foreign id used to render an empty form that
+  // could be saved. Nothing to edit means no form.
+  if (jobError && !formLoaded) {
+    return (
+      <div className="page-container max-w-6xl">
+        <ErrorState description={t("loadJobError")} onRetry={() => refetchJob()} />
+      </div>
+    );
+  }
+  if (jobMissing && !formLoaded) {
+    // backHref is the job itself for employers/agents ("…/jobs/<id>"), the list for admins.
+    const jobsListHref = backHref.endsWith(`/${id}`) ? backHref.slice(0, -(id.length + 1)) : backHref;
+    return (
+      <div className="page-container max-w-6xl">
+        <EmptyState
+          icon={SearchX}
+          title={t("jobNotFound")}
+          description={t("jobNotFoundHint")}
+          action={
+            <Button variant="outline" onClick={() => router.push(jobsListHref)}>
+              <ArrowLeft className="me-2 h-4 w-4" aria-hidden="true" />
+              {t("backToJobs")}
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
   const sym = CURRENCY_SYMBOLS[form.salary.currency] ?? form.salary.currency + " ";
   const isSubmitting = submitState === "saving" || submitState === "publishing";
 
@@ -677,6 +721,7 @@ export function SharedJobEditPage({
                 id="job-title"
                 placeholder={t("placeholderTitle")}
                 value={form.title}
+                maxLength={200}
                 onChange={(e) => setField("title", e.target.value)}
                 className={cn(fieldErrors.title && "border-destructive focus-visible:ring-destructive")}
               />
@@ -690,9 +735,11 @@ export function SharedJobEditPage({
                   placeholder={t("placeholderCategory")}
                 />
               </Field>
-              <Field label={t("vacanciesLabel")} hint={t("hintVacancies")} htmlFor="vacancies-input">
-                <Input id="vacancies-input" type="number" min={1} max={100} value={form.vacancies}
-                  onChange={(e) => setField("vacancies", Math.max(1, Number(e.target.value)))} />
+              <Field label={t("vacanciesLabel")} hint={t("hintVacancies")} error={fieldErrors.vacancies} htmlFor="vacancies-input">
+                <Input id="vacancies-input" type="number" min={1} max={100} value={Number.isNaN(form.vacancies) ? "" : form.vacancies}
+                  aria-invalid={!!fieldErrors.vacancies}
+                  className={cn(fieldErrors.vacancies && "border-destructive focus-visible:ring-destructive")}
+                  onChange={(e) => setField("vacancies", e.target.value === "" ? Number.NaN : Number(e.target.value))} />
               </Field>
             </div>
             <Field label={t("employmentType")} hint={t("hintType")}>
@@ -966,12 +1013,16 @@ export function SharedJobEditPage({
               )}
             </Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label={t("minExp")}>
+              <Field label={t("minExp")} error={fieldErrors.experience}>
                 <Input aria-label={t("minExp")} type="number" min={0} max={50} value={form.requirements.experienceMin}
+                  aria-invalid={!!fieldErrors.experience}
+                  className={cn(fieldErrors.experience && "border-destructive focus-visible:ring-destructive")}
                   onChange={(e) => setField("requirements", { ...form.requirements, experienceMin: Number(e.target.value) })} />
               </Field>
               <Field label={t("maxExp")}>
                 <Input aria-label={t("maxExp")} type="number" min={0} max={50} value={form.requirements.experienceMax}
+                  aria-invalid={!!fieldErrors.experience}
+                  className={cn(fieldErrors.experience && "border-destructive focus-visible:ring-destructive")}
                   onChange={(e) => setField("requirements", { ...form.requirements, experienceMax: Number(e.target.value) })} />
               </Field>
             </div>
@@ -1384,7 +1435,9 @@ export function SharedJobEditPage({
                   {form.category && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{form.category}</span>}
                   {form.employmentType && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{form.employmentType === "full_time" ? t("fullTime") : form.employmentType === "part_time" ? t("partTime") : form.employmentType === "contract" ? t("contract") : form.employmentType === "internship" ? t("internship") : t("freelance")}</span>}
                   {form.duration && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">{form.duration}</span>}
-                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{form.vacancies} {form.vacancies === 1 ? "vacancy" : "vacancies"}</span>
+                  {Number.isInteger(form.vacancies) && form.vacancies > 0 && (
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{form.vacancies} {form.vacancies === 1 ? "vacancy" : "vacancies"}</span>
+                  )}
                 </div>
                 {form.requirements.skills.length > 0 && (
                   <div>

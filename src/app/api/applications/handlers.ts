@@ -25,9 +25,129 @@ import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hir
 import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
 import { stageQueryFilter } from "@/lib/hiring/workflowStages";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { SEEKER_APPLICATION_PROJECTION, stripSeekerHiddenFields } from "@/lib/applications/seekerView";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
+
+type JobPickerOption = {
+  _id: string;
+  title: string;
+  requirements: { skills: string[]; experienceMin: number; experienceMax: number; education?: string; languages?: string[] };
+  salary: { min: number; max: number; currency: string; period?: string };
+  location: { country: string; city: string; isRemote: boolean };
+  employmentType?: string;
+  workMode?: string;
+  status: string;
+  createdAt?: Date;
+};
+
+/** The job filter's options: the jobs the caller may see, newest first. */
+async function loadJobPickerOptions(ctx: AuthCtx): Promise<JobPickerOption[]> {
+  // Default-deny: only admin sees every job. A super-agent (no branch here
+  // before) and an employer/agent whose profile is missing used to fall
+  // through to {} — up to 200 jobs from across the platform, salaries included.
+  let jobQuery: Record<string, unknown> | null = null;
+  if (ctx.role === "admin") {
+    jobQuery = {};
+  } else if (ctx.role === "employer") {
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (emp) jobQuery = { employerId: emp._id };
+  } else if (ctx.role === "agent") {
+    const { Agent } = await import("@/models/Agent");
+    const { getAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    const [agentDoc, visibleEmployerIds] = await Promise.all([
+      Agent.findOne({ userId: ctx.userId }).select("_id").lean(),
+      getAgentEmployerIds(ctx.userId),
+    ]);
+    if (agentDoc) {
+      jobQuery = {
+        $or: [
+          { agentId: agentDoc._id },
+          ...(visibleEmployerIds.length > 0 ? [{ employerId: { $in: visibleEmployerIds } }] : []),
+        ],
+      };
+    }
+  } else if (ctx.role === "super_agent") {
+    const { getSuperAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    jobQuery = { employerId: { $in: await getSuperAgentEmployerIds(ctx.userId) } };
+  }
+  if (!jobQuery) return [];
+  return Job.find({ ...jobQuery, status: { $in: ["active", "closed"] } })
+    .select("title requirements salary location employmentType workMode status createdAt")
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .lean<JobPickerOption[]>();
+}
+
+/** The employer header strip's totals for the whole scope, not this page. */
+async function loadEmployerCounts(scopeQuery: Record<string, unknown>, wantsStageCounts: boolean) {
+  const [rows, highRows, stageRows] = await Promise.all([
+    Application.aggregate<{ _id: string; count: number }>([
+      { $match: scopeQuery },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+    Application.aggregate<{ _id: null; count: number }>([
+      { $match: { ...scopeQuery, aiMatchScore: { $gte: AI_MATCH_HIGH_THRESHOLD } } },
+      { $count: "count" },
+    ]),
+    wantsStageCounts
+      ? Application.aggregate<{ _id: { status: string; stageId?: string | null }; count: number }>([
+          { $match: scopeQuery },
+          { $group: { _id: { status: "$status", stageId: "$stageId" }, count: { $sum: 1 } } },
+        ])
+      : Promise.resolve(null),
+  ]);
+  return {
+    statusCounts: Object.fromEntries(rows.map((r) => [String(r._id), r.count])) as Record<string, number>,
+    highMatchCount: highRows[0]?.count ?? 0,
+    stageCounts: stageRows
+      ? stageRows.map((r) => ({ status: r._id.status, stageId: r._id.stageId ?? null, count: r.count }))
+      : null,
+  };
+}
+
+/** Applications per candidate within `query`, for "also applied to N other jobs". */
+async function countApplicationsPerSeeker(
+  query: Record<string, unknown>,
+  seekerIds: string[],
+): Promise<Record<string, number>> {
+  // A row whose seeker profile is gone populates to null; skip it rather than
+  // throw on new ObjectId("undefined") and fail the whole list.
+  const ids = [...new Set(seekerIds)].filter((id) => mongoose.isValidObjectId(id));
+  if (ids.length === 0) return {};
+  const counts = await Application.aggregate([
+    { $match: { ...query, jobSeekerId: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) } } },
+    { $group: { _id: "$jobSeekerId", count: { $sum: 1 } } },
+  ]);
+  return Object.fromEntries(counts.map((c) => [String(c._id), c.count]));
+}
+
+/** Each application's most recent background check, summarised for the list. */
+async function latestCheckByApplication(applicationIds: unknown[]): Promise<Record<string, unknown>> {
+  const checks = await BackgroundCheck.find({ applicationId: { $in: applicationIds } })
+    .select("applicationId status outcome checkType requestedAt references.status")
+    .sort({ requestedAt: -1 })
+    .lean();
+  const checkMap: Record<string, unknown> = {};
+  for (const check of checks) {
+    const key = String(check.applicationId);
+    if (checkMap[key]) continue; // most recent wins
+    const references = (check.references ?? []) as Array<{ status?: string }>;
+    checkMap[key] = {
+      _id: String(check._id),
+      status: check.status,
+      outcome: check.outcome,
+      checkType: check.checkType,
+      requestedAt: check.requestedAt,
+      references: {
+        responded: references.filter((r) => r.status === "responded").length,
+        total: references.length,
+      },
+    };
+  }
+  return checkMap;
+}
 
 // GET /api/applications — paginated list (filtered by role)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
@@ -72,6 +192,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
      dashboard raises this as an alert; without the filter its link landed on an
      unfiltered list and the finding was lost on arrival. */
   const staleOnly = searchParams.get("stale") === "true";
+  // One application, still inside the caller's scope — notification links
+  // open it in the list's drawer (QA EMP-013).
+  const applicationIdParam = searchParams.get("applicationId") ?? "";
   const unreviewed = searchParams.get("unreviewed") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,6 +266,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const saJobs = await Job.find({ employerId: { $in: empIds } }).select("_id").lean();
     accessibleJobIds = saJobs.map((j) => j._id);
     query.jobId = { $in: accessibleJobIds };
+  }
+
+  if (applicationIdParam && mongoose.Types.ObjectId.isValid(applicationIdParam)) {
+    query._id = new mongoose.Types.ObjectId(applicationIdParam);
   }
 
   if (status) {
@@ -400,111 +527,56 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ? { [sortField]: sortOrder, appliedAt: 1, _id: 1 }
     : { isAgentReferred: -1, [sortField]: sortOrder, _id: sortOrder };
 
-  const [applications, total] = await Promise.all([
-    Application.find(query)
-      .sort(sortSpec)
-      .skip(skip)
-      .limit(limit)
-      // The employer's judgement stays with the employer: notes, narrative,
-      // the requirements checklist and the (possibly re-weighted) ranking.
-      .select(ctx.role === "job_seeker"
-        ? "-employerNotes -matchStrengths -matchGaps -rejectionReason -matchBreakdown -qualifications -requirementsStatus -missingSkills -weightsApplied"
-        : "")
-      .populate({
-        path: "jobId",
-        // requirements powers the "matching skills" column in the employer list
-        select: "title location salary category employerId requirements",
-        populate: { path: "employerId", select: "companyName logo" },
-      })
-      .populate({
-        path: "jobSeekerId",
-        // socialLinks: the employer's review panel shows the candidate's portfolio/profile links.
-        select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl socialLinks",
-        populate: { path: "userId", select: "name email avatar" },
-      })
-      .lean(),
-    Application.countDocuments(query),
+  // The job picker's options and the employer's pipeline counts do not depend
+  // on the page of rows, so they load beside it instead of queueing behind it:
+  // the employer list made six database round trips one after another once
+  // the rows were in (QA EMP-004, 2026-10-06).
+  const [[applications, total], employerJobs, employerCounts] = await Promise.all([
+    Promise.all([
+      Application.find(query)
+        .sort(sortSpec)
+        .skip(skip)
+        .limit(limit)
+        // The employer's judgement stays with the employer: notes, narrative,
+        // the requirements checklist and the (possibly re-weighted) ranking.
+        .select(ctx.role === "job_seeker" ? SEEKER_APPLICATION_PROJECTION : "")
+        .populate({
+          path: "jobId",
+          // requirements powers the "matching skills" column in the employer list
+          select: "title location salary category employerId requirements",
+          populate: { path: "employerId", select: "companyName logo" },
+        })
+        .populate({
+          path: "jobSeekerId",
+          // socialLinks: the employer's review panel shows the candidate's portfolio/profile links.
+          select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl socialLinks",
+          populate: { path: "userId", select: "name email avatar" },
+        })
+        .lean(),
+      Application.countDocuments(query),
+    ]),
+    fetchJobs ? loadJobPickerOptions(ctx) : Promise.resolve([] as JobPickerOption[]),
+    fetchCounts && ctx.role === "employer" ? loadEmployerCounts(scopeQuery, wantsStageCounts) : Promise.resolve(null),
   ]);
 
-  // For employer/agent view: compute cross-application counts per candidate
-  let crossAppCounts: Record<string, number> = {};
-  if ((ctx.role === "employer" || ctx.role === "agent") && applications.length > 0) {
-    const seekerIds = [...new Set(applications.map((a) => String(a.jobSeekerId?._id)))];
-    const counts = await Application.aggregate([
-      { $match: { ...query, jobSeekerId: { $in: seekerIds.map((id) => new mongoose.Types.ObjectId(id)) } } },
-      { $group: { _id: "$jobSeekerId", count: { $sum: 1 } } },
-    ]);
-    crossAppCounts = Object.fromEntries(counts.map((c) => [String(c._id), c.count]));
-  }
-
-  // Optionally return employer's jobs list for the job filter dropdown
-  let employerJobs: Array<{ _id: string; title: string; requirements: { skills: string[]; experienceMin: number; experienceMax: number; education?: string; languages?: string[] }; salary: { min: number; max: number; currency: string; period?: string }; location: { country: string; city: string; isRemote: boolean }; employmentType?: string; workMode?: string; status: string; createdAt?: Date }> = [];
-  if (fetchJobs && (ctx.role === "employer" || ctx.role === "agent" || ctx.role === "super_agent" || ctx.role === "admin")) {
-    // Default-deny: only admin sees every job. A super-agent (no branch here
-    // before) and an employer/agent whose profile is missing used to fall
-    // through to {} — up to 200 jobs from across the platform, salaries included.
-    let jobQuery: Record<string, unknown> | null = null;
-    if (ctx.role === "admin") {
-      jobQuery = {};
-    } else if (ctx.role === "employer") {
-      const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-      if (emp) jobQuery = { employerId: emp._id };
-    } else if (ctx.role === "agent") {
-      const { Agent } = await import("@/models/Agent");
-      const { getAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
-      const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-      if (agentDoc) {
-        const visibleEmployerIds = await getAgentEmployerIds(ctx.userId);
-        jobQuery = {
-          $or: [
-            { agentId: agentDoc._id },
-            ...(visibleEmployerIds.length > 0 ? [{ employerId: { $in: visibleEmployerIds } }] : []),
-          ],
-        };
-      }
-    } else if (ctx.role === "super_agent") {
-      const { getSuperAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
-      jobQuery = { employerId: { $in: await getSuperAgentEmployerIds(ctx.userId) } };
-    }
-    if (jobQuery) {
-      employerJobs = await Job.find({ ...jobQuery, status: { $in: ["active", "closed"] } })
-        .select("title requirements salary location employmentType workMode status createdAt")
-        .sort({ createdAt: -1 })
-        .limit(200)
-        .lean();
-    }
-  }
+  // These two need the rows, and nothing else.
+  const hasRows = applications.length > 0;
+  const [crossAppCounts, checkMap] = await Promise.all([
+    // For employer/agent view: how many of this scope's applications each candidate has.
+    hasRows && (ctx.role === "employer" || ctx.role === "agent")
+      ? countApplicationsPerSeeker(query, applications.map((a) => String(a.jobSeekerId?._id)))
+      : Promise.resolve({} as Record<string, number>),
+    // Employer-side: the verification state travels with the candidate, so the
+    // list and the drawer can show it without a second round trip per row.
+    hasRows && ctx.role !== "job_seeker"
+      ? latestCheckByApplication(applications.map((a) => a._id))
+      : Promise.resolve({} as Record<string, unknown>),
+  ]);
 
   // For job_seeker: enrich applications with latest interview, offer, and placement data
   let interviewMap: Record<string, unknown> = {};
   let offerMap: Record<string, unknown> = {};
   let placementMap: Record<string, unknown> = {};
-  // Employer-side: the verification state travels with the candidate, so the
-  // list and the drawer can show it without a second round trip per row.
-  const checkMap: Record<string, unknown> = {};
-
-  if (ctx.role !== "job_seeker" && applications.length > 0) {
-    const checks = await BackgroundCheck.find({ applicationId: { $in: applications.map((a) => a._id) } })
-      .select("applicationId status outcome checkType requestedAt references.status")
-      .sort({ requestedAt: -1 })
-      .lean();
-    for (const check of checks) {
-      const key = String(check.applicationId);
-      if (checkMap[key]) continue; // most recent wins
-      const references = (check.references ?? []) as Array<{ status?: string }>;
-      checkMap[key] = {
-        _id: String(check._id),
-        status: check.status,
-        outcome: check.outcome,
-        checkType: check.checkType,
-        requestedAt: check.requestedAt,
-        references: {
-          responded: references.filter((r) => r.status === "responded").length,
-          total: references.length,
-        },
-      };
-    }
-  }
 
   if (ctx.role === "job_seeker" && applications.length > 0) {
     const appIds = applications.map((a) => a._id);
@@ -578,32 +650,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     };
   }
 
-  let statusCounts: Record<string, number> | null = null;
+  let statusCounts: Record<string, number> | null = employerCounts?.statusCounts ?? null;
   // Selected job only: counts per status AND stage, for the workflow board's columns.
-  let stageCounts: { status: string; stageId: string | null; count: number }[] | null = null;
+  const stageCounts = employerCounts?.stageCounts ?? null;
   // Reported beside the funnel, so it has to span the whole scope like the
   // funnel does — the client used to count the page it had in hand.
-  let highMatchCount: number | null = null;
-  if (fetchCounts && ctx.role === "employer") {
-    const [rows, highRows] = await Promise.all([
-      Application.aggregate<{ _id: string; count: number }>([
-        { $match: scopeQuery },
-        { $group: { _id: "$status", count: { $sum: 1 } } },
-      ]),
-      Application.aggregate<{ _id: null; count: number }>([
-        { $match: { ...scopeQuery, aiMatchScore: { $gte: AI_MATCH_HIGH_THRESHOLD } } },
-        { $count: "count" },
-      ]),
-    ]);
-    statusCounts = Object.fromEntries(rows.map((r) => [String(r._id), r.count]));
-    highMatchCount = highRows[0]?.count ?? 0;
-    if (wantsStageCounts) {
-      stageCounts = await Application.aggregate<{ _id: { status: string; stageId?: string | null }; count: number }>([
-        { $match: scopeQuery },
-        { $group: { _id: { status: "$status", stageId: "$stageId" }, count: { $sum: 1 } } },
-      ]).then((stageRows) => stageRows.map((r) => ({ status: r._id.status, stageId: r._id.stageId ?? null, count: r.count })));
-    }
-  } else if (fetchCounts && ctx.role === "job_seeker") {
+  const highMatchCount = employerCounts?.highMatchCount ?? null;
+  if (fetchCounts && ctx.role === "job_seeker") {
     /* The seeker's status pills sit directly above the list they filter, so
        their counts follow every active filter except the status being chosen
        — unlike the employer strip above, which reports job-wide totals.
@@ -627,7 +680,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   return NextResponse.json({
     applications: applications.map((app) => ({
-      ...app,
+      // Belt and braces with the projection above: nothing recruiter-only
+      // leaves this route for a seeker even if a query path forgets it.
+      ...(ctx.role === "job_seeker" ? stripSeekerHiddenFields(app) : app),
       // A seeker is shown the engine's number for the pair, never an
       // employer's re-weighted ranking (equal unless weights were saved).
       ...(ctx.role === "job_seeker" && typeof app.seekerMatchScore === "number"
@@ -866,6 +921,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
 export { getHandler, postHandler };
 
-// Reused by the MCP tools (list_my_applications / list_applicants) — kept
-// behind the same subscription gate so ChatGPT access doesn't bypass quotas.
+// GET handler behind the same subscription gate as the route. Served the MCP
+// applicant tools until 2026-10-07 (MCP is now aggregated reports only); kept
+// for the agent default-deny scope test (mcp-agent-scope.test.ts).
 export const applicationsGetHandler = withSubscription(getHandler, { type: "limit", feature: "applicationsViewed" });

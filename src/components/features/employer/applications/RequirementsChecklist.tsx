@@ -34,25 +34,43 @@ const BADGE_STYLE: Record<RequirementsStatus, { icon: typeof CheckCircle2; class
 
 interface RequirementsBadgeProps {
   status?: RequirementsStatus | null;
-  /** One short word for a narrow column; the full wording stays in the tooltip and for screen readers. */
+  /** The job set no must-haves (`setsNoMustHaves`): nothing to meet, so no badge. */
+  noMustHaves?: boolean;
+  /** Small, and wraps to two lines in a narrow column; the full wording stays in the tooltip and for screen readers. */
   compact?: boolean;
   className?: string;
 }
 
-/** "Meets requirements" / "Doesn't meet requirements" / "Unverified". Renders nothing before scoring. */
-export function RequirementsBadge({ status, compact = false, className }: RequirementsBadgeProps) {
+/**
+ * True when the checklist is known and none of it is a must-have. A job that
+ * sets no minimum experience, qualification or deal-breaker question has
+ * nothing to fail, so every applicant rolled up "met" and read "Meets" beside
+ * a 44% (owner, 2026-10-07).
+ */
+export function setsNoMustHaves(checks?: readonly QualificationItem[] | null): boolean {
+  return Array.isArray(checks) && !checks.some((check) => check.hard);
+}
+
+/**
+ * "Must-haves met" / "Missing a must-have" / "Must-have not stated". Renders
+ * nothing before scoring, or when the job set no must-haves.
+ */
+export function RequirementsBadge({ status, noMustHaves = false, compact = false, className }: RequirementsBadgeProps) {
   const t = useTranslations("employerAts");
-  if (!status) return null;
+  if (!status || (noMustHaves && status === "met")) return null;
   const { icon: Icon, className: tone } = BADGE_STYLE[status];
-  // "Requirements not met" / "Not met" — "Fails" beside a 67% read as a
-  // contradiction, and the warning was easy to miss.
+  // Named for the must-haves it checks: "Meets" and "Not met" sat under the
+  // match score and read as a verdict on it, so a 44% "Meets" beside a 54%
+  // "Not met" looked wrong (owner, 2026-10-07).
   const full = status === "not_met" ? t("requirementsNotMet") : t(`status.${status}`);
   const short = status === "not_met" ? t("requirementsNotMetShort") : t(`statusShort.${status}`);
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full border font-semibold",
-        compact ? "gap-0.5 px-1.5 py-0.5 text-[10px]" : "gap-1 px-2 py-0.5 text-[11px]",
+        "inline-flex items-center border font-semibold",
+        compact
+          ? "max-w-24 gap-0.5 rounded-lg px-1.5 py-0.5 text-start text-[10px] leading-tight"
+          : "gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px]",
         tone,
         className,
       )}
@@ -221,7 +239,11 @@ export function RequirementsChecklist({
     <div className={cn("workspace-glass-panel card-pad rounded-2xl", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("requirements")}</p>
-        <RequirementsBadge status={status} />
+        {items.length > 0 && setsNoMustHaves(items) ? (
+          <span className="text-[11px] text-muted-foreground">{t("noMustHaves")}</span>
+        ) : (
+          <RequirementsBadge status={status} noMustHaves={setsNoMustHaves(checks)} />
+        )}
       </div>
 
       {items.length > 0 ? (

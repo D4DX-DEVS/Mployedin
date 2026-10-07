@@ -35,7 +35,7 @@ function authorizeRequest() {
   url.searchParams.set("code_challenge", "A".repeat(43));
   url.searchParams.set("code_challenge_method", "S256");
   url.searchParams.set("resource", "https://app.test");
-  url.searchParams.set("scope", "read:jobs");
+  url.searchParams.set("scope", "read:reports");
   url.searchParams.set("state", "st/ate://x");
   return new NextRequest(url);
 }

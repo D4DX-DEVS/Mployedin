@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Check, Lightbulb, ChevronDown } from "lucide-react";
 import { useSkillGaps } from "@/hooks/useSkillConfirmations";
 
@@ -10,6 +11,7 @@ interface SkillInsightsProps {
 }
 
 export function SkillInsights({ jobId }: SkillInsightsProps) {
+  const t = useTranslations("jobSeekerJobDetail.insights");
   const { data, isLoading } = useSkillGaps(jobId);
 
   const allDisplaySkills = useMemo(() => {
@@ -44,17 +46,17 @@ export function SkillInsights({ jobId }: SkillInsightsProps) {
       <div className="flex items-center gap-2">
         <Lightbulb className="h-4 w-4 text-amber-500" />
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-          Profile insights
+          {t("eyebrow")}
         </div>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Here&apos;s how the job qualifications align with your profile.
+        {t("description")}
       </p>
 
       {/* Match summary */}
       {matchCount > 0 && (
         <p className="mt-3 text-xs font-medium text-emerald-600">
-          {matchCount} of {data.totalJobSkills} skills matched
+          {t("matched", { matched: matchCount, total: data.totalJobSkills })}
         </p>
       )}
 
@@ -62,7 +64,7 @@ export function SkillInsights({ jobId }: SkillInsightsProps) {
       <div className="mt-3">
         <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
           <Lightbulb className="h-3.5 w-3.5 text-muted-foreground/60" />
-          Skills
+          {t("skills")}
         </p>
         <div className="flex flex-wrap gap-2">
           {allDisplaySkills.map(({ skill, state }) => (
@@ -73,7 +75,7 @@ export function SkillInsights({ jobId }: SkillInsightsProps) {
               <summary className="cursor-pointer text-xs font-medium text-primary hover:underline">
                 <span className="inline-flex items-center gap-0.5">
                   <ChevronDown className="h-3 w-3" />
-                  + show more
+                  {t("showDenied", { count: data.deniedSkills.length })}
                 </span>
               </summary>
               <div className="mt-2 flex flex-wrap gap-2">

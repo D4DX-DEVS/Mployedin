@@ -13,11 +13,7 @@ import type { ConnectedApp } from "@/lib/mcp/connectedApps";
 type Phase = "loading" | "error" | "ready";
 
 const SCOPE_KEY: Record<string, string> = {
-  "read:jobs": "scopeReadJobs",
-  "read:applications": "scopeReadApplications",
-  "read:profile": "scopeReadProfile",
-  "read:employer_jobs": "scopeReadEmployerJobs",
-  "read:applicants": "scopeReadApplicants",
+  "read:reports": "scopeReadReports",
 };
 
 /**

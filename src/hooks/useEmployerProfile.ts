@@ -52,6 +52,14 @@ async function fetchEmployerProfile(): Promise<CompanyData> {
   return data.employer;
 }
 
+/** A rejected save. `response` is unread, so the form can turn it into field-level copy. */
+export class EmployerProfileUpdateError extends Error {
+  constructor(public readonly response: Response) {
+    super("Failed to update employer profile");
+    this.name = "EmployerProfileUpdateError";
+  }
+}
+
 async function updateEmployerProfile(updates: Partial<CompanyData>): Promise<CompanyData> {
   const response = await fetch("/api/employers/me", {
     method: "PATCH",
@@ -63,7 +71,7 @@ async function updateEmployerProfile(updates: Partial<CompanyData>): Promise<Com
   });
 
   if (!response.ok) {
-    throw new Error("Failed to update employer profile");
+    throw new EmployerProfileUpdateError(response);
   }
 
   const data = await response.json();

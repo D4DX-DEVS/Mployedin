@@ -54,11 +54,16 @@ export const jobSeekerProfileUpdateSchema = z
     preferredRoles: z.array(z.string().max(100).trim()).max(20).optional(),
     preferredCountries: z.array(z.string().max(100).trim()).max(20).optional(),
     // min/max optional: the model's currency default stores `{ currency }` alone.
+    // 0 means "no bound" (the "150k+" preset stores max 0), so only two real
+    // bounds are compared.
     preferredSalary: z.object({
       min: z.number().min(0).optional(),
       max: z.number().min(0).optional(),
       currency: z.string().max(5),
-    }).optional(),
+    }).refine(
+      ({ min, max }) => !min || !max || min <= max,
+      { message: "Minimum salary can't be higher than the maximum", path: ["max"] },
+    ).optional(),
     availabilityStatus: z.enum(["immediately", "within_month", "within_3_months", "not_available"]).optional(),
     noticePeriod: z.number().int().min(0).max(365).optional(),
     permanentAddress: z.string().max(500).trim().optional(),

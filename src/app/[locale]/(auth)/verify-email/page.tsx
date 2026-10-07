@@ -106,6 +106,34 @@ export default function VerifyEmailPage() {
     void updateSession({ isEmailVerified: true }).finally(() => setSessionStale(false));
   }, [sessionStale, sessionStatus, updateSession]);
 
+  // Verified somewhere else — the link opened on a phone, or in another
+  // browser — while this signed-in tab waits here. Nothing told this tab, so
+  // it stayed on "check your email" until a sign-out. When the tab comes back
+  // into view, ask again: update() re-reads isEmailVerified from the database
+  // and never trusts the value sent, so this cannot verify anyone by itself.
+  useEffect(() => {
+    if (status !== "no-token" || sessionStatus !== "authenticated") return;
+    let checking = false;
+    const recheck = async () => {
+      if (checking || document.visibilityState !== "visible") return;
+      checking = true;
+      try {
+        const next = await updateSession({ isEmailVerified: true });
+        if ((next?.user as { isEmailVerified?: boolean } | undefined)?.isEmailVerified) {
+          setStatus("success");
+        }
+      } finally {
+        checking = false;
+      }
+    };
+    document.addEventListener("visibilitychange", recheck);
+    window.addEventListener("focus", recheck);
+    return () => {
+      document.removeEventListener("visibilitychange", recheck);
+      window.removeEventListener("focus", recheck);
+    };
+  }, [status, sessionStatus, updateSession]);
+
   const handleResend = useCallback(async () => {
     if (!emailParam || resending || resendCooldown > 0) return;
     setResending(true);

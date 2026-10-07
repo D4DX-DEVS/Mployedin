@@ -123,6 +123,8 @@ export interface IApplication extends Document {
   autoApplied: boolean;
   /** Snapshot of `JobSeeker.isAgentReferred` when this application was created. Drives referred-first ordering. */
   isAgentReferred: boolean;
+  /** What the candidate wrote when applying (validator caps it at 5,000). */
+  coverLetter?: string;
   screeningAnswers?: IScreeningAnswer[];
   notes: INote[];
   appliedAt: Date;
@@ -242,6 +244,10 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     autoApplied: { type: Boolean, default: false },
     isAgentReferred: { type: Boolean, default: false },
+    // The apply handler always passed this, but with no path here strict mode
+    // dropped it: 0 of 85 applications held a letter while 6 were scored as
+    // having a customised one (2026-10-06). Employers never saw any of them.
+    coverLetter: { type: String, maxlength: 5000, trim: true },
     screeningAnswers: [{
       questionId: { type: String, required: true },
       questionLabel: { type: String, required: true },

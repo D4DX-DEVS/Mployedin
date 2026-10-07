@@ -21,15 +21,8 @@ describe("MCP tool contract", () => {
 
     registerMcpTools(fakeServer);
 
-    expect([...tools.keys()]).toEqual([
-      "search_jobs",
-      "get_job_details",
-      "get_recommended_jobs",
-      "list_my_applications",
-      "get_my_profile",
-      "list_my_job_postings",
-      "list_applicants",
-    ]);
+    // Reports only (owner decision 2026-10-07): no tool returns records.
+    expect([...tools.keys()]).toEqual(["get_summary_report"]);
 
     for (const config of tools.values()) {
       expect(config.title).toEqual(expect.any(String));

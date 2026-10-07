@@ -228,7 +228,8 @@ describe("POST /api/interviews/bulk", () => {
       "user_seeker_001",
       "React Developer",
       new Date("2026-05-05T10:00:00Z"),
-      "TBD",
+      // No link typed for a video interview: the candidate gets the generated room.
+      expect.stringMatching(/^https:\/\/meet\.jit\.si\/Mployedin-/),
       "iv_1",
       { sendEmail: false },
     );

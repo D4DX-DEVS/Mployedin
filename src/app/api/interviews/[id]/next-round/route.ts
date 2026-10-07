@@ -13,6 +13,7 @@ import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { verifyInterviewAccess } from "@/lib/interviews/access";
 import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
 import { z } from "zod";
+import { meetingLinkSchema } from "@/lib/validators/interviews";
 import { validateBody } from "@/lib/validators";
 import type { UserRole } from "@/models/User";
 import {
@@ -34,7 +35,8 @@ const nextRoundSchema = z.object({
   duration: z.number().int().min(15).max(480).default(45),
   type: z.enum(["video", "offline", "hybrid"]).default("video"),
   location: z.string().max(500).optional(),
-  meetLink: z.string().url().max(2048).optional().or(z.literal("")),
+  // Same rule as scheduling: "meet.google.com/x" gains https://, "javascript:" is refused.
+  meetLink: meetingLinkSchema.optional(),
   instructions: z.string().max(2000).optional(),
 });
 

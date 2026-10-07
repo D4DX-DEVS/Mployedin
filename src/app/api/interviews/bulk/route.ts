@@ -263,7 +263,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           String(seeker.userId),
           job?.title ?? "Interview",
           candidateTime,
-          location ?? meetLink ?? "TBD",
+          // The stored link: an auto-generated room when none was typed, and
+          // never "" (which used to slip past ?? and say nothing).
+          location || interview.meetLink || "TBD",
           String(interview._id),
           { sendEmail: false },
         ).catch((err) =>

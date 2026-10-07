@@ -25,6 +25,16 @@ interface InterviewsResponse {
   interviews?: Interview[];
   total?: number;
   statusCounts?: Record<string, number>;
+  rowCounts?: InterviewRowCounts;
+}
+
+/** Per-application bucket sizes, returned with `group: "application"`. */
+export interface InterviewRowCounts {
+  upcoming: number;
+  attention: number;
+  completed: number;
+  confirmed: number;
+  total: number;
 }
 
 export interface InterviewsFilters {
@@ -39,6 +49,8 @@ export interface InterviewsFilters {
   jobId?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  /** "application": one row per application (latest round), `status` read as a bucket. */
+  group?: "application";
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -50,7 +62,7 @@ export const interviewKeys = {
 };
 
 // ── Fetcher ────────────────────────────────────────────────────────
-async function fetchInterviews(filters: InterviewsFilters): Promise<{ interviews: Interview[]; total: number; statusCounts?: Record<string, number> }> {
+async function fetchInterviews(filters: InterviewsFilters): Promise<{ interviews: Interview[]; total: number; statusCounts?: Record<string, number>; rowCounts?: InterviewRowCounts }> {
   const params = new URLSearchParams();
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
@@ -63,12 +75,13 @@ async function fetchInterviews(filters: InterviewsFilters): Promise<{ interviews
   if (filters.jobId) params.set("jobId", filters.jobId);
   if (filters.sortBy) params.set("sortBy", filters.sortBy);
   if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+  if (filters.group) params.set("group", filters.group);
 
   const res = await fetch(`/api/interviews?${params}`);
   if (!res.ok) throw new Error("Failed to fetch interviews");
   const data: InterviewsResponse = await res.json();
   const items = data.items ?? data.interviews ?? [];
-  return { interviews: items, total: data.total ?? items.length, statusCounts: data.statusCounts };
+  return { interviews: items, total: data.total ?? items.length, statusCounts: data.statusCounts, rowCounts: data.rowCounts };
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────

@@ -389,9 +389,9 @@ export const scheduleInterviewTool: CopilotTool<{
 };
 
 function nothingToShortlistMessage(sel: Selection): string {
-  const base = `No scored applicants who meet the requirements are waiting at the Applied stage for "${sel.job.title}".`;
+  const base = `No scored applicants with every must-have are waiting at the Applied stage for "${sel.job.title}".`;
   const failing = sel.failingRequirements
-    ? ` ${sel.failingRequirements} applied but don't meet the job's requirements — review them on the applicants page.`
+    ? ` ${sel.failingRequirements} applied but are missing a must-have — review them on the applicants page.`
     : "";
   return sel.unscored ? `${base}${failing} ${sel.unscored} still being scored — try again in a minute.` : `${base}${failing}`;
 }
@@ -428,7 +428,7 @@ export const shortlistTopCandidatesTool: CopilotTool<{ jobId?: string; count?: n
     const minScoreStr = sel.minScore ? `, ${sel.minScore}%+` : "";
     const unscoredNote = sel.unscored ? ` ${sel.unscored} not yet scored are skipped.` : "";
     const failingNote = sel.failingRequirements
-      ? ` ${sel.failingRequirements} who don't meet the job's requirements are left out.`
+      ? ` ${sel.failingRequirements} missing a must-have are left out.`
       : "";
     const summary = `${n} of ${sel.totalApplied} applicants at Applied will move to Shortlisted for "${sel.job.title}" (top by match score${minScoreStr}).${unscoredNote}${failingNote}`;
 

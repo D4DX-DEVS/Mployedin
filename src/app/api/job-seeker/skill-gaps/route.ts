@@ -5,6 +5,7 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import SkillConfirmation from "@/models/SkillConfirmation";
 import type { UserRole } from "@/models/User";
+import { normalizeSkill, tokenizeSkill } from "@/lib/matchScore";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -36,10 +37,19 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const jobSkills = [
+  // One entry per skill: a job listing "React" as required and "React.js" as
+  // preferred is still one question.
+  const jobSkills: string[] = [];
+  const seenJobSkills = new Set<string>();
+  for (const skill of [
     ...(job.requirements?.skills ?? []),
     ...(job.requirements?.preferredSkills ?? []),
-  ];
+  ] as string[]) {
+    const key = normalizeSkill(skill);
+    if (!key || seenJobSkills.has(key)) continue;
+    seenJobSkills.add(key);
+    jobSkills.push(skill);
+  }
 
   if (jobSkills.length === 0) {
     return NextResponse.json({
@@ -51,14 +61,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     });
   }
 
-  const seekerSkillsLower = new Set(
-    (seeker?.skills ?? []).map((s: string) => s.toLowerCase()),
-  );
+  // Compared the way the match score compares them (lib/matchScore.ts), so
+  // "React.js" on the profile covers "React" on the job — before, the card
+  // said 93% with React matched while this route asked "Do you have React?".
+  const seekerTokens = new Set(((seeker?.skills ?? []) as string[]).flatMap(tokenizeSkill));
+  const inProfile = (skill: string) => tokenizeSkill(skill).some((t) => seekerTokens.has(t));
 
-  // Build confirmation lookup: skill (lowercase) -> status
-  const confirmationMap = new Map<string, string>();
+  // Confirmation lookup, keyed the same way: an answer about "React" applies to "ReactJS".
+  const confirmationMap = new Map<string, (typeof confirmations)[number]>();
   for (const c of confirmations) {
-    confirmationMap.set(c.skill.toLowerCase(), c.status);
+    confirmationMap.set(normalizeSkill(c.skill), c);
   }
 
   const matchedSkills: string[] = [];
@@ -67,10 +79,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const unansweredSkills: string[] = [];
 
   for (const skill of jobSkills) {
-    const lower = skill.toLowerCase();
-    const confirmStatus = confirmationMap.get(lower);
+    const conf = confirmationMap.get(normalizeSkill(skill));
+    const confirmStatus = conf?.status;
 
-    if (seekerSkillsLower.has(lower) && confirmStatus !== "denied") {
+    if (inProfile(skill) && confirmStatus !== "denied") {
       // In profile and not denied
       matchedSkills.push(skill);
     } else if (confirmStatus === "confirmed") {
@@ -80,7 +92,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       deniedSkills.push(skill);
     } else if (confirmStatus === "skipped") {
       // Skipped — check 30-day cooldown
-      const conf = confirmations.find((c) => c.skill.toLowerCase() === lower);
       const daysSince = conf
         ? (Date.now() - new Date(conf.updatedAt).getTime()) / 86_400_000
         : Infinity;

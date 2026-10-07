@@ -179,7 +179,7 @@ describe("shortlist_top_candidates tool", () => {
       expect(Application.find).toHaveBeenCalledWith(
         expect.objectContaining({ requirementsStatus: { $ne: "not_met" } }),
       );
-      expect(preview.summary).toContain("4 who don't meet the job's requirements are left out");
+      expect(preview.summary).toContain("4 missing a must-have are left out");
     });
 
     it("filters by minScore when provided", async () => {

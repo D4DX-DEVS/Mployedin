@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Conversation from "@/models/Conversation";
-import User from "@/models/User";
+import { applyLiveAvatars } from "@/lib/dm/liveAvatars";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
 
@@ -32,13 +32,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Backfill missing avatars
-  for (const p of conversation.participantDetails ?? []) {
-    if (!p.avatar) {
-      const user = await User.findById(p.userId).select("avatar").lean();
-      if (user?.avatar) p.avatar = user.avatar;
-    }
-  }
+  await applyLiveAvatars([conversation]);
 
   return NextResponse.json({ conversation });
 }

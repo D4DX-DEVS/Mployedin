@@ -157,3 +157,37 @@ describe("the reminder flag of a booked next round", () => {
     expect((await book(72)).reminderSent).toBe(false);
   });
 });
+
+/**
+ * Review follow-up to QA EMP-007 (2026-10-06): the next-round modal says a link
+ * like "meet.google.com/abc" is fine, but this route still demanded a full URL
+ * (and took "javascript:"). Same rule as scheduling now.
+ */
+describe("the next round's meeting link", () => {
+  const postLink = (meetLink: string) =>
+    POST(
+      new NextRequest(`http://localhost/api/interviews/${PREV}/next-round`, {
+        method: "POST",
+        body: JSON.stringify({ scheduledAt: new Date(Date.now() + 86_400_000).toISOString(), type: "video", meetLink }),
+        headers: { "content-type": "application/json" },
+      }),
+      { params: Promise.resolve({ id: PREV }) } as never,
+    );
+
+  beforeEach(() => {
+    callerEmployer = OWNER_EMP;
+    currentCtx = { userId: "6", role: "employer", locale: "en" };
+  });
+
+  it("accepts a link typed without https:// and stores it with it", async () => {
+    expect((await postLink("meet.google.com/abc-defg-hij")).status).toBeLessThan(300);
+    expect(interviewCreate.mock.calls.at(-1)?.[0]).toMatchObject({ meetLink: "https://meet.google.com/abc-defg-hij" });
+  });
+
+  it("refuses a javascript: link", async () => {
+    // validateBody throws its 400; the real withAuth turns that into the response.
+    const res = await postLink("javascript:alert(1)").catch((thrown: unknown) => thrown as Response);
+    expect(res.status).toBe(400);
+    expect(interviewCreate).not.toHaveBeenCalled();
+  });
+});

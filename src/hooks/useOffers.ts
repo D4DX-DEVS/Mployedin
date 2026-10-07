@@ -22,7 +22,8 @@ export interface Offer {
 interface OffersResponse {
   offers: Offer[];
   items?: Array<Record<string, unknown>>;
-  stats?: { total: number; pending: number; accepted: number; declined: number };
+  /** `open` = pending + countered, `closed` = declined + expired + withdrawn; open + accepted + closed = total. */
+  stats?: { total: number; pending: number; accepted: number; declined: number; open: number; closed: number };
   pagination: { total: number; page: number; limit: number; totalPages: number };
 }
 

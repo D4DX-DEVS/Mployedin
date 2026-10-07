@@ -978,10 +978,11 @@ export const authConfig: NextAuthConfig = {
         if (passwordChangedAfterToken || dueForPeriodicCheck) {
           await connectDB();
           const dbUser = await User.findById(token.id)
-            .select("passwordChangedAt isActive role permissionMode customPermissions termsAcceptedVersion")
+            .select("passwordChangedAt isActive role permissionMode customPermissions termsAcceptedVersion isEmailVerified")
             .lean() as {
               passwordChangedAt?: Date;
               isActive?: boolean;
+              isEmailVerified?: boolean;
               role?: UserRole;
               permissionMode?: string;
               customPermissions?: Record<string, string[]>;
@@ -997,6 +998,9 @@ export const authConfig: NextAuthConfig = {
           token.role = dbUser.role ?? token.role;
           token.permissionMode = dbUser.permissionMode ?? "role_default";
           token.customPermissions = dbUser.customPermissions ?? undefined;
+          // An address verified in another browser or on a phone: without
+          // this, this session kept bouncing to /verify-email until sign-out.
+          if (typeof dbUser.isEmailVerified === "boolean") token.isEmailVerified = dbUser.isEmailVerified;
           // An admin who starts a new Terms version reaches live sessions here.
           token.termsPending = termsPendingFor(dbUser.role, dbUser.termsAcceptedVersion, await getCurrentTermsVersion());
 

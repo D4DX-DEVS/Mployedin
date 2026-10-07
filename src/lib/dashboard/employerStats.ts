@@ -20,6 +20,8 @@ export interface EmployerDashboardStats {
    *  "Today's Interviews" KPI card + hero chip. Distinct from
    *  scheduledInterviews (all-time), which feeds the pipeline funnel. */
   interviewsToday: number;
+  /** Applications whose status is "hired" — the owner's definition of Hired (2026-10-06). */
+  hiredCount: number;
   placements: number;
   offerCount: number;
   offersSent: number;
@@ -75,6 +77,7 @@ const EMPTY_STATS: EmployerDashboardStats = {
   inReview: 0,
   scheduledInterviews: 0,
   interviewsToday: 0,
+  hiredCount: 0,
   placements: 0,
   offerCount: 0,
   offersSent: 0,
@@ -121,6 +124,7 @@ export async function getEmployerDashboardStats(
     inReview,
     scheduledInterviews,
     interviewsToday,
+    hiredCount,
     placements,
     offerCount,
     offersSent,
@@ -132,15 +136,22 @@ export async function getEmployerDashboardStats(
     Job.countDocuments({ employerId, status: "draft", deletedAt: null }),
     Job.countDocuments({ employerId, status: "paused", deletedAt: null }),
     Application.countDocuments({ employerId }),
-    Application.countDocuments({ employerId, status: "applied" }),
+    // "New" = applied and not yet opened, the same rule as the Applications
+    // page's New chip (QA EMP-005: every applied row was counted).
+    Application.countDocuments({ employerId, status: "applied", viewedByEmployerAt: null }),
     Application.countDocuments({ employerId, status: "shortlisted" }),
-    Interview.countDocuments({ employerId, status: "scheduled" }),
+    // Upcoming only: the dashboard calls these "coming up", and past-dated
+    // interviews still marked scheduled are not (QA EMP-005).
+    Interview.countDocuments({ employerId, status: { $in: ["scheduled", "confirmed"] }, scheduledAt: { $gte: new Date() } }),
     // Interviews scheduled for today only — backs the "Today's Interviews" card.
     Interview.countDocuments({
       employerId,
-      status: "scheduled",
+      status: { $in: ["scheduled", "confirmed"] },
       scheduledAt: { $gte: startOfToday, $lt: startOfTomorrow },
     }),
+    // Hired = applications marked hired. Accepting an offer does this without
+    // creating a Placement, so counting placements showed 0 (QA EMP-005).
+    Application.countDocuments({ employerId, status: "hired" }),
     Placement.countDocuments({ employerId }),
     // Total offers created
     Offer.countDocuments({ employerId }),
@@ -222,6 +233,7 @@ export async function getEmployerDashboardStats(
     inReview,
     scheduledInterviews,
     interviewsToday,
+    hiredCount,
     placements,
     offerCount,
     offersSent,

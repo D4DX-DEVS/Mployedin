@@ -108,7 +108,7 @@ describe("Employer task-first dashboard", () => {
         newApplications={2}
         scheduledInterviews={0}
         totalApplications={4}
-        placements={0}
+        hiredCount={0}
         locale="en"
       />,
     );
@@ -116,7 +116,7 @@ describe("Employer task-first dashboard", () => {
     expect(screen.getByRole("heading", { name: "Recommended next" })).toBeInTheDocument();
     expect(screen.getByText("Review 2 new applications").closest("a")).toHaveAttribute(
       "href",
-      "/en/employer/applications?status=applied",
+      "/en/employer/applications?status=applied&unreviewed=1",
     );
 
     rerender(
@@ -125,7 +125,7 @@ describe("Employer task-first dashboard", () => {
         newApplications={0}
         scheduledInterviews={0}
         totalApplications={2}
-        placements={0}
+        hiredCount={0}
         locale="en"
       />,
     );
@@ -159,7 +159,8 @@ describe("Employer task-first dashboard", () => {
         interviews={6}
         offers={1}
         offersSent={0}
-        placements={0}
+        hiredCount={4}
+        placements={1}
         avgMatchScore={44}
         locale="en"
       />,
@@ -174,6 +175,10 @@ describe("Employer task-first dashboard", () => {
     expect(container.querySelector(".grid-cols-6")).toBeInTheDocument();
     expect(screen.queryByText("Swipe to see every stage")).not.toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(6);
+    // Hired counts hired applications, not placements (QA EMP-005, owner 2026-10-06).
+    const hiredLink = screen.getAllByRole("link").find((a) => a.getAttribute("href") === "/en/employer/applications?status=hired");
+    expect(hiredLink).toBeDefined();
+    expect(hiredLink).toHaveTextContent("4");
   });
 
   it("keeps match estimates review-only on the dashboard", () => {

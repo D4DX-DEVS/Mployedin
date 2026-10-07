@@ -1,5 +1,26 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { normalizeWebsiteUrl, WEBSITE_MAX_LENGTH } from "./website";
+
+export const MEETING_LINK_ERROR = "Enter a meeting link like meet.google.com/abc-defg-hij, or leave it blank.";
+
+/**
+ * A meeting link the candidate can actually open (QA EMP-007: "not a link"
+ * was stored and sent). Same rules as a company website — http(s) only, a real
+ * hostname, "meet.google.com/…" gains https:// — and blank stays blank so the
+ * server can generate a video room.
+ */
+export const meetingLinkSchema = z
+  .string()
+  .max(WEBSITE_MAX_LENGTH)
+  .transform((v, ctx) => {
+    const result = normalizeWebsiteUrl(v);
+    if (!result.ok) {
+      ctx.addIssue({ code: "custom", message: MEETING_LINK_ERROR });
+      return z.NEVER;
+    }
+    return result.value;
+  });
 
 export const interviewCreateSchema = z.object({
   applicationId: commonSchemas.objectId,
@@ -14,7 +35,7 @@ export const interviewCreateSchema = z.object({
   duration: z.number().int().min(15).max(480).default(45),
   type: z.enum(["video", "offline", "hybrid"]).default("video"),
   location: z.string().max(500).optional(),
-  meetLink: z.string().max(2048).optional().or(z.literal("")),
+  meetLink: meetingLinkSchema.optional(),
   instructions: z.string().max(2000).optional(),
   notes: z.string().max(2000).optional(),
 });
@@ -24,7 +45,7 @@ export const interviewUpdateSchema = z.object({
   duration: z.number().int().min(15).max(480).optional(),
   type: z.enum(["video", "offline", "hybrid"]).optional(),
   location: z.string().max(500).optional(),
-  meetLink: z.string().max(2048).optional().or(z.literal("")),
+  meetLink: meetingLinkSchema.optional(),
   status: z
     .enum(["scheduled", "confirmed", "completed", "cancelled", "rescheduled"])
     .optional(),
@@ -64,7 +85,7 @@ export const interviewBulkSchema = z.object({
   duration: z.number().int().min(15).max(480).default(45),
   type: z.enum(["video", "offline", "hybrid"]).default("video"),
   location: z.string().max(500).optional(),
-  meetLink: z.string().max(2048).optional().or(z.literal("")),
+  meetLink: meetingLinkSchema.optional(),
   jobId: commonSchemas.objectId.optional(),
   /** Minutes per candidate slot (overrides `duration` for stagger calc). */
   durationPerCandidate: z.number().int().min(15).max(480).optional(),

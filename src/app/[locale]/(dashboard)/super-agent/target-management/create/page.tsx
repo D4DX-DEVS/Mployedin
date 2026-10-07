@@ -12,7 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   ArrowLeft, Building2, Users, DollarSign,
   CalendarDays, Target, Loader2, ChevronDown, ChevronRight,
-  Save, Filter, Search, X,
+  Save, SlidersHorizontal, Search, X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
@@ -331,7 +331,7 @@ export default function SuperAgentCreateTargetPage() {
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Filter className="h-4 w-4" />
+            <SlidersHorizontal className="h-4 w-4" />
             {t("filters")}
             {hasActiveFilters && (
               <Badge variant="info" className="text-[11px] px-1.5 py-0">

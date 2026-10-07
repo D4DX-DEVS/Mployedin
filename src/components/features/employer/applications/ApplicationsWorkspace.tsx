@@ -34,7 +34,7 @@ import {
   LayoutList,
   DollarSign,
   FileText,
-  Filter,
+  SlidersHorizontal,
   History,
   Inbox,
   Mail,
@@ -78,7 +78,9 @@ import { useSeekerAvailability } from "@/hooks/useSeekerAvailability";
 import { availabilityWindowStart, firstFreeSlots } from "@/lib/interviews/availabilitySlots";
 import { resolveHiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import {
+  useApplicationJobOptions,
   useApplicationTimeline,
   useApplications,
   useBulkAction,
@@ -96,6 +98,7 @@ import {
 import {
   RequirementsBadge,
   RequirementsChecklist,
+  setsNoMustHaves,
   type QualificationItem,
   type RequirementsStatus,
 } from "@/components/features/employer/applications/RequirementsChecklist";
@@ -111,9 +114,10 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
 import type { ExportColumn } from "@/lib/export";
-import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
+import { formatCount, formatDate, formatTime, formatCompactDate } from "@/lib/ui/intlFormat";
 import { RowActions } from "@/components/shared/RowActions";
-import { PIPELINE_STAGES, STAGE_DOT_CLASS, STAGE_LABEL_KEYS, stagesFrom, type PipelineStage } from "@/lib/hiring/pipeline";
+import { PIPELINE_STAGES, STAGE_LABEL_KEYS, type PipelineStage } from "@/lib/hiring/pipeline";
+import { isValidWebsiteInput } from "@/lib/validators/website";
 import {
   DEFAULT_WORKFLOW_STAGE_DEFS,
   nextWorkflowStage,
@@ -416,6 +420,30 @@ export function ApplicationsWorkspace({
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
   const [detailPanel, setDetailPanel] = useState<Applicant | null>(null);
   const detailTriggerRef = useRef<HTMLElement | null>(null);
+  // ?application=<id> — notification links open that applicant's drawer instead
+  // of dropping the employer on the whole list (QA EMP-013). The list API keeps
+  // the caller's scope, so a foreign id opens nothing.
+  const linkedApplicationId = searchParams.get("application");
+  useEffect(() => {
+    if (!linkedApplicationId) return;
+    // No cancel-on-cleanup: removing the param below re-runs this effect, and
+    // cancelling there would drop the very fetch it started.
+    fetch(`/api/applications?applicationId=${encodeURIComponent(linkedApplicationId)}&limit=1`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { applications?: Applicant[] } | null) => {
+        const app = data?.applications?.[0];
+        if (app) openDetailPanel(app);
+      })
+      .catch(() => {});
+    // One-shot: drop the param so closing the drawer stays closed on refresh.
+    // The native History API, which Next syncs into useSearchParams: a
+    // router.replace issued while the page is still mounting never reached the
+    // address bar, so a refresh reopened the drawer.
+    const params = new URLSearchParams(window.location.search);
+    params.delete("application");
+    window.history.replaceState(null, "", `${window.location.pathname}${params.size ? `?${params.toString()}` : ""}`);
+     
+  }, [linkedApplicationId]);
   const [layoutRef, isWide] = useContainerWide(1020);
   const [viewingCv, setViewingCv] = useState<{
     url: string;
@@ -479,7 +507,6 @@ export function ApplicationsWorkspace({
     return [emin ? Number(emin) : null, emax ? Number(emax) : null];
   });
   const [skillsFilter, setSkillsFilter] = useState<string[]>(() => (searchParams.get("skills") ?? "").split(",").filter(Boolean));
-  const [jobsLoaded, setJobsLoaded] = useState(false);
 
   interface EmployerJob {
     _id: string;
@@ -492,17 +519,31 @@ export function ApplicationsWorkspace({
     status: string;
     createdAt?: string;
   }
-  const [employerJobs, setEmployerJobs] = useState<EmployerJob[]>([]);
+  const jobOptionsQuery = useApplicationJobOptions<EmployerJob>();
+  const employerJobs = useMemo(() => jobOptionsQuery.data ?? [], [jobOptionsQuery.data]);
+  const jobsLoaded = jobOptionsQuery.isSuccess;
 
   // Sort order for the list. API supports appliedAt/aiMatchScore; "newest" is the default.
-  const [sortOption, setSortOption] = useState<"newest" | "oldest" | "score">(() => {
+  const [sortOption, setSortOption] = useState<"newest" | "oldest" | "score" | "score_low">(() => {
     const sort = searchParams.get("sort");
-    return sort === "oldest" || sort === "score" ? sort : "newest";
+    return sort === "oldest" || sort === "score" || sort === "score_low" ? sort : "newest";
   });
   const [sortBy, sortOrder]: ["appliedAt" | "aiMatchScore", "asc" | "desc"] =
     sortOption === "oldest" ? ["appliedAt", "asc"]
     : sortOption === "score" ? ["aiMatchScore", "desc"]
+    : sortOption === "score_low" ? ["aiMatchScore", "asc"]
     : ["appliedAt", "desc"];
+  // ?sort= survives a refresh and a shared link; "newest" is the bare URL.
+  function chooseSort(next: typeof sortOption) {
+    setSortOption(next);
+    writeUrl((params) => { if (next !== "newest") params.set("sort", next); else params.delete("sort"); });
+  }
+  // Column headers sort like the admin tables: a new column starts high-to-low
+  // (newest, best match), a second click flips it. Same state as the Sort select.
+  function sortByColumn(field: "appliedAt" | "aiMatchScore") {
+    if (field === "appliedAt") chooseSort(sortOption === "newest" ? "oldest" : "newest");
+    else chooseSort(sortOption === "score" ? "score_low" : "score");
+  }
 
   // List ⇄ Board (A16, A23): a ?view=board param on the same route, only when
   // a job is pinned/selected. Phones get the board too — one stage per swipe.
@@ -542,7 +583,6 @@ export function ApplicationsWorkspace({
     sortBy,
     sortOrder,
     unreviewed: unreviewedOnly || undefined,
-    fetchJobs: !jobsLoaded,
     fetchCounts: true,
   });
   const updateStatus = useUpdateApplicationStatus();
@@ -574,14 +614,6 @@ export function ApplicationsWorkspace({
   const metricValue = (n: number) => (statusCounts ? n : "\u2014");
   const timelineData: TimelineEntry[] = timelineQuery.data?.timeline ?? [];
   const timelineLoading = timelineQuery.isLoading;
-
-  // Store employer jobs from the first successful fetch
-  useEffect(() => {
-    if (applicationsQuery.data?.employerJobs && !jobsLoaded) {
-      setEmployerJobs(applicationsQuery.data.employerJobs);
-      setJobsLoaded(true);
-    }
-  }, [applicationsQuery.data?.employerJobs, jobsLoaded]);
 
   // Selected job's details (for dynamic filter hints)
   const selectedJob = employerJobs.find((j) => j._id === jobFilter) ?? null;
@@ -697,6 +729,9 @@ export function ApplicationsWorkspace({
    *  by the time anyone reads the toolbar the button is usually inert and used
    *  to say nothing about why. */
   async function handleBulkAiMatch(explain = false) {
+    // The explicit run re-scores whole jobs; it needs one. The automatic
+    // first-load pass (explain = false) still scores never-scored rows anywhere.
+    if (explain && !jobFilter) return;
     if (!applications.length) {
       if (explain) toast.info(t("shortlistNoneInView"));
       return;
@@ -784,7 +819,7 @@ export function ApplicationsWorkspace({
    *  a tooltip could reach it) and the handler returned silently, so an
    *  ineligible pipeline read as a broken feature. */
   async function handleAutoShortlist() {
-    if (shortlistLoading) return;
+    if (shortlistLoading || !jobFilter) return;
     if (!filteredApplications.length) {
       toast.info(t("shortlistNoneInView"));
       return;
@@ -1323,39 +1358,6 @@ export function ApplicationsWorkspace({
         />
       )}
 
-      {/* Shortlist chip — only on the standalone /employer/applications list.
-          Inside a job the Shortlist tab owns this cut, so a chip here would be a
-          second control for the same filter, disagreeing with the tab it sits
-          under. Tapping the active chip clears it. */}
-      <div className={embedded ? "hidden" : "flex flex-wrap items-center gap-2"} role="group" aria-label={t("stageChipsLabel")}>
-        {(embedded ? [] : pipelineStages.filter((stage) => stage.value === "shortlisted")).map((stage) => {
-          const active = statusFilter === SHORTLIST_REACHED;
-          const stageCount = countOf(...stagesFrom("shortlisted"));
-          // A stage nobody is in gets no chip: it would offer a filter that
-          // opens an empty list, and its 0 would sit against the Overview
-          // funnel's progress count for the same stage. The active chip always
-          // stays, or clearing the filter becomes impossible once its last
-          // candidate moves on. Before the totals land, show them all rather
-          // than flickering the row in one stage at a time.
-          if (statusCounts && stageCount === 0 && !active) return null;
-          return (
-            <button
-              key={stage.value}
-              type="button"
-              onClick={() => { setStatusFilter(active ? "all" : SHORTLIST_REACHED); setPage(1); }}
-              aria-pressed={active}
-              className={`min-h-11 sm:min-h-9 inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
-                active ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-secondary/80"
-              }`}
-            >
-              <span className={`h-2 w-2 shrink-0 rounded-full ${STAGE_DOT_CLASS[stage.value as ApplicationStatus] ?? "bg-muted-foreground"}`} aria-hidden="true" />
-              <span>{stage.label}</span>
-              <span className="tabular-nums">{metricValue(stageCount)}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* ── List toolbar — search, job, Filters, Export ──
           Same shape as Candidates: every filter (status, sort, Needs review,
           ranges, skills) lives in the Filters panel below, never beside it. */}
@@ -1392,7 +1394,7 @@ export function ApplicationsWorkspace({
           aria-label={activeFilterCount > 0 ? `${t("filters")} (${activeFilterCount})` : t("filters")}
           className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${showFilters ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
         >
-          <Filter className="h-4 w-4 sm:me-2" aria-hidden="true" />
+          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
           <span className="hidden sm:inline">{t("filters")}</span>
           {activeFilterCount > 0 ? (
             <span className="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
@@ -1469,6 +1471,10 @@ export function ApplicationsWorkspace({
                 className="h-11 w-full rounded-xl border-border bg-background/80 text-sm sm:h-10"
                 options={[
                   { value: "all", label: t("allStatuses") },
+                  // Shortlisted plus every later stage: everyone past screening and
+                  // still moving. Was a chip on its own row above the toolbar; one
+                  // place for every status choice (owner, 2026-10-07).
+                  { value: SHORTLIST_REACHED, label: t("shortlistedOnwards") },
                   ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
                 ]}
                 value={statusFilter}
@@ -1486,9 +1492,10 @@ export function ApplicationsWorkspace({
                 { value: "newest", label: t("sortNewest") },
                 { value: "oldest", label: t("sortOldest") },
                 { value: "score", label: t("sortScore") },
+                { value: "score_low", label: t("sortScoreLow") },
               ]}
               value={sortOption}
-              onValueChange={(v) => setSortOption(v as typeof sortOption)}
+              onValueChange={(v) => chooseSort(v as typeof sortOption)}
               placeholder={t("sortLabel")}
               ariaLabel={t("sortLabel")}
             />
@@ -1902,31 +1909,41 @@ export function ApplicationsWorkspace({
               {allVisibleSelected ? <CheckSquare className="me-2 hidden h-3.5 w-3.5 text-status-applied sm:block" /> : <Square className="me-2 hidden h-3.5 w-3.5 text-muted-foreground sm:block" />}
               {allVisibleSelected ? t("clearVisible") : t("selectVisible")}
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs sm:min-h-0 sm:flex-none sm:px-3"
-              disabled={bulkAiMatch.isPending || rescoring}
-              aria-busy={rescoring || undefined}
-              onClick={() => { void handleBulkAiMatch(true); }}
-            >
-              <Sparkles className={`me-2 hidden h-3.5 w-3.5 sm:block ${bulkAiMatch.isPending || rescoring ? "animate-pulse text-primary" : ""}`} />
-              {rescoring
-                ? t("rescoringScores")
-                : bulkMatchProgress
-                ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
-                : t("scoreAll")}
-            </Button>
-            <Button
-              size="sm"
-              className="min-h-11 flex-1 justify-center rounded-xl bg-emerald-700 px-2 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:flex-none sm:px-3"
-              disabled={bulkAction.isPending || shortlistLoading}
-              aria-busy={shortlistLoading || undefined}
-              onClick={() => void handleAutoShortlist()}
-            >
-              <CheckCheck className={`me-2 hidden h-3.5 w-3.5 sm:block ${shortlistLoading ? "animate-pulse" : ""}`} />
-              {shortlistLoading ? ta("shortlistLoading") : t("shortlistTop")}
-            </Button>
+            {/* Scores and shortlists belong to one job: on All Jobs, Shortlist Top
+                ranked people from different jobs against each other (a 91% designer
+                beside a 54% sales manager), and Score All re-scored every job in
+                view. Owner, 2026-10-07. */}
+            {jobFilter ? (
+              <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs sm:min-h-0 sm:flex-none sm:px-3"
+                disabled={bulkAiMatch.isPending || rescoring}
+                aria-busy={rescoring || undefined}
+                onClick={() => { void handleBulkAiMatch(true); }}
+              >
+                <Sparkles className={`me-2 hidden h-3.5 w-3.5 sm:block ${bulkAiMatch.isPending || rescoring ? "animate-pulse text-primary" : ""}`} />
+                {rescoring
+                  ? t("rescoringScores")
+                  : bulkMatchProgress
+                  ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
+                  : t("scoreAll")}
+              </Button>
+              <Button
+                size="sm"
+                className="min-h-11 flex-1 justify-center rounded-xl bg-emerald-700 px-2 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:flex-none sm:px-3"
+                disabled={bulkAction.isPending || shortlistLoading}
+                aria-busy={shortlistLoading || undefined}
+                onClick={() => void handleAutoShortlist()}
+              >
+                <CheckCheck className={`me-2 hidden h-3.5 w-3.5 sm:block ${shortlistLoading ? "animate-pulse" : ""}`} />
+                {shortlistLoading ? ta("shortlistLoading") : t("shortlistTop")}
+              </Button>
+              </>
+            ) : (
+              <span className="basis-full text-xs text-muted-foreground sm:basis-auto">{t("pickJobToShortlist")}</span>
+            )}
           
               <span className="ms-auto hidden text-xs text-muted-foreground lg:inline">
                 {isLoading ? "—" : highMatchCount} {t("highMatch")} · {isLoading ? "—" : interviewCount} {t("interviews")} · {isLoading ? "—" : selectedStageCount} {t("selected")}
@@ -1991,6 +2008,9 @@ export function ApplicationsWorkspace({
               onViewCv={(app) => setViewingCv(buildViewingCv(app))}
               hasActiveRefinement={hasActiveRefinement}
               compact={Boolean(isWide && detailPanel)}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={sortByColumn}
             />
           )}
         </div>
@@ -2171,7 +2191,7 @@ function CheckChip({ check }: { check: CandidateCheck }) {
 }
 
 function TableView({
-  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact, emptyTitle, emptyDescription
+  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact, emptyTitle, emptyDescription, sortBy, sortOrder, onSort
 }: {
   applications: Applicant[];
   selected: string[];
@@ -2188,6 +2208,10 @@ function TableView({
    *  wrong on a Shortlist that simply has nobody in it yet. */
   emptyTitle?: string;
   emptyDescription?: string;
+  /** With onSort, the Match and Applied On headers sort the list. */
+  sortBy?: "appliedAt" | "aiMatchScore";
+  sortOrder?: "asc" | "desc";
+  onSort?: (field: "appliedAt" | "aiMatchScore") => void;
 }) {
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("employerApplications");
@@ -2206,8 +2230,10 @@ function TableView({
   // When the detail panel is open the list is squeezed — drop the middle
   // columns (all shown in the panel) so the candidate cell can't overflow.
   const gridCols = compact
-    ? "28px minmax(0,1fr) 72px 100px"
-    : "28px 1.4fr 1fr 80px 1.2fr 80px 100px";
+    ? "28px minmax(0,1fr) 88px 100px"
+    // Match fits "Must-haves met" on two lines; Applied On fits "Sep 25, 2025"
+    // on one line, and its header the sort arrow.
+    : "28px 1.4fr 1fr 96px 1.2fr 112px 100px";
 
   if (!applications.length) {
     return (
@@ -2225,9 +2251,21 @@ function TableView({
         <span />
         <span>{t("candidate")}</span>
         {!compact && <span>{t("roleMatchSkills").split(",")[0]?.trim()}</span>}
-        <span>{t("matchLabel")}</span>
+        {onSort ? (
+          <span>
+            <SortableTableHeader label={t("matchLabel")} active={sortBy === "aiMatchScore"} order={sortOrder ?? "desc"} onClick={() => onSort("aiMatchScore")} className="whitespace-nowrap" />
+          </span>
+        ) : (
+          <span>{t("matchLabel")}</span>
+        )}
         {!compact && <span>{t("skills")}</span>}
-        {!compact && <span>{t("appliedOn")}</span>}
+        {!compact && (onSort ? (
+          <span>
+            <SortableTableHeader label={t("appliedOn")} active={sortBy === "appliedAt"} order={sortOrder ?? "desc"} onClick={() => onSort("appliedAt")} className="whitespace-nowrap" />
+          </span>
+        ) : (
+          <span>{t("appliedOn")}</span>
+        ))}
         <span className="text-right">{t("actions")}</span>
       </div>
 
@@ -2244,7 +2282,10 @@ function TableView({
           const shownSkillsCount = matchingSkills.length + otherSkills.length;
           const extraSkillsCount = (app.jobSeekerId?.skills?.length ?? 0) - shownSkillsCount;
           const isNew = app.status === "applied" && !app.viewedByEmployerAt;
-          const appliedDate = formatDate(new Date(app.appliedAt), { day: "2-digit", month: "short", year: "numeric" }, locale);
+          // "Oct 6" this year, "Sep 25, 2025" before: one line in the column,
+          // the full date on hover.
+          const appliedDate = formatCompactDate(app.appliedAt, locale);
+          const appliedDateFull = formatDate(app.appliedAt, { day: "numeric", month: "long", year: "numeric" }, locale);
           const scorecard = scorecardMap?.[app._id];
           const matchScore = app.aiMatchScore;
           const matchColor = matchScore != null ? (matchScore >= 80 ? "text-status-selected" : matchScore >= 70 ? "text-status-applied" : matchScore >= 50 ? "text-status-shortlisted" : "text-rose-500") : "text-muted-foreground";
@@ -2381,7 +2422,7 @@ function TableView({
                     <p className="text-[11px] text-muted-foreground">{t("aiPending")}</p>
                   )}
                   {/* Short form: the full wording crushed the name column on phones. */}
-                  <RequirementsBadge status={app.requirementsStatus} compact />
+                  <RequirementsBadge status={app.requirementsStatus} noMustHaves={setsNoMustHaves(app.qualifications)} compact />
                   <StatusBadge status={app.status} />
                 </div>
               </div>
@@ -2403,8 +2444,8 @@ function TableView({
                   <div className="flex flex-col items-center gap-1 text-center">
                     <p className={`text-lg font-bold leading-tight ${matchColor}`}>{matchScore}%</p>
                     <p className={`text-[11px] font-semibold ${matchColor}`}>{matchText}</p>
-                    {/* The column is 80px: the short form, full wording on hover. */}
-                    <RequirementsBadge status={app.requirementsStatus} compact />
+                    {/* The column is 96px: the short form on up to two lines, full wording on hover. */}
+                    <RequirementsBadge status={app.requirementsStatus} noMustHaves={setsNoMustHaves(app.qualifications)} compact />
                   </div>
                 ) : (
                   <p className="text-center text-xs text-muted-foreground">{t("aiPending")}</p>
@@ -2436,10 +2477,10 @@ function TableView({
               {/* Applied On */}
               {!compact && (
                 <div className="hidden text-xs text-muted-foreground lg:block">
-                  <span className="inline-flex items-center gap-1">
+                  <time dateTime={app.appliedAt} title={appliedDateFull} className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
                     {appliedDate}
-                  </span>
+                  </time>
                 </div>
               )}
 
@@ -3615,8 +3656,11 @@ function BulkInterviewScheduleModal({
 
   const isPast = scheduledAt ? new Date(scheduledAt) < new Date() : false;
 
+  // QA EMP-007: "not a link" used to be scheduled and sent to the candidate.
+  const meetLinkInvalid = type !== "offline" && !isValidWebsiteInput(meetLink);
+
   async function handleSubmit() {
-    if (!scheduledAt || isPast) return;
+    if (!scheduledAt || isPast || meetLinkInvalid) return;
     const validBreaks = breaks.filter((b) => b.start && b.end && b.start < b.end);
     await onSubmit({
       scheduledAt: new Date(scheduledAt).toISOString(),
@@ -3625,7 +3669,7 @@ function BulkInterviewScheduleModal({
       durationPerCandidate,
       gapMinutes,
       ...(location && { location }),
-      ...(meetLink && { meetLink }),
+      ...(type !== "offline" && meetLink.trim() && { meetLink: meetLink.trim() }),
       workingHours: { start: whStart, end: whEnd },
       ...(validBreaks.length > 0 && { breaks: validBreaks }),
     });
@@ -3766,10 +3810,15 @@ function BulkInterviewScheduleModal({
         )}
         {type !== "offline" && (
           <div>
-            <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
-            <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
+            <label htmlFor="bulk-iv-meet-link" className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
+            <input id="bulk-iv-meet-link" value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
               placeholder="https://meet.google.com/..."
-              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+              aria-invalid={meetLinkInvalid || undefined}
+              aria-describedby={meetLinkInvalid ? "bulk-iv-meet-link-error" : undefined}
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 aria-[invalid=true]:border-destructive" />
+            {meetLinkInvalid && (
+              <p id="bulk-iv-meet-link-error" className="mt-1 text-xs text-destructive">{t("ivMeetingLinkInvalid")}</p>
+            )}
           </div>
         )}
 
@@ -3817,7 +3866,7 @@ function BulkInterviewScheduleModal({
       </div>
       <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
         <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || meetLinkInvalid || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
           <Calendar className="w-3.5 h-3.5 me-1" />
           {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
         </Button>
@@ -4012,8 +4061,10 @@ function InterviewScheduleModal({
   const [pickerContainer, setPickerContainer] = useState<HTMLDivElement | null>(null);
   const t = useTranslations("employerApplications");
 
+  const meetLinkInvalid = type !== "offline" && !isValidWebsiteInput(meetLink);
+
   async function handleSubmit() {
-    if (!scheduledAt) return;
+    if (!scheduledAt || meetLinkInvalid) return;
     setSubmitting(true);
     try {
       await onSubmit({
@@ -4021,7 +4072,7 @@ function InterviewScheduleModal({
         type,
         duration,
         ...(location && { location }),
-        ...(meetLink && { meetLink }),
+        ...(type !== "offline" && meetLink.trim() && { meetLink: meetLink.trim() }),
         ...(instructions && { instructions }),
       });
     } finally {
@@ -4085,10 +4136,15 @@ function InterviewScheduleModal({
         )}
         {type !== "offline" && (
           <div>
-            <label className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
-            <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
+            <label htmlFor="iv-meet-link" className="block text-xs font-medium mb-1">{t("ivMeetingLink")}</label>
+            <input id="iv-meet-link" value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
               placeholder="https://meet.google.com/..."
-              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+              aria-invalid={meetLinkInvalid || undefined}
+              aria-describedby={meetLinkInvalid ? "iv-meet-link-error" : undefined}
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 aria-[invalid=true]:border-destructive" />
+            {meetLinkInvalid && (
+              <p id="iv-meet-link-error" className="mt-1 text-xs text-destructive">{t("ivMeetingLinkInvalid")}</p>
+            )}
           </div>
         )}
         <div>
@@ -4101,7 +4157,7 @@ function InterviewScheduleModal({
       </div>
       <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
         <Button size="sm" variant="ghost" onClick={onCancel} className="">{t("cancel")}</Button>
-        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || submitting} className="">
+        <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || meetLinkInvalid || submitting} className="">
           {submitting ? t("ivScheduling") : t("scheduleInterview")}
         </Button>
       </div>

@@ -364,11 +364,14 @@ export function useDeleteJob() {
 export function useJobDetail(id: string) {
   return useQuery({
     queryKey: jobKeys.detail(id),
-    queryFn: async () => {
+    queryFn: async (): Promise<Job | null> => {
       const res = await fetch(`/api/jobs/${id}`);
+      // Bad id, someone else's job, or gone: there is nothing to retry, so the
+      // page shows "not found" instead of "couldn't load — try again" (QA EMP-014).
+      if (res.status === 400 || res.status === 403 || res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch job");
       const data = await res.json();
-      return data.job as Job;
+      return (data.job as Job) ?? null;
     },
     staleTime: 30 * 1000,
     enabled: !!id,

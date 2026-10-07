@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ChevronDown, ChevronUp, Filter, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Search } from "lucide-react";
 
 export interface ExhibitionFilterOption {
   value: string;
@@ -58,7 +58,7 @@ export function ExhibitionFilterTrigger({ open, onToggle, hasActiveFilters }: Ex
       onClick={onToggle}
       className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-white/10 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
     >
-      <Filter className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
+      <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
       {open ? t("hideFilters") : t("showFilters")}
       {hasActiveFilters && (
         <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">

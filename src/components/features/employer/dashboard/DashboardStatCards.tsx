@@ -57,7 +57,7 @@ export function DashboardStatCards({
       descKey: "needsReviewDesc",
       value: newApplications,
       // Deep-link straight to new (unactioned) applications
-      href: `/${locale}/employer/applications?status=applied`,
+      href: `/${locale}/employer/applications?status=applied&unreviewed=1`,
       Icon: FileText,
       iconClassName: "text-amber-600",
       secondary: null,

@@ -12,7 +12,8 @@ const SCHEME_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
 // A hostname a company could actually own: labels separated by dots, with a
 // letters-only TLD. Catches "talindia" and "http://" typos without needing a
 // public-suffix list.
-const HOSTNAME_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+// The TLD is letters, or punycode for a non-Latin one (".امارات" -> "xn--mgbaam7a8h").
+const HOSTNAME_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/i;
 
 export const WEBSITE_MAX_LENGTH = 2048;
 

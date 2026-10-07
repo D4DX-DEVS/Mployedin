@@ -46,6 +46,7 @@ import { useAdminActionCounts } from "@/hooks/useAdminActionCounts";
 import { useJobSeekerActionCounts } from "@/hooks/useJobSeekerActionCounts";
 import { useAgentActionCounts } from "@/hooks/useAgentActionCounts";
 import { useSuperAgentActionCounts } from "@/hooks/useSuperAgentActionCounts";
+import { useHideChromeOnScroll } from "@/hooks/useHideChromeOnScroll";
 import type { UserRole } from "@/types/user";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 
@@ -103,6 +104,9 @@ export function DashboardShell({
   const adminCounts = useAdminActionCounts(isAdmin);
   const superAgentCounts = useSuperAgentActionCounts(isSuperAgent);
   const agentCounts = useAgentActionCounts(userRole === "agent");
+  // The seeker page scrolls the window, so its header and phone tab bar can
+  // slide away on scroll-down and back on scroll-up (CSS: data-scroll-chrome).
+  useHideChromeOnScroll(isJobSeeker, pathname);
   // Every live counter in one place, keyed the way nav entries and bottom tabs
   // declare them. Roles that own none of these read zeroes; their hooks are
   // disabled, so no request is made.

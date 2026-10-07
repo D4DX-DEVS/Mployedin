@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, SlidersHorizontal, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
+import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, X, SlidersHorizontal, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -17,18 +17,16 @@ import { scoreTier } from "@/lib/ui/statusColors";
 import { usePagination } from "@/hooks/usePagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useJobSeekerActionCountsQuery } from "@/hooks/useJobSeekerActionCounts";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
-import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
 import { StatusPillTabs } from "@/components/features/job-seeker/StatusPillTabs";
 import { userInitials } from "@/components/shared/UserAvatar";
+import { formatApplicationDate, formatApplicationSalary } from "@/lib/jobSeeker/applicationFormat";
+import { useSeekerApplicationList, useRefreshSeekerApplications } from "@/hooks/useSeekerApplications";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { WithdrawApplicationDialog } from "@/components/features/job-seeker/WithdrawApplicationDialog";
 
 interface ApplicationJob {
   _id: string;
@@ -97,23 +95,6 @@ const STATUS_TABS = [
 
 type StatusTab = (typeof STATUS_TABS)[number];
 
-function formatApplicationSalary(salary: ApplicationJob["salary"] | undefined, numberLocale: string) {
-  if (!salary?.min || !salary?.max || !salary.currency) return null;
-
-  try {
-    const formatter = new Intl.NumberFormat(numberLocale, {
-      style: "currency",
-      currency: salary.currency,
-      notation: "compact",
-      maximumFractionDigits: 1,
-    });
-
-    return `${formatter.format(salary.min)} - ${formatter.format(salary.max)}`;
-  } catch {
-    return `${salary.min.toLocaleString(numberLocale)} - ${salary.max.toLocaleString(numberLocale)} ${salary.currency}`;
-  }
-}
-
 export default function ApplicationsPage() {
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("jobSeekerApplications");
@@ -122,12 +103,9 @@ export default function ApplicationsPage() {
   // The ⌘K palette deep-links here as `?search=<job title>`; without seeding
   // the box from the URL the link landed on an unfiltered list.
   const urlSearch = useSearchParams().get("search") ?? "";
-  const [applications, setApplications] = useState<Application[]>([]);
-  // Per-status totals for the pills, keyed by status ("all" plus each stage).
-  // null = unavailable, so the pills fall back to labels only.
-  const [statusCounts, setStatusCounts] = useState<Record<string, number> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<StatusTab>("all");
+  // In the URL, so Back from an application returns to the same tab.
+  const [activeTabRaw, setActiveTabRaw] = useUrlFilter("status", "all", { allow: STATUS_TABS });
+  const activeTab = activeTabRaw as StatusTab;
   const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -150,47 +128,42 @@ export default function ApplicationsPage() {
     if (urlSearch) setSearchTerm(urlSearch);
   }, [urlSearch]);
 
-  const fetchApplications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = paginationParams();
-      if (activeTab !== "all") params.set("status", activeTab);
-      if (debouncedSearch) params.set("search", debouncedSearch);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      // Counts obey the search and date filters but not the selected status,
-      // so every pill reports the list it would produce.
-      params.set("fetchCounts", "true");
+  const listQuery = useMemo(() => {
+    const params = paginationParams();
+    if (activeTab !== "all") params.set("status", activeTab);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    // Counts obey the search and date filters but not the selected status,
+    // so every pill reports the list it would produce.
+    params.set("fetchCounts", "true");
+    return params.toString();
+  }, [activeTab, debouncedSearch, dateFrom, dateTo, paginationParams]);
 
-      const res = await fetch(`/api/applications?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setApplications(data.applications);
-        setStatusCounts(data.statusCounts ?? null);
-        updateTotal(data.pagination?.total ?? 0);
-      } else {
-        // 4xx/5xx previously fell through silently — stale list, no feedback.
-        setApplications([]);
-        setStatusCounts(null);
-        toast.error(t("loadFailed"));
-      }
-    } catch {
-      // Network failure previously surfaced as an unhandled rejection with an
-      // unexplained empty screen.
-      setApplications([]);
-      setStatusCounts(null);
-      toast.error(t("loadFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, debouncedSearch, dateFrom, dateTo, paginationParams, updateTotal]);
+  // Cached: Back from an application shows this list at once instead of
+  // refetching it behind a skeleton (client report 2026-10-06).
+  const { data: listData, isPending: loading, isError: listFailed } = useSeekerApplicationList<{
+    applications: Application[];
+    statusCounts?: Record<string, number>;
+    pagination?: { total?: number };
+  }>(listQuery);
+  const applications = listData?.applications ?? [];
+  // Per-status totals for the pills, keyed by status ("all" plus each stage).
+  // null = unavailable, so the pills fall back to labels only.
+  const statusCounts = listData?.statusCounts ?? null;
+  const refreshApplications = useRefreshSeekerApplications();
 
   useEffect(() => {
-    fetchApplications();
-  }, [fetchApplications]);
+    if (listData) updateTotal(listData.pagination?.total ?? 0);
+  }, [listData, updateTotal]);
+
+  useEffect(() => {
+    // A failed load used to leave a stale list with no feedback.
+    if (listFailed) toast.error(t("loadFailed"));
+  }, [listFailed, t]);
 
   function handleTabChange(val: StatusTab) {
-    setActiveTab(val);
+    setActiveTabRaw(val);
     resetPage();
   }
 
@@ -346,7 +319,7 @@ export default function ApplicationsPage() {
           ) : (
             <div className="space-y-2.5">
               {applications.map((app) => (
-                <ApplicationCard key={app._id} app={app} locale={locale} onWithdrawn={fetchApplications} />
+                <ApplicationCard key={app._id} app={app} locale={locale} onWithdrawn={refreshApplications} />
               ))}
             </div>
           )}
@@ -357,18 +330,6 @@ export default function ApplicationsPage() {
 }
 
 const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
-
-// Values only — every label comes from jobSeekerApplications.withdrawal.reasons.*,
-// so an English label here would only ever be dead weight.
-const WITHDRAWAL_REASONS = [
-  "accepted_elsewhere",
-  "salary_too_low",
-  "bad_experience",
-  "too_slow_process",
-  "changed_mind",
-  "personal_reasons",
-  "other",
-] as const;
 
 function ApplicationCard({
   app,
@@ -385,21 +346,16 @@ function ApplicationCard({
   const employer = typeof job?.employerId === "object" ? job.employerId : null;
   const companyName = employer?.companyName;
   const companyLogo = employer?.logo;
-  const appliedDate = new Date(app.appliedAt).toLocaleDateString(numberLocale, {
-    month: "short", day: "numeric",
-  });
+  // Shared with the application page so both read the same (QA 2026-10-06).
+  const appliedDate = formatApplicationDate(app.appliedAt, locale);
   const locationLabel = formatLocalizedLocation(job?.location, locale, {
     remoteLabel: t("remote"),
     fallback: t("locationFlexible"),
   });
-  const salaryLabel = formatApplicationSalary(job?.salary, numberLocale);
+  const salaryLabel = formatApplicationSalary(job?.salary, locale);
   const latestStatusEntry = app.statusHistory?.[app.statusHistory.length - 1];
   const recentStatuses = app.statusHistory?.slice(-3) ?? [];
   const hasExpandableDetails = recentStatuses.length > 0 || !!latestStatusEntry?.note || !!app.coverLetter || !!app.latestInterview || !!app.latestOffer || !!app.placement;
-  const withdrawalReasonOptions = WITHDRAWAL_REASONS.map((value) => ({
-    value,
-    label: t(`withdrawal.reasons.${value}`),
-  }));
   const formatDetailDate = (value: string) => new Date(value).toLocaleDateString(numberLocale, {
     month: "short",
     day: "numeric",
@@ -416,52 +372,8 @@ function ApplicationCard({
   }).format(amount);
 
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawReason, setWithdrawReason] = useState("");
-  const [withdrawNote, setWithdrawNote] = useState("");
-  const [withdrawing, setWithdrawing] = useState(false);
-  const [withdrawError, setWithdrawError] = useState("");
   const [showDetails, setShowDetails] = useState(false);
 
-  // Close the withdrawal dialog on Escape for keyboard accessibility.
-  // Withdrawing an application is destructive and irreversible; the dialog
-  // needs focus held inside it, not just an Escape key handler.
-  const withdrawTrapRef = useFocusTrap<HTMLDivElement>(showWithdraw);
-
-  useEffect(() => {
-    if (!showWithdraw) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowWithdraw(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [showWithdraw]);
-
-  async function handleWithdraw() {
-    if (!withdrawReason) return;
-    setWithdrawing(true);
-    setWithdrawError("");
-    try {
-      const res = await fetch(`/api/applications/${app._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "withdrawn",
-          withdrawalReason: withdrawReason,
-          withdrawalNote: withdrawNote.trim() || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? t("withdraw"));
-      }
-      setShowWithdraw(false);
-      onWithdrawn();
-    } catch (e) {
-      setWithdrawError(t("withdraw"));
-    } finally {
-      setWithdrawing(false);
-    }
-  }
 
   const isActive = !TERMINAL_STATUSES.includes(app.status);
   const jobTitle = job?.title ?? t("jobFallback");
@@ -738,81 +650,13 @@ function ApplicationCard({
         )}
       </div>
 
-      {/* Withdrawal Modal */}
-      {showWithdraw && (
-        /* No backdrop close: a stray click must not drop the chosen reason. */
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div
-            ref={withdrawTrapRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`withdraw-title-${app._id}`}
-            aria-describedby={`withdraw-desc-${app._id}`}
-            className="bg-background rounded-2xl shadow-2xl w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto panel-body"
-          >
-            <div className="flex items-center justify-between">
-              <h2 id={`withdraw-title-${app._id}`} className="font-semibold">{t("withdrawal.title")}</h2>
-              <button
-                type="button"
-                onClick={() => setShowWithdraw(false)}
-                aria-label={t("withdrawal.cancel")}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p id={`withdraw-desc-${app._id}`} className="text-sm text-muted-foreground">
-              {t("withdrawal.description", { job: jobTitle })}
-            </p>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("withdrawal.reason")} <span className="text-destructive">{t("withdrawal.required")}</span></label>
-              <SearchableSelect
-                options={withdrawalReasonOptions}
-                value={withdrawReason}
-                onValueChange={setWithdrawReason}
-                placeholder={t("withdrawal.selectReason")}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                {t("withdrawal.comments")} <span className="text-muted-foreground font-normal">({t("withdrawal.optional")})</span>
-              </label>
-              <Textarea
-                placeholder={t("withdrawal.commentsPlaceholder")}
-                value={withdrawNote}
-                onChange={(e) => setWithdrawNote(e.target.value)}
-                maxLength={500}
-                rows={3}
-                className="resize-none"
-              />
-            </div>
-
-            {withdrawError && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                {withdrawError}
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="destructive"
-                className="flex-1 gap-2"
-                onClick={handleWithdraw}
-                disabled={!withdrawReason || withdrawing}
-              >
-                {withdrawing && <Loader2 className="w-4 h-4 animate-spin" />}
-                {t("withdrawal.confirm")}
-              </Button>
-              <Button variant="outline" onClick={() => setShowWithdraw(false)} disabled={withdrawing}>
-                {t("withdrawal.cancel")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WithdrawApplicationDialog
+        applicationId={app._id}
+        jobTitle={jobTitle}
+        open={showWithdraw}
+        onOpenChange={setShowWithdraw}
+        onWithdrawn={onWithdrawn}
+      />
     </>
   );
 }

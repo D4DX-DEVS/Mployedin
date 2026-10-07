@@ -158,6 +158,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
 
   function getTitleError() {
     if (!errors.title) return null;
+    if (errors.title.type === "too_big") return t("validation.titleMax");
+    if (errors.title.type === "custom") return t("validation.titleMarkup");
     return title?.trim() ? t("validation.titleMin") : t("validation.titleRequired");
   }
 
@@ -193,6 +195,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             <Input
               id="title"
               {...register("title")}
+              maxLength={200}
               placeholder={t("jobTitlePlaceholder")}
               className={cn(errors.title && "border-destructive")}
               autoComplete="off"

@@ -15,6 +15,10 @@ const JOB_ID = "651000000000000000000b01";
 const OWNER_ID = "651000000000000000000f01";
 
 let employerDoc: Record<string, unknown> | null;
+let jobDoc: Record<string, unknown> | null;
+const JOB_AGENT_ID = "651000000000000000000a11";
+const JOB_AGENT_USER_ID = "651000000000000000000a12";
+const agentUsers: Record<string, string> = { [AGENT_ID]: AGENT_USER_ID, [JOB_AGENT_ID]: JOB_AGENT_USER_ID };
 const mockNotify = jest.fn().mockResolvedValue(undefined);
 
 jest.mock("@/lib/auth/withAuth", () => ({
@@ -40,8 +44,13 @@ jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: { findById: jest.fn(() => chain({ employerId: EMPLOYER_ID, jobId: JOB_ID, jobSeekerId: "651000000000000000000d01" })) },
 }));
-jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findById: jest.fn(() => chain({ userId: AGENT_USER_ID })) } }));
-jest.mock("@/models/Job", () => ({ __esModule: true, default: { findById: jest.fn(() => chain({ title: "Accountant" })) } }));
+jest.mock("@/models/Agent", () => ({
+  __esModule: true,
+  default: {
+    find: jest.fn((q: { _id: { $in: string[] } }) => chain(q._id.$in.map((id) => ({ userId: agentUsers[id] })))),
+  },
+}));
+jest.mock("@/models/Job", () => ({ __esModule: true, default: { findById: jest.fn(() => chain(jobDoc)) } }));
 jest.mock("@/models/BackgroundCheck", () => ({ __esModule: true, default: { create: jest.fn(async (doc: unknown) => ({ _id: "check1", ...(doc as object) })) } }));
 
 async function post() {
@@ -56,6 +65,7 @@ async function post() {
 beforeEach(() => {
   jest.clearAllMocks();
   employerDoc = { _id: EMPLOYER_ID, agentId: AGENT_ID, companyName: "Acme" };
+  jobDoc = { title: "Accountant" };
 });
 
 it("tells the employer's agent that a check was requested", async () => {
@@ -76,4 +86,28 @@ it("tells nobody when the employer has no agent", async () => {
   expect((await post()).status).toBe(201);
   await new Promise((r) => setImmediate(r));
   expect(mockNotify).not.toHaveBeenCalled();
+});
+
+it("also tells the job's own agent when it differs from the employer's (QA EMP-002)", async () => {
+  jobDoc = { title: "Accountant", agentId: JOB_AGENT_ID };
+  expect((await post()).status).toBe(201);
+  await new Promise((r) => setImmediate(r));
+  const told = mockNotify.mock.calls.map((c) => c[0].userId).sort();
+  expect(told).toEqual([AGENT_USER_ID, JOB_AGENT_USER_ID].sort());
+});
+
+it("tells the job's agent when the employer has none", async () => {
+  employerDoc = { _id: EMPLOYER_ID, companyName: "Acme" };
+  jobDoc = { title: "Accountant", agentId: JOB_AGENT_ID };
+  expect((await post()).status).toBe(201);
+  await new Promise((r) => setImmediate(r));
+  expect(mockNotify).toHaveBeenCalledTimes(1);
+  expect(mockNotify.mock.calls[0][0].userId).toBe(JOB_AGENT_USER_ID);
+});
+
+it("tells a shared agent only once", async () => {
+  jobDoc = { title: "Accountant", agentId: AGENT_ID };
+  expect((await post()).status).toBe(201);
+  await new Promise((r) => setImmediate(r));
+  expect(mockNotify).toHaveBeenCalledTimes(1);
 });

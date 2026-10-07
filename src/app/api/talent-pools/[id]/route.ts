@@ -5,6 +5,7 @@ import TalentPool from "@/models/TalentPool";
 import Employer from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
+import { isValidPoolName, normalizePoolTags, POOL_DESCRIPTION_MAX, POOL_NAME_ERROR } from "@/lib/talentPools/fields";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }, params?: Record<string, string>) {
   await connectDB();
@@ -101,10 +102,13 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     return NextResponse.json({ pool, message: "Candidate removed" });
   }
 
-  // Update pool metadata
-  if (body.name) pool.name = body.name.trim();
-  if (body.description !== undefined) pool.description = body.description.trim();
-  if (body.tags) pool.tags = body.tags.map((t: string) => t.trim()).slice(0, 20);
+  // Update pool metadata — same rules as create (QA EMP-016: edit had none).
+  if (body.name !== undefined) {
+    if (!isValidPoolName(body.name)) return NextResponse.json({ error: POOL_NAME_ERROR }, { status: 400 });
+    pool.name = body.name.trim();
+  }
+  if (typeof body.description === "string") pool.description = body.description.trim().slice(0, POOL_DESCRIPTION_MAX);
+  if (body.tags !== undefined) pool.tags = normalizePoolTags(body.tags);
   await pool.save();
 
   return NextResponse.json({ pool });

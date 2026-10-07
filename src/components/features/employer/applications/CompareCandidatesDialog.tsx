@@ -127,7 +127,7 @@ function CandidateColumn({ row, common, t, tBand }: { row: CompareCandidate; com
           bandLabel={band}
           emptyLabel={t("notScoredYet")}
         />
-        <RequirementsBadge status={row.requirementsStatus} />
+        <RequirementsBadge status={row.requirementsStatus} noMustHaves={row.hasMustHaves === false} />
       </div>
 
       {breakdownRows.length > 0 && (

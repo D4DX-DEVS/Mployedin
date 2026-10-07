@@ -134,6 +134,21 @@ export async function fetchShortlistPool<T>(filters: ShortlistPoolFilters): Prom
 }
 
 /** Fetch paginated, filtered applications list */
+/**
+ * The job filter's options (the jobs this user may see). Their own query: as a
+ * flag on the list they either changed the list's key once they arrived, which
+ * fetched page one twice on every open, or rode along on every page and filter
+ * change (QA EMP-004).
+ */
+export function useApplicationJobOptions<T>() {
+  return useQuery({
+    queryKey: ["application-job-options"] as const,
+    queryFn: async (): Promise<T[]> =>
+      (await fetchApplicationsPage({ page: 1, limit: 1, fetchJobs: true })).employerJobs ?? [],
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useApplications(filters: ApplicationsFilters) {
   return useQuery({
     queryKey: applicationKeys.list(filters),
@@ -475,6 +490,8 @@ export interface CompareCandidate {
   matchBreakdown: { skills?: number; role?: number; experience?: number; education?: number; location?: number; salary?: number } | null;
   /** Requirements checklist roll-up; null before the ATS scoring has run. */
   requirementsStatus?: "met" | "not_met" | "unverified" | null;
+  /** Whether the job set any must-have; null when the checklist isn't known. */
+  hasMustHaves?: boolean | null;
   candidate: {
     name: string;
     profilePicture: string | null;

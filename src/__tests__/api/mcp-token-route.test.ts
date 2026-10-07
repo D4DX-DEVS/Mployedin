@@ -113,7 +113,7 @@ describe("POST /api/mcp/token security", () => {
       redirectUri: "https://chatgpt.com/connector/oauth/callback",
       resource: "http://localhost:3000",
       codeChallenge: s256(correctVerifier),
-      scopes: ["read:jobs"],
+      scopes: ["read:reports"],
       expiresAt: new Date(Date.now() + 60_000),
     }));
 
@@ -140,7 +140,7 @@ describe("POST /api/mcp/token security", () => {
       resource: "http://localhost:3000",
       userId: "user-id",
       role: "employer",
-      scopes: ["read:employer_jobs"],
+      scopes: ["read:reports"],
       isRevoked: false,
       refreshTokenExpiresAt: new Date(Date.now() + 60_000),
       authorizationExpiresAt: new Date(Date.now() + 60_000),
@@ -172,7 +172,7 @@ describe("POST /api/mcp/token security", () => {
       resource: "http://localhost:3000",
       userId: "user-id",
       role: "admin",
-      scopes: ["read:employer_jobs", "read:applicants"],
+      scopes: ["read:reports"],
       isRevoked: false,
       refreshTokenExpiresAt: authorizationExpiresAt,
       authorizationExpiresAt,

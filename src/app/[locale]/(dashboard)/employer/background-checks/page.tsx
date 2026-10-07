@@ -54,6 +54,8 @@ interface BackgroundCheck {
   assignedTo?: { _id: string; name?: string; email?: string } | null;
   verifiedBy?: { _id: string; name?: string; email?: string } | null;
   verifiedAt?: string;
+  /** The agent following the check: the job's agent, else the account agent. */
+  agentName?: string | null;
 }
 
 /** A colleague who may be handed a check, from the team list. */
@@ -388,18 +390,22 @@ export default function BackgroundChecksPage() {
                 {t("assignedToMe")}
               </Button>
             </div>
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+            {/* Own row on phones, the two dates sharing it: beside the queue
+                toggle they ran 137px past a 390px screen (QA EMP-018). */}
+            <div className="flex min-w-0 basis-full items-center gap-2 sm:basis-auto sm:flex-none">
               <DateTimePicker
                 mode="date"
                 value={dateFrom}
                 onChange={setDateFrom}
                 placeholder={t("fromDate")}
+                className="min-w-0 flex-1 sm:flex-none"
               />
               <DateTimePicker
                 mode="date"
                 value={dateTo}
                 onChange={setDateTo}
                 placeholder={t("toDate")}
+                className="min-w-0 flex-1 sm:flex-none"
               />
               {/* Privacy info at the point candidate data is shown, compacted
                   to an icon + popover to keep the list above the fold. */}
@@ -432,7 +438,8 @@ export default function BackgroundChecksPage() {
                   <p className="text-xs text-muted-foreground">
                     {c.assignedTo
                       ? `${t("assignedTo")}: ${c.assignedTo.name ?? c.assignedTo.email ?? ""}`
-                      : t("unassigned")}
+                      : t("noTeammate")}
+                    {c.agentName ? ` · ${t("agentFollowing", { name: c.agentName })}` : ""}
                     {c.verifiedBy
                       ? ` · ${t("verifiedBy", { name: c.verifiedBy.name ?? c.verifiedBy.email ?? "" })}`
                       : ""}

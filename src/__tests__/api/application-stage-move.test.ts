@@ -147,6 +147,17 @@ describe("PATCH /api/applications/[id] — workflow stages", () => {
     }));
   });
 
+  it("opens the moved application from the employer's notification and names the candidate (QA EMP-013)", async () => {
+    const { notify } = await import("@/lib/notifications/trigger");
+    const { PATCH } = await import("@/app/api/applications/[id]/route");
+    await PATCH(patch({ stageId: "offer" }), params);
+    const toEmployer = (notify as jest.Mock).mock.calls.map((c) => c[0]).find((n) => n.titleKey === "stageChangedTitle");
+    expect(toEmployer.link).toBe(`/employer/applications?application=${APP_ID}`);
+    expect(toEmployer.bodyKey).toBe("stageChangedNamedBody");
+    // The seeker lookup returns nothing here, so the name falls back rather than failing the move.
+    expect(toEmployer.params).toEqual(expect.objectContaining({ candidateName: "A candidate", status: "offer" }));
+  });
+
   it("a status change without a stage lands in the first stage of that status", async () => {
     app.status = "applied";
     app.stageId = undefined;

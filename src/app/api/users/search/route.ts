@@ -6,6 +6,7 @@ import User from "@/models/User";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { getEmployerContactUserIds } from "@/lib/dm/employerContacts";
 
 interface AuthCtx {
   userId: string;
@@ -66,8 +67,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       searchableRoles.push("super_agent", "employer");
       break;
     case "employer":
-      // Employers can message job seekers (recruiter outreach) + agents/super agents
-      searchableRoles.push("job_seeker", "agent", "super_agent");
+      // Only their applicants, their agent and the support team (owner
+      // decision 2026-10-06, QA EMP-001) — narrowed to ids below.
+      searchableRoles.push("job_seeker", "agent", "admin");
       break;
     case "job_seeker":
       // Job seekers can DM employers + other job seekers (peer networking)
@@ -80,6 +82,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ users: [] });
   }
 
+  // Who the caller may find. An employer only sees people connected to it;
+  // every admin counts as support and is always reachable.
+  let scopeMatch: Record<string, unknown> = { role: { $in: searchableRoles } };
+  if (ctx.role === "employer") {
+    const contactIds = await getEmployerContactUserIds(ctx.userId);
+    // Role kept on the contacts too: someone whose account changed role since
+    // they applied would show here and then be refused by POST /api/dm.
+    scopeMatch = { $or: [{ role: "admin" }, { _id: { $in: contactIds }, role: { $in: ["job_seeker", "agent"] } }] };
+  }
+
   const pipeline: mongoose.PipelineStage[] = [
     // Stage 1: filter active users, exclude self, match searchable roles
     {
@@ -87,7 +99,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         _id: { $ne: currentUserId },
         isActive: true,
         lockUntil: { $not: { $gt: new Date() } },
-        role: { $in: searchableRoles },
+        ...scopeMatch,
         // Pre-filter: name must at least contain the query (regex on indexed field)
         name: { $regex: safe, $options: "i" },
       },
@@ -173,7 +185,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         _id: { $ne: currentUserId },
         isActive: true,
         lockUntil: { $not: { $gt: new Date() } },
-        role: { $in: searchableRoles },
+        ...scopeMatch,
         // Name does NOT match (already covered above)
         name: { $not: { $regex: safe, $options: "i" } },
       },

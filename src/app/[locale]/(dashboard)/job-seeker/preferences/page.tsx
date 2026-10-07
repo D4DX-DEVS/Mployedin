@@ -27,7 +27,16 @@ import {
 } from "lucide-react";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import { userInitials } from "@/components/shared/UserAvatar";
-import { preferencesFromProfile, type PreferencesData } from "@/lib/jobSeeker/preferences";
+import {
+  preferencesFromProfile,
+  validatePreferences,
+  preferenceErrorsFromServer,
+  MAX_NOTICE_PERIOD_DAYS,
+  MAX_PREFERRED_ROLE_LENGTH,
+  type PreferencesData,
+  type PreferenceError,
+  type PreferenceErrors,
+} from "@/lib/jobSeeker/preferences";
 
 const CURRENCIES = ["USD", "INR", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
 
@@ -326,6 +335,21 @@ function RecommendedJobCard({ job }: { job: RecommendedJob }) {
   );
 }
 
+/** Shortens a pasted entry so the message stays one line. */
+function clip(value: string | undefined, max = 40): string {
+  if (!value) return "";
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="mt-1.5 text-xs font-medium text-destructive">
+      {message}
+    </p>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function JobPreferencesPage() {
@@ -333,6 +357,7 @@ export default function JobPreferencesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+  const [fieldErrors, setFieldErrors] = useState<PreferenceErrors>({});
   const [prefs, setPrefs] = useState<PreferencesData>({
     preferredRoles: [],
     preferredCountries: [],
@@ -415,7 +440,43 @@ export default function JobPreferencesPage() {
     loadRecommendedJobs();
   }, [loadPreferences, loadRecommendedJobs]);
 
+  // Once a save has flagged fields, re-check as the seeker edits so each
+  // message clears the moment its field is fixed.
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+  useEffect(() => {
+    if (hasFieldErrors) setFieldErrors(validatePreferences(prefs));
+  }, [prefs]);
+
+  const errorText = (error?: PreferenceError): string | undefined => {
+    if (!error) return undefined;
+    switch (error.code) {
+      case "roleTooLong": return t("errors.roleTooLong", { value: clip(error.value), max: MAX_PREFERRED_ROLE_LENGTH });
+      case "tooManyRoles": return t("errors.tooManyRoles", { max: 20 });
+      case "countryTooLong": return t("errors.countryTooLong", { value: clip(error.value), max: MAX_PREFERRED_ROLE_LENGTH });
+      case "tooManyCountries": return t("errors.tooManyCountries", { max: 20 });
+      case "salaryNegative": return t("errors.salaryNegative");
+      case "salaryOrder": return t("errors.salaryOrder");
+      case "noticeRange": return t("errors.noticeRange", { max: MAX_NOTICE_PERIOD_DAYS });
+      default: return t("errors.invalid");
+    }
+  };
+
+  const showSaveError = (errors: PreferenceErrors) => {
+    setFieldErrors(errors);
+    setSaveState("error");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    // A field message stays until it is fixed; only the bare failure fades.
+    if (Object.keys(errors).length === 0) {
+      saveTimer.current = setTimeout(() => setSaveState("idle"), 3000);
+    }
+  };
+
   const handleSave = async () => {
+    const localErrors = validatePreferences(prefs);
+    if (Object.keys(localErrors).length > 0) {
+      showSaveError(localErrors);
+      return;
+    }
     setSaving(true);
     const currentScore = computeMatchScore(savedPrefs ?? prefs).score;
     try {
@@ -425,6 +486,7 @@ export default function JobPreferencesPage() {
         body: JSON.stringify(prefs),
       });
       if (res.ok) {
+        setFieldErrors({});
         setPrevScore(currentScore);
         setSavedPrefs({ ...prefs });
         sessionStorage.removeItem(DRAFT_KEY);
@@ -434,10 +496,12 @@ export default function JobPreferencesPage() {
         // Refresh recommendations after saving
         loadRecommendedJobs();
       } else {
-        setSaveState("error");
-        if (saveTimer.current) clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(() => setSaveState("idle"), 3000);
+        // validateBody answers 400 with the failing paths; name those fields.
+        const body = res.status === 400 ? await res.json().catch(() => null) : null;
+        showSaveError(preferenceErrorsFromServer(body?.details, prefs));
       }
+    } catch {
+      showSaveError({});
     } finally {
       setSaving(false);
     }
@@ -484,6 +548,7 @@ export default function JobPreferencesPage() {
             ariaLabel={t("preferredRoles")}
             max={10}
           />
+          <FieldError id="pref-roles-error" message={errorText(fieldErrors.preferredRoles)} />
         </Section>
 
         {/* ── Preferred Locations ───────────────────────────────────────── */}
@@ -500,6 +565,7 @@ export default function JobPreferencesPage() {
             ariaLabel={t("preferredLocations")}
             max={10}
           />
+          <FieldError id="pref-locations-error" message={errorText(fieldErrors.preferredCountries)} />
         </Section>
 
         {/* ── Salary Expectations ───────────────────────────────────────── */}
@@ -552,6 +618,8 @@ export default function JobPreferencesPage() {
               </label>
               <Input
                 aria-label={t("minimum")}
+                aria-invalid={fieldErrors.preferredSalary ? true : undefined}
+                aria-describedby={fieldErrors.preferredSalary ? "pref-salary-error" : undefined}
                 type="number"
                 min={0}
                 value={prefs.preferredSalary.min || ""}
@@ -574,6 +642,8 @@ export default function JobPreferencesPage() {
               </label>
               <Input
                 aria-label={t("maximum")}
+                aria-invalid={fieldErrors.preferredSalary ? true : undefined}
+                aria-describedby={fieldErrors.preferredSalary ? "pref-salary-error" : undefined}
                 type="number"
                 min={0}
                 value={prefs.preferredSalary.max || ""}
@@ -607,6 +677,7 @@ export default function JobPreferencesPage() {
               />
             </div>
           </div>
+          <FieldError id="pref-salary-error" message={errorText(fieldErrors.preferredSalary)} />
         </Section>
 
         {/* ── Job Type ──────────────────────────────────────────────────── */}
@@ -692,9 +763,11 @@ export default function JobPreferencesPage() {
                 </label>
                 <Input
                   aria-label={t("noticePeriod")}
+                  aria-invalid={fieldErrors.noticePeriod ? true : undefined}
+                  aria-describedby={fieldErrors.noticePeriod ? "pref-notice-error" : "pref-notice-hint"}
                   type="number"
                   min={0}
-                  max={365}
+                  max={MAX_NOTICE_PERIOD_DAYS}
                   value={prefs.noticePeriod || ""}
                   onChange={(e) =>
                     setPrefs((p) => ({
@@ -705,6 +778,11 @@ export default function JobPreferencesPage() {
                   className="h-9 text-sm"
                   placeholder="0"
                 />
+                {fieldErrors.noticePeriod ? (
+                  <FieldError id="pref-notice-error" message={errorText(fieldErrors.noticePeriod)} />
+                ) : (
+                  <p id="pref-notice-hint" className="mt-1.5 text-xs text-muted-foreground">{t("noticeHint")}</p>
+                )}
               </div>
             </div>
           )}
@@ -720,7 +798,7 @@ export default function JobPreferencesPage() {
           )}
           {saveState === "error" && !saving && (
             <span className="text-sm text-destructive flex items-center gap-1.5">
-              {t("failed")}
+              {hasFieldErrors ? t("fixErrors") : t("failed")}
             </span>
           )}
           {isDirty && saveState !== "error" && !saving && (

@@ -13,7 +13,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   FileText,
-  Filter,
+  SlidersHorizontal,
   MessageCircle,
   Settings2,
   Target,
@@ -178,7 +178,7 @@ export function NotificationBell({ locale, userRole }: NotificationBellProps) {
             );
           })}
           <Link href={`/${locale}/notifications`} onClick={() => setOpen(false)} className="ms-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label={t("filterLabel")}>
-            <Filter className="h-3.5 w-3.5" />
+            <SlidersHorizontal className="h-3.5 w-3.5" />
           </Link>
         </div>
         <div className="max-h-[25rem] overflow-y-auto">

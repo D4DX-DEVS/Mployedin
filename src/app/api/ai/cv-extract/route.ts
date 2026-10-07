@@ -66,6 +66,11 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("cv") as File | null;
+    // "preview": read the file and hand the reading back without touching the
+    // profile, the account name or the stored CV — the CV Builder and the
+    // Documents page save only when the seeker confirms. No mode keeps the
+    // one-step fill onboarding and Easy Apply rely on.
+    const previewOnly = formData.get("mode") === "preview";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -168,6 +173,23 @@ export async function POST(req: NextRequest) {
       : text;
 
     const extracted = JSON.parse(jsonStr);
+
+    if (previewOnly) {
+      await logActivity({
+        actorId: session.user.id!,
+        actorRole: "job_seeker",
+        action: "cv.extract",
+        resource: "ai_cv",
+        meta: {
+          fileType: mimeType,
+          fileSize: file.size,
+          skillsExtracted: extracted.skills?.length ?? 0,
+          preview: true,
+        },
+        req,
+      });
+      return NextResponse.json({ success: true, preview: true, extracted });
+    }
 
     // Save extracted data to JobSeeker profile
     await connectDB();

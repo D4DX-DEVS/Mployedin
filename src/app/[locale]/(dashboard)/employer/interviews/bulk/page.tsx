@@ -11,6 +11,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { useShortlistedCandidates, useBulkScheduleInterviews } from "@/hooks/useInterviews";
+import { isValidWebsiteInput } from "@/lib/validators/website";
 
 interface Candidate {
   _id: string;
@@ -37,6 +38,9 @@ export default function EmployerBulkInterviewPage() {
     date: "", time: "10:00", duration: 45, type: "video", meetLink: "", location: "",
   });
   const [result, setResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [sendError, setSendError] = useState("");
+  // Same rule the server applies; the browser lets "not a link" through.
+  const meetLinkInvalid = slot.type !== "offline" && !isValidWebsiteInput(slot.meetLink);
   const [jobId, setJobId] = useState("");
 
   const { data: rawApps = [], isLoading: loading } = useShortlistedCandidates(jobId);
@@ -82,7 +86,8 @@ export default function EmployerBulkInterviewPage() {
 
   const handleSend = async () => {
     const selected = candidates.filter(c => c.selected);
-    if (!selected.length || !slot.date || !slot.time) return;
+    if (!selected.length || !slot.date || !slot.time || meetLinkInvalid) return;
+    setSendError("");
     const scheduledAt = new Date(`${slot.date}T${slot.time}:00`).toISOString();
     try {
       const data = await bulkSchedule.mutateAsync({
@@ -96,7 +101,8 @@ export default function EmployerBulkInterviewPage() {
       setResult({ sent: data.created ?? selected.length, failed: data.failed ?? 0 });
       setSelections({});
     } catch {
-      // error handled by React Query
+      // Nothing else reports it: the mutation has no toast (QA EMP-007 follow-up).
+      setSendError(t("scheduleFailed"));
     }
   };
 
@@ -232,7 +238,12 @@ export default function EmployerBulkInterviewPage() {
               <div>
                 <label className="text-xs text-muted-foreground">{t("meetingLink")}</label>
                 <input value={slot.meetLink} onChange={e => setSlot(s => ({ ...s, meetLink: e.target.value }))}
-                  placeholder={t("meetingPlaceholder")} aria-label={t("meetingPlaceholder")} className="input-field w-full mt-1" />
+                  placeholder={t("meetingPlaceholder")} aria-label={t("meetingPlaceholder")} className="input-field w-full mt-1"
+                  aria-invalid={meetLinkInvalid || undefined}
+                  aria-describedby={meetLinkInvalid ? "bulk-meet-link-error" : undefined} />
+                {meetLinkInvalid && (
+                  <p id="bulk-meet-link-error" className="mt-1 text-xs text-destructive">{t("meetLinkInvalid")}</p>
+                )}
               </div>
             )}
             {slot.type !== "video" && (
@@ -254,8 +265,12 @@ export default function EmployerBulkInterviewPage() {
             </div>
           )}
 
+          {sendError && (
+            <p role="alert" className="text-xs font-medium text-destructive">{sendError}</p>
+          )}
+
           <button onClick={handleSend}
-            disabled={bulkSchedule.isPending || selectedCount === 0 || !slot.date || !slot.time}
+            disabled={bulkSchedule.isPending || selectedCount === 0 || !slot.date || !slot.time || meetLinkInvalid}
             className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
             {bulkSchedule.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {bulkSchedule.isPending ? t("scheduling") : t("scheduleFor", { count: selectedCount })}

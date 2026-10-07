@@ -108,7 +108,7 @@ function consent(body: Record<string, unknown>) {
         redirect_uri: CHATGPT_REDIRECT,
         code_challenge: CHALLENGE,
         resource: "https://app.test",
-        scope: "read:employer_jobs read:applicants",
+        scope: "read:reports",
         state: "s1",
         ...body,
       }),
@@ -193,15 +193,15 @@ describe("Connected apps API", () => {
   it("lists one entry per grant, newest token first, with the app's name", async () => {
     const expires = new Date(Date.now() + 30 * 24 * 3600 * 1000);
     tokensQuery([
-      { familyId: FAMILY, clientId: "mcpc_1", scopes: ["read:applicants"], createdAt: new Date(), authorizationExpiresAt: expires },
-      { familyId: FAMILY, clientId: "mcpc_1", scopes: ["read:applicants"], createdAt: new Date(0), authorizationExpiresAt: expires },
+      { familyId: FAMILY, clientId: "mcpc_1", scopes: ["read:reports"], createdAt: new Date(), authorizationExpiresAt: expires },
+      { familyId: FAMILY, clientId: "mcpc_1", scopes: ["read:reports"], createdAt: new Date(0), authorizationExpiresAt: expires },
     ]);
     clientModel.find.mockReturnValue({ select: jest.fn(() => lean([{ clientId: "mcpc_1", clientName: "ChatGPT" }])) });
 
     const res = await appsGET(new NextRequest("https://app.test/api/user/connected-apps"), { params: Promise.resolve({}) });
     const { apps } = await res.json();
     expect(apps).toHaveLength(1);
-    expect(apps[0]).toMatchObject({ id: FAMILY, clientName: "ChatGPT", scopes: ["read:applicants"] });
+    expect(apps[0]).toMatchObject({ id: FAMILY, clientName: "ChatGPT", scopes: ["read:reports"] });
     expect(new Date(apps[0].connectedAt).getTime()).toBe(expires.getTime() - MCP_AUTHORIZATION_TTL_SECONDS * 1000);
     expect(tokenModel.find).toHaveBeenCalledWith(expect.objectContaining({ userId: "owner-1", isRevoked: false }));
   });

@@ -44,6 +44,8 @@ function getStatusColor(status: OfferStatus): string {
 }
 
 const OFFER_STATUSES = ["pending", "accepted", "declined", "expired", "withdrawn"] as const;
+/** Grouped chip filters: open = pending + countered, closed = declined + expired + withdrawn. */
+const URL_STATUSES = [...OFFER_STATUSES, "open", "closed"] as const;
 
 export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProps) {
   const router = useRouter();
@@ -70,7 +72,7 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
     router.replace(`?${params.toString()}`, { scroll: false });
   }
   const [limit, setLimit] = useState(10);
-  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: OFFER_STATUSES });
+  const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: URL_STATUSES });
   const [urlJobFilter, setUrlJobFilter] = useUrlFilter("jobId", "all");
   const jobFilter = jobId ?? urlJobFilter;
   const [detailOffer, setDetailOffer] = useState<Offer | null>(null);
@@ -192,9 +194,9 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
           context={t("subtitle")}
           metrics={[
             { label: t("statOffers"), value: stats ? stats.total : "—", icon: DollarSign, tone: "primary" },
-            { label: t("pending"), value: stats ? stats.pending : "—", icon: Clock3, tone: "warning" },
+            { label: t("pending"), value: stats ? stats.open : "—", icon: Clock3, tone: "warning" },
             { label: t("accepted"), value: stats ? stats.accepted : "—", icon: CircleCheckBig, tone: "success" },
-            { label: t("declined"), value: stats ? stats.declined : "—", icon: XCircle, tone: "info" },
+            { label: t("closedStat"), value: stats ? stats.closed : "—", icon: XCircle, tone: "info" },
           ]}
         />
       )}
@@ -220,17 +222,17 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
             </button>
             <button
               type="button"
-              aria-pressed={statusFilter === "pending"}
-              onClick={() => setStatusFilter("pending")}
+              aria-pressed={statusFilter === "open"}
+              onClick={() => setStatusFilter("open")}
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors min-h-11 sm:min-h-9 ${
-                statusFilter === "pending"
+                statusFilter === "open"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "border-border bg-background text-foreground hover:bg-secondary"
               }`}
             >
               {t("pending")}
               <span className="rounded-full bg-background/60 px-2 py-0.5 text-xs font-medium">
-                {stats?.pending ?? "—"}
+                {stats?.open ?? "—"}
               </span>
             </button>
             <button
@@ -250,17 +252,17 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
             </button>
             <button
               type="button"
-              aria-pressed={statusFilter === "declined"}
-              onClick={() => setStatusFilter("declined")}
+              aria-pressed={statusFilter === "closed"}
+              onClick={() => setStatusFilter("closed")}
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors min-h-11 sm:min-h-9 ${
-                statusFilter === "declined"
+                statusFilter === "closed"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "border-border bg-background text-foreground hover:bg-secondary"
               }`}
             >
-              {t("declined")}
+              {t("closedStat")}
               <span className="rounded-full bg-background/60 px-2 py-0.5 text-xs font-medium">
-                {stats?.declined ?? "—"}
+                {stats?.closed ?? "—"}
               </span>
             </button>
           </>

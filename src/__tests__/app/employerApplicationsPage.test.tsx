@@ -85,6 +85,7 @@ jest.mock("@/hooks/useApplications", () => ({
   useComputeAiMatch: () => ({ mutateAsync: computeAiMatchMutateAsyncMock, isPending: false, variables: undefined }),
   useBulkAiMatch: () => ({ mutateAsync: bulkAiMatchMutateAsyncMock, isPending: false }),
   fetchShortlistPool: (...args: unknown[]) => fetchShortlistPoolMock(...args),
+  useApplicationJobOptions: () => ({ data: [], isSuccess: true }),
   applicationKeys: { all: ["applications"], lists: () => ["applications", "list"] },
 }));
 
@@ -210,8 +211,9 @@ describe("EmployerApplicationsPage", () => {
 
     expect(screen.getByRole("heading", { name: /applications/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /select visible/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /score all/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /shortlist top/i })).toBeInTheDocument();
+    // All Jobs: scoring and shortlisting wait for a job (owner, 2026-10-07).
+    expect(screen.queryByRole("button", { name: /score all/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /shortlist top/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /kanban/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/compact cards keep the list easy to scan/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /detailed view/i })).toBeInTheDocument();
@@ -429,7 +431,7 @@ describe("EmployerApplicationsPage", () => {
       render(<ApplicationsWorkspace jobId="job-1" embedded />);
       await user.click(screen.getByRole("button", { name: /shortlist top/i }));
 
-      expect(await screen.findByText(/3 applicants don't meet the job's requirements/i)).toBeInTheDocument();
+      expect(await screen.findByText(/3 applicants are missing a must-have/i)).toBeInTheDocument();
       expect(fetchShortlistPoolMock).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-1" }));
       expect(screen.getByText("Top Pick")).toBeInTheDocument();
       expect(screen.getByText("Runner Up")).toBeInTheDocument();
@@ -457,7 +459,7 @@ describe("EmployerApplicationsPage", () => {
       expect(screen.getByText("of 2")).toBeInTheDocument();
     });
 
-    it("says why when every Applied candidate fails a requirement", async () => {
+    it("says why when every Applied candidate is missing a must-have", async () => {
       const user = userEvent.setup();
       fetchShortlistPoolMock.mockResolvedValue({ candidates: [], failingRequirements: 2 });
 
@@ -465,7 +467,7 @@ describe("EmployerApplicationsPage", () => {
       await user.click(screen.getByRole("button", { name: /shortlist top/i }));
 
       await waitFor(() => expect(toastInfoMock).toHaveBeenCalledTimes(1));
-      expect(toastInfoMock.mock.calls[0][0]).toMatch(/2 applicants don't meet/i);
+      expect(toastInfoMock.mock.calls[0][0]).toMatch(/2 applicants are missing a must-have/i);
       expect(bulkActionMutateAsyncMock).not.toHaveBeenCalled();
     });
   });
@@ -580,6 +582,27 @@ describe("EmployerApplicationsPage", () => {
     });
   });
 
+  describe("on All Jobs, with no job picked", () => {
+    /** Owner 2026-10-07: scores and shortlists belong to one job. On All Jobs,
+        Shortlist Top ranked people from different jobs against each other. */
+    it("keeps Select Visible but not Score All or Shortlist Top, and says why", () => {
+      render(<ApplicationsWorkspace />);
+
+      expect(screen.getByRole("button", { name: /select visible/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /shortlist top/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /score all/i })).not.toBeInTheDocument();
+      expect(screen.getByText("Pick a job to score and shortlist candidates")).toBeInTheDocument();
+    });
+
+    it("shows both once the list is for one job", () => {
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      expect(screen.getByRole("button", { name: /shortlist top/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /score all/i })).toBeInTheDocument();
+      expect(screen.queryByText("Pick a job to score and shortlist candidates")).not.toBeInTheDocument();
+    });
+  });
+
   describe("candidate panel overflow menu", () => {
     /** The ⋯ button used to be a bare icon with no handler at all, and the
         Background Check tile had no request affordance anywhere in the panel. */
@@ -605,99 +628,93 @@ describe("EmployerApplicationsPage", () => {
     });
   });
 
-  describe("shortlist chip", () => {
-    /** The Applications tab already IS everyone who applied, so an "Applied"
-        chip repeats the tab's own count and reads as a contradiction. The one
-        chip that adds something is the shortlist. */
-    function withCounts(shortlisted = 3, interviewing = 1) {
-      useApplicationsMock.mockReturnValue({
-        data: {
-          applications: [],
-          statusCounts: { applied: 3, shortlisted, interview_scheduled: interviewing, selected: 0, offer: 0, hired: 0, rejected: 2, withdrawn: 0 },
-          pagination: { total: 3, page: 1, limit: 10, totalPages: 1 },
-        },
-        isLoading: false,
-      });
+  describe("Shortlisted or later, in the Status filter", () => {
+    /** Owner 2026-10-07: this was a chip on its own row above the toolbar, a
+        second control beside the Status filter. Every status choice now lives
+        in the filter. */
+    async function openStatus() {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" />);
+      await user.click(screen.getByRole("button", { name: /^filters/i }));
+      return { user, status: screen.getByRole("combobox", { name: "All statuses" }) };
     }
 
-    it("offers the shortlist and nothing else", () => {
-      withCounts();
-      render(<ApplicationsWorkspace jobId="job-1" />);
-
-      const chips = screen.getByRole("group", { name: /filter by stage/i });
-      expect(within(chips).getAllByRole("button").map((b) => b.textContent?.trim())).toEqual(["Shortlisted4"]);
-      expect(within(chips).queryByRole("button", { name: /applied/i })).not.toBeInTheDocument();
+    it("has no chip row any more", () => {
+      render(<ApplicationsWorkspace />);
+      expect(screen.queryByRole("group", { name: /filter by stage/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /shortlisted or later/i })).not.toBeInTheDocument();
     });
 
-    /** Shortlisting is what sends someone to interview, so advancing must not
-        drop them out of the shortlist: 3 sitting at shortlisted + 1 who has
-        moved on to Interviewing = 4. */
-    it("keeps counting candidates who have since advanced", () => {
-      withCounts();
-      render(<ApplicationsWorkspace jobId="job-1" />);
-      expect(screen.getByRole("button", { name: /shortlisted 4/i })).toBeInTheDocument();
+    it("sits right under All statuses", async () => {
+      const { status } = await openStatus();
+      const labels = within(status).getAllByRole("option").map((o) => o.textContent);
+      expect(labels.slice(0, 3)).toEqual(["All statuses", "Shortlisted or later", "Applied"]);
     });
 
-    it("leaves out anyone rejected or still untriaged", () => {
-      useApplicationsMock.mockReturnValue({
-        data: {
-          applications: [],
-          statusCounts: { applied: 5, shortlisted: 1, interview_scheduled: 0, selected: 0, offer: 0, hired: 1, rejected: 4, withdrawn: 2 },
-          pagination: { total: 13, page: 1, limit: 10, totalPages: 2 },
-        },
-        isLoading: false,
-      });
-      render(<ApplicationsWorkspace jobId="job-1" />);
-      // 1 shortlisted + 1 hired; applied, rejected and withdrawn are excluded.
-      expect(screen.getByRole("button", { name: /shortlisted 2/i })).toBeInTheDocument();
-    });
+    /** Shortlisting is what sends someone to interview, so the view keeps
+        everyone who has since moved on; applied, rejected and withdrawn stay out. */
+    it("lists shortlisted and every later stage, and goes back to all", async () => {
+      const { user, status } = await openStatus();
 
-    it("filters to the shortlist in one click, and back out again", async () => {
-      const user = userEvent.setup();
-      withCounts();
-      render(<ApplicationsWorkspace jobId="job-1" />);
-
-      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
-      await waitFor(() => expect(useApplicationsMock).toHaveBeenCalledWith(
+      await user.selectOptions(status, "shortlisted+");
+      await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: undefined, stageFrom: "shortlisted" }),
       ));
-      expect(screen.getByRole("button", { name: /shortlisted 4/i })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: /^filters \(1\)/i })).toBeInTheDocument();
 
-      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+      await user.selectOptions(status, "all");
       await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: undefined, stageFrom: undefined }),
       ));
     });
+  });
 
-    it("drops the chip when nobody has been shortlisted", () => {
-      withCounts(0, 0);
-      render(<ApplicationsWorkspace jobId="job-1" />);
-      expect(screen.queryByRole("button", { name: /shortlisted/i })).not.toBeInTheDocument();
-    });
+  describe("sortable Match and Applied On headers", () => {
+    /** Owner 2026-10-07: sort arrows on the column headers, like the admin
+        tables. They share state with the Sort menu in Filters. */
+    const lastSort = () => {
+      const args = useApplicationsMock.mock.calls.at(-1)?.[0] as { sortBy?: string; sortOrder?: string };
+      return [args.sortBy, args.sortOrder];
+    };
 
-    /** Without this the chip vanishes the moment its last candidate moves on,
-        leaving the list filtered with no way to clear it. */
-    it("keeps the chip while it is the active filter, even at zero", async () => {
+    it("starts on Applied On, newest first, and a click flips it to oldest", async () => {
       const user = userEvent.setup();
-      withCounts();
-      const { rerender } = render(<ApplicationsWorkspace jobId="job-1" />);
-      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+      render(<ApplicationsWorkspace jobId="job-1" />);
 
-      withCounts(0, 0);
-      rerender(<ApplicationsWorkspace jobId="job-1" />);
+      const applied = screen.getByRole("button", { name: "Applied On, Sort descending" });
+      expect(applied).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "Sort by Match" })).toHaveAttribute("aria-pressed", "false");
+      expect(lastSort()).toEqual(["appliedAt", "desc"]);
 
-      expect(screen.getByRole("button", { name: /shortlisted 0/i })).toHaveAttribute("aria-pressed", "true");
+      await user.click(applied);
+      await waitFor(() => expect(lastSort()).toEqual(["appliedAt", "asc"]));
+      expect(screen.getByRole("button", { name: "Applied On, Sort ascending" })).toBeInTheDocument();
     });
 
-    it("shows a dash until the totals arrive", () => {
-      useApplicationsMock.mockReturnValue({
-        data: { applications: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } },
-        isLoading: true,
-      });
+    it("starts Match at the best score, then flips to the lowest", async () => {
+      const user = userEvent.setup();
       render(<ApplicationsWorkspace jobId="job-1" />);
-      expect(screen.getByRole("button", { name: /shortlisted —/i })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Sort by Match" }));
+      await waitFor(() => expect(lastSort()).toEqual(["aiMatchScore", "desc"]));
+
+      await user.click(screen.getByRole("button", { name: "Match, Sort descending" }));
+      await waitFor(() => expect(lastSort()).toEqual(["aiMatchScore", "asc"]));
+      expect(screen.getByRole("button", { name: "Sort by Applied On" })).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("keeps the Sort menu in step, Lowest match included", async () => {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" />);
+
+      await user.click(screen.getByRole("button", { name: "Sort by Match" }));
+      await user.click(screen.getByRole("button", { name: "Match, Sort descending" }));
+      await user.click(screen.getByRole("button", { name: /^filters/i }));
+      expect(screen.getByRole("combobox", { name: "Sort" })).toHaveValue("score_low");
+      expect(within(screen.getByRole("combobox", { name: "Sort" })).getByRole("option", { name: "Lowest match" })).toBeInTheDocument();
     });
   });
+
   describe("Move Stage menu", () => {
     /** All six stages listed flat gave no hint which one comes next. */
     async function openStageMenu() {

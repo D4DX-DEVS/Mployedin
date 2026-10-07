@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
+import mongoose from "mongoose";
+import { getScopedEmployerIds, getSuperAgentBook } from "@/lib/auth/agentRestrictions";
+import Agent from "@/models/Agent";
 import BackgroundCheck from "@/models/BackgroundCheck";
+import Job from "@/models/Job";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -52,9 +55,42 @@ function toStaffView(check: StoredCheck) {
 }
 
 /**
+ * Which checks a staff member follows: every check of an employer in their
+ * scope, plus every check on a job one of their agents handles
+ * (`Job.agentId`) — the job's agent may differ from the employer's own agent
+ * (QA EMP-002, 2026-10-06). Admins see everything; an empty scope sees nothing.
+ */
+async function staffCheckFilter(ctx: AuthCtx): Promise<Record<string, unknown> | "all" | "none"> {
+  if (ctx.role === "admin") return "all";
+
+  let employerIds: mongoose.Types.ObjectId[];
+  let agentIds: unknown[];
+  if (ctx.role === "super_agent") {
+    const book = await getSuperAgentBook(ctx.userId);
+    employerIds = book?.employerIds ?? [];
+    agentIds = book?.agentIds ?? [];
+  } else {
+    const [scoped, agent] = await Promise.all([
+      getScopedEmployerIds(ctx),
+      Agent.findOne({ userId: ctx.userId }).select("_id").lean(),
+    ]);
+    employerIds = scoped ?? [];
+    agentIds = agent ? [agent._id] : [];
+  }
+
+  const jobIds = agentIds.length > 0 ? await Job.distinct("_id", { agentId: { $in: agentIds } }) : [];
+  const clauses: Record<string, unknown>[] = [];
+  if (employerIds.length > 0) clauses.push({ employerId: { $in: employerIds } });
+  if (jobIds.length > 0) clauses.push({ jobId: { $in: jobIds } });
+  if (clauses.length === 0) return "none";
+  return clauses.length === 1 ? clauses[0] : { $or: clauses };
+}
+
+/**
  * GET /api/background-checks — the background checks of employers the caller
- * works with, read-only (client report 2026-09-30). Employers keep running
- * their checks under /api/employer/background-checks.
+ * works with, and of jobs their agents handle, read-only (client report
+ * 2026-09-30). Employers keep running their checks under
+ * /api/employer/background-checks.
  */
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (!STAFF_ROLES.includes(ctx.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -65,13 +101,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const requested = parseInt(url.searchParams.get("limit") || "20", 10);
   const limit = PAGE_SIZES.includes(requested) ? requested : 20;
 
-  // null = admin, no employer filter; [] = sees nothing.
-  const employerIds = await getScopedEmployerIds(ctx);
-  if (employerIds && employerIds.length === 0) {
-    return NextResponse.json({ items: [], total: 0, page, limit });
-  }
+  const scope = await staffCheckFilter(ctx);
+  if (scope === "none") return NextResponse.json({ items: [], total: 0, page, limit });
 
-  const filter: Record<string, unknown> = employerIds ? { employerId: { $in: employerIds } } : {};
+  const filter: Record<string, unknown> = scope === "all" ? {} : { ...scope };
   const status = url.searchParams.get("status");
   if (status && STATUSES.includes(status)) filter.status = status;
 

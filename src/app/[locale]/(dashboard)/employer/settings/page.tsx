@@ -27,7 +27,10 @@ import { WhatsAppVerificationPanel, hasWhatsAppOn, type WhatsAppVerification } f
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { useConfirm } from "@/hooks/useConfirm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
-import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
+import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument, EmployerProfileUpdateError } from "@/hooks/useEmployerProfile";
+import { formErrorFromResponse } from "@/lib/errors/form-error";
+import { isValidWebsiteInput } from "@/lib/validators/website";
+import { useMySubscription } from "@/hooks/useSubscription";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
@@ -216,12 +219,20 @@ function CompanySettingsPage() {
 
   // React Query hooks
   const { data: company, isLoading: loading } = useEmployerProfile();
+  // The plan the employer is actually on. `subscriptionType` is a legacy field
+  // the free-plan auto-assign never resets, so it read "Premium" beside a
+  // Subscription page saying "Free" (QA EMP-006).
+  const { data: mySubscription, isLoading: subscriptionLoading } = useMySubscription();
+  // The live subscription only. The legacy Employer.subscriptionType read
+  // "Premium" on a Free account (QA EMP-006), so it is no fallback.
+  const planName = mySubscription?.planSnapshot?.name ?? null;
   const { data: countries = [] } = useCountrySearch("", { loadAll: true });
   const updateProfile = useUpdateEmployerProfile();
   const uploadDocMutation = useUploadDocument();
   const deleteDocMutation = useDeleteDocument();
   const saving = updateProfile.isPending;
   const t = useTranslations("employerSettings");
+  const tFormErrors = useTranslations("formErrors");
   const tc = useTranslations("employerCommon");
 
   // Populate form when company data changes
@@ -329,6 +340,12 @@ function CompanySettingsPage() {
       setError(t("industryRequired"));
       return;
     }
+    // Say what is wrong before the server does (QA EMP-010: "not a url" only
+    // ever produced "We couldn't update your settings").
+    if (!isValidWebsiteInput(form.website)) {
+      setError(t("websiteInvalid"));
+      return;
+    }
 
     setError("");
     setSuccess("");
@@ -381,7 +398,29 @@ function CompanySettingsPage() {
       setTimeout(() => setSuccess(""), gateJustCleared ? 8000 : 4000);
       router.refresh();
     } catch (err) {
-      setError("We couldn't update your settings. Your previous settings are still active. Review the fields and try again.");
+      // Name the fields the server rejected, in the form's own words (QA EMP-010).
+      if (err instanceof EmployerProfileUpdateError) {
+        const formError = await formErrorFromResponse(err.response, {
+          t: tFormErrors,
+          locale,
+          fieldLabels: {
+            companyName: t("companyName"),
+            companyEmail: t("companyEmail"),
+            phone: t("phone"),
+            designation: t("yourTitle"),
+            registrationNo: t("registrationNo"),
+            taxId: t("taxId"),
+            address: t("address"),
+            website: t("website"),
+            description: t("aboutCompany"),
+            foundedYear: t("foundedYear"),
+            socialLinks: t("socialLinks"),
+          },
+        });
+        setError(formError.message);
+      } else {
+        setError("We couldn't update your settings. Your previous settings are still active. Review the fields and try again.");
+      }
     }
   }
 
@@ -462,9 +501,9 @@ function CompanySettingsPage() {
                   <VBadgeIcon className="w-3 h-3 me-1 shrink-0" />
                   <span>{vBadge.label}</span>
                 </Badge>
-                {company?.subscriptionType && (
+                {planName && (
                   <Badge variant="outline" className="text-[11px] font-medium capitalize px-2 py-0.5 inline-flex items-center leading-none">
-                    <span>{company.subscriptionType} {t("plan")}</span>
+                    <span>{planName} {t("plan")}</span>
                   </Badge>
                 )}
               </div>
@@ -628,6 +667,7 @@ function CompanySettingsPage() {
                         <FieldLabel required htmlFor="companyName">{t("companyName")}</FieldLabel>
                         <Input
                           id="companyName"
+                          maxLength={100}
                           value={form.companyName}
                           onChange={(e) => setField("companyName", e.target.value)}
                           placeholder={t("companyNamePlaceholder")}
@@ -673,6 +713,7 @@ function CompanySettingsPage() {
                         <FieldLabel htmlFor="designation">{t("yourTitle")}</FieldLabel>
                         <Input
                           id="designation"
+                          maxLength={100}
                           placeholder={t("yourTitlePlaceholder")}
                           value={form.designation}
                           onChange={(e) => setField("designation", e.target.value)}
@@ -685,6 +726,7 @@ function CompanySettingsPage() {
                         <FieldLabel htmlFor="address">{t("address")}</FieldLabel>
                         <Input
                           id="address"
+                          maxLength={500}
                           placeholder={t("addressPlaceholder")}
                           value={form.address}
                           onChange={(e) => setField("address", e.target.value)}
@@ -707,6 +749,7 @@ function CompanySettingsPage() {
                         <FieldLabel htmlFor="registrationNo">{t("registrationNo")}</FieldLabel>
                         <Input
                           id="registrationNo"
+                          maxLength={50}
                           placeholder={t("registrationNoPlaceholder")}
                           value={form.registrationNo}
                           onChange={(e) => setField("registrationNo", e.target.value)}
@@ -716,6 +759,7 @@ function CompanySettingsPage() {
                         <FieldLabel htmlFor="taxId">{t("taxId")}</FieldLabel>
                         <Input
                           id="taxId"
+                          maxLength={50}
                           placeholder={t("taxIdPlaceholder")}
                           value={form.taxId}
                           onChange={(e) => setField("taxId", e.target.value)}
@@ -963,7 +1007,7 @@ function CompanySettingsPage() {
                         <div>
                           <p className="text-[11px] text-muted-foreground">{t("currentPlan")}</p>
                           <p className="text-sm font-medium capitalize">
-                            {company?.subscriptionType ?? t("freePlan")}
+                            {subscriptionLoading ? "—" : planName ?? t("freePlan")}
                           </p>
                         </div>
                       </div>
@@ -1097,7 +1141,13 @@ function CompanySettingsPage() {
         </div>
 
         {/* ── Sticky Save Bar ──────────────────────────────────────────── */}
+        {/* Hidden by opacity so it can slide in; `inert` + aria-hidden keep the
+            hidden copy out of the tab order and the accessibility tree, where
+            keyboard users and test tools read it as "Unsaved changes" on an
+            untouched form (QA EMP-015). */}
         <div
+          inert={!hasChanges}
+          aria-hidden={!hasChanges || undefined}
           className={`
             fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out
             ${hasChanges ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"}

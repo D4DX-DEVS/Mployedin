@@ -10,11 +10,7 @@ import { ConsentForm } from "./ConsentForm";
 import type { UserRole } from "@/types/user";
 
 const SCOPE_TRANSLATION_KEY: Record<McpScope, string> = {
-  "read:jobs": "scopeReadJobs",
-  "read:applications": "scopeReadApplications",
-  "read:profile": "scopeReadProfile",
-  "read:employer_jobs": "scopeReadEmployerJobs",
-  "read:applicants": "scopeReadApplicants",
+  "read:reports": "scopeReadReports",
 };
 
 interface ConsentSessionUser {
