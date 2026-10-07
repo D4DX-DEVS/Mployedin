@@ -55,12 +55,15 @@ describe("RequirementsChecklist — missing information (client report 2026-09-3
     expect(document.body.textContent).not.toContain("Asks + years");
   });
 
-  it("names the must-have it checks, in full and in the narrow list column", () => {
+  it("names the must-have it checks in full, and is an icon beside the score in the list", () => {
     const { unmount } = render(<RequirementsBadge status="not_met" />);
     expect(screen.getByText("Missing a must-have")).toBeInTheDocument();
     unmount();
-    render(<RequirementsBadge status="not_met" compact />);
-    expect(screen.getAllByText("Missing a must-have")).toHaveLength(2); // visible + screen-reader copy
+    // Owner 2026-10-07: the worded pill under every score was too big.
+    const { container } = render(<RequirementsBadge status="not_met" compact />);
+    expect(screen.getByText("Missing a must-have")).toHaveClass("sr-only");
+    expect(container.firstElementChild).toHaveAttribute("title", expect.stringMatching(/^Missing a must-have — .*Shortlist Top/));
+    expect(container.querySelector("svg")).toBeInTheDocument();
     expect(screen.queryByText("Not met")).not.toBeInTheDocument();
     expect(screen.queryByText("Fails")).not.toBeInTheDocument();
   });
@@ -86,7 +89,7 @@ describe("RequirementsBadge — a job with no must-haves (owner 2026-10-07)", ()
 
   it("says Must-haves met when the job has one", () => {
     render(<RequirementsBadge status="met" compact />);
-    expect(screen.getAllByText("Must-haves met").length).toBeGreaterThan(0);
+    expect(screen.getByText("Must-haves met")).toHaveClass("sr-only");
     expect(screen.queryByText("Meets")).not.toBeInTheDocument();
   });
 

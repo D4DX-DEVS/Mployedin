@@ -25,18 +25,18 @@ export interface QualificationItem {
   label?: string;
 }
 
-const BADGE_STYLE: Record<RequirementsStatus, { icon: typeof CheckCircle2; className: string }> = {
-  met: { icon: CheckCircle2, className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
+const BADGE_STYLE: Record<RequirementsStatus, { icon: typeof CheckCircle2; className: string; iconClassName: string }> = {
+  met: { icon: CheckCircle2, className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700", iconClassName: "text-emerald-600" },
   // A warning, not a verdict on the score beside it (client report 2026-09-30).
-  not_met: { icon: TriangleAlert, className: "border-rose-500/30 bg-rose-500/10 text-rose-700" },
-  unverified: { icon: HelpCircle, className: "border-amber-500/30 bg-amber-500/10 text-amber-800" },
+  not_met: { icon: TriangleAlert, className: "border-rose-500/30 bg-rose-500/10 text-rose-700", iconClassName: "text-rose-600" },
+  unverified: { icon: HelpCircle, className: "border-amber-500/30 bg-amber-500/10 text-amber-800", iconClassName: "text-amber-600" },
 };
 
 interface RequirementsBadgeProps {
   status?: RequirementsStatus | null;
   /** The job set no must-haves (`setsNoMustHaves`): nothing to meet, so no badge. */
   noMustHaves?: boolean;
-  /** Small, and wraps to two lines in a narrow column; the full wording stays in the tooltip and for screen readers. */
+  /** The icon alone, for beside a match score in a list; the wording stays in the tooltip and for screen readers. */
   compact?: boolean;
   className?: string;
 }
@@ -58,33 +58,30 @@ export function setsNoMustHaves(checks?: readonly QualificationItem[] | null): b
 export function RequirementsBadge({ status, noMustHaves = false, compact = false, className }: RequirementsBadgeProps) {
   const t = useTranslations("employerAts");
   if (!status || (noMustHaves && status === "met")) return null;
-  const { icon: Icon, className: tone } = BADGE_STYLE[status];
+  const { icon: Icon, className: tone, iconClassName } = BADGE_STYLE[status];
   // Named for the must-haves it checks: "Meets" and "Not met" sat under the
   // match score and read as a verdict on it, so a 44% "Meets" beside a 54%
   // "Not met" looked wrong (owner, 2026-10-07).
   const full = status === "not_met" ? t("requirementsNotMet") : t(`status.${status}`);
-  const short = status === "not_met" ? t("requirementsNotMetShort") : t(`statusShort.${status}`);
+  const hint = t(`statusHint.${status}`);
+  if (compact) {
+    // In the list the words made a two-line pill under every score (owner,
+    // 2026-10-07): a check, warning or question icon beside the score instead,
+    // shape as well as colour; the candidate panel spells it out.
+    return (
+      <span className={cn("inline-flex shrink-0", iconClassName, className)} title={`${full} — ${hint}`}>
+        <Icon className="size-4" aria-hidden="true" />
+        <span className="sr-only">{full}</span>
+      </span>
+    );
+  }
   return (
     <span
-      className={cn(
-        "inline-flex items-center border font-semibold",
-        compact
-          ? "max-w-24 gap-0.5 rounded-lg px-1.5 py-0.5 text-start text-[10px] leading-tight"
-          : "gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px]",
-        tone,
-        className,
-      )}
-      title={t(`statusHint.${status}`)}
+      className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", tone, className)}
+      title={hint}
     >
       <Icon className="size-3 shrink-0" aria-hidden="true" />
-      {compact ? (
-        <>
-          <span aria-hidden="true">{short}</span>
-          <span className="sr-only">{full}</span>
-        </>
-      ) : (
-        full
-      )}
+      {full}
     </span>
   );
 }
