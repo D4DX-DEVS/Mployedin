@@ -124,7 +124,7 @@ describe("ResponsiveTables", () => {
       }),
     });
 
-    const { container } = render(
+    render(
       <>
         <table>
           <thead>
@@ -148,29 +148,62 @@ describe("ResponsiveTables", () => {
       </>
     );
 
-    // The row itself is the disclosure control. It used to be an injected
-    // <button>, but injecting a node into a cell React owns raced hydration on
-    // streamed Suspense boundaries ("Hydration failed ... extra child"). The
-    // control is now attributes on the existing <tr>: nothing is added to the
-    // DOM, `aria-expanded` is valid on role="row", and the whole row is the
-    // target instead of a 44x44 corner.
-    const row = await screen.findByRole("row", { name: "Show details" });
-    expect(container.querySelector("button[data-mobile-disclosure]")).toBeNull();
+    // aria-expanded is only valid on treegrid rows, so the disclosure is a real
+    // <button> in a summary cell, not attributes on the <tr> (axe:
+    // aria-conditional-attr).
+    const button = await screen.findByRole("button", { name: "Show details" });
+    const row = button.closest("tr") as HTMLTableRowElement;
+    expect(button).toHaveAttribute("data-mobile-disclosure");
+    expect(button).toHaveAttribute("type", "button");
+    expect(row.cells[0]).toContainElement(button);
+    expect(row).toHaveAttribute("data-mobile-collapsible");
+    expect(row).not.toHaveAttribute("aria-expanded");
+    expect(row).not.toHaveAttribute("aria-controls");
+    expect(row).not.toHaveAttribute("tabindex");
 
-    const controlledIds = row.getAttribute("aria-controls")?.split(" ") ?? [];
-    expect(row).toHaveAttribute("aria-expanded", "false");
-    expect(row).toHaveAttribute("tabindex", "0");
+    const controlledIds = button.getAttribute("aria-controls")?.split(" ") ?? [];
+    expect(button).toHaveAttribute("aria-expanded", "false");
     expect(controlledIds).toHaveLength(2);
     controlledIds.forEach((id) => expect(document.getElementById(id)).toBeTruthy());
+    expect(button).toHaveAccessibleDescription("Ada");
 
-    fireEvent.click(row);
+    // Native button: Enter/Space activation reaches the handler as a click.
+    fireEvent.click(button);
     expect(row).toHaveAttribute("data-mobile-expanded");
-    expect(row).toHaveAttribute("aria-expanded", "true");
-    expect(row).toHaveAccessibleName("Hide details");
+    expect(button).toHaveAttribute("aria-expanded", "true");
 
-    // Keyboard operable, since the row is now the control.
-    fireEvent.keyDown(row, { key: "Enter" });
+    // Tapping elsewhere on the card still toggles.
+    fireEvent.click(row.cells[1]);
     expect(row).not.toHaveAttribute("data-mobile-expanded");
-    expect(row).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("does not inject into rows React has not hydrated yet", async () => {
+    const { container } = render(
+      <>
+        <div id="boundary" />
+        <ResponsiveTables />
+      </>
+    );
+
+    // Server markup React has not claimed: no __reactFiber$ key on the row,
+    // but its container is React-owned.
+    container.querySelector("#boundary")!.innerHTML = `
+      <table>
+        <thead><tr><th>Name</th><th>Status</th><th>Email</th><th>Region</th></tr></thead>
+        <tbody><tr><td>Ada</td><td>Active</td><td>ada@example.com</td><td>Gulf</td></tr></tbody>
+      </table>`;
+
+    await waitFor(() => {
+      expect(container.querySelector("table")).toHaveClass("responsive-card-table");
+    });
+    expect(container.querySelector("button[data-mobile-disclosure]")).toBeNull();
+    expect(container.querySelector("tr[data-mobile-collapsible]")).toBeNull();
+
+    // Retries give up and inject eventually (markup React will never hydrate).
+    await waitFor(
+      () => expect(container.querySelector("button[data-mobile-disclosure]")).not.toBeNull(),
+      { timeout: 8000 }
+    );
+  }, 10000);
 });

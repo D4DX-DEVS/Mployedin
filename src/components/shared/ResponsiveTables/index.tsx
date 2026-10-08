@@ -36,44 +36,71 @@ function getHeaderLabels(table: HTMLTableElement) {
 const SUMMARY_CELL_COUNT = 2;
 let responsiveTableId = 0;
 
-function getDisclosureLabels(table: HTMLTableElement) {
+function getDisclosureLabel(table: HTMLTableElement) {
   const language = table.closest<HTMLElement>("[lang]")?.lang || document.documentElement.lang;
-  const defaults = language.startsWith("ar")
-    ? { expand: "إظهار التفاصيل", collapse: "إخفاء التفاصيل" }
-    : { expand: "Show details", collapse: "Hide details" };
+  const fallback = language.startsWith("ar") ? "إظهار التفاصيل" : "Show details";
+  return table.getAttribute("data-mobile-expand-label") || fallback;
+}
 
-  return {
-    expand: table.getAttribute("data-mobile-expand-label") || defaults.expand,
-    collapse: table.getAttribute("data-mobile-collapse-label") || defaults.collapse,
-  };
+const DISCLOSURE_SELECTOR = ":scope > td > button[data-mobile-disclosure], :scope > th > button[data-mobile-disclosure]";
+
+function getDisclosure(row: HTMLTableRowElement) {
+  return row.querySelector<HTMLButtonElement>(DISCLOSURE_SELECTOR);
 }
 
 function setExpanded(row: HTMLTableRowElement, expanded: boolean) {
   row.toggleAttribute("data-mobile-expanded", expanded);
-  row.setAttribute("aria-expanded", String(expanded));
-  const labels = getDisclosureLabels(row.closest("table") as HTMLTableElement);
-  row.setAttribute("aria-label", expanded ? labels.collapse : labels.expand);
+  getDisclosure(row)?.setAttribute("aria-expanded", String(expanded));
 }
 
 /**
- * Make the row itself the disclosure control.
- *
- * This used to inject a 44x44 <button> into a cell React owns, which raced
- * hydration: on a streamed Suspense boundary the button landed before React
- * reconciled that cell, and React threw "Hydration failed" over the extra
- * child. No amount of deferral removes that race — so nothing is injected any
- * more. `aria-expanded` is valid on role="row" (tree grids use it), the chevron
- * affordance was already pure CSS (tr[data-mobile-collapsible]::after), and a
- * whole-row target is larger than the button it replaces.
+ * React stamps a `__reactFiber$…` key on every DOM node it has hydrated (or
+ * rendered). A row without one, sitting under an ancestor that has one, is
+ * server markup inside a Suspense boundary React has not hydrated yet — adding
+ * a child there makes React throw "Hydration failed" over the extra node.
  */
-function markExpandable(row: HTMLTableRowElement, cells: HTMLTableCellElement[]) {
+function hasReactFiber(node: Node) {
+  return Object.keys(node).some((key) => key.startsWith("__reactFiber$"));
+}
+
+function isAwaitingHydration(row: HTMLTableRowElement) {
+  if (hasReactFiber(row)) return false;
+  for (let node = row.parentNode; node; node = node.parentNode) {
+    if (hasReactFiber(node)) return true;
+  }
+  return false;
+}
+
+/**
+ * Give a long row a real disclosure <button> in one of its visible summary
+ * cells. `aria-expanded` is not valid on a plain table row (only on treegrid
+ * rows), so the state has to live on a control that owns it; the native button
+ * also brings Enter/Space activation and focus for free. The row itself stays
+ * a pointer target for convenience, but it is no longer focusable or announced
+ * as a control.
+ *
+ * Returns false when the row is still awaiting hydration, so the caller can
+ * retry once React has caught up. `force` skips that check — used after the
+ * retries run out, for markup React will never hydrate (dangerouslySetInnerHTML).
+ */
+function markExpandable(
+  row: HTMLTableRowElement,
+  cells: HTMLTableCellElement[],
+  force: boolean
+) {
   const cellCount = cells.length;
-  if (cellCount <= SUMMARY_CELL_COUNT + 1) return;
-  if (row.hasAttribute("data-mobile-spanning-row")) return;
-  row.setAttribute("data-mobile-collapsible", "");
+  if (cellCount <= SUMMARY_CELL_COUNT + 1) return true;
+  if (row.hasAttribute("data-mobile-spanning-row")) return true;
 
   const table = row.closest("table");
-  if (!table) return;
+  if (!table) return true;
+
+  if (getDisclosure(row)) {
+    row.setAttribute("data-mobile-collapsible", "");
+    return true;
+  }
+  if (!force && isAwaitingHydration(row)) return false;
+
   if (!table.id) {
     responsiveTableId += 1;
     table.id = `responsive-table-${responsiveTableId}`;
@@ -84,16 +111,33 @@ function markExpandable(row: HTMLTableRowElement, cells: HTMLTableCellElement[])
     return cell.id;
   });
 
-  row.setAttribute("aria-controls", detailIds.join(" "));
-  // Attributes only — no new element — so React never sees an unexpected child.
-  if (!row.hasAttribute("tabindex")) row.setAttribute("tabindex", "0");
+  // A summary cell stays visible while collapsed. Skip the selection-checkbox
+  // cell: on phones it is pulled out of flow into the card's corner.
+  const summaryCells = cells.slice(0, SUMMARY_CELL_COUNT);
+  const host =
+    summaryCells.find((cell) => !cell.querySelector("[role=checkbox]")) ?? summaryCells[0];
+  const primary = cells.find((cell) => cell.hasAttribute("data-mobile-primary"));
+  if (primary && !primary.id) primary.id = `${table.id}-row-${row.rowIndex}-primary`;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("data-mobile-disclosure", "");
+  button.setAttribute("aria-label", getDisclosureLabel(table));
+  button.setAttribute("aria-controls", detailIds.join(" "));
+  // "Show details" alone is ambiguous in a list of rows; tie it to the record.
+  if (primary) button.setAttribute("aria-describedby", primary.id);
+  host.appendChild(button);
+
+  row.setAttribute("data-mobile-collapsible", "");
   setExpanded(row, row.hasAttribute("data-mobile-expanded"));
+  return true;
 }
 
 /** Elements whose own click must win over expand/collapse. */
 const INTERACTIVE = "button,a,input,select,textarea,label,[role=checkbox],[role=button],[role=menuitem]";
 
-function enhanceTable(table: HTMLTableElement) {
+function enhanceTable(table: HTMLTableElement, force = false) {
+  let complete = true;
   table.classList.add("responsive-card-table", "workspace-list-table");
 
   const headerLabels = getHeaderLabels(table);
@@ -141,22 +185,53 @@ function enhanceTable(table: HTMLTableElement) {
       }
 
       if (section === table.tFoot) continue;
-      markExpandable(row, cells);
+      if (!markExpandable(row, cells, force)) complete = false;
     }
   }
+
+  return complete;
 }
 
 /** Matches the max-width the collapse CSS uses. */
 const MOBILE_QUERY = "(max-width: 639px)";
+/** ~5s of retries for rows awaiting hydration before injecting regardless. */
+const HYDRATION_RETRY_MS = 250;
+const MAX_HYDRATION_RETRIES = 20;
 
 export function ResponsiveTables() {
   useEffect(() => {
-    const enhanceAllTables = (root: ParentNode = document) => {
-      root.querySelectorAll<HTMLTableElement>(TABLE_SELECTOR).forEach(enhanceTable);
+    // Tables with rows React has not hydrated yet get swept again later; see
+    // `isAwaitingHydration`. Hydration itself mutates nothing in the DOM, so
+    // the MutationObserver below would never bring us back to them.
+    const awaitingHydration = new Map<HTMLTableElement, number>();
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const enhance = (table: HTMLTableElement) => {
+      const attempts = awaitingHydration.get(table) ?? 0;
+      const complete = enhanceTable(table, attempts >= MAX_HYDRATION_RETRIES);
+      if (complete) {
+        awaitingHydration.delete(table);
+        return;
+      }
+      awaitingHydration.set(table, attempts + 1);
+      if (retryTimer === undefined) {
+        retryTimer = setTimeout(() => {
+          retryTimer = undefined;
+          if (!isMobile()) return;
+          awaitingHydration.forEach((_, pending) => {
+            if (pending.isConnected) enhance(pending);
+            else awaitingHydration.delete(pending);
+          });
+        }, HYDRATION_RETRY_MS);
+      }
     };
 
-    // This enhancer injects a disclosure <button> into cells React owns. Two
-    // things kept that colliding with hydration:
+    const enhanceAllTables = (root: ParentNode = document) => {
+      root.querySelectorAll<HTMLTableElement>(TABLE_SELECTOR).forEach(enhance);
+    };
+
+    // This enhancer injects a disclosure <button> into cells React owns. Three
+    // things keep that from colliding with hydration:
     //
     // 1. A `setTimeout(..., 0)` macrotask still fires before a *streamed*
     //    Suspense boundary finishes hydrating, so the button landed in a <td>
@@ -169,6 +244,9 @@ export function ResponsiveTables() {
     //    click handler below already checks it — yet it was injected at every
     //    width, so desktop paid the hydration risk for a control it never uses.
     //    Enhance only while the query matches, and re-run when it starts to.
+    //
+    // 3. Even idle can land before a slow streamed boundary hydrates, so rows
+    //    React has not claimed yet are skipped and retried (`enhance` above).
     // matchMedia is missing in jsdom and in very old browsers. Degrade to
     // "always enhance" rather than silently dropping the disclosure there.
     const mql =
@@ -244,7 +322,7 @@ export function ResponsiveTables() {
         for (const mutation of mutations) {
           if (mutation.type === "characterData") {
             const table = mutation.target.parentElement?.closest(TABLE_SELECTOR);
-            if (table instanceof HTMLTableElement) enhanceTable(table);
+            if (table instanceof HTMLTableElement) enhance(table);
             continue;
           }
 
@@ -252,13 +330,13 @@ export function ResponsiveTables() {
             if (!(node instanceof Element)) continue;
 
             if (node.matches(TABLE_SELECTOR)) {
-              enhanceTable(node as HTMLTableElement);
+              enhance(node as HTMLTableElement);
             } else {
               enhanceAllTables(node);
             }
 
             const table = node.closest(TABLE_SELECTOR);
-            if (table instanceof HTMLTableElement) enhanceTable(table);
+            if (table instanceof HTMLTableElement) enhance(table);
           }
         }
       });
@@ -272,7 +350,9 @@ export function ResponsiveTables() {
 
     // One delegated listener beats per-row handlers: it survives re-renders and
     // never touches the DOM structure. Only meaningful under the mobile
-    // breakpoint, where the collapse rules are active.
+    // breakpoint, where the collapse rules are active. Keyboard users reach the
+    // disclosure <button>, whose native Enter/Space activation arrives here as
+    // a click too.
     const onClick = (event: MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -280,28 +360,19 @@ export function ResponsiveTables() {
 
       const row = target.closest<HTMLTableRowElement>("tr[data-mobile-collapsible]");
       if (!row) return;
-      // Let the row's own controls (checkbox, action buttons, links) act instead.
-      if (target.closest(INTERACTIVE)) return;
+      // Let the row's own controls (checkbox, action buttons, links) act
+      // instead — except the disclosure itself.
+      const disclosure = target.closest("button[data-mobile-disclosure]");
+      if (!disclosure && target.closest(INTERACTIVE)) return;
 
-      setExpanded(row, !row.hasAttribute("data-mobile-expanded"));
-    };
-    // The row is the control now, so it needs keyboard activation too.
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      if (!isMobile()) return;
-      const row = target.closest<HTMLTableRowElement>("tr[data-mobile-collapsible]");
-      if (!row || target !== row) return;
-      event.preventDefault();
       setExpanded(row, !row.hasAttribute("data-mobile-expanded"));
     };
 
     document.addEventListener("click", onClick);
-    document.addEventListener("keydown", onKeyDown);
 
     return () => {
       cancelScheduled();
+      if (retryTimer !== undefined) clearTimeout(retryTimer);
       if (typeof window.cancelIdleCallback === "function") {
         mutationHandles.forEach((h) => window.cancelIdleCallback(h));
       }
@@ -310,7 +381,6 @@ export function ResponsiveTables() {
       mql?.removeEventListener("change", onBreakpointChange);
       observer.disconnect();
       document.removeEventListener("click", onClick);
-      document.removeEventListener("keydown", onKeyDown);
     };
   }, []);
 

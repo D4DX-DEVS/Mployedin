@@ -2226,6 +2226,12 @@ table.workspace-list-table tbody tr {
   border-color: hsl(var(--border) / 0.62);
 }
 
+/* Injected on phones only; hidden if the viewport later grows past the card
+   breakpoint so the desktop table never shows it. */
+button[data-mobile-disclosure] {
+  display: none;
+}
+
 table.workspace-list-table tbody tr:focus-visible {
   position: relative;
   z-index: 1;
@@ -2530,28 +2536,52 @@ table.workspace-list-table tbody tr:focus-visible {
     line-height: 1rem;
   }
 
-  /* Chevron affordance, drawn on the row itself. Using a pseudo-element rather
-     than an injected button keeps the DOM identical to what the server sent,
-     which is what hydration requires. */
+  /* Disclosure control. ResponsiveTables injects a real
+     <button data-mobile-disclosure aria-expanded> into a summary cell — the
+     state can't live on the <tr> (aria-expanded is invalid on plain table
+     rows). It is pinned to the row's top corner and draws the chevron; the rest
+     of the row stays a pointer target. */
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] {
     position: relative;
     cursor: pointer;
   }
 
-  table.responsive-card-table > tbody > tr[data-mobile-collapsible]::after {
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] button[data-mobile-disclosure] {
     position: absolute;
-    inset-block-start: 0.75rem;
-    inset-inline-end: 0.75rem;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] button[data-mobile-disclosure]:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: -4px;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] button[data-mobile-disclosure]::after {
     width: 0.4rem;
     height: 0.4rem;
-    border-right: 1.5px solid hsl(var(--muted-foreground));
-    border-bottom: 1.5px solid hsl(var(--muted-foreground));
+    margin-block-start: -0.125rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
     content: "";
     transform: rotate(45deg);
     transition: transform 150ms ease;
   }
 
-  table.responsive-card-table > tbody > tr[data-mobile-collapsible][data-mobile-expanded]::after {
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] button[data-mobile-disclosure][aria-expanded="true"]::after {
+    margin-block-start: 0.125rem;
     transform: rotate(225deg);
   }
 
